@@ -14,6 +14,8 @@ logic   u_passthru_1_out;
 //Main Body
 assign o_data_out[0] = u_passthru_0_out;
 assign o_data_out[1] = u_passthru_1_out;
+assign u_passthru_0_in = i_data_in[0];
+assign u_passthru_1_in = i_data_in[1];
 
 PassThrough u_passthru_0 (
   .in(u_passthru_0_in),
