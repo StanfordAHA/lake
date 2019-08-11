@@ -3,7 +3,14 @@
 ########
 *.swp
 
+###############
+# Build Files #
+###############
 build
 dist
-
 lake.egg-info
+
+###########
+# pycache #
+###########
+*__pycache__*
