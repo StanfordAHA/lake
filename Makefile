@@ -21,10 +21,6 @@ GENESIS_CORE_FILES := \
 
 GENESIS_ADJUNCT_FILES := \
     MEMmemory_core \
-    PEtest_pe \
-    PECOMPtest_pe_comp_unq1 \
-    REGMODEtest_opt_reg_file \
-    REGMODEtest_opt_reg
 
 GARNET_FILES := \
     garnet.v \
