@@ -8,14 +8,14 @@ class LakeTop(Generator):
         self.out_ = self.output("o_data_out", width)
 
         # Child instance passthru
-        passthru_child_tmp = PassThroughMod()
-        self.add_child_generator("u_passthru_0", passthru_child_tmp)
-        self.wire(self.in_[0], passthru_child_tmp.in_)
-        self.wire(self.out_[0], passthru_child_tmp.out_)
+        #passthru_child_tmp = PassThroughMod()
+        #self.add_child_generator("u_passthru_0", passthru_child_tmp)
+        #self.wire(self.in_[0], passthru_child_tmp.in_)
+        #self.wire(self.out_[0], passthru_child_tmp.out_)
 
         # Add a second passthru for the other wire
-        if width == 2:
-            passthru_child_tmp2 = PassThroughMod()
-            self.add_child_generator("u_passthru_1", passthru_child_tmp2)
-            self.wire(self.in_[1], passthru_child_tmp2.in_)
-            self.wire(self.out_[1], passthru_child_tmp2.out_)
+        for i in range(width):
+            passthru_child_tmp = PassThroughMod()
+            self.add_child_generator(f"u_passthru_{i}", passthru_child_tmp)
+            self.wire(self.in_[i], passthru_child_tmp.in_)
+            self.wire(self.out_[i], passthru_child_tmp.out_)
