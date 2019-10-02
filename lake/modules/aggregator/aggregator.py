@@ -11,7 +11,8 @@ def DefineAggregator(word_width, memory_width):
         name = 'Aggregator_' + str(word_width) + '_' + str(memory_width)
         IO = [  'INPUT_PIXELS', m.In(m.Bits[word_width]), \
                 'AGGREGATED_OUTPUT', m.Out(m.Array[memory_width, m.Bits[word_width]]), \
-                'VALID', m.Out(m.Bit)] + m.ClockInterface()
+                'VALID', m.Out(m.Bit)] \
+                + m.ClockInterface()
 
         @classmethod
         def definition(agg):
