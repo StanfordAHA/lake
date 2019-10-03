@@ -1,21 +1,26 @@
 from kratos import *
 from lake.modules.passthru import *
+from lake.modules.sram_stub import SRAMStub
 
 class LakeTop(Generator):
     def __init__(self, width):
         super().__init__("LakeTop")
-        self.in_ = self.input("i_data_in", width)
-        self.out_ = self.output("o_data_out", width)
+        self._in = self.input("i_data_in", width)
+        self._out = self.output("o_data_out", width)
+        self._clk = self.clock("i_clk")
+        self._rst_n = self.reset("i_rst_n")
 
-        # Child instance passthru
-        #passthru_child_tmp = PassThroughMod()
-        #self.add_child_generator("u_passthru_0", passthru_child_tmp)
-        #self.wire(self.in_[0], passthru_child_tmp.in_)
-        #self.wire(self.out_[0], passthru_child_tmp.out_)
+        # First wrap sram_stub
+        sram_stub = SRAMStub(width, 1024)
+        self.add_child_generator(f"u_sram_stub_0", sram_stub)
+        self.wire(sram_stub.i_data, self._in)
+        self.wire(self._out, sram_stub.o_data)
 
-        # Add a second passthru for the other wire
-        for i in range(width):
-            passthru_child_tmp = PassThroughMod()
-            self.add_child_generator(f"u_passthru_{i}", passthru_child_tmp)
-            self.wire(self.in_[i], passthru_child_tmp.in_)
-            self.wire(self.out_[i], passthru_child_tmp.out_)
+        self.wire(sram_stub.i_addr, 0)
+        self.wire(sram_stub.i_cen, 0)
+        self.wire(sram_stub.i_wen, 0)
+        self.wire(sram_stub.i_clk, self._clk)
+        self.wire(sram_stub.i_rst_n, self._rst_n)
+
+lake_dut = LakeTop(16)
+verilog(lake_dut, filename="lake_top.sv", check_active_high=False)

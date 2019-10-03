@@ -7,7 +7,7 @@ class SRAMStub(Generator):
     # Generation             #
     ##########################
     def __init__(self, width, depth):
-        super().__init__("SRAMStub")
+        super().__init__("sram_stub", True)
 
         ############################
         # Clock and Reset          #
@@ -18,8 +18,9 @@ class SRAMStub(Generator):
         ############################
         # Inputs                   #
         ############################
-        self.i_wen_n = self.input("i_wen_n", 1)
-        self.i_addr = self.input("i_addr", int(log(depth,2)))
+        self.i_wen = self.input("i_wen", 1)
+        self.i_cen = self.input("i_cen", 1)
+        self.i_addr = self.input("i_addr", clog2(depth))
         self.i_data = self.input("i_data", width)
 
         ############################
@@ -30,24 +31,29 @@ class SRAMStub(Generator):
         ############################
         # Local Variables          #
         ############################
-        self.data_array = self.var("data_array", width=width, size=depth)
+        self.data_array = self.var("data_array", width=width, size=depth, packed=True)
 
         ############################
         # Add seq blocks           #
         ############################
         self.add_code(self.seq_data_access)
+        self.add_code(self.seq_data_out)
 
     ##########################
     # Access sram array      #
     ##########################
-    @always((posedge, "i_clk")) #, (negedge, "i_rst_n"))
+    @always((posedge, "i_clk"))
     def seq_data_access(self):
+        if(self.i_cen & self.i_wen):
+            self.data_array[self.i_addr] = self.i_data
+
+    @always((posedge, "i_clk"), (negedge, "i_rst_n"))
+    def seq_data_out(self):
         if ~self.i_rst_n:
             self.o_data = 0
-        else:
-            if ~self.i_wen_n:
-                self.data_array[self.i_addr] = self.i_data
-            else:
-                self.o_data = self.data_array[self.i_addr]
+        elif(self.i_cen):
+            self.o_data = self.data_array[self.i_addr]
 
 
+dut = SRAMStub(16, 1024)
+verilog(dut, filename="sram_stub.sv", check_active_high=False)

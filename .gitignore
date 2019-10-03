@@ -14,3 +14,14 @@ lake.egg-info
 # pycache #
 ###########
 *__pycache__*
+
+###########
+# venvs   #
+###########
+venv/*
+
+# dump
+dump/
+# verilog outputs
+*.sv
+*.vscode
