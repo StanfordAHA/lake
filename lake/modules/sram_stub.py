@@ -54,6 +54,6 @@ class SRAMStub(Generator):
         elif(self.i_cen):
             self.o_data = self.data_array[self.i_addr]
 
-
-dut = SRAMStub(16, 1024)
-verilog(dut, filename="sram_stub.sv", check_active_high=False)
+if __name__ == "__main__":
+    dut = SRAMStub(16, 1024)
+    verilog(dut, filename="sram_stub.sv", check_active_high=False)
