@@ -11,8 +11,13 @@ class PipeReg(Generator):
 
         self._reg_array = self.var("reg_array", data_width, size=stages, packed=True)
         self.stages = stages
-        self.add_code(self.stage_elab)
-        self.add_code(self.set_out)
+
+
+        if stages > 0:
+            self.add_code(self.stage_elab)
+            self.add_code(self.set_out)
+        else:
+            self.wire(self._out, self._in)
 
     @always((posedge, "i_clk"), (negedge, "i_rst_n"))
     def stage_elab(self):

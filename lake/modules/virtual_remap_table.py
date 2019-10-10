@@ -1,14 +1,15 @@
 from kratos import *
 from lake.modules.sram_stub import SRAMStub
 
-
 # Should we do this with registers or SRAM? 
 # What options do we have?
 class VirtualRemapTable(Generator):
-    def __init__(self, width):
-        super().__init__("LakeTop")
+    def __init__(self, macro_width, desired_width, macro_depth, desired_depth):
+        super().__init__("virtual_remap_table")
         self._virt_addr = self.input("i_virt_addr", width)
+        self._ren = self.input("i_ren", 1)
         self._out = self.output("o_data_out", width)
+        self._in = self.input("i_data_in", width)
         self._clk = self.clock("i_clk")
         self._rst_n = self.reset("i_rst_n")
 
