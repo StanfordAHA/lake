@@ -3,8 +3,9 @@ import mantle
 import fault
 import math
 
+from magma import DeclareFromVerilog
 from math import ceil, log
-from mantle import Register
+from mantle import Register, Mux
 
 def DefineTransposeBuffer(word_width, memory_width, range_, stride, stencil_height):
     class _TransposeBuffer(m.Circuit):
@@ -24,40 +25,34 @@ def DefineTransposeBuffer(word_width, memory_width, range_, stride, stencil_heig
             read_col_index = Register(ceil(log(memory_width, 2)))
             out_col_index = Register(ceil(log(memory_width, 2)))
             # active low asynchronous reset
-            if (not tb.RST_N):
+            if (tb.RST_N):
                 output_buffer_index.I <= 0
                 read_row_index.I <= 0
                 read_col_index.I <= 0
                 out_col_index.I <= 0
 
-            b = m.join([Register(word_width) for _ in range(memory_width)])
-            for i in range(memory_width):
-                b.I <= tb.SRAM_INPUT
-                
             transpose_buffer = m.join([m.join([m.join([Register(word_width) for _ in range(memory_width)]) for __ in range(stencil_height)]) for ___ in range(2)])
-#            transpose_buffer = [[[Register(word_width)  for i in range(memory_width)] \
-#                                                        for j in range(stencil_height)] \
-#                                                        for k in range(2)] # double buffering
+
             # store input SRAM data in transpose buffer
+            col_index = m.uint(read_col_index.O)
             for i in range(len(tb.VALID_INPUT)):
                 if (tb.VALID_INPUT[i] == m.bit(1)):
-                    transpose_buffer[not output_buffer_index.O][read_row_index.O][read_col_index.O].I <= tb.SRAM_INPUT[i]
-                    real_col_index.I <= read_col_index.O + 1
+                    transpose_buffer.I[~output_buffer_index.O][read_row_index.O][col_index] <= tb.SRAM_INPUT[i]
+                    col_index = col_index + 1
 
             read_row_index.I <=  0  if (read_row_index.O == stencil_height - 1) \
-                                    else (read_row_index.O + 1)
-            read_col_index.I <=  0  if (real_col_index.O == memory_width) \
-                                    else real_col_index.O
+                                    else (m.bits(m.uint(read_row_index.O) + 1))
+            read_col_index.I <=  0  if (col_index == memory_width) \
+                                    else col_index
 
             # output pixels to stencil_height shift registers from transpose buffer
             for i in range(len(tb.VALID_COL_PIXELS)):
-                tb.VALID_COL_PIXELS[i] <= transpose_buffer[output_buffer.O][i][out_col_index.O].O
-
+                tb.VALID_COL_PIXELS[i] <= transpose_buffer.O[output_buffer_index.O][i][out_col_index.O]
             if (out_col_index.O == memory_width - 1):
                 out_col_index.I <= 0
                 output_buffer_index.I <= 0 if (output_buffer_index.O == 1) else 1
             else:
-                out_col_index.I <= out_col_index.O + 1
+                out_col_index.I <= m.bits(m.uint(out_col_index.O) + 1)
 
             tb.READ_VALID <= m.bit(1)
             tb.STENCIL_VALID <= m.bit(1)
