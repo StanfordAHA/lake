@@ -4,7 +4,7 @@ from lake.modules.sram_stub import SRAMStub
 # Should we do this with registers or SRAM? 
 # What options do we have?
 class VirtualRemapTable(Generator):
-    def __init__(self, macro_width, desired_width, macro_depth, desired_depth):
+    def __init__(self, macro_width, logical_banks, macro_depth):
         super().__init__("virtual_remap_table")
         self._virt_addr = self.input("i_virt_addr", width)
         self._ren = self.input("i_ren", 1)

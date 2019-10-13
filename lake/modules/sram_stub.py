@@ -13,7 +13,6 @@ class SRAMStub(Generator):
         # Clock and Reset          #
         ############################
         self.i_clk = self.clock("i_clk")
-        self.i_rst_n = self.reset("i_rst_n", 1)
 
         ############################
         # Inputs                   #
@@ -44,14 +43,12 @@ class SRAMStub(Generator):
     ##########################
     @always((posedge, "i_clk"))
     def seq_data_access(self):
-        if(self.i_cen & self.i_wen):
+        if self.i_cen & self.i_wen:
             self.data_array[self.i_addr] = self.i_data
 
-    @always((posedge, "i_clk"), (negedge, "i_rst_n"))
+    @always((posedge, "i_clk"))
     def seq_data_out(self):
-        if ~self.i_rst_n:
-            self.o_data = 0
-        elif(self.i_cen):
+        if self.i_cen:
             self.o_data = self.data_array[self.i_addr]
 
 
