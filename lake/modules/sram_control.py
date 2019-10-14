@@ -47,16 +47,12 @@ class SRAMControl(Generator):
             self.wire(self._sram_to_mem_wen[i], self._bank_seld[i] & self._wen)
             self.wire(self._sram_to_mem_addr[i], self._addr[self.mem_addr_width - 1, 0])
 
-        # remember to add it to a either sequential or combinational code block!
-        # we re-use the sequential block we created above.
         self.bank_sel_comb = CombinationalCodeBlock(self)
         out_switch = SwitchStmt(self._sram_to_mem_ren_reg)
         for i in range(self.banks):
             out_switch.case_(2 ** i, self._data_out.assign(self._mem_to_sram_data[i]))
         out_switch.case_(None, self._data_out.assign(self._data_out_reg))
-        #bank_block = self.bank_sel_comb
         self.bank_sel_comb.add_stmt(out_switch)
-        #self.add_code(self.bank_sel_comb)
         self.add_code(self.data_out_reg_update)
         self.add_code(self.ren_reg_update)
         ##### GENERATION LOGIC: end
@@ -80,8 +76,6 @@ class SRAMControl(Generator):
                 self._sram_to_mem_ren_reg = 0
             else:
                 self._sram_to_mem_ren_reg = self._bank_seld & concat(*[self._ren for i in range(self.banks)])
-                #for i in range(self.banks):
-                    #self._sram_to_mem_ren_reg[i] = self._bank_seld[i] & self._ren
 
 # Python main guard
 if __name__ == "__main__":
