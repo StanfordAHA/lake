@@ -8,6 +8,8 @@ from lake.modules.fifo_control import FIFOControl
 from lake.modules.sram_control import SRAMControl
 from lake.modules.doublebuffer_control import DoubleBufferControl
 from kratos import *
+from functools import reduce
+import operator
 
 class MemoryCore(Generator):
     def __init__(self,
@@ -186,11 +188,11 @@ class MemoryCore(Generator):
         self.add_code(self.mux_sram_signals)
 
         ### Finally plop down all the controllers
-        self.add_code(self.instantiate_lb)
-        self.add_code(self.instantiate_fifo)
-        self.add_code(self.instantiate_sram)
-        self.add_code(self.instantiate_db)
-        self.add_code(self.instantiate_memory)
+        self.instantiate_lb()
+        self.instantiate_fifo()
+        self.instantiate_sram()
+        self.instantiate_db()
+        self.instantiate_memory()
         ##### GENERATION LOGIC: end
 
     @always((posedge, "clk"), (posedge, "reset"))
@@ -302,7 +304,7 @@ class MemoryCore(Generator):
         self.wire(self["lb_ctrl"].ports.stencil_width, self._stencil_width)
 
     def instantiate_fifo(self):
-        self.add_child("fifo_ctrl", FIFOControl())
+        self.add_child("fifo_ctrl", FIFOControl(self.data_width, self.banks, self.mem_depth))
         self.wire(self["fifo_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["fifo_ctrl"].ports.clk_en, self._clk_en)
         self.wire(self["fifo_ctrl"].ports.reset, self._reset)
@@ -327,7 +329,7 @@ class MemoryCore(Generator):
         self.wire(self["fifo_ctrl"].ports.circular_en, self._circular_en)
 
     def instantiate_sram(self):
-        self.add_child("sram_ctrl", SRAMControl())
+        self.add_child("sram_ctrl", SRAMControl(self.data_width, self.banks, self.mem_depth))
         self.wire(self["sram_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["sram_ctrl"].ports.clk_en, self._clk_en)
         self.wire(self["sram_ctrl"].ports.reset, self._reset)
@@ -338,7 +340,7 @@ class MemoryCore(Generator):
         self.wire(self["sram_ctrl"].ports.data_out, self._sram_out)
         self.wire(self["sram_ctrl"].ports.ren, self._ren_in)
 
-        self.wire(self["sram_ctrl"].ports.addr_in, self._addr_in)
+        self.wire(self["sram_ctrl"].ports.addr_in, zext(self._addr_in, 16))
 
         self.wire(self["sram_ctrl"].ports.sram_to_mem_data, self._sram_mem_data_out)
         self.wire(self["sram_ctrl"].ports.sram_to_mem_cen, self._sram_cen)
@@ -347,7 +349,7 @@ class MemoryCore(Generator):
         self.wire(self["sram_ctrl"].ports.mem_to_sram_data, self._mem_data_out)
 
     def instantiate_db(self):
-        self.add_child("db_ctrl", DoubleBufferControl())
+        self.add_child("db_ctrl", DoubleBufferControl(self.data_width, self.mem_depth, self.banks, self.iterator_support))
 
         self.wire(self["db_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["db_ctrl"].ports.clk_en, self._clk_en)
