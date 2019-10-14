@@ -1,4 +1,6 @@
 from kratos import *
+from functools import reduce
+import operator
 
 class DoubleBufferControl(Generator):
     def __init__(self, data_width, mem_depth, banks, iterator_support):
@@ -13,7 +15,7 @@ class DoubleBufferControl(Generator):
         self.iterator_support = iterator_support
 
         ##### PORT DEFS: begin
-        self._clk = self.clock("clock")
+        self._clk = self.clock("clk")
         self._clk_en = self.input("clk_en", 1)
         self._reset = self.reset("reset")
         self._flush = self.input("flush", 1)
@@ -33,19 +35,19 @@ class DoubleBufferControl(Generator):
         self._depth = self.input("depth", 16)
         self._valid = self.output("valid", 1)
         self._switch = self.input("switch", 1)
-        
+
         self._chain_idx = self.input("chain_idx", 4)
 
         self._arbitrary_addr = self.input("arbitrary_addr", 1)
         self._starting_addr = self.input("starting_addr", 16)
         self._iter_cnt = self.input("iter_cnt", 32)
         self._dimensionality = self.input("dimensionality", 4)
-        
+
         self._stride = self.input("stride", 16, size=self.iterator_support, packed=True, explicit_array=True)
         self._range = self.input("range", 32, size=self.iterator_support, packed=True, explicit_array=True)
 
         self._rate_matched = self.input("rate_matched", 1)
-        self._stencil_width = self.input("stencil_width", 16)
+        self._stencil_width = self.input("stencil_width", 32)
         ##### PORT DEFS: end
 
         ##### LOCAL VARIABLES: begin
@@ -81,21 +83,21 @@ class DoubleBufferControl(Generator):
         ##### LOCAL VARIABLES: end
 
         ##### GENERATION LOGIC: begin
-        self.wire(self._counter_update, ((self._init_state | (self._depth == 0)) & self._read_mux & ~self._read_done & ~self._take_the_flop & ~self._read_done_thresh) \
+        self.wire(self._counter_update, ((self._init_state | (self._depth == 0)) & self._read_mux & ~self._read_done & ~self._take_the_flop & ~self._read_done_thresh)
                                          | (self._init_state & self._read_mux & self._take_the_flop)   )
 
         self.wire(self._read_mux, \
-            ternary(self._rate_match, self._wen, self._ren)
+            ternary(self._rate_matched, self._wen, self._ren)
             )
-        self.wire(self._autoswitch, 
+        self.wire(self._autoswitch,
         ~self._arbitrary_addr & (self._write_done | self._write_done_thresh) & \
-        (self._read_done | self._read_done_thresh | ~self._init_state) & (self._depth != 0)
+        (self._read_done | self._read_done_thresh | ~self._init_state) & ~(self._depth == const(0, self._depth.width))
         )
 
         self.wire(self._strt_addr, self._starting_addr[self.data_width - 1, 0])
         self.wire(self._addr, self._addr_in[self.mem_addr_width - 1, 0])
-        self.wire(self._last_line_gate, 
-        ternary(self._stencil_width == 0, 1, self._read_cnt >= (self._stencil_width - 1))
+        self.wire(self._last_line_gate,
+        ternary(self._stencil_width == 0, const(1, 1), (self._read_cnt >= (self._stencil_width - 1)) )
         )
 
         # Figure out when read iterations are done
@@ -122,21 +124,21 @@ class DoubleBufferControl(Generator):
 
         for i in range(self.banks):
             self.wire(self._doublebuffer_data_in[i], self._data_in)
-            self.wire(self._doublebuffer_cen_mem[i], self._wen | self._flush | self._switch | self._autoswitch | self._read_mux)
+            self.wire(self._doublebuffer_cen_mem[i], (self._wen & (self._ping_npong == i)) | self._flush | self._switch | self._autoswitch | (self._read_mux & ~(self._ping_npong == i)))
             self.wire(self._doublebuffer_wen_mem[i], \
-                (self._ping_npong == i) & (self._wen & ~self._write_done_thresh) & self._write_in_range & (self._depth != 0)
+                (self._ping_npong == i) & (self._wen & ~self._write_done_thresh) & self._write_in_range & ~(self._depth == 0)
             )
-            self.wire(self._double_addr_mem[i], \
-                ternary(self._ping_npong == i, self._write_addr[self.mem_addr_width - 1, 0], self._read_addr[self.mem_addr_width - 1, 0])    
+            self.wire(self._doublebuffer_addr_mem[i], \
+                ternary(self._ping_npong == i, self._write_addr[self.mem_addr_width - 1, 0], self._read_addr[self.mem_addr_width - 1, 0])
             )
 
         self.wire(self._data_out, \
-            ternary(self._take_the_flop, self._firstn[~self._ping_npong], self._doublebuffer_data_out[~self._ping_npong])    
+            ternary(self._take_the_flop, self._firstn[~self._ping_npong], self._doublebuffer_data_out[~self._ping_npong])
         )
 
-
         # Set read address
-        self.wire(self._read_addr, ternary(self._arbitrary_addr, self._addr, self._calc_addr))
+        self.wire(self._read_addr, ternary(self._arbitrary_addr, concat(const(0,7), self._addr), self._calc_addr))
+        self.add_code(self.calc_addr_comb)
 
         # Set update vector
         self.wire(self._update[0], self._init_state | (self._depth == 0))
@@ -147,9 +149,9 @@ class DoubleBufferControl(Generator):
         self.add_code(self.firstn_update)
 
         self.wire(self._next_take_the_flop, \
-            ternary(self._autoswitch, 1, \
-                ternary(self._take_the_flop & ~self._read_mux, 1, 0)
-            )    
+            ternary(self._autoswitch, const(1, 1), \
+                ternary(self._take_the_flop & ~self._read_mux, const(1,1), const(0,1))
+            )
         )
 
         self.add_code(self.read_first_update)
@@ -166,10 +168,10 @@ class DoubleBufferControl(Generator):
         ##### GENERATION LOGIC: end
 
     def calc_addr_comb(self):
-        self._calc_addr = self._strt_addr
-        for i in range(self.iterator_support):
-            self._calc_addr = self._calc_addr + ternary(const(i, self._dimensionality.width) < self._dimensionality, \
-                                                            self._current_loc[i], 0)
+        #self._calc_addr = self._strt_addr
+        self._calc_addr = reduce(operator.add, [(ternary(const(i, self._dimensionality.width) < self._dimensionality, self._current_loc[i], const(0, self._calc_addr.width))) for i in range(self.iterator_support)] + [self._strt_addr])
+        # for i in range(self.iterator_support):
+        #     self._calc_addr = self._calc_addr + (ternary(const(i, self._dimensionality.width) < self._dimensionality, self._current_loc[i], const(0, self._calc_addr.width)))
 
     @always((posedge, "clk"), (posedge, "reset"))
     def read_done_thresh_update(self):
@@ -221,7 +223,7 @@ class DoubleBufferControl(Generator):
 
     def read_addr_comb(self):
         return 0
-    
+
     def update_comb(self):
         return 0
 
@@ -273,11 +275,11 @@ class DoubleBufferControl(Generator):
             self._dim_counter = 0
         elif self._clk_en:
             if self._flush:
-                self._dim_counter[0] = ternary(self._depth == 0, self._range[0] > 1, 0)
+                self._dim_counter[0] = ternary(self._depth == 0, concat(const(0,31), self._range[0] > 1), const(0, self._dim_counter[0].width))
                 for i in range(self.iterator_support - 1):
                     self._dim_counter[i + 1] = 0
             elif self._autoswitch | self._switch:
-                self._dim_counter[0] = self._range[0] > 1
+                self._dim_counter[0] = concat(const(0, 31), self._range[0] > 1)
                 for i in range(self.iterator_support - 1):
                     self._dim_counter[i + 1] = 0
             elif self._counter_update:
@@ -294,7 +296,7 @@ class DoubleBufferControl(Generator):
             self._current_loc = 0
         elif self._clk_en:
             if self._flush:
-                self._current_loc[0] = ternary(self._depth == 0, self._stride[0], 0)
+                self._current_loc[0] = ternary(self._depth == 0, self._stride[0], const(0, self._current_loc[0].width))
                 for i in range(self.iterator_support - 1):
                     self._current_loc[i + 1] = 0
             elif self._autoswitch | self._switch:

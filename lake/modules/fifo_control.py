@@ -45,7 +45,7 @@ class FIFOControl(Generator):
         self._almost_count_extended = self.var("almost_count_extended", 16)
         self._read_addr = self.var("read_addr", self.full_addr)
         self._write_addr = self.var("write_addr", self.full_addr)
-        
+
         self._read_addr_mem = self.var("read_addr_mem", self.mem_addr_width)
         self._write_addr_mem = self.var("write_addr_mem", self.mem_addr_width)
 
@@ -181,7 +181,7 @@ class FIFOControl(Generator):
     def data_addr_data_out_comb(self):
         for i in range(self.banks):
             self._data_addr[i] = ternary(self._write_buffed[i], self._write_buff_addr[i], ternary(self._ren_mem[i], self._read_addr_mem, self._write_addr_mem))
-    
+
     @always((posedge, "clk"), (posedge, "reset"))
     def read_addr_update(self):
         if self._reset:
