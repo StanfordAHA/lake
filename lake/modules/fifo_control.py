@@ -109,13 +109,13 @@ class FIFOControl(Generator):
 
         self.data_out_comb = self.combinational()
         self.data_out_if = self.data_out_comb.if_(self._ren_mem_reg[0] & (~self._empty_d1 | self._write_d1))
-        self.data_out_if.add_then_stmt(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[0])))
+        self.data_out_if.then_(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[0])))
         for i in range(self.banks-1):
             self.temp_if = IfStmt(self._ren_mem_reg[i] & (~self._empty_d1 | self._write_d1))
-            self.temp_if.add_then_stmt(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[i])))
-            self.data_out_if.add_else_stmt(self.temp_if)
+            self.temp_if.then_(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[i])))
+            self.data_out_if.else_(self.temp_if)
             self.data_out_if = self.temp_if
-        self.data_out_if.add_else_stmt(self._data_out.assign(self._data_out_reg))
+        self.data_out_if.else_(self._data_out.assign(self._data_out_reg))
 
         self.add_code(self.empty_d1_reg)
         self.add_code(self.write_d1_reg)
@@ -172,7 +172,7 @@ class FIFOControl(Generator):
         if self._ren & self._wen:
             self._next_num_words_mem = 0
         elif self._ren & ~self._empty:
-            self._next_num_words_mem = -1
+            self._next_num_words_mem = 65535
         elif self._wen & ~self._full:
             self._next_num_words_mem = 1
         else:
@@ -275,7 +275,7 @@ class FIFOControl(Generator):
             elif self._wen & ~self._ren & ~self._full:
                 self._passthru = 0
             elif self._ren & self._wen:
-                if self._empty & self._same_bank.r_or():
+                if self._empty & (self._same_bank.r_or()):
                     self._passthru = 1
                 else:
                     self._passthru = 0
@@ -331,7 +331,7 @@ class FIFOControl(Generator):
                 # We know that it's 1 hot
                 for i in range(self.banks):
                     if self._same_bank[i]:
-                        self._write_buff_addr[i] = self._data_in
+                        self._write_buff_addr[i] = self._write_addr_mem
 
     @always((posedge, "clk"), (posedge, "reset"))
     def ren_mem_reg_update(self):
