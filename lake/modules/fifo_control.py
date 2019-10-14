@@ -342,8 +342,7 @@ class FIFOControl(Generator):
                 self._ren_mem_reg = 0
             # Transition out of the init stage after a read or write
             else:
-                for i in range(self.banks):
-                    self._ren_mem_reg[i] = self._ren_mem[i]
+                self._ren_mem_reg = self._ren_mem
 
 if __name__ == "__main__":
     fifo_dut = FIFOControl(16, 2, 512)

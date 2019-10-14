@@ -70,9 +70,109 @@ class DoubleBufferControl(Generator):
         self._write_done_thresh = self.var("write_done_thresh", 1)
 
         self._last_line_gate = self.var("last_line_gate", 1)
-        self._
+        self._read_first = self.var("read_first", 1)
+        self._next_take_the_flop = self.var("next_take_the_flop", 1)
+        self._write_in_range = self.var("write_in_range", 1)
+        self._read_in_range = self.var("read_in_range", 1)
+        self._read_in_range_d1 = self.var("read_in_range_d1", 1)
+        self._read_mux = self.var("read_mux", 1)
         ##### LOCAL VARIABLES: end
 
         ##### GENERATION LOGIC: begin
+        self.wire(self._read_mux, \
+            ternary(self._rate_match, self._wen, self._ren)
+            )
+        self.wire(self._autoswitch, 
+        ~self._arbitrary_addr & (self._write_done | self._write_done_thresh) & \
+        (self._read_done | self._read_done_thresh | ~self._init_state) & (self._depth != 0)
+        )
 
+        self.wire(self._strt_addr, self._starting_addr[self.data_width - 1, 0])
+        self.wire(self._addr, self._addr_in[self.mem_addr_width - 1, 0])
+        self.wire(self._last_line_gate, 
+        ternary(self._stencil_width == 0, 1, self._read_cnt >= (self._stencil_width - 1))
+        )
+
+        # Figure out when read iterations are done
+        self.wire(self._read_done, (self._read_cnt == (self._iter_cnt - 1)) & self._read_mux)
+        self.add_code(self.read_done_thresh_update)
+
+        # Figure out when write iterations are done
+        self.wire(self._write_done, (self._write_addr == (self._depth - 1)) & self._wen)
+        self.add_code(self.write_done_thresh_update)
+
+        # Check that reads/writes are in the range of the modules
+        self.wire(self._write_in_range, self._write_addr[self.mem_addr_width + 4 - 1, self.mem_addr_width] == self._chain_idx)
+        self.wire(self._read_in_range, self._read_addr[self.mem_addr_width + 4 - 1, self.mem_addr_width] == self._chain_idx)
+
+        # Set valid to be this junk of logic
+        self.wire(self._valid, \
+            ternary(self._arbitrary_addr, self._valid_arb, \
+                self._last_line_gate & self._read_mux & (self._init_state | (self._depth == 0)) & self._read_in_range_d1 & ~self._read_done_thresh \
+                    )
+            )
+
+        self.add_code(self.valid_arb_update)
+        self.add_code(self.read_in_range_d1_update)
+
+        for i in range(self.banks):
+            self.wire(self._doublebuffer_data_in[i], self._data_in)
+            self.wire(self._doublebuffer_cen_mem[i], self._wen | self._flush | self._switch | self._autoswitch | self._read_mux)
+            self.wire(self._doublebuffer_wen_mem[i], (self._ping_npong == i) & (self._wen & ~self._write_done_thresh) & self._write_in_range & (self._depth != 0))
+            
         ##### GENERATION LOGIC: end
+
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def read_done_thresh_update(self):
+        if self._reset:
+            self._read_done_thresh = 0
+        elif self._clk_en:
+            if self._flush:
+                self._read_done_thresh = 0
+            else:
+                if self._autoswitch | self._switch:
+                    self._read_done_thresh = 0
+                elif self._read_done:
+                    self._read_done_thresh = 1
+
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def write_done_thresh_update(self):
+        if self._reset:
+            self._write_done_thresh = 0
+        elif self._clk_en:
+            if self._flush:
+                self._write_done_thresh = 0
+            else:
+                if self._autoswitch | self._switch:
+                    self._write_done_thresh = 0
+                elif self._write_done:
+                    self._write_done_thresh = 1
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def valid_arb_update(self):
+        if self._reset:
+            self._valid_arb = 0
+        elif self._clk_en:
+            if self._flush | self._switch:
+                self._valid_arb = 0
+            else:
+                self._valid_arb = self._read_in_range & self._read_mux & self._init_state
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def read_in_range_d1_update(self):
+        if self._reset:
+            self._read_in_range_d1 = 0
+        elif self._clk_en:
+            # Handle some weird zero-depth stuff
+            if self._flush:
+                self._read_in_range_d1 = self._strt_addr[self.mem_addr_width + 4 - 1, self.mem_addr_width] == self._chain_idx
+            else:
+                self._read_in_range_d1 = self._read_in_range
+
+
+
+if __name__ == "__main__":
+    db_dut = DoubleBufferControl(16, 512, 2, 6)
+    verilog(db_dut, filename="doublebuffer_control.sv", check_active_high=False)
