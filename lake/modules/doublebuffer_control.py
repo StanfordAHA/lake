@@ -76,9 +76,14 @@ class DoubleBufferControl(Generator):
         self._read_in_range = self.var("read_in_range", 1)
         self._read_in_range_d1 = self.var("read_in_range_d1", 1)
         self._read_mux = self.var("read_mux", 1)
+        self._counter_update = self.var("counter_update", 1)
+        self._calc_addr = self.var("calc_addr", 16)
         ##### LOCAL VARIABLES: end
 
         ##### GENERATION LOGIC: begin
+        self.wire(self._counter_update, ((self._init_state | (self._depth == 0)) & self._read_mux & ~self._read_done & ~self._take_the_flop & ~self._read_done_thresh) \
+                                         | (self._init_state & self._read_mux & self._take_the_flop)   )
+
         self.wire(self._read_mux, \
             ternary(self._rate_match, self._wen, self._ren)
             )
@@ -109,8 +114,8 @@ class DoubleBufferControl(Generator):
         self.wire(self._valid, \
             ternary(self._arbitrary_addr, self._valid_arb, \
                 self._last_line_gate & self._read_mux & (self._init_state | (self._depth == 0)) & self._read_in_range_d1 & ~self._read_done_thresh \
-                    )
             )
+        )
 
         self.add_code(self.valid_arb_update)
         self.add_code(self.read_in_range_d1_update)
@@ -118,10 +123,53 @@ class DoubleBufferControl(Generator):
         for i in range(self.banks):
             self.wire(self._doublebuffer_data_in[i], self._data_in)
             self.wire(self._doublebuffer_cen_mem[i], self._wen | self._flush | self._switch | self._autoswitch | self._read_mux)
-            self.wire(self._doublebuffer_wen_mem[i], (self._ping_npong == i) & (self._wen & ~self._write_done_thresh) & self._write_in_range & (self._depth != 0))
-            
+            self.wire(self._doublebuffer_wen_mem[i], \
+                (self._ping_npong == i) & (self._wen & ~self._write_done_thresh) & self._write_in_range & (self._depth != 0)
+            )
+            self.wire(self._double_addr_mem[i], \
+                ternary(self._ping_npong == i, self._write_addr[self.mem_addr_width - 1, 0], self._read_addr[self.mem_addr_width - 1, 0])    
+            )
+
+        self.wire(self._data_out, \
+            ternary(self._take_the_flop, self._firstn[~self._ping_npong], self._doublebuffer_data_out[~self._ping_npong])    
+        )
+
+
+        # Set read address
+        self.wire(self._read_addr, ternary(self._arbitrary_addr, self._addr, self._calc_addr))
+
+        # Set update vector
+        self.wire(self._update[0], self._init_state | (self._depth == 0))
+        for i in range(self.iterator_support - 1):
+            self.wire(self._update[i + 1], (self._dim_counter[i] == (self._range[i] - 1)) & self._update[i])
+
+        # Handle the prebuffer on the first element to a bank
+        self.add_code(self.firstn_update)
+
+        self.wire(self._next_take_the_flop, \
+            ternary(self._autoswitch, 1, \
+                ternary(self._take_the_flop & ~self._read_mux, 1, 0)
+            )    
+        )
+
+        self.add_code(self.read_first_update)
+        self.add_code(self.take_the_flop_update)
+        self.add_code(self.init_state_update)
+
+        self.add_code(self.dim_counter_update)
+        self.add_code(self.current_loc_update)
+        self.add_code(self.ping_npong_update)
+
+        self.add_code(self.write_addr_update)
+        self.add_code(self.read_cnt_update)
+
         ##### GENERATION LOGIC: end
 
+    def calc_addr_comb(self):
+        self._calc_addr = self._strt_addr
+        for i in range(self.iterator_support):
+            self._calc_addr = self._calc_addr + ternary(const(i, self._dimensionality.width) < self._dimensionality, \
+                                                            self._current_loc[i], 0)
 
     @always((posedge, "clk"), (posedge, "reset"))
     def read_done_thresh_update(self):
@@ -171,7 +219,129 @@ class DoubleBufferControl(Generator):
             else:
                 self._read_in_range_d1 = self._read_in_range
 
+    def read_addr_comb(self):
+        return 0
+    
+    def update_comb(self):
+        return 0
 
+    @always((posedge, "clk"), (posedge, "reset"))
+    def firstn_update(self):
+        if self._reset:
+            self._firstn = 0
+        elif self._clk_en:
+            if self._flush:
+                self._firstn = 0
+            elif self._wen & (self._write_addr == self._strt_addr):
+                # TODO: MAKE THE LOGIC GENERAL
+                self._firstn[0] = ternary(~self._ping_npong, self._data_in, self._firstn[0])
+                self._firstn[1] = ternary(self._ping_npong, self._data_in, self._firstn[1])
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def read_first_update(self):
+        if self._reset:
+            self._read_first = 1
+        elif self._clk_en:
+            if self._flush:
+                self._read_first = 1
+            elif self._take_the_flop & self._read_mux:
+                self._read_first = 0
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def take_the_flop_update(self):
+        if self._reset:
+            self._take_the_flop = 0
+        elif self._clk_en:
+            if self._flush:
+                self._take_the_flop = 0
+            else:
+                self._take_the_flop = self._next_take_the_flop
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def init_state_update(self):
+        if self._reset:
+            self._init_state = 0
+        elif self._clk_en:
+            if self._flush:
+                self._init_state = 0
+            elif self._autoswitch | self._switch:
+                self._init_state = 1
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def dim_counter_update(self):
+        if self._reset:
+            self._dim_counter = 0
+        elif self._clk_en:
+            if self._flush:
+                self._dim_counter[0] = ternary(self._depth == 0, self._range[0] > 1, 0)
+                for i in range(self.iterator_support - 1):
+                    self._dim_counter[i + 1] = 0
+            elif self._autoswitch | self._switch:
+                self._dim_counter[0] = self._range[0] > 1
+                for i in range(self.iterator_support - 1):
+                    self._dim_counter[i + 1] = 0
+            elif self._counter_update:
+                for i in range(self.iterator_support):
+                    if self._update[i]:
+                        if self._dim_counter[i] == (self._range[i] - 1):
+                            self._dim_counter[i] = 0
+                        else:
+                            self._dim_counter[i] = self._dim_counter[i] + 1
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def current_loc_update(self):
+        if self._reset:
+            self._current_loc = 0
+        elif self._clk_en:
+            if self._flush:
+                self._current_loc[0] = ternary(self._depth == 0, self._stride[0], 0)
+                for i in range(self.iterator_support - 1):
+                    self._current_loc[i + 1] = 0
+            elif self._autoswitch | self._switch:
+                self._current_loc[0] = self._stride[0]
+                for i in range(self.iterator_support - 1):
+                    self._current_loc[i + 1] = 0
+            elif self._counter_update:
+                for i in range(self.iterator_support):
+                    if self._update[i]:
+                        if self._dim_counter[i] == (self._range[i] - 1):
+                            self._current_loc[i] = 0
+                        else:
+                            self._current_loc[i] = self._current_loc[i] + self._stride[i]
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def ping_npong_update(self):
+        if self._reset:
+            self._ping_npong = 0
+        elif self._clk_en:
+            if self._flush:
+                self._ping_npong = 0
+            elif self._autoswitch | self._switch:
+                self._ping_npong = ~self._ping_npong
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def write_addr_update(self):
+        if self._reset:
+            self._write_addr = 0
+        elif self._clk_en:
+            if self._flush:
+                self._write_addr = 0
+            elif self._autoswitch | self._switch:
+                self._write_addr = 0
+            elif self._wen & ~self._write_done & ~self._write_done_thresh:
+                self._write_addr = self._write_addr + 1
+
+    @always((posedge, "clk"), (posedge, "reset"))
+    def read_cnt_update(self):
+        if self._reset:
+            self._read_cnt = 0
+        elif self._clk_en:
+            if self._flush:
+                self._read_cnt = 0
+            elif self._autoswitch | self._switch:
+                self._read_cnt = 0
+            elif self._counter_update:
+                self._read_cnt = self._read_cnt + 1
 
 if __name__ == "__main__":
     db_dut = DoubleBufferControl(16, 512, 2, 6)
