@@ -8,8 +8,6 @@ from lake.modules.fifo_control import FIFOControl
 from lake.modules.sram_control import SRAMControl
 from lake.modules.doublebuffer_control import DoubleBufferControl
 from kratos import *
-from functools import reduce
-import operator
 
 class MemoryCore(Generator):
     def __init__(self,
@@ -381,7 +379,7 @@ class MemoryCore(Generator):
         self.wire(self["db_ctrl"].ports.range, self._range)
 
         self.wire(self["db_ctrl"].ports.rate_matched, self._rate_matched)
-        self.wire(self["db_ctrl"].ports.stencil_width, self._stencil_width)
+        self.wire(self["db_ctrl"].ports.stencil_width, zext(self._stencil_width, 32))
 
     def instantiate_memory(self):
         for i in range(self.banks):
