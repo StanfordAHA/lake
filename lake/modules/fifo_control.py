@@ -2,7 +2,7 @@ from kratos import *
 
 class FIFOControl(Generator):
     def __init__(self, data_width, banks, mem_depth):
-        super().__init__("fifo_control", True)
+        super().__init__("fifo_control")
 
         self.data_width = data_width
         self.banks = banks

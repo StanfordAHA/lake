@@ -18,7 +18,7 @@ class MemoryCore(Generator):
                 iterator_support,
                 use_sram_stub):
 
-        super().__init__("memory_core", True)
+        super().__init__("memory_core")
 
         self.data_width = data_width
         self.mem_width = mem_width
@@ -137,7 +137,6 @@ class MemoryCore(Generator):
         self._mem_cen = self.var("mem_cen", self.banks)
         self._mem_cen_int = self.var("mem_cen_int", self.banks)
 
-
         ### Various signals
         self._stride = self.var("stride", 16, size=self.iterator_support, explicit_array=True, packed=True)
         self._range = self.var("range", 32, size=self.iterator_support, explicit_array=True, packed=True)
@@ -162,7 +161,7 @@ class MemoryCore(Generator):
         self.wire(self._read_config_data, zext(self._mem_data_out[self._sram_sel], self._read_config_data.width))
 
         ## Chaining logic
-        self.wire(self._data_in_int, ternary(self._enable_chain, self._chain_in, self._data_in))
+        self.wire(self._data_in_int, ternary(self._enable_chain, self._chain_in, self._data_in), comment_str="Choose between the data in and chained data")
         self.wire(self._wen_in_int, ternary(self._enable_chain, self._chain_wen_in, self._wen_in))
         self.wire(self._chain_out, ternary(self._enable_chain & self._chain_wen_in, self._chain_in, self._data_out))
         self.wire(self._chain_valid_out, (self._enable_chain & self._chain_wen_in) | self._valid_out)
@@ -181,7 +180,6 @@ class MemoryCore(Generator):
             if j == 0:
                 k = k + 1
 
-        #self.add_code(self.sram_reads_out)
         # Mux the different signals to the sram interface
         self.add_code(self.mux_sram_signals)
 
@@ -200,11 +198,8 @@ class MemoryCore(Generator):
         elif self._clk_en | self._config_en_sram.r_or():
                 self._sram_sel = self._config_en_sram[3] | self._config_en_sram[2]
 
-    def sram_reads_out(self):
-        return 0
-
     def mux_sram_signals(self):
-        if(self._config_en_sram.r_or()):
+        if self._config_en_sram.r_or():
             for i in range(self.banks):
                 self._mem_cen_int[i] = 1
             self._mem_wen[0] = self._config_write & (self._config_en_sram[0] | self._config_en_sram[1])
@@ -215,6 +210,7 @@ class MemoryCore(Generator):
             self._mem_addr[1] = concat(self._config_en_sram[3] | self._config_en_sram[1], self._config_addr[31, 24])
             self._mem_data_in[0] = self._config_data[15, 0]
             self._mem_data_in[1] = self._config_data[15, 0]
+            self._mem_ren = (2 ** self._mem_ren.width) - 1
 
             self._data_out = self._mem_data_out[self._sram_sel]
             self._valid_out = 0
@@ -289,7 +285,7 @@ class MemoryCore(Generator):
             self._empty = 0
 
     def instantiate_lb(self):
-        self.add_child("lb_ctrl", LineBufferControl())
+        self.add_child("lb_ctrl", LineBufferControl(), comment="===== LINEBUFFER =====//")
         self.wire(self["lb_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["lb_ctrl"].ports.clk_en, self._clk_en)
         self.wire(self["lb_ctrl"].ports.reset, self._reset)
@@ -302,7 +298,7 @@ class MemoryCore(Generator):
         self.wire(self["lb_ctrl"].ports.stencil_width, self._stencil_width)
 
     def instantiate_fifo(self):
-        self.add_child("fifo_ctrl", FIFOControl(self.data_width, self.banks, self.mem_depth))
+        self.add_child("fifo_ctrl", FIFOControl(self.data_width, self.banks, self.mem_depth), comment="===== FIFO CONTROL =====//")
         self.wire(self["fifo_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["fifo_ctrl"].ports.clk_en, self._clk_en)
         self.wire(self["fifo_ctrl"].ports.reset, self._reset)
@@ -311,10 +307,10 @@ class MemoryCore(Generator):
         self.wire(self["fifo_ctrl"].ports.wen, self._wen_in_int)
         self.wire(self["fifo_ctrl"].ports.data_in, self._data_in_int)
         self.wire(self["fifo_ctrl"].ports.data_out, self._fifo_out)
-        self.wire(self["fifo_ctrl"].ports.almost_empty, self._almost_empty)
-        self.wire(self["fifo_ctrl"].ports.almost_full, self._almost_full)
-        self.wire(self["fifo_ctrl"].ports.empty, self._empty)
-        self.wire(self["fifo_ctrl"].ports.full, self._full)
+        self.wire(self["fifo_ctrl"].ports.almost_empty, self._fifo_almost_empty)
+        self.wire(self["fifo_ctrl"].ports.almost_full, self._fifo_almost_full)
+        self.wire(self["fifo_ctrl"].ports.empty, self._fifo_empty)
+        self.wire(self["fifo_ctrl"].ports.full, self._fifo_full)
         self.wire(self["fifo_ctrl"].ports.valid, self._fifo_valid_out)
         self.wire(self["fifo_ctrl"].ports.depth, self._depth)
         self.wire(self["fifo_ctrl"].ports.fifo_to_mem_data, self._fifo_mem_data_out)
@@ -327,7 +323,7 @@ class MemoryCore(Generator):
         self.wire(self["fifo_ctrl"].ports.circular_en, self._circular_en)
 
     def instantiate_sram(self):
-        self.add_child("sram_ctrl", SRAMControl(self.data_width, self.banks, self.mem_depth))
+        self.add_child("sram_ctrl", SRAMControl(self.data_width, self.banks, self.mem_depth), comment="===== SRAM CONTROL =====//")
         self.wire(self["sram_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["sram_ctrl"].ports.clk_en, self._clk_en)
         self.wire(self["sram_ctrl"].ports.reset, self._reset)
@@ -347,7 +343,7 @@ class MemoryCore(Generator):
         self.wire(self["sram_ctrl"].ports.mem_to_sram_data, self._mem_data_out)
 
     def instantiate_db(self):
-        self.add_child("db_ctrl", DoubleBufferControl(self.data_width, self.mem_depth, self.banks, self.iterator_support))
+        self.add_child("db_ctrl", DoubleBufferControl(self.data_width, self.mem_depth, self.banks, self.iterator_support), comment="===== DOUBLEBUFFER =====//")
 
         self.wire(self["db_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["db_ctrl"].ports.clk_en, self._clk_en)
@@ -383,7 +379,7 @@ class MemoryCore(Generator):
 
     def instantiate_memory(self):
         for i in range(self.banks):
-            self.add_child(f"mem_inst_{i}", SRAMStub(self.data_width, self.mem_depth))
+            self.add_child(f"mem_inst_{i}", SRAMStub(self.data_width, self.mem_depth), comment=f"===== SRAM MACRO {i} =====//")
             self.wire(self[f"mem_inst_{i}"].ports.i_data, self._mem_data_in[i])
             self.wire(self[f"mem_inst_{i}"].ports.o_data, self._mem_data_out[i])
             self.wire(self[f"mem_inst_{i}"].ports.i_clk, self._gclk_in)
@@ -393,4 +389,4 @@ class MemoryCore(Generator):
 
 if __name__ == "__main__":
     mc_dut = MemoryCore(16, 16, 512, 2, 6, 1)
-    verilog(mc_dut, filename="memory_core.sv", check_active_high=False)
+    verilog(mc_dut, filename="memory_core.sv", check_active_high=False, output_dir="build")
