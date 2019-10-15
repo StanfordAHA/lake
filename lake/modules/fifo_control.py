@@ -111,8 +111,8 @@ class FIFOControl(Generator):
         self.data_out_if = self.data_out_comb.if_(self._ren_mem_reg[0] & (~self._empty_d1 | self._write_d1))
         self.data_out_if.then_(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[0])))
         for i in range(self.banks-1):
-            self.temp_if = IfStmt(self._ren_mem_reg[i] & (~self._empty_d1 | self._write_d1))
-            self.temp_if.then_(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[i])))
+            self.temp_if = IfStmt(self._ren_mem_reg[i+1] & (~self._empty_d1 | self._write_d1))
+            self.temp_if.then_(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[i+1])))
             self.data_out_if.else_(self.temp_if)
             self.data_out_if = self.temp_if
         self.data_out_if.else_(self._data_out.assign(self._data_out_reg))

@@ -204,13 +204,12 @@ class MemoryCore(Generator):
                 self._mem_cen_int[i] = 1
             self._mem_wen[0] = self._config_write & (self._config_en_sram[0] | self._config_en_sram[1])
             self._mem_wen[1] = self._config_write & (self._config_en_sram[2] | self._config_en_sram[3])
-            self._mem_wen[0] = self._config_read & (self._config_en_sram[0] | self._config_en_sram[1])
-            self._mem_wen[1] = self._config_read & (self._config_en_sram[2] | self._config_en_sram[3])
+            self._mem_ren[0] = self._config_read & (self._config_en_sram[0] | self._config_en_sram[1])
+            self._mem_ren[1] = self._config_read & (self._config_en_sram[2] | self._config_en_sram[3])
             self._mem_addr[0] = concat(self._config_en_sram[3] | self._config_en_sram[1], self._config_addr[31, 24])
             self._mem_addr[1] = concat(self._config_en_sram[3] | self._config_en_sram[1], self._config_addr[31, 24])
             self._mem_data_in[0] = self._config_data[15, 0]
             self._mem_data_in[1] = self._config_data[15, 0]
-            self._mem_ren = (2 ** self._mem_ren.width) - 1
 
             self._data_out = self._mem_data_out[self._sram_sel]
             self._valid_out = 0
