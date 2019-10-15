@@ -37,7 +37,7 @@ class MemoryCore(Generator):
         self.full_addr = clog2(self.banks) + clog2(self.mem_depth)
         self.addr_width_macro = clog2(self.mem_depth)
 
-        self._addr_in = self.input("addr_in", self.full_addr)
+        self._addr_in = self.input("addr_in", self.data_width)
         self._data_in = self.input("data_in", self.data_width)
         self._data_out = self.output("data_out", self.data_width)
         self._wen_in = self.input("wen_in", 1)
@@ -161,7 +161,7 @@ class MemoryCore(Generator):
         self.wire(self._read_config_data, zext(self._mem_data_out[self._sram_sel], self._read_config_data.width))
 
         ## Chaining logic
-        self.wire(self._data_in_int, ternary(self._enable_chain, self._chain_in, self._data_in), comment_str="Choose between the data in and chained data")
+        self.wire(self._data_in_int, ternary(self._enable_chain, self._chain_in, self._data_in)) #, comment_str="Choose between the data in and chained data")
         self.wire(self._wen_in_int, ternary(self._enable_chain, self._chain_wen_in, self._wen_in))
         self.wire(self._chain_out, ternary(self._enable_chain & self._chain_wen_in, self._chain_in, self._data_out))
         self.wire(self._chain_valid_out, (self._enable_chain & self._chain_wen_in) | self._valid_out)
@@ -389,4 +389,6 @@ class MemoryCore(Generator):
 
 if __name__ == "__main__":
     mc_dut = MemoryCore(16, 16, 512, 2, 6, 1)
-    verilog(mc_dut, filename="memory_core.sv", check_active_high=False, output_dir="build")
+    verilog(mc_dut, filename="memory_core.sv", check_active_high=False, verilog95_def=True)
+    #create_stub(mc_dut, verilog95_def=True, filename="memory_core_stub.sv")
+    #verilog(mc_dut, filename="memory_core.sv", check_active_high=False, output_dir="build")

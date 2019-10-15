@@ -9,7 +9,7 @@ class LineBufferControl(Generator):
         self._clk_en = self.input("clk_en", 1)
         self._reset = self.reset("reset")
         self._flush = self.input("flush", 1)
-        
+
         self._wen = self.input("wen", 1)
         self._depth = self.input("depth", 16)
         self._stencil_width = self.input("stencil_width", 16)
@@ -27,7 +27,7 @@ class LineBufferControl(Generator):
 
         ##### LOCAL SIGNALS: end
 
-        
+
 
         ##### GENERATION LOGIC: begin
         self.wire(self._valid_gate, ternary((self._stencil_width == const(0, 16)), const(1, 1), (self._vg_ctr > (self._stencil_width - const(1, 16))) ))

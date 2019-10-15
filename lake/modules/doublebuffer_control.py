@@ -24,7 +24,7 @@ class DoubleBufferControl(Generator):
         self._wen = self.input("wen", 1)
         self._data_in = self.input("data_in", self.data_width)
         self._data_out = self.output("data_out", self.data_width)
-        self._addr_in = self.input("addr_in", self.full_addr)
+        self._addr_in = self.input("addr_in", self.data_width)
 
         self._doublebuffer_data_in = self.output("doublebuffer_data_in", self.data_width, size=self.banks, explicit_array=True, packed=True)
         self._doublebuffer_cen_mem = self.output("doublebuffer_cen_mem", self.banks)
