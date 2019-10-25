@@ -57,14 +57,15 @@ def DefineTransposeBuffer(word_width, memory_width, range_, stride, stencil_heig
             col_index = m.uint(read_col_index.O, log_memory_width)
             for i in range(memory_width):
                 col_index = col_index + 1
-                transpose_buffer.I[~output_buffer_index.O[0]][read_row_index.O][col_index] <= mantle.mux([
-                    transpose_buffer.O[~output_buffer_index.O[0]][read_row_index.O][col_index],
-                    tb.SRAM_INPUT[i]
-                    ], tb.VALID_INPUT[i] == m.bit(1))
-#                col_index = col_index + 1 #mantle.mux([
-#                    col_index + 1,
- #                   col_index + 1
-  #              ],  tb.VALID_INPUT[i] == m.bit(1))
+                transpose_buffer.I[0][read_row_index.O][col_index] <= m.bits(5, word_width)
+#                transpose_buffer.I[~output_buffer_index.O[0]][read_row_index.O][col_index] <= mantle.mux([
+ #                   tb.SRAM_INPUT[i],#transpose_buffer.O[~output_buffer_index.O[0]][read_row_index.O][col_index],
+  #                  tb.SRAM_INPUT[i]
+   #                 ], tb.VALID_INPUT[i] == m.bit(1))
+                col_index = mantle.mux([
+                    col_index,
+                    col_index + 1
+                ],  tb.VALID_INPUT[i] == m.bit(1))
             
             read_col_index.I <= m.bits(col_index, log_memory_width)
 
