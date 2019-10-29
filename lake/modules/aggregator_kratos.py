@@ -1,3 +1,4 @@
+import kratos
 from kratos import *
 from math import log
 
@@ -45,5 +46,8 @@ class Aggregator(Generator):
     def output_data(self):
         self.agg_out = self.shift_reg
 
-dut = Aggregator(8, 8)
-verilog(dut, filename="aggregator.sv")
+memory_width = 8
+word_width = 8
+dut = Aggregator(word_width, memory_width)
+verilog(dut, filename="aggregator.sv", debug=True, debug_db_filename="debug.db")
+kratos.create_stub(dut, filename="agg_stub")
