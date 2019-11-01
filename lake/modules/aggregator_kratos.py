@@ -3,21 +3,22 @@ from kratos import *
 from math import log
 
 class Aggregator(Generator):
-    def __init__(self, word_width, memory_width):
-        super().__init__("aggregator", True)
+    def __init__(self, word_width, mem_word_width):
+        super().__init__("aggregator")
 
         # inputs
-        self.clk = self.clock("clk") # clock
-        self.rst = self.reset("rst", 1) # asynchronous reset
+        self.clk = self.clock("clk")
+        # active low asynchornous reset
+        self.rst = self.reset("rst", 1)
         self.in_pixels = self.input("in_pixels", word_width)
 
         # outputs
-        self.agg_out = self.output("agg_out", width=word_width, size=memory_width)
+        self.agg_out = self.output("agg_out", width=word_width, size=mem_word_width)
         self.valid = self.output("valid", 1)
 
         # local variables
-        self.word_count = self.var("word_count", clog2(memory_width))
-        self.shift_reg = self.var("shift_reg", width=word_width, size=memory_width)
+        self.word_count = self.var("word_count", clog2(mem_word_width))
+        self.shift_reg = self.var("shift_reg", width=word_width, size=mem_word_width)
 
         # add sequential blocks
         self.add_code(self.update_counter_valid)
@@ -31,13 +32,16 @@ class Aggregator(Generator):
     def update_counter_valid(self):
         if (self.rst == 0):
             self.valid = 0
-            self.word_count = 0
-        elif (self.word_count == memory_width - 1):
+            if (mem_word_width > 1):
+                self.word_count = 0
+        elif (mem_word_width == 1):
+            self.valid = 1
+        elif (self.word_count == mem_word_width - 1):
             self.valid = 1
             self.word_count = 0
         else:
             self.valid = 0
-            self.word_count = self.word_count + const(1, clog2(memory_width))
+            self.word_count = self.word_count + const(1, clog2(mem_word_width))
 
     @always((posedge, "clk"))
     def update_shift_reg(self):
@@ -46,8 +50,3 @@ class Aggregator(Generator):
     def output_data(self):
         self.agg_out = self.shift_reg
 
-memory_width = 8
-word_width = 8
-dut = Aggregator(word_width, memory_width)
-verilog(dut, filename="aggregator.sv", debug=True, debug_db_filename="debug.db")
-kratos.create_stub(dut, filename="agg_stub")
