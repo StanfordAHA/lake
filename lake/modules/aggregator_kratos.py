@@ -28,7 +28,7 @@ class Aggregator(Generator):
         self.add_code(self.output_data)
 
     # setting valid signal and word_count index
-    @always((posedge, "clk"))
+    @always((posedge, "clk"), (posedge, "rst"))
     def update_counter_valid(self):
         if (self.rst == 0):
             self.valid = 0
