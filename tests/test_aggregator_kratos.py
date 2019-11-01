@@ -12,14 +12,14 @@ verilog(dut, filename="aggregator.v")
 kratos_agg = kratos.create_stub(dut)
 
 # testing magma circuit with fault
-magma_agg = m.DefineFromVerilog(kratos_agg, type_map={"clk": m.In(m.Clock), "rst": m.In(m.AsyncReset)})[0]
+magma_agg = m.DefineFromVerilog(kratos_agg, type_map={"clk": m.In(m.Clock), "rst_n": m.In(m.AsyncReset)})[0]
 
 tester = fault.Tester(magma_agg, magma_agg.clk)
 tester.circuit.clk = 0
 # initial reset
-tester.circuit.rst = 0
+tester.circuit.rst_n = 0
 tester.step(2)
-tester.circuit.rst = 1
+tester.circuit.rst_n = 1
 
 # input test data
 for i in range(2*mem_word_width + 1):
