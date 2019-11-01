@@ -27,13 +27,14 @@ class Aggregator(Generator):
         # add combinational blocks
         self.add_code(self.output_data)
 
-    # setting valid signal
+    # setting valid signal and word_count index
     @always((posedge, "clk"))
     def update_counter_valid(self):
         if (self.rst == 0):
             self.valid = 0
             if (mem_word_width > 1):
                 self.word_count = 0
+        # no self.word_count in this case
         elif (mem_word_width == 1):
             self.valid = 1
         elif (self.word_count == mem_word_width - 1):

@@ -14,7 +14,6 @@ kratos_agg = kratos.create_stub(dut)
 # testing magma circuit with fault
 magma_agg = m.DefineFromVerilog(kratos_agg, type_map={"clk": m.In(m.Clock), "rst": m.In(m.AsyncReset)})[0]
 
-
 tester = fault.Tester(magma_agg, magma_agg.clk)
 tester.circuit.clk = 0
 # initial reset
