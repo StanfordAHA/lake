@@ -9,7 +9,7 @@ class Aggregator(Generator):
         # inputs
         self.clk = self.clock("clk")
         # active low asynchornous reset
-        self.rst = self.reset("rst", 1)
+        self.rst_n = self.reset("rst_n", 1)
         self.in_pixels = self.input("in_pixels", word_width)
 
         # outputs
@@ -28,9 +28,9 @@ class Aggregator(Generator):
         self.add_code(self.output_data)
 
     # setting valid signal and word_count index
-    @always((posedge, "clk"), (posedge, "rst"))
+    @always((posedge, "clk"), (negedge, "rst_n"))
     def update_counter_valid(self):
-        if (self.rst == 0):
+        if (self.rst_n == 0):
             self.valid = 0
             if (mem_word_width > 1):
                 self.word_count = 0
