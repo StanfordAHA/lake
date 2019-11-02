@@ -72,7 +72,7 @@ class TransposeBuffer(Generator):
 
     @always((posedge, "clk"))
     def in_buf(self):
-        self.row = const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height))#extend(self.switch_buf, clog2(2*stencil_height)) + extend(self.row_index, clog2(2*stencil_height))
+        self.row = const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height)) #+ self.row_index.extend(clog2(2*stencil_height)
  #       for i in range(mem_word_width):
 #            self.tb[self.row][word_width*(i+1)-1, word_width*i] = self.mem_data[self.indices[i]]
 
