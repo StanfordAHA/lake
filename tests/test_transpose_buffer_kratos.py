@@ -9,7 +9,7 @@ word_width = 1
 mem_word_width = 4
 range_ = 1
 stride = 1
-stencil_height = 2
+stencil_height = 4
 dut = TransposeBuffer(word_width, mem_word_width, range_, stride, stencil_height)
 verilog(dut, filename="transposebuffer.v")
 '''kratos_tb = kratos.create_stub(dut, flatten_array=True)
@@ -20,13 +20,21 @@ tester = fault.Tester(magma_tb, magma_tb.clk)
 '''
 
 sim = Simulator(dut)
+print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
 sim.reset()
+print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
+sim.cycle()
+print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
 sim.set(dut.mem_data, [1,1,1,0])
 sim.set(dut.valid_input, [1,1,1,1])
-sim.cycle()
-val = sim.get(dut.col_index)
-print(val)
-assert val == 0
+for i in range(3):
+    sim.set(dut.rst_n, 1)
+    print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
+    sim.cycle()
+    print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
+
+
+
 '''
 tester.circuit.clk = 0
 tester.circuit.rst = 0
