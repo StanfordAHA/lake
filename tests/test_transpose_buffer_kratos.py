@@ -24,12 +24,12 @@ print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_ind
 sim.reset()
 print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
 sim.cycle()
+print("after reset, first cycle")
 print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
 sim.set(dut.mem_data, [1,1,1,0])
 sim.set(dut.valid_input, [1,1,1,1])
-for i in range(3):
+for i in range(12):
     sim.set(dut.rst_n, 1)
-    print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
     sim.cycle()
     print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n))
 
