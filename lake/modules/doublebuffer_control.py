@@ -282,7 +282,7 @@ class DoubleBufferControl(Generator):
                 self._dim_counter[0] = concat(const(0, 31), self._range[0] > 1)
                 for i in range(self.iterator_support - 1):
                     self._dim_counter[i + 1] = 0
-            elif self._counter_update:
+            elif self._counter_update & (i < self._dimensionality):
                 for i in range(self.iterator_support):
                     if self._update[i]:
                         if self._dim_counter[i] == (self._range[i] - 1):
@@ -305,7 +305,7 @@ class DoubleBufferControl(Generator):
                     self._current_loc[i + 1] = 0
             elif self._counter_update:
                 for i in range(self.iterator_support):
-                    if self._update[i]:
+                    if self._update[i] & (i < self._dimensionality):
                         if self._dim_counter[i] == (self._range[i] - 1):
                             self._current_loc[i] = 0
                         else:

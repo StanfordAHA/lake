@@ -10,13 +10,19 @@ from lake.modules.doublebuffer_control import DoubleBufferControl
 from kratos import *
 
 class MemoryCore(Generator):
-    def __init__(self,
-                data_width,
-                mem_width,
-                mem_depth,
-                banks,
-                iterator_support,
-                use_sram_stub):
+    def __init__(
+                self,
+                data_width = 16,
+                mem_width = 16,
+                mem_depth = 512,
+                banks = 2,
+                iterator_support = 6, # vector to support varying complexity on input + output ports
+                interconnect_input_ports = 1,
+                interconnect_output_ports = 1,
+                mem_input_ports = 1,
+                mem_output_ports = 1,
+                use_sram_stub = 1
+            ):
 
         super().__init__("memory_core")
 
