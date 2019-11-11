@@ -141,6 +141,9 @@ output logic [31:0] read_config_data;
 output logic [31:0] `'read_data_sram_' . $i`;
 //; }
 //
+
+
+
 logic [`$awidth-1`:0] lb_addr [`$bbanks-1`:0];
 logic [`$wwidth-1`:0] lb_mem_data_out [`$bbanks-1`:0];
 logic [`$bbanks-1`:0] lb_wen;
