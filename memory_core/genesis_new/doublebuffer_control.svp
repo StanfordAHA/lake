@@ -73,7 +73,6 @@ input logic [3:0]  dimensionality;
 
 input logic [15:0] stride [`$iterator_support-1`:0];
 input logic [31:0] range [`$iterator_support-1`:0];
-logic       [15:0] current_loc [`$iterator_support-1`:0];
 
 input logic                   flush;
 input logic                   wen;
@@ -90,10 +89,12 @@ input logic  [`$wwidth-1`:0]  doublebuffer_data_out [`$bbanks-1`:0];
 
 input logic  [15:0]           depth;
 output logic                  valid;
-logic valid_arb;
+
 // ==============================================
 // Internal
 // ==============================================
+logic       [15:0] current_loc [`$iterator_support-1`:0];
+logic valid_arb;
 logic                  init_state;
 logic [`$awidth-1`:0]  addr;
 logic                  ping_npong;

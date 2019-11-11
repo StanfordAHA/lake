@@ -9,16 +9,16 @@ class Aggregator(Generator):
         # inputs
         self.clk = self.clock("clk")
         # active low asynchornous reset
-        self.rst = self.reset("rst", 1)
+        self.rst_n = self.reset("rst_n", 1)
         self.in_pixels = self.input("in_pixels", word_width)
 
         # outputs
-        self.agg_out = self.output("agg_out", width=word_width, size=mem_word_width)
+        self.agg_out = self.output("agg_out", width=word_width, size=mem_word_width, packed=True)
         self.valid = self.output("valid", 1)
 
         # local variables
         self.word_count = self.var("word_count", clog2(mem_word_width))
-        self.shift_reg = self.var("shift_reg", width=word_width, size=mem_word_width)
+        self.shift_reg = self.var("shift_reg", width=word_width, size=mem_word_width, packed=True)
 
         # add sequential blocks
         self.add_code(self.update_counter_valid)
@@ -27,13 +27,14 @@ class Aggregator(Generator):
         # add combinational blocks
         self.add_code(self.output_data)
 
-    # setting valid signal
-    @always((posedge, "clk"))
+    # setting valid signal and word_count index
+    @always((posedge, "clk"), (negedge, "rst_n"))
     def update_counter_valid(self):
-        if (self.rst == 0):
+        if (self.rst_n == 0):
             self.valid = 0
             if (mem_word_width > 1):
                 self.word_count = 0
+        # no self.word_count in this case
         elif (mem_word_width == 1):
             self.valid = 1
         elif (self.word_count == mem_word_width - 1):
@@ -45,7 +46,10 @@ class Aggregator(Generator):
 
     @always((posedge, "clk"))
     def update_shift_reg(self):
-        self.shift_reg[self.word_count] = self.in_pixels
+        if mem_word_width == 1:
+            self.shift_reg = self.in_pixels
+        else:
+            self.shift_reg[self.word_count] = self.in_pixels
 
     def output_data(self):
         self.agg_out = self.shift_reg
