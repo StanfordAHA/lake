@@ -3,7 +3,19 @@ from lake.modules.passthru import *
 from lake.modules.sram_stub import SRAMStub
 
 class LakeTop(Generator):
-    def __init__(self, width):
+    def __init__(
+                self, 
+                data_width = 16,
+                mem_width = 16,
+                mem_depth = 512,
+                banks = 2,
+                iterator_support = 6, # vector to support varying complexity on input + output ports
+                interconnect_input_ports = 1,
+                interconnect_output_ports = 1,
+                mem_input_ports = 1,
+                mem_output_ports = 1,
+                use_sram_stub = 1
+                ):
         super().__init__("LakeTop")
         self._in = self.input("i_data_in", width)
         self._out = self.output("o_data_out", width)
@@ -21,6 +33,17 @@ class LakeTop(Generator):
         self.wire(sram_stub.i_wen, 0)
         self.wire(sram_stub.i_clk, self._clk)
         self.wire(sram_stub.i_rst_n, self._rst_n)
+
+
+        # Add input aggregations buffers
+
+
+
+        # Add transpose buffers at output
+
+
+
+        # Add address controller
 
 lake_dut = LakeTop(16)
 verilog(lake_dut, filename="lake_top.sv", check_active_high=False)
