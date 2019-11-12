@@ -11,7 +11,7 @@ range_ = 1
 stride = 1
 stencil_height = 4
 dut = TransposeBuffer(word_width, mem_word_width, range_, stride, stencil_height)
-verilog(dut, filename="transposebuffer.v")
+verilog(dut, filename="transposebuffer.sv")
 '''kratos_tb = kratos.create_stub(dut, flatten_array=True)
 print(kratos_tb)
 magma_tb = m.DefineFromVerilog(kratos_tb, type_map={"clk": m.In(m.Clock), "rst_n": m.In(m.AsyncReset)})[0]
@@ -20,18 +20,18 @@ tester = fault.Tester(magma_tb, magma_tb.clk)
 '''
 
 sim = Simulator(dut)
-print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
+#print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
 sim.reset()
-print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
+#print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
 sim.cycle()
 print("after reset, first cycle")
-print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
+#print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
 sim.set(dut.mem_data, [1,1,1,0])
-sim.set(dut.valid_input, [1,1,1,1])
+sim.set(dut.valid_input, [0,0,0,0])
 for i in range(12):
     sim.set(dut.rst_n, 1)
     sim.cycle()
-    print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indices (not tb): ", sim.get(dut.indices), " indicies: ", sim.get(dut.tb_indices), " num_valid: ", sim.get(dut.num_valid), " out: ", sim.get(out))
+    print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf),  " rst: ", sim.get(dut.rst_n), " indices (not tb): ", sim.get(dut.indices), " indicies: ", sim.get(dut.tb_indices), " num_valid: ", sim.get(dut.num_valid))
 
 
 
