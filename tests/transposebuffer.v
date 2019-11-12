@@ -7,8 +7,20 @@ module transpose_buffer (
 );
 
 logic [1:0] col_index;
+logic [3:0][2:0] indices;
 logic [1:0] row_index;
 logic switch_buf;
+
+always_ff @(posedge clk) begin
+  indices[0] <= 3'h4;
+  indices[1] <= 3'h4;
+  indices[2] <= 3'h4;
+  indices[3] <= 3'h4;
+  indices[0] <= 3'h0;
+  indices[1] <= 3'h1;
+  indices[2] <= 3'h2;
+  indices[3] <= 3'h3;
+end
 
 always_ff @(posedge clk, negedge rst_n) begin
   if (rst_n == 1'h0) begin
