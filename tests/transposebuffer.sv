@@ -28,13 +28,9 @@ always_ff @(posedge clk, negedge rst_n) begin
     switch_buf <= switch_buf;
   end
 end
-assign valid_data[num_valid - 4'h1[1:0]] = mem_data[1];
-assign valid_data[num_valid - 4'h1[1:0]] = mem_data[2];
-assign valid_data[num_valid - 4'h1[1:0]] = mem_data[3];
-assign valid_data[0] = mem_data[0];
-assign valid_data[1] = mem_data[1];
-assign valid_data[2] = mem_data[2];
-assign valid_data[3] = mem_data[3];
+assign valid_data[(4'(valid_input[0]) + 4'(valid_input[1])) - 4'h1[1:0]] = mem_data[1];
+assign valid_data[(4'(valid_input[0]) + 4'(valid_input[1]) + 4'(valid_input[2])) - 4'h1[1:0]] = mem_data[2];
+assign valid_data[(4'(valid_input[0]) + 4'(valid_input[1]) + 4'(valid_input[2]) + 4'(valid_input[3])) - 4'h1[1:0]] = mem_data[3];
 assign num_valid = 4'(valid_input[0]) + 4'(valid_input[1]) + 4'(valid_input[2]) +
     4'(valid_input[3]);
 endmodule   // transpose_buffer

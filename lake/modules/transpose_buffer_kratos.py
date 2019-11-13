@@ -50,15 +50,14 @@ class TransposeBuffer(Generator):
         for i in range(1, self.mem_word_width):
             self.num_valid_ = self.num_valid_ + self.valid_input[i].extend(self.mem_word_width)
             if self.valid_input[i] == 1:
-                self.test2 = self.num_valid - 1
+                self.test2 = self.num_valid_ - 1
                 self.test = self.test2[1, 0]
                 self.add_stmt(self.valid_data[self.test].assign(self.mem_data[i]))
-#            else:
-#                self.valid_data[i] = self.mem_data[i]
-        if self.num_valid_ < self.mem_word_width:
-            for i in range(self.mem_word_width):
-                if i > self.num_valid_:
-                    self.add_stmt(self.valid_data[i].assign(self.mem_data[i]))
+        # need case for between num valid and mem word width
+#        if self.num_valid_ < self.mem_word_width:
+#            for i in range(self.mem_word_width):
+#                if i > self.num_valid_:
+#                    self.add_stmt(self.valid_data[i].assign(self.mem_data[i]))
         self.add_stmt(self.num_valid.assign(self.num_valid_))
 
     #updating index variables
