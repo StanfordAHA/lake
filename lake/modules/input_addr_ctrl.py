@@ -1,12 +1,12 @@
 from kratos import *
 from lake.modules.aggregator import Aggregator
 
-class AggregationBuffer(Generator):
+class InputAddrCtrl(Generator):
     '''
-    Aggregation buffer handles an item coming in and directs it to the proper row based on the scheduling
+    Input addressing control from the aggregation buffers to the SRAM
     '''
     def __init__(self,
-               agg_height,
+               interconnect_input_ports,
                data_width,
                mem_width,
                max_agg_schedule
