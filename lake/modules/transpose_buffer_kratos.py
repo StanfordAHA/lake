@@ -30,6 +30,9 @@ class TransposeBuffer(Generator):
         self.switch_buf = self.var("switch_buf", 1)
         self.num_valid = self.var("num_valid", mem_word_width)
         self.num_valid_ = self.var("num_valid_", mem_word_width)
+        self.valid_data = self.var("valid_data", width=word_width, size=mem_word_width, packed=True)
+        self.test = self.var("test", width = clog2(mem_word_width))
+        self.test2 = self.var("test2", width = mem_word_width)
 #        self.row = self.var("row", clog2(2*stencil_height))
 #        self.out_row_index = self.var("out_row_index", clog2(2*stencil_height))
 
@@ -46,6 +49,16 @@ class TransposeBuffer(Generator):
         self.num_valid_ = self.valid_input[0].extend(self.mem_word_width)
         for i in range(1, self.mem_word_width):
             self.num_valid_ = self.num_valid_ + self.valid_input[i].extend(self.mem_word_width)
+            if self.valid_input[i] == 1:
+                self.test2 = self.num_valid - 1
+                self.test = self.test2[1, 0]
+                self.add_stmt(self.valid_data[self.test].assign(self.mem_data[i]))
+#            else:
+#                self.valid_data[i] = self.mem_data[i]
+        if self.num_valid_ < self.mem_word_width:
+            for i in range(self.mem_word_width):
+                if i > self.num_valid_:
+                    self.add_stmt(self.valid_data[i].assign(self.mem_data[i]))
         self.add_stmt(self.num_valid.assign(self.num_valid_))
 
     #updating index variables
@@ -70,7 +83,7 @@ class TransposeBuffer(Generator):
 #    def in_buf(self):
 '''
     @always((posedge, "clk"))
-def in_buf(self):
+    def in_buf(self):
         self.row = const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height)) + self.row_index.extend(clog2(2*stencil_height))
         for i in range(mem_word_width):
             self.tb[self.row][i] = self.mem_data[self.indices[i]]
