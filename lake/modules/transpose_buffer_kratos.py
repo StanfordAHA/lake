@@ -30,7 +30,7 @@ class TransposeBuffer(Generator):
         self.switch_buf = self.var("switch_buf", 1)
         self.num_valid = self.var("num_valid", mem_word_width)
         self.num_valid_ = self.var("num_valid_", mem_word_width)
-        self.valid_data = self.var("valid_data", width=word_width, size=mem_word_width, packed=True)
+        self.valid_data = self.output("valid_data", width=word_width, size=mem_word_width, packed=True)
         self.test = self.var("test", width = clog2(mem_word_width))
         self.test2 = self.var("test2", width = mem_word_width)
 #        self.row = self.var("row", clog2(2*stencil_height))
@@ -46,21 +46,31 @@ class TransposeBuffer(Generator):
         # combinational blocks
 
     def get_num_valid(self):
-        self.num_valid_ = self.valid_input[0].extend(self.mem_word_width)
+        num_valid_ = self.valid_input[0].extend(self.mem_word_width)
+        comb = self.sequential()
         for i in range(1, self.mem_word_width):
-            self.num_valid_ = self.num_valid_ + self.valid_input[i].extend(self.mem_word_width)
-            if self.valid_input[i] == 1:
-                self.test2 = self.num_valid_ - 1
-                self.test = self.test2[1, 0]
-                self.add_stmt(self.valid_data[self.test].assign(self.mem_data[i]))
+            num_valid_ = num_valid_ + self.valid_input[i].extend(self.mem_word_width)
+            if_ = IfStmt(self.valid_input[i] == 1)
+            self.test2 = num_valid_ - 1
+            self.test = self.test2[1,0]
+            if_.then_(self.valid_data[self.test].assign(self.mem_data[i]))
+            comb.add_stmt(if_)
+        if__ = IfStmt(self.valid_input[0] == 1)
+        if__.then_(self.valid_data[0].assign(self.mem_data[0]))
+        comb.add_stmt(if__)
+
+        for i in range(self.mem_word_width):
+            if___ = IfStmt((self.num_valid < self.mem_word_width) & (i >= self.num_valid - 1))
+            if___.then_(self.valid_data[i].assign(self.mem_data[i]))
+            comb.add_stmt(if___)
         # need case for between num valid and mem word width
 #        if self.num_valid_ < self.mem_word_width:
 #            for i in range(self.mem_word_width):
 #                if i > self.num_valid_:
 #                    self.add_stmt(self.valid_data[i].assign(self.mem_data[i]))
-        self.add_stmt(self.num_valid.assign(self.num_valid_))
+        self.add_stmt(self.num_valid.assign(num_valid_))
 
-    #updating index variables
+    #updatinghttps://github.com/StanfordAHA/lake/blob/skavya/tb/lake/modules/transpose_buffer_kratos.py index variables
     @always((posedge, "clk"), (negedge, "rst_n"))
     def update_index_vars(self):
         if (self.rst_n == 0):
