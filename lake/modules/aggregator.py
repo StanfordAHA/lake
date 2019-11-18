@@ -45,16 +45,18 @@ from math import log
 
 class Aggregator(Generator):
     def __init__(self, 
-                word_width, 
+                word_width,
                 mem_word_width):
 
         super().__init__("aggregator")
+        self.mem_word_width = mem_word_width
 
         # inputs
         self.clk = self.clock("clk")
         # active low asynchornous reset
         self.rst_n = self.reset("rst_n", 1)
         self.in_pixels = self.input("in_pixels", word_width)
+        self._valid_in = self.input("valid_in", 1)
 
         # outputs
         self.agg_out = self.output("agg_out", word_width, size=mem_word_width, packed=True)
@@ -79,21 +81,24 @@ class Aggregator(Generator):
             if (mem_word_width > 1):
                 self.word_count = 0
         # no self.word_count in this case
-        elif (mem_word_width == 1):
+        elif (mem_word_width == 1) & self._valid_in:
             self.valid_out = 1
-        elif (self.word_count == mem_word_width - 1):
-            self.valid_out = 1
-            self.word_count = 0
-        else:
-            self.valid_out = 0
-            self.word_count = self.word_count + const(1, clog2(mem_word_width))
+        elif self._valid_in:
+            if (self.word_count == mem_word_width - 1):
+                self.valid_out = 1
+                self.word_count = 0
+            else:
+                self.valid_out = 0
+                self.word_count = self.word_count + const(1, clog2(mem_word_width))
 
     @always((posedge, "clk"))
     def update_shift_reg(self):
         if mem_word_width == 1:
-            self.shift_reg = self.in_pixels
+            if self._valid_in:
+                self.shift_reg = self.in_pixels
         else:
-            self.shift_reg[self.word_count] = self.in_pixels
+            if self._valid_in:
+                self.shift_reg[self.word_count] = self.in_pixels
 
     def output_data(self):
         self.agg_out = self.shift_reg
