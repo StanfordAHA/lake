@@ -10,7 +10,8 @@ class LakeTop(Generator):
                 mem_width = 16,
                 mem_depth = 512,
                 banks = 2,
-                iterator_support = 6, # vector to support varying complexity on input + output ports
+                input_iterator_support = 6, # vector to support varying complexity on input + output ports
+                output_iterator_support = 6,
                 interconnect_input_ports = 1,
                 interconnect_output_ports = 1,
                 mem_input_ports = 1,
@@ -18,7 +19,7 @@ class LakeTop(Generator):
                 use_sram_stub = 1,
                 agg_height = 1,
                 transpose_height = 1,
-                max_agg_schedule = 12
+                max_agg_schedule = 64
                 ):
         super().__init__("LakeTop")
 
@@ -35,6 +36,11 @@ class LakeTop(Generator):
         self.agg_height = agg_height
         self.transpose_height = transpose_height
 
+        if self.banks == 1:
+            self.address_width = clog2(mem_depth)
+        else:
+            self.address_width = clog2(mem_depth) + clog2(banks)
+
         self._clk = self.clock("i_clk")
         self._rst_n = self.reset("i_rst_n")
 
@@ -45,25 +51,37 @@ class LakeTop(Generator):
         self._data_out = self.output("o_data_out", self.data_width, size=self.interconnect_output_ports, packed=True, explicit_array=True)
         self._valid_out = self.output("o_valid_out", self.interconnect_output_ports, packed=True, explicit_array=True)
 
-        # First wrap sram_stub
-        sram_stub = SRAMStub(mem_width, 1024)
-        self.add_child_generator(f"u_sram_stub_0", sram_stub)
-        self.wire(sram_stub.i_data, self._in)
-        self.wire(self._out, sram_stub.o_data)
-
-        self.wire(sram_stub.i_addr, 0)
-        self.wire(sram_stub.i_cen, 0)
-        self.wire(sram_stub.i_wen, 0)
-        self.wire(sram_stub.i_clk, self._clk)
-        self.wire(sram_stub.i_rst_n, self._rst_n)
-
         # Add input aggregations buffers
         for i in range(self.interconnect_input_ports):
             # add children aggregator buffers...
             self.add_child(f"agg_in_{i}", AggregationBuffer(self.agg_height, self.data_width, self.mem_width))
             # Also add aggregation buffer config nodes...?
-            # now wire it up
 
+            self.wire(self[f"agg_in_{i}"].ports._clk, self._clk)
+            self.wire(self[f"agg_in_{i}"].ports._rst_n, self._rst_n)
+
+            self.wire(self[f"agg_in_{i}"].ports._data_in, self._data_in)
+            self.wire(self[f"agg_in_{i}"].ports._valid_in, self._valid_in)
+
+            self.wire(self[f"agg_in_{i}"].ports._write_act, ) # From input addr control
+            # now wire it up
+            self.wire(self[f"agg_in_{i}"].ports._data_out, ) # Demux these to SRAMs
+            self.wire(self[f"agg_in_{i}"].ports._valid_out, ) # Also demux these
+
+
+        self._mem_data_out = self.var("mem_data_out", self.mem_width, size=self.banks, packed=True, explicit_array=True)
+
+        # Wrap sram_stub
+        for i in range(self.banks):
+            self.add_child(f"mem_{i}", SRAMStub(self.mem_width, self.mem_depth))
+            self.wire(self[f"mem_{i}"].ports.i_clk, self._clk)
+            self.wire(self[f"mem_{i}"].ports.i_rst_n, self._rst_n)
+            self.wire(self[f"mem_{i}"].ports.i_data, 0) # Select based on input ctrl
+            self.wire(self[f"mem_{i}"].ports.o_data, self._mem_data_out[i]) # Gather these in local variable
+
+            self.wire(self[f"mem_{i}"].ports.i_addr, 0) # Demux
+            self.wire(self[f"mem_{i}"].ports.i_cen, 0) # From input ctrl + output ctrl 
+            self.wire(self[f"mem_{i}"].ports.i_wen, 0) # From input ctrl
 
         # Add transpose buffers at output
 
