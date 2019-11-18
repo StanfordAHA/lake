@@ -23,26 +23,15 @@ class TransposeBuffer(Generator):
 
         # local variables
         self.tb = self.var("tb", width=word_width, size=[2*stencil_height, mem_word_width], packed=True)
-        self.indices = self.var("indices", width=clog2(mem_word_width + 1), size=mem_word_width, packed=True)
-        self.tb_indices = self.var("tb_indices", width=clog2(mem_word_width), size=mem_word_width, packed=True)
         self.col_index = self.var("col_index", clog2(mem_word_width))
         self.row_index = self.var("row_index", clog2(stencil_height))
         self.switch_buf = self.var("switch_buf", 1)
-        self.num_valid = self.var("num_valid", mem_word_width)
-        self.num_valid_ = self.var("num_valid_", mem_word_width)
         self.valid_data = self.var("valid_data", width=word_width, size=2**mem_word_width, packed=True)
-        self.first = self.var("first", 1)
-        self.row = self.var("row", clog2(2*stencil_height))
-#        self.out_row_index = self.var("out_row_index", clog2(2*stencil_height))
-        self.count = self.var("count", clog2(mem_word_width) + 1)
-        # sequential blocks
-#        self.add_code(self.get_num_valid)
-#        self.add_code(self.get_valid_indices)
+
         self.add_code(self.in_buf)
         self.add_code(self.update_index_vars)
         self.add_code(self.out_buf)
         self.get_valid_data()
-        # combinational blocks
 
     def get_valid_data(self):
         
@@ -58,7 +47,6 @@ class TransposeBuffer(Generator):
             if_ = IfStmt(self.valid_input[i] == 1)
             if_.then_(self.valid_data[num_valid_-1].assign(self.mem_data[i]))
             comb.add_stmt(if_)
-        self.add_stmt(self.num_valid.assign(num_valid_))
 
     # updating index variables
     @always((posedge, "clk"), (negedge, "rst_n"))
@@ -78,21 +66,16 @@ class TransposeBuffer(Generator):
             self.row_index = self.row_index + const(1, clog2(stencil_height))
             self.switch_buf = self.switch_buf
 
-#    @always((posedge, "clk"))
-#    def in_buf(self):
     @always((posedge, "clk"))
     def in_buf(self):
-        self.row = const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height)) + self.row_index.extend(clog2(2*stencil_height))
         for i in range(mem_word_width):
-            self.tb[self.row][i] = self.valid_data[i]
+            self.tb[const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height)) + self.row_index.extend(clog2(2*stencil_height))][i] = self.valid_data[i]
 
     # output appropriate data from transpose buffer
-#    @always((posedge, "clk"))
     def out_buf(self):
         for i in range(stencil_height):
             if (self.switch_buf == 0):
                 self.col_pixels[i] = self.tb[i + stencil_height][self.col_index]
             else:
                 self.col_pixels[i] = self.tb[i][self.col_index]
-   #         self.out_row_index = self.switch_buf.extend(clog2(2*stencil_height))*const(stencil_height,clog2(2*stencil_height)) + const(i, clog2(2*stencil_height))
 

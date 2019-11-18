@@ -7,19 +7,16 @@ module transpose_buffer (
 );
 
 logic [1:0] col_index;
-logic [3:0] num_valid;
-logic [2:0] row;
 logic [1:0] row_index;
 logic switch_buf;
 logic [7:0][3:0] tb;
 logic [15:0] valid_data;
 
 always_ff @(posedge clk) begin
-  row <= (3'h4 * 3'(switch_buf)) + 3'(row_index);
-  tb[row][0] <= valid_data[0];
-  tb[row][1] <= valid_data[1];
-  tb[row][2] <= valid_data[2];
-  tb[row][3] <= valid_data[3];
+  tb[(3'h4 * 3'(switch_buf)) + 3'(row_index)][0] <= valid_data[0];
+  tb[(3'h4 * 3'(switch_buf)) + 3'(row_index)][1] <= valid_data[1];
+  tb[(3'h4 * 3'(switch_buf)) + 3'(row_index)][2] <= valid_data[2];
+  tb[(3'h4 * 3'(switch_buf)) + 3'(row_index)][3] <= valid_data[3];
 end
 
 always_ff @(posedge clk, negedge rst_n) begin
@@ -71,7 +68,5 @@ always_comb begin
     valid_data[(4'(valid_input[0]) + 4'(valid_input[1]) + 4'(valid_input[2]) + 4'(valid_input[3])) - 4'h1] = mem_data[3];
   end
 end
-assign num_valid = 4'(valid_input[0]) + 4'(valid_input[1]) + 4'(valid_input[2]) +
-    4'(valid_input[3]);
 endmodule   // transpose_buffer
 

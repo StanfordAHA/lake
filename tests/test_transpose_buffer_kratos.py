@@ -20,22 +20,16 @@ tester = fault.Tester(magma_tb, magma_tb.clk)
 '''
 
 sim = Simulator(dut)
-#print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
 sim.reset()
-#print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
-sim.cycle()
-print("after reset, first cycle")
-#print("col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf), " test: ", sim.get(dut.testing), " rst: ", sim.get(dut.rst_n), " indicies: ", sim.get(dut.tb_indices))
-sim.set(dut.mem_data, [1,1,1,1])
-sim.set(dut.valid_input, [1,0,1,1])
-for i in range(12):
+data = [0,0,0,0,0,0,0,1,0,0,1,0,0,0,1,1,0,1,0,0,0,1,0,1,0,1,1,0,0,1,1,1,1,0,0,0,1,0,0,1,1,0,1,0,1,0,1,1,1,1,0,0,1,1,0,1,1,1,1,0,1,1,1,1]
+sim.set(dut.valid_input, [1,1,1,1])
+for i in range(16):
     sim.set(dut.rst_n, 1)
+    sim.set(dut.mem_data, data[i*4:(i+1)*4])
     sim.cycle()
     print("mem_data: ", sim.get(dut.mem_data), " col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf),  " rst: ", sim.get(dut.rst_n), " valid_data:  ", sim.get(dut.valid_data), " col_pixels: ", sim.get(dut.col_pixels))
     print("tb: ", sim.get(dut.tb))
     print()
-#    sim.set(dut.mem_data, [1,0,0,1])
-
 
 
 '''
