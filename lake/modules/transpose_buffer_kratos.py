@@ -17,7 +17,7 @@ class TransposeBuffer(Generator):
         self.valid_input = self.input("valid_input", width=1, size=mem_word_width, packed=True)
         
         # outputs
-#        self.col_pixels = self.output("col_pixels", width=word_width, size=stencil_height, packed=True)
+        self.col_pixels = self.output("col_pixels", width=word_width, size=stencil_height, packed=True)
 #        self.read_valid = self.output("read_valid", 1)
 #        self.stencil_valid = self.output("stencil_valid", 1)
 
@@ -40,11 +40,11 @@ class TransposeBuffer(Generator):
 #        self.add_code(self.get_valid_indices)
         self.add_code(self.in_buf)
         self.add_code(self.update_index_vars)
-#        self.add_code(self.out_buf)
-        self.get_num_valid()
+        self.add_code(self.out_buf)
+        self.get_valid_data()
         # combinational blocks
 
-    def get_num_valid(self):
+    def get_valid_data(self):
         
         num_valid_ = self.valid_input[0].extend(self.mem_word_width)
         comb = self.combinational()
@@ -53,8 +53,6 @@ class TransposeBuffer(Generator):
         if__ = IfStmt(self.valid_input[0] == 1)
         if__.then_(self.valid_data[0].assign(self.mem_data[0]))
         comb.add_stmt(if__)
-#        comb.add_stmt(self.count.assign(0))
-#        comb.add_stmt(self.first.assign(0))
         for i in range(1, self.mem_word_width):
             num_valid_ = num_valid_ + self.valid_input[i].extend(self.mem_word_width)
             if_ = IfStmt(self.valid_input[i] == 1)
@@ -87,9 +85,9 @@ class TransposeBuffer(Generator):
         self.row = const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height)) + self.row_index.extend(clog2(2*stencil_height))
         for i in range(mem_word_width):
             self.tb[self.row][i] = self.valid_data[i]
-'''
+
     # output appropriate data from transpose buffer
-    @always((posedge, "clk"))
+#    @always((posedge, "clk"))
     def out_buf(self):
         for i in range(stencil_height):
             if (self.switch_buf == 0):
@@ -97,5 +95,4 @@ class TransposeBuffer(Generator):
             else:
                 self.col_pixels[i] = self.tb[i][self.col_index]
    #         self.out_row_index = self.switch_buf.extend(clog2(2*stencil_height))*const(stencil_height,clog2(2*stencil_height)) + const(i, clog2(2*stencil_height))
-#            self.col_pixels[i] = self.tb[0][self.col_index]
-'''
+

@@ -1,5 +1,6 @@
 module transpose_buffer (
   input logic clk,
+  output logic [3:0] col_pixels,
   input logic [3:0] mem_data,
   input logic rst_n,
   input logic [3:0] valid_input
@@ -36,6 +37,20 @@ always_ff @(posedge clk, negedge rst_n) begin
     col_index <= col_index + 2'h1;
     row_index <= row_index + 2'h1;
     switch_buf <= switch_buf;
+  end
+end
+always_comb begin
+  if (switch_buf == 1'h0) begin
+    col_pixels[0] = tb[4][col_index];
+    col_pixels[1] = tb[5][col_index];
+    col_pixels[2] = tb[6][col_index];
+    col_pixels[3] = tb[7][col_index];
+  end
+  else begin
+    col_pixels[0] = tb[0][col_index];
+    col_pixels[1] = tb[1][col_index];
+    col_pixels[2] = tb[2][col_index];
+    col_pixels[3] = tb[3][col_index];
   end
 end
 always_comb begin

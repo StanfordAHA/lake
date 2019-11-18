@@ -31,10 +31,10 @@ sim.set(dut.valid_input, [1,0,1,1])
 for i in range(12):
     sim.set(dut.rst_n, 1)
     sim.cycle()
-    print("mem_data: ", sim.get(dut.mem_data), " col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf),  " rst: ", sim.get(dut.rst_n), " valid_data:  ", sim.get(dut.valid_data), " num_valid: ", sim.get(dut.num_valid), " cnt: ", sim.get(dut.count))
+    print("mem_data: ", sim.get(dut.mem_data), " col_index: ", sim.get(dut.col_index), " row_index: ", sim.get(dut.row_index), " switch: ", sim.get(dut.switch_buf),  " rst: ", sim.get(dut.rst_n), " valid_data:  ", sim.get(dut.valid_data), " col_pixels: ", sim.get(dut.col_pixels))
     print("tb: ", sim.get(dut.tb))
     print()
-    sim.set(dut.mem_data, [0,0,0,0])
+#    sim.set(dut.mem_data, [1,0,0,1])
 
 
 
