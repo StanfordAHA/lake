@@ -46,7 +46,6 @@ class TransposeBuffer(Generator):
             self.add_stmt(self.max_dim.assign(1))
 
     def get_valid_data(self):
-        
         num_valid_ = self.valid_input[0].extend(self.mem_word_width)
         comb = self.combinational()
         for i in range(self.mem_word_width):
