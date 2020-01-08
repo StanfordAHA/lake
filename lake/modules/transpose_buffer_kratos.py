@@ -3,14 +3,14 @@ from kratos import *
 from math import log
 
 class TransposeBuffer(Generator):
-    def __init__(self, word_width, mem_word_width, stencil_height, stencil_width, max_num_output):
+    def __init__(self, word_width, mem_word_width, stencil_height, stencil_width, num_output):
         super().__init__("transpose_buffer", True)
         
         self.word_width = word_width
         self.mem_word_width = mem_word_width
         self.stencil_height = stencil_height
         self.stencil_width = stencil_width
-        self.max_num_output = max_num_output
+        self.num_output = num_output
     
         # inputs
         self.clk = self.clock("clk")
@@ -18,11 +18,14 @@ class TransposeBuffer(Generator):
         self.rst_n = self.reset("rst_n", 1)
         self.mem_data = self.input("mem_data", width=word_width, size=mem_word_width, packed=True)
         self.valid_input = self.input("valid_input", width=1, size=mem_word_width, packed=True)
+
+        self.out_indices = self.input("out_indices", width=clog2(mem_word_width), size=num_output, packed=True)
+        self.out_indices_valid = self.input("out_indices_valid", width=1, size=num_output, packed=True)
         
         # outputs
         self.col_pixels = self.output("col_pixels", width=word_width, size=stencil_height, packed=True)
         self.output_valid = self.output("output_valid", 1)
-#        self.stencil_valid = self.output("stencil_valid", 1)
+        self.stencil_valid = self.output("stencil_valid", 1)
 
         # local variables
         self.tb = self.var("tb", width=word_width, size=[2*stencil_height, mem_word_width], packed=True)
@@ -34,6 +37,8 @@ class TransposeBuffer(Generator):
         self.pause_output = self.var("pause_output", 1)
         self.pause_input = self.var("pause_input", 1)
 
+        self.valid_out_indices = self.var("valid_out_indices", width=clog2(mem_word_width), size=num_output, packed=True)
+
         self.valid_cols_count = self.var("valid_cols_count", clog2(stencil_width))
 
         self.add_code(self.in_buf)
@@ -42,11 +47,12 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_output_valid)
         self.add_code(self.update_valid_cols_count)
         self.add_code(self.generate_stencil_valid)
-        self.get_valid_data()
         self.get_max_dim()
+        self.get_valid_data()
+        self.get_valid_output_indices()
 
     def get_max_dim(self):
-        if self.mem_word_width >= self.stencil_height:
+        if self.num_output >= self.stencil_height:
             self.add_stmt(self.max_dim.assign(0))
         else:
             self.add_stmt(self.max_dim.assign(1))
@@ -54,17 +60,38 @@ class TransposeBuffer(Generator):
     def get_valid_data(self):
         mem_word_width_log = clog2(self.mem_word_width)
         num_valid = self.valid_input[0].extend(mem_word_width_log)
-        comb = self.combinational()
+        comb_valid_data = self.combinational()
+
+        # initialize to 0
         for i in range(self.mem_word_width):
-            comb.add_stmt(self.valid_data[i].assign(0))
+            comb_valid_data.add_stmt(self.valid_data[i].assign(0))
+
         if_first_valid_input = IfStmt(self.valid_input[0] == 1)
         if_first_valid_input.then_(self.valid_data[0].assign(self.mem_data[0]))
-        comb.add_stmt(if_first_valid_input)
+        comb_valid_data.add_stmt(if_first_valid_input)
         for i in range(1, self.mem_word_width):
             num_valid = num_valid + self.valid_input[i].extend(mem_word_width_log)
             if_valid_input = IfStmt(self.valid_input[i] == 1)
             if_valid_input.then_(self.valid_data[num_valid-1].assign(self.mem_data[i]))
-            comb.add_stmt(if_valid_input)
+            comb_valid_data.add_stmt(if_valid_input)
+
+    def get_valid_output_indices(self):
+        num_output_log = clog2(self.num_output)
+        num_valid_out = self.out_indices_valid[0].extend(num_output_log)
+        comb_valid_out = self.combinational()
+
+        # initialize to 0
+        for i in range(self.num_output):
+            comb_valid_out.add_stmt(self.valid_out_indices[i].assign(0))
+
+        if_first_valid_out = IfStmt(self.out_indices_valid[0] == 1)
+        if_first_valid_out.then_(self.valid_out_indices[0].assign(self.out_indices[0]))
+        comb_valid_out.add_stmt(if_first_valid_out)
+        for i in range(1, self.num_output):
+            num_valid_out = num_valid_out + self.out_indices_valid[i].extend(num_output_log)
+            if_valid_out = IfStmt(self.out_indices_valid[i] == 1)
+            if_valid_out.then_(self.valid_out_indices[num_valid_out-1].assign(self.out_indices[i]))
+            comb_valid_out.add_stmt(if_valid_out)
 
     # updating index variables
     @always((posedge, "clk"), (negedge, "rst_n"))
@@ -115,7 +142,7 @@ class TransposeBuffer(Generator):
             self.pause_input = 0
             self.pause_output = 0
 
-'''    @always((posedge, "clk"), (negedge, "rst_n"))
+    @always((posedge, "clk"), (negedge, "rst_n"))
     def update_valid_cols_count(self):
         if ~self.rst_n:
             self.valid_cols_count = 0
@@ -137,7 +164,7 @@ class TransposeBuffer(Generator):
                 self.stencil_valid = 1
             else:
                 self.stencil_valid = 0
-'''
+
     @always((posedge, "clk"))
     def in_buf(self):
         if self.pause_input == 0:
