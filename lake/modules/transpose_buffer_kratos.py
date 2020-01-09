@@ -29,7 +29,7 @@ class TransposeBuffer(Generator):
 
         # local variables
         self.tb = self.var("tb", width=word_width, size=[2*stencil_height, mem_word_width], packed=True)
-        self.col_index = self.var("col_index", clog2(mem_word_width))
+        self.col_index = self.var("col_index", clog2(num_output))
         self.row_index = self.var("row_index", clog2(stencil_height))
         self.switch_buf = self.var("switch_buf", 1)
         self.valid_data = self.var("valid_data", width=word_width, size=mem_word_width, packed=True)
@@ -40,6 +40,9 @@ class TransposeBuffer(Generator):
         self.valid_out_indices = self.var("valid_out_indices", width=clog2(mem_word_width), size=num_output, packed=True)
 
         self.valid_cols_count = self.var("valid_cols_count", clog2(stencil_width))
+        
+        self.num_out = self.var("num_out", clog2(mem_word_width))
+        self.num = self.var("num", clog2(mem_word_width) + 1)
 
         self.add_code(self.in_buf)
         self.add_code(self.update_index_vars)
@@ -47,15 +50,17 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_output_valid)
         self.add_code(self.update_valid_cols_count)
         self.add_code(self.generate_stencil_valid)
-        self.get_max_dim()
+        self.add_code(self.get_max_dim)
         self.get_valid_data()
         self.get_valid_output_indices()
 
+    @always_comb
     def get_max_dim(self):
-        if self.num_output >= self.stencil_height:
-            self.add_stmt(self.max_dim.assign(0))
+        self.num = self.num_out.extend(clog2(mem_word_width) + 1) + 1
+        if self.num.extend(max(clog2(stencil_height), clog2(mem_word_width) + 1)) >= stencil_height:
+            self.max_dim = 0
         else:
-            self.add_stmt(self.max_dim.assign(1))
+            self.max_dim = 1
 
     def get_valid_data(self):
         mem_word_width_log = clog2(self.mem_word_width)
@@ -92,9 +97,10 @@ class TransposeBuffer(Generator):
             if_valid_out = IfStmt(self.out_indices_valid[i] == 1)
             if_valid_out.then_(self.valid_out_indices[num_valid_out-1].assign(self.out_indices[i]))
             comb_valid_out.add_stmt(if_valid_out)
+        comb_valid_out.add_stmt(self.num_out.assign(num_valid_out-1))
 
     # updating index variables
-    @always((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_index_vars(self):
         if ~self.rst_n:
             self.col_index = 0
@@ -119,7 +125,7 @@ class TransposeBuffer(Generator):
                 self.pause_input = 1
                 self.pause_output = self.pause_output
 
-        elif ((self.max_dim == 1) & (self.col_index == mem_word_width - 1)):
+        elif ((self.max_dim == 1) & (self.col_index == self.num_out - 1)):
 
             if (self.row_index == stencil_height - 1):
                 self.col_index = 0
@@ -142,7 +148,7 @@ class TransposeBuffer(Generator):
             self.pause_input = 0
             self.pause_output = 0
 
-    @always((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_valid_cols_count(self):
         if ~self.rst_n:
             self.valid_cols_count = 0
@@ -155,7 +161,7 @@ class TransposeBuffer(Generator):
             else:
                 self.valid_cols_count = self.valid_cols_count
 
-    @always((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def generate_stencil_valid(self):
         if ~self.rst_n:
             self.stencil_valid = 0
@@ -165,7 +171,7 @@ class TransposeBuffer(Generator):
             else:
                 self.stencil_valid = 0
 
-    @always((posedge, "clk"))
+    @always_ff((posedge, "clk"))
     def in_buf(self):
         if self.pause_input == 0:
             for i in range(mem_word_width):
@@ -174,16 +180,15 @@ class TransposeBuffer(Generator):
             self.tb = self.tb
 
     # output appropriate data from transpose buffer
+    @always_comb
     def out_buf(self):
-        if self.pause_output == 0:
-            for i in range(stencil_height):
-                if (self.switch_buf == 0):
-                    self.col_pixels[i] = self.tb[i + stencil_height][self.col_index]
-                else:
-                    self.col_pixels[i] = self.tb[i][self.col_index]
-        else:
-            self.col_pixels = self.col_pixels
+        for i in range(stencil_height):
+            if (self.switch_buf == 0):
+                self.col_pixels[i] = self.tb[i + stencil_height][self.valid_out_indices[self.col_index]]
+            else:
+                self.col_pixels[i] = self.tb[i][self.valid_out_indices[self.col_index]]
 
+    @always_comb
     def set_output_valid(self):
         if (~self.rst_n) | (self.pause_output == 1):
             self.output_valid = 0
