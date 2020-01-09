@@ -40,9 +40,10 @@ class TransposeBuffer(Generator):
         self.valid_out_indices = self.var("valid_out_indices", width=clog2(mem_word_width), size=num_output, packed=True)
 
         self.valid_cols_count = self.var("valid_cols_count", clog2(stencil_width))
+        self.index = self.var("index", clog2(2*stencil_height))
         
-        self.num_out = self.var("num_out", clog2(mem_word_width))
-        self.num = self.var("num", clog2(mem_word_width) + 1)
+        self.num_out = self.var("num_out", clog2(num_output))
+        self.num = self.var("num", clog2(num_output) + 1)
 
         self.add_code(self.in_buf)
         self.add_code(self.update_index_vars)
@@ -51,13 +52,14 @@ class TransposeBuffer(Generator):
         self.add_code(self.update_valid_cols_count)
         self.add_code(self.generate_stencil_valid)
         self.add_code(self.get_max_dim)
+        self.add_code(self.get_tb_input_index)
         self.get_valid_data()
         self.get_valid_output_indices()
 
     @always_comb
     def get_max_dim(self):
-        self.num = self.num_out.extend(clog2(mem_word_width) + 1) + 1
-        if self.num.extend(max(clog2(stencil_height), clog2(mem_word_width) + 1)) >= stencil_height:
+        self.num = self.num_out.extend(clog2(num_output) + 1) + 1
+        if self.num.extend(max(clog2(stencil_height), clog2(num_output) + 1)) >= stencil_height:
             self.max_dim = 0
         else:
             self.max_dim = 1
@@ -111,7 +113,7 @@ class TransposeBuffer(Generator):
 
         elif ((self.max_dim == 0) & (self.row_index == stencil_height - 1)):
 
-            if (self.col_index == mem_word_width - 1):
+            if (self.col_index == num_output - 1):
                 self.col_index = 0
                 self.row_index = 0
                 self.switch_buf = ~self.switch_buf
@@ -119,7 +121,7 @@ class TransposeBuffer(Generator):
                 self.pause_output = self.pause_output
             
             else:
-                self.col_index = self.col_index + const(1, clog2(mem_word_width))
+                self.col_index = self.col_index + const(1, clog2(num_output))
                 self.row_index = self.row_index
                 self.switch_buf = self.switch_buf
                 self.pause_input = 1
@@ -142,7 +144,7 @@ class TransposeBuffer(Generator):
                 self.pause_output = 1
 
         else:
-            self.col_index = self.col_index + const(1, clog2(mem_word_width))
+            self.col_index = self.col_index + const(1, clog2(num_output))
             self.row_index = self.row_index + const(1, clog2(stencil_height))
             self.switch_buf = self.switch_buf
             self.pause_input = 0
@@ -175,9 +177,15 @@ class TransposeBuffer(Generator):
     def in_buf(self):
         if self.pause_input == 0:
             for i in range(mem_word_width):
-                self.tb[const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height)) + self.row_index.extend(clog2(2*stencil_height))][i] = self.valid_data[i]
+                self.tb[self.index][i] = self.valid_data[i]
         else:
             self.tb = self.tb
+
+    @always_comb
+    def get_tb_input_index(self):
+        self.index = const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height)) + self.row_index.extend(clog2(2*stencil_height)) + 1
+        if self.index == 2*stencil_height:
+            self.index = 0
 
     # output appropriate data from transpose buffer
     @always_comb
