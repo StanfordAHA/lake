@@ -1,10 +1,36 @@
-from lake.modules.transpose_buffer_kratos import *
+from lake.modules.transpose_buffer import *
 import magma as m
 from magma import *
 import fault
 import tempfile
-from kratos import Simulator
+from kratos import *
+# from kratos import Simulator
 
+word_width = 1
+fetch_width = 4
+stencil_height = 3
+max_range_value = 5
+img_height = 4
+dut = TransposeBuffer(word_width, fetch_width, stencil_height, max_range_value, img_height)
+magma_dut = kratos.util.to_magma(dut)
+tester = fault.Tester(magma_dut(), magma_dut.clk)
+tester.circuit.clk = 0
+for i in range(5):
+    tester.circuit.input_data = i
+    tester.circuit.range_outer = 5
+    tester.circuit.range_inner = 3
+    tester.stride = 2
+#    tester.indices = [0,0,0,0,0]
+    tester.eval()
+    tester.step(2)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        tester.compile_and_run(target="verilator",
+                               directory=tempdir,
+                               flags=["-Wno-fatal", "--trace"])
+
+
+'''
 word_width = 1 
 mem_word_width = 4 
 stencil_height = 5
@@ -35,3 +61,4 @@ for i in range(16):
     print("num out", sim.get(dut.num_out))
     print("index", sim.get(dut.index))
     print()
+'''
