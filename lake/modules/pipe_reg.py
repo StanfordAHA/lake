@@ -2,7 +2,7 @@ from kratos import *
 
 class PipeReg(Generator):
     def __init__(self, data_width, stages):
-        super().__init__(f"pipe_reg_{stages}")
+        super().__init__("pipe_reg")
         self._in = self.input("i_data_in", data_width)
         self._out = self.output("o_data_out", data_width)
         self._clk = self.clock("i_clk")
@@ -28,16 +28,13 @@ class PipeReg(Generator):
             for i in range(self.stages - 1):
                 self._reg_array[i+1] = self._reg_array[i]
 
-    @always((posedge, "i_clk"), (negedge, "i_rst_n"))
     def set_out(self):
-        if ~self._rst_n:
-            self._out = 0
-        elif self._clk_en:
-            self._out = self._reg_array[self.stages - 1]
+        # Combinationally set this to the last register in the stage array.
+        self._out = self._reg_array[self.stages - 1]
 
 
 if __name__ == "__main__":
     stages = 3
     piperegdut = PipeReg(16, stages)
-    verilog(piperegdut, filename=f"pipe_reg_{stages}.sv")
+    verilog(piperegdut, filename="pipe_reg.sv")
 
