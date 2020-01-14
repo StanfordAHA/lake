@@ -5,6 +5,7 @@ from magma import *
 import fault
 import tempfile
 from kratos import *
+import kratos as k
 # from kratos import Simulator
 
 def test_addr_gen_basic():
@@ -36,13 +37,16 @@ def test_addr_gen_basic():
 
     #TransposeBuffer(word_width, fetch_width, stencil_height, max_range_value, img_height)
 
-    magma_dut = kratos.util.to_magma(dut)
+    magma_dut = k.util.to_magma(dut)
     tester = fault.Tester(magma_dut(), magma_dut.clk)
 
-    tester.circuit.dimensionality = 3
+    print(str(tester.circuit.dimensionality))
+    #tester.poke(tester.circuit.dimensionality, 3)
+    tester.circuit.dimensionality[0] = 3
    # tester.circuit.strides
 
-    tester.circuit.clk = 0
+    #tester.circuit.clk = 0
+    tester.poke(tester.circuit.clk, 0)
     tester.circuit.clk_en = 1
     tester.circuit.rst_n = 0
     tester.eval()
@@ -67,3 +71,5 @@ def test_addr_gen_basic():
         tester.compile_and_run(target="verilator",
                             directory=tempdir,
                             flags=["-Wno-fatal", "--trace"])
+
+test_addr_gen_basic()
