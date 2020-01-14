@@ -14,12 +14,12 @@ def test_addr_gen_basic():
     config_dict = {}
     config_dict["starting_addr"] = 0
     config_dict["dimensionality"] = 3
-    config_dict["stride_0"] = 1
-    config_dict["stride_1"] = 3
-    config_dict["stride_2"] = 9
-    config_dict["range_0"] = 3
-    config_dict["range_1"] = 3
-    config_dict["range_2"] = 3
+    config_dict["strides_0"] = 1
+    config_dict["strides_1"] = 3
+    config_dict["strides_2"] = 9
+    config_dict["ranges_0"] = 3
+    config_dict["ranges_1"] = 3
+    config_dict["ranges_2"] = 3
 
     model_ag.set_config(config_dict)
 
@@ -34,7 +34,7 @@ def test_addr_gen_basic():
     img_height = 4
     dut = AddrGen(512, 6, 16)
     
-    magma_dut = k.util.to_magma(dut)
+    magma_dut = k.util.to_magma(dut, flatten_array=True)
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
     tester.circuit.dimensionality = 3
