@@ -73,11 +73,11 @@ class AddrGen(Generator):
         self.add_code(self.current_loc_update)
 
         ##### GENERATION LOGIC: end
-
+    @always_comb
     def calc_addr_comb(self):
         self._calc_addr = reduce(operator.add, [(ternary(const(i, self._dimensionality.width) < self._dimensionality, self._current_loc[i], const(0, self._calc_addr.width))) for i in range(self.iterator_support)] + [self._strt_addr])
 
-    @always((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def dim_counter_update(self):
         if ~self._rst_n:
             self._dim_counter = 0
@@ -97,7 +97,7 @@ class AddrGen(Generator):
                         else:
                             self._dim_counter[i] = self._dim_counter[i] + 1
 
-    @always((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def current_loc_update(self):
         if ~self._rst_n:
             self._current_loc = 0
