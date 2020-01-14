@@ -13,21 +13,28 @@ max_range_value = 5
 img_height = 4
 dut = TransposeBuffer(word_width, fetch_width, stencil_height, max_range_value, img_height)
 magma_dut = kratos.util.to_magma(dut)
-tester = fault.Tester(magma_dut(), magma_dut.clk)
+tester = fault.Tester(magma_dut, magma_dut.clk)
 tester.circuit.clk = 0
+tester.circuit.rst_n = 1
+tester.step(2)
+tester.circuit.rst_n = 0
+tester.step(2)
+tester.circuit.rst_n = 1
 for i in range(5):
-    tester.circuit.input_data = i
+#    tester.circuit.input_data = i
     tester.circuit.range_outer = 5
     tester.circuit.range_inner = 3
-    tester.stride = 2
+    tester.circuit.stride = 2
 #    tester.indices = [0,0,0,0,0]
     tester.eval()
     tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir="/nobackupkiwi/skavya/lake/tests/temp"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal", "--trace"],
+                               magma_output="verilog")
 
 
 '''

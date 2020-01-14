@@ -18,7 +18,7 @@ class TransposeBuffer(Generator):
         self.clk = self.clock("clk")
         # active low asynchronous reset
         self.rst_n = self.reset("rst_n", 1)
-        self.input_data = self.input("input_data", width=self.word_width, size=self.fetch_width, packed=True)
+        self.input_data = self.input("input_data", width=self.word_width*self.fetch_width, packed=True)
         self.range_outer = self.input("range_outer", clog2(self.max_range_value))
         self.range_inner = self.input("range_inner", clog2(self.max_range_value))
         self.stride = self.input("stride", clog2(self.max_range_value))
@@ -30,11 +30,14 @@ class TransposeBuffer(Generator):
 
         # local variables
 
-        self.index_outer = self.output("index_outer", clog2(self.max_range_value))
-        self.index_inner = self.output("index_inner", clog2(self.max_range_value))
+        self.index_outer = self.var("index_outer", clog2(self.max_range_value))
+        self.index_inner = self.var("index_inner", clog2(self.max_range_value))
 
+        self.tb = self.var("tb", width=self.word_width*2*self.stencil_height*self.fetch_width, packed=True)
+        self.row_index = self.var("row_index", width=clog2(2*stencil_height))
         self.add_code(self.get_loop_iterators)
-
+        self.add_code(self.input_tb)
+        self.add_code(self.update_indices)
 
     # get loop indices
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -52,4 +55,16 @@ class TransposeBuffer(Generator):
                 self.index_inner = 0
             else:
                 self.index_inner = self.index_inner + 1
+
+    # input to transpose buffer
+    @always_ff((posedge, "clk"))
+    def input_tb(self):
+        self.tb[(self.row_index + 1)*self.fetch_width*self.word_width - 1, self.row_index*self.fetch_width*self.word_width] = self.input_data
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def update_indices(self):
+        if (~self.rst_n) | (self.row_index == (2*self.stencil_height - 1)):
+            self.row_index = 0
+        else:
+            self.row_index = self.row_index + 1
 
