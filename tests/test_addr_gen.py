@@ -34,19 +34,19 @@ def test_addr_gen_basic():
     img_height = 4
     dut = AddrGen(512, 6, 16)
     
-
-    #TransposeBuffer(word_width, fetch_width, stencil_height, max_range_value, img_height)
-
     magma_dut = k.util.to_magma(dut)
-    tester = fault.Tester(magma_dut(), magma_dut.clk)
+    tester = fault.Tester(magma_dut, magma_dut.clk)
 
-    print(str(tester.circuit.dimensionality))
-    #tester.poke(tester.circuit.dimensionality, 3)
-    tester.circuit.dimensionality[0] = 3
-   # tester.circuit.strides
+    tester.circuit.dimensionality = 3
+    tester.circuit.starting_addr = 0
+    tester.circuit.stride_0 = 1
+    tester.circuit.stride_1 = 3
+    tester.circuit.stride_2 = 9
+    tester.circuit.range_0 = 3
+    tester.circuit.range_1 = 3
+    tester.circuit.range_2 = 3
 
-    #tester.circuit.clk = 0
-    tester.poke(tester.circuit.clk, 0)
+    tester.circuit.clk = 0
     tester.circuit.clk_en = 1
     tester.circuit.rst_n = 0
     tester.eval()
@@ -55,21 +55,18 @@ def test_addr_gen_basic():
     tester.eval()
     tester.step(2)
 
-    #for i in range(5):
-    #    tester.circuit.input_data = i
-    #    tester.circuit.range_outer = 5
-    #    tester.circuit.range_inner = 3
-    #    tester.stride = 2
-    #    tester.indices = [0,0,0,0,0]
-    for i in range(100):
+    for i in range(1000):
+        tester.circuit.step = 1
+        tester.circuit.addr_out.expect(model_ag.get_address())
+        model_ag.step()
         tester.eval()
         tester.step(2)
 
-
-
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "./dump/"
         tester.compile_and_run(target="verilator",
                             directory=tempdir,
-                            flags=["-Wno-fatal", "--trace"])
+                            magma_output="verilog",
+                            flags=["-Wno-fatal"])
 
 test_addr_gen_basic()
