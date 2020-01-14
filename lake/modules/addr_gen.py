@@ -26,9 +26,16 @@ class AddrGen(Generator):
         ### INPUTS
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
-        self._strides = self.input("strides", 32, size=self.iterator_support, packed=True, explicit_array=True)
-        self._ranges = self.input("ranges", 32, size=self.iterator_support, packed=True, explicit_array=True)
-        self._starting_addr = self.input("starting_addr", 32, explicit_array=True)
+        #self._strides = self.input("strides", 32, size=self.iterator_support, packed=True, explicit_array=True)
+        self._strides = []
+        self._ranges = []
+        for i in range(self.iterator_support):
+            self._strides.append(self.input(f"stride_{i}", 32))
+            self._ranges.append(self.input(f"range_{i}", 32))
+
+
+        #self._ranges = self.input("ranges", 32, size=self.iterator_support, packed=True, explicit_array=True)
+        self._starting_addr = self.input("starting_addr", 32) #, explicit_array=True)
         self._dimensionality = self.input("dimensionality", 4)
         self._step = self.input("step", 1)
 
@@ -58,7 +65,7 @@ class AddrGen(Generator):
         ##### LOCAL VARIABLES: end
 
         ##### GENERATION LOGIC: begin
-        self.wire(self._strt_addr, self._starting_addr[0, 0])
+        self.wire(self._strt_addr, self._starting_addr)
 
         self.wire(self._addr_out, self._calc_addr)
 
@@ -89,9 +96,9 @@ class AddrGen(Generator):
             #    self._dim_counter[0] = concat(const(0, 31), self._range[0] > 1)
             #    for i in range(self.iterator_support - 1):
             #        self._dim_counter[i + 1] = 0
-            elif self._step & (i < self._dimensionality):
+            elif (self._step):
                 for i in range(self.iterator_support):
-                    if self._update[i]:
+                    if self._update[i] & (i < self._dimensionality):
                         if self._dim_counter[i] == (self._ranges[i] - 1):
                             self._dim_counter[i] = 0
                         else:
