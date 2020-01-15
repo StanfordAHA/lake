@@ -38,6 +38,11 @@ def test_aggregator_basic(agg_height, data_width, mem_width, max_agg_schedule):
 
     num_per_agg = int(mem_width / data_width)
 
+    for key, value in new_config.items():
+        setattr(tester.circuit, key, value)
+
+   # tester.circuit
+
     # initial reset
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
@@ -50,27 +55,29 @@ def test_aggregator_basic(agg_height, data_width, mem_width, max_agg_schedule):
 
     data_in = 0
 
-    for i in range(200):
+    for i in range(2000):
         v_out_model = model_ab.get_valid_out()
         tester.circuit.valid_out.expect(v_out_model)
+        tester.circuit.write_act = 0
 
         if(v_out_model == 1):
             # Check the data on the output...
             mod_dat_out = model_ab.get_item()
             for j in range(num_per_agg):
                 getattr(tester.circuit, f"data_out_chop_{j}").expect(mod_dat_out[j])
+
+            tester.circuit.write_act = 1
             #tester.circuit.data_out.expect(mod_dat_out[i])
 
         valid_next = rand.randint(0,1)
-        #data_next = rand.randint(0, 50)
         if(valid_next == 1):
+            data_in = rand.randint(0, 2**30)
             # Circuit
             tester.circuit.valid_in = 1
             tester.circuit.data_in = data_in
             # Model
             model_ab.insert(data_in, 1)
 
-            data_in = data_in + 1
         else:
             tester.circuit.valid_in = 0
             model_ab.insert(0, 0)
@@ -80,10 +87,10 @@ def test_aggregator_basic(agg_height, data_width, mem_width, max_agg_schedule):
 
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="agg_buf_dump"
+        #tempdir="agg_buf_dump"
         tester.compile_and_run(target="verilator",
                             directory=tempdir,
                             magma_output="verilog",
-                            flags=["-Wno-fatal", "--trace"])
+                            flags=["-Wno-fatal"])
 
 test_aggregator_basic(agg_height=4, data_width=16, mem_width=64, max_agg_schedule=64)

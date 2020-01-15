@@ -37,7 +37,7 @@ class AggBuffModel(Model):
 
     def insert(self, in_data, valid):
         if valid:
-            print(f"inserting {in_data} into buffer {self.config[f'in_sched_{self.in_sched_ptr}']}")
+            #print(f"inserting {in_data} into buffer {self.config[f'in_sched_{self.in_sched_ptr}']}")
             to_insert = self.aggs[self.config[f"in_sched_{self.in_sched_ptr}"]]
             to_insert.insert(in_data, valid)
             if(to_insert.get_valid_out()):
@@ -47,7 +47,7 @@ class AggBuffModel(Model):
 
     def get_valid_out(self):
         valid_check_agg = self.aggs[self.config[f"out_sched_{self.out_sched_ptr}"]]
-        print(f"valid is now {valid_check_agg.get_valid_out()}")
+        #print(f"valid is now {valid_check_agg.get_valid_out()}")
         return valid_check_agg.get_valid_out()
 
     def get_item(self):
@@ -59,6 +59,3 @@ class AggBuffModel(Model):
 
     def peek(self):
         pass
-
-
-    

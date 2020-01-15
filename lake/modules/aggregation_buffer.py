@@ -45,11 +45,11 @@ class AggregationBuffer(Generator):
         # CONFIG:
         # We receive a periodic (doesn't need to be, but has a maximum schedule, so...possibly the schedule is a for loop?
         # Tells us where to write successive elements...
-        self._in_schedule = self.var("in_schedule", clog2(agg_height), size=self.max_agg_schedule)
-        self._in_period = self.var("in_period", clog2(self.max_agg_schedule)) # CONFIG REG : lets us know when to start over
+        self._in_schedule = self.input("in_sched", clog2(agg_height), size=self.max_agg_schedule, explicit_array=True, packed=True)
+        self._in_period = self.input("in_period", clog2(self.max_agg_schedule)) # CONFIG REG : lets us know when to start over
         # ...and which order to output the blocks
-        self._out_schedule = self.var("out_schedule", clog2(agg_height), size=self.max_agg_schedule)
-        self._out_period = self.var("out_period", clog2(self.max_agg_schedule)) # CONFIG REG : lets us know when to start over
+        self._out_schedule = self.input("out_sched", clog2(agg_height), size=self.max_agg_schedule, explicit_array=True, packed=True)
+        self._out_period = self.input("out_period", clog2(self.max_agg_schedule)) # CONFIG REG : lets us know when to start over
 
         self._in_sched_ptr = self.var("in_sched_ptr", clog2(self.max_agg_schedule))
         self._out_sched_ptr = self.var("out_sched_ptr", clog2(self.max_agg_schedule))
@@ -60,6 +60,7 @@ class AggregationBuffer(Generator):
         for i in range(self.agg_height):
             self._aggs_sep.append(self.var(f"aggs_sep_{i}", self.data_width, size=int(self.mem_width/self.data_width), packed=True))
         self._valid_demux = self.var("valid_demux", self.agg_height)
+        self._next_full = self.var("next_full", self.agg_height)
         self._valid_out_mux = self.var("valid_out_mux", self.agg_height)
 
         for i in range(self.agg_height):
@@ -72,6 +73,7 @@ class AggregationBuffer(Generator):
             self.wire(self[f"agg_{i}"].ports.valid_in, self._valid_demux[i])
             self.wire(self[f"agg_{i}"].ports.agg_out, self._aggs_sep[i])
             self.wire(self[f"agg_{i}"].ports.valid_out, self._valid_out_mux[i])
+            self.wire(self[f"agg_{i}"].ports.next_full, self._next_full[i])
             portlist = []
             for j in range(int(self.mem_width/self.data_width)):
                 portlist.append(self._aggs_sep[i][int(self.mem_width/self.data_width) - 1 -j])
@@ -92,9 +94,9 @@ class AggregationBuffer(Generator):
     def update_in_sched_ptr(self):
         if ~self._rst_n:
             self._in_sched_ptr = 0
-        elif self._valid_in:
+        elif self._next_full[self._in_schedule[self._in_sched_ptr]]:
             self._in_sched_ptr = \
-                ternary(self._in_sched_ptr == self._in_period, const(0, self._in_sched_ptr.width), self._in_sched_ptr + const(1, self._in_sched_ptr.width))
+                ternary(self._in_sched_ptr == (self._in_period - 1), const(0, self._in_sched_ptr.width), self._in_sched_ptr + const(1, self._in_sched_ptr.width))
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_out_sched_ptr(self):
@@ -102,7 +104,7 @@ class AggregationBuffer(Generator):
             self._out_sched_ptr = 0
         elif self._write_act:
             self._out_sched_ptr = \
-                ternary(self._out_sched_ptr == self._out_period, const(0, self._out_sched_ptr.width), self._out_sched_ptr + const(1, self._out_sched_ptr.width))
+                ternary(self._out_sched_ptr == (self._out_period - 1), const(0, self._out_sched_ptr.width), self._out_sched_ptr + const(1, self._out_sched_ptr.width))
 
     @always_comb
     def valid_demux_comb(self):

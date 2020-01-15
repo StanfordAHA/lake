@@ -61,6 +61,7 @@ class Aggregator(Generator):
         # outputs
         self.agg_out = self.output("agg_out", word_width, size=mem_word_width, packed=True, explicit_array=True)
         self.valid_out = self.output("valid_out", 1)
+        self._next_full = self.output("next_full", 1)
 
         # local variables
         self.word_count = self.var("word_count", clog2(mem_word_width))
@@ -72,6 +73,12 @@ class Aggregator(Generator):
 
         # add combinational blocks
         self.add_code(self.output_data)
+
+        self.add_code(self.set_next_full)
+
+    @always_comb
+    def set_next_full(self):
+        self._next_full = self._valid_in & (self.word_count == const(self.mem_word_width - 1, self.word_count.width))
 
     # setting valid signal and word_count index
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
