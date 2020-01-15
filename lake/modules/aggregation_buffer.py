@@ -18,6 +18,8 @@ class AggregationBuffer(Generator):
         self.data_width = data_width
         self.mem_width = mem_width
         self.max_agg_schedule = max_agg_schedule # This is the maximum length of the schedule
+        self.num_per_agg = int(self.mem_width/self.data_width)
+
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -32,6 +34,13 @@ class AggregationBuffer(Generator):
         # Outputs
         self._data_out = self.output("data_out", self.mem_width)
         self._valid_out = self.output("valid_out", 1)
+
+        self._data_out_chop = []
+        #self._data_out_chop = self.output("data_out_chop", self.data_width, size=int(self.mem_width/self.data_width), explicit_array=True, packed=True)
+        for i in range(self.num_per_agg):
+            self._data_out_chop.append(self.output(f"data_out_chop_{i}", self.data_width))
+            self.add_stmt(self._data_out_chop[i].assign(self._data_out[(self.data_width*(i+1)) - 1,self.data_width*i]))
+            #self.wire(self._data_out_chop[i], self._data_out[(self.data_width*(i+1)) - 1,self.data_width*i])
 
         # CONFIG:
         # We receive a periodic (doesn't need to be, but has a maximum schedule, so...possibly the schedule is a for loop?
@@ -65,11 +74,8 @@ class AggregationBuffer(Generator):
             self.wire(self[f"agg_{i}"].ports.valid_out, self._valid_out_mux[i])
             portlist = []
             for j in range(int(self.mem_width/self.data_width)):
-                portlist.append(self._aggs_sep[i][j])
+                portlist.append(self._aggs_sep[i][int(self.mem_width/self.data_width) - 1 -j])
             self.wire(self._aggs_out[i], kts.concat(*portlist))
-
-
-        
 
         # Sequential code blocks
         self.add_code(self.update_in_sched_ptr)
@@ -101,7 +107,7 @@ class AggregationBuffer(Generator):
     @always_comb
     def valid_demux_comb(self):
         self._valid_demux = 0
-        self._valid_demux[self._in_schedule[self._in_sched_ptr]] = 1
+        self._valid_demux[self._in_schedule[self._in_sched_ptr]] = self._valid_in
 
     @always_comb
     def valid_out_comb(self):
@@ -113,10 +119,11 @@ class AggregationBuffer(Generator):
     # Then, obey the output schedule to send the proper Aggregator to the output
 
 if __name__ == "__main__":
-    db_dut = AggregationBuffer(agg_height=4,
-               data_width=16,
-               mem_width=64,
-               max_agg_schedule=64)
+    db_dut = AggregationBuffer( agg_height=4,
+                                data_width=16,
+                                mem_width=64,
+                                max_agg_schedule=64
+                              )
     verilog(db_dut, filename="aggregation_buffer.sv", check_active_high=False, check_multiple_driver=False)
 
 
