@@ -5,5 +5,5 @@ class Model():
         pass
 
     @abstractmethod
-    def set_config(self, **kwargs):
+    def set_config(self, new_config):
         pass
