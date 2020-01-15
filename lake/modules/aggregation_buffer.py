@@ -30,7 +30,7 @@ class AggregationBuffer(Generator):
         self._write_act = self.input("write_act", 1)
 
         # Outputs
-        self._data_out = self.output("data_out", self.data_width)
+        self._data_out = self.output("data_out", self.mem_width)
         self._valid_out = self.output("valid_out", 1)
 
         # CONFIG:
@@ -63,7 +63,10 @@ class AggregationBuffer(Generator):
             self.wire(self[f"agg_{i}"].ports.valid_in, self._valid_demux[i])
             self.wire(self[f"agg_{i}"].ports.agg_out, self._aggs_sep[i])
             self.wire(self[f"agg_{i}"].ports.valid_out, self._valid_out_mux[i])
-            self.wire(self._aggs_out[i], kts.concat(*self._aggs_sep[i]))
+            portlist = []
+            for j in range(int(self.mem_width/self.data_width)):
+                portlist.append(self._aggs_sep[i][j])
+            self.wire(self._aggs_out[i], kts.concat(*portlist))
 
 
         
@@ -77,34 +80,37 @@ class AggregationBuffer(Generator):
         self.add_code(self.valid_out_comb)
         self.add_code(self.output_data_comb)
 
-        # Update the pointer and mux for input and output schedule
-        # Now, obey the input schedule to send to the proper Aggregator
-        @always((posedge, "clk"), (negedge, "rst_n"))
-        def update_in_sched_ptr(self):
-            if ~self._rst_n:
-                self._in_sched_ptr = 0
-            elif self._valid_in:
-                self._in_sched_ptr = \
-                    ternary(self._in_sched_ptr == self._in_period, 0, self._in_sched_ptr + 1)
+    # Update the pointer and mux for input and output schedule
+    # Now, obey the input schedule to send to the proper Aggregator
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def update_in_sched_ptr(self):
+        if ~self._rst_n:
+            self._in_sched_ptr = 0
+        elif self._valid_in:
+            self._in_sched_ptr = \
+                ternary(self._in_sched_ptr == self._in_period, const(0, self._in_sched_ptr.width), self._in_sched_ptr + const(1, self._in_sched_ptr.width))
 
-        @always((posedge, "clk"), (negedge, "rst_n"))
-        def update_out_sched_ptr(self):
-            if ~self._rst_n:
-                self._out_sched_ptr = 0
-            elif self._write_act:
-                self._out_sched_ptr = \
-                    ternary(self._out_sched_ptr == self._out_period, 0, self._out_sched_ptr + 1)
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def update_out_sched_ptr(self):
+        if ~self._rst_n:
+            self._out_sched_ptr = 0
+        elif self._write_act:
+            self._out_sched_ptr = \
+                ternary(self._out_sched_ptr == self._out_period, const(0, self._out_sched_ptr.width), self._out_sched_ptr + const(1, self._out_sched_ptr.width))
 
-        def valid_demux_comb(self):
-            self._valid_demux = 0
-            self._valid_demux[self._in_schedule[self._in_sched_ptr]] = 1
+    @always_comb
+    def valid_demux_comb(self):
+        self._valid_demux = 0
+        self._valid_demux[self._in_schedule[self._in_sched_ptr]] = 1
 
-        def valid_out_comb(self):
-            self._valid_out = self._valid_out_mux[self._out_schedule[self._out_sched_ptr]]
+    @always_comb
+    def valid_out_comb(self):
+        self._valid_out = self._valid_out_mux[self._out_schedule[self._out_sched_ptr]]
 
-        def output_data_comb(self):
-            self._data_out = self._aggs_out[self._out_schedule[self._out_sched_ptr]]
-        # Then, obey the output schedule to send the proper Aggregator to the output
+    @always_comb
+    def output_data_comb(self):
+        self._data_out = self._aggs_out[self._out_schedule[self._out_sched_ptr]]
+    # Then, obey the output schedule to send the proper Aggregator to the output
 
 if __name__ == "__main__":
     db_dut = AggregationBuffer(agg_height=4,
