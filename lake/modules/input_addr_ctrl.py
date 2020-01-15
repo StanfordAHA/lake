@@ -55,7 +55,6 @@ class InputAddrCtrl(Generator):
         self._addresses = self.output("addr_out", self.address_width, size=self.banks, explicit_array=True, packed=True)
         self._port_sels = self.output("port_sel_out", self.port_sched_width, size=self.banks, explicit_array=True, packed=True)
 
-
         # LOCAL VARS
         self._local_addrs = self.var("local_addrs", self.address_width, size=self.interconnect_input_ports, packed=True, explicit_array=True)
         self._port_sel_ptrs = self.var("port_sel_ptrs", clog2(self.max_port_schedule), size=self.banks, explicit_array=True, packed=True)

@@ -27,12 +27,6 @@ class AddrGen(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
         self._strides = self.input("strides", 32, size=self.iterator_support, packed=True, explicit_array=True)
-        #self._strides = []
-        #self._ranges = []
-        #for i in range(self.iterator_support):
-          #  self._strides.append(self.input(f"stride_{i}", 32))
-        #    self._ranges.append(self.input(f"range_{i}", 32))
-
 
         self._ranges = self.input("ranges", 32, size=self.iterator_support, packed=True, explicit_array=True)
         self._starting_addr = self.input("starting_addr", 32) #, explicit_array=True)
