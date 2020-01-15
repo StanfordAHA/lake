@@ -23,7 +23,7 @@ def test_addr_gen_basic():
 
     model_ag.set_config(config_dict)
 
-    #print(str(model_ag.get_address()))
+    #print(str(model _ag.get_address()))
     #for i in range(26):
     #    model_ag.step()
 
