@@ -12,7 +12,7 @@ stencil_height = 3
 max_range_value = 5
 img_height = 4
 dut = TransposeBuffer(word_width, fetch_width, stencil_height, max_range_value, img_height)
-magma_dut = kratos.util.to_magma(dut)
+magma_dut = kratos.util.to_magma(dut, flatten_array=True)
 tester = fault.Tester(magma_dut, magma_dut.clk)
 tester.circuit.clk = 0
 tester.circuit.rst_n = 1
@@ -20,8 +20,10 @@ tester.step(2)
 tester.circuit.rst_n = 0
 tester.step(2)
 tester.circuit.rst_n = 1
-for i in range(5):
-#    tester.circuit.input_data = i
+for i in range(13):
+    for j in range(fetch_width):
+        setattr(tester.circuit, f"input_data_{j}", j % 2)
+    tester.circuit.input_data = i
     tester.circuit.range_outer = 5
     tester.circuit.range_inner = 3
     tester.circuit.stride = 2
