@@ -31,8 +31,11 @@ class AddrGenModel(Model):
             self.dim_cnt[i] = 0
         self.address = 0 + self.config["starting_addr"]
 
+
     def get_address(self):
+        #print(f"starting addr: {self.config['starting_addr']}")
         return self.address
+        
 
     def step(self):
         for i in range(self.config["dimensionality"]):
