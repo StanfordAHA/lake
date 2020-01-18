@@ -7,7 +7,8 @@ import tempfile
 import kratos as k
 import random as rand
 
-def test_aggregator_basic(word_width, mem_word_width):
+#@pytest.mark.parametrize("word_width", [3, 5])
+def test_aggregator_basic(word_width=16, mem_word_width=4):
 
     model_agg = AggModel(num_elts=mem_word_width)
     # No actual configuration to be set
@@ -61,10 +62,8 @@ def test_aggregator_basic(word_width, mem_word_width):
 
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="agg_dump"
+        #tempdir="agg_dump"
         tester.compile_and_run(target="verilator",
                             directory=tempdir,
                             magma_output="verilog",
-                            flags=["-Wno-fatal", "--trace"])
-
-test_aggregator_basic(word_width=16, mem_word_width=4)
+                            flags=["-Wno-fatal"])

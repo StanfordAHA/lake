@@ -7,7 +7,7 @@ import tempfile
 import kratos as k
 import random as rand
 
-def test_aggregator_basic(agg_height, data_width, mem_width, max_agg_schedule):
+def test_aggregator_basic(agg_height=4, data_width=16, mem_width=64, max_agg_schedule=64):
 
     ######################### Set up model...
     model_ab = AggBuffModel(agg_height=agg_height, data_width=data_width, mem_width=mem_width, max_agg_schedule=max_agg_schedule)
@@ -87,10 +87,7 @@ def test_aggregator_basic(agg_height, data_width, mem_width, max_agg_schedule):
 
 
     with tempfile.TemporaryDirectory() as tempdir:
-        #tempdir="agg_buf_dump"
         tester.compile_and_run(target="verilator",
                             directory=tempdir,
                             magma_output="verilog",
                             flags=["-Wno-fatal"])
-
-test_aggregator_basic(agg_height=4, data_width=16, mem_width=64, max_agg_schedule=64)
