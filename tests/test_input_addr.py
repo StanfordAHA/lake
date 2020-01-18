@@ -6,13 +6,15 @@ import fault
 import tempfile
 import kratos as k
 import random as rand
+import pytest
 
+@pytest.mark.parametrize("banks", [4, 6])
 def test_input_addr_basic(
-                            interconnect_input_ports,
-                            mem_depth,
                             banks,
-                            iterator_support,
-                            address_width
+                            interconnect_input_ports=2,
+                            mem_depth=512,
+                            iterator_support=6,
+                            address_width=16
                             ):
 
     ######################### Set up model...
@@ -111,17 +113,3 @@ def test_input_addr_basic(
                             directory=tempdir,
                             magma_output="verilog",
                             flags=["-Wno-fatal"])
-
-test_input_addr_basic(interconnect_input_ports=2,
-                            mem_depth=512,
-                            banks=4,
-                            iterator_support=6,
-                            address_width=16
-                            )
-
-test_input_addr_basic(interconnect_input_ports=2,
-                            mem_depth=512,
-                            banks=6,
-                            iterator_support=6,
-                            address_width=16
-                            )
