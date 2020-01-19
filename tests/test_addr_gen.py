@@ -6,7 +6,7 @@ import fault
 import tempfile
 from kratos import *
 import kratos as k
-# from kratos import Simulator
+
 
 def test_addr_gen_basic():
     model_ag = AddrGenModel(512, 6, 16)
@@ -23,17 +23,13 @@ def test_addr_gen_basic():
 
     model_ag.set_config(config_dict)
 
-    #print(str(model _ag.get_address()))
-    #for i in range(26):
-    #    model_ag.step()
-
     word_width = 1
     fetch_width = 4
     stencil_height = 3
     max_range_value = 5
     img_height = 4
     dut = AddrGen(512, 6, 16)
-    
+
     magma_dut = k.util.to_magma(dut, flatten_array=True)
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
@@ -63,8 +59,7 @@ def test_addr_gen_basic():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        #tempdir = "./dump/"
         tester.compile_and_run(target="verilator",
-                            directory=tempdir,
-                            magma_output="verilog",
-                            flags=["-Wno-fatal"])
+                               directory=tempdir,
+                               magma_output="verilog",
+                               flags=["-Wno-fatal"])

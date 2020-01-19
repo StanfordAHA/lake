@@ -1,5 +1,6 @@
 from lake.models.model import Model
 
+
 class AddrGenModel(Model):
 
     def __init__(self, mem_depth, iterator_support, address_width):
@@ -31,11 +32,8 @@ class AddrGenModel(Model):
             self.dim_cnt[i] = 0
         self.address = 0 + self.config["starting_addr"]
 
-
     def get_address(self):
-        #print(f"starting addr: {self.config['starting_addr']}")
         return self.address
-        
 
     def step(self):
         for i in range(self.config["dimensionality"]):
@@ -50,7 +48,8 @@ class AddrGenModel(Model):
                     break
             else:
                 break
+
         self.address = self.config["starting_addr"]
         for i in range(self.config["dimensionality"]):
-            self.address = self.address + (self.dim_cnt[i]*self.config[f"stride_{i}"])
-    #print("New Addr: " + str(self.address))
+            offset = self.dim_cnt[i] * self.config[f"stride_{i}"]
+            self.address = self.address + offset

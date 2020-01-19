@@ -12,7 +12,12 @@ from memory_core import memory_core_genesis2
 from typing import List
 
 
-def config_mem_tile(interconnect: Interconnect, full_cfg, new_config_data, x_place, y_place, mcore_cfg):
+def config_mem_tile(interconnect: Interconnect,
+                    full_cfg,
+                    new_config_data,
+                    x_place,
+                    y_place,
+                    mcore_cfg):
     for config_reg, val, feat in new_config_data:
         full_cfg.append((interconnect.get_config_addr(
                          mcore_cfg.get_reg_index(config_reg),
@@ -89,9 +94,8 @@ class MemCore(ConfigurableCore):
             chain_out=magma.Out(TData)
         )
 
-        if (data_width, word_width, data_depth,
-            num_banks, use_sram_stub, iterator_support) not in \
-            MemCore.__circuit_cache:
+        if (data_width, word_width, data_depth, num_banks, use_sram_stub, iterator_support)
+        not in MemCore.__circuit_cache:
 
             wrapper = memory_core_genesis2.memory_core_wrapper
             param_mapping = memory_core_genesis2.param_mapping

@@ -1,9 +1,15 @@
 from lake.models.model import Model
 from lake.models.agg_model import AggModel
 
+
 class AggBuffModel(Model):
 
-    def __init__(self, agg_height, data_width, mem_width, max_agg_schedule):
+    def __init__(self,
+                 agg_height,
+                 data_width,
+                 mem_width,
+                 max_agg_schedule):
+
         self.agg_height = agg_height
         self.data_width = data_width
         self.mem_width = mem_width
@@ -19,11 +25,10 @@ class AggBuffModel(Model):
         for i in range(self.max_agg_sched):
             self.config[f"in_sched_{i}"] = 0
             self.config[f"out_sched_{i}"] = 0
-            #self.out_sched.append(0)
 
         self.aggs = []
         for i in range(self.agg_height):
-            self.aggs.append(AggModel(int(self.mem_width/self.data_width)))
+            self.aggs.append(AggModel(int(self.mem_width / self.data_width)))
             self.aggs[i].set_config()
 
     def set_config(self, new_config):
@@ -37,7 +42,6 @@ class AggBuffModel(Model):
 
     def insert(self, in_data, valid):
         if valid:
-            #print(f"inserting {in_data} into buffer {self.config[f'in_sched_{self.in_sched_ptr}']}")
             to_insert = self.aggs[self.config[f"in_sched_{self.in_sched_ptr}"]]
             to_insert.insert(in_data, valid)
             if(to_insert.get_valid_out()):
@@ -47,7 +51,6 @@ class AggBuffModel(Model):
 
     def get_valid_out(self):
         valid_check_agg = self.aggs[self.config[f"out_sched_{self.out_sched_ptr}"]]
-        #print(f"valid is now {valid_check_agg.get_valid_out()}")
         return valid_check_agg.get_valid_out()
 
     def get_item(self):

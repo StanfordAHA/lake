@@ -1,10 +1,11 @@
 from kratos import *
 
+
 class ConfigReg(Generator):
-    def __init__(self, 
-                name,
-                data_width, 
-                init_val):
+    def __init__(self,
+                 name,
+                 data_width,
+                 init_val):
         super().__init__(f"config_reg_{name}_{data_width}")
 
         self.init_val = init_val
@@ -21,8 +22,8 @@ class ConfigReg(Generator):
         if ~self._rst_n:
             self._out = self.init_val
 
+
 if __name__ == "__main__":
     data_width = 16
     configregdut = ConfigReg(name="config_test", data_width=data_width, init_val=2)
     verilog(configregdut, filename=f"config_reg_{data_width}.sv")
-

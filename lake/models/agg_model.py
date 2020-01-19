@@ -1,8 +1,10 @@
 from lake.models.model import Model
 
+
 class AggModel(Model):
 
-    def __init__(self, num_elts):
+    def __init__(self,
+                 num_elts):
 
         self.num_elts = num_elts
 
@@ -26,12 +28,10 @@ class AggModel(Model):
 
     def insert(self, data, valid_in):
         if valid_in:
-            self.shift_reg[self.word_count] = data 
+            self.shift_reg[self.word_count] = data
             self.word_count = self.word_count + 1
             if(self.word_count >= self.num_elts):
                 self.word_count = 0
                 self.valid_out = 1
             else:
                 self.valid_out = 0
-
-
