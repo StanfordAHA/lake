@@ -1,10 +1,11 @@
 from kratos import *
 
+
 class LineBufferControl(Generator):
     def __init__(self):
         super().__init__("linebuffer_control", True)
 
-        ##### PORT DEFS: begin
+        # PORT DEFS: begin
         self._clk = self.clock("clk", 1)
         self._clk_en = self.input("clk_en", 1)
         self._reset = self.reset("reset")
@@ -17,27 +18,30 @@ class LineBufferControl(Generator):
 
         self._valid = self.output("valid", 1)
         self._ren_to_fifo = self.output("ren_to_fifo", 1)
-        ##### PORT DEFS: end
+        # PORT DEFS: end
 
-        ##### LOCAL SIGNALS: begin
+        # LOCAL SIGNALS: begin
         self._vg_ctr = self.var("vg_ctr", 16)
         self._valid_gate = self.var("valid_gate", 1)
         self._valid_int = self.var("valid_int", 1)
         self._threshold = self.var("threshold", 1)
+        # LOCAL SIGNALS: end
 
-        ##### LOCAL SIGNALS: end
-
-
-
-        ##### GENERATION LOGIC: begin
-        self.wire(self._valid_gate, ternary((self._stencil_width == const(0, 16)), const(1, 1), (self._vg_ctr > (self._stencil_width - const(1, 16))) ))
-        self.wire(self._valid_int, (self._num_words_mem >= (self._depth - 1)) & self._wen & self._threshold & (self._depth > 0))
+        # GENERATION LOGIC: begin
+        self.wire(self._valid_gate,
+                  ternary((self._stencil_width == const(0, 16)),
+                          const(1, 1),
+                          (self._vg_ctr > (self._stencil_width - const(1, 16)))))
+        self.wire(self._valid_int,
+                  (self._num_words_mem >= (self._depth - 1)) &
+                  self._wen & self._threshold & (self._depth > 0))
         self.wire(self._valid, self._valid_gate & self._valid_int)
-        self.wire(self._ren_to_fifo, (self._num_words_mem >= (self._depth - 1)) & self._wen & (self._depth > 0))
+        self.wire(self._ren_to_fifo, (self._num_words_mem >= (self._depth - 1)) &
+                  self._wen & (self._depth > 0))
 
         self.add_code(self.threshold_update)
         self.add_code(self.vg_ctr_update)
-        ##### GENERATION LOGIC: end
+        # GENERATION LOGIC: end
 
     @always((posedge, "clk"), (posedge, "reset"))
     def threshold_update(self):
@@ -61,6 +65,7 @@ class LineBufferControl(Generator):
                     self._vg_ctr = 0
                 else:
                     self._vg_ctr = self._vg_ctr + 1
+
 
 if __name__ == "__main__":
     dut = LineBufferControl()

@@ -1,7 +1,8 @@
 from kratos import *
 from lake.modules.sram_stub import SRAMStub
 
-# Should we do this with registers or SRAM? 
+
+# Should we do this with registers or SRAM?
 # What options do we have?
 class VirtualRemapTable(Generator):
     def __init__(self, macro_width, logical_banks, macro_depth):
@@ -24,6 +25,7 @@ class VirtualRemapTable(Generator):
         self.wire(sram_stub.i_wen, 0)
         self.wire(sram_stub.i_clk, self._clk)
         self.wire(sram_stub.i_rst_n, self._rst_n)
+
 
 if __name__ == "__main__":
     vrt_dut = VirtualRemapTable()

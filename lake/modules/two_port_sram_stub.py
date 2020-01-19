@@ -1,6 +1,7 @@
 from kratos import *
 from math import log
 
+
 class TwoPortSRAMStub(Generator):
     '''
     2 port SRAM
@@ -37,7 +38,7 @@ class TwoPortSRAMStub(Generator):
         # Local Variables          #
         ############################
         self.data_array = self.var("data_array", width=width, size=depth, packed=True)
-        
+
         self.bypass = bypass
 
         ############################

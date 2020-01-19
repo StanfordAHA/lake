@@ -1,19 +1,18 @@
 from lake.models.model import Model
-#from lake.models.agg_model import AggModel
 from lake.models.addr_gen_model import AddrGenModel
 import math as mt
 import kratos as kts
 
+
 class InputAddrCtrlModel(Model):
 
-    def __init__(self, 
-               interconnect_input_ports,
-               mem_depth,
-               banks,
-               iterator_support,
-               max_port_schedule,
-               address_width
-    ):
+    def __init__(self,
+                 interconnect_input_ports,
+                 mem_depth,
+                 banks,
+                 iterator_support,
+                 max_port_schedule,
+                 address_width):
 
         self.interconnect_input_ports = interconnect_input_ports
         self.mem_depth = mem_depth
@@ -27,10 +26,9 @@ class InputAddrCtrlModel(Model):
         # Create child address generators
         self.addr_gens = []
         for i in range(self.interconnect_input_ports):
-            new_addr_gen = AddrGenModel(mem_depth=self.mem_depth, 
+            new_addr_gen = AddrGenModel(mem_depth=self.mem_depth,
                                         iterator_support=self.iterator_support,
-                                        address_width=self.address_width
-                                        )
+                                        address_width=self.address_width)
             self.addr_gens.append(new_addr_gen)
 
         self.mem_addr_width = kts.clog2(self.mem_depth)
@@ -48,21 +46,14 @@ class InputAddrCtrlModel(Model):
                 self.config[f"stride_p_{i}_{j}"] = 0
                 self.config[f"range_p_{i}_{j}"] = 0
 
-        #self.sched_ptrs = []
-        #for i in range(self.banks):
-        #    self.config[f"port_periods_{i}"] = 0
-        #    self.sched_ptrs.append(0)
-        #    for j in range(self.max_port_schedule):
-        #        self.config[f"port_sched_b_{i}_{j}"] = 0
-
         # Set up the wen
         self.wen = []
         self.mem_addresses = []
-        #self.port_sels = []
+        # self.port_sels = []
         for i in range(self.banks):
             self.wen.append(0)
             self.mem_addresses.append(0)
-        #    self.port_sels.append(0)
+            # self.port_sels.append(0)
 
     def set_config(self, new_config):
         # Configure top level
@@ -92,23 +83,18 @@ class InputAddrCtrlModel(Model):
     def get_wen(self, valid):
         for i in range(self.banks):
             self.wen[i] = 0
-        #print(valid)
         for i in range(self.interconnect_input_ports):
             if(valid[i]):
                 self.wen[self.get_addrs()[i] >> (self.mem_addr_width)] = 1
-                #print(self.get_addrs()[i])
-                #print(f"idk:{self.get_addrs()[i] >> (self.mem_addr_width)}")
-                #print(f"Setting wen to...{i}")
         return self.wen
 
     # Step the addresses based on valid
     def step_addrs(self, valid):
         for i, valid_input in enumerate(valid):
             if valid_input:
-                #print(f"inserting {in_data} into buffer {self.config[f'in_sched_{self.in_sched_ptr}']}")
                 to_step = self.addr_gens[i]
                 to_step.step()
-        # After stepping the adresses, we need to step the 
+        # After stepping the adresses, we need to step the
         for i in range(self.banks):
             if(valid[self.config[f"port_sched_b_{i}_{self.sched_ptrs[i]}"]]):
                 wen[i] = 1

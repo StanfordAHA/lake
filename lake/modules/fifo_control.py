@@ -1,5 +1,6 @@
 from kratos import *
 
+
 class FIFOControl(Generator):
     def __init__(self, data_width, banks, mem_depth):
         super().__init__("fifo_control")
@@ -11,7 +12,7 @@ class FIFOControl(Generator):
         self.bank_addr_width = clog2(self.banks)
         self.full_addr = self.mem_addr_width + self.bank_addr_width
 
-        ##### PORT DEFS: begin
+        # PORT DEFS: begin
         self._clk = self.clock("clk")
         self._clk_en = self.input("clk_en", 1)
         self._reset = self.reset("reset")
@@ -28,20 +29,32 @@ class FIFOControl(Generator):
         self._full = self.output("full", 1)
         self._valid = self.output("valid", 1)
 
-        self._fifo_to_mem_data = self.output("fifo_to_mem_data", self.data_width, size=self.banks, packed=True, explicit_array=True)
+        self._fifo_to_mem_data = self.output("fifo_to_mem_data",
+                                             self.data_width,
+                                             size=self.banks,
+                                             packed=True,
+                                             explicit_array=True)
         self._fifo_to_mem_cen = self.output("fifo_to_mem_cen", self.banks)
         self._fifo_to_mem_wen = self.output("fifo_to_mem_wen", self.banks)
-        self._fifo_to_mem_addr = self.output("fifo_to_mem_addr", self.mem_addr_width, size=self.banks, explicit_array=True, packed=True)
-        self._mem_to_fifo_data = self.input("mem_to_fifo_data", self.data_width, size=self.banks, explicit_array=True, packed=True)
+        self._fifo_to_mem_addr = self.output("fifo_to_mem_addr",
+                                             self.mem_addr_width,
+                                             size=self.banks,
+                                             explicit_array=True,
+                                             packed=True)
+        self._mem_to_fifo_data = self.input("mem_to_fifo_data",
+                                            self.data_width,
+                                            size=self.banks,
+                                            explicit_array=True,
+                                            packed=True)
 
         self._num_words_mem = self.output("num_words_mem", 16)
 
         self._almost_count = self.input("almost_count", 4)
         self._circular_en = self.input("circular_en", 1)
         self._depth = self.input("depth", 16)
-        ##### PORT DEFS: end
+        # PORT DEFS: end
 
-        ##### LOCAL VARIABLES: begin
+        # LOCAL VARIABLES: begin
         self._almost_count_extended = self.var("almost_count_extended", 16)
         self._read_addr = self.var("read_addr", self.full_addr)
         self._write_addr = self.var("write_addr", self.full_addr)
@@ -54,11 +67,27 @@ class FIFOControl(Generator):
         self._cen_mem = self.var("cen_mem", self.banks)
 
         self._write_buffed = self.var("write_buffed", self.banks)
-        self._write_buff = self.var("write_buff", self.data_width, size=self.banks, explicit_array=True, packed=True)
-        self._write_buff_addr = self.var("write_buff_addr", self.mem_addr_width, size=self.banks, explicit_array=True, packed=True)
+        self._write_buff = self.var("write_buff",
+                                    self.data_width,
+                                    size=self.banks,
+                                    explicit_array=True,
+                                    packed=True)
+        self._write_buff_addr = self.var("write_buff_addr",
+                                         self.mem_addr_width,
+                                         size=self.banks,
+                                         explicit_array=True,
+                                         packed=True)
 
-        self._data_out_sel = self.var("data_out_sel", self.data_width, size=self.banks, explicit_array=True, packed=True)
-        self._data_addr = self.var("data_addr", self.mem_addr_width, size=self.banks, explicit_array=True, packed=True)
+        self._data_out_sel = self.var("data_out_sel",
+                                      self.data_width,
+                                      size=self.banks,
+                                      explicit_array=True,
+                                      packed=True)
+        self._data_addr = self.var("data_addr",
+                                   self.mem_addr_width,
+                                   size=self.banks,
+                                   explicit_array=True,
+                                   packed=True)
 
         self._next_num_words_mem = self.var("next_num_words_mem", 16)
         self._init_stage = self.var("init_stage", 1)
@@ -73,14 +102,19 @@ class FIFOControl(Generator):
 
         self._empty_d1 = self.var("empty_d1", 1)
         self._write_d1 = self.var("write_d1", 1)
-        ##### LOCAL VARIABLES: end
+        # LOCAL VARIABLES: end
 
-        ##### GENERATION LOGIC: begin
-        self.wire(self._read_addr_mem, self._read_addr[self.full_addr - 1, self.bank_addr_width])
-        self.wire(self._write_addr_mem, self._write_addr[self.full_addr - 1, self.bank_addr_width])
-        self.wire(self._almost_count_extended, concat(const(0, 12), self._almost_count))
-        self.wire(self._almost_empty, self._num_words_mem <= self._almost_count_extended)
-        self.wire(self._almost_full, self._num_words_mem >= (self._depth - self._almost_count_extended))
+        # GENERATION LOGIC: begin
+        self.wire(self._read_addr_mem,
+                  self._read_addr[self.full_addr - 1, self.bank_addr_width])
+        self.wire(self._write_addr_mem,
+                  self._write_addr[self.full_addr - 1, self.bank_addr_width])
+        self.wire(self._almost_count_extended,
+                  concat(const(0, 12), self._almost_count))
+        self.wire(self._almost_empty,
+                  self._num_words_mem <= self._almost_count_extended)
+        self.wire(self._almost_full,
+                  self._num_words_mem >= (self._depth - self._almost_count_extended))
 
         self.wire(self._empty, self._num_words_mem == 0)
         self.wire(self._full, self._num_words_mem == self._depth)
@@ -88,19 +122,31 @@ class FIFOControl(Generator):
         self.wire(self._same_bank, self._ren_mem & self._wen_mem)
         self.wire(self._cen_mem, self._ren_mem | self._wen_mem_en)
 
-        self.wire(self._ren_mem[0], self._ren & ((self._read_addr[self.bank_addr_width - 1, 0] == 0) | self._init_stage))
-        for i in range(self.banks-1):
-            self.wire(self._ren_mem[i+1], self._ren & (self._read_addr[self.bank_addr_width - 1, 0] == (i+1)))
+        self.wire(self._ren_mem[0],
+                  self._ren &
+                  ((self._read_addr[self.bank_addr_width - 1, 0] == 0) | self._init_stage))
+        for i in range(self.banks - 1):
+            self.wire(self._ren_mem[i + 1],
+                      self._ren &
+                      (self._read_addr[self.bank_addr_width - 1, 0] == (i + 1)))
 
-        self.wire(self._wen_mem[0], self._wen & ((self._write_addr[self.bank_addr_width - 1, 0] == 0) | self._init_stage))
-        for i in range(self.banks-1):
-            self.wire(self._wen_mem[i+1], self._wen & (self._write_addr[self.bank_addr_width - 1, 0] == (i+1)))
+        self.wire(self._wen_mem[0],
+                  self._wen &
+                  ((self._write_addr[self.bank_addr_width - 1, 0] == 0) | self._init_stage))
+        for i in range(self.banks - 1):
+            self.wire(self._wen_mem[i + 1],
+                      self._wen &
+                      (self._write_addr[self.bank_addr_width - 1, 0] == (i + 1)))
 
         for i in range(self.banks):
-            self.wire(self._wen_mem_en[i], (self._wen_mem[i] & ~self._same_bank[i]) | self._write_buffed[i])
+            self.wire(self._wen_mem_en[i],
+                      (self._wen_mem[i] & ~self._same_bank[i]) | self._write_buffed[i])
 
         for i in range(self.banks):
-            self.wire(self._fifo_to_mem_data[i], ternary(self._write_buffed[i], self._write_buff[i], self._data_in))
+            self.wire(self._fifo_to_mem_data[i],
+                      ternary(self._write_buffed[i],
+                              self._write_buff[i],
+                              self._data_in))
 
         self.wire(self._fifo_to_mem_cen, self._cen_mem)
         self.wire(self._fifo_to_mem_wen, self._wen_mem_en)
@@ -108,11 +154,16 @@ class FIFOControl(Generator):
         self.wire(self._data_out_sel, self._mem_to_fifo_data)
 
         self.data_out_comb = self.combinational()
-        self.data_out_if = self.data_out_comb.if_(self._ren_mem_reg[0] & (~self._empty_d1 | self._write_d1))
-        self.data_out_if.then_(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[0])))
-        for i in range(self.banks-1):
-            self.temp_if = IfStmt(self._ren_mem_reg[i+1] & (~self._empty_d1 | self._write_d1))
-            self.temp_if.then_(self._data_out.assign(ternary(self._passthru, self._passthru_reg, self._data_out_sel[i+1])))
+        self.data_out_if = self.data_out_comb.if_(self._ren_mem_reg[0] &
+                                                  (~self._empty_d1 | self._write_d1))
+        self.data_out_if.then_(self._data_out.assign(ternary(self._passthru,
+                                                             self._passthru_reg,
+                                                             self._data_out_sel[0])))
+        for i in range(self.banks - 1):
+            self.temp_if = IfStmt(self._ren_mem_reg[i + 1] & (~self._empty_d1 | self._write_d1))
+            self.temp_if.then_(self._data_out.assign(ternary(self._passthru,
+                                                             self._passthru_reg,
+                                                             self._data_out_sel[i + 1])))
             self.data_out_if.else_(self.temp_if)
             self.data_out_if = self.temp_if
         self.data_out_if.else_(self._data_out.assign(self._data_out_reg))
@@ -135,7 +186,7 @@ class FIFOControl(Generator):
         self.add_code(self.write_buff_addr_update)
         self.add_code(self.ren_mem_reg_update)
 
-        ##### GENERATION LOGIC: end
+        # GENERATION LOGIC: end
 
     @always((posedge, "clk"), (posedge, "reset"))
     def empty_d1_reg(self):
@@ -180,7 +231,11 @@ class FIFOControl(Generator):
 
     def data_addr_data_out_comb(self):
         for i in range(self.banks):
-            self._data_addr[i] = ternary(self._write_buffed[i], self._write_buff_addr[i], ternary(self._ren_mem[i], self._read_addr_mem, self._write_addr_mem))
+            self._data_addr[i] = ternary(self._write_buffed[i],
+                                         self._write_buff_addr[i],
+                                         ternary(self._ren_mem[i],
+                                                 self._read_addr_mem,
+                                                 self._write_addr_mem))
 
     @always((posedge, "clk"), (posedge, "reset"))
     def read_addr_update(self):
@@ -343,6 +398,7 @@ class FIFOControl(Generator):
             # Transition out of the init stage after a read or write
             else:
                 self._ren_mem_reg = self._ren_mem
+
 
 if __name__ == "__main__":
     fifo_dut = FIFOControl(16, 2, 512)
