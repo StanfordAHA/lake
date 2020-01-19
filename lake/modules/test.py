@@ -9,7 +9,7 @@ class TransposeBuffer(Generator):
         
         # generation parameters
         self.word_width = word_width
-        self.fetch_width = fetch_width
+        self.fetch_width = fetch_widt
         self.stencil_height = stencil_height
         self.max_range_value = max_range_value
         self.img_height = img_height
