@@ -9,20 +9,19 @@ from lake.modules.sram_control import SRAMControl
 from lake.modules.doublebuffer_control import DoubleBufferControl
 from kratos import *
 
+
 class MemoryCore(Generator):
-    def __init__(
-                self,
-                data_width = 16,
-                mem_width = 16,
-                mem_depth = 512,
-                banks = 2,
-                iterator_support = 6, # vector to support varying complexity on input + output ports
-                interconnect_input_ports = 1,
-                interconnect_output_ports = 1,
-                mem_input_ports = 1,
-                mem_output_ports = 1,
-                use_sram_stub = 1
-            ):
+    def __init__(self,
+                 data_width=16,
+                 mem_width=16,
+                 mem_depth=512,
+                 banks=2,
+                 iterator_support=6,
+                 interconnect_input_ports=1,
+                 interconnect_output_ports=1,
+                 mem_input_ports=1,
+                 mem_output_ports=1,
+                 use_sram_stub=1):
 
         super().__init__("memory_core")
 
@@ -33,7 +32,7 @@ class MemoryCore(Generator):
         self.iterator_support = iterator_support
         self.use_sram_stub = use_sram_stub
 
-        ##### PORT DEFS: begin
+        # PORT DEFS: begin
         self._clk = self.clock("clk")
         self._reset = self.reset("reset")
 
@@ -68,7 +67,7 @@ class MemoryCore(Generator):
         self._config_read = self.input("config_read", 1)
         self._config_write = self.input("config_write", 1)
 
-        self.sram_features = (self.mem_depth * self.banks)//256
+        self.sram_features = (self.mem_depth * self.banks) // 256
 
         self._config_en_sram = self.input("config_en_sram", self.sram_features)
 
@@ -77,7 +76,7 @@ class MemoryCore(Generator):
 
         self._read_config_data = self.output("read_config_data", 32)
 
-        ### Config Regs
+        # Config Regs
         self._stencil_width = self.input("stencil_width", 16)
         self._arbitrary_addr = self.input("arbitrary_addr", 1)
         self._starting_addr = self.input("starting_addr", 16)
@@ -97,20 +96,36 @@ class MemoryCore(Generator):
         self._depth = self.input("depth", 16)
         ###
 
-        ##### PORT DEFS: end
+        # PORT DEFS: end
 
-        ##### LOCAL SIGNALS: begin
+        # LOCAL SIGNALS: begin
 
-        ### Linebuffer Signals
-        self._lb_addr = self.var("lb_addr", self.addr_width_macro, size=self.banks, explicit_array=True, packed=True)
-        self._lb_mem_data_out = self.var("lb_mem_data_out", self.mem_width, size=self.banks, explicit_array=True, packed=True)
+        # Linebuffer Signals
+        self._lb_addr = self.var("lb_addr",
+                                 self.addr_width_macro,
+                                 size=self.banks,
+                                 explicit_array=True,
+                                 packed=True)
+        self._lb_mem_data_out = self.var("lb_mem_data_out",
+                                         self.mem_width,
+                                         size=self.banks,
+                                         explicit_array=True,
+                                         packed=True)
         self._lb_wen = self.var("lb_wen", self.banks)
         self._lb_cen = self.var("lb_cen", self.banks)
         self._lb_valid_out = self.var("lb_valid_out", 1)
         self._ren_lb_to_fifo = self.var("ren_lb_to_fifo", 1)
-        ### Fifo Signals
-        self._fifo_addr = self.var("fifo_addr", self.addr_width_macro, size=self.banks, explicit_array=True, packed=True)
-        self._fifo_mem_data_out = self.var("fifo_mem_data_out", self.mem_width, size=self.banks, explicit_array=True, packed=True)
+        # Fifo Signals
+        self._fifo_addr = self.var("fifo_addr",
+                                   self.addr_width_macro,
+                                   size=self.banks,
+                                   explicit_array=True,
+                                   packed=True)
+        self._fifo_mem_data_out = self.var("fifo_mem_data_out",
+                                           self.mem_width,
+                                           size=self.banks,
+                                           explicit_array=True,
+                                           packed=True)
         self._fifo_out = self.var("fifo_out", self.mem_width)
         self._fifo_wen = self.var("fifo_wen", self.banks)
         self._fifo_cen = self.var("fifo_cen", self.banks)
@@ -120,32 +135,68 @@ class MemoryCore(Generator):
         self._fifo_full = self.var("fifo_full", 1)
         self._fifo_empty = self.var("fifo_empty", 1)
         self._num_words_mem_fifo_to_lb = self.var("num_words_mem_fifo_to_lb", 16)
-        ### SRAM Signals
-        self._sram_addr = self.var("sram_addr", self.addr_width_macro, size=self.banks, explicit_array=True, packed=True)
-        self._sram_mem_data_out = self.var("sram_mem_data_out", self.mem_width, size=self.banks, explicit_array=True, packed=True)
+        # SRAM Signals
+        self._sram_addr = self.var("sram_addr",
+                                   self.addr_width_macro,
+                                   size=self.banks,
+                                   explicit_array=True,
+                                   packed=True)
+        self._sram_mem_data_out = self.var("sram_mem_data_out",
+                                           self.mem_width,
+                                           size=self.banks,
+                                           explicit_array=True,
+                                           packed=True)
         self._sram_out = self.var("sram_out", self.mem_width)
         self._sram_wen = self.var("sram_wen", self.banks)
         self._sram_cen = self.var("sram_cen", self.banks)
-        ### UB Signals
-        self._db_addr = self.var("db_addr", self.addr_width_macro, size=self.banks, explicit_array=True, packed=True)
-        self._db_mem_data_out = self.var("db_mem_data_out", self.mem_width, size=self.banks, explicit_array=True, packed=True)
+        # UB Signals
+        self._db_addr = self.var("db_addr",
+                                 self.addr_width_macro,
+                                 size=self.banks,
+                                 explicit_array=True,
+                                 packed=True)
+        self._db_mem_data_out = self.var("db_mem_data_out",
+                                         self.mem_width,
+                                         size=self.banks,
+                                         explicit_array=True,
+                                         packed=True)
         self._db_out = self.var("db_out", self.mem_width)
         self._db_wen = self.var("db_wen", self.banks)
         self._db_cen = self.var("db_cen", self.banks)
         self._db_valid_out = self.var("db_valid_out", 1)
 
-        ### Muxed to mem signals
-        self._mem_data_out = self.var("mem_data_out", self.mem_width, size=self.banks, explicit_array=True, packed=True)
-        self._mem_data_in = self.var("mem_data_in", self.mem_width, size=self.banks, explicit_array=True, packed=True)
-        self._mem_addr = self.var("mem_addr", self.addr_width_macro, size=self.banks, explicit_array=True, packed=True)
+        # Muxed to mem signals
+        self._mem_data_out = self.var("mem_data_out",
+                                      self.mem_width,
+                                      size=self.banks,
+                                      explicit_array=True,
+                                      packed=True)
+        self._mem_data_in = self.var("mem_data_in",
+                                     self.mem_width,
+                                     size=self.banks,
+                                     explicit_array=True,
+                                     packed=True)
+        self._mem_addr = self.var("mem_addr",
+                                  self.addr_width_macro,
+                                  size=self.banks,
+                                  explicit_array=True,
+                                  packed=True)
         self._mem_ren = self.var("mem_ren", self.banks)
         self._mem_wen = self.var("mem_wen", self.banks)
         self._mem_cen = self.var("mem_cen", self.banks)
         self._mem_cen_int = self.var("mem_cen_int", self.banks)
 
-        ### Various signals
-        self._stride = self.var("stride", 16, size=self.iterator_support, explicit_array=True, packed=True)
-        self._range = self.var("range", 32, size=self.iterator_support, explicit_array=True, packed=True)
+        # Various signals
+        self._stride = self.var("stride",
+                                16,
+                                size=self.iterator_support,
+                                explicit_array=True,
+                                packed=True)
+        self._range = self.var("range",
+                               32,
+                               size=self.iterator_support,
+                               explicit_array=True,
+                               packed=True)
 
         self._data_in_int = self.var("data_in_int", self.mem_width)
         self._wen_in_int = self.var("wen_in_int", 1)
@@ -154,9 +205,9 @@ class MemoryCore(Generator):
 
         self.bank_addr_width = max(clog2(self.banks), 1)
         self._sram_sel = self.var("sram_sel", self.bank_addr_width)
-        ##### LOCAL_SIGNALS: end
+        # LOCAL_SIGNALS: end
 
-        ##### GENERATION LOGIC: begin
+        # GENERATION LOGIC: begin
         self.add_code(self.sram_sel_reg)
 
         for i in range(self.iterator_support):
@@ -164,18 +215,32 @@ class MemoryCore(Generator):
             self.wire(self._range[i], self.ports[f"range_{i}"])
 
         self.wire(self._gclk_in, self._tile_en & self._clk)
-        self.wire(self._read_config_data, zext(self._mem_data_out[self._sram_sel], self._read_config_data.width))
+        self.wire(self._read_config_data,
+                  zext(self._mem_data_out[self._sram_sel], self._read_config_data.width))
 
-        ## Chaining logic
-        self.wire(self._data_in_int, ternary(self._enable_chain, self._chain_in, self._data_in)) #, comment_str="Choose between the data in and chained data")
-        self.wire(self._wen_in_int, ternary(self._enable_chain, self._chain_wen_in, self._wen_in))
-        self.wire(self._chain_out, ternary(self._enable_chain & self._chain_wen_in, self._chain_in, self._data_out))
-        self.wire(self._chain_valid_out, (self._enable_chain & self._chain_wen_in) | self._valid_out)
+        # Chaining logic
+        self.wire(self._data_in_int,
+                  ternary(self._enable_chain,
+                          self._chain_in,
+                          self._data_in))
+        self.wire(self._wen_in_int,
+                  ternary(self._enable_chain,
+                          self._chain_wen_in,
+                          self._wen_in))
+        self.wire(self._chain_out,
+                  ternary(self._enable_chain & self._chain_wen_in,
+                          self._chain_in,
+                          self._data_out))
+        self.wire(self._chain_valid_out,
+                  (self._enable_chain & self._chain_wen_in) | self._valid_out)
 
         self.sram_reads_per_bank = self.mem_depth / 256
 
         for i in range(self.banks):
-            self.wire(self._mem_cen[i], (self._mem_cen_int[i] & (self._mem_wen[i] | self._mem_ren[i]) & (self._clk_en | self._config_en_sram.r_or())))
+            self.wire(self._mem_cen[i],
+                      (self._mem_cen_int[i] &
+                       (self._mem_wen[i] | self._mem_ren[i]) &
+                       (self._clk_en | self._config_en_sram.r_or())))
 
         # Get the output for read_data_sram
         j = 0
@@ -189,31 +254,37 @@ class MemoryCore(Generator):
         # Mux the different signals to the sram interface
         self.add_code(self.mux_sram_signals)
 
-        ### Finally plop down all the controllers
+        # Finally plop down all the controllers
         self.instantiate_lb()
         self.instantiate_fifo()
         self.instantiate_sram()
         self.instantiate_db()
         self.instantiate_memory()
-        ##### GENERATION LOGIC: end
+        # GENERATION LOGIC: end
 
     @always((posedge, "clk"), (posedge, "reset"))
     def sram_sel_reg(self):
         if self._reset:
             self._sram_sel = 0
         elif self._clk_en | self._config_en_sram.r_or():
-                self._sram_sel = self._config_en_sram[3] | self._config_en_sram[2]
+            self._sram_sel = self._config_en_sram[3] | self._config_en_sram[2]
 
     def mux_sram_signals(self):
         if self._config_en_sram.r_or():
             for i in range(self.banks):
                 self._mem_cen_int[i] = 1
-            self._mem_wen[0] = self._config_write & (self._config_en_sram[0] | self._config_en_sram[1])
-            self._mem_wen[1] = self._config_write & (self._config_en_sram[2] | self._config_en_sram[3])
-            self._mem_ren[0] = self._config_read & (self._config_en_sram[0] | self._config_en_sram[1])
-            self._mem_ren[1] = self._config_read & (self._config_en_sram[2] | self._config_en_sram[3])
-            self._mem_addr[0] = concat(self._config_en_sram[3] | self._config_en_sram[1], self._config_addr[31, 24])
-            self._mem_addr[1] = concat(self._config_en_sram[3] | self._config_en_sram[1], self._config_addr[31, 24])
+            self._mem_wen[0] = (self._config_write &
+                                (self._config_en_sram[0] | self._config_en_sram[1]))
+            self._mem_wen[1] = (self._config_write &
+                                (self._config_en_sram[2] | self._config_en_sram[3]))
+            self._mem_ren[0] = (self._config_read &
+                                (self._config_en_sram[0] | self._config_en_sram[1]))
+            self._mem_ren[1] = (self._config_read &
+                                (self._config_en_sram[2] | self._config_en_sram[3]))
+            self._mem_addr[0] = concat(self._config_en_sram[3] | self._config_en_sram[1],
+                                       self._config_addr[31, 24])
+            self._mem_addr[1] = concat(self._config_en_sram[3] | self._config_en_sram[1],
+                                       self._config_addr[31, 24])
             self._mem_data_in[0] = self._config_data[15, 0]
             self._mem_data_in[1] = self._config_data[15, 0]
 
@@ -269,7 +340,9 @@ class MemoryCore(Generator):
             self._mem_ren = (2 ** self._mem_ren.width) - 1
             self._mem_addr = self._db_addr
             self._mem_data_in = self._db_mem_data_out
-            self._data_out = ternary(self._enable_chain & self._chain_wen_in, self._chain_in, self._db_out)
+            self._data_out = ternary(self._enable_chain & self._chain_wen_in,
+                                     self._chain_in,
+                                     self._db_out)
             self._valid_out = (self._enable_chain & self._chain_wen_in) | self._db_valid_out
             self._almost_full = 0
             self._almost_empty = 0
@@ -303,12 +376,17 @@ class MemoryCore(Generator):
         self.wire(self["lb_ctrl"].ports.stencil_width, self._stencil_width)
 
     def instantiate_fifo(self):
-        self.add_child("fifo_ctrl", FIFOControl(self.data_width, self.banks, self.mem_depth), comment="===== FIFO CONTROL =====//")
+        self.add_child("fifo_ctrl",
+                       FIFOControl(self.data_width,
+                                   self.banks,
+                                   self.mem_depth),
+                       comment="===== FIFO CONTROL =====//")
         self.wire(self["fifo_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["fifo_ctrl"].ports.clk_en, self._clk_en)
         self.wire(self["fifo_ctrl"].ports.reset, self._reset)
         self.wire(self["fifo_ctrl"].ports.flush, self._flush)
-        self.wire(self["fifo_ctrl"].ports.ren, ternary(self._mode == 1, self._ren_in, self._ren_lb_to_fifo))
+        self.wire(self["fifo_ctrl"].ports.ren,
+                  ternary(self._mode == 1, self._ren_in, self._ren_lb_to_fifo))
         self.wire(self["fifo_ctrl"].ports.wen, self._wen_in_int)
         self.wire(self["fifo_ctrl"].ports.data_in, self._data_in_int)
         self.wire(self["fifo_ctrl"].ports.data_out, self._fifo_out)
@@ -328,7 +406,11 @@ class MemoryCore(Generator):
         self.wire(self["fifo_ctrl"].ports.circular_en, self._circular_en)
 
     def instantiate_sram(self):
-        self.add_child("sram_ctrl", SRAMControl(self.data_width, self.banks, self.mem_depth), comment="===== SRAM CONTROL =====//")
+        self.add_child("sram_ctrl",
+                       SRAMControl(self.data_width,
+                                   self.banks,
+                                   self.mem_depth),
+                       comment="===== SRAM CONTROL =====//")
         self.wire(self["sram_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["sram_ctrl"].ports.clk_en, self._clk_en)
         self.wire(self["sram_ctrl"].ports.reset, self._reset)
@@ -348,7 +430,12 @@ class MemoryCore(Generator):
         self.wire(self["sram_ctrl"].ports.mem_to_sram_data, self._mem_data_out)
 
     def instantiate_db(self):
-        self.add_child("db_ctrl", DoubleBufferControl(self.data_width, self.mem_depth, self.banks, self.iterator_support), comment="===== DOUBLEBUFFER =====//")
+        self.add_child("db_ctrl",
+                       DoubleBufferControl(self.data_width,
+                                           self.mem_depth,
+                                           self.banks,
+                                           self.iterator_support),
+                       comment="===== DOUBLEBUFFER =====//")
 
         self.wire(self["db_ctrl"].ports.clk, self._gclk_in)
         self.wire(self["db_ctrl"].ports.clk_en, self._clk_en)
@@ -384,16 +471,19 @@ class MemoryCore(Generator):
 
     def instantiate_memory(self):
         for i in range(self.banks):
-            self.add_child(f"mem_inst_{i}", SRAMStub(self.data_width, self.mem_depth), comment=f"===== SRAM MACRO {i} =====//")
+            self.add_child(f"mem_inst_{i}",
+                           SRAMStub(self.data_width,
+                                    self.mem_depth),
+                           comment=f"===== SRAM MACRO {i} =====//")
             self.wire(self[f"mem_inst_{i}"].ports.i_data, self._mem_data_in[i])
             self.wire(self[f"mem_inst_{i}"].ports.o_data, self._mem_data_out[i])
             self.wire(self[f"mem_inst_{i}"].ports.i_clk, self._gclk_in)
             self.wire(self[f"mem_inst_{i}"].ports.i_cen, self._mem_cen[i])
-            self.wire(self[f"mem_inst_{i}"].ports.i_wen, self._mem_wen[i] & (self._clk_en | self._config_en_sram.r_or()))
+            self.wire(self[f"mem_inst_{i}"].ports.i_wen,
+                      self._mem_wen[i] & (self._clk_en | self._config_en_sram.r_or()))
             self.wire(self[f"mem_inst_{i}"].ports.i_addr, self._mem_addr[i])
+
 
 if __name__ == "__main__":
     mc_dut = MemoryCore(16, 16, 512, 2, 6, 1)
     verilog(mc_dut, filename="memory_core.sv", check_active_high=False, verilog95_def=True)
-    #create_stub(mc_dut, verilog95_def=True, filename="memory_core_stub.sv")
-    #verilog(mc_dut, filename="memory_core.sv", check_active_high=False, output_dir="build")

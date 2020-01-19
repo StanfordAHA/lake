@@ -1,6 +1,7 @@
 from kratos import *
 from math import log
 
+
 class SRAMStub(Generator):
 
     ##########################
