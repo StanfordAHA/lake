@@ -11,7 +11,7 @@ fetch_width = 4
 stencil_height = 3
 max_range_value = 5
 max_img_height = 5
-num_tb = 2
+num_tb = 1
 dut = TransposeBuffer(word_width, fetch_width, num_tb, stencil_height, max_range_value, max_img_height)
 magma_dut = kratos.util.to_magma(dut, flatten_array=True)
 verilog(dut, filename="transposebuffer.sv")
@@ -22,7 +22,7 @@ tester.step(2)
 tester.circuit.rst_n = 0
 tester.step(2)
 tester.circuit.rst_n = 1
-for i in range(13):
+for i in range(21):
     for j in range(fetch_width):
         setattr(tester.circuit, f"input_data_{j}", j % 2)
     tester.circuit.range_outer = 5

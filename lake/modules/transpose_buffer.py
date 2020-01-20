@@ -38,7 +38,7 @@ class TransposeBuffer(Generator):
 
         self.tb = self.var("tb", width=self.word_width, size=[2*self.stencil_height, self.fetch_width], packed=True)
         self.buf_index = self.output("buf_index", 1)
-        self.prev_buf_index = self.output("prev_buf_index", 1)
+        #self.prev_buf_index = self.output("prev_buf_index", 1)
         self.switch_buf = self.output("switch_buf", 1)
         self.row_index = self.output("row_index", clog2(self.stencil_height))
         self.input_index = self.output("input_index", clog2(2*self.stencil_height))
@@ -58,7 +58,6 @@ class TransposeBuffer(Generator):
 
         self.add_code(self.get_output_loop_iterators)
         self.add_code(self.get_input_index)
-        self.add_code(self.get_prev_buf_index)
         self.add_code(self.input_tb)
         self.add_code(self.update_row_index)
         self.add_code(self.get_tb_indices)
@@ -87,20 +86,15 @@ class TransposeBuffer(Generator):
         if ~self.rst_n:
             self.row_index = 0
         elif self.row_index == self.stencil_height - 1:
-            if self.switch_buf:
+            if ~self.switch_buf:
                 self.row_index = self.row_index
             else:
                 self.row_index = 0
         else:
             self.row_index = self.row_index + const(1, clog2(self.stencil_height))
     
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def get_prev_buf_index(self):
-        self.prev_buf_index = self.buf_index
-
     @always_comb
     def get_input_index(self):
-        self.switch_buf = (self.prev_buf_index == self.buf_index)
         self.input_index = const(stencil_height,clog2(2 * self.stencil_height)) * self.buf_index.extend(clog2(2 * stencil_height)) + self.row_index.extend(clog2(2 * stencil_height))
 
     # input to transpose buffer
@@ -148,6 +142,16 @@ class TransposeBuffer(Generator):
 
     @always_comb
     def output_inter_signals(self):
+        if (self.tb0_start.extend(x) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(x) <= self.tb0_end.extend(x)):
+            self.switch_buf = self.buf_index
+        elif (self.tb1_start.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value))) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))  <= self.tb1_end.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))):
+            self.switch_buf = ~self.buf_index
+        else:
+            self.switch_buf = 0
+
+
+
+
         self.tb_distance = self.fetch_width * self.num_tb
         self.tb0_start = self.tb_start_index.extend(2 * max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
         self.tb0_end = self.tb0_start + self.fetch_width - 1

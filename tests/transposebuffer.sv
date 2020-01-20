@@ -5,8 +5,8 @@ module transpose_buffer (
   input logic [2:0] img_height,
   output logic [2:0] index_inner,
   output logic [2:0] index_outer,
-  input logic [4:0] [1:0] indices,
-  output logic [1:0] indices_index_inner,
+  input logic [4:0] [2:0] indices,
+  output logic [2:0] indices_index_inner,
   input logic [3:0] input_data,
   output logic [2:0] input_index,
   output logic [1:0] output_index,
@@ -18,6 +18,7 @@ module transpose_buffer (
   output logic [1:0] row_index,
   input logic rst_n,
   input logic [2:0] stride,
+  output logic switch_buf,
   output logic [4:0] tb0_end,
   output logic [4:0] tb0_start,
   output logic [4:0] tb1_end,
@@ -42,12 +43,20 @@ always_ff @(posedge clk, negedge rst_n) begin
   end
   else index_inner <= index_inner + 3'h1;
 end
+always_comb begin
+  input_index = (3'h3 * 3'(buf_index)) + 3'(row_index);
+end
 
 always_ff @(posedge clk) begin
-  tb[input_index][0] <= input_data[0];
-  tb[input_index][1] <= input_data[1];
-  tb[input_index][2] <= input_data[2];
-  tb[input_index][3] <= input_data[3];
+  if ((row_index == 2'h2) & switch_buf) begin
+    tb <= tb;
+  end
+  else begin
+    tb[input_index][0] <= input_data[0];
+    tb[input_index][1] <= input_data[1];
+    tb[input_index][2] <= input_data[2];
+    tb[input_index][3] <= input_data[3];
+  end
 end
 
 always_ff @(posedge clk, negedge rst_n) begin
@@ -55,12 +64,14 @@ always_ff @(posedge clk, negedge rst_n) begin
     row_index <= 2'h0;
   end
   else if (row_index == 2'h2) begin
-    row_index <= 2'h0;
+    if (~switch_buf) begin
+      row_index <= row_index;
+    end
+    else row_index <= 2'h0;
   end
   else row_index <= row_index + 2'h1;
 end
 always_comb begin
-  input_index = (3'h3 * 3'(buf_index)) + 3'(row_index);
   indices_index_inner = indices[index_inner];
   output_index_inter_tb = (6'(index_outer) * 6'(stride)) + 6'(indices_index_inner);
   output_index_inter = output_index_inter_tb % 6'h4;
@@ -104,7 +115,14 @@ always_ff @(posedge clk, negedge rst_n) begin
   end
 end
 always_comb begin
-  tb_distance = 5'h8;
+  if ((6'(tb0_start) <= 6'(output_index_inter_tb)) & (6'(output_index_inter_tb) <= 6'(tb0_end))) begin
+    switch_buf = buf_index;
+  end
+  else if ((6'(tb1_start) <= 6'(output_index_inter_tb)) & (6'(output_index_inter_tb) <= 6'(tb1_end))) begin
+    switch_buf = ~buf_index;
+  end
+  else switch_buf = 1'h0;
+  tb_distance = 5'h4;
   tb0_start = 5'(tb_start_index);
   tb0_end = (tb0_start + 5'h4) - 5'h1;
   tb1_start = tb0_start + tb_distance;
