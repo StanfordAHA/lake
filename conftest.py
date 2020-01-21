@@ -4,7 +4,7 @@ import magma.backend.coreir_ as coreir_
 from kratos import clear_context
 
 collect_ignore = [
-    "tests/test_aggregator_magma.py"
+    "tests/test_transpose_buffer_kratos.py"
 ]
 
 @pytest.fixture(autouse=True)
