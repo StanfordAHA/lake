@@ -2,9 +2,18 @@ import kratos
 from kratos import *
 from math import log
 
+
 class TransposeBuffer(Generator):
     # note fetch_width must be powers of 2 for mod to work (synthesizable) **for now
-    def __init__(self, word_width, fetch_width, num_tb, stencil_height, max_range_value, max_img_height, max_stencil_height, max_initial_delay):
+    def __init__(self,
+                 word_width,
+                 fetch_width,
+                 num_tb,
+                 stencil_height,
+                 max_range_value,
+                 max_img_height,
+                 max_stencil_height,
+                 max_initial_delay):
         super().__init__("transpose_buffer", True)
 
         # generation parameters
@@ -20,16 +29,24 @@ class TransposeBuffer(Generator):
         self.clk = self.clock("clk")
         # active low asynchronous reset
         self.rst_n = self.reset("rst_n", 1)
-        self.input_data = self.input("input_data", width=self.word_width, size=self.fetch_width, packed=True)
+        self.input_data = self.input("input_data",
+                                     width=self.word_width,
+                                     size=self.fetch_width,
+                                     packed=True)
         self.range_outer = self.input("range_outer", clog2(self.max_range_value))
         self.range_inner = self.input("range_inner", clog2(self.max_range_value))
         self.stride = self.input("stride", clog2(self.max_range_value))
-        self.indices = self.input("indices", width=clog2(2*self.num_tb*self.fetch_width), size=self.max_range_value, packed=True)
+        self.indices = self.input("indices",
+                                  width=clog2(2 * self.num_tb * self.fetch_width),
+                                  size=self.max_range_value,
+                                  packed=True)
         self.tb_start_index = self.input("tb_start_index", max(1, clog2(num_tb)))
         self.img_height = self.input("img_height", clog2(self.max_img_height))
-        self.stencil_height_input = self.input("stencil_height_input", clog2(self.max_stencil_height))
+        self.stencil_height_input = self.input("stencil_height_input",
+                                               clog2(self.max_stencil_height))
         self.initial_delay = self.input("initial_delay", clog2(self.max_initial_delay))
-        # self.img_height should be a config reg, decide if max_range_value and max_img_height value are distinct and make the latter the parameter instead
+        # self.img_height should be a config reg, decide if max_range_value and
+        # max_img_height value are distinct and make the latter the parameter instead
         # outputs
         self.col_pixels = self.output("col_pixels", width=self.word_width, size=self.stencil_height, packed=True)
         self.output_valid = self.output("output_valid", 1)
@@ -174,7 +191,7 @@ class TransposeBuffer(Generator):
 
         if (self.tb0_start.extend(x) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(x) <= self.tb0_end.extend(x)):
             self.switch_buf = self.buf_index
-        elif (self.tb1_start.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value))) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))  <= self.tb1_end.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))):
+        elif (self.tb1_start.extend(max(2 * max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2 * clog2(self.max_range_value))) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))  <= self.tb1_end.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))):
             self.switch_buf = ~self.buf_index
         else:
             self.switch_buf = 0

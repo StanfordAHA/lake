@@ -2,33 +2,48 @@ import kratos
 from kratos import *
 from math import log
 
+
 class TransposeBuffer(Generator):
-    def __init__(self, word_width, mem_word_width, stencil_height, stencil_width, num_output):
+    def __init__(self,
+                 word_width,
+                 mem_word_width,
+                 stencil_height,
+                 stencil_width,
+                 num_output):
         super().__init__("transpose_buffer", True)
-        
+
         self.word_width = word_width
         self.mem_word_width = mem_word_width
         self.stencil_height = stencil_height
         self.stencil_width = stencil_width
         self.num_output = num_output
-    
+
         # inputs
         self.clk = self.clock("clk")
         # active low asynchronous reset
         self.rst_n = self.reset("rst_n", 1)
-        self.mem_data = self.input("mem_data", width=word_width, size=mem_word_width, packed=True)
+        self.mem_data = self.input("mem_data",
+                                   width=word_width,
+                                   size=mem_word_width,
+                                   packed=True)
         self.valid_input = self.input("valid_input", width=1, size=mem_word_width, packed=True)
 
-        self.out_indices = self.input("out_indices", width=clog2(mem_word_width), size=num_output, packed=True)
-        self.out_indices_valid = self.input("out_indices_valid", width=1, size=num_output, packed=True)
-        
+        self.out_indices = self.input("out_indices",
+                                      width=clog2(mem_word_width),
+                                      size=num_output,
+                                      packed=True)
+        self.out_indices_valid = self.input("out_indices_valid",
+                                            width=1, size=num_output, packed=True)
+
         # outputs
-        self.col_pixels = self.output("col_pixels", width=word_width, size=stencil_height, packed=True)
+        self.col_pixels = self.output("col_pixels",
+                                      width=word_width, size=stencil_height, packed=True)
         self.output_valid = self.output("output_valid", 1)
         self.stencil_valid = self.output("stencil_valid", 1)
 
         # local variables
-        self.tb = self.var("tb", width=word_width, size=[2*stencil_height, mem_word_width], packed=True)
+        self.tb = self.var("tb", width=word_width,
+                           size=[2 * stencil_height, mem_word_width], packed=True)
         self.col_index = self.var("col_index", clog2(num_output))
         self.row_index = self.var("row_index", clog2(stencil_height))
         self.switch_buf = self.var("switch_buf", 1)
@@ -37,11 +52,13 @@ class TransposeBuffer(Generator):
         self.pause_output = self.var("pause_output", 1)
         self.pause_input = self.var("pause_input", 1)
 
-        self.valid_out_indices = self.var("valid_out_indices", width=clog2(mem_word_width), size=num_output, packed=True)
+        self.valid_out_indices = self.var("valid_out_indices",
+                                          width=clog2(mem_word_width),
+                                          size=num_output, packed=True)
 
         self.valid_cols_count = self.var("valid_cols_count", clog2(stencil_width))
-        self.index = self.var("index", clog2(2*stencil_height))
-        
+        self.index = self.var("index", clog2(2 * stencil_height))
+
         self.num_out = self.var("num_out", clog2(num_output))
         self.num = self.var("num", clog2(num_output) + 1)
 
@@ -79,7 +96,7 @@ class TransposeBuffer(Generator):
         for i in range(1, self.mem_word_width):
             num_valid = num_valid + self.valid_input[i].extend(mem_word_width_log)
             if_valid_input = IfStmt(self.valid_input[i] == 1)
-            if_valid_input.then_(self.valid_data[num_valid-1].assign(self.mem_data[i]))
+            if_valid_input.then_(self.valid_data[num_valid - 1].assign(self.mem_data[i]))
             comb_valid_data.add_stmt(if_valid_input)
 
     def get_valid_output_indices(self):
@@ -97,9 +114,9 @@ class TransposeBuffer(Generator):
         for i in range(1, self.num_output):
             num_valid_out = num_valid_out + self.out_indices_valid[i].extend(num_output_log)
             if_valid_out = IfStmt(self.out_indices_valid[i] == 1)
-            if_valid_out.then_(self.valid_out_indices[num_valid_out-1].assign(self.out_indices[i]))
+            if_valid_out.then_(self.valid_out_indices[num_valid_out - 1].assign(self.out_indices[i]))
             comb_valid_out.add_stmt(if_valid_out)
-        comb_valid_out.add_stmt(self.num_out.assign(num_valid_out-1))
+        comb_valid_out.add_stmt(self.num_out.assign(num_valid_out - 1))
 
     # updating index variables
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -119,7 +136,7 @@ class TransposeBuffer(Generator):
                 self.switch_buf = ~self.switch_buf
                 self.pause_input = 0
                 self.pause_output = self.pause_output
-            
+
             else:
                 self.col_index = self.col_index + const(1, clog2(num_output))
                 self.row_index = self.row_index
@@ -135,7 +152,7 @@ class TransposeBuffer(Generator):
                 self.switch_buf = ~self.switch_buf
                 self.pause_input = self.pause_input
                 self.pause_output = 0
-            
+
             else:
                 self.col_index = self.col_index
                 self.row_index = self.row_index + const(1, clog2(stencil_height))
@@ -183,8 +200,10 @@ class TransposeBuffer(Generator):
 
     @always_comb
     def get_tb_input_index(self):
-        self.index = const(stencil_height,clog2(2*stencil_height))*self.switch_buf.extend(clog2(2*stencil_height)) + self.row_index.extend(clog2(2*stencil_height)) + 1
-        if self.index == 2*stencil_height:
+        self.index = const(stencil_height, clog2(2 * stencil_height)) * \
+            self.switch_buf.extend(clog2(2 * stencil_height)) + \
+            self.row_index.extend(clog2(2 * stencil_height)) + 1
+        if self.index == 2 * stencil_height:
             self.index = 0
 
     # output appropriate data from transpose buffer
