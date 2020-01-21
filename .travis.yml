@@ -14,10 +14,11 @@ addons:
       - libmpc-dev
 
 install:
-  - pip install pytest fault pytest-codestyle 
+  - pip install pytest fault pytest-codestyle pycodestyle
   - pip install -e .
 
 script:
+  - pycodestyle lake/
   - pytest --pycodestyle -v tests/
 
 
