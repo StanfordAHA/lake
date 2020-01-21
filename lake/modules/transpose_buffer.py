@@ -191,7 +191,8 @@ class TransposeBuffer(Generator):
 
         if (self.tb0_start.extend(x) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(x) <= self.tb0_end.extend(x)):
             self.switch_buf = self.buf_index
-        elif (self.tb1_start.extend(max(2 * max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2 * clog2(self.max_range_value))) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))  <= self.tb1_end.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))):
+        elif (self.tb1_start.extend(max(2 * max(clog2(self.fetch_width), clog2(self.num_tb)) + 1,
+                    2 * clog2(self.max_range_value))) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))  <= self.tb1_end.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))):
             self.switch_buf = ~self.buf_index
         else:
             self.switch_buf = 0

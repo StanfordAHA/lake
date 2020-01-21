@@ -6,6 +6,7 @@ import fault
 import tempfile
 import kratos as k
 import random as rand
+import pytest
 
 
 def test_aggregator_basic(word_width=16, mem_word_width=4):
