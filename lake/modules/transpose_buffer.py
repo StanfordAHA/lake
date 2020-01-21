@@ -4,7 +4,7 @@ from math import log
 
 class TransposeBuffer(Generator):
     # note fetch_width must be powers of 2 for mod to work (synthesizable) **for now
-    def __init__(self, word_width, fetch_width, num_tb, stencil_height, max_range_value, max_img_height):
+    def __init__(self, word_width, fetch_width, num_tb, stencil_height, max_range_value, max_img_height, max_stencil_height, max_initial_delay):
         super().__init__("transpose_buffer", True)
 
         # generation parameters
@@ -14,6 +14,7 @@ class TransposeBuffer(Generator):
         self.stencil_height = stencil_height
         self.max_range_value = max_range_value
         self.max_img_height = max_img_height
+        self.max_stencil_height = max_stencil_height
 
         # inputs
         self.clk = self.clock("clk")
@@ -26,6 +27,8 @@ class TransposeBuffer(Generator):
         self.indices = self.input("indices", width=clog2(2*self.num_tb*self.fetch_width), size=self.max_range_value, packed=True)
         self.tb_start_index = self.input("tb_start_index", max(1, clog2(num_tb)))
         self.img_height = self.input("img_height", clog2(self.max_img_height))
+        self.stencil_height_input = self.input("stencil_height_input", clog2(self.max_stencil_height))
+        self.initial_delay = self.input("initial_delay", clog2(self.max_initial_delay))
         # self.img_height should be a config reg, decide if max_range_value and max_img_height value are distinct and make the latter the parameter instead
         # outputs
         self.col_pixels = self.output("col_pixels", width=self.word_width, size=self.stencil_height, packed=True)
@@ -54,6 +57,7 @@ class TransposeBuffer(Generator):
         self.tb0_end = self.output("tb0_end", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
         self.tb1_start = self.output("tb1_start", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
         self.tb1_end = self.output("tb1_end", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
+        self.img_line_cnt = self.output("img_line_cnt", clog2(self.max_range_value))
 
         x = max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value))
 
@@ -70,17 +74,31 @@ class TransposeBuffer(Generator):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def get_output_loop_iterators(self):
         if ~self.rst_n:
-            self.index_outer = 0
             self.index_inner = 0
+            self.index_outer = 0
+            self.img_line_cnt = 0
+            self.initial_delay_cnt = 0
         else:
             if self.index_inner == self.range_inner - 1:
                 self.index_inner = 0
                 if self.index_outer == self.range_outer - 1:
                     self.index_outer = 0
+                    if self.img_line_cnt.extend(max(clog2(self.max_range_value), clog2(self.max_img_height)))== self.img_height.extend(max(clog2(self.max_range_value), clog2(self.max_img_height))) - 1 - self.stencil_height - 1:
+                        self.img_line_cnt = self.img_line_cnt
+                    else:
+                        if self.initial_delay_cnt < self.initial_delay:
+                            self.initial_delay_cnt = self.initial_delay_cnt + 1
+                            self.img_line_cnt = self.img_line_cnt
+                        else:
+                            self.initial_delay_cnt = 0
+                            self.img_line_cnt = self.img_line_cnt + self.stride.extend(clog2(self.max_range_value))
                 else:
                     self.index_outer = self.index_outer + 1
+                    self.img_line_cnt = self.img_line_cnt
             else:
                 self.index_inner = self.index_inner + 1
+                self.index_outer = self.index_outer
+                self.img_line_cnt = self.img_line_cnt
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_row_index(self):
@@ -138,6 +156,9 @@ class TransposeBuffer(Generator):
             self.output_valid = 0
             self.buf_index = 0
         else:
+            #if self.img_line_cnt.extend(max(clog2(self.max_range_value), clog2(self.max_img_height)))== self.img_height.extend(max(clog2(self.max_range_value), clog2(self.max_img_height))) - 1 - self.stencil_height - 1:
+            #    self.output_valid = 0
+            #    self.buf_index = 0
             if (self.tb0_start.extend(x) <= self.output_index_inter_tb.extend(max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value)))) & (self.output_index_inter_tb.extend(x) <= self.tb0_end.extend(x)):
                 self.output_valid = 1
                 self.buf_index = 0

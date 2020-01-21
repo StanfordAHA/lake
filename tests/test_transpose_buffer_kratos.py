@@ -9,10 +9,11 @@ from kratos import *
 word_width = 1
 fetch_width = 4
 stencil_height = 3
-max_range_value = 5
-max_img_height = 5
+max_range_value =5
+max_img_height = 2
 num_tb = 1
-dut = TransposeBuffer(word_width, fetch_width, num_tb, stencil_height, max_range_value, max_img_height)
+max_stencil_height = 3
+dut = TransposeBuffer(word_width, fetch_width, num_tb, stencil_height, max_range_value, max_img_height, max_stencil_height)
 magma_dut = kratos.util.to_magma(dut, flatten_array=True)
 verilog(dut, filename="transposebuffer.sv")
 tester = fault.Tester(magma_dut, magma_dut.clk)
@@ -22,15 +23,20 @@ tester.step(2)
 tester.circuit.rst_n = 0
 tester.step(2)
 tester.circuit.rst_n = 1
-for i in range(21):
+data = [0,0,0,0,0,0,0,1,0,0,1,0,0,0,1,1,0,1,0,0,0,1,0,1,0,1,1,0,0,1,1,1,1,0,0,0,1,0,0,1,1,0,1,0,1,0,1,1,1,1,0,0,1,1,0,1,1,1,1,0,1,1,1,1]
+for i in range(30):
+    tester.circuit.stencil_height_input = 3
     for j in range(fetch_width):
-        setattr(tester.circuit, f"input_data_{j}", j % 2)
+            setattr(tester.circuit, f"input_data_{j}", data[(i*4 + fetch_width - 1 - j) % 64])
     tester.circuit.range_outer = 5
     tester.circuit.range_inner = 3
     tester.circuit.stride = 2
-    tester.circuit.img_height = 4
+    tester.circuit.img_height = 2
+    tester.circuit.stencil_height_input = 3
+
     for j in range(max_range_value):
         setattr(tester.circuit, f"indices_{j}", j)
+        j
     tester.eval()
     tester.step(2)
 
