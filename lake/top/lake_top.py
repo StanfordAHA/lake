@@ -3,6 +3,7 @@ from lake.modules.passthru import *
 from lake.modules.sram_stub import SRAMStub
 from lake.modules.aggregation_buffer import AggregationBuffer
 from lake.modules.input_addr_ctrl import InputAddrCtrl
+from lake.modules.agg_aligner import AggAligner
 
 
 class LakeTop(Generator):
@@ -125,6 +126,21 @@ class LakeTop(Generator):
                                       packed=True,
                                       explicit_array=True)
 
+        self._align_input = self.var("align_input",
+                                     self.interconnect_input_ports)
+
+        # Add the aggregation buffer aligners
+        for i in range(self.interconnect_input_ports):
+            self.add_child(f"agg_align_{i}",
+                           AggAligner(self.data_width,
+                                      2048))
+            self.wire(self[f"agg_align_{i}"].ports.in_dat,
+                      self._data_in[i])
+            self.wire(self[f"agg_align_{i}"].ports.in_valid,
+                      self._valid_in[i])
+            self.wire(self._align_input[i],
+                      self[f"agg_align_{i}"].ports.align)
+
         # Add input aggregations buffers
         for i in range(self.interconnect_input_ports):
             # add children aggregator buffers...
@@ -136,8 +152,8 @@ class LakeTop(Generator):
             self.wire(self[f"agg_in_{i}"].ports._clk, self._clk)
             self.wire(self[f"agg_in_{i}"].ports._rst_n, self._rst_n)
 
-            self.wire(self[f"agg_in_{i}"].ports._data_in, self._data_in)
-            self.wire(self[f"agg_in_{i}"].ports._valid_in, self._valid_in)
+            self.wire(self[f"agg_in_{i}"].ports._data_in, self._data_in[i])
+            self.wire(self[f"agg_in_{i}"].ports._valid_in, self._valid_in[i])
 
             self.wire(self[f"agg_in_{i}"].ports._write_act, )  # From input addr control
             # now wire it up
