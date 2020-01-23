@@ -9,8 +9,8 @@ class TransposeBuffer(Generator):
                  word_width,
                  fetch_width,
                  num_tb,
-                 stencil_height,
-                 max_range_value,
+                 tb_height,
+                 max_range,
                  max_stencil_height):
         super().__init__("transpose_buffer", True)
 
@@ -18,10 +18,12 @@ class TransposeBuffer(Generator):
         self.word_width = word_width
         self.fetch_width = fetch_width
         self.num_tb = num_tb
-        self.stencil_height = stencil_height
-        self.max_range_value = max_range_value
+        self.tb_height = tb_height
+        self.max_range = max_range
         self.max_stencil_height = max_stencil_height
 
+        self.max_range_bits = max(1, clog2(self.max_range))
+        self.num_tb_bits = max(1, clog2(self.num_tb))
         # inputs
         self.clk = self.clock("clk")
         # active low asynchronous reset
@@ -31,34 +33,38 @@ class TransposeBuffer(Generator):
                                      size=self.fetch_width,
                                      packed=True)
         self.valid_data = self.input("valid_data", 1)
-        self.range_outer = self.input("range_outer", clog2(self.max_range_value))
-        self.range_inner = self.input("range_inner", clog2(self.max_range_value))
-        self.stride = self.input("stride", clog2(self.max_range_value))
+        self.range_outer = self.input("range_outer", self.max_range_bits)
+        self.range_inner = self.input("range_inner", self.max_range_bits)
+        self.stride = self.input("stride", self.max_range_bits)
         self.indices = self.input("indices",
                                   width=clog2(2 * self.num_tb * self.fetch_width),
-                                  size=self.max_range_value,
+                                  # the length of indices is equal to range_inner,
+                                  # so the maximum possible size for self.indices
+                                  # is the maximum value of range_inner, which if
+                                  # self.max_range_value
+                                  size=self.max_range,
                                   packed=True)
-        self.tb_start_index = self.input("tb_start_index", max(1, clog2(num_tb)))
+        self.tb_start_index = self.input("tb_start_index", self.num_tb_bits)
         self.stencil_height_input = self.input("stencil_height_input",
                                                clog2(self.max_stencil_height))
-        self.col_pixels = self.output("col_pixels", width=self.word_width, size=self.stencil_height, packed=True)
+        self.col_pixels = self.output("col_pixels", width=self.word_width, size=self.tb_height, packed=True)
         self.output_valid = self.output("output_valid", 1)
 
         # local variables
 
-        self.index_outer = self.output("index_outer", clog2(self.max_range_value))
-        self.index_inner = self.output("index_inner", clog2(self.max_range_value))
-        self.tb = self.var("tb", width=self.word_width, size=[2*self.stencil_height, self.fetch_width], packed=True)
+        self.index_outer = self.output("index_outer", self.max_range_bits)
+        self.index_inner = self.output("index_inner", self.max_range_bits)
+        self.tb = self.var("tb", width=self.word_width, size=[2*self.tb_height, self.fetch_width], packed=True)
         self.buf_index = self.output("buf_index", 1)
         #self.prev_buf_index = self.output("prev_buf_index", 1)
-        self.row_index = self.output("row_index", clog2(self.stencil_height))
-        self.input_index = self.output("input_index", clog2(2*self.stencil_height))
-        self.output_index_inter_tb = self.output("output_index_inter_tb", 2*clog2(self.max_range_value))
-        self.output_index_inter = self.output("output_index_inter", 2*clog2(self.max_range_value))
+        self.row_index = self.output("row_index", clog2(self.tb_height))
+        self.input_index = self.output("input_index", clog2(2*self.tb_height))
+        self.output_index_inter_tb = self.output("output_index_inter_tb", 2*self.max_range_bits)
+        self.output_index_inter = self.output("output_index_inter", 2*self.max_range_bits)
         self.output_index = self.output("output_index", clog2(self.fetch_width))
         self.indices_index_inner = self.output("indices_index_inner", clog2(2*self.num_tb*self.fetch_width))
 
-        self.tb_distance = self.output("tb_distance", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
+        self.tb_distance = self.output("tb_distance", 2*max(clog2(self.fetch_width), self.num_tb_bits) + 1)
         # delete this signal? or keep for code clarity
         self.tb0_start = self.output("tb0_start", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1) 
         self.tb0_end = self.output("tb0_end", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
@@ -66,7 +72,7 @@ class TransposeBuffer(Generator):
         self.tb1_end = self.output("tb1_end", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
         self.pause_tb = self.output("pause_tb", 1)
 
-        x = max(2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1, 2*clog2(self.max_range_value))
+        x = max(2*max(clog2(self.fetch_width), self.num_tb_bits) + 1, 2*self.max_range_bits)
 
         self.add_code(self.get_output_loop_iterators)
         self.add_code(self.get_input_index)
@@ -108,14 +114,14 @@ class TransposeBuffer(Generator):
             self.row_index = 0
         elif ~self.valid_data:
             self.row_index = self.row_index
-        elif self.row_index == self.stencil_height - 1:
+        elif self.row_index == self.tb_height - 1:
             self.row_index = 0
         else:
-            self.row_index = self.row_index + const(1, clog2(self.stencil_height))
+            self.row_index = self.row_index + const(1, clog2(self.tb_height))
     
     @always_comb
     def get_input_index(self):
-        self.input_index = const(stencil_height,clog2(2 * self.stencil_height)) * self.buf_index.extend(clog2(2 * stencil_height)) + self.row_index.extend(clog2(2 * stencil_height))
+        self.input_index = const(tb_height,clog2(2 * self.tb_height)) * self.buf_index.extend(clog2(2 * tb_height)) + self.row_index.extend(clog2(2 * tb_height))
 
     # input to transpose buffer
     @always_ff((posedge, "clk"))
@@ -129,18 +135,18 @@ class TransposeBuffer(Generator):
     @always_comb
     def get_tb_indices(self):
         self.indices_index_inner = self.indices[self.index_inner]
-        self.output_index_inter_tb = (self.index_outer.extend(2 * clog2(max_range_value)) * self.stride.extend(2 * clog2(max_range_value))) + self.indices_index_inner.extend(2 * clog2(max_range_value))
+        self.output_index_inter_tb = (self.index_outer.extend(2 * self.max_range_bits) * self.stride.extend(2 * self.max_range_bits) + self.indices_index_inner.extend(2 * self.max_range_bits))
         self.output_index_inter = self.output_index_inter_tb % fetch_width
         self.output_index = self.output_index_inter[clog2(fetch_width) - 1, 0]
 
     @always_ff((posedge, "clk"))
     def output_tb(self):
         if self.output_valid:
-            for i in range(stencil_height):
+            for i in range(tb_height):
                 if ~self.buf_index:
                     self.col_pixels[i] = self.tb[i][self.output_index]
                 else:
-                    self.col_pixels[i] = self.tb[i + self.stencil_height][self.output_index]
+                    self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
         else:
             self.col_pixels = self.col_pixels
 
