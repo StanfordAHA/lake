@@ -9,12 +9,14 @@ class Aggregator(Generator):
 
         super().__init__("aggregator", debug=True)
         self.mem_word_width = mem_word_width
-
         # inputs
         self.clk = self.clock("clk")
         # active low asynchornous reset
         self.rst_n = self.reset("rst_n", 1)
-        self.in_pixels = self.input("in_pixels", word_width)
+        self.in_pixels = self.input("in_pixels",
+                                    word_width)
+                                    #explicit_array=True,
+                                    #packed=True)
         self._valid_in = self.input("valid_in", 1)
 
         # outputs
@@ -26,22 +28,27 @@ class Aggregator(Generator):
         self.valid_out = self.output("valid_out", 1)
         self._next_full = self.output("next_full", 1)
 
-        # local variables
-        self.word_count = self.var("word_count", clog2(mem_word_width))
         self.shift_reg = self.var("shift_reg",
-                                  width=word_width,
-                                  size=mem_word_width,
-                                  explicit_array=True,
-                                  packed=True)
+                                width=word_width,
+                                size=mem_word_width,
+                                explicit_array=True,
+                                packed=True)
 
-        # add sequential blocks
-        self.add_code(self.update_counter_valid)
-        self.add_code(self.update_shift_reg)
+        # local variables
+        if(mem_word_width > 1):
+            self.word_count = self.var("word_count", clog2(mem_word_width))
+            self.add_code(self.update_counter_valid)
+            self.add_code(self.set_next_full)
+            self.add_code(self.update_shift_reg)
+            # add combinational blocks
+        else:
+            self.wire(self.valid_out, const(1, 1))
+            self.wire(self._next_full, self._valid_in)
+            # only add the update counter/valid 
+            self.wire(self.shift_reg[0], self.in_pixels)
 
-        # add combinational blocks
         self.add_code(self.output_data)
 
-        self.add_code(self.set_next_full)
 
     @always_comb
     def set_next_full(self):
@@ -65,7 +72,7 @@ class Aggregator(Generator):
 
     @always_ff((posedge, "clk"))
     def update_shift_reg(self):
-        if self._valid_in:
+        if (self._valid_in):
             self.shift_reg[self.word_count] = self.in_pixels
 
     @always_comb

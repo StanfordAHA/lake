@@ -21,7 +21,7 @@ class PipeReg(Generator):
         else:
             self.wire(self._out, self._in)
 
-    @always((posedge, "i_clk"), (negedge, "i_rst_n"))
+    @always_ff((posedge, "i_clk"), (negedge, "i_rst_n"))
     def stage_elab(self):
         if ~self._rst_n:
             self._reg_array = 0
@@ -30,6 +30,7 @@ class PipeReg(Generator):
             for i in range(self.stages - 1):
                 self._reg_array[i + 1] = self._reg_array[i]
 
+    @always_comb
     def set_out(self):
         # Combinationally set this to the last register in the stage array.
         self._out = self._reg_array[self.stages - 1]
