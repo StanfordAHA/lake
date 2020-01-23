@@ -59,32 +59,32 @@ class TransposeBuffer(Generator):
         self.output_valid = self.output("output_valid", 1)
 
         # local variables
-        self.index_outer = self.output("index_outer", self.max_range_bits)
-        self.index_inner = self.output("index_inner", self.max_range_bits)
+        self.index_outer = self.var("index_outer", self.max_range_bits)
+        self.index_inner = self.var("index_inner", self.max_range_bits)
 
         self.tb = self.var("tb",
                            width=self.word_width,
                            size=[2 * self.tb_height, self.fetch_width],
                            packed=True)
 
-        self.buf_index = self.output("buf_index", 1)
-        self.row_index = self.output("row_index", clog2(self.tb_height))
-        self.input_index = self.output("input_index", clog2(2 * self.tb_height))
+        self.buf_index = self.var("buf_index", 1)
+        self.row_index = self.var("row_index", clog2(self.tb_height))
+        self.input_index = self.var("input_index", clog2(2 * self.tb_height))
 
-        self.output_index_abs = self.output("output_index_abs", 2 * self.max_range_bits)
-        self.output_index_long = self.output("output_index_long", 2 * self.max_range_bits)
-        self.output_index = self.output("output_index", self.fetch_width_bits)
-        self.indices_index_inner = self.output("indices_index_inner",
-                                               clog2(2 * self.num_tb * self.fetch_width))
+        self.output_index_abs = self.var("output_index_abs", 2 * self.max_range_bits)
+        self.output_index_long = self.var("output_index_long", 2 * self.max_range_bits)
+        self.output_index = self.var("output_index", self.fetch_width_bits)
+        self.indices_index_inner = self.var("indices_index_inner",
+                                            clog2(2 * self.num_tb * self.fetch_width))
 
-        self.tb_distance = self.output("tb_distance", self.tb_col_index_bits)
+        self.tb_distance = self.var("tb_distance", self.tb_col_index_bits)
         # delete this signal? or keep for code clarity
-        self.tb0_start = self.output("tb0_start", self.tb_col_index_bits)
-        self.tb0_end = self.output("tb0_end", self.tb_col_index_bits)
-        self.tb1_start = self.output("tb1_start", self.tb_col_index_bits)
-        self.tb1_end = self.output("tb1_end", self.tb_col_index_bits)
+        self.tb0_start = self.var("tb0_start", self.tb_col_index_bits)
+        self.tb0_end = self.var("tb0_end", self.tb_col_index_bits)
+        self.tb1_start = self.var("tb1_start", self.tb_col_index_bits)
+        self.tb1_end = self.var("tb1_end", self.tb_col_index_bits)
 
-        self.pause_tb = self.output("pause_tb", 1)
+        self.pause_tb = self.var("pause_tb", 1)
 
         x = max(self.tb_col_index_bits, 2 * self.max_range_bits)
 
