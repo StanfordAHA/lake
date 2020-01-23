@@ -4,9 +4,9 @@ from math import log
 
 
 class TransposeBuffer(Generator):
-    # note fetch_width must be powers of 2
     def __init__(self,
                  word_width,
+                 # note fetch_width must be powers of 2
                  fetch_width,
                  num_tb,
                  tb_height,
@@ -25,7 +25,7 @@ class TransposeBuffer(Generator):
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
-        self.tb_col_index_bits = 2*max(self.fetch_width_bits, self.num_tb_bits) + 1
+        self.tb_col_index_bits = 2 * max(self.fetch_width_bits, self.num_tb_bits) + 1
         self.tb_height_bits2 = clog2(2 * self.tb_height)
 
         # inputs
@@ -50,11 +50,11 @@ class TransposeBuffer(Generator):
                                   packed=True)
         self.tb_start_index = self.input("tb_start_index", self.num_tb_bits)
         self.stencil_height = self.input("stencil_height", clog2(self.max_stencil_height))
-        
+
         # outputs
-        self.col_pixels = self.output("col_pixels", 
-                                      width=self.word_width, 
-                                      size=self.tb_height, 
+        self.col_pixels = self.output("col_pixels",
+                                      width=self.word_width,
+                                      size=self.tb_height,
                                       packed=True)
         self.output_valid = self.output("output_valid", 1)
 
@@ -62,19 +62,20 @@ class TransposeBuffer(Generator):
         self.index_outer = self.output("index_outer", self.max_range_bits)
         self.index_inner = self.output("index_inner", self.max_range_bits)
 
-        self.tb = self.var("tb", 
-                          width=self.word_width, 
-                          size=[2*self.tb_height, self.fetch_width], 
-                          packed=True)
+        self.tb = self.var("tb",
+                           width=self.word_width,
+                           size=[2 * self.tb_height, self.fetch_width],
+                           packed=True)
 
         self.buf_index = self.output("buf_index", 1)
         self.row_index = self.output("row_index", clog2(self.tb_height))
-        self.input_index = self.output("input_index", clog2(2*self.tb_height))
+        self.input_index = self.output("input_index", clog2(2 * self.tb_height))
 
-        self.output_index_abs = self.output("output_index_abs", 2*self.max_range_bits)
-        self.output_index_long = self.output("output_index_long", 2*self.max_range_bits)
+        self.output_index_abs = self.output("output_index_abs", 2 * self.max_range_bits)
+        self.output_index_long = self.output("output_index_long", 2 * self.max_range_bits)
         self.output_index = self.output("output_index", self.fetch_width_bits)
-        self.indices_index_inner = self.output("indices_index_inner", clog2(2*self.num_tb*self.fetch_width))
+        self.indices_index_inner = self.output("indices_index_inner",
+                                               clog2(2 * self.num_tb * self.fetch_width))
 
         self.tb_distance = self.output("tb_distance", self.tb_col_index_bits)
         # delete this signal? or keep for code clarity
@@ -85,7 +86,7 @@ class TransposeBuffer(Generator):
 
         self.pause_tb = self.output("pause_tb", 1)
 
-        x = max(self.tb_col_index_bits, 2*self.max_range_bits)
+        x = max(self.tb_col_index_bits, 2 * self.max_range_bits)
 
         self.add_code(self.get_output_loop_iterators)
         self.add_code(self.get_input_index)
@@ -123,7 +124,7 @@ class TransposeBuffer(Generator):
                     self.index_inner = self.index_inner + 1
                     self.pause_tb = 0
 
-    # get index of row to fill in transpose buffer with input data 
+    # get index of row to fill in transpose buffer with input data
     # for one of the two buffers in double buffer
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_row_index(self):
@@ -135,12 +136,15 @@ class TransposeBuffer(Generator):
             self.row_index = 0
         else:
             self.row_index = self.row_index + 1
-    
-    # for double buffer, get index of row to fill in transpose buffer 
+
+    # for double buffer, get index of row to fill in transpose buffer
     # with input data
     @always_comb
     def get_input_index(self):
-        self.input_index = const(tb_height, self.tb_height_bits2) * self.buf_index.extend(self.tb_height_bits2) + self.row_index.extend(self.tb_height_bits2)
+        if self.buf_index:
+            self.input_index = const(tb_height, self.tb_height_bits2) + self.row_index.extend(self.tb_height_bits2)
+        else:
+            self.input_index = self.row_index.extend(self.tb_height_bits2)
 
     # input to transpose buffer
     @always_ff((posedge, "clk"))
@@ -201,4 +205,3 @@ class TransposeBuffer(Generator):
         self.tb0_end = self.tb0_start + self.fetch_width - 1
         self.tb1_start = self.tb0_start + self.tb_distance
         self.tb1_end = self.tb1_start + self.fetch_width - 1
-
