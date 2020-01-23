@@ -13,7 +13,8 @@ class InputAddrCtrl(Generator):
                  banks,
                  iterator_support,
                  max_port_schedule,
-                 address_width):
+                 address_width,
+                 data_width):
         super().__init__("input_addr_ctrl", debug=True)
 
         self.interconnect_input_ports = interconnect_input_ports
@@ -23,12 +24,14 @@ class InputAddrCtrl(Generator):
         self.address_width = address_width
         self.max_port_schedule = max_port_schedule
         self.port_sched_width = clog2(self.interconnect_input_ports)
+        self.data_width = data_width
 
         self.mem_addr_width = clog2(self.mem_depth)
         if self.banks > 1:
             self.bank_addr_width = clog2(self.banks)
         else:
             self.bank_addr_width = 0
+        self.address_width = self.mem_addr_width + self.bank_addr_width
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -62,16 +65,30 @@ class InputAddrCtrl(Generator):
                                                 explicit_array=True))
         self._port_periods = self.input("port_periods",
                                         clog2(self.max_port_schedule),
-                                        size=self.banks)
+                                        size=self.banks,
+                                        explicit_array=True,
+                                        packed=True)
+        # Take in the valid and data and attach an address + direct to a port
         self._valid_in = self.input("valid_in", self.interconnect_input_ports)
+        self._data_in = self.input("data_in",
+                                   self.data_width,
+                                   size=self.interconnect_input_ports,
+                                   explicit_array=True,
+                                   packed=True)
 
         # Outputs
-        self._wen = self.output("wen_to_sram", self.banks)
+        self._wen = self.output("wen_to_sram",
+                                self.banks)
         self._addresses = self.output("addr_out",
-                                      self.address_width,
-                                      size=self.interconnect_input_ports,
+                                      self.mem_addr_width,
+                                      size=self.banks,
                                       explicit_array=True,
                                       packed=True)
+        self._data_out = self.output("data_out",
+                                     self.data_width,
+                                     size=self.banks,
+                                     explicit_array=True,
+                                     packed=True)
 
         # LOCAL VARS
         self._local_addrs = self.var("local_addrs",
@@ -85,11 +102,34 @@ class InputAddrCtrl(Generator):
                                        explicit_array=True,
                                        packed=True)
 
-        # MAIN
-        if self.banks == 1:
-            self.wire(self._wen[0], reduce_or(self._valid_in))
+        if self.banks == 1 and self.interconnect_input_ports == 1:
+            self._port_select = self.var("port_select", self.banks)
+            self.wire(self._port_select, const(0, self.banks))
+            self.wire(self._wen, self._valid_in)
+        elif self.banks == 1 and self.interconnect_input_ports > 1:
+            self._port_select = self.var("port_select",
+                                         clog2(self.interconnect_input_ports),
+                                         size=self.banks,
+                                         explicit_array=True,
+                                         packed=True)
+            self.add_code(self.set_wen_single)
+            self.add_code(self.set_port_select_single)
+        elif self.banks > 1 and self.interconnect_input_ports == 1:
+            self._port_select = self.var("port_select", self.banks)
+            self.wire(self._port_select, const(0, self.banks))
+            self.add_code(self.set_wen_mult)
         else:
-            self.add_code(self.set_wen)
+            self._port_select = self.var("port_select",
+                                         clog2(self.interconnect_input_ports),
+                                         size=self.banks,
+                                         explicit_array=True,
+                                         packed=True)
+            self.add_code(self.set_wen_mult)
+            self.add_code(self.set_port_select_mult)
+
+        # MAIN
+
+        self.add_code(self.set_out)
 
         # Now we should instantiate the child address generators
         # (1 per input port) to send to the sram banks
@@ -105,19 +145,20 @@ class InputAddrCtrl(Generator):
             self.wire(self[f"address_gen_{i}"].ports.dimensionality, self._dimensionalities[i])
             self.wire(self[f"address_gen_{i}"].ports.clk_en, const(1, 1))
             self.wire(self[f"address_gen_{i}"].ports.flush, const(0, 1))
-            self.add_stmt(self[f"address_gen_{i}"].ports.step.assign(self._wen[i]))
+            # self.add_stmt(self[f"address_gen_{i}"].ports.step.assign(self._wen[i]))
+            self.add_stmt(self[f"address_gen_{i}"].ports.step.assign(self._valid_in[i]))
 
             # Get the address for each input port
             self.wire(self._local_addrs[i],
                       self[f"address_gen_{i}"].ports.addr_out[self.address_width - 1, 0])
 
-        # Need to check that the address falls into the bank for implicit banking
+        # Need to check that the add ress falls into the bank for implicit banking
 
         # Then, obey the input schedule to send the proper Aggregator to the output
         # The wen to sram should be that the valid for the selected port is high
         # Do the same thing for the output address
-        for i in range(self.interconnect_input_ports):
-            self.wire(self._addresses[i], self._local_addrs[i])
+        # for i in range(self.interconnect_input_ports):
+        #    self.wire(self._addresses[i], self._local_addrs[i])
 
     # Update the pointer and mux for input and output schedule
     # Now, obey the input schedule to send to the proper SRAM bank
@@ -138,21 +179,52 @@ class InputAddrCtrl(Generator):
             self._port_sels[i] = self._port_scheds[i][self._port_sel_ptrs[i]]
 
     @always_comb
-    def set_wen(self):
+    def set_wen_mult(self):
         self._wen = 0
         for i in range(self.interconnect_input_ports):
             if(self._valid_in[i]):
                 self._wen[self._local_addrs[i][self.mem_addr_width + self.bank_addr_width - 1,
                                                self.mem_addr_width]] = 1
 
+    @always_comb
+    def set_wen_single(self):
+        self._wen = 0
+        for i in range(self.interconnect_input_ports):
+            if(self._valid_in[i]):
+                self._wen = 1
+
+    @always_comb
+    def set_port_select_single(self):
+        self._port_select = 0
+        for i in range(self.interconnect_input_ports):
+            if(self._valid_in[i]):
+                self._port_select = i
+
+    @always_comb
+    def set_port_select_mult(self):
+        self._port_select = 0
+        for i in range(self.interconnect_input_ports):
+            if(self._valid_in[i]):
+                self._port_select[
+                    self._local_addrs[i][self.mem_addr_width + self.bank_addr_width - 1,
+                                         self.mem_addr_width]] = const(i,
+                                                                       self._port_select[0].width)
+
+    @always_comb
+    def set_out(self):
+        self._data_out = 0
+        self._addresses = 0
+        for i in range(self.banks):
+            self._data_out[i] = self._data_in[self._port_select[i]]
+            self._addresses[i] = self._local_addrs[self._port_select[i]][self.mem_addr_width - 1, 0]
+
 
 if __name__ == "__main__":
-    db_dut = InputAddrCtrl(interconnect_input_ports=2,
+    db_dut = InputAddrCtrl(interconnect_input_ports=1,
+                           data_width=16,
                            mem_depth=512,
-                           banks=4,
-                           terator_support=6,
+                           banks=2,
+                           iterator_support=6,
                            max_port_schedule=64,
                            address_width=16)
-    verilog(db_dut, filename="input_addr_ctrl.sv",
-            check_active_high=False,
-            check_multiple_driver=False)
+    verilog(db_dut, filename="input_addr_ctrl.sv", check_multiple_driver=False)

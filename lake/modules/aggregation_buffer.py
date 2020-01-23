@@ -15,7 +15,7 @@ class AggregationBuffer(Generator):
                  max_agg_schedule):
 
         super().__init__("aggregation_buffer", debug=True)
-        
+
         self.agg_height = agg_height
         self.data_width = data_width
         self.mem_width = mem_width

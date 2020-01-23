@@ -15,8 +15,6 @@ class Aggregator(Generator):
         self.rst_n = self.reset("rst_n", 1)
         self.in_pixels = self.input("in_pixels",
                                     word_width)
-                                    #explicit_array=True,
-                                    #packed=True)
         self._valid_in = self.input("valid_in", 1)
 
         # outputs
@@ -29,10 +27,10 @@ class Aggregator(Generator):
         self._next_full = self.output("next_full", 1)
 
         self.shift_reg = self.var("shift_reg",
-                                width=word_width,
-                                size=mem_word_width,
-                                explicit_array=True,
-                                packed=True)
+                                  width=word_width,
+                                  size=mem_word_width,
+                                  explicit_array=True,
+                                  packed=True)
 
         # local variables
         if(mem_word_width > 1):
@@ -44,11 +42,10 @@ class Aggregator(Generator):
         else:
             self.wire(self.valid_out, const(1, 1))
             self.wire(self._next_full, self._valid_in)
-            # only add the update counter/valid 
+            # only add the update counter/valid
             self.wire(self.shift_reg[0], self.in_pixels)
 
         self.add_code(self.output_data)
-
 
     @always_comb
     def set_next_full(self):

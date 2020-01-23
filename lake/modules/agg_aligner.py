@@ -1,5 +1,5 @@
 from kratos import *
-from utils.util import increment,decrement
+from utils.util import increment, decrement
 
 
 class AggAligner(Generator):
@@ -58,5 +58,5 @@ class AggAligner(Generator):
 
 if __name__ == "__main__":
     align_dut = AggAligner(data_width=16,
-                          max_line_length=64)
+                           max_line_length=64)
     verilog(align_dut, filename="agg_aligner.sv")
