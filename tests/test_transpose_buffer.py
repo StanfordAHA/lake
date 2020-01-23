@@ -13,7 +13,6 @@ def test_transpose_buffer():
     fetch_width = 4
     stencil_height = 3
     max_range_value = 5
-    max_img_height = 2
     num_tb = 1
     max_stencil_height = 3
     dut = TransposeBuffer(word_width,
@@ -21,7 +20,6 @@ def test_transpose_buffer():
                         num_tb,
                         stencil_height,
                         max_range_value,
-                        max_img_height,
                         max_stencil_height)
     magma_dut = kratos.util.to_magma(dut, flatten_array=True)
     verilog(dut, filename="transposebuffer.sv")

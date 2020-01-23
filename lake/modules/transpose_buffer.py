@@ -11,7 +11,6 @@ class TransposeBuffer(Generator):
                  num_tb,
                  stencil_height,
                  max_range_value,
-                 max_img_height,
                  max_stencil_height):
         super().__init__("transpose_buffer", True)
 
@@ -21,7 +20,6 @@ class TransposeBuffer(Generator):
         self.num_tb = num_tb
         self.stencil_height = stencil_height
         self.max_range_value = max_range_value
-        self.max_img_height = max_img_height
         self.max_stencil_height = max_stencil_height
 
         # inputs
@@ -41,12 +39,8 @@ class TransposeBuffer(Generator):
                                   size=self.max_range_value,
                                   packed=True)
         self.tb_start_index = self.input("tb_start_index", max(1, clog2(num_tb)))
-        self.img_height = self.input("img_height", clog2(self.max_img_height))
         self.stencil_height_input = self.input("stencil_height_input",
                                                clog2(self.max_stencil_height))
-        # self.img_height should be a config reg, decide if max_range_value and
-        # max_img_height value are distinct and make the latter the parameter instead
-        # outputs
         self.col_pixels = self.output("col_pixels", width=self.word_width, size=self.stencil_height, packed=True)
         self.output_valid = self.output("output_valid", 1)
 
@@ -156,9 +150,6 @@ class TransposeBuffer(Generator):
             self.output_valid = 0
             self.buf_index = 0
         else:
-            #if self.img_line_cnt.extend(max(clog2(self.max_range_value), clog2(self.max_img_height)))== self.img_height.extend(max(clog2(self.max_range_value), clog2(self.max_img_height))) - 1 - self.stencil_height - 1:
-            #    self.output_valid = 0
-            #    self.buf_index = 0
             if self.pause_tb:
                 self.output_valid = 0
                 self.buf_index = 0
