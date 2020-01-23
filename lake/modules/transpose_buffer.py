@@ -22,8 +22,11 @@ class TransposeBuffer(Generator):
         self.max_range = max_range
         self.max_stencil_height = max_stencil_height
 
-        self.max_range_bits = max(1, clog2(self.max_range))
+        self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
+        self.max_range_bits = max(1, clog2(self.max_range))
+        self.tb_col_index_bits = 2*max(self.fetch_width_bits, self.num_tb_bits) + 1
+
         # inputs
         self.clk = self.clock("clk")
         # active low asynchronous reset
@@ -45,31 +48,40 @@ class TransposeBuffer(Generator):
                                   size=self.max_range,
                                   packed=True)
         self.tb_start_index = self.input("tb_start_index", self.num_tb_bits)
-        self.stencil_height_input = self.input("stencil_height_input",
-                                               clog2(self.max_stencil_height))
-        self.col_pixels = self.output("col_pixels", width=self.word_width, size=self.tb_height, packed=True)
+        self.stencil_height = self.input("stencil_height", clog2(self.max_stencil_height))
+        
+        # outputs
+        self.col_pixels = self.output("col_pixels", 
+                                      width=self.word_width, 
+                                      size=self.tb_height, 
+                                      packed=True)
         self.output_valid = self.output("output_valid", 1)
 
         # local variables
-
         self.index_outer = self.output("index_outer", self.max_range_bits)
         self.index_inner = self.output("index_inner", self.max_range_bits)
-        self.tb = self.var("tb", width=self.word_width, size=[2*self.tb_height, self.fetch_width], packed=True)
+
+        self.tb = self.var("tb", 
+                          width=self.word_width, 
+                          size=[2*self.tb_height, self.fetch_width], 
+                          packed=True)
+
         self.buf_index = self.output("buf_index", 1)
-        #self.prev_buf_index = self.output("prev_buf_index", 1)
         self.row_index = self.output("row_index", clog2(self.tb_height))
         self.input_index = self.output("input_index", clog2(2*self.tb_height))
+
         self.output_index_inter_tb = self.output("output_index_inter_tb", 2*self.max_range_bits)
         self.output_index_inter = self.output("output_index_inter", 2*self.max_range_bits)
-        self.output_index = self.output("output_index", clog2(self.fetch_width))
+        self.output_index = self.output("output_index", self.fetch_width_bits)
         self.indices_index_inner = self.output("indices_index_inner", clog2(2*self.num_tb*self.fetch_width))
 
-        self.tb_distance = self.output("tb_distance", 2*max(clog2(self.fetch_width), self.num_tb_bits) + 1)
+        self.tb_distance = self.output("tb_distance", self.tb_col_index_bits)
         # delete this signal? or keep for code clarity
-        self.tb0_start = self.output("tb0_start", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1) 
-        self.tb0_end = self.output("tb0_end", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
-        self.tb1_start = self.output("tb1_start", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
-        self.tb1_end = self.output("tb1_end", 2*max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
+        self.tb0_start = self.output("tb0_start", self.tb_col_index_bits)
+        self.tb0_end = self.output("tb0_end", self.tb_col_index_bits)
+        self.tb1_start = self.output("tb1_start", self.tb_col_index_bits)
+        self.tb1_end = self.output("tb1_end", self.tb_col_index_bits)
+
         self.pause_tb = self.output("pause_tb", 1)
 
         x = max(2*max(clog2(self.fetch_width), self.num_tb_bits) + 1, 2*self.max_range_bits)
@@ -172,9 +184,8 @@ class TransposeBuffer(Generator):
     @always_comb
     def output_inter_signals(self):
         self.tb_distance = self.fetch_width * self.num_tb
-        self.tb0_start = self.tb_start_index.extend(2 * max(clog2(self.fetch_width), clog2(self.num_tb)) + 1)
+        self.tb0_start = self.tb_start_index.extend(self.tb_col_index_bits)
         self.tb0_end = self.tb0_start + self.fetch_width - 1
         self.tb1_start = self.tb0_start + self.tb_distance
         self.tb1_end = self.tb1_start + self.fetch_width - 1
-
 
