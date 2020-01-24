@@ -54,7 +54,7 @@ class LakeTop(Generator):
         self.align_input = align_input
         self.max_line_length = max_line_length
         assert self.mem_width > self.data_width, "Data width needs to be smaller than mem"
-        self.fw_int = int(self.data_width/self.mem_width)
+        self.fw_int = int(self.data_width / self.mem_width)
         self.num_tb = interconnect_output_ports
         self.tb_height = tb_height
         self.tb_range_max = tb_range_max
@@ -366,17 +366,17 @@ class LakeTop(Generator):
         ##############################
         # Hook up the read write arbiters for each bank
         self._arb_dat_out = self.output("arb_dat_out",
-                                     self.mem_width,
-                                     size=self.banks,
-                                     explicit_array=True,
-                                     packed=True)
+                                        self.mem_width,
+                                        size=self.banks,
+                                        explicit_array=True,
+                                        packed=True)
         self._arb_port_out = self.output("arb_port_out",
-                                      self.interconnect_output_ports,
-                                      size=self.banks,
-                                      explicit_array=True,
-                                      packed=True)
+                                         self.interconnect_output_ports,
+                                         size=self.banks,
+                                         explicit_array=True,
+                                         packed=True)
         self._arb_valid_out = self.output("arb_valid_out",
-                                       self.banks)
+                                          self.banks)
 
         self._mem_data_out = self.var("mem_data_out",
                                       self.mem_width,
@@ -466,7 +466,6 @@ class LakeTop(Generator):
         # self.wire(tba.ports.rst_n, self._rst_n)
         # self.wire(tba.ports.SRAM_to_tb_data, )
 
-
         # self.tb_height = 8
         # self.word_width = self.data_width
         # self._tb_out = self.output("tb_out",
@@ -496,9 +495,6 @@ class LakeTop(Generator):
         # # out
         # self.wire(self._tb_out, tb.ports.col_pixels)
         # self.wire(self._tb_valid, tb.ports.output_valid)
-
-
-
 
         ####################
         ##### ADD CODE #####

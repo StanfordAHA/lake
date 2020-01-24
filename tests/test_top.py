@@ -30,7 +30,7 @@ def top_test():
                      tb_range_max=2048,
                      tb_sched_max=64)
     magma_dut = kts.util.to_magma(lt_dut, flatten_array=True, check_multiple_driver=False)
-    
+
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
     # for key, value in new_config.items():
@@ -53,13 +53,13 @@ def top_test():
 
     for i in range(100):
         tester.step(2)
-    
+
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = "./top_dump"
         tester.compile_and_run(target="verilator",
-                            directory=tempdir,
-                            magma_output="verilog",
-                            flags=["-Wno-fatal", "--trace"])
+                               directory=tempdir,
+                               magma_output="verilog",
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":
