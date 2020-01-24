@@ -31,6 +31,7 @@ class TransposeBufferAggregation(Generator):
         self.max_schedule_length = max_schedule_length
 
         self.max_schedule_length_bits = max(1, clog2(self.max_schedule_length))
+        self.num_tb_bits = max(1, clog2(self.tb))
 
         # inputs
         self.clk = self.clock("clk")
@@ -41,7 +42,7 @@ class TransposeBufferAggregation(Generator):
                                           size=self.fetch_width)        
 
         self.valid_data = self.input("valid_data", 1)
-
+        self.tb_index_for_data = self.input("tb_index_for_data", self.num_tb_bits
         self.range_outer = self.input("range_outer", self.max_range_bits)
         self.range_inner = self.input("range_inner", self.max_range_bits)
         self.stride = self.input("stride", self.max_range_bits)
@@ -53,10 +54,6 @@ class TransposeBufferAggregation(Generator):
                                   # self.max_range_value
                                   size=self.max_range,
                                   packed=True)
-
-        self.schedule = self.input("schedule", clog2(self.num_tb), size=self.max_schedule_length)
-        self.schedule_period = self.input("schedule_period", self.max_schedule_length_bits)
-        self.schedule_ptr = self.input("schedule_ptr", self.max_schedule_length_bits)
 
         # local variables
         self.valid_data_all = self.var("valid_data_all", 
@@ -91,7 +88,7 @@ class TransposeBufferAggregation(Generator):
                     self.valid_data_all[i] = 0
             else:
                 for i in range(self.num_tb):
-                    if i == self.schedule[self.schedule_ptr]:
+                    if i == self.tb_index_for_data:
                         self.valid_data_all[i] = 1
                     else:
                         self.valid_data_all[i] = 0
