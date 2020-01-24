@@ -36,7 +36,10 @@ class TransposeBufferAggregation(Generator):
         self.clk = self.clock("clk")
         # active low asynchronous reset
         self.rst_n = self.reset("rst_n", 1)
-        
+        self.SRAM_to_tb_data = self.input("SRAM_to_tb_data", 
+                                          width=self.word_width, 
+                                          size=self.fetch_width)        
+
         self.valid_data = self.input("valid_data", 1)
 
         self.range_outer = self.input("range_outer", self.max_range_bits)
