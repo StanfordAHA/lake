@@ -4,7 +4,7 @@ import tempfile
 from kratos import *
 import pytest
 
-#@pytest.mark.skip
+@pytest.mark.skip
 def test_transpose_buffer():
     word_width = 1
     fetch_width = 4
@@ -55,7 +55,6 @@ def test_transpose_buffer():
         tester.step(2)
 
         with tempfile.TemporaryDirectory() as tempdir:
-            tempdir = "/nobackupkiwi/skavya/lake_/lake/tests/temp"
             tester.compile_and_run(target="verilator",
                                 directory=tempdir,
                                 flags=["-Wno-fatal", "--trace"],
