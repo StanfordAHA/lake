@@ -457,37 +457,37 @@ class LakeTop(Generator):
         #############################
         ##### TRANSPOSE BUFFERS #####
         #############################
-        self._data_to_tba = self.var("data_to_tba",
-                                     self.data_width,
-                                     size=(self.fw_int,
-                                           self.interconnect_output_ports))
-        self._valid_to_tba = self.var("valid_to_tba", self.interconnect_output_ports)
+        # self._data_to_tba = self.var("data_to_tba",
+        #                              self.data_width,
+        #                              size=(self.fw_int,
+        #                                    self.interconnect_output_ports))
+        # self._valid_to_tba = self.var("valid_to_tba", self.interconnect_output_ports)
 
-        self._tb_index_for_data = self.input("tb_index_for_data",
-                                            self.num_tb_bits,
-                                            size=self.interconnect_output_ports)
-        self._range_outer_tba = self.input("range_outer_tba",
-                                      self.max_range_bits,
-                                      size=self.interconnect_output_ports)
-        self._range_inner_tba = self.input("range_inner_tba",
-                                          self.max_range_bits,
-                                          size=self.interconnect_output_ports)
-        self._stride_tba = self.input("stride_tba",
-                                      self.max_range_bits,
-                                      size=self.interconnect_output_ports)
-        self._indices_tba = self.input("indices_tba",
-                                  width=clog2(2 * self.num_tb * self.fw_int),
-                                  # the length of indices is equal to range_inner,
-                                  # so the maximum possible size for self.indices
-                                  # is the maximum value of range_inner, which if
-                                  # self.max_range_value
-                                  size=(self.tb_range_max,
-                                        self.interconnect_output_ports),
-                                  packed=True)
-        for i in range(self.interconnect_output_ports):
-            for j in range(self.fw_int):
-                self.wire(self._data_to_tba, 0)
-            self.wire(self._valid_to_tba, 0)
+        # self._tb_index_for_data = self.input("tb_index_for_data",
+        #                                     self.num_tb_bits,
+        #                                     size=self.interconnect_output_ports)
+        # self._range_outer_tba = self.input("range_outer_tba",
+        #                               self.max_range_bits,
+        #                               size=self.interconnect_output_ports)
+        # self._range_inner_tba = self.input("range_inner_tba",
+        #                                   self.max_range_bits,
+        #                                   size=self.interconnect_output_ports)
+        # self._stride_tba = self.input("stride_tba",
+        #                               self.max_range_bits,
+        #                               size=self.interconnect_output_ports)
+        # self._indices_tba = self.input("indices_tba",
+        #                           width=clog2(2 * self.num_tb * self.fw_int),
+        #                           # the length of indices is equal to range_inner,
+        #                           # so the maximum possible size for self.indices
+        #                           # is the maximum value of range_inner, which if
+        #                           # self.max_range_value
+        #                           size=(self.tb_range_max,
+        #                                 self.interconnect_output_ports),
+        #                           packed=True)
+        # for i in range(self.interconnect_output_ports):
+        #     for j in range(self.fw_int):
+        #         self.wire(self._data_to_tba, 0)
+        #     self.wire(self._valid_to_tba, 0)
 
         # for i in range(self.interconnect_output_ports):
 
