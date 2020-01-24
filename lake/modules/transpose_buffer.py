@@ -5,12 +5,21 @@ from math import log
 
 class TransposeBuffer(Generator):
     def __init__(self,
+                 # number of bits in a word
                  word_width,
+                 # number of words that can be sotred at an address in SRAM
                  # note fetch_width must be powers of 2
                  fetch_width,
+                 # total number of transpose buffers 
                  num_tb,
+                 # height of this particular transpose buffer
                  tb_height,
+                 # maximum value for range parameters in nested for loop 
+                 # (and as a result, maximum length of indices input vector)
+                 # specifying inner for loop values for output column
+                 # addressing
                  max_range,
+                 # maximum stencil height supported from application
                  max_stencil_height):
         super().__init__("transpose_buffer", True)
 
@@ -32,14 +41,30 @@ class TransposeBuffer(Generator):
         self.clk = self.clock("clk")
         # active low asynchronous reset
         self.rst_n = self.reset("rst_n", 1)
+        
+        # data input from SRAM
         self.input_data = self.input("input_data",
                                      width=self.word_width,
                                      size=self.fetch_width,
                                      packed=True)
+        # valid indicating whether data input from SRAM is valid and 
+        # should be stored in transpose buffer
         self.valid_data = self.input("valid_data", 1)
+
+        # the range of the outer for loop in nested for loop for output
+        # column address generation
         self.range_outer = self.input("range_outer", self.max_range_bits)
+        # the range of the inner for loop in nested for loop for output 
+        # column address generation
         self.range_inner = self.input("range_inner", self.max_range_bits)
+
+        # stride for the given application
         self.stride = self.input("stride", self.max_range_bits)
+        # stencil height for the given application
+        self.stencil_height = self.input("stencil_height", clog2(self.max_stencil_height))
+
+        # specifies inner for loop values for output column
+        # addressing
         self.indices = self.input("indices",
                                   width=clog2(2 * self.num_tb * self.fetch_width),
                                   # the length of indices is equal to range_inner,
@@ -48,8 +73,10 @@ class TransposeBuffer(Generator):
                                   # self.max_range_value
                                   size=self.max_range,
                                   packed=True)
+
+        # absolute value index of the first column of this transpose buffer
+        # (absolute in that, each transpose buffer will have a unique index)
         self.tb_start_index = self.input("tb_start_index", self.num_tb_bits)
-        self.stencil_height = self.input("stencil_height", clog2(self.max_stencil_height))
 
         # outputs
         self.col_pixels = self.output("col_pixels",
