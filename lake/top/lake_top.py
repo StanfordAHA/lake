@@ -11,24 +11,27 @@ from lake.modules.transpose_buffer import TransposeBuffer
 
 class LakeTop(Generator):
     def __init__(self,
-                 data_width=16,
-                 mem_width=32,
+                 data_width=16,  # CGRA Params
+                 mem_width=64,
                  mem_depth=512,
                  banks=2,
-                 input_iterator_support=6,
+                 input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
-                 interconnect_input_ports=1,
+                 interconnect_input_ports=1,  # Connection to int
                  interconnect_output_ports=1,
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=1,
-                 agg_height=2,
-                 transpose_height=1,
+                 agg_height=8,
+                 transpose_height=8,
                  max_agg_schedule=64,
                  input_max_port_sched=64,
                  output_max_port_sched=64,
-                 align_input=1,
-                 max_line_length=2048):
+                 align_input=0,
+                 max_line_length=2048,
+                 tb_height=4,
+                 tb_range_max=2048,
+                 tb_sched_max=64):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -50,6 +53,12 @@ class LakeTop(Generator):
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
         self.align_input = align_input
         self.max_line_length = max_line_length
+        assert self.mem_width > self.data_width, "Data width needs to be smaller than mem"
+        self.fw_int = int(self.data_width/self.mem_width)
+        self.num_tb = interconnect_output_ports
+        self.tb_height = tb_height
+        self.tb_range_max = tb_range_max
+        self.tb_sched_max = tb_sched_max
 
         # phases = [] TODO
 
@@ -124,26 +133,26 @@ class LakeTop(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Get the input ports from the interconnect
-        self._data_in = self.input("i_data_in",
+        self._data_in = self.input("data_in",
                                    self.data_width,
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
-        self._addr_in = self.input("i_addr_in",
+        self._addr_in = self.input("addr_in",
                                    self.data_width,
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
 
-        self._valid_in = self.input("i_valid_in",
+        self._valid_in = self.input("valid_in",
                                     self.interconnect_input_ports)
 
-        self._data_out = self.output("o_data_out",
+        self._data_out = self.output("data_out",
                                      self.data_width,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
-        self._valid_out = self.output("o_valid_out",
+        self._valid_out = self.output("valid_out",
                                       self.interconnect_output_ports,
                                       packed=True,
                                       explicit_array=True)
@@ -356,17 +365,17 @@ class LakeTop(Generator):
         ##### READ/WRITE ARBITER #####
         ##############################
         # Hook up the read write arbiters for each bank
-        self._arb_dat_out = self.var("arb_dat_out",
+        self._arb_dat_out = self.output("arb_dat_out",
                                      self.mem_width,
                                      size=self.banks,
                                      explicit_array=True,
                                      packed=True)
-        self._arb_port_out = self.var("arb_port_out",
+        self._arb_port_out = self.output("arb_port_out",
                                       self.interconnect_output_ports,
                                       size=self.banks,
                                       explicit_array=True,
                                       packed=True)
-        self._arb_valid_out = self.var("arb_valid_out",
+        self._arb_valid_out = self.output("arb_valid_out",
                                        self.banks)
 
         self._mem_data_out = self.var("mem_data_out",
@@ -439,6 +448,24 @@ class LakeTop(Generator):
         #############################
         ##### TRANSPOSE BUFFERS #####
         #############################
+
+        # self.fw_int = int(self.data_width/self.mem_width)
+        # self.num_tb = num_tb
+        # self.tb_height = tb_height
+        # self.tb_range_max = tb_range_max
+        # self.tb_sched_max = tb_sched_max
+
+        # tba = TransposeBufferAggregation(word_width=self.data_width,
+        #                                  fetch_width=fw_int,
+        #                                  max_num_tb=self.num_tb,
+        #                                  max_tb_height=self.tb_height,
+        #                                  max_range=self.tb_range_max,
+        #                                  max_schedule_length=self.tb_sched_max)
+        # self.add_child("tba", tba)
+        # self.wire(tba.ports.clk, self._clk)
+        # self.wire(tba.ports.rst_n, self._rst_n)
+        # self.wire(tba.ports.SRAM_to_tb_data, )
+
 
         # self.tb_height = 8
         # self.word_width = self.data_width
