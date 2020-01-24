@@ -142,7 +142,8 @@ class TransposeBuffer(Generator):
     @always_comb
     def get_input_index(self):
         if self.buf_index:
-            self.input_index = const(tb_height, self.tb_height_bits2) + self.row_index.extend(self.tb_height_bits2)
+            self.input_index = const(tb_height, self.tb_height_bits2) + \
+                self.row_index.extend(self.tb_height_bits2)
         else:
             self.input_index = self.row_index.extend(self.tb_height_bits2)
 
@@ -159,7 +160,9 @@ class TransposeBuffer(Generator):
     @always_comb
     def get_tb_indices(self):
         self.indices_index_inner = self.indices[self.index_inner]
-        self.output_index_abs = (self.index_outer.extend(2 * self.max_range_bits) * self.stride.extend(2 * self.max_range_bits) + self.indices_index_inner.extend(2 * self.max_range_bits))
+        self.output_index_abs = (self.index_outer.extend(2 * self.max_range_bits) *
+                                 self.stride.extend(2 * self.max_range_bits) +
+                                 self.indices_index_inner.extend(2 * self.max_range_bits))
         self.output_index_long = self.output_index_abs % fetch_width
         self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
 
@@ -186,10 +189,12 @@ class TransposeBuffer(Generator):
             if self.pause_tb:
                 self.output_valid = 0
                 self.buf_index = 0
-            elif (self.tb0_start.extend(x) <= self.output_index_abs.extend(x)) & (self.output_index_abs.extend(x) <= self.tb0_end.extend(x)):
+            elif (self.tb0_start.extend(x) <= self.output_index_abs.extend(x)) & \
+                    (self.output_index_abs.extend(x) <= self.tb0_end.extend(x)):
                 self.output_valid = 1
                 self.buf_index = 0
-            elif (self.tb1_start.extend(x) <= self.output_index_abs.extend(x)) & (self.output_index_abs.extend(x) <= self.tb1_end.extend(x)):
+            elif (self.tb1_start.extend(x) <= self.output_index_abs.extend(x)) & \
+                    (self.output_index_abs.extend(x) <= self.tb1_end.extend(x)):
                 self.output_valid = 1
                 self.buf_index = 1
             else:

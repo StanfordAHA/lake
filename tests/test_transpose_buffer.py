@@ -1,7 +1,4 @@
-#from lake.modules.transpose_buffer import *
-from transpose_buffer import *
-import magma as m
-from magma import *
+from lake.modules.transpose_buffer import *
 import fault
 import tempfile
 from kratos import *
