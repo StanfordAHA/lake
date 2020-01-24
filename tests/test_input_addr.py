@@ -52,9 +52,10 @@ def test_input_addr_basic(banks,
                         banks=banks,
                         iterator_support=iterator_support,
                         max_port_schedule=64,
-                        address_width=address_width)
+                        address_width=address_width,
+                        data_width=16)
 
-    magma_dut = k.util.to_magma(dut, flatten_array=True)
+    magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
 

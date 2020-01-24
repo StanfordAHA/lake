@@ -14,7 +14,7 @@ class AggregationBuffer(Generator):
                  mem_width,
                  max_agg_schedule):
 
-        super().__init__("aggregation_buffer")
+        super().__init__("aggregation_buffer", debug=True)
 
         self.agg_height = agg_height
         self.data_width = data_width
@@ -31,7 +31,7 @@ class AggregationBuffer(Generator):
         self._data_in = self.input("data_in", self.data_width)
         self._valid_in = self.input("valid_in", 1)
         self._write_act = self.input("write_act", 1)
-
+        self._align = self.input("align", 1)
         # Outputs
         self._data_out = self.output("data_out", self.mem_width)
         self._valid_out = self.output("valid_out", 1)
@@ -80,7 +80,6 @@ class AggregationBuffer(Generator):
         self._valid_demux = self.var("valid_demux", self.agg_height)
         self._next_full = self.var("next_full", self.agg_height)
         self._valid_out_mux = self.var("valid_out_mux", self.agg_height)
-
         for i in range(self.agg_height):
             # Add in the children aggregators...
             self.add_child(f"agg_{i}",

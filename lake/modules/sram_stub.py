@@ -42,12 +42,12 @@ class SRAMStub(Generator):
     ##########################
     # Access sram array      #
     ##########################
-    @always((posedge, "i_clk"))
+    @always_ff((posedge, "i_clk"))
     def seq_data_access(self):
         if self.i_cen & self.i_wen:
             self.data_array[self.i_addr] = self.i_data
 
-    @always((posedge, "i_clk"))
+    @always_ff((posedge, "i_clk"))
     def seq_data_out(self):
         if self.i_cen:
             self.o_data = self.data_array[self.i_addr]
@@ -55,4 +55,4 @@ class SRAMStub(Generator):
 
 if __name__ == "__main__":
     dut = SRAMStub(16, 1024)
-    verilog(dut, filename="sram_stub.sv", check_active_high=False)
+    verilog(dut, filename="sram_stub.sv")
