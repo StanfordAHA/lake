@@ -227,4 +227,4 @@ if __name__ == "__main__":
                            iterator_support=6,
                            max_port_schedule=64,
                            address_width=16)
-    verilog(db_dut, filename="input_addr_ctrl.sv", check_multiple_driver=False)
+    verilog(db_dut, filename="input_addr_ctrl.sv")

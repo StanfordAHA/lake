@@ -64,7 +64,7 @@ class OutputAddrCtrl(Generator):
         self._valid_in = self.input("valid_in", self.interconnect_output_ports)
 
         # Outputs
-        self._ren = self.output("wen_to_sram",
+        self._ren = self.output("ren",
                                 self.interconnect_output_ports,
                                 size=self.banks,
                                 explicit_array=True,
