@@ -24,7 +24,7 @@ def top_test():
                      max_agg_schedule=64,
                      input_max_port_sched=64,
                      output_max_port_sched=64,
-                     align_input=0,
+                     align_input=1,
                      max_line_length=2048,
                      tb_height=4,
                      tb_range_max=2048,

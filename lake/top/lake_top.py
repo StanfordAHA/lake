@@ -27,7 +27,7 @@ class LakeTop(Generator):
                  max_agg_schedule=64,
                  input_max_port_sched=64,
                  output_max_port_sched=64,
-                 align_input=0,
+                 align_input=1,
                  max_line_length=2048,
                  tb_height=4,
                  tb_range_max=2048,
@@ -181,7 +181,8 @@ class LakeTop(Generator):
         self._data_consume = self._data_in
         self._valid_consume = self._valid_in
         # Zero out if not aligning
-        self._align_to_agg = const(0, self.interconnect_input_ports)
+        self._align_to_agg = self.var("align_input",
+                                      self.interconnect_input_ports)
         # Add the aggregation buffer aligners
         if(self.align_input):
             self._data_consume = self.var("data_consume",
@@ -191,8 +192,7 @@ class LakeTop(Generator):
                                           explicit_array=True)
             self._valid_consume = self.var("valid_consume",
                                            self.interconnect_input_ports)
-            self._align_to_agg = self.var("align_input",
-                                          self.interconnect_input_ports)
+
             # Pass this to agg
             self._line_length = self.input("line_length",
                                            clog2(self.max_line_length),
@@ -211,6 +211,8 @@ class LakeTop(Generator):
                 self.wire(self._align_to_agg[i], new_child.ports.align)
                 self.wire(self._valid_consume[i], new_child.ports.out_valid)
                 self.wire(self._data_consume[i], new_child.ports.out_dat)
+        else:
+            self.wire(self._align_to_agg, const(0, self._align_to_agg.width))
         ################################################
         ##### END: AGGREGATION ALIGNERS (OPTIONAL) #####
         ################################################
@@ -328,6 +330,7 @@ class LakeTop(Generator):
                              iterator_support=self.output_iterator_support,
                              max_port_schedule=64,
                              address_width=self.address_width)
+
         self.add_child(f"output_addr_ctrl", oac)
 
         # Normal wires
@@ -444,27 +447,70 @@ class LakeTop(Generator):
         #########################################
         ##### END: DEMUX WRITE/SRAM WRAPPER #####
         #########################################
-
-        #############################
-        ##### TRANSPOSE BUFFERS #####
-        #############################
-
         # self.fw_int = int(self.data_width/self.mem_width)
         # self.num_tb = num_tb
         # self.tb_height = tb_height
         # self.tb_range_max = tb_range_max
         # self.tb_sched_max = tb_sched_max
+        self.num_tb_bits = max(1, clog2(self.num_tb))
+        self.max_range_bits = max(1, clog2(self.tb_range_max))
+        #############################
+        ##### TRANSPOSE BUFFERS #####
+        #############################
+        self._data_to_tba = self.var("data_to_tba",
+                                     self.data_width,
+                                     size=(self.fw_int,
+                                           self.interconnect_output_ports))
+        self._valid_to_tba = self.var("valid_to_tba", self.interconnect_output_ports)
 
-        # tba = TransposeBufferAggregation(word_width=self.data_width,
-        #                                  fetch_width=fw_int,
-        #                                  max_num_tb=self.num_tb,
-        #                                  max_tb_height=self.tb_height,
-        #                                  max_range=self.tb_range_max,
-        #                                  max_schedule_length=self.tb_sched_max)
-        # self.add_child("tba", tba)
-        # self.wire(tba.ports.clk, self._clk)
-        # self.wire(tba.ports.rst_n, self._rst_n)
-        # self.wire(tba.ports.SRAM_to_tb_data, )
+        self._tb_index_for_data = self.input("tb_index_for_data",
+                                            self.num_tb_bits,
+                                            size=self.interconnect_output_ports)
+        self._range_outer_tba = self.input("range_outer_tba",
+                                      self.max_range_bits,
+                                      size=self.interconnect_output_ports)
+        self._range_inner_tba = self.input("range_inner_tba",
+                                          self.max_range_bits,
+                                          size=self.interconnect_output_ports)
+        self._stride_tba = self.input("stride_tba",
+                                      self.max_range_bits,
+                                      size=self.interconnect_output_ports)
+        self._indices_tba = self.input("indices_tba",
+                                  width=clog2(2 * self.num_tb * self.fw_int),
+                                  # the length of indices is equal to range_inner,
+                                  # so the maximum possible size for self.indices
+                                  # is the maximum value of range_inner, which if
+                                  # self.max_range_value
+                                  size=(self.tb_range_max,
+                                        self.interconnect_output_ports),
+                                  packed=True)
+        for i in range(self.interconnect_output_ports):
+            for j in range(self.fw_int):
+                self.wire(self._data_to_tba, 0)
+            self.wire(self._valid_to_tba, 0)
+
+        # for i in range(self.interconnect_output_ports):
+
+        #     tba = TransposeBufferAggregation(word_width=self.data_width,
+        #                                     fetch_width=fw_int,
+        #                                     max_num_tb=1,
+        #                                     #max_num_tb=self.num_tb,
+        #                                     max_tb_height=1,
+        #                                     #max_tb_height=self.tb_height,
+        #                                     max_range=self.tb_range_max,
+        #                                     max_schedule_length=self.tb_sched_max)
+
+        #     self.add_child(f"tba_{i}", tba)
+        #     self.wire(tba.ports.clk, self._clk)
+        #     self.wire(tba.ports.rst_n, self._rst_n)
+        #     self.wire(tba.ports.SRAM_to_tb_data, self._data_to_tba[i])
+
+        #     self.wire(tba.ports.valid_data, self._valid_to_tba[i])
+        #     self.wire(tba.ports.tb_index_for_data, self._tb_index_for_data[i])
+        #     self.wire(tba.ports.range_outer, self._range_outer_tba[i])
+        #     self.wire(tba.ports.range_inner, self._range_inner_tba[i])
+        #     self.wire(tba.ports.stride, self._stride_tba[i])
+        #     self.wire(tba.ports.indices, self._indices_tba[i])
 
         # self.tb_height = 8
         # self.word_width = self.data_width
