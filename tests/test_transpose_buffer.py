@@ -4,6 +4,7 @@ import tempfile
 from kratos import *
 import pytest
 
+
 @pytest.mark.skip
 def test_transpose_buffer():
     word_width = 1
@@ -13,11 +14,11 @@ def test_transpose_buffer():
     num_tb = 1
     max_stencil_height = 3
     dut = TransposeBuffer(word_width,
-                        fetch_width,
-                        num_tb,
-                        stencil_height,
-                        max_range_value,
-                        max_stencil_height)
+                          fetch_width,
+                          num_tb,
+                          stencil_height,
+                          max_range_value,
+                          max_stencil_height)
     magma_dut = kratos.util.to_magma(dut, flatten_array=True)
     verilog(dut, filename="transposebuffer.sv")
     tester = fault.Tester(magma_dut, magma_dut.clk)
@@ -40,14 +41,14 @@ def test_transpose_buffer():
         tester.circuit.stride = 2
         tester.circuit.stencil_height_input = 3
         if i == 0 or i == 1 or i == 2:
-            tester.circuit.valid_data = 1;
+            tester.circuit.valid_data = 1
         elif i == 3 or i == 4:
-            tester.circuit.valid_data = 0;
+            tester.circuit.valid_data = 0
         else:
-            if (i-5) % 6 < 3:
-                tester.circuit.valid_data = 1;
+            if (i - 5) % 6 < 3:
+                tester.circuit.valid_data = 1
             else:
-                tester.circuit.valid_data = 0;
+                tester.circuit.valid_data = 0
 
         for j in range(max_range_value):
             setattr(tester.circuit, f"indices_{j}", j)
@@ -56,9 +57,9 @@ def test_transpose_buffer():
 
         with tempfile.TemporaryDirectory() as tempdir:
             tester.compile_and_run(target="verilator",
-                                directory=tempdir,
-                                flags=["-Wno-fatal", "--trace"],
-                                magma_output="verilog")
+                                   directory=tempdir,
+                                   flags=["-Wno-fatal", "--trace"],
+                                   magma_output="verilog")
+
 
 test_transpose_buffer()
-
