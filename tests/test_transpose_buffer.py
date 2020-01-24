@@ -60,6 +60,3 @@ def test_transpose_buffer():
                                    directory=tempdir,
                                    flags=["-Wno-fatal", "--trace"],
                                    magma_output="verilog")
-
-
-test_transpose_buffer()

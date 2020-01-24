@@ -113,7 +113,7 @@ class LakeTop(Generator):
         if self.banks == 1:
             self.address_width = clog2(mem_depth)
         else:
-            self.address_width = clog2(mem_depth) #+ clog2(banks)
+            self.address_width = clog2(mem_depth)  # + clog2(banks)
 
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
@@ -255,16 +255,16 @@ class LakeTop(Generator):
         ##### INPUT ADDRESS CONTROLLER #####
         ####################################
         self._wen_to_arb = self.var("wen_to_arb", self.banks)
-        self._addr_to_arb =  self.var("addr_to_arb",
-                                      self.address_width,
-                                      size=self.banks,
-                                      explicit_array=True,
-                                      packed=True)
-        self._data_to_arb =  self.var("data_to_arb",
-                                      self.mem_width,
-                                      size=self.banks,
-                                      explicit_array=True,
-                                      packed=True)
+        self._addr_to_arb = self.var("addr_to_arb",
+                                     self.address_width,
+                                     size=self.banks,
+                                     explicit_array=True,
+                                     packed=True)
+        self._data_to_arb = self.var("data_to_arb",
+                                     self.mem_width,
+                                     size=self.banks,
+                                     explicit_array=True,
+                                     packed=True)
         # Connect these inputs ports to an address generator'
         iac = InputAddrCtrl(interconnect_input_ports=self.interconnect_input_ports,
                             mem_depth=self.mem_depth,
@@ -394,11 +394,11 @@ class LakeTop(Generator):
         ##### OUTPUT ADDR CTRL #####
         ############################
         oac = OutputAddrCtrl(interconnect_input_ports=self.interconnect_input_ports,
-                            mem_depth=self.mem_depth,
-                            banks=self.banks,
-                            iterator_support=self.input_iterator_support,
-                            max_port_schedule=64,
-                            address_width=self.address_width)
+                             mem_depth=self.mem_depth,
+                             banks=self.banks,
+                             iterator_support=self.input_iterator_support,
+                             max_port_schedule=64,
+                             address_width=self.address_width)
         self.add_child(f"input_addr_ctrl", iac)
 
         # Normal wires

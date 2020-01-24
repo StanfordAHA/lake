@@ -220,10 +220,10 @@ class InputAddrCtrl(Generator):
 
 
 if __name__ == "__main__":
-    db_dut = InputAddrCtrl(interconnect_input_ports=1,
+    db_dut = InputAddrCtrl(interconnect_input_ports=2,
                            data_width=16,
                            mem_depth=512,
-                           banks=2,
+                           banks=4,
                            iterator_support=6,
                            max_port_schedule=64,
                            address_width=16)
