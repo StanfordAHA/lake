@@ -66,6 +66,7 @@ class TransposeBufferAggregation(Generator):
 
         # stride for the given application
         self.stride = self.input("stride", self.max_range_bits)
-        # stencil height for the given application
-        self.stencil_height = self.input("stencil_height", clog2(self.max_stencil_height))
 
+        # set signals
+        # set valid_data accordingly
+        # send input data to right buffer based on schedule
