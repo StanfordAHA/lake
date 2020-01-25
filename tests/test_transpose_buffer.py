@@ -4,7 +4,7 @@ import tempfile
 from kratos import *
 import pytest
 
-@pytest.mark.skip
+#@pytest.mark.skip
 def test_transpose_buffer():
     word_width = 1
     fetch_width = 4
@@ -40,14 +40,14 @@ def test_transpose_buffer():
         tester.circuit.stride = 2
         tester.circuit.stencil_height_input = 3
         if i == 0 or i == 1 or i == 2:
-            tester.circuit.valid_data = 1;
+            tester.circuit.valid_data = 1
         elif i == 3 or i == 4:
-            tester.circuit.valid_data = 0;
+            tester.circuit.valid_data = 0
         else:
             if (i-5) % 6 < 3:
-                tester.circuit.valid_data = 1;
+                tester.circuit.valid_data = 1
             else:
-                tester.circuit.valid_data = 0;
+                tester.circuit.valid_data = 0
 
         for j in range(max_range_value):
             setattr(tester.circuit, f"indices_{j}", j)
@@ -55,6 +55,7 @@ def test_transpose_buffer():
         tester.step(2)
 
         with tempfile.TemporaryDirectory() as tempdir:
+            tempdir="/nobackupkiwi/skavya/lake_/lake/tests/temp"
             tester.compile_and_run(target="verilator",
                                 directory=tempdir,
                                 flags=["-Wno-fatal", "--trace"],

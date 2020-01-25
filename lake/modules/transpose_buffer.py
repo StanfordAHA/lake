@@ -94,7 +94,8 @@ class TransposeBuffer(Generator):
                            size=[2 * self.tb_height, self.fetch_width],
                            packed=True)
 
-        self.buf_index = self.var("buf_index", 1)
+        self.input_buf_index = self.var("input_buf_index", 1)
+        self.out_buf_index = self.var("out_buf_index", 1)
         self.row_index = self.var("row_index", clog2(self.tb_height))
         self.input_index = self.var("input_index", clog2(2 * self.tb_height))
 
@@ -121,7 +122,7 @@ class TransposeBuffer(Generator):
         self.add_code(self.update_row_index)
         self.add_code(self.get_tb_indices)
         self.add_code(self.output_from_tb)
-        self.add_code(self.set_output_valid_buf_index)
+        self.add_code(self.set_output_valid_out_buf_index)
         self.add_code(self.tb_col_indices)
 
     # get output loop iterators
@@ -157,18 +158,22 @@ class TransposeBuffer(Generator):
     def update_row_index(self):
         if ~self.rst_n:
             self.row_index = 0
+            self.input_buf_index = 0
         elif ~self.valid_data:
+            self.input_buf_index = self.input_buf_index
             self.row_index = self.row_index
         elif self.row_index == self.tb_height - 1:
+            self.input_buf_index = ~self.input_buf_index
             self.row_index = 0
         else:
+            self.input_buf_index = self.input_buf_index
             self.row_index = self.row_index + 1
 
     # for double buffer, get index of row to fill in transpose buffer
     # with input data
     @always_comb
     def get_input_index(self):
-        if self.buf_index:
+        if self.input_buf_index:
             self.input_index = const(tb_height, self.tb_height_bits2) + \
                 self.row_index.extend(self.tb_height_bits2)
         else:
@@ -198,7 +203,7 @@ class TransposeBuffer(Generator):
     def output_from_tb(self):
         if self.output_valid:
             for i in range(tb_height):
-                if ~self.buf_index:
+                if ~self.out_buf_index:
                     self.col_pixels[i] = self.tb[i][self.output_index]
                 else:
                     self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
@@ -208,25 +213,25 @@ class TransposeBuffer(Generator):
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def set_output_valid_buf_index(self):
+    def set_output_valid_out_buf_index(self):
         if ~self.rst_n:
             self.output_valid = 0
-            self.buf_index = 0
+            self.out_buf_index = 0
         else:
             if self.pause_tb:
                 self.output_valid = 0
-                self.buf_index = 0
+                self.out_buf_index = 0
             elif (self.tb0_start.extend(x) <= self.output_index_abs.extend(x)) & \
                     (self.output_index_abs.extend(x) <= self.tb0_end.extend(x)):
                 self.output_valid = 1
-                self.buf_index = 0
+                self.out_buf_index = 0
             elif (self.tb1_start.extend(x) <= self.output_index_abs.extend(x)) & \
                     (self.output_index_abs.extend(x) <= self.tb1_end.extend(x)):
                 self.output_valid = 1
-                self.buf_index = 1
+                self.out_buf_index = 1
             else:
                 self.output_valid = 0
-                self.buf_index = self.buf_index
+                self.out_buf_index = self.out_buf_index
 
     # get starting and ending column indices that represent both buffers part
     # of transpose buffer double buffer
