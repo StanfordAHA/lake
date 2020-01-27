@@ -72,7 +72,7 @@ class TransposeBuffer(Generator):
 
         # absolute value index of the first column of this transpose buffer
         # (absolute in that, each transpose buffer will have a unique index)
-        self.tb_start_index = self.input("tb_start_index", self.num_tb_bits)
+        self.tb_start_index = self.input("tb_start_index", clog2(self.num_tb*self.num_tb)) 
 
         # outputs
         self.col_pixels = self.output("col_pixels",

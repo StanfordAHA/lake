@@ -74,7 +74,7 @@ class TransposeBufferAggregation(Generator):
         self.tb_output_valid_all = self.var("tb_output_valid_all", width=1, size=self.num_tb, packed=True)
         self.tb_arbiter_rdy_all = self.var("tb_arbiter_rdy_all", width=1, size=self.num_tb, packed=True)
         self.output_valid = self.var("output_valid", 1)
-        self.output_ = self.var("output_", width=self.word_width, size=[self.num_tb, self.tb_height], packed=True)
+        self.output_inter = self.var("output_inter", width=self.word_width, size=self.tb_height, packed=True)
  
         for i in range(self.num_tb):
             self.add_child(f"tb_{i}", 
@@ -116,15 +116,16 @@ class TransposeBufferAggregation(Generator):
     def set_output_valid(self):
         comb_output = self.combinational()
         valid_count = self.tb_output_valid_all[0]
+        comb_output.add_stmt(self.output_inter.assign(self.tb_output_data_all[0]))
         for i in range(1, self.num_tb):
             valid_count = valid_count + self.tb_output_valid_all[i]
             if_vld = IfStmt(self.tb_output_valid_all[i] == 1)
-            if_vld.then_(self.output_[valid_count-1].assign(self.tb_output_data_all[i]))
+            if_vld.then_(self.output_inter.assign(self.tb_output_data_all[i]))
             comb_output.add_stmt(if_vld)
         if_vld_count = IfStmt(valid_count > 0)    
         if_vld_count.then_(self.tb_to_interconnect_valid.assign(1))
         if_vld_count.else_(self.tb_to_interconnect_valid.assign(0))
-        comb_output.add_stmt(self.tb_to_interconnect_data.assign(self.output_[0]))
+        comb_output.add_stmt(self.tb_to_interconnect_data.assign(self.output_inter))
         comb_output.add_stmt(if_vld_count)
 
     def send_tba_rdy(self):
@@ -137,6 +138,6 @@ class TransposeBufferAggregation(Generator):
         if_rdy_count.else_(self.tb_arbiter_rdy.assign(0))
         comb_tb_arbiter_rdy.add_stmt(if_rdy_count)
 
-dut = TransposeBufferAggregation(1,4,1,3,5,2)
+dut = TransposeBufferAggregation(1,4,3,3,5,2)
 verilog(dut, filename="tba.sv")
 
