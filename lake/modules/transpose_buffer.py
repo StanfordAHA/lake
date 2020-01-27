@@ -203,7 +203,7 @@ class TransposeBuffer(Generator):
     def output_from_tb(self):
         if self.output_valid:
             for i in range(tb_height):
-                if ~self.out_buf_index:
+                if self.out_buf_index:
                     self.col_pixels[i] = self.tb[i][self.output_index]
                 else:
                     self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
@@ -216,7 +216,7 @@ class TransposeBuffer(Generator):
     def set_output_valid_out_buf_index(self):
         if ~self.rst_n:
             self.output_valid = 0
-            self.out_buf_index = 0
+            self.out_buf_index = 1
         else:
             if self.pause_tb:
                 self.output_valid = 0
