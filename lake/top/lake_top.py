@@ -525,8 +525,7 @@ class LakeTop(Generator):
                                              tb_height=1,
                                              #max_tb_height=self.tb_height,
                                              max_range=self.tb_range_max,
-                                             max_schedule_length=self.tb_sched_max,
-                                             max_stencil_height=4)
+                                             max_schedule_length=self.tb_sched_max)
 
             self.add_child(f"tba_{i}", tba)
             self.wire(tba.ports.clk, self._clk)
@@ -543,36 +542,6 @@ class LakeTop(Generator):
             self.wire(self._data_out[i], tba.ports.tb_to_interconnect_data)
             self.wire(self._valid_out[i], tba.ports.tb_to_interconnect_valid)
             self.wire(self._ready_tba[i] , tba.ports.tb_arbiter_rdy)
-
-        # self.tb_height = 8
-        # self.word_width = self.data_width
-        # self._tb_out = self.output("tb_out",
-        #                            width=self.word_width,
-        #                            size=self.tb_height,
-        #                            packed=True)
-        # self._tb_valid = self.output("tb_valid", 1)
-        # tb = TransposeBuffer(word_width=self.data_width,
-        #                      fetch_width=int(self.mem_width/self.data_width),
-        #                      num_tb=8,
-        #                      tb_height=8,
-        #                      max_range=128,
-        #                      max_stencil_height=4)
-        # self.add_child("transpose_out", tb)
-        # # clk + rst
-        # self.wire(tb.ports.clk, self._clk)
-        # self.wire(tb.ports.rst_n, self._rst_n)
-        # # in
-        # self.wire(tb.ports.input_data, self._arb_dat_out)
-        # self.wire(tb.ports.valid_data, self._arb_valid_out)
-        # self.wire(tb.ports.range_outer, 10)
-        # self.wire(tb.ports.range_inner, 1)
-        # self.wire(tb.ports.stride, 1)
-        # self.wire(tb.ports.indices, 0)
-        # self.wire(tb.ports.tb_start_index, 0)
-        # self.wire(tb.ports.stencil_height, 3)
-        # # out
-        # self.wire(self._tb_out, tb.ports.col_pixels)
-        # self.wire(self._tb_valid, tb.ports.output_valid)
 
         ####################
         ##### ADD CODE #####
