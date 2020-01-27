@@ -26,7 +26,6 @@ class LakeTop(Generator):
                  mem_output_ports=1,
                  use_sram_stub=1,
                  agg_height=8,
-                 transpose_height=8,
                  max_agg_schedule=64,
                  input_max_port_sched=64,
                  output_max_port_sched=64,
@@ -49,7 +48,6 @@ class LakeTop(Generator):
         self.mem_output_ports = mem_output_ports
         self.use_sram_stub = use_sram_stub
         self.agg_height = agg_height
-        self.transpose_height = transpose_height
         self.max_agg_schedule = max_agg_schedule
         self.input_max_port_sched = input_max_port_sched
         self.output_max_port_sched = output_max_port_sched
@@ -485,7 +483,6 @@ class LakeTop(Generator):
         self.wire(self._data_to_tba, dmux_rd.ports.data_out)
         self.wire(self._valid_to_tba, dmux_rd.ports.valid_out)
 
-
         #############################
         ##### TRANSPOSE BUFFERS #####
         #############################
@@ -562,14 +559,3 @@ class LakeTop(Generator):
 if __name__ == "__main__":
     lake_dut = LakeTop()
     verilog(lake_dut, filename="lake_top.sv", check_multiple_driver=False)
-
-
-# for i in range(self.banks):
-#     self._i_port_scheds.append(self.input(f"i_port_sched_b_{i}",
-#                                           self.input_port_sched_width,
-#                                           size=self.input_max_port_sched,
-#                                           packed=True,
-#                                           explicit_array=True))
-# self._i_port_periods = self.input("i_port_periods",
-#                                   clog2(self.input_max_port_sched),
-#                                   size=self.banks)

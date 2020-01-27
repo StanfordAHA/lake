@@ -86,7 +86,6 @@ def top_test(data_width=16,
                      mem_output_ports=mem_output_ports,
                      use_sram_stub=use_sram_stub,
                      agg_height=agg_height,
-                     transpose_height=transpose_height,
                      max_agg_schedule=max_agg_schedule,
                      input_max_port_sched=input_max_port_sched,
                      output_max_port_sched=output_max_port_sched,
@@ -95,14 +94,13 @@ def top_test(data_width=16,
                      tb_height=tb_height,
                      tb_range_max=tb_range_max,
                      tb_sched_max=tb_sched_max)
+
     magma_dut = kts.util.to_magma(lt_dut, flatten_array=True, check_multiple_driver=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
-
-    # tester.circuit.line_length = 5
 
     rand.seed(0)
     tester.circuit.clk = 0
