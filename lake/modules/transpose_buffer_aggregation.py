@@ -76,6 +76,7 @@ class TransposeBufferAggregation(Generator):
         self.tb_output_valid_all = self.var("tb_output_valid_all", width=1, size=self.num_tb, packed=True)
         self.tb_arbiter_rdy_all = self.var("tb_arbiter_rdy_all", width=1, size=self.num_tb, packed=True)
         self.output_valid = self.var("output_valid", 1)
+        self.output_ = self.var("output_", width=1, size=self.num_tb, packed=True)
  
         for i in range(self.num_tb):
             self.add_child(f"tb_{i}", 
@@ -116,21 +117,37 @@ class TransposeBufferAggregation(Generator):
                     self.valid_data_all[i] = 0
 
     def set_output_valid(self):
-        count = self.tb_output_valid_all[0]
+        comb_output = self.combinational()
+        valid_count = self.tb_output_valid_all[0]
+        for i in range(1, self.num_tb):
+            valid_count = valid_count + self.tb_output_valid_all[i]
+            if_vld = IfStmt(self.tb_output_valid_all[i] == 1)
+            if_vld.then_(self.output_[valid_count-1].assign(self.tb_output_data_all[i]))
+        if_vld_count = IfStmt(valid_count > 0)    
+        if_vld_count.then_(self.tb_to_interconnect_valid.assign(1))
+        if_vld_count.else_(self.tb_to_interconnect_valid.assign(0))
+        comb_output.add_stmt(self.tb_to_interconnect_data.assign(self.output_[0]))
+        comb_output.add_stmt(if_vld)
+        comb_output.add_stmt(if_vld_count)
+        '''count = self.tb_output_valid_all[0] 
         for i in range(1, self.num_tb):
             count = count + self.tb_output_valid_all[i]
-            # comb block if statement?
+            if_no_valid_yet = IfStmt((self.tb_output_valid_all[i] = 1) & (self.tb_to_interconnect_data ~= 1))
+            if_no_valid_yet.then_(self.tb_to_interconnect_data.assign(1))
+
             if self.tb_output_valid_all[i] == 1:
                 self.add_stmt(self.tb_to_interconnect_data.assign(self.tb_output_data_all[i]))
-        self.add_stmt(self.tb_to_interconnect_valid.assign(count))
+        self.add_stmt(self.tb_to_interconnect_valid.assign(count))'''
 
     def send_tba_rdy(self):
+        comb_tb_arbiter_rdy = self.combinational()
         rdy_count = self.tb_arbiter_rdy_all[0]
         for i in range(1, self.num_tb):
             rdy_count = rdy_count + self.tb_arbiter_rdy_all[i]
         if_rdy_count = IfStmt(rdy_count > 0)
         if_rdy_count.then_(self.tb_arbiter_rdy.assign(1))
         if_rdy_count.else_(self.tb_arbiter_rdy.assign(0))
+        comb_tb_arbiter_rdy.add_stmt(if_rdy_count)
 
 dut = TransposeBufferAggregation(1,4,1,3,5,2,3)
 verilog(dut, filename="tba.sv")

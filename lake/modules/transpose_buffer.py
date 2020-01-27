@@ -99,8 +99,8 @@ class TransposeBuffer(Generator):
         self.input_buf_index = self.var("input_buf_index", 1)
         self.out_buf_index = self.var("out_buf_index", 1)
         self.prev_out_buf_index = self.var("prev_out_buf_index", 1)
-        self.row_index = self.var("row_index", tb_height_bits)
-        self.input_index = self.var("input_index", tb_height_bits2)
+        self.row_index = self.var("row_index", self.tb_height_bits)
+        self.input_index = self.var("input_index", self.tb_height_bits2)
 
         self.output_index_abs = self.var("output_index_abs", 2 * self.max_range_bits)
         self.output_index_long = self.var("output_index_long", 2 * self.max_range_bits)
