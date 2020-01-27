@@ -50,6 +50,10 @@ class TransposeBufferAggregation(Generator):
         self.range_outer = self.input("range_outer", clog2(self.max_range))
         self.range_inner = self.input("range_inner", clog2(self.max_range))
         self.stride = self.input("stride", clog2(self.max_range))
+<<<<<<< HEAD
+=======
+        self.stencil_height = self.input("stencil_height", clog2(self.max_stencil_height))
+>>>>>>> 33031ff48004de2f9754523f8b0d1af2399685f1
         self.indices = self.input("indices",
                                   width=clog2(2 * self.num_tb * self.fetch_width),
                                   # the length of indices is equal to range_inner,
@@ -64,6 +68,10 @@ class TransposeBufferAggregation(Generator):
                                                    size=self.tb_height,
                                                    packed=True)
         self.tb_to_interconnect_valid = self.output("self.tb_to_interconnect_valid", 1)
+<<<<<<< HEAD
+=======
+        self.tb_arbiter_rdy = self.output("self.tb_arbiter_rdy", 1)
+>>>>>>> 33031ff48004de2f9754523f8b0d1af2399685f1
 
         # local variables
         self.valid_data_all = self.var("valid_data_all", 
@@ -73,7 +81,13 @@ class TransposeBufferAggregation(Generator):
 
         self.tb_output_data_all = self.var("tb_output_data_all", width=self.word_width, size=[self.num_tb, self.tb_height], packed=True)
         self.tb_output_valid_all = self.var("tb_output_valid_all", width=1, size=self.num_tb, packed=True)
+<<<<<<< HEAD
         self.output_valid = self.var("output_valid", 1)
+=======
+        self.tb_arbiter_rdy_all = self.var("tb_arbiter_rdy_all", width=1, size=self.num_tb, packed=True)
+        self.output_valid = self.var("output_valid", 1)
+        self.output_ = self.var("output_", width=self.word_width, size=[self.num_tb, self.tb_height], packed=True)
+>>>>>>> 33031ff48004de2f9754523f8b0d1af2399685f1
  
         for i in range(self.num_tb):
             self.add_child(f"tb_{i}", 
@@ -91,10 +105,15 @@ class TransposeBufferAggregation(Generator):
             self.wire(self[f"tb_{i}"].ports.range_outer, self.range_outer)
             self.wire(self[f"tb_{i}"].ports.range_inner, self.range_inner)
             self.wire(self[f"tb_{i}"].ports.stride, self.stride)
+<<<<<<< HEAD
+=======
+            self.wire(self[f"tb_{i}"].ports.stencil_height, self.stencil_height)
+>>>>>>> 33031ff48004de2f9754523f8b0d1af2399685f1
             self.wire(self[f"tb_{i}"].ports.indices, self.indices)
             self.wire(self[f"tb_{i}"].ports.tb_start_index, self.num_tb*i)
             self.wire(self.tb_output_data_all[i], self[f"tb_{i}"].ports.col_pixels)
             self.wire(self.tb_output_valid_all[i], self[f"tb_{i}"].ports.output_valid)
+<<<<<<< HEAD
 
         self.add_code(self.set_valid_data_all)
         self.set_output_valid()
@@ -120,3 +139,59 @@ class TransposeBufferAggregation(Generator):
             self.add_stmt(self.tb_to_interconnect_valid.assign(count))
 
 TransposeBufferAggregation(1,4,1,3,5,2,3)
+=======
+            self.wire(self.tb_arbiter_rdy_all[i], self[f"tb_{i}"].ports.rdy_to_arbiter)
+
+        self.add_code(self.set_valid_data_all)
+        self.set_output_valid()
+        self.send_tba_rdy()
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_valid_data_all(self):
+        if ~self.valid_data:
+            for i in range(self.num_tb):
+                self.valid_data_all[i] = 0
+        else:
+            for i in range(self.num_tb):
+                if i == self.tb_index_for_data:
+                    self.valid_data_all[i] = 1
+                else:
+                    self.valid_data_all[i] = 0
+
+    def set_output_valid(self):
+        comb_output = self.combinational()
+        valid_count = self.tb_output_valid_all[0]
+        for i in range(1, self.num_tb):
+            valid_count = valid_count + self.tb_output_valid_all[i]
+            if_vld = IfStmt(self.tb_output_valid_all[i] == 1)
+            if_vld.then_(self.output_[valid_count-1].assign(self.tb_output_data_all[i]))
+            comb_output.add_stmt(if_vld)
+        if_vld_count = IfStmt(valid_count > 0)    
+        if_vld_count.then_(self.tb_to_interconnect_valid.assign(1))
+        if_vld_count.else_(self.tb_to_interconnect_valid.assign(0))
+        comb_output.add_stmt(self.tb_to_interconnect_data.assign(self.output_[0]))
+        comb_output.add_stmt(if_vld_count)
+        '''count = self.tb_output_valid_all[0] 
+        for i in range(1, self.num_tb):
+            count = count + self.tb_output_valid_all[i]
+            if_no_valid_yet = IfStmt((self.tb_output_valid_all[i] = 1) & (self.tb_to_interconnect_data ~= 1))
+            if_no_valid_yet.then_(self.tb_to_interconnect_data.assign(1))
+
+            if self.tb_output_valid_all[i] == 1:
+                self.add_stmt(self.tb_to_interconnect_data.assign(self.tb_output_data_all[i]))
+        self.add_stmt(self.tb_to_interconnect_valid.assign(count))'''
+
+    def send_tba_rdy(self):
+        comb_tb_arbiter_rdy = self.combinational()
+        rdy_count = self.tb_arbiter_rdy_all[0]
+        for i in range(1, self.num_tb):
+            rdy_count = rdy_count + self.tb_arbiter_rdy_all[i]
+        if_rdy_count = IfStmt(rdy_count > 0)
+        if_rdy_count.then_(self.tb_arbiter_rdy.assign(1))
+        if_rdy_count.else_(self.tb_arbiter_rdy.assign(0))
+        comb_tb_arbiter_rdy.add_stmt(if_rdy_count)
+
+dut = TransposeBufferAggregation(1,4,1,3,5,2,3)
+verilog(dut, filename="tba.sv")
+
+>>>>>>> 33031ff48004de2f9754523f8b0d1af2399685f1
