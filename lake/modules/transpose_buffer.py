@@ -85,7 +85,7 @@ class TransposeBuffer(Generator):
                                       size=self.tb_height,
                                       packed=True)
         self.output_valid = self.output("output_valid", 1)
-        self.rdy_to_arbitrator = self.output("rdy_to_arbitrator", 1)
+        self.rdy_to_arbiter = self.output("rdy_to_arbiter", 1)
 
         # local variables
         self.index_outer = self.var("index_outer", self.max_range_bits)
@@ -127,7 +127,7 @@ class TransposeBuffer(Generator):
         self.add_code(self.output_from_tb)
         self.add_code(self.set_output_valid_out_buf_index)
         self.add_code(self.tb_col_indices)
-        self.add_code(self.send_rdy_to_arbitrator)
+        self.add_code(self.send_rdy_to_arbiter)
 
     # get output loop iterators
     # set pause_tb signal to pause input/output depending on
@@ -239,19 +239,19 @@ class TransposeBuffer(Generator):
         self.prev_out_buf_index = self.out_buf_index
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def send_rdy_to_arbitrator(self):
+    def send_rdy_to_arbiter(self):
         if ~self.rst_n:
             self.num_valid = 0
-            self.rdy_to_arbitrator = 1
+            self.rdy_to_arbiter = 1
         elif self.prev_out_buf_index != self.out_buf_index:
-            self.rdy_to_arbitrator = 1
+            self.rdy_to_arbiter = 1
             self.num_valid = 0
         elif (self.num_valid < self.tb_height) & (self.valid_data):
-            self.rdy_to_arbitrator = 1
+            self.rdy_to_arbiter = 1
             self.num_valid = self.num_valid + 1
         else:
             self.num_valid = self.num_valid
-            self.rdy_to_arbitrator = 0
+            self.rdy_to_arbiter = 0
 
 
     # get starting and ending column indices that represent both buffers part
