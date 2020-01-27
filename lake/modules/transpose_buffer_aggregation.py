@@ -171,15 +171,6 @@ TransposeBufferAggregation(1,4,1,3,5,2,3)
         if_vld_count.else_(self.tb_to_interconnect_valid.assign(0))
         comb_output.add_stmt(self.tb_to_interconnect_data.assign(self.output_[0]))
         comb_output.add_stmt(if_vld_count)
-        '''count = self.tb_output_valid_all[0] 
-        for i in range(1, self.num_tb):
-            count = count + self.tb_output_valid_all[i]
-            if_no_valid_yet = IfStmt((self.tb_output_valid_all[i] = 1) & (self.tb_to_interconnect_data ~= 1))
-            if_no_valid_yet.then_(self.tb_to_interconnect_data.assign(1))
-
-            if self.tb_output_valid_all[i] == 1:
-                self.add_stmt(self.tb_to_interconnect_data.assign(self.tb_output_data_all[i]))
-        self.add_stmt(self.tb_to_interconnect_valid.assign(count))'''
 
     def send_tba_rdy(self):
         comb_tb_arbiter_rdy = self.combinational()
