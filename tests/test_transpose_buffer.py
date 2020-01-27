@@ -55,7 +55,7 @@ def test_transpose_buffer():
         tester.step(2)
 
         with tempfile.TemporaryDirectory() as tempdir:
-            tempdir="/nobackupkiwi/skavya/lake_/lake/tests/temp"
+            #tempdir="/nobackupkiwi/skavya/lake_/lake/tests/temp"
             tester.compile_and_run(target="verilator",
                                    directory=tempdir,
                                    flags=["-Wno-fatal", "--trace"],

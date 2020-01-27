@@ -110,7 +110,7 @@ def top_test(data_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
-
+ 
     for i in range(10):
         tester.step(2)
 

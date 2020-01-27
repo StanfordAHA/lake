@@ -57,8 +57,6 @@ class InputAddrCtrl(Generator):
             self._starting_addrs.append(self.input(f"starting_addr_p_{i}", 32))
             self._dimensionalities.append(self.input(f"dimensionality_{i}", 4))
 
-        print(self.max_port_schedule)
-        print(self.port_sched_width)
         for i in range(self.banks):
             self._port_scheds.append(self.input(f"port_sched_b_{i}",
                                                 self.port_sched_width,

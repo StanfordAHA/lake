@@ -7,6 +7,8 @@ from lake.modules.output_addr_ctrl import OutputAddrCtrl
 from lake.modules.agg_aligner import AggAligner
 from lake.modules.rw_arbiter import RWArbiter
 from lake.modules.transpose_buffer import TransposeBuffer
+from lake.modules.transpose_buffer_aggregation import TransposeBufferAggregation
+from lake.modules.demux_reads import DemuxReads
 import kratos as kts
 
 
@@ -30,7 +32,7 @@ class LakeTop(Generator):
                  output_max_port_sched=64,
                  align_input=1,
                  max_line_length=2048,
-                 tb_height=4,
+                 tb_height=1,
                  tb_range_max=2048,
                  tb_sched_max=64):
         super().__init__("LakeTop", debug=True)
@@ -55,7 +57,7 @@ class LakeTop(Generator):
         self.align_input = align_input
         self.max_line_length = max_line_length
         assert self.mem_width > self.data_width, "Data width needs to be smaller than mem"
-        self.fw_int = int(self.data_width / self.mem_width)
+        self.fw_int = int(self.mem_width / self.data_width)
         self.num_tb = interconnect_output_ports
         self.tb_height = tb_height
         self.tb_range_max = tb_range_max
@@ -268,7 +270,8 @@ class LakeTop(Generator):
         ##### END: AGG BUFFERS (OPTIONAL) #####
         #######################################
         self._arb_wen_in = self.input("arb_wen_in", 1)
-        self._arb_ren_in = self.input("arb_ren_in", 1)
+        self._arb_ren_in = self.input("arb_ren_in", self.interconnect_output_ports)
+        self._ready_tba = self.var("ready_tba", self.interconnect_output_ports)
         ####################################
         ##### INPUT ADDRESS CONTROLLER #####
         ####################################
@@ -308,7 +311,6 @@ class LakeTop(Generator):
             self.wire(iac.ports.valid_in[i], self._to_iac_valid[i])
             self.wire(iac.ports.data_in[i], self._to_iac_dat[i])
 
-        # TODO: Hook these up
         self.wire(self._wen_to_arb, iac.ports.wen_to_sram)
         self.wire(self._addr_to_arb, iac.ports.addr_out)
         self.wire(self._data_to_arb, iac.ports.data_out)
@@ -345,7 +347,7 @@ class LakeTop(Generator):
         self.wire(oac.ports.starting_addrs,
                   self._o_starting_addrs)
         # self.wire(oac.ports.valid_in, 1)
-        self.wire(oac.ports.valid_in, kts.concat(*([self._arb_ren_in] * 3)))
+        self.wire(oac.ports.valid_in, self._ready_tba)
 
         self._ren_out = self.var("ren_out",
                                  self.interconnect_output_ports,
@@ -357,7 +359,7 @@ class LakeTop(Generator):
                                   size=self.interconnect_output_ports,
                                   explicit_array=True,
                                   packed=True)
-        self.wire(self._ren_out, oac.ports.ren)
+       # self.wire(self._ren_out, oac.ports.ren)
         self.wire(self._addr_out, oac.ports.addr_out)
 
         # for i in range(self.banks):
@@ -371,17 +373,17 @@ class LakeTop(Generator):
         ##### READ/WRITE ARBITER #####
         ##############################
         # Hook up the read write arbiters for each bank
-        self._arb_dat_out = self.output("arb_dat_out",
+        self._arb_dat_out = self.var("arb_dat_out",
                                         self.mem_width,
                                         size=self.banks,
                                         explicit_array=True,
                                         packed=True)
-        self._arb_port_out = self.output("arb_port_out",
+        self._arb_port_out = self.var("arb_port_out",
                                          self.interconnect_output_ports,
                                          size=self.banks,
                                          explicit_array=True,
                                          packed=True)
-        self._arb_valid_out = self.output("arb_valid_out",
+        self._arb_valid_out = self.var("arb_valid_out",
                                           self.banks)
 
         self._mem_data_out = self.var("mem_data_out",
@@ -419,8 +421,9 @@ class LakeTop(Generator):
             self.wire(rw_arb.ports.w_data, self._data_to_arb[i])
             self.wire(rw_arb.ports.w_addr, self._addr_to_arb[i])
             self.wire(rw_arb.ports.data_from_mem, self._mem_data_out[i])
-            self.wire(rw_arb.ports.ren_in, self._ren_out[i])
-            self.wire(rw_arb.ports.ren_en, self._arb_ren_in)
+           # self.wire(rw_arb.ports.ren_in, self._ren_out[i])
+            self.wire(rw_arb.ports.ren_in, self._ready_tba)
+            self.wire(rw_arb.ports.ren_en, self._arb_ren_in[0])
             self.wire(rw_arb.ports.rd_addr, self._addr_out)
             # Out
             self.wire(self._arb_dat_out[i], rw_arb.ports.out_data)
@@ -457,63 +460,89 @@ class LakeTop(Generator):
         # self.tb_sched_max = tb_sched_max
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.tb_range_max))
+        self._data_to_tba = self.var("data_to_tba",
+                                     self.data_width,
+                                     size=(self.fw_int,
+                                           self.interconnect_output_ports),
+                                     explicit_array=True,
+                                     packed=True)
+        self._valid_to_tba = self.var("valid_to_tba", self.interconnect_output_ports)
+        #######################
+        ##### DEMUX READS #####
+        #######################
+        dmux_rd = DemuxReads(fetch_width=self.mem_width,
+                             banks=self.banks,
+                             int_out_ports=self.interconnect_output_ports)
+
+        self.add_child("demux_rds", dmux_rd,
+                       clk=self._clk)
+        #self.wire(dmux_rd.ports.clk, self._clk)
+        self.wire(dmux_rd.ports.rst_n, self._rst_n)
+        self.wire(dmux_rd.ports.data_in, self._arb_dat_out)
+        self.wire(dmux_rd.ports.valid_in, self._arb_valid_out)
+        self.wire(dmux_rd.ports.port_in, self._arb_port_out)
+
+        self.wire(self._data_to_tba, dmux_rd.ports.data_out)
+        self.wire(self._valid_to_tba, dmux_rd.ports.valid_out)
+
+
         #############################
         ##### TRANSPOSE BUFFERS #####
         #############################
-        # self._data_to_tba = self.var("data_to_tba",
-        #                              self.data_width,
-        #                              size=(self.fw_int,
-        #                                    self.interconnect_output_ports))
-        # self._valid_to_tba = self.var("valid_to_tba", self.interconnect_output_ports)
 
         # self._tb_index_for_data = self.var("tb_index_for_data",
         #                                     self.num_tb_bits,
         #                                     size=self.interconnect_output_ports)
-        # self._range_outer_tba = self.input("range_outer_tba",
-        #                               self.max_range_bits,
-        #                               size=self.interconnect_output_ports)
-        # self._range_inner_tba = self.input("range_inner_tba",
-        #                                   self.max_range_bits,
-        #                                   size=self.interconnect_output_ports)
-        # self._stride_tba = self.input("stride_tba",
-        #                               self.max_range_bits,
-        #                               size=self.interconnect_output_ports)
-        # self._indices_tba = self.input("indices_tba",
-        #                           width=clog2(2 * self.num_tb * self.fw_int),
-        #                           # the length of indices is equal to range_inner,
-        #                           # so the maximum possible size for self.indices
-        #                           # is the maximum value of range_inner, which if
-        #                           # self.max_range_value
-        #                           size=(self.tb_range_max,
-        #                                 self.interconnect_output_ports),
-        #                           packed=True)
-        # for i in range(self.interconnect_output_ports):
-        #     for j in range(self.fw_int):
-        #         self.wire(self._data_to_tba, 0)
-        #     self.wire(self._valid_to_tba, 0)
+        self._range_outer_tba = self.input("range_outer_tba",
+                                      self.max_range_bits,
+                                      size=self.interconnect_output_ports)
+        self._range_inner_tba = self.input("range_inner_tba",
+                                          self.max_range_bits,
+                                          size=self.interconnect_output_ports)
+        self._stride_tba = self.input("stride_tba",
+                                      self.max_range_bits,
+                                      size=self.interconnect_output_ports)
+        self._indices_tba = self.input("indices_tba",
+                                  width=clog2(2 * self.num_tb * self.fw_int),
+                                  # the length of indices is equal to range_inner,
+                                  # so the maximum possible size for self.indices
+                                  # is the maximum value of range_inner, which if
+                                  # self.max_range_value
+                                  size=(self.tb_range_max,
+                                        self.interconnect_output_ports),
+                                  packed=True)
+        for i in range(self.interconnect_output_ports):
+            for j in range(self.fw_int):
+                self.wire(self._data_to_tba, 0)
+            self.wire(self._valid_to_tba, 0)
 
-        # for i in range(self.interconnect_output_ports):
+        for i in range(self.interconnect_output_ports):
 
-        #     tba = TransposeBufferAggregation(word_width=self.data_width,
-        #                                     fetch_width=fw_int,
-        #                                     max_num_tb=1,
-        #                                     #max_num_tb=self.num_tb,
-        #                                     max_tb_height=1,
-        #                                     #max_tb_height=self.tb_height,
-        #                                     max_range=self.tb_range_max,
-        #                                     max_schedule_length=self.tb_sched_max)
+            tba = TransposeBufferAggregation(word_width=self.data_width,
+                                             fetch_width=self.fw_int,
+                                             num_tb=1,
+                                             #max_num_tb=self.num_tb,
+                                             tb_height=1,
+                                             #max_tb_height=self.tb_height,
+                                             max_range=self.tb_range_max,
+                                             max_schedule_length=self.tb_sched_max,
+                                             max_stencil_height=4)
 
-        #     self.add_child(f"tba_{i}", tba)
-        #     self.wire(tba.ports.clk, self._clk)
-        #     self.wire(tba.ports.rst_n, self._rst_n)
-        #     self.wire(tba.ports.SRAM_to_tb_data, self._data_to_tba[i])
+            self.add_child(f"tba_{i}", tba)
+            self.wire(tba.ports.clk, self._clk)
+            self.wire(tba.ports.rst_n, self._rst_n)
+            self.wire(tba.ports.SRAM_to_tb_data, self._data_to_tba[i])
 
-        #     self.wire(tba.ports.valid_data, self._valid_to_tba[i])
-        #     self.wire(tba.ports.tb_index_for_data, self._tb_index_for_data[i])
-        #     self.wire(tba.ports.range_outer, self._range_outer_tba[i])
-        #     self.wire(tba.ports.range_inner, self._range_inner_tba[i])
-        #     self.wire(tba.ports.stride, self._stride_tba[i])
-        #     self.wire(tba.ports.indices, self._indices_tba[i])
+            self.wire(tba.ports.valid_data, self._valid_to_tba[i])
+            self.wire(tba.ports.tb_index_for_data, 0) #self._tb_index_for_data[i])
+            self.wire(tba.ports.range_outer, self._range_outer_tba[i])
+            self.wire(tba.ports.range_inner, self._range_inner_tba[i])
+            self.wire(tba.ports.stride, self._stride_tba[i])
+            self.wire(tba.ports.indices, self._indices_tba[i])
+
+            self.wire(self._data_out[i], tba.ports.tb_to_interconnect_data)
+            self.wire(self._valid_out[i], tba.ports.tb_to_interconnect_valid)
+            self.wire(self._ready_tba[i] , tba.ports.tb_arbiter_rdy)
 
         # self.tb_height = 8
         # self.word_width = self.data_width
@@ -549,7 +578,7 @@ class LakeTop(Generator):
         ##### ADD CODE #####
         ####################
         # self.add_code(self.zero_mem_data_in)
-        self.add_code(self.zero_output)
+        # self.add_code(self.zero_output)
 
     @always_comb
     def zero_mem_data_in(self):
