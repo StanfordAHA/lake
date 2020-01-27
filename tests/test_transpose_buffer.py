@@ -31,7 +31,7 @@ def test_transpose_buffer():
             0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1,
             1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0,
             1, 1, 1, 1]
-    for i in range(30):
+    for i in range(64):
         tester.circuit.stencil_height_input = 3
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[(i * 4 + fetch_width - 1 - j) % len(data)])
