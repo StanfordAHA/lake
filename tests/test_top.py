@@ -23,10 +23,11 @@ def top_test(data_width=16,
              input_max_port_sched=64,
              output_max_port_sched=64,
              align_input=1,
-             max_line_length=2048,
+             max_line_length=256,
              tb_height=4,
-             tb_range_max=2048,
-             tb_sched_max=64):
+             tb_range_max=256,
+             tb_sched_max=64,
+             num_tb=1):
 
     new_config = {}
 
@@ -37,12 +38,26 @@ def top_test(data_width=16,
     new_config["agg_out_sched"] = 0
 
     # Kavya
-    new_config["indices_tba_0"] = 0
-    new_config["indices_tba_1"] = 1
-    new_config["indices_tba_2"] = 2
-    new_config["range_inner_tba"] = 3
-    new_config["range_outer_tba"] = 62
-    new_config["stride_tba"] = 1
+    new_config["indices_tba_0_0"] = 0
+    new_config["indices_tba_0_1"] = 1
+    new_config["indices_tba_0_2"] = 2
+    new_config["range_inner_tba_0"] = 3
+    new_config["range_outer_tba_0"] = 62
+    new_config["stride_tba_0"] = 1
+
+    new_config["indices_tba_1_0"] = 0
+    new_config["indices_tba_1_1"] = 1
+    new_config["indices_tba_1_2"] = 2
+    new_config["range_inner_tba_1"] = 3
+    new_config["range_outer_tba_1"] = 62
+    new_config["stride_tba_1"] = 1
+
+    new_config["indices_tba_2_0"] = 0
+    new_config["indices_tba_2_1"] = 1
+    new_config["indices_tba_2_2"] = 2
+    new_config["range_inner_tba_2"] = 3
+    new_config["range_outer_tba_2"] = 62
+    new_config["stride_tba_2"] = 1
     # new_config["tb_index_for_data"] = 0
 
     # Aligner
@@ -93,7 +108,8 @@ def top_test(data_width=16,
                      max_line_length=max_line_length,
                      tb_height=tb_height,
                      tb_range_max=tb_range_max,
-                     tb_sched_max=tb_sched_max)
+                     tb_sched_max=tb_sched_max,
+                     num_tb=num_tb)
 
     magma_dut = kts.util.to_magma(lt_dut, flatten_array=True, check_multiple_driver=False)
 

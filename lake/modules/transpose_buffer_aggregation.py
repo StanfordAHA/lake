@@ -55,14 +55,15 @@ class TransposeBufferAggregation(Generator):
                                   # is the maximum value of range_inner, which if
                                   # self.max_range_value
                                   size=self.max_range,
-                                  packed=True)
+                                  packed=True,
+                                  explicit_array=True)
 
-        self.tb_to_interconnect_data = self.output("self.tb_to_interconnect_data",
+        self.tb_to_interconnect_data = self.output("tb_to_interconnect_data",
                                                    width=self.word_width,
                                                    size=self.tb_height,
                                                    packed=True)
-        self.tb_to_interconnect_valid = self.output("self.tb_to_interconnect_valid", 1)
-        self.tb_arbiter_rdy = self.output("self.tb_arbiter_rdy", 1)
+        self.tb_to_interconnect_valid = self.output("tb_to_interconnect_valid", 1)
+        self.tb_arbiter_rdy = self.output("tb_arbiter_rdy", 1)
 
         # local variables
         self.valid_data_all = self.var("valid_data_all", 
@@ -138,6 +139,6 @@ class TransposeBufferAggregation(Generator):
         if_rdy_count.else_(self.tb_arbiter_rdy.assign(0))
         comb_tb_arbiter_rdy.add_stmt(if_rdy_count)
 
-dut = TransposeBufferAggregation(1,4,3,3,5,2)
-verilog(dut, filename="tba.sv")
+# dut = TransposeBufferAggregation(1,4,3,3,5,2)
+# verilog(dut, filename="tba.sv")
 
