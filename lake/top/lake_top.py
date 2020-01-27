@@ -402,6 +402,9 @@ class LakeTop(Generator):
         self._mem_cen_in = self.var("mem_cen_in", self.banks)
         self._mem_wen_in = self.var("mem_wen_in", self.banks)
 
+        self._arb_wen_in = self.input("arb_wen_in", 1)
+        self._arb_ren_in = self.input("arb_ren_in", 1)
+
         self.arbiters = []
         for i in range(self.banks):
             rw_arb = RWArbiter(fetch_width=self.mem_width,
@@ -412,12 +415,12 @@ class LakeTop(Generator):
             self.wire(rw_arb.ports.clk, self._clk)
             self.wire(rw_arb.ports.rst_n, self._rst_n)
             self.wire(rw_arb.ports.wen_in, self._wen_to_arb[i])
-            self.wire(rw_arb.ports.wen_en, const(1, 1))
+            self.wire(rw_arb.ports.wen_en, self._arb_wen_in)
             self.wire(rw_arb.ports.w_data, self._data_to_arb[i])
             self.wire(rw_arb.ports.w_addr, self._addr_to_arb[i])
             self.wire(rw_arb.ports.data_from_mem, self._mem_data_out[i])
             self.wire(rw_arb.ports.ren_in, self._ren_out[i])
-            self.wire(rw_arb.ports.ren_en, const(1, 1))
+            self.wire(rw_arb.ports.ren_en, self._arb_ren_in)
             self.wire(rw_arb.ports.rd_addr, self._addr_out)
             # Out
             self.wire(self._arb_dat_out[i], rw_arb.ports.out_data)
@@ -463,7 +466,7 @@ class LakeTop(Generator):
         #                                    self.interconnect_output_ports))
         # self._valid_to_tba = self.var("valid_to_tba", self.interconnect_output_ports)
 
-        # self._tb_index_for_data = self.input("tb_index_for_data",
+        # self._tb_index_for_data = self.var("tb_index_for_data",
         #                                     self.num_tb_bits,
         #                                     size=self.interconnect_output_ports)
         # self._range_outer_tba = self.input("range_outer_tba",
