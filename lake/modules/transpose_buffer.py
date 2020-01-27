@@ -18,9 +18,7 @@ class TransposeBuffer(Generator):
                  # (and as a result, maximum length of indices input vector)
                  # specifying inner for loop values for output column
                  # addressing
-                 max_range,
-                 # maximum stencil height supported from application
-                 max_stencil_height):
+                 max_range):
         super().__init__("transpose_buffer", True)
 
         # generation parameters
@@ -29,7 +27,6 @@ class TransposeBuffer(Generator):
         self.num_tb = num_tb
         self.tb_height = tb_height
         self.max_range = max_range
-        self.max_stencil_height = max_stencil_height
 
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
@@ -61,8 +58,6 @@ class TransposeBuffer(Generator):
 
         # stride for the given application
         self.stride = self.input("stride", self.max_range_bits)
-        # stencil height for the given application
-        self.stencil_height = self.input("stencil_height", clog2(self.max_stencil_height))
 
         # specifies inner for loop values for output column
         # addressing

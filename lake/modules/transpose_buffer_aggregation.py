@@ -20,8 +20,7 @@ class TransposeBufferAggregation(Generator):
                  # specifying inner for loop values for output column
                  # addressing
                  max_range,
-                 max_schedule_length,
-                 max_stencil_height):
+                 max_schedule_length):
         super().__init__("transpose_buffer_aggregation", True)
 
         # generation parameters
@@ -31,7 +30,6 @@ class TransposeBufferAggregation(Generator):
         self.tb_height = tb_height
         self.max_range = max_range
         self.max_schedule_length = max_schedule_length
-        self.max_stencil_height = max_stencil_height
 
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
@@ -50,7 +48,6 @@ class TransposeBufferAggregation(Generator):
         self.range_outer = self.input("range_outer", clog2(self.max_range))
         self.range_inner = self.input("range_inner", clog2(self.max_range))
         self.stride = self.input("stride", clog2(self.max_range))
-        self.stencil_height = self.input("stencil_height", clog2(self.max_stencil_height))
         self.indices = self.input("indices",
                                   width=clog2(2 * self.num_tb * self.fetch_width),
                                   # the length of indices is equal to range_inner,
@@ -85,8 +82,7 @@ class TransposeBufferAggregation(Generator):
                                            self.fetch_width, 
                                            self.num_tb, 
                                            self.tb_height, 
-                                           self.max_range,
-                                           self.max_stencil_height))
+                                           self.max_range))
 
             self.wire(self[f"tb_{i}"].ports.clk, self.clk)
             self.wire(self[f"tb_{i}"].ports.rst_n, self.rst_n)
@@ -95,7 +91,6 @@ class TransposeBufferAggregation(Generator):
             self.wire(self[f"tb_{i}"].ports.range_outer, self.range_outer)
             self.wire(self[f"tb_{i}"].ports.range_inner, self.range_inner)
             self.wire(self[f"tb_{i}"].ports.stride, self.stride)
-            self.wire(self[f"tb_{i}"].ports.stencil_height, self.stencil_height)
             self.wire(self[f"tb_{i}"].ports.indices, self.indices)
             self.wire(self[f"tb_{i}"].ports.tb_start_index, self.num_tb*i)
             self.wire(self.tb_output_data_all[i], self[f"tb_{i}"].ports.col_pixels)
