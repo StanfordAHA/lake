@@ -32,7 +32,7 @@ class TransposeBuffer(Generator):
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
         self.tb_col_index_bits = 2 * max(self.fetch_width_bits, self.num_tb_bits) + 1
-        self.tb_height_bits2 = max(2, clog2(2 * self.tb_height))
+        self.tb_height_bits2 = max(1, clog2(2 * self.tb_height))
         self.tb_height_bits = max(1, clog2(self.tb_height))
 
         # inputs

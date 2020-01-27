@@ -8,7 +8,7 @@ import pytest
 def test_transpose_buffer():
     word_width = 1
     fetch_width = 4
-    stencil_height = 3
+    stencil_height = 1
     max_range_value = 5
     num_tb = 1
     max_stencil_height = 3
@@ -16,8 +16,7 @@ def test_transpose_buffer():
                         fetch_width,
                         num_tb,
                         stencil_height,
-                        max_range_value,
-                        max_stencil_height)
+                        max_range_value)
     magma_dut = kratos.util.to_magma(dut, flatten_array=True)
     verilog(dut, filename="transposebuffer.sv")
     tester = fault.Tester(magma_dut, magma_dut.clk)
@@ -38,7 +37,6 @@ def test_transpose_buffer():
         tester.circuit.range_outer = 5
         tester.circuit.range_inner = 3
         tester.circuit.stride = 2
-        tester.circuit.stencil_height_input = 3
         if i == 0 or i == 1 or i == 2:
             tester.circuit.valid_data = 1
         elif i == 3 or i == 4:
