@@ -26,3 +26,5 @@ dump/
 # verilog outputs
 *.sv
 *.vscode
+
+*.idea
