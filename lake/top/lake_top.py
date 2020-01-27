@@ -7,6 +7,7 @@ from lake.modules.output_addr_ctrl import OutputAddrCtrl
 from lake.modules.agg_aligner import AggAligner
 from lake.modules.rw_arbiter import RWArbiter
 from lake.modules.transpose_buffer import TransposeBuffer
+import kratos as kts
 
 
 class LakeTop(Generator):
@@ -266,7 +267,8 @@ class LakeTop(Generator):
         #######################################
         ##### END: AGG BUFFERS (OPTIONAL) #####
         #######################################
-
+        self._arb_wen_in = self.input("arb_wen_in", 1)
+        self._arb_ren_in = self.input("arb_ren_in", 1)
         ####################################
         ##### INPUT ADDRESS CONTROLLER #####
         ####################################
@@ -342,7 +344,8 @@ class LakeTop(Generator):
                   self._o_dimensionalities)
         self.wire(oac.ports.starting_addrs,
                   self._o_starting_addrs)
-        self.wire(oac.ports.valid_in, 1)
+        # self.wire(oac.ports.valid_in, 1)
+        self.wire(oac.ports.valid_in, kts.concat(*([self._arb_ren_in] * 3)))
 
         self._ren_out = self.var("ren_out",
                                  self.interconnect_output_ports,
@@ -401,9 +404,6 @@ class LakeTop(Generator):
 
         self._mem_cen_in = self.var("mem_cen_in", self.banks)
         self._mem_wen_in = self.var("mem_wen_in", self.banks)
-
-        self._arb_wen_in = self.input("arb_wen_in", 1)
-        self._arb_ren_in = self.input("arb_ren_in", 1)
 
         self.arbiters = []
         for i in range(self.banks):

@@ -29,14 +29,6 @@ def top_test(data_width=16,
              tb_sched_max=64):
 
     new_config = {}
-    #new_config["addr_in"] = 0
-    #new_config["arb_dat_out"] = ?
-    #new_config["arb_port_out"] = ?
-    #new_config["arb_valid_out"] = ?
-    #new_config["data_in"] = ?
-    #new_config["data_out"] = ?
-    #new_config["valid_in"] = ?
-    #new_config["valid_out"] = ?
 
     # Agg buffer
     new_config["agg_in_period"] = 1  # I don't actually know
@@ -51,13 +43,13 @@ def top_test(data_width=16,
     new_config["range_inner_tba"] = 3
     new_config["range_outer_tba"] = 62
     new_config["stride_tba"] = 1
-    #new_config["tb_index_for_data"] = 0
+    # new_config["tb_index_for_data"] = 0
 
     # Aligner
     new_config["line_length"] = 64
 
     # Input addr ctrl
-    new_config["dimensionality_i_0"] = 1
+    new_config["dimensionality_i"] = 1
     new_config["range_i_0_0"] = 2048
     new_config["starting_addr_i_0"] = 0
     new_config["stride_i_0_0"] = 1
@@ -110,8 +102,7 @@ def top_test(data_width=16,
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
 
-    #tester.circuit.line_length = 5
-
+    # tester.circuit.line_length = 5
 
     rand.seed(0)
     tester.circuit.clk = 0
@@ -132,7 +123,7 @@ def top_test(data_width=16,
     for i in range(200):
         tester.circuit.data_in += 1
         tester.step(2)
-    
+
     tester.circuit.arb_ren_in = 1
 
     for i in range(100):
