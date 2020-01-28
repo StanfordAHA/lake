@@ -43,21 +43,21 @@ def top_test(data_width=16,
     new_config["indices_tba_0_2"] = 2
     new_config["range_inner_tba_0"] = 3
     new_config["range_outer_tba_0"] = 62
-    new_config["stride_tba_0"] = 1
+    new_config["stride_tba_0"] = 2
 
     new_config["indices_tba_1_0"] = 0
     new_config["indices_tba_1_1"] = 1
     new_config["indices_tba_1_2"] = 2
     new_config["range_inner_tba_1"] = 3
     new_config["range_outer_tba_1"] = 62
-    new_config["stride_tba_1"] = 1
+    new_config["stride_tba_1"] = 2
 
     new_config["indices_tba_2_0"] = 0
     new_config["indices_tba_2_1"] = 1
     new_config["indices_tba_2_2"] = 2
     new_config["range_inner_tba_2"] = 3
     new_config["range_outer_tba_2"] = 62
-    new_config["stride_tba_2"] = 1
+    new_config["stride_tba_2"] = 2
     # new_config["tb_index_for_data"] = 0
 
     # Aligner
@@ -149,7 +149,7 @@ def top_test(data_width=16,
         tester.circuit.data_in += 1
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "./top_dump"
+        tempdir = "top_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",

@@ -104,7 +104,7 @@ class TransposeBufferAggregation(Generator):
         self.set_output_valid()
         self.send_tba_rdy()
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_comb
     def set_valid_data_all(self):
         if ~self.valid_data:
             for i in range(self.num_tb):

@@ -104,6 +104,7 @@ class TransposeBuffer(Generator):
         self.output_index = self.var("output_index", self.fetch_width_bits)
         self.indices_index_inner = self.var("indices_index_inner",
                                             clog2(2 * self.num_tb * self.fetch_width))
+        self.curr_out_start = self.var("curr_out_start", 2 * self.max_range_bits)
 
         self.tb_distance = self.var("tb_distance", self.tb_col_index_bits)
         # delete this signal? or keep for code clarity
@@ -218,21 +219,25 @@ class TransposeBuffer(Generator):
         if ~self.rst_n:
             self.output_valid = 0
             self.out_buf_index = 1
+            self.curr_out_start = 0
         else:
             if self.pause_tb:
                 self.output_valid = 0
                 self.out_buf_index = 0
-            elif (self.tb0_start.extend(x) <= self.output_index_abs.extend(x)) & \
-                    (self.output_index_abs.extend(x) <= self.tb0_end.extend(x)):
-                self.output_valid = 1
-                self.out_buf_index = 0
-            elif (self.tb1_start.extend(x) <= self.output_index_abs.extend(x)) & \
-                    (self.output_index_abs.extend(x) <= self.tb1_end.extend(x)):
-                self.output_valid = 1
-                self.out_buf_index = 1
+                self.curr_out_start = self.curr_out_start
+            elif ((self.output_index_abs % self.fetch_width) == 0): 
+                if (self.output_index_abs != self.curr_out_start):
+                    self.curr_out_start = self.output_index_abs
+                    self.out_buf_index = ~self.out_buf_index
+                    self.output_valid = 1
+                else:
+                    self.curr_out_start = self.curr_out_start
+                    self.out_buf_index = self.out_buf_index
+                    self.output_valid = 1
             else:
-                self.output_valid = 0
+                self.curr_out_start = self.curr_out_start
                 self.out_buf_index = self.out_buf_index
+                self.output_valid = 1
         self.prev_out_buf_index = self.out_buf_index
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
