@@ -137,10 +137,15 @@ class InputAddrCtrl(Generator):
             self.add_child(f"address_gen_{i}", AddrGen(mem_depth=self.mem_depth,
                                                        iterator_support=self.iterator_support,
                                                        address_width=self.address_width),
-                           clk=self._clk, rst_n=self._rst_n, strides=self._strides[i],
-                           ranges=self._ranges[i], starting_addr=self._starting_addrs[i],
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           strides=self._strides[i],
+                           ranges=self._ranges[i],
+                           starting_addr=self._starting_addrs[i],
                            dimensionality=self._dimensionalities[i],
-                           clk_en=const(1, 1), flush=const(0, 1), step=self._valid_in[i])
+                           clk_en=const(1, 1),
+                           flush=const(0, 1),
+                           step=self._valid_in[i])
 
             # Get the address for each input port
             self.wire(self._local_addrs[i],

@@ -85,9 +85,13 @@ class AggregationBuffer(Generator):
             self.add_child(f"agg_{i}",
                            Aggregator(self.data_width,
                                       mem_word_width=int(self.mem_width / self.data_width)),
-                           clk=self._clk, rst_n=self._rst_n, in_pixels=self._data_in,
-                           valid_in=self._valid_demux[i], agg_out=self._aggs_sep[i],
-                           valid_out=self._valid_out_mux[i], next_full=self._next_full[i])
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           in_pixels=self._data_in,
+                           valid_in=self._valid_demux[i],
+                           agg_out=self._aggs_sep[i],
+                           valid_out=self._valid_out_mux[i],
+                           next_full=self._next_full[i])
             portlist = []
             for j in range(int(self.mem_width / self.data_width)):
                 portlist.append(self._aggs_sep[i][int(self.mem_width / self.data_width) - 1 - j])

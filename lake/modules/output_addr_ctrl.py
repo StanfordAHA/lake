@@ -119,11 +119,14 @@ class OutputAddrCtrl(Generator):
                                    iterator_support=self.iterator_support,
                                    address_width=self.address_width)
             self.add_child(f"address_gen_{i}", new_addr_gen,
-                           clk=self._clk, rst_n=self._rst_n,
-                           strides=self._strides[i], ranges=self._ranges[i],
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           strides=self._strides[i],
+                           ranges=self._ranges[i],
                            starting_addr=self._starting_addrs[i],
                            dimensionality=self._dimensionalities[i],
-                           clk_en=const(1, 1), flush=const(0, 1))
+                           clk_en=const(1, 1),
+                           flush=const(0, 1))
             # self.add_stmt(new_addr_gen.ports.step.assign(self._valid_in[i]))
             self.add_stmt(new_addr_gen.ports.step.assign(self._step_in[i] & self._valid_in[i]))
 
