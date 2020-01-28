@@ -25,7 +25,7 @@ def top_test(data_width=16,
              align_input=1,
              max_line_length=256,
              tb_height=1,
-             tb_range_max=256,
+             tb_range_max=64,
              tb_sched_max=64,
              num_tb=1):
 
@@ -69,6 +69,7 @@ def top_test(data_width=16,
     new_config["starting_addr_i_0"] = 0
     new_config["stride_i_0_0"] = 1
 
+    # Output addr ctrl
     new_config["dimensionality_o_0"] = 2
     new_config["dimensionality_o_1"] = 2
     new_config["dimensionality_o_2"] = 2
@@ -87,6 +88,10 @@ def top_test(data_width=16,
     new_config["stride_o_1_1"] = 16
     new_config["stride_o_2_0"] = 1
     new_config["stride_o_2_1"] = 16
+
+    new_config["sync_groups_in_0"] = 1
+    new_config["sync_groups_in_1"] = 1
+    new_config["sync_groups_in_2"] = 1
 
     ### DUT
     lt_dut = LakeTop(data_width=data_width,
@@ -111,7 +116,10 @@ def top_test(data_width=16,
                      tb_sched_max=tb_sched_max,
                      num_tb=num_tb)
 
-    magma_dut = kts.util.to_magma(lt_dut, flatten_array=True, check_multiple_driver=False)
+    magma_dut = kts.util.to_magma(lt_dut,
+                                  flatten_array=True,
+                                  check_multiple_driver=False,
+                                  optimize_if=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
