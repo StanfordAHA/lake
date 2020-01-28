@@ -11,11 +11,11 @@ class TransposeBufferAggregation(Generator):
                  # number of words that can be sotred at an address in SRAM
                  # note fetch_width must be powers of 2
                  fetch_width,
-                 # total number of transpose buffers 
+                 # total number of transpose buffers
                  num_tb,
                  # height of this particular transpose buffer
                  tb_height,
-                 # maximum value for range parameters in nested for loop 
+                 # maximum value for range parameters in nested for loop
                  # (and as a result, maximum length of indices input vector)
                  # specifying inner for loop values for output column
                  # addressing
@@ -38,10 +38,10 @@ class TransposeBufferAggregation(Generator):
         self.clk = self.clock("clk")
         # active low asynchronous reset
         self.rst_n = self.reset("rst_n", 1)
-        self.SRAM_to_tb_data = self.input("SRAM_to_tb_data", 
-                                          width=self.word_width, 
+        self.SRAM_to_tb_data = self.input("SRAM_to_tb_data",
+                                          width=self.word_width,
                                           size=self.fetch_width,
-                                          packed=True)        
+                                          packed=True)
 
         self.valid_data = self.input("valid_data", 1)
         self.tb_index_for_data = self.input("tb_index_for_data", self.num_tb_bits)
@@ -66,23 +66,26 @@ class TransposeBufferAggregation(Generator):
         self.tb_arbiter_rdy = self.output("tb_arbiter_rdy", 1)
 
         # local variables
-        self.valid_data_all = self.var("valid_data_all", 
-                                       width=1, 
+        self.valid_data_all = self.var("valid_data_all",
+                                       width=1,
                                        size=self.num_tb,
                                        packed=True)
 
-        self.tb_output_data_all = self.var("tb_output_data_all", width=self.word_width, size=[self.num_tb, self.tb_height], packed=True)
+        self.tb_output_data_all = self.var("tb_output_data_all",
+                                           width=self.word_width,
+                                           size=[self.num_tb, self.tb_height],
+                                           packed=True)
         self.tb_output_valid_all = self.var("tb_output_valid_all", width=1, size=self.num_tb, packed=True)
         self.tb_arbiter_rdy_all = self.var("tb_arbiter_rdy_all", width=1, size=self.num_tb, packed=True)
         self.output_valid = self.var("output_valid", 1)
         self.output_inter = self.var("output_inter", width=self.word_width, size=self.tb_height, packed=True)
- 
+
         for i in range(self.num_tb):
-            self.add_child(f"tb_{i}", 
-                           TransposeBuffer(self.word_width, 
-                                           self.fetch_width, 
-                                           self.num_tb, 
-                                           self.tb_height, 
+            self.add_child(f"tb_{i}",
+                           TransposeBuffer(self.word_width,
+                                           self.fetch_width,
+                                           self.num_tb,
+                                           self.tb_height,
                                            self.max_range))
 
             self.wire(self[f"tb_{i}"].ports.clk, self.clk)
@@ -93,7 +96,7 @@ class TransposeBufferAggregation(Generator):
             self.wire(self[f"tb_{i}"].ports.range_inner, self.range_inner)
             self.wire(self[f"tb_{i}"].ports.stride, self.stride)
             self.wire(self[f"tb_{i}"].ports.indices, self.indices)
-            self.wire(self[f"tb_{i}"].ports.tb_start_index, self.num_tb*i)
+            self.wire(self[f"tb_{i}"].ports.tb_start_index, self.num_tb * i)
             self.wire(self.tb_output_data_all[i], self[f"tb_{i}"].ports.col_pixels)
             self.wire(self.tb_output_valid_all[i], self[f"tb_{i}"].ports.output_valid)
             self.wire(self.tb_arbiter_rdy_all[i], self[f"tb_{i}"].ports.rdy_to_arbiter)
@@ -123,7 +126,7 @@ class TransposeBufferAggregation(Generator):
             if_vld = IfStmt(self.tb_output_valid_all[i] == 1)
             if_vld.then_(self.output_inter.assign(self.tb_output_data_all[i]))
             comb_output.add_stmt(if_vld)
-        if_vld_count = IfStmt(valid_count > 0)    
+        if_vld_count = IfStmt(valid_count > 0)
         if_vld_count.then_(self.tb_to_interconnect_valid.assign(1))
         if_vld_count.else_(self.tb_to_interconnect_valid.assign(0))
         comb_output.add_stmt(self.tb_to_interconnect_data.assign(self.output_inter))

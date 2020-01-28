@@ -10,11 +10,11 @@ class TransposeBuffer(Generator):
                  # number of words that can be sotred at an address in SRAM
                  # note fetch_width must be powers of 2
                  fetch_width,
-                 # total number of transpose buffers 
+                 # total number of transpose buffers
                  num_tb,
                  # height of this particular transpose buffer
                  tb_height,
-                 # maximum value for range parameters in nested for loop 
+                 # maximum value for range parameters in nested for loop
                  # (and as a result, maximum length of indices input vector)
                  # specifying inner for loop values for output column
                  # addressing
@@ -39,20 +39,20 @@ class TransposeBuffer(Generator):
         self.clk = self.clock("clk")
         # active low asynchronous reset
         self.rst_n = self.reset("rst_n", 1)
-        
+
         # data input from SRAM
         self.input_data = self.input("input_data",
                                      width=self.word_width,
                                      size=self.fetch_width,
                                      packed=True)
-        # valid indicating whether data input from SRAM is valid and 
+        # valid indicating whether data input from SRAM is valid and
         # should be stored in transpose buffer
         self.valid_data = self.input("valid_data", 1)
 
         # the range of the outer for loop in nested for loop for output
         # column address generation
         self.range_outer = self.input("range_outer", self.max_range_bits)
-        # the range of the inner for loop in nested for loop for output 
+        # the range of the inner for loop in nested for loop for output
         # column address generation
         self.range_inner = self.input("range_inner", self.max_range_bits)
 
@@ -72,7 +72,8 @@ class TransposeBuffer(Generator):
 
         # absolute value index of the first column of this transpose buffer
         # (absolute in that, each transpose buffer will have a unique index)
-        self.tb_start_index = self.input("tb_start_index", max(1, clog2(self.num_tb*self.num_tb)))
+        self.tb_start_index = self.input("tb_start_index",
+                                         max(1, clog2(self.num_tb * self.num_tb)))
 
         # outputs
         self.col_pixels = self.output("col_pixels",
@@ -251,7 +252,6 @@ class TransposeBuffer(Generator):
         else:
             self.num_valid = self.num_valid
             self.rdy_to_arbiter = 0
-
 
     # get starting and ending column indices that represent both buffers part
     # of transpose buffer double buffer
