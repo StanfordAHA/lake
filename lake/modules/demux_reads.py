@@ -58,7 +58,7 @@ class DemuxReads(Generator):
 
         # Vars
         self._done = self.var("done", self.int_out_ports)
-        
+
         self.add_code(self.set_outs)
 
     @always_comb
@@ -74,7 +74,7 @@ class DemuxReads(Generator):
                         self._data_out[i] = self._data_in[j]
                         self._done[i] = 1
 
- 
+
 if __name__ == "__main__":
     db_dut = DemuxReads(fetch_width=64,
                         banks=4,

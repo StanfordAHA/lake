@@ -139,6 +139,7 @@ class TransposeBufferAggregation(Generator):
         if_rdy_count.else_(self.tb_arbiter_rdy.assign(0))
         comb_tb_arbiter_rdy.add_stmt(if_rdy_count)
 
-# dut = TransposeBufferAggregation(1,4,3,3,5,2)
-# verilog(dut, filename="tba.sv")
 
+if __name__ == "__main__":
+    dut = TransposeBufferAggregation(1, 4, 3, 3, 5, 2)
+    verilog(dut, filename="tba.sv")

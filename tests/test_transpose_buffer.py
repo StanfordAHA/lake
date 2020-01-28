@@ -4,6 +4,7 @@ import tempfile
 from kratos import *
 import pytest
 
+
 # @pytest.mark.skip
 def test_transpose_buffer():
     word_width = 1
@@ -13,10 +14,10 @@ def test_transpose_buffer():
     num_tb = 1
     max_stencil_height = 3
     dut = TransposeBuffer(word_width,
-                        fetch_width,
-                        num_tb,
-                        stencil_height,
-                        max_range_value)
+                          fetch_width,
+                          num_tb,
+                          stencil_height,
+                          max_range_value)
     magma_dut = kratos.util.to_magma(dut, flatten_array=True)
     verilog(dut, filename="transposebuffer.sv")
     tester = fault.Tester(magma_dut, magma_dut.clk)
@@ -42,7 +43,7 @@ def test_transpose_buffer():
         elif i == 3 or i == 4:
             tester.circuit.valid_data = 0
         else:
-            if (i-5) % 6 < 3:
+            if (i - 5) % 6 < 3:
                 tester.circuit.valid_data = 1
             else:
                 tester.circuit.valid_data = 0
@@ -53,7 +54,7 @@ def test_transpose_buffer():
         tester.step(2)
 
         with tempfile.TemporaryDirectory() as tempdir:
-            #tempdir="/nobackupkiwi/skavya/lake_/lake/tests/temp"
+            # tempdir="/nobackupkiwi/skavya/lake_/lake/tests/temp"
             tester.compile_and_run(target="verilator",
                                    directory=tempdir,
                                    flags=["-Wno-fatal", "--trace"],

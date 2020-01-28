@@ -69,6 +69,12 @@ class RWArbiter(Generator):
 
         # Local
         # self._rd_data = self.var("rd_data", self.fetch_width)
+        self._wen_int = self.var("wen_int", 1)
+        self._ren_int = self.var("ren_int", self.int_out_ports)
+        for i in range(self.int_out_ports):
+            self.wire(self._ren_int[i], self._ren_in[i] & self._ren_en)
+        self.wire(self._wen_int, self._wen_in & self._wen_en)
+
         self._rd_valid = self.var("rd_valid", 1)
         self._rd_port = self.var("rd_port", self.int_out_ports)
         self._next_rd_port = self.var("next_rd_port", self.int_out_ports)
@@ -83,11 +89,11 @@ class RWArbiter(Generator):
     @always_comb
     # Prioritizes writes over reads
     def mem_controls(self):
-        self._wen_mem = self._wen_in
-        self._cen_mem = (self._wen_in) | kts.reduce_or(self._ren_in.r_or())
+        self._wen_mem = self._wen_int
+        self._cen_mem = (self._wen_int) | kts.reduce_or(self._ren_int.r_or())
         self._data_to_mem = self._w_data
         # Consume wr over read
-        if(self._wen_in):
+        if(self._wen_int):
             self._addr_to_mem = self._w_addr
         else:
             self._addr_to_mem = self._rd_addr_sel
@@ -100,7 +106,7 @@ class RWArbiter(Generator):
         self._done = 0
         for i in range(self.int_out_ports):
             if ~self._done:
-                if self._ren_in[i]:
+                if self._ren_int[i]:
                     self._rd_addr_sel = self._rd_addr[i]
                     self._next_rd_port[i] = 1
                     self._done = 1
@@ -111,7 +117,7 @@ class RWArbiter(Generator):
             self._rd_port = 0
             self._rd_valid = 0
         else:
-            self._rd_valid = ~self._wen_in & kts.reduce_or(self._ren_in.r_or())
+            self._rd_valid = ~self._wen_int & kts.reduce_or(self._ren_int.r_or())
             self._rd_port = self._next_rd_port
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
