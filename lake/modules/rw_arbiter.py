@@ -67,6 +67,8 @@ class RWArbiter(Generator):
         self._data_to_mem = self.output("data_to_mem", self.fetch_width)
         self._addr_to_mem = self.output("addr_to_mem", self.mem_addr_width)
 
+        self._out_ack = self.output("out_ack", self.int_out_ports)
+
         # Local
         # self._rd_data = self.var("rd_data", self.fetch_width)
         self._wen_int = self.var("wen_int", 1)
@@ -80,6 +82,9 @@ class RWArbiter(Generator):
         self._next_rd_port = self.var("next_rd_port", self.int_out_ports)
 
         self._done = self.var("done", 1)
+
+        # The next read port can be used to acknowledge reads
+        self.wire(self._out_ack, self._next_rd_port)
 
         self.add_code(self.mem_controls)
         self.add_code(self.set_next_read_port)

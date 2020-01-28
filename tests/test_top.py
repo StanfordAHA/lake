@@ -138,10 +138,15 @@ def top_test(data_width=16,
         tester.circuit.data_in += 1
         tester.step(2)
 
+    tester.step(1)
     tester.circuit.arb_ren_in = 1
+    tester.circuit.data_in += 1
+    tester.eval()
+    tester.step(1)
 
     for i in range(100):
         tester.step(2)
+        tester.circuit.data_in += 1
 
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = "./top_dump"

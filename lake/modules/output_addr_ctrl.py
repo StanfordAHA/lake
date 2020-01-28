@@ -62,6 +62,7 @@ class OutputAddrCtrl(Generator):
 
         # Take in the valid and attach an address + direct to a port
         self._valid_in = self.input("valid_in", self.interconnect_output_ports)
+        self._step_in = self.input("step_in", self.interconnect_output_ports)
 
         # Outputs
         self._ren = self.output("ren",
@@ -126,7 +127,8 @@ class OutputAddrCtrl(Generator):
             self.wire(new_addr_gen.ports.dimensionality, self._dimensionalities[i])
             self.wire(new_addr_gen.ports.clk_en, const(1, 1))
             self.wire(new_addr_gen.ports.flush, const(0, 1))
-            self.add_stmt(new_addr_gen.ports.step.assign(self._valid_in[i]))
+            # self.add_stmt(new_addr_gen.ports.step.assign(self._valid_in[i]))
+            self.add_stmt(new_addr_gen.ports.step.assign(self._step_in[i] & self._valid_in[i]))
 
             # Get the address for each input port
             self.wire(self._local_addrs[i],

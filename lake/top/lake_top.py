@@ -359,6 +359,23 @@ class LakeTop(Generator):
         self.wire(self._ren_out, oac.ports.ren)
         self.wire(self._addr_out, oac.ports.addr_out)
 
+        self._arb_acks = self.var("arb_acks",
+                                  self.interconnect_output_ports,
+                                  size=self.banks,
+                                  explicit_array=True,
+                                  packed=True)
+
+        self._ack_transpose = self.var("ack_transpose",
+                                       self.banks,
+                                       size=self.interconnect_output_ports,
+                                       explicit_array=True,
+                                       packed=True)
+
+        self._ack_reduced = self.var("ack_reduced",
+                                     self.interconnect_output_ports)
+
+        self.wire(oac.ports.step_in, self._ack_reduced)
+
         # for i in range(self.banks):
         #     self.wire(iac.ports[f"port_sched_b_{i}"], self._i_port_scheds[i])
         # self.wire(iac.ports.port_periods, self._i_port_periods)
@@ -430,6 +447,7 @@ class LakeTop(Generator):
             self.wire(self._mem_wen_in[i], rw_arb.ports.wen_mem)
             self.wire(self._mem_data_in[i], rw_arb.ports.data_to_mem)
             self.wire(self._mem_addr_in[i], rw_arb.ports.addr_to_mem)
+            self.wire(self._arb_acks[i], rw_arb.ports.out_ack)
 
         ####################################
         ##### DEMUX WRITE/SRAM WRAPPER #####
@@ -551,6 +569,8 @@ class LakeTop(Generator):
         ####################
         # self.add_code(self.zero_mem_data_in)
         # self.add_code(self.zero_output)
+        self.add_code(self.transpose_acks)
+        self.add_code(self.reduce_acks)
 
     @always_comb
     def zero_mem_data_in(self):
@@ -560,6 +580,17 @@ class LakeTop(Generator):
     def zero_output(self):
         self._data_out = 0
         self._valid_out = 0
+
+    @always_comb
+    def transpose_acks(self):
+        for i in range(self.interconnect_output_ports):
+            for j in range(self.banks):
+                self._ack_transpose[i][j] = self._arb_acks[j][i]
+
+    @always_comb
+    def reduce_acks(self):
+        for i in range(self.interconnect_output_ports):
+            self._ack_reduced[i] = self._ack_transpose[i].r_or()
 
 
 if __name__ == "__main__":
