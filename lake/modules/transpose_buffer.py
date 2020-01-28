@@ -245,6 +245,9 @@ class TransposeBuffer(Generator):
         elif (self.num_valid < self.tb_height) & (self.valid_data):
             self.rdy_to_arbiter = 1
             self.num_valid = self.num_valid + 1
+        elif (self.num_valid < self.tb_height) & (~self.valid_data):
+            self.rdy_to_arbiter = 1
+            self.num_valid = self.num_valid
         else:
             self.num_valid = self.num_valid
             self.rdy_to_arbiter = 0
