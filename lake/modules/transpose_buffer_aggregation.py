@@ -86,20 +86,19 @@ class TransposeBufferAggregation(Generator):
                                            self.fetch_width,
                                            self.num_tb,
                                            self.tb_height,
-                                           self.max_range))
-
-            self.wire(self[f"tb_{i}"].ports.clk, self.clk)
-            self.wire(self[f"tb_{i}"].ports.rst_n, self.rst_n)
-            self.wire(self[f"tb_{i}"].ports.input_data, self.SRAM_to_tb_data)
-            self.wire(self[f"tb_{i}"].ports.valid_data, self.valid_data_all[i])
-            self.wire(self[f"tb_{i}"].ports.range_outer, self.range_outer)
-            self.wire(self[f"tb_{i}"].ports.range_inner, self.range_inner)
-            self.wire(self[f"tb_{i}"].ports.stride, self.stride)
-            self.wire(self[f"tb_{i}"].ports.indices, self.indices)
-            self.wire(self[f"tb_{i}"].ports.tb_start_index, self.num_tb * i)
-            self.wire(self.tb_output_data_all[i], self[f"tb_{i}"].ports.col_pixels)
-            self.wire(self.tb_output_valid_all[i], self[f"tb_{i}"].ports.output_valid)
-            self.wire(self.tb_arbiter_rdy_all[i], self[f"tb_{i}"].ports.rdy_to_arbiter)
+                                           self.max_range),
+                           clk=self.clk,
+                           rst_n=self.rst_n,
+                           input_data=self.SRAM_to_tb_data,
+                           valid_data=self.valid_data_all[i],
+                           range_outer=self.range_outer,
+                           range_inner=self.range_inner,
+                           stride=self.stride,
+                           indices=self.indices,
+                           tb_start_index=self.num_tb * i,
+                           col_pixels=self.tb_output_data_all[i],
+                           output_valid=self.tb_output_valid_all[i],
+                           rdy_to_arbiter=self.tb_arbiter_rdy_all[i])
 
         self.add_code(self.set_valid_data_all)
         self.set_output_valid()

@@ -136,17 +136,16 @@ class InputAddrCtrl(Generator):
         for i in range(self.interconnect_input_ports):
             self.add_child(f"address_gen_{i}", AddrGen(mem_depth=self.mem_depth,
                                                        iterator_support=self.iterator_support,
-                                                       address_width=self.address_width))
-            self.wire(self[f"address_gen_{i}"].ports.clk, self._clk)
-            self.wire(self[f"address_gen_{i}"].ports.rst_n, self._rst_n)
-            self.wire(self[f"address_gen_{i}"].ports.strides, self._strides[i])
-            self.wire(self[f"address_gen_{i}"].ports.ranges, self._ranges[i])
-            self.wire(self[f"address_gen_{i}"].ports.starting_addr, self._starting_addrs[i])
-            self.wire(self[f"address_gen_{i}"].ports.dimensionality, self._dimensionalities[i])
-            self.wire(self[f"address_gen_{i}"].ports.clk_en, const(1, 1))
-            self.wire(self[f"address_gen_{i}"].ports.flush, const(0, 1))
-            # self.add_stmt(self[f"address_gen_{i}"].ports.step.assign(self._wen[i]))
-            self.add_stmt(self[f"address_gen_{i}"].ports.step.assign(self._valid_in[i]))
+                                                       address_width=self.address_width),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           strides=self._strides[i],
+                           ranges=self._ranges[i],
+                           starting_addr=self._starting_addrs[i],
+                           dimensionality=self._dimensionalities[i],
+                           clk_en=const(1, 1),
+                           flush=const(0, 1),
+                           step=self._valid_in[i])
 
             # Get the address for each input port
             self.wire(self._local_addrs[i],

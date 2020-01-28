@@ -84,15 +84,14 @@ class AggregationBuffer(Generator):
             # Add in the children aggregators...
             self.add_child(f"agg_{i}",
                            Aggregator(self.data_width,
-                                      mem_word_width=int(self.mem_width / self.data_width)))
-            # Wire it up
-            self.wire(self[f"agg_{i}"].ports.clk, self._clk)
-            self.wire(self[f"agg_{i}"].ports.rst_n, self._rst_n)
-            self.wire(self[f"agg_{i}"].ports.in_pixels, self._data_in)
-            self.wire(self[f"agg_{i}"].ports.valid_in, self._valid_demux[i])
-            self.wire(self[f"agg_{i}"].ports.agg_out, self._aggs_sep[i])
-            self.wire(self[f"agg_{i}"].ports.valid_out, self._valid_out_mux[i])
-            self.wire(self[f"agg_{i}"].ports.next_full, self._next_full[i])
+                                      mem_word_width=int(self.mem_width / self.data_width)),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           in_pixels=self._data_in,
+                           valid_in=self._valid_demux[i],
+                           agg_out=self._aggs_sep[i],
+                           valid_out=self._valid_out_mux[i],
+                           next_full=self._next_full[i])
             portlist = []
             for j in range(int(self.mem_width / self.data_width)):
                 portlist.append(self._aggs_sep[i][int(self.mem_width / self.data_width) - 1 - j])
