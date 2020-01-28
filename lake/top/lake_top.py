@@ -526,7 +526,7 @@ class LakeTop(Generator):
             tba = TransposeBufferAggregation(word_width=self.data_width,
                                              fetch_width=self.fw_int,
                                              num_tb=self.num_tb,
-                                             tb_height=1,
+                                             tb_height=self.tb_height,
                                              max_range=self.tb_range_max,
                                              max_schedule_length=self.tb_sched_max)
 
