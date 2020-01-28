@@ -118,15 +118,12 @@ class OutputAddrCtrl(Generator):
             new_addr_gen = AddrGen(mem_depth=self.mem_depth,
                                    iterator_support=self.iterator_support,
                                    address_width=self.address_width)
-            self.add_child(f"address_gen_{i}", new_addr_gen)
-            self.wire(new_addr_gen.ports.clk, self._clk)
-            self.wire(new_addr_gen.ports.rst_n, self._rst_n)
-            self.wire(new_addr_gen.ports.strides, self._strides[i])
-            self.wire(new_addr_gen.ports.ranges, self._ranges[i])
-            self.wire(new_addr_gen.ports.starting_addr, self._starting_addrs[i])
-            self.wire(new_addr_gen.ports.dimensionality, self._dimensionalities[i])
-            self.wire(new_addr_gen.ports.clk_en, const(1, 1))
-            self.wire(new_addr_gen.ports.flush, const(0, 1))
+            self.add_child(f"address_gen_{i}", new_addr_gen,
+                           clk=self._clk, rst_n=self._rst_n,
+                           strides=self._strides[i], ranges=self._ranges[i],
+                           starting_addr=self._starting_addrs[i],
+                           dimensionality=self._dimensionalities[i],
+                           clk_en=const(1, 1), flush=const(0, 1))
             # self.add_stmt(new_addr_gen.ports.step.assign(self._valid_in[i]))
             self.add_stmt(new_addr_gen.ports.step.assign(self._step_in[i] & self._valid_in[i]))
 
