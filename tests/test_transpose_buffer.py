@@ -5,11 +5,11 @@ from kratos import *
 import pytest
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_transpose_buffer():
     word_width = 1
     fetch_width = 4
-    stencil_height = 3
+    stencil_height = 1
     max_range_value = 5
     num_tb = 1
     max_stencil_height = 3
@@ -17,8 +17,7 @@ def test_transpose_buffer():
                           fetch_width,
                           num_tb,
                           stencil_height,
-                          max_range_value,
-                          max_stencil_height)
+                          max_range_value)
     magma_dut = kratos.util.to_magma(dut, flatten_array=True)
     verilog(dut, filename="transposebuffer.sv")
     tester = fault.Tester(magma_dut, magma_dut.clk)
@@ -32,14 +31,13 @@ def test_transpose_buffer():
             0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1,
             1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0,
             1, 1, 1, 1]
-    for i in range(30):
+    for i in range(32):
         tester.circuit.stencil_height_input = 3
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[(i * 4 + fetch_width - 1 - j) % len(data)])
         tester.circuit.range_outer = 5
         tester.circuit.range_inner = 3
         tester.circuit.stride = 2
-        tester.circuit.stencil_height_input = 3
         if i == 0 or i == 1 or i == 2:
             tester.circuit.valid_data = 1
         elif i == 3 or i == 4:

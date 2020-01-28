@@ -23,7 +23,7 @@ class InputAddrCtrl(Generator):
         self.iterator_support = iterator_support
         self.address_width = address_width
         self.max_port_schedule = max_port_schedule
-        self.port_sched_width = clog2(self.interconnect_input_ports)
+        self.port_sched_width = max(1, clog2(self.interconnect_input_ports))
         self.data_width = data_width
 
         self.mem_addr_width = clog2(self.mem_depth)
@@ -227,4 +227,4 @@ if __name__ == "__main__":
                            iterator_support=6,
                            max_port_schedule=64,
                            address_width=16)
-    verilog(db_dut, filename="input_addr_ctrl.sv", check_multiple_driver=False)
+    verilog(db_dut, filename="input_addr_ctrl.sv")
