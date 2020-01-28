@@ -70,6 +70,8 @@ class TransposeBuffer(Generator):
                                   size=self.max_range,
                                   packed=True)
 
+        self._ack_in = self.input("ack_in", 1)
+
         # absolute value index of the first column of this transpose buffer
         # (absolute in that, each transpose buffer will have a unique index)
         self.tb_start_index = self.input("tb_start_index",
@@ -114,7 +116,8 @@ class TransposeBuffer(Generator):
         self.tb1_end = self.var("tb1_end", self.tb_col_index_bits)
         self.num_valid = self.var("num_valid", self.tb_height_bits)
         self.pause_tb = self.var("pause_tb", 1)
-        self.ack_in = self.input("ack_in", 1)
+        self.start_data = self.var("start_data", 1)
+        self.old_start_data = self.var("old_start_data", 1)
 
         x = max(self.tb_col_index_bits, 2 * self.max_range_bits)
 
@@ -127,7 +130,8 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_output_valid_out_buf_index)
         self.add_code(self.tb_col_indices)
         self.add_code(self.send_rdy_to_arbiter)
-        self.add_code(self.comb_rdy_to_arbiter)
+        self.add_code(self.num_valid_set)
+        self.add_code(self.indicate_start_data)
 
     # get output loop iterators
     # set pause_tb signal to pause input/output depending on
@@ -218,16 +222,18 @@ class TransposeBuffer(Generator):
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid_out_buf_index(self):
-        if ~self.rst_n:
+        if ~self.rst_n | (self.start_data & ~self.old_start_data):
             self.output_valid = 0
             self.out_buf_index = 1
             self.curr_out_start = 0
+            self.prev_out_buf_index = 1
         else:
+            self.prev_out_buf_index = self.out_buf_index
             if self.pause_tb:
                 self.output_valid = 0
                 self.out_buf_index = 0
                 self.curr_out_start = self.curr_out_start
-            elif ((self.output_index_abs % self.fetch_width) == 0): 
+            elif ((self.output_index_abs % self.fetch_width) == 0):
                 if (self.output_index_abs != self.curr_out_start):
                     self.curr_out_start = self.output_index_abs
                     self.out_buf_index = ~self.out_buf_index
@@ -240,34 +246,39 @@ class TransposeBuffer(Generator):
                 self.curr_out_start = self.curr_out_start
                 self.out_buf_index = self.out_buf_index
                 self.output_valid = 1
-        self.prev_out_buf_index = self.out_buf_index
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def indicate_start_data(self):
+        if ~self.rst_n:
+            self.start_data = 0
+        elif self.valid_data & ~self.start_data:
+            self.start_data = 1
+        else:
+            self.start_data = 0
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def send_rdy_to_arbiter(self):
         if ~self.rst_n:
-            self.num_valid = 0
-            #self.rdy_to_arbiter = 1
+            self.rdy_to_arbiter = 1
+        elif self.start_data & ~self.old_start_data:
+            self.rdy_to_arbiter = 1
         elif self.prev_out_buf_index != self.out_buf_index:
-            #self.rdy_to_arbiter = 1
+            self.rdy_to_arbiter = 1
+        elif self._ack_in:
+            self.rdy_to_arbiter = 0
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def num_valid_set(self):
+        if ~self.rst_n:
+            self.num_valid = 0
+        elif self.prev_out_buf_index != self.out_buf_index:
             self.num_valid = 0
         elif (self.num_valid < self.tb_height) & (self.valid_data):
-            #self.rdy_to_arbiter = 1
             self.num_valid = self.num_valid + 1
         elif (self.num_valid < self.tb_height) & (~self.valid_data):
-            #self.rdy_to_arbiter = 1
             self.num_valid = self.num_valid
         else:
             self.num_valid = self.num_valid
-            #self.rdy_to_arbiter = 0
-
-    @always_comb
-    def comb_rdy_to_arbiter(self):
-        if self.prev_out_buf_index != self.out_buf_index:
-            self.rdy_to_arbiter = 1
-        elif (self.num_valid < self.tb_height):
-            self.rdy_to_arbiter = ~self.ack_in
-        else:
-            self.rdy_to_arbiter = 0
 
     # get starting and ending column indices that represent both buffers part
     # of transpose buffer double buffer

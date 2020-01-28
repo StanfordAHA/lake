@@ -58,6 +58,9 @@ class TransposeBufferAggregation(Generator):
                                   packed=True,
                                   explicit_array=True)
 
+        # Ack the ready
+        self._ack_in = self.input("ack_in", 1)
+
         self.tb_to_interconnect_data = self.output("tb_to_interconnect_data",
                                                    width=self.word_width,
                                                    size=self.tb_height,
@@ -98,7 +101,8 @@ class TransposeBufferAggregation(Generator):
                            tb_start_index=self.num_tb * i,
                            col_pixels=self.tb_output_data_all[i],
                            output_valid=self.tb_output_valid_all[i],
-                           rdy_to_arbiter=self.tb_arbiter_rdy_all[i])
+                           rdy_to_arbiter=self.tb_arbiter_rdy_all[i],
+                           ack_in=self._ack_in)
 
         self.add_code(self.set_valid_data_all)
         self.set_output_valid()
