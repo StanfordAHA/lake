@@ -70,8 +70,8 @@ def top_test(data_width=16,
     new_config["stride_i_0_0"] = 1
 
     new_config["dimensionality_o_0"] = 2
-    new_config["dimensionality_o_0"] = 2
-    new_config["dimensionality_o_0"] = 2
+    new_config["dimensionality_o_1"] = 2
+    new_config["dimensionality_o_2"] = 2
     new_config["range_o_0_0"] = 16
     new_config["range_o_0_1"] = 64
     new_config["range_o_1_0"] = 16
