@@ -43,7 +43,7 @@ def test_agg_aligner_basic(data_width=16,
 
     for i in range(1000):
         new_val = rand.randint(0, 1)
-        
+
         (model_dat, model_val, model_align) = model_al.input_data(data_in, new_val)
         tester.circuit.in_valid = new_val
         tester.circuit.in_dat = data_in
