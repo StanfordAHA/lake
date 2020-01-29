@@ -238,11 +238,7 @@ class TransposeBuffer(Generator):
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid_out_buf_index(self):
-<<<<<<< HEAD
-        if ~self.rst_n: #| (self.start_data & ~self.old_start_data):
-=======
         if ~self.rst_n: 
->>>>>>> 259e30e9ff388049a1a9b02ed9cc927a96c9bbfe
             self.output_valid = 0
             self.out_buf_index = 1
             self.curr_out_start = 0
