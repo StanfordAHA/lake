@@ -10,6 +10,7 @@ from lake.modules.transpose_buffer import TransposeBuffer
 from lake.modules.transpose_buffer_aggregation import TransposeBufferAggregation
 from lake.modules.demux_reads import DemuxReads
 from lake.modules.sync_groups import SyncGroups
+from lake.modules.prefetcher import Prefetcher
 import kratos as kts
 
 
@@ -322,7 +323,7 @@ class LakeTop(Generator):
         #########################################
         ##### END: INPUT ADDRESS CONTROLLER #####
         #########################################
-
+        self._prefetch_step = self.var("prefetch_step", self.interconnect_output_ports)
         #####################################
         ##### OUTPUT ADDRESS CONTROLLER #####
         #####################################
@@ -375,7 +376,7 @@ class LakeTop(Generator):
         self._ack_reduced = self.var("ack_reduced",
                                      self.interconnect_output_ports)
 
-        self.wire(oac.ports.step_in, self._ack_reduced)
+        self.wire(oac.ports.step_in, self._ack_reduced & self._prefetch_step)
 
         # for i in range(self.banks):
         #     self.wire(iac.ports[f"port_sched_b_{i}"], self._i_port_scheds[i])
@@ -486,13 +487,22 @@ class LakeTop(Generator):
         self._valid_to_sync = self.var("valid_to_sync", self.interconnect_output_ports)
 
         self._data_to_tba = self.var("data_to_tba",
-                                     self.data_width,
-                                     size=(self.interconnect_output_ports,
-                                           self.fw_int),
+                                     self.mem_width,
+                                     size=self.interconnect_output_ports,
                                      explicit_array=True,
                                      packed=True)
+
+        # self.data_width,
+        # size=(self.interconnect_output_ports,
+        #      self.fw_int),
         self._valid_to_tba = self.var("valid_to_tba", self.interconnect_output_ports)
 
+        self._data_to_pref = self.var("data_to_pref",
+                                      self.mem_width,
+                                      size=self.interconnect_output_ports,
+                                      explicit_array=True,
+                                      packed=True)
+        self._valid_to_pref = self.var("valid_to_pref", self.interconnect_output_ports)
         #######################
         ##### DEMUX READS #####
         #######################
@@ -529,17 +539,42 @@ class LakeTop(Generator):
                        data_in=self._data_to_sync,
                        valid_in=self._valid_to_sync,
                        sync_group=self._sync_groups,
-                       data_out=self._data_to_tba,
-                       valid_out=self._valid_to_tba)
+                       data_out=self._data_to_pref,
+                       valid_out=self._valid_to_pref)
 
         self._data_to_tba_up = []
         for i in range(self.interconnect_output_ports):
             new_port = self.var(f"data_to_tba_up_{i}",
                                 self.data_width,
                                 size=self.fw_int,
-                                packed=True)
+                                packed=True,
+                                explicit_array=True)
             self._data_to_tba_up.append(new_port)
-            self.wire(self._data_to_tba_up[i], self._data_to_tba[i])
+            for j in range(self.fw_int):
+                self.wire(self._data_to_tba_up[i][j],
+                          self._data_to_tba[i][((j + 1) * self.data_width) - 1, j * self.data_width])
+
+        ######################
+        ##### PREFETCHER #####
+        ######################
+        prefetchers = []
+        for i in range(self.interconnect_output_ports):
+
+            pref = Prefetcher(fetch_width=self.mem_width,
+                              max_prefetch=64)
+
+            prefetchers.append(pref)
+
+            self.add_child(f"pre_fetch_{i}", pref,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           data_in=self._data_to_pref[i],
+                           valid_read=self._valid_to_pref[i],
+                           input_latency=10,
+                           tba_rdy_in=self._ready_tba[i],
+                           data_out=self._data_to_tba[i],
+                           valid_out=self._valid_to_tba[i],
+                           prefetch_step=self._prefetch_step[i])
 
         #############################
         ##### TRANSPOSE BUFFERS #####
