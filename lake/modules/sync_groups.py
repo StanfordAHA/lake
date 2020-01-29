@@ -1,6 +1,6 @@
 from kratos import *
 import kratos as kts
-from lake.modules.pipe_reg import PipeReg
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class SyncGroups(Generator):
@@ -37,6 +37,7 @@ class SyncGroups(Generator):
                                       size=self.int_out_ports,
                                       explicit_array=True,
                                       packed=True)
+        self._sync_group.add_attribute(ConfigRegAttr())
 
         # Outputs
         self._data_out = self.output("data_out",

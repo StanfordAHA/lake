@@ -2,6 +2,7 @@ import kratos
 from kratos import *
 from math import log
 from lake.modules.transpose_buffer import TransposeBuffer
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class TransposeBufferAggregation(Generator):

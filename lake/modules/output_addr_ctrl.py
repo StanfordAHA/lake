@@ -1,6 +1,7 @@
 from kratos import *
 from lake.modules.aggregator import Aggregator
 from lake.modules.addr_gen import AddrGen
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class OutputAddrCtrl(Generator):
@@ -42,22 +43,29 @@ class OutputAddrCtrl(Generator):
                                          self.iterator_support),
                                    packed=True,
                                    explicit_array=True)  # 2D
+        self._strides.add_attribute(ConfigRegAttr())
+
         self._ranges = self.input("ranges",
                                   32,
                                   size=(self.interconnect_output_ports,
                                         self.iterator_support),
                                   packed=True,
                                   explicit_array=True)
+        self._ranges.add_attribute(ConfigRegAttr())
+
         self._dimensionalities = self.input("dimensionalities",
                                             4,
                                             size=self.interconnect_output_ports,
                                             explicit_array=True,
                                             packed=True)
+        self._dimensionalities.add_attribute(ConfigRegAttr())
+
         self._starting_addrs = self.input("starting_addrs",
                                           32,
                                           size=self.interconnect_output_ports,
                                           explicit_array=True,
                                           packed=True)
+        self._starting_addrs.add_attribute(ConfigRegAttr())
         # phases = [] TODO
 
         # Take in the valid and attach an address + direct to a port
@@ -84,29 +92,13 @@ class OutputAddrCtrl(Generator):
                                      explicit_array=True)
 
         if self.banks == 1 and self.interconnect_output_ports == 1:
-            # self._port_select = self.var("port_select", self.banks)
-            # self.wire(self._port_select, const(0, self.banks))
             self.wire(self._ren, self._valid_in)
         elif self.banks == 1 and self.interconnect_output_ports > 1:
-            # self._port_select = self.var("port_select",
-            #                     clog2(self.interconnect_output_ports),
-            #                     size=self.banks,
-            #                     explicit_array=True,
-            #                     packed=True)
             self.add_code(self.set_wen_single)
-            # self.add_code(self.set_port_select_single)
         elif self.banks > 1 and self.interconnect_output_ports == 1:
-            # self._port_select = self.var("port_select", self.banks)
-            # self.wire(self._port_select, const(0, self.banks))
             self.add_code(self.set_ren_mult)
         else:
-            # self._port_select = self.var("port_select",
-            #                              clog2(self.interconnect_output_ports),
-            #                              size=self.banks,
-            #                              explicit_array=True,
-            #                              packed=True)
             self.add_code(self.set_ren_mult)
-            # self.add_code(self.set_port_select_mult)
 
         # MAIN
 
