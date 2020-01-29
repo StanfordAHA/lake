@@ -224,8 +224,8 @@ class TransposeBuffer(Generator):
         self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
 
     # output column from transpose buffer
-    @always_ff((posedge, "clk"))
-    #@always_comb
+    #@always_ff((posedge, "clk"))
+    @always_comb
     def output_from_tb(self):
         #self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
 
