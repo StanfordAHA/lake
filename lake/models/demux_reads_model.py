@@ -28,6 +28,6 @@ class DemuxReadsModel(Model):
         for i in range(self.banks):
             if(valid_in[i]):
                 no_valid = False
-        
+
         if no_valid:
             return ()
