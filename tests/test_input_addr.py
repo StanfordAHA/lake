@@ -9,7 +9,7 @@ import random as rand
 import pytest
 
 
-@pytest.mark.parametrize("banks", [4, 6])
+@pytest.mark.parametrize("banks", [2, 4])
 def test_input_addr_basic(banks,
                           interconnect_input_ports=2,
                           mem_depth=512,
@@ -77,7 +77,7 @@ def test_input_addr_basic(banks,
 
     data_in = 0
 
-    for i in range(2000):
+    for i in range(1000):
         for j in range(interconnect_input_ports):
             valid_in[j] = rand.randint(0, 1)
         wen = model_iac.get_wen(valid_in)

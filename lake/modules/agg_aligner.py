@@ -1,5 +1,6 @@
 from kratos import *
 from utils.util import increment, decrement
+from lake.attributes.config_reg import ConfigReg
 
 
 class AggAligner(Generator):
@@ -25,6 +26,7 @@ class AggAligner(Generator):
         self._in_dat = self.input("in_dat", self.data_width)
         self._in_valid = self.input("in_valid", 1)
         self._line_length = self.input("line_length", self.counter_width)
+        self._line_length.add_attribute(ConfigReg())
 
         # Outputs
         self._out_dat = self.output("out_dat", self.data_width)
