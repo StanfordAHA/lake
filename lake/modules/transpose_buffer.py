@@ -204,11 +204,13 @@ class TransposeBuffer(Generator):
                                  self.stride.extend(2 * self.max_range_bits) +
                                  self.indices_index_inner.extend(2 * self.max_range_bits))
         self.output_index_long = self.output_index_abs % fetch_width
-        self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
+        #self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
 
     # output column from transpose buffer
     @always_ff((posedge, "clk"))
     def output_from_tb(self):
+        self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
+
         if self.output_valid:
             for i in range(tb_height):
                 if self.out_buf_index:
@@ -222,7 +224,7 @@ class TransposeBuffer(Generator):
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid_out_buf_index(self):
-        if ~self.rst_n | (self.start_data & ~self.old_start_data):
+        if ~self.rst_n: 
             self.output_valid = 0
             self.out_buf_index = 1
             self.curr_out_start = 0
