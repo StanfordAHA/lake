@@ -226,7 +226,7 @@ class TransposeBuffer(Generator):
             self.output_valid = 0
             self.out_buf_index = 1
             self.curr_out_start = 0
-            self.prev_out_buf_index = 1
+            self.prev_out_buf_index = 0
         else:
             self.prev_out_buf_index = self.out_buf_index
             if self.pause_tb:
@@ -254,7 +254,8 @@ class TransposeBuffer(Generator):
         elif self.valid_data & ~self.start_data:
             self.start_data = 1
         else:
-            self.start_data = 0
+            self.start_data = self.start_data
+        self.old_start_data = self.start_data
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def send_rdy_to_arbiter(self):
