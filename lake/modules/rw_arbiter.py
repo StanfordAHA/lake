@@ -84,7 +84,8 @@ class RWArbiter(Generator):
         self._done = self.var("done", 1)
 
         # The next read port can be used to acknowledge reads
-        self.wire(self._out_ack, self._next_rd_port)
+        self.wire(self._out_ack,
+                  self._next_rd_port & kts.concat(*([~self._wen_int] * self._out_ack.width)))
 
         self.add_code(self.mem_controls)
         self.add_code(self.set_next_read_port)
