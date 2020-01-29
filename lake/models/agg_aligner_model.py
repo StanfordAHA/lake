@@ -36,9 +36,6 @@ class AggAlignerModel(Model):
             align = 0
             self.count += 1
             if(self.count == self.config["line_length"]):
-                print(self.count)
-                print(f"line len: {self.config['line_length']}")
                 self.count = 0
                 align = 1
-            print(f"align: {align}")
             return (data_in, 1, align)
