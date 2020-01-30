@@ -80,4 +80,9 @@ def test(word_width=1,
 
         tester.step(2)
 
-test()
+    with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "tb_dump"
+        tester.compile_and_run(target="verilator",
+                               directory=tempdir,
+                               magma_output="verilog",
+                               flags=["-Wno-fatal", "--trace"])
