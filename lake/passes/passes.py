@@ -10,7 +10,6 @@ def lift_config_reg(generator):
     class ConfigRegLiftVisitor(IRVisitor):
         def __init__(self):
             IRVisitor.__init__(self)
-            #self.tag = tag
 
         def visit(self, node):
             if isinstance(node, _kratos.Generator):

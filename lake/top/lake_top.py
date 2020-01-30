@@ -95,55 +95,6 @@ class LakeTop(Generator):
         self._valid_out = self.output("valid_out",
                                       self.interconnect_output_ports)
 
-        # Config Regs -> won't show up here
-        # self._i_strides = self.input("stride_i",
-        #                              32,
-        #                              size=(self.interconnect_input_ports,
-        #                                    self.input_iterator_support),
-        #                              packed=True,
-        #                              explicit_array=True)
-        # self._i_ranges = self.input("range_i",
-        #                             32,
-        #                             size=(self.interconnect_input_ports,
-        #                                   self.input_iterator_support),
-        #                             packed=True,
-        #                             explicit_array=True)
-        # self._i_starting_addrs = self.input("starting_addr_i",
-        #                                     32,
-        #                                     size=self.interconnect_input_ports,
-        #                                     explicit_array=True,
-        #                                     packed=True)
-
-        # self._i_dimensionalities = self.input("dimensionality_i",
-        #                                       4,
-        #                                       size=self.interconnect_input_ports,
-        #                                       explicit_array=True,
-        #                                       packed=True)
-
-        # self._o_strides = self.input("stride_o",
-        #                              32,
-        #                              size=(self.interconnect_output_ports,
-        #                                    self.output_iterator_support),
-        #                              packed=True,
-        #                              explicit_array=True)
-        # self._o_ranges = self.input("range_o",
-        #                             32,
-        #                             size=(self.interconnect_output_ports,
-        #                                   self.output_iterator_support),
-        #                             packed=True,
-        #                             explicit_array=True)
-        # self._o_starting_addrs = self.input("starting_addr_o",
-        #                                     32,
-        #                                     size=self.interconnect_output_ports,
-        #                                     explicit_array=True,
-        #                                     packed=True)
-        # # self._o_port_scheds = []  # Config as well
-        # self._o_dimensionalities = self.input("dimensionality_o",
-        #                                       4,
-        #                                       size=self.interconnect_output_ports,
-        #                                       explicit_array=True,
-        #                                       packed=True)
-
         if self.banks == 1:
             self.address_width = clog2(mem_depth)
         else:
@@ -152,19 +103,6 @@ class LakeTop(Generator):
         ###########################
         ##### INPUT AGG SCHED #####
         ###########################
-        # self._agg_in_schedule = self.input("agg_in_sched",
-        #                                    clog2(agg_height),
-        #                                    size=self.max_agg_schedule,
-        #                                    explicit_array=True,
-        #                                    packed=True)
-        # self._agg_in_period = self.input("agg_in_period", clog2(self.max_agg_schedule))
-        # # ...and which order to output the blocks
-        # self._agg_out_schedule = self.input("agg_out_sched",
-        #                                     clog2(agg_height),
-        #                                     size=self.max_agg_schedule,
-        #                                     explicit_array=True,
-        #                                     packed=True)
-        # self._agg_out_period = self.input("agg_out_period", clog2(self.max_agg_schedule))
 
         ###########################################
         ##### AGGREGATION ALIGNERS (OPTIONAL) #####
@@ -185,12 +123,6 @@ class LakeTop(Generator):
             self._valid_consume = self.var("valid_consume",
                                            self.interconnect_input_ports)
 
-            # Pass this to agg
-            # self._line_length = self.input("line_length",
-            #                                clog2(self.max_line_length),
-            #                                size=self.interconnect_input_ports,
-            #                                explicit_array=True,
-            #                                packed=True)
             # Make new aggregation aligners for each port
             for i in range(self.interconnect_input_ports):
                 new_child = AggAligner(self.data_width, self.max_line_length)
@@ -199,7 +131,6 @@ class LakeTop(Generator):
                                rst_n=self._rst_n,
                                in_dat=self._data_in[i],
                                in_valid=self._valid_in[i],
-                            #    line_length=self._line_length[i],
                                align=self._align_to_agg[i],
                                out_valid=self._valid_consume[i],
                                out_dat=self._data_consume[i])
@@ -244,10 +175,6 @@ class LakeTop(Generator):
                                write_act=const(1, 1),
                                data_out=self._to_iac_dat[i],
                                valid_out=self._to_iac_valid[i])
-                              # in_sched=self._agg_in_schedule,
-                              # in_period=self._agg_in_period,
-                              # out_sched=self._agg_out_schedule,
-                              # out_period=self._agg_out_period)
 
         #######################################
         ##### END: AGG BUFFERS (OPTIONAL) #####
@@ -280,10 +207,6 @@ class LakeTop(Generator):
         self.add_child(f"input_addr_ctrl", iac,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       #strides=self._i_strides,
-                       #ranges=self._i_ranges,
-                       #starting_addrs=self._i_starting_addrs,
-                       #dimensionalities=self._i_dimensionalities,
                        valid_in=self._to_iac_valid,
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,
@@ -340,10 +263,6 @@ class LakeTop(Generator):
         self.add_child(f"output_addr_ctrl", oac,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       #strides=self._o_strides,
-                       #ranges=self._o_ranges,
-                       #dimensionalities=self._o_dimensionalities,
-                       #starting_addrs=self._o_starting_addrs,
                        valid_in=self._prefetch_step,
                        ren=self._ren_out,
                        addr_out=self._addr_out,
@@ -481,12 +400,6 @@ class LakeTop(Generator):
         #######################
         ##### SYNC GROUPS #####
         #######################
-        # Need this config input
-        # self._sync_groups = self.input("sync_groups_in",  # CONFIG REG
-        #                                self.interconnect_output_ports,
-        #                                size=self.interconnect_output_ports,
-        #                                explicit_array=True,
-        #                                packed=True)
         sync_group = SyncGroups(fetch_width=self.mem_width,
                                 int_out_ports=self.interconnect_output_ports)
 
@@ -533,7 +446,6 @@ class LakeTop(Generator):
                            rst_n=self._rst_n,
                            data_in=self._data_to_pref[i],
                            valid_read=self._valid_to_pref[i],
-                           #input_latency=10,
                            tba_rdy_in=self._ready_tba[i],
                            data_out=self._data_to_tba[i],
                            valid_out=self._valid_to_tba[i],
