@@ -121,6 +121,7 @@ class TransposeBuffer(Generator):
         self.old_start_data = self.var("old_start_data", 1)
 
         self.pause_output = self.var("pause_output", 1)
+        self.prev_pause_output = self.var("prev_pause_output", 1)
 
         x = max(self.tb_col_index_bits, 2 * self.max_range_bits)
 
@@ -167,7 +168,7 @@ class TransposeBuffer(Generator):
                     self.index_inner = self.index_inner + 1
                     self.pause_tb = 0
 
-    @always_ff((posedge, "clk"))
+    @always_comb
     def set_pause_output(self):
         if self.pause_tb:
             self.pause_output = 1
@@ -222,7 +223,6 @@ class TransposeBuffer(Generator):
                                  self.stride.extend(2 * self.max_range_bits) +
                                  self.indices_index_inner.extend(2 * self.max_range_bits))
         self.output_index_long = self.output_index_abs % fetch_width
-        # self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
 
     # output column from transpose buffer
     @always_ff((posedge, "clk"))
@@ -239,6 +239,7 @@ class TransposeBuffer(Generator):
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid_out_buf_index(self):
+        self.prev_pause_output = self.pause_output
         if ~self.rst_n:
             self.output_valid = 0
             self.out_buf_index = 1
@@ -254,6 +255,8 @@ class TransposeBuffer(Generator):
                 self.output_valid = 0
                 self.out_buf_index = 1
                 self.curr_out_start = self.curr_out_start
+            elif self.prev_pause_output & ~self.pause_output:
+                self.output_valid = 0
             elif ((self.output_index_abs % self.fetch_width) == 0):
                 if (self.output_index_abs != self.curr_out_start):
                     self.curr_out_start = self.output_index_abs
