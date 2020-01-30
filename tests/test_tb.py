@@ -53,6 +53,7 @@ def test_tb(word_width=1,
         data.append(i)
 
     for i in range(32):
+        print("i: ", i)
         for j in range(fetch_width):
             # set formula for this as well as model eventually
             setattr(tester.circuit, f"input_data_{j}", data[(i * fetch_width + j) % 50])
@@ -77,10 +78,12 @@ def test_tb(word_width=1,
         if len(input_data) != fetch_width:
             input_data = data[0:4]
         print("input data: ", input_data)
-        model_data, model_valid = model_tb.transpose_buffer(input_data, valid_data, ack_in)
+        model_data, model_valid, rdy_to_arbiter = \
+                model_tb.transpose_buffer(input_data, valid_data, ack_in)
         tester.eval()
-
+        
         tester.circuit.output_valid.expect(model_valid)
+        tester.circuit.rdy_to_arbiter.expect(rdy_to_arbiter)
         print("model output valid: ", model_valid)
         print(model_data[0])
         if model_valid:
@@ -93,3 +96,4 @@ def test_tb(word_width=1,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
