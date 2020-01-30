@@ -39,31 +39,45 @@ class InputAddrCtrl(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Inputs
-        self._strides = []  # 2D
-        self._ranges = []  # 2D
-        self._port_scheds = []  # Config as well
-        self._dimensionalities = []
+        self._strides = self.input("strides",
+                                   32,
+                                   size=(self.interconnect_input_ports,
+                                         self.iterator_support),
+                                   explicit_array=True,
+                                   packed=True)
+        self._strides.add_attribute(ConfigRegAttr())
+
+        self._ranges = self.input("ranges",
+                                   32,
+                                   size=(self.interconnect_input_ports,
+                                         self.iterator_support),
+                                   explicit_array=True,
+                                   packed=True)
+        self._ranges.add_attribute(ConfigRegAttr())
+
+        self._dimensionalities = self.input("dimensionalities",
+                                            4,
+                                            size=self.interconnect_input_ports,
+                                            explicit_array=True,
+                                            packed=True)
+        self._dimensionalities.add_attribute(ConfigRegAttr())
+
+        self._starting_addrs = self.input("starting_addrs",
+                                          32,
+                                          size=self.interconnect_input_ports,
+                                          explicit_array=True,
+                                          packed=True)
+        self._starting_addrs.add_attribute(ConfigRegAttr())
 
         # phases = [] TODO
-        self._starting_addrs = []  # 1D
-        for i in range(self.interconnect_input_ports):
-            self._strides.append(self.input(f"stride_p_{i}", 32,
-                                            size=self.iterator_support,
-                                            packed=True,
-                                            explicit_array=True))
-            self._ranges.append(self.input(f"range_p_{i}", 32,
-                                           size=self.iterator_support,
-                                           packed=True,
-                                           explicit_array=True))
-            self._starting_addrs.append(self.input(f"starting_addr_p_{i}", 32))
-            self._dimensionalities.append(self.input(f"dimensionality_{i}", 4))
 
-        for i in range(self.banks):
-            self._port_scheds.append(self.input(f"port_sched_b_{i}",
-                                                self.port_sched_width,
-                                                size=self.max_port_schedule,
-                                                packed=True,
-                                                explicit_array=True))
+        # DEPRECATED CODE...
+        self._port_scheds = self.input("port_scheds",
+                                       self.port_sched_width,
+                                       size=(self.banks,
+                                             self.max_port_schedule),
+                                       explicit_array=True,
+                                       packed=True)
         self._port_periods = self.input("port_periods",
                                         clog2(self.max_port_schedule),
                                         size=self.banks,
