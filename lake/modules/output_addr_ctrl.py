@@ -78,6 +78,7 @@ class OutputAddrCtrl(Generator):
                                 size=self.banks,
                                 explicit_array=True,
                                 packed=True)
+
         self._addresses = self.output("addr_out",
                                       self.mem_addr_width,
                                       size=self.interconnect_output_ports,

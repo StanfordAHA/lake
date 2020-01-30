@@ -126,17 +126,6 @@ class RWArbiter(Generator):
             self._rd_valid = ~self._wen_int & kts.reduce_or(self._ren_int.r_or())
             self._rd_port = self._next_rd_port
 
-    # @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    # def output_stage(self):
-    #     if ~self._rst_n:
-    #         self._out_data = 0
-    #         self._out_port = 0
-    #         self._out_valid = 0
-    #     else:
-    #         self._out_data = self._data_from_mem
-    #         self._out_port = self._rd_port
-    #         self._out_valid = self._rd_valid
-
     @always_comb
     def output_stage(self):
         self._out_data = self._data_from_mem

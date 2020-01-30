@@ -48,11 +48,11 @@ class InputAddrCtrl(Generator):
         self._strides.add_attribute(ConfigRegAttr())
 
         self._ranges = self.input("ranges",
-                                   32,
-                                   size=(self.interconnect_input_ports,
-                                         self.iterator_support),
-                                   explicit_array=True,
-                                   packed=True)
+                                  32,
+                                  size=(self.interconnect_input_ports,
+                                        self.iterator_support),
+                                  explicit_array=True,
+                                  packed=True)
         self._ranges.add_attribute(ConfigRegAttr())
 
         self._dimensionalities = self.input("dimensionalities",

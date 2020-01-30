@@ -12,7 +12,8 @@ class AggAligner(Generator):
     def __init__(self,
                  data_width,
                  max_line_length):
-        super().__init__("AggAligner")
+        super().__init__("agg_aligner")
+
         # Capture to the object
         self.data_width = data_width
         self.max_line_length = max_line_length
