@@ -68,7 +68,7 @@ def test(word_width=1,
         for j in range(max_range):
             setattr(tester.circuit, f"indices_{j}", j)
 
-        input_data = data[(i * 4 + fetch_width - 1 - j) % (len(data)-4): ((i * 4 + fetch_width - 1 - j) % (len(data)-4)) + 4]
+        input_data = data[(i * 4 + fetch_width - 1) % (len(data)): ((i * 4 + fetch_width - 1 - 3) % (len(data)))]
         ack_in = 0
         model_data, model_valid = model_tb.transpose_buffer(input_data, valid_data, ack_in)
         tester.eval()
