@@ -145,4 +145,4 @@ class TBModel(Model):
         print("output index: ", self.output_index)
         print("col pixels: ", self.col_pixels)
         print("rdy: ", self.rdy_to_arbiter)
-        return self.col_pixels, self.output_valid
+        return self.col_pixels, self.output_valid, self.rdy_to_arbiter
