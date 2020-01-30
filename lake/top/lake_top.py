@@ -625,7 +625,8 @@ class LakeTop(Generator):
             self.wire(tba.ports.range_inner, self._range_inner_tba[i])
             self.wire(tba.ports.stride, self._stride_tba[i])
             self.wire(tba.ports.indices, self._indices_tba[i])
-            self.wire(tba.ports.ack_in, self._ack_reduced[i])
+            self.wire(tba.ports.ack_in, self._valid_to_tba[i])
+            #self.wire(tba.ports.ack_in, self._ack_reduced[i])
 
             self.wire(self._data_out[i], tba.ports.tb_to_interconnect_data)
             self.wire(self._valid_out[i], tba.ports.tb_to_interconnect_valid)
