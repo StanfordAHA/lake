@@ -104,7 +104,7 @@ class SyncGroups(Generator):
                                          explicit_array=True,
                                          packed=True)
 
-        self._highest_in_group = self.var("highest",
+        self._highest_in_group = self.var("highest_in_group",
                                           self.int_out_ports,
                                           size=self.int_out_ports,
                                           explicit_array=True,
@@ -133,6 +133,7 @@ class SyncGroups(Generator):
         self.add_code(self.set_tpose)
         self.add_code(self.set_finished)
         self.add_code(self.set_highest)
+        self.add_code(self.next_gate_mask)
 
     @always_comb
     def set_sync_agg(self):
@@ -197,7 +198,7 @@ class SyncGroups(Generator):
             self._done[i] = 0
             for j in range(self.int_out_ports):
                 if ~self._done[i] & (self._sync_group[j] == (1 << i)):
-                    if self._local_gate_bus[i]:
+                    if self._local_gate_bus[i][j]:
                         self._done[i] = 1
                         self._lowest_in_group[i] = j
 
@@ -211,16 +212,16 @@ class SyncGroups(Generator):
     def set_finished(self):
         for i in range(self.int_out_ports):
             self._group_finished[i] = 0
-            self._group_finished[i] = ((self._highest_in_group[i] == 
-                                       self._lowest_in_group[i]) & 
+            self._group_finished[i] = ((self._highest_in_group[i] ==
+                                       self._lowest_in_group[i]) &
                                        ~self._local_gate_mask[i][self._lowest_in_group[i]])
 
     @always_comb
     def set_highest(self):
-        for i in range(self.int_out_ports-1, 0, -1):
+        for i in range(self.int_out_ports):
             self._highest_in_group[i] = 0
             self._done_alt[i] = 0
-            for j in range(self.int_out_ports):
+            for j in range(self.int_out_ports - 1, -1, -1):
                 if ~self._done_alt[i] & (self._sync_group[j] == (1 << i)):
                     self._done_alt[i] = 1
                     self._highest_in_group[i] = j
@@ -230,7 +231,7 @@ class SyncGroups(Generator):
         for i in range(self.int_out_ports):
             for j in range(self.int_out_ports):
                 self._local_gate_mask[i][j] = 1
-                if self._lowest_in_group[i] == j:
+                if (self._lowest_in_group[i] == j) & (self._sync_group[j] == (1 << i)):
                     self._local_gate_mask[i][j] = ~(self._ren_in[j] & self._ack_in[j])
 
 

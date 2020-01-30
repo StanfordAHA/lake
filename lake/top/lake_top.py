@@ -345,8 +345,7 @@ class LakeTop(Generator):
                   self._o_dimensionalities)
         self.wire(oac.ports.starting_addrs,
                   self._o_starting_addrs)
-        # self.wire(oac.ports.valid_in, 1)
-        self.wire(oac.ports.valid_in, self._ready_tba)
+        self.wire(oac.ports.valid_in, self._prefetch_step)
 
         self._ren_out = self.var("ren_out",
                                  self.interconnect_output_ports,
@@ -383,7 +382,8 @@ class LakeTop(Generator):
         self._ack_reduced = self.var("ack_reduced",
                                      self.interconnect_output_ports)
 
-        self.wire(oac.ports.step_in, self._ack_reduced & self._prefetch_step)
+        # self.wire(oac.ports.step_in, self._ack_reduced & self._prefetch_step)
+        self.wire(oac.ports.step_in, self._ack_reduced)
 
         # for i in range(self.banks):
         #     self.wire(iac.ports[f"port_sched_b_{i}"], self._i_port_scheds[i])
