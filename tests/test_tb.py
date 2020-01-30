@@ -9,10 +9,10 @@ import random as rand
 
 
 def test_tb(word_width=1,
-         fetch_width=4,
-         num_tb=1,
-         tb_height=1,
-         max_range=5):
+            fetch_width=4,
+            num_tb=1,
+            tb_height=1,
+            max_range=5):
 
     model_tb = TBModel(word_width,
                        fetch_width,
@@ -55,7 +55,7 @@ def test_tb(word_width=1,
     for i in range(32):
         for j in range(fetch_width):
             # set formula for this as well as model eventually
-            setattr(tester.circuit, f"input_data_{j}", data[(i*fetch_width + j) % 50])
+            setattr(tester.circuit, f"input_data_{j}", data[(i * fetch_width + j) % 50])
         tester.circuit.range_outer = 5
         tester.circuit.range_inner = 3
         tester.circuit.stride = 2
@@ -72,7 +72,7 @@ def test_tb(word_width=1,
         for j in range(max_range):
             setattr(tester.circuit, f"indices_{j}", j)
 
-        input_data = data[i*fetch_width % 50:(i*fetch_width + 4) % 50]
+        input_data = data[i * fetch_width % 50:(i * fetch_width + 4) % 50]
         ack_in = 0
         if len(input_data) != fetch_width:
             input_data = data[0:4]
