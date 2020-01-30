@@ -104,10 +104,17 @@ class SyncGroups(Generator):
                                          explicit_array=True,
                                          packed=True)
 
+        self._highest_in_group = self.var("highest",
+                                          self.int_out_ports,
+                                          size=self.int_out_ports,
+                                          explicit_array=True,
+                                          packed=True)
+
         self._group_finished = self.var("group_finished",
                                         self.int_out_ports)
 
         self._done = self.var("done", self.int_out_ports)
+        self._done_alt = self.var("done_alt", self.int_out_ports)
 
         # Output data is ungated
         self.wire(self._data_out, self._data_sync)
@@ -124,6 +131,8 @@ class SyncGroups(Generator):
         self.add_code(self.set_rd_gates)
         self.add_code(self.set_lowest_in_grp)
         self.add_code(self.set_tpose)
+        self.add_code(self.set_finished)
+        self.add_code(self.set_highest)
 
     @always_comb
     def set_sync_agg(self):
@@ -197,6 +206,24 @@ class SyncGroups(Generator):
         for i in range(self.int_out_ports):
             for j in range(self.int_out_ports):
                 self._local_gate_bus_tpose[i][j] = self._local_gate_bus[j][i]
+
+    @always_comb
+    def set_finished(self):
+        for i in range(self.int_out_ports):
+            self._group_finished[i] = 0
+            self._group_finished[i] = ((self._highest_in_group[i] == 
+                                       self._lowest_in_group[i]) & 
+                                       ~self._local_gate_mask[i][self._lowest_in_group[i]])
+
+    @always_comb
+    def set_highest(self):
+        for i in range(self.int_out_ports-1, 0, -1):
+            self._highest_in_group[i] = 0
+            self._done_alt[i] = 0
+            for j in range(self.int_out_ports):
+                if ~self._done_alt[i] & (self._sync_group[j] == (1 << i)):
+                    self._done_alt[i] = 1
+                    self._highest_in_group[i] = j
 
     @always_comb
     def next_gate_mask(self):
