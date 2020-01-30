@@ -47,6 +47,7 @@ class TBModel(Model):
         self.curr_out_start = 0
         self.output_valid = 0
         self.pause_tb = 1
+        self.rdy_to_arbiter = 1
 
     def set_config(self, new_config):
         for key, config_val in new_config.items():
@@ -77,6 +78,7 @@ class TBModel(Model):
         self.curr_out_start = 0
         self.output_valid = 0
         self.pause_tb = 1
+        self.rdy_to_arbiter = 1
 
     def input_to_tb(self, input_data, valid_data):
         # maybe add start data logic
@@ -98,6 +100,7 @@ class TBModel(Model):
         for i in range(self.tb_height):
             self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
+
         if self.index_inner == self.config["range_inner"] - 1:
             self.index_inner = 0
             if self.index_outer == self.config["range_outer"] - 1:
@@ -109,7 +112,6 @@ class TBModel(Model):
         else:
             self.index_outer = self.index_outer
             if self.pause_tb:
-                self.index_inner = self.index_inner
                 self.pause_tb = 1 - valid_data
             else:
                 self.index_inner = self.index_inner + 1
@@ -125,6 +127,7 @@ class TBModel(Model):
         else:
             self.output_valid = 1
 
+
     def send_rdy(self, ack_in):
         if ((self.output_index_abs % self.fetch_width == 0) and
                 (self.output_index_abs != self.curr_out_start)):
@@ -134,7 +137,12 @@ class TBModel(Model):
             self.rdy_to_arbiter = 0
 
     def transpose_buffer(self, input_data, valid_data, ack_in):
+        print("valid: ", valid_data)
         self.input_to_tb(input_data, valid_data)
         self.output_from_tb(valid_data)
         self.send_rdy(ack_in)
+        print("transpose_buffer: ", self.tb)
+        print("output index: ", self.output_index)
+        print("col pixels: ", self.col_pixels)
+        print("rdy: ", self.rdy_to_arbiter)
         return self.col_pixels, self.output_valid
