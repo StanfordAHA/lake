@@ -185,11 +185,11 @@ class LakeTop(Generator):
                                            self.interconnect_input_ports)
 
             # Pass this to agg
-            self._line_length = self.input("line_length",
-                                           clog2(self.max_line_length),
-                                           size=self.interconnect_input_ports,
-                                           explicit_array=True,
-                                           packed=True)
+            # self._line_length = self.input("line_length",
+            #                                clog2(self.max_line_length),
+            #                                size=self.interconnect_input_ports,
+            #                                explicit_array=True,
+            #                                packed=True)
             # Make new aggregation aligners for each port
             for i in range(self.interconnect_input_ports):
                 new_child = AggAligner(self.data_width, self.max_line_length)
@@ -198,7 +198,7 @@ class LakeTop(Generator):
                                rst_n=self._rst_n,
                                in_dat=self._data_in[i],
                                in_valid=self._valid_in[i],
-                               line_length=self._line_length[i],
+                            #    line_length=self._line_length[i],
                                align=self._align_to_agg[i],
                                out_valid=self._valid_consume[i],
                                out_dat=self._data_consume[i])
@@ -279,10 +279,10 @@ class LakeTop(Generator):
         self.add_child(f"input_addr_ctrl", iac,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       strides=self._i_strides,
-                       ranges=self._i_ranges,
-                       starting_addrs=self._i_starting_addrs,
-                       dimensionalities=self._i_dimensionalities,
+                       #strides=self._i_strides,
+                       #ranges=self._i_ranges,
+                       #starting_addrs=self._i_starting_addrs,
+                       #dimensionalities=self._i_dimensionalities,
                        valid_in=self._to_iac_valid,
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,

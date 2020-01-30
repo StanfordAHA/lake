@@ -2,6 +2,7 @@ from kratos import *
 from lake.modules.aggregator import Aggregator
 from lake.modules.addr_gen import AddrGen
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.passes.passes import lift_config_reg
 
 
 class InputAddrCtrl(Generator):
@@ -39,35 +40,35 @@ class InputAddrCtrl(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Inputs
-        self._strides = self.input("strides",
-                                   32,
-                                   size=(self.interconnect_input_ports,
-                                         self.iterator_support),
-                                   explicit_array=True,
-                                   packed=True)
-        self._strides.add_attribute(ConfigRegAttr())
+        # self._strides = self.input("strides",
+        #                            32,
+        #                            size=(self.interconnect_input_ports,
+        #                                  self.iterator_support),
+        #                            explicit_array=True,
+        #                            packed=True)
+        # self._strides.add_attribute(ConfigRegAttr())
 
-        self._ranges = self.input("ranges",
-                                  32,
-                                  size=(self.interconnect_input_ports,
-                                        self.iterator_support),
-                                  explicit_array=True,
-                                  packed=True)
-        self._ranges.add_attribute(ConfigRegAttr())
+        # self._ranges = self.input("ranges",
+        #                           32,
+        #                           size=(self.interconnect_input_ports,
+        #                                 self.iterator_support),
+        #                           explicit_array=True,
+        #                           packed=True)
+        # self._ranges.add_attribute(ConfigRegAttr())
 
-        self._dimensionalities = self.input("dimensionalities",
-                                            4,
-                                            size=self.interconnect_input_ports,
-                                            explicit_array=True,
-                                            packed=True)
-        self._dimensionalities.add_attribute(ConfigRegAttr())
+        # self._dimensionalities = self.input("dimensionalities",
+        #                                     4,
+        #                                     size=self.interconnect_input_ports,
+        #                                     explicit_array=True,
+        #                                     packed=True)
+        # self._dimensionalities.add_attribute(ConfigRegAttr())
 
-        self._starting_addrs = self.input("starting_addrs",
-                                          32,
-                                          size=self.interconnect_input_ports,
-                                          explicit_array=True,
-                                          packed=True)
-        self._starting_addrs.add_attribute(ConfigRegAttr())
+        # self._starting_addrs = self.input("starting_addrs",
+        #                                   32,
+        #                                   size=self.interconnect_input_ports,
+        #                                   explicit_array=True,
+        #                                   packed=True)
+        # self._starting_addrs.add_attribute(ConfigRegAttr())
 
         # phases = [] TODO
 
@@ -154,10 +155,6 @@ class InputAddrCtrl(Generator):
                                                        address_width=self.address_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           strides=self._strides[i],
-                           ranges=self._ranges[i],
-                           starting_addr=self._starting_addrs[i],
-                           dimensionality=self._dimensionalities[i],
                            clk_en=const(1, 1),
                            flush=const(0, 1),
                            step=self._valid_in[i])
@@ -241,4 +238,5 @@ if __name__ == "__main__":
                            iterator_support=6,
                            max_port_schedule=64,
                            address_width=16)
-    verilog(db_dut, filename="input_addr_ctrl.sv")
+    verilog(db_dut, filename="input_addr_ctrl.sv",
+            additional_passes={"lift config regs": lift_config_reg})

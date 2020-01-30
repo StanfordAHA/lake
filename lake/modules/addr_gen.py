@@ -13,7 +13,8 @@ class AddrGen(Generator):
                  iterator_support,
                  address_width):
 
-        super().__init__("addr_gen_" + str(iterator_support), debug=True)
+        #super().__init__("addr_gen_" + str(iterator_support), debug=True)
+        super().__init__("addr_gen", debug=True)
 
         self.mem_depth = mem_depth
         self.mem_addr_width = clog2(self.mem_depth)
