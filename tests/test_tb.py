@@ -7,7 +7,8 @@ import tempfile
 import kratos as k
 import random as rand
 
-def test_tb(word_width=16,
+
+def test_tb(word_width=1,
          fetch_width=4,
          num_tb=1,
          tb_height=1,
@@ -19,12 +20,12 @@ def test_tb(word_width=16,
                        tb_height,
                        max_range)
 
-    new_config={}
+    new_config = {}
     new_config["range_outer"] = 5
     new_config["range_inner"] = 3
     new_config["stride"] = 2
-    new_config["indices"] = [0,1,2]
-    
+    new_config["indices"] = [0, 1, 2]
+
     model_tb.set_config(new_config=new_config)
 
     dut = TransposeBuffer(word_width,
@@ -92,4 +93,3 @@ def test_tb(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
-

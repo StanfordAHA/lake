@@ -1,6 +1,7 @@
 from kratos import *
 from functools import reduce
 import operator
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class AddrGen(Generator):
@@ -24,15 +25,23 @@ class AddrGen(Generator):
         # INPUTS
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
+
         self._strides = self.input("strides", 32,
                                    size=self.iterator_support,
                                    packed=True, explicit_array=True)
+        self._strides.add_attribute(ConfigRegAttr())
 
         self._ranges = self.input("ranges", 32,
                                   size=self.iterator_support,
                                   packed=True, explicit_array=True)
+        self._ranges.add_attribute(ConfigRegAttr())
+
         self._starting_addr = self.input("starting_addr", 32)
+        self._starting_addr.add_attribute(ConfigRegAttr())
+
         self._dimensionality = self.input("dimensionality", 4)
+        self._dimensionality.add_attribute(ConfigRegAttr())
+
         self._step = self.input("step", 1)
 
         # OUTPUTS

@@ -1,4 +1,5 @@
 from kratos import *
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class ConfigReg(Generator):
@@ -7,6 +8,8 @@ class ConfigReg(Generator):
                  data_width,
                  init_val):
         super().__init__(f"config_reg_{name}_{data_width}")
+
+        self.add_attribute(ConfigRegAttr())
 
         self.init_val = init_val
         self.data_width = data_width

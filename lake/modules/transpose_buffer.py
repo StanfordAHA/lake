@@ -1,6 +1,7 @@
 import kratos
 from kratos import *
 from math import log
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class TransposeBuffer(Generator):
@@ -108,12 +109,12 @@ class TransposeBuffer(Generator):
                                             clog2(2 * self.num_tb * self.fetch_width))
         self.curr_out_start = self.var("curr_out_start", 2 * self.max_range_bits)
 
-        #self.tb_distance = self.var("tb_distance", self.tb_col_index_bits)
+        # self.tb_distance = self.var("tb_distance", self.tb_col_index_bits)
         # delete this signal? or keep for code clarity
-        #self.tb0_start = self.var("tb0_start", self.tb_col_index_bits)
-        #self.tb0_end = self.var("tb0_end", self.tb_col_index_bits)
-        #self.tb1_start = self.var("tb1_start", self.tb_col_index_bits)
-        #self.tb1_end = self.var("tb1_end", self.tb_col_index_bits)
+        # self.tb0_start = self.var("tb0_start", self.tb_col_index_bits)
+        # self.tb0_end = self.var("tb0_end", self.tb_col_index_bits)
+        # self.tb1_start = self.var("tb1_start", self.tb_col_index_bits)
+        # self.tb1_end = self.var("tb1_end", self.tb_col_index_bits)
         self.num_valid = self.var("num_valid", self.tb_height_bits)
         self.pause_tb = self.var("pause_tb", 1)
         self.start_data = self.var("start_data", 1)
@@ -130,7 +131,7 @@ class TransposeBuffer(Generator):
         self.add_code(self.get_tb_indices)
         self.add_code(self.output_from_tb)
         self.add_code(self.set_output_valid_out_buf_index)
-        #self.add_code(self.tb_col_indices)
+        # self.add_code(self.tb_col_indices)
         self.add_code(self.send_rdy_to_arbiter)
         self.add_code(self.num_valid_set)
         self.add_code(self.indicate_start_data)
@@ -166,7 +167,7 @@ class TransposeBuffer(Generator):
                     self.index_inner = self.index_inner + 1
                     self.pause_tb = 0
 
-    @always_ff((posedge,"clk"))
+    @always_ff((posedge, "clk"))
     def set_pause_output(self):
         if self.pause_tb:
             self.pause_output = 1
@@ -221,7 +222,7 @@ class TransposeBuffer(Generator):
                                  self.stride.extend(2 * self.max_range_bits) +
                                  self.indices_index_inner.extend(2 * self.max_range_bits))
         self.output_index_long = self.output_index_abs % fetch_width
-        #self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
+        # self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
 
     # output column from transpose buffer
     @always_ff((posedge, "clk"))
@@ -238,7 +239,7 @@ class TransposeBuffer(Generator):
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid_out_buf_index(self):
-        if ~self.rst_n: 
+        if ~self.rst_n:
             self.output_valid = 0
             self.out_buf_index = 1
             self.curr_out_start = 0

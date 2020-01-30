@@ -1,6 +1,7 @@
 from kratos import *
 from lake.modules.aggregator import Aggregator
 import kratos as kts
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class AggregationBuffer(Generator):
@@ -52,14 +53,21 @@ class AggregationBuffer(Generator):
                                        size=self.max_agg_schedule,
                                        explicit_array=True,
                                        packed=True)
+        self._in_schedule.add_attribute(ConfigRegAttr())
+
         self._in_period = self.input("in_period", clog2(self.max_agg_schedule))
+        self._in_period.add_attribute(ConfigRegAttr())
+
         # ...and which order to output the blocks
         self._out_schedule = self.input("out_sched",
                                         clog2(agg_height),
                                         size=self.max_agg_schedule,
                                         explicit_array=True,
                                         packed=True)
+        self._out_schedule.add_attribute(ConfigRegAttr())
+
         self._out_period = self.input("out_period", clog2(self.max_agg_schedule))
+        self._out_period.add_attribute(ConfigRegAttr())
 
         self._in_sched_ptr = self.var("in_sched_ptr", clog2(self.max_agg_schedule))
         self._out_sched_ptr = self.var("out_sched_ptr", clog2(self.max_agg_schedule))
