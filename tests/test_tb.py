@@ -74,16 +74,21 @@ def test_tb(word_width=1,
             setattr(tester.circuit, f"indices_{j}", j)
 
         input_data = data[i * fetch_width % 50:(i * fetch_width + 4) % 50]
-        ack_in = 0
+
+        if i == 0:
+            ack_in = 0
+    
+        tester.circuit.ack_in = ack_in
         if len(input_data) != fetch_width:
             input_data = data[0:4]
         print("input data: ", input_data)
-        model_data, model_valid, rdy_to_arbiter = \
+        model_data, model_valid, model_rdy_to_arbiter = \
                 model_tb.transpose_buffer(input_data, valid_data, ack_in)
         tester.eval()
         
         tester.circuit.output_valid.expect(model_valid)
-        tester.circuit.rdy_to_arbiter.expect(rdy_to_arbiter)
+        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+        print("model rdy: ", model_rdy_to_arbiter)
         print("model output valid: ", model_valid)
         print(model_data[0])
         if model_valid:
@@ -91,9 +96,15 @@ def test_tb(word_width=1,
 
         tester.step(2)
 
+        if model_rdy_to_arbiter:
+            ack_in = 1
+        else:
+            ack_in = 0
+
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
+test_tb()

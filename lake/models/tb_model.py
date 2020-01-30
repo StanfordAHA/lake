@@ -90,7 +90,7 @@ class TBModel(Model):
             else:
                 self.row_index = self.row_index + 1
 
-    def output_from_tb(self, valid_data):
+    def output_from_tb(self, valid_data, ack_in):
         # maybe add pause_output for beginning
         self.output_index_abs = self.index_outer * self.config["stride"] + \
             self.config["indices"][self.index_inner]
@@ -121,26 +121,19 @@ class TBModel(Model):
                 (self.output_index_abs != self.curr_out_start)):
             self.curr_out_start = self.output_index_abs
             self.out_buf_index = 1 - self.out_buf_index
+            self.rdy_to_arbiter = 1
+        elif ack_in:
+            self.rdy_to_arbiter = 0
 
         if self.pause_tb:
             self.output_valid = 0
         else:
             self.output_valid = 1
 
-
-    def send_rdy(self, ack_in):
-        if ((self.output_index_abs % self.fetch_width == 0) and
-                (self.output_index_abs != self.curr_out_start)):
-            self.rdy_to_arbiter = 1
-        # need to add logic for multiple rows of transpose buffer
-        elif ack_in:
-            self.rdy_to_arbiter = 0
-
     def transpose_buffer(self, input_data, valid_data, ack_in):
         print("valid: ", valid_data)
         self.input_to_tb(input_data, valid_data)
-        self.output_from_tb(valid_data)
-        self.send_rdy(ack_in)
+        self.output_from_tb(valid_data, ack_in)
         print("transpose_buffer: ", self.tb)
         print("output index: ", self.output_index)
         print("col pixels: ", self.col_pixels)
