@@ -49,7 +49,8 @@ def test(word_width=1,
 
     for i in range(32):
         for j in range(fetch_width):
-            setattr(tester.circuit, f"input_data_{j}", data[(i * 4 + fetch_width - 1 - j) % len(data)])
+            # set formula for this as well as model eventually
+            setattr(tester.circuit, f"input_data_{j}", data[j])
         tester.circuit.range_outer = 5
         tester.circuit.range_inner = 3
         tester.circuit.stride = 2
@@ -68,7 +69,7 @@ def test(word_width=1,
         for j in range(max_range):
             setattr(tester.circuit, f"indices_{j}", j)
 
-        input_data = data[(i * 4 + fetch_width - 1) % (len(data)): ((i * 4 + fetch_width - 1 - 3) % (len(data)))]
+        input_data = data[0:4]
         ack_in = 0
         model_data, model_valid = model_tb.transpose_buffer(input_data, valid_data, ack_in)
         tester.eval()

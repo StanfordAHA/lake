@@ -88,6 +88,7 @@ class TBModel(Model):
                 self.row_index = self.row_index + 1
 
     def output_from_tb(self, valid_data):
+        # maybe add pause_output for beginning
         self.output_index_abs = self.index_outer * self.config["stride"] + self.config["indices"][self.index_inner]
         self.output_index = self.output_index_abs % self.fetch_width
 
