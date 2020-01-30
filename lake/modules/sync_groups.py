@@ -93,10 +93,10 @@ class SyncGroups(Generator):
                                             self.int_out_ports)
 
         self._local_gate_mask = self.var("local_gate_mask",
-                                        self.int_out_ports,
-                                        size=self.int_out_ports,
-                                        explicit_array=True,
-                                        packed=True)
+                                         self.int_out_ports,
+                                         size=self.int_out_ports,
+                                         explicit_array=True,
+                                         packed=True)
 
         self._lowest_in_group = self.var("lowest_in_group",
                                          self.int_out_ports,
@@ -113,7 +113,6 @@ class SyncGroups(Generator):
         self.wire(self._data_out, self._data_sync)
         self.wire(self._rd_sync_gate, self._local_gate_reduced)
         # Valid requires gating based on sync_valid
-        self.add_code(self.set_out_valid)
 
         # Vars
 
@@ -125,7 +124,7 @@ class SyncGroups(Generator):
         self.add_code(self.set_rd_gates)
         self.add_code(self.set_lowest_in_grp)
         self.add_code(self.set_tpose)
-        self.add_code(self.next_gate_mask)
+
     @always_comb
     def set_sync_agg(self):
         # For each bit, AND the valids of each group together
@@ -175,11 +174,11 @@ class SyncGroups(Generator):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_rd_gates(self):
         for i in range(self.int_out_ports):
-                if ~self._rst_n | self._group_finished[i]:
-                    self._local_gate_bus[i] = ~const(0, self.int_out_ports)
-                # Bring this down eventually
-                else:
-                    self._local_gate_bus[i] = self._local_gate_bus[i] & self._local_gate_mask[i]
+            if ~self._rst_n | self._group_finished[i]:
+                self._local_gate_bus[i] = ~const(0, self.int_out_ports)
+            # Bring this down eventually
+            else:
+                self._local_gate_bus[i] = self._local_gate_bus[i] & self._local_gate_mask[i]
 
     @always_comb
     def set_lowest_in_grp(self):
@@ -201,16 +200,11 @@ class SyncGroups(Generator):
 
     @always_comb
     def next_gate_mask(self):
-        '''
-        Targets the next port to bring low
-        '''
         for i in range(self.int_out_ports):
             for j in range(self.int_out_ports):
                 self._local_gate_mask[i][j] = 1
                 if self._lowest_in_group[i] == j:
                     self._local_gate_mask[i][j] = ~(self._ren_in[j] & self._ack_in[j])
-
-
 
 
 if __name__ == "__main__":

@@ -353,6 +353,13 @@ class LakeTop(Generator):
                                  size=self.banks,
                                  explicit_array=True,
                                  packed=True)
+        self._ren_out_tpose = self.var("ren_out_tpose",
+                                       self.banks,
+                                       size=self.interconnect_output_ports,
+                                       explicit_array=True,
+                                       packed=True)
+        self._ren_out_reduced = self.var("ren_out_reduced",
+                                         self.interconnect_output_ports)
         self._addr_out = self.var("addr_out",
                                   clog2(self.mem_depth),
                                   size=self.interconnect_output_ports,
@@ -385,6 +392,9 @@ class LakeTop(Generator):
             self.wire(iac.ports[f"port_sched_b_{i}"], 0)
         self.wire(iac.ports.port_periods, 0)
 
+        for i in range(self.interconnect_output_ports):
+            for j in range(self.banks):
+                self.wire(self._ren_out_tpose[i][j], self._ren_out[j][i])
         ##############################
         ##### READ/WRITE ARBITER #####
         ##############################
@@ -420,6 +430,9 @@ class LakeTop(Generator):
                                      packed=True,
                                      explicit_array=True)
 
+        self._rd_sync_gate = self.var("rd_sync_gate",
+                                      self.interconnect_output_ports)
+
         self._mem_cen_in = self.var("mem_cen_in", self.banks)
         self._mem_wen_in = self.var("mem_wen_in", self.banks)
 
@@ -437,7 +450,7 @@ class LakeTop(Generator):
             self.wire(rw_arb.ports.w_data, self._data_to_arb[i])
             self.wire(rw_arb.ports.w_addr, self._addr_to_arb[i])
             self.wire(rw_arb.ports.data_from_mem, self._mem_data_out[i])
-            self.wire(rw_arb.ports.ren_in, self._ren_out[i])
+            self.wire(rw_arb.ports.ren_in, self._ren_out[i] & self._rd_sync_gate)
             # self.wire(rw_arb.ports.ren_in, self._ready_tba)
             self.wire(rw_arb.ports.ren_en, self._arb_ren_in[0])
             self.wire(rw_arb.ports.rd_addr, self._addr_out)
@@ -533,6 +546,9 @@ class LakeTop(Generator):
         sync_group = SyncGroups(fetch_width=self.mem_width,
                                 int_out_ports=self.interconnect_output_ports)
 
+        for i in range(self.interconnect_output_ports):
+            self.wire(self._ren_out_reduced[i], self._ren_out_tpose[i].r_or())
+
         self.add_child("sync_grp", sync_group,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -540,7 +556,10 @@ class LakeTop(Generator):
                        valid_in=self._valid_to_sync,
                        sync_group=self._sync_groups,
                        data_out=self._data_to_pref,
-                       valid_out=self._valid_to_pref)
+                       valid_out=self._valid_to_pref,
+                       ren_in=self._ren_out_reduced,
+                       rd_sync_gate=self._rd_sync_gate,
+                       ack_in=self._ack_reduced)
 
         self._data_to_tba_up = []
         for i in range(self.interconnect_output_ports):
@@ -626,7 +645,7 @@ class LakeTop(Generator):
             self.wire(tba.ports.stride, self._stride_tba[i])
             self.wire(tba.ports.indices, self._indices_tba[i])
             self.wire(tba.ports.ack_in, self._valid_to_tba[i])
-            #self.wire(tba.ports.ack_in, self._ack_reduced[i])
+            # self.wire(tba.ports.ack_in, self._ack_reduced[i])
 
             self.wire(self._data_out[i], tba.ports.tb_to_interconnect_data)
             self.wire(self._valid_out[i], tba.ports.tb_to_interconnect_valid)
