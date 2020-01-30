@@ -4,6 +4,7 @@ import fault
 import random as rand
 import pytest
 import tempfile
+from lake.passes.passes import lift_config_reg
 
 
 def top_test(data_width=16,
@@ -115,6 +116,9 @@ def top_test(data_width=16,
                      tb_range_max=tb_range_max,
                      tb_sched_max=tb_sched_max,
                      num_tb=num_tb)
+
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,

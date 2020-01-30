@@ -35,7 +35,7 @@ class SyncGroups(Generator):
         self._valid_in = self.input("valid_in",
                                     self.int_out_ports)
         # Indicates which port belongs to which synchronization group
-        self._sync_group = self.input("sync_group",  # CONFIG REG
+        self._sync_group = self.input("sync_group",
                                       self.int_out_ports,
                                       size=self.int_out_ports,
                                       explicit_array=True,

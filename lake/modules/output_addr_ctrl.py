@@ -37,37 +37,6 @@ class OutputAddrCtrl(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Inputs
-        self._strides = self.input("strides",
-                                   32,
-                                   size=(self.interconnect_output_ports,
-                                         self.iterator_support),
-                                   packed=True,
-                                   explicit_array=True)  # 2D
-        self._strides.add_attribute(ConfigRegAttr())
-
-        self._ranges = self.input("ranges",
-                                  32,
-                                  size=(self.interconnect_output_ports,
-                                        self.iterator_support),
-                                  packed=True,
-                                  explicit_array=True)
-        self._ranges.add_attribute(ConfigRegAttr())
-
-        self._dimensionalities = self.input("dimensionalities",
-                                            4,
-                                            size=self.interconnect_output_ports,
-                                            explicit_array=True,
-                                            packed=True)
-        self._dimensionalities.add_attribute(ConfigRegAttr())
-
-        self._starting_addrs = self.input("starting_addrs",
-                                          32,
-                                          size=self.interconnect_output_ports,
-                                          explicit_array=True,
-                                          packed=True)
-        self._starting_addrs.add_attribute(ConfigRegAttr())
-        # phases = [] TODO
-
         # Take in the valid and attach an address + direct to a port
         self._valid_in = self.input("valid_in", self.interconnect_output_ports)
         self._step_in = self.input("step_in", self.interconnect_output_ports)
@@ -114,10 +83,6 @@ class OutputAddrCtrl(Generator):
             self.add_child(f"address_gen_{i}", new_addr_gen,
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           strides=self._strides[i],
-                           ranges=self._ranges[i],
-                           starting_addr=self._starting_addrs[i],
-                           dimensionality=self._dimensionalities[i],
                            clk_en=const(1, 1),
                            flush=const(0, 1))
             # self.add_stmt(new_addr_gen.ports.step.assign(self._valid_in[i]))

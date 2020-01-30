@@ -40,36 +40,6 @@ class InputAddrCtrl(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Inputs
-        # self._strides = self.input("strides",
-        #                            32,
-        #                            size=(self.interconnect_input_ports,
-        #                                  self.iterator_support),
-        #                            explicit_array=True,
-        #                            packed=True)
-        # self._strides.add_attribute(ConfigRegAttr())
-
-        # self._ranges = self.input("ranges",
-        #                           32,
-        #                           size=(self.interconnect_input_ports,
-        #                                 self.iterator_support),
-        #                           explicit_array=True,
-        #                           packed=True)
-        # self._ranges.add_attribute(ConfigRegAttr())
-
-        # self._dimensionalities = self.input("dimensionalities",
-        #                                     4,
-        #                                     size=self.interconnect_input_ports,
-        #                                     explicit_array=True,
-        #                                     packed=True)
-        # self._dimensionalities.add_attribute(ConfigRegAttr())
-
-        # self._starting_addrs = self.input("starting_addrs",
-        #                                   32,
-        #                                   size=self.interconnect_input_ports,
-        #                                   explicit_array=True,
-        #                                   packed=True)
-        # self._starting_addrs.add_attribute(ConfigRegAttr())
-
         # phases = [] TODO
 
         # DEPRECATED CODE...
@@ -168,8 +138,6 @@ class InputAddrCtrl(Generator):
         # Then, obey the input schedule to send the proper Aggregator to the output
         # The wen to sram should be that the valid for the selected port is high
         # Do the same thing for the output address
-        # for i in range(self.interconnect_input_ports):
-        #    self.wire(self._addresses[i], self._local_addrs[i])
 
     # Update the pointer and mux for input and output schedule
     # Now, obey the input schedule to send to the proper SRAM bank

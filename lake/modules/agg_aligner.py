@@ -26,6 +26,7 @@ class AggAligner(Generator):
         # Inputs
         self._in_dat = self.input("in_dat", self.data_width)
         self._in_valid = self.input("in_valid", 1)
+
         self._line_length = self.input("line_length", self.counter_width)
         self._line_length.add_attribute(ConfigRegAttr())
 
