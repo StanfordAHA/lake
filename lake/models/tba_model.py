@@ -1,8 +1,8 @@
 from lake.models.model import Model
 
 
-# transpose buffer model
-class TBModel(Model):
+# transpose buffer aggregation model
+class TBAModel(Model):
 
     def __init__(self,
                  word_width,
@@ -107,21 +107,16 @@ class TBModel(Model):
             self.index_inner = 0
             if self.index_outer == self.config["range_outer"] - 1:
                 self.index_outer = 0
-            else:
-                self.index_outer = self.index_outer + 1
-        else:
-            self.index_outer = self.index_outer
-            if self.pause != 1:
-                self.index_inner = self.index_inner + 1
-
-        if self.index_inner == self.config["range_inner"] - 1:
-            if self.index_outer == self.config["range_outer"] - 1:
                 self.pause_tb = 1 - valid_data
             else:
+                self.index_outer = self.index_outer + 1
                 self.pause_tb = 0
-        elif self.pause_tb:
-            self.pause_tb = 1 - valid_data
-        elif self.pause = 0:
+        else:
+            self.index_outer = self.index_outer
+            if self.pause_tb:
+                self.pause_tb = 1 - valid_data
+            elif self.pause != 1:
+                self.index_inner = self.index_inner + 1
                 self.pause_tb = 0
 
         self.output_index_abs = self.index_outer * self.config["stride"] + \
@@ -140,15 +135,12 @@ class TBModel(Model):
         for i in range(self.tb_height):
             self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
-        print("pause ", self.pause)
-        print("prev prev pause output ", self.prev_prev_pause_output)
         if self.pause_tb or self.pause_output or (self.prev_pause_output == 1 and self.pause_output == 0) or (self.prev_prev_pause_output == 1 and self.prev_pause_output == 0 and self.pause_output == 0):
             self.output_valid = 0
             self.pause = 1
         else:
             self.output_valid = 1
             self.pause = 0
-
 
         self.prev_prev_pause_output = self.prev_pause_output
         self.prev_pause_output = self.pause_output
@@ -188,4 +180,4 @@ class TBModel(Model):
         self.input_to_tb(input_data, valid_data)
         self.output_from_tb(valid_data, ack_in)
         self.print_tb()
-        return self.col_pixels, self.output_valid, self.rdy_to_arbiter, self.index_inner, self.index_outer
+        return self.col_pixels, self.output_valid, self.rdy_to_arbiter

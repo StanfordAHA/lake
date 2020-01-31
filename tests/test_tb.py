@@ -57,13 +57,20 @@ def test_tb(word_width=16,
     tester.circuit.range_inner = 3
     tester.circuit.stride = 2
 
-    num_iters = 5
+    rand.seed(0)
+
+    num_iters = 25
     for i in range(num_iters):
         print()
         print("i: ", i)
 
+        data = []
         for j in range(fetch_width):
-            setattr(tester.circuit, f"input_data_{j}", data[(i * fetch_width + j) % 50])
+            data.append(rand.randint(0,2**word_width-1))
+
+        for j in range(fetch_width):
+            setattr(tester.circuit, f"input_data_{j}", data[j])
+
         # add testing a few dead valid cycles
         if i == 0:
             valid_data = 1
@@ -80,7 +87,7 @@ def test_tb(word_width=16,
 
         tester.circuit.valid_data = valid_data
 
-        input_data = data[i * fetch_width % 50:(i * fetch_width + 4) % 50]
+        input_data = data
 
     
         ack_in = valid_data
@@ -89,9 +96,8 @@ def test_tb(word_width=16,
 
         if len(input_data) != fetch_width:
             input_data = data[0:4]
-        print("input data: ", input_data)
         
-        model_data, model_valid, model_rdy_to_arbiter = \
+        model_data, model_valid, model_rdy_to_arbiter, model_index_inner, model_index_outer  = \
                 model_tb.transpose_buffer(input_data, valid_data, ack_in)
         
         
@@ -99,12 +105,11 @@ def test_tb(word_width=16,
         #if i < num_iters - 50:
         tester.circuit.output_valid.expect(model_valid)
         #tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
-        print("model rdy: ", model_rdy_to_arbiter)
-        print("model output valid: ", model_valid)
-        print(model_data[0])
         if model_valid:
             tester.circuit.col_pixels.expect(model_data[0])
 
+        #tester.circuit.index_inner.expect(model_index_inner)
+        #tester.circuit.index_outer.expect(model_index_outer)
         tester.step(2)
 
 
