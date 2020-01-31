@@ -4,6 +4,7 @@ import fault
 import random as rand
 import pytest
 import tempfile
+from lake.passes.passes import lift_config_reg
 
 
 def top_test(data_width=16,
@@ -31,13 +32,42 @@ def top_test(data_width=16,
 
     new_config = {}
 
-    # Agg buffer
-    new_config["agg_in_period"] = 1  # I don't actually know
-    new_config["agg_in_sched_0"] = 0
-    new_config["agg_out_period"] = 1
-    new_config["agg_out_sched"] = 0
+    # Agg align
+    new_config["agg_align_0_line_length"] = 64
 
-    # Kavya
+    # Agg buffer
+    new_config["agg_in_0_in_period"] = 1  # I don't actually know
+    new_config["agg_in_0_in_sched_0"] = 0
+    new_config["agg_in_0_out_period"] = 1
+    new_config["agg_in_0_out_sched_0"] = 0
+
+    # Input addr ctrl
+    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 1
+    new_config["input_addr_ctrl_address_gen_0_ranges_0"] = 2048
+    new_config["input_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["input_addr_ctrl_address_gen_0_strides_0"] = 1
+
+    # Output addr ctrl
+    new_config["output_addr_ctrl_address_gen_0_dimensionality"] = 2
+    new_config["output_addr_ctrl_address_gen_1_dimensionality"] = 2
+    new_config["output_addr_ctrl_address_gen_2_dimensionality"] = 2
+    new_config["output_addr_ctrl_address_gen_0_ranges_0"] = 16
+    new_config["output_addr_ctrl_address_gen_0_ranges_1"] = 64
+    new_config["output_addr_ctrl_address_gen_1_ranges_0"] = 16
+    new_config["output_addr_ctrl_address_gen_1_ranges_1"] = 64
+    new_config["output_addr_ctrl_address_gen_2_ranges_0"] = 16
+    new_config["output_addr_ctrl_address_gen_2_ranges_1"] = 64
+    new_config["output_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["output_addr_ctrl_address_gen_1_starting_addr"] = 16
+    new_config["output_addr_ctrl_address_gen_2_starting_addr"] = 32
+    new_config["output_addr_ctrl_address_gen_0_strides_0"] = 1
+    new_config["output_addr_ctrl_address_gen_0_strides_1"] = 16
+    new_config["output_addr_ctrl_address_gen_1_strides_0"] = 1
+    new_config["output_addr_ctrl_address_gen_1_strides_1"] = 16
+    new_config["output_addr_ctrl_address_gen_2_strides_0"] = 1
+    new_config["output_addr_ctrl_address_gen_2_strides_1"] = 16
+
+    # TBA
     new_config["indices_tba_0_0"] = 0
     new_config["indices_tba_0_1"] = 1
     new_config["indices_tba_0_2"] = 2
@@ -58,40 +88,10 @@ def top_test(data_width=16,
     new_config["range_inner_tba_2"] = 3
     new_config["range_outer_tba_2"] = 62
     new_config["stride_tba_2"] = 2
-    # new_config["tb_index_for_data"] = 0
 
-    # Aligner
-    new_config["line_length"] = 64
-
-    # Input addr ctrl
-    new_config["dimensionality_i"] = 1
-    new_config["range_i_0_0"] = 2048
-    new_config["starting_addr_i_0"] = 0
-    new_config["stride_i_0_0"] = 1
-
-    # Output addr ctrl
-    new_config["dimensionality_o_0"] = 2
-    new_config["dimensionality_o_1"] = 2
-    new_config["dimensionality_o_2"] = 2
-    new_config["range_o_0_0"] = 16
-    new_config["range_o_0_1"] = 64
-    new_config["range_o_1_0"] = 16
-    new_config["range_o_1_1"] = 64
-    new_config["range_o_2_0"] = 16
-    new_config["range_o_2_1"] = 64
-    new_config["starting_addr_o_0"] = 0
-    new_config["starting_addr_o_1"] = 16
-    new_config["starting_addr_o_2"] = 32
-    new_config["stride_o_0_0"] = 1
-    new_config["stride_o_0_1"] = 16
-    new_config["stride_o_1_0"] = 1
-    new_config["stride_o_1_1"] = 16
-    new_config["stride_o_2_0"] = 1
-    new_config["stride_o_2_1"] = 16
-
-    new_config["sync_groups_in_0"] = 1
-    new_config["sync_groups_in_1"] = 1
-    new_config["sync_groups_in_2"] = 1
+    new_config["sync_grp_sync_group_0"] = 1
+    new_config["sync_grp_sync_group_1"] = 1
+    new_config["sync_grp_sync_group_2"] = 1
 
     ### DUT
     lt_dut = LakeTop(data_width=data_width,
@@ -115,6 +115,9 @@ def top_test(data_width=16,
                      tb_range_max=tb_range_max,
                      tb_sched_max=tb_sched_max,
                      num_tb=num_tb)
+
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,

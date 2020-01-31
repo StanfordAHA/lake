@@ -148,7 +148,6 @@ class AggregationBuffer(Generator):
     @always_comb
     def output_data_comb(self):
         self._data_out = self._aggs_out[self._out_schedule[self._out_sched_ptr]]
-    # Then, obey the output schedule to send the proper Aggregator to the output
 
 
 if __name__ == "__main__":

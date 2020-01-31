@@ -35,7 +35,7 @@ class SyncGroups(Generator):
         self._valid_in = self.input("valid_in",
                                     self.int_out_ports)
         # Indicates which port belongs to which synchronization group
-        self._sync_group = self.input("sync_group",  # CONFIG REG
+        self._sync_group = self.input("sync_group",
                                       self.int_out_ports,
                                       size=self.int_out_ports,
                                       explicit_array=True,
@@ -121,8 +121,7 @@ class SyncGroups(Generator):
         self.wire(self._rd_sync_gate, self._local_gate_reduced)
         # Valid requires gating based on sync_valid
 
-        # Vars
-
+        # Add Code
         self.add_code(self.set_sync_agg)
         self.add_code(self.set_sync_valid)
         self.add_code(self.set_sync_stage)
@@ -238,5 +237,4 @@ class SyncGroups(Generator):
 if __name__ == "__main__":
     db_dut = SyncGroups(fetch_width=64,
                         int_out_ports=2)
-
     verilog(db_dut, filename="sync_groups.sv", optimize_if=False)

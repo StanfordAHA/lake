@@ -29,7 +29,9 @@ class AddrGen(Generator):
         self._strides = self.input("strides", 32,
                                    size=self.iterator_support,
                                    packed=True, explicit_array=True)
-        self._strides.add_attribute(ConfigRegAttr())
+        stride_config = ConfigRegAttr()
+        stride_config.set_documentation("this is stride")
+        self._strides.add_attribute(stride_config)
 
         self._ranges = self.input("ranges", 32,
                                   size=self.iterator_support,

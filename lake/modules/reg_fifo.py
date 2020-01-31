@@ -11,7 +11,7 @@ class RegFIFO(Generator):
     def __init__(self,
                  data_width,
                  depth):
-        super().__init__("RegFIFO")
+        super().__init__("reg_fifo")
 
         self.data_width = data_width
         self.depth = depth
@@ -82,25 +82,15 @@ class RegFIFO(Generator):
         elif self._write:
             self._reg_array[self._wr_ptr] = self._data_in
 
-    # @always_ff((posedge, "clk"), (negedge, "rst_n"))
     @always_comb
     def data_out_ff(self):
-        # if ~self._rst_n:
-        #     self._data_out = 0
-        # elif self._read:
-        #     self._data_out = self._reg_array[self._rd_ptr]
         if(self._passthru):
             self._data_out = self._data_in
         else:
             self._data_out = self._reg_array[self._rd_ptr]
 
-    # @always_ff((posedge, "clk"), (negedge, "rst_n"))
     @always_comb
     def valid_ff(self):
-        # if ~self._rst_n:
-        #     self._valid = 0
-        # elif self._pop:
-        #     self._valid = ~self._empty
         self._valid = self._pop & ((~self._empty) | self._passthru)
 
 

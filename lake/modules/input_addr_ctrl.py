@@ -2,6 +2,7 @@ from kratos import *
 from lake.modules.aggregator import Aggregator
 from lake.modules.addr_gen import AddrGen
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.passes.passes import lift_config_reg
 
 
 class InputAddrCtrl(Generator):
@@ -39,31 +40,15 @@ class InputAddrCtrl(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Inputs
-        self._strides = []  # 2D
-        self._ranges = []  # 2D
-        self._port_scheds = []  # Config as well
-        self._dimensionalities = []
-
         # phases = [] TODO
-        self._starting_addrs = []  # 1D
-        for i in range(self.interconnect_input_ports):
-            self._strides.append(self.input(f"stride_p_{i}", 32,
-                                            size=self.iterator_support,
-                                            packed=True,
-                                            explicit_array=True))
-            self._ranges.append(self.input(f"range_p_{i}", 32,
-                                           size=self.iterator_support,
-                                           packed=True,
-                                           explicit_array=True))
-            self._starting_addrs.append(self.input(f"starting_addr_p_{i}", 32))
-            self._dimensionalities.append(self.input(f"dimensionality_{i}", 4))
 
-        for i in range(self.banks):
-            self._port_scheds.append(self.input(f"port_sched_b_{i}",
-                                                self.port_sched_width,
-                                                size=self.max_port_schedule,
-                                                packed=True,
-                                                explicit_array=True))
+        # DEPRECATED CODE...
+        self._port_scheds = self.input("port_scheds",
+                                       self.port_sched_width,
+                                       size=(self.banks,
+                                             self.max_port_schedule),
+                                       explicit_array=True,
+                                       packed=True)
         self._port_periods = self.input("port_periods",
                                         clog2(self.max_port_schedule),
                                         size=self.banks,
@@ -140,10 +125,6 @@ class InputAddrCtrl(Generator):
                                                        address_width=self.address_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           strides=self._strides[i],
-                           ranges=self._ranges[i],
-                           starting_addr=self._starting_addrs[i],
-                           dimensionality=self._dimensionalities[i],
                            clk_en=const(1, 1),
                            flush=const(0, 1),
                            step=self._valid_in[i])
@@ -157,8 +138,6 @@ class InputAddrCtrl(Generator):
         # Then, obey the input schedule to send the proper Aggregator to the output
         # The wen to sram should be that the valid for the selected port is high
         # Do the same thing for the output address
-        # for i in range(self.interconnect_input_ports):
-        #    self.wire(self._addresses[i], self._local_addrs[i])
 
     # Update the pointer and mux for input and output schedule
     # Now, obey the input schedule to send to the proper SRAM bank
@@ -227,4 +206,5 @@ if __name__ == "__main__":
                            iterator_support=6,
                            max_port_schedule=64,
                            address_width=16)
-    verilog(db_dut, filename="input_addr_ctrl.sv")
+    verilog(db_dut, filename="input_addr_ctrl.sv",
+            additional_passes={"lift config regs": lift_config_reg})
