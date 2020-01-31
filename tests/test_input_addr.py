@@ -1,5 +1,7 @@
 from lake.models.input_addr_ctrl_model import InputAddrCtrlModel
 from lake.modules.input_addr_ctrl import InputAddrCtrl
+from lake.passes.passes import lift_config_reg
+import _kratos
 import magma as m
 from magma import *
 import fault
@@ -25,23 +27,23 @@ def test_input_addr_basic(banks,
         max_port_schedule=64,
         address_width=address_width)
     new_config = {}
-    new_config['starting_addr_p_0'] = 0
-    new_config['dimensionality_0'] = 3
-    new_config['stride_p_0_0'] = 1
-    new_config['stride_p_0_1'] = 3
-    new_config['stride_p_0_2'] = 9
-    new_config['range_p_0_0'] = 3
-    new_config['range_p_0_1'] = 3
-    new_config['range_p_0_2'] = 3
+    new_config['address_gen_0_starting_addr'] = 0
+    new_config['address_gen_0_dimensionality'] = 3
+    new_config['address_gen_0_strides_0'] = 1
+    new_config['address_gen_0_strides_1'] = 3
+    new_config['address_gen_0_strides_2'] = 9
+    new_config['address_gen_0_ranges_0'] = 3
+    new_config['address_gen_0_ranges_1'] = 3
+    new_config['address_gen_0_ranges_2'] = 3
 
-    new_config['starting_addr_p_1'] = mem_depth
-    new_config['dimensionality_1'] = 3
-    new_config['stride_p_1_0'] = 1
-    new_config['stride_p_1_1'] = 3
-    new_config['stride_p_1_2'] = 9
-    new_config['range_p_1_0'] = 3
-    new_config['range_p_1_1'] = 3
-    new_config['range_p_1_2'] = 3
+    new_config['address_gen_1_starting_addr'] = mem_depth
+    new_config['address_gen_1_dimensionality'] = 3
+    new_config['address_gen_1_strides_0'] = 1
+    new_config['address_gen_1_strides_1'] = 3
+    new_config['address_gen_1_strides_2'] = 9
+    new_config['address_gen_1_ranges_0'] = 3
+    new_config['address_gen_1_ranges_1'] = 3
+    new_config['address_gen_1_ranges_2'] = 3
 
     model_iac.set_config(new_config=new_config)
     ###
@@ -54,7 +56,7 @@ def test_input_addr_basic(banks,
                         max_port_schedule=64,
                         address_width=address_width,
                         data_width=16)
-
+    lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###

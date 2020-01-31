@@ -304,7 +304,6 @@ class TransposeBuffer(Generator):
             if (self.output_index_abs != self.curr_out_start):
                 self.curr_out_start = self.output_index_abs
 
-
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def add_pobi(self):
         if ~self.rst_n:

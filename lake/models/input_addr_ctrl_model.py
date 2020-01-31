@@ -40,11 +40,11 @@ class InputAddrCtrlModel(Model):
 
         # Initialize the configuration
         for i in range(self.interconnect_input_ports):
-            self.config[f"starting_addr_p_{i}"] = 0
-            self.config[f"dimensionality_{i}"] = 0
+            self.config[f"address_gen_{i}_starting_addr"] = 0
+            self.config[f"address_gen_{i}_dimensionality"] = 0
             for j in range(self.iterator_support):
-                self.config[f"stride_p_{i}_{j}"] = 0
-                self.config[f"range_p_{i}_{j}"] = 0
+                self.config[f"address_gen_{i}_strides_{j}"] = 0
+                self.config[f"address_gen_{i}_ranges_{j}"] = 0
 
         # Set up the wen
         self.wen = []
@@ -65,11 +65,11 @@ class InputAddrCtrlModel(Model):
         # Configure children
         for i in range(self.interconnect_input_ports):
             addr_gen_config = {}
-            addr_gen_config["starting_addr"] = self.config[f"starting_addr_p_{i}"]
-            addr_gen_config["dimensionality"] = self.config[f"dimensionality_{i}"]
+            addr_gen_config["starting_addr"] = self.config[f"address_gen_{i}_starting_addr"]
+            addr_gen_config["dimensionality"] = self.config[f"address_gen_{i}_dimensionality"]
             for j in range(self.iterator_support):
-                addr_gen_config[f"range_{j}"] = self.config[f"range_p_{i}_{j}"]
-                addr_gen_config[f"stride_{j}"] = self.config[f"stride_p_{i}_{j}"]
+                addr_gen_config[f"stride_{j}"] = self.config[f"address_gen_{i}_strides_{j}"]
+                addr_gen_config[f"range_{j}"] = self.config[f"address_gen_{i}_ranges_{j}"]
             self.addr_gens[i].set_config(addr_gen_config)
 
     # Retrieve the current addresses from each generator

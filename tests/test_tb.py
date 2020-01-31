@@ -6,8 +6,10 @@ import fault
 import tempfile
 import kratos as k
 import random as rand
+import pytest
 
 
+@pytest.mark.skip
 def test_tb(word_width=1,
             fetch_width=4,
             num_tb=1,
@@ -77,15 +79,15 @@ def test_tb(word_width=1,
 
         if i == 0:
             ack_in = 0
-    
+
         tester.circuit.ack_in = ack_in
         if len(input_data) != fetch_width:
             input_data = data[0:4]
         print("input data: ", input_data)
         model_data, model_valid, model_rdy_to_arbiter = \
-                model_tb.transpose_buffer(input_data, valid_data, ack_in)
+            model_tb.transpose_buffer(input_data, valid_data, ack_in)
         tester.eval()
-        
+
         tester.circuit.output_valid.expect(model_valid)
         tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
         print("model rdy: ", model_rdy_to_arbiter)
@@ -106,5 +108,3 @@ def test_tb(word_width=1,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
-
-test_tb()

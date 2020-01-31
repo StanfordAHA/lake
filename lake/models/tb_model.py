@@ -100,7 +100,6 @@ class TBModel(Model):
         for i in range(self.tb_height):
             self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
-
         if self.index_inner == self.config["range_inner"] - 1:
             self.index_inner = 0
             if self.index_outer == self.config["range_outer"] - 1:
