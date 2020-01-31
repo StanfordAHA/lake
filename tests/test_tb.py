@@ -9,8 +9,7 @@ import random as rand
 import pytest
 
 
-@pytest.mark.skip
-def test_tb(word_width=1,
+def test_tb(word_width=16,
             fetch_width=4,
             num_tb=1,
             tb_height=1,
@@ -45,51 +44,62 @@ def test_tb(word_width=1,
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
-    data = [0, 0, 0, 1, 5, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0,
-            0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1,
-            1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0,
-            1, 1, 1, 1]
 
     data = []
     for i in range(64):
         data.append(i)
 
-    for i in range(32):
-        print("i: ", i)
-        for j in range(fetch_width):
-            # set formula for this as well as model eventually
-            setattr(tester.circuit, f"input_data_{j}", data[(i * fetch_width + j) % 50])
-        tester.circuit.range_outer = 5
-        tester.circuit.range_inner = 3
-        tester.circuit.stride = 2
+    # configuration registers
+    tester.circuit.indices_0 = 0
+    tester.circuit.indices_1 = 1
+    tester.circuit.indices_2 = 2
 
-        if i == 0 or i == 1 or i == 2:
+    tester.circuit.range_outer = 5
+    tester.circuit.range_inner = 3
+    tester.circuit.stride = 2
+
+    num_iters = 5
+    for i in range(num_iters):
+        print()
+        print("i: ", i)
+
+        for j in range(fetch_width):
+            setattr(tester.circuit, f"input_data_{j}", data[(i * fetch_width + j) % 50])
+        # add testing a few dead valid cycles
+        if i == 0:
+            valid_data = 1
+        elif i == 1 or i == 2 or i == 3:
             valid_data = 0
-        elif i % 3 == 0:
+        elif i == 4:
+            valid_data = 1
+        elif 4 < i < 9:
+            valid_data = 0
+        elif (i - 9) % 6 == 0:
             valid_data = 1
         else:
             valid_data = 0
 
         tester.circuit.valid_data = valid_data
 
-        for j in range(max_range):
-            setattr(tester.circuit, f"indices_{j}", j)
-
         input_data = data[i * fetch_width % 50:(i * fetch_width + 4) % 50]
 
-        if i == 0:
-            ack_in = 0
-
+    
+        ack_in = valid_data
         tester.circuit.ack_in = ack_in
+
+
         if len(input_data) != fetch_width:
             input_data = data[0:4]
         print("input data: ", input_data)
+        
         model_data, model_valid, model_rdy_to_arbiter = \
-            model_tb.transpose_buffer(input_data, valid_data, ack_in)
+                model_tb.transpose_buffer(input_data, valid_data, ack_in)
+        
+        
         tester.eval()
-
+        #if i < num_iters - 50:
         tester.circuit.output_valid.expect(model_valid)
-        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+        #tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
         print("model rdy: ", model_rdy_to_arbiter)
         print("model output valid: ", model_valid)
         print(model_data[0])
@@ -98,13 +108,17 @@ def test_tb(word_width=1,
 
         tester.step(2)
 
-        if model_rdy_to_arbiter:
-            ack_in = 1
-        else:
-            ack_in = 0
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "top_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
+        #tester.compile_and_run(target="system-verilog",
+        #                       directory=tempdir,
+        #                       magma_output="verilog",
+        #                       simulator="ncsim")
+        #                       #flags=["-Wno-fatal", "--trace"])
+
+test_tb()

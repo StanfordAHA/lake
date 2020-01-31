@@ -207,9 +207,11 @@ class TransposeBuffer(Generator):
             self.input_index = self.row_index.extend(self.tb_height_bits2)
 
     # input to transpose buffer
-    @always_ff((posedge, "clk"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def input_to_tb(self):
-        if ~self.valid_data:
+        if ~self.rst_n:
+            self.tb = 0
+        elif ~self.valid_data:
             self.tb = self.tb
         else:
             for i in range(self.fetch_width):
