@@ -47,6 +47,7 @@ class TBModel(Model):
         self.curr_out_start = 0
         self.output_valid = 0
         self.pause_tb = 1
+        self.pause_output = 1
         self.rdy_to_arbiter = 1
 
     def set_config(self, new_config):
@@ -78,6 +79,7 @@ class TBModel(Model):
         self.curr_out_start = 0
         self.output_valid = 0
         self.pause_tb = 1
+        self.pause_output = 1
         self.rdy_to_arbiter = 1
 
     def input_to_tb(self, input_data, valid_data):
@@ -113,22 +115,32 @@ class TBModel(Model):
             self.index_outer = self.index_outer
             if self.pause_tb:
                 self.pause_tb = 1 - valid_data
-            else:
+            elif self.pause_output != 1:
                 self.index_inner = self.index_inner + 1
                 self.pause_tb = 0
 
+        print("output index abs ", self.output_index_abs)
+        print("curr out start ", self.curr_out_start)
         if ((self.output_index_abs % self.fetch_width == 0) and
                 (self.output_index_abs != self.curr_out_start)):
+            print("true")
             self.curr_out_start = self.output_index_abs
             self.out_buf_index = 1 - self.out_buf_index
             self.rdy_to_arbiter = 1
         elif ack_in:
             self.rdy_to_arbiter = 0
 
-        if self.pause_tb:
+        if self.pause_tb or self.pause_output:
             self.output_valid = 0
         else:
             self.output_valid = 1
+
+        if self.pause_tb:
+            self.pause_output = 1
+        elif self.pause_output & self.row_index < self.tb_height - 1:
+            self.pause_output = 1
+        else:
+            self.pause_output = 0
 
     def transpose_buffer(self, input_data, valid_data, ack_in):
         print("valid: ", valid_data)
@@ -137,5 +149,4 @@ class TBModel(Model):
         print("transpose_buffer: ", self.tb)
         print("output index: ", self.output_index)
         print("col pixels: ", self.col_pixels)
-        print("rdy: ", self.rdy_to_arbiter)
         return self.col_pixels, self.output_valid, self.rdy_to_arbiter
