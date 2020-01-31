@@ -28,7 +28,7 @@ class AggAligner(Generator):
         self._in_valid = self.input("in_valid", 1)
 
         self._line_length = self.input("line_length", self.counter_width)
-        self._line_length.add_attribute(ConfigRegAttr())
+        self._line_length.add_attribute(ConfigRegAttr("Line Length/Image Width for alignment"))
 
         # Outputs
         self._out_dat = self.output("out_dat", self.data_width)

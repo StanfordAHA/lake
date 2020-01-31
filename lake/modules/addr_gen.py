@@ -29,20 +29,18 @@ class AddrGen(Generator):
         self._strides = self.input("strides", 32,
                                    size=self.iterator_support,
                                    packed=True, explicit_array=True)
-        stride_config = ConfigRegAttr()
-        stride_config.set_documentation("this is stride")
-        self._strides.add_attribute(stride_config)
+        self._strides.add_attribute(ConfigRegAttr("Strides of address generator"))
 
         self._ranges = self.input("ranges", 32,
                                   size=self.iterator_support,
                                   packed=True, explicit_array=True)
-        self._ranges.add_attribute(ConfigRegAttr())
+        self._ranges.add_attribute(ConfigRegAttr("Ranges of address generator"))
 
         self._starting_addr = self.input("starting_addr", 32)
-        self._starting_addr.add_attribute(ConfigRegAttr())
+        self._starting_addr.add_attribute(ConfigRegAttr("Starting address of address generator"))
 
         self._dimensionality = self.input("dimensionality", 4)
-        self._dimensionality.add_attribute(ConfigRegAttr())
+        self._dimensionality.add_attribute(ConfigRegAttr("Dimensionality of address generator"))
 
         self._step = self.input("step", 1)
 

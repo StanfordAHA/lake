@@ -49,14 +49,18 @@ class AggregationBuffer(Generator):
         # so...possibly the schedule is a for loop?
         # Tells us where to write successive elements...
         self._in_schedule = self.input("in_sched",
-                                       clog2(agg_height),
+                                       clog2(self.agg_height),
                                        size=self.max_agg_schedule,
                                        explicit_array=True,
                                        packed=True)
-        self._in_schedule.add_attribute(ConfigRegAttr())
+        doc = "Input schedule for aggregation buffer. Enumerate which" + \
+              f" of {self.agg_height} buffers to write to."
+        self._in_schedule.add_attribute(ConfigRegAttr(doc))
 
         self._in_period = self.input("in_period", clog2(self.max_agg_schedule))
-        self._in_period.add_attribute(ConfigRegAttr())
+        doc = "Input period for aggregation buffer. 1 is a reasonable" + \
+              " setting for most applications"
+        self._in_period.add_attribute(ConfigRegAttr(doc))
 
         # ...and which order to output the blocks
         self._out_schedule = self.input("out_sched",
@@ -64,10 +68,12 @@ class AggregationBuffer(Generator):
                                         size=self.max_agg_schedule,
                                         explicit_array=True,
                                         packed=True)
-        self._out_schedule.add_attribute(ConfigRegAttr())
+        doc = "Output schedule for aggregation buffer. Enumerate which" + \
+              f" of {self.agg_height} buffers to write to SRAM from."
+        self._out_schedule.add_attribute(ConfigRegAttr(doc))
 
         self._out_period = self.input("out_period", clog2(self.max_agg_schedule))
-        self._out_period.add_attribute(ConfigRegAttr())
+        self._out_period.add_attribute(ConfigRegAttr("Output period for aggregation buffer"))
 
         self._in_sched_ptr = self.var("in_sched_ptr", clog2(self.max_agg_schedule))
         self._out_sched_ptr = self.var("out_sched_ptr", clog2(self.max_agg_schedule))

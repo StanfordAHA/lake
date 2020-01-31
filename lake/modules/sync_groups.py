@@ -40,7 +40,11 @@ class SyncGroups(Generator):
                                       size=self.int_out_ports,
                                       explicit_array=True,
                                       packed=True)
-        self._sync_group.add_attribute(ConfigRegAttr())
+        sync_config = ConfigRegAttr("This array of one hot vectors" +
+                                    " is used to denote which ports are synchronized to eachother." +
+                                    " If multiple ports should output data relative to eachother" +
+                                    " one should put them in the same group.")
+        self._sync_group.add_attribute(sync_config)
 
         # Outputs
         self._data_out = self.output("data_out",
