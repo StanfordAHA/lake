@@ -27,7 +27,6 @@ def top_test(data_width=16,
              max_line_length=256,
              tb_height=1,
              tb_range_max=64,
-             tb_sched_max=64,
              num_tb=1):
 
     new_config = {}
@@ -113,7 +112,6 @@ def top_test(data_width=16,
                      max_line_length=max_line_length,
                      tb_height=tb_height,
                      tb_range_max=tb_range_max,
-                     tb_sched_max=tb_sched_max,
                      num_tb=num_tb)
 
     # Run the config reg lift

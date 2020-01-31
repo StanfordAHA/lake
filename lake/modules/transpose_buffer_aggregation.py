@@ -20,8 +20,7 @@ class TransposeBufferAggregation(Generator):
                  # (and as a result, maximum length of indices input vector)
                  # specifying inner for loop values for output column
                  # addressing
-                 max_range,
-                 max_schedule_length):
+                 max_range):
         super().__init__("transpose_buffer_aggregation", True)
 
         # generation parameters
@@ -30,7 +29,6 @@ class TransposeBufferAggregation(Generator):
         self.num_tb = num_tb
         self.tb_height = tb_height
         self.max_range = max_range
-        self.max_schedule_length = max_schedule_length
 
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
