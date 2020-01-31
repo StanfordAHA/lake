@@ -20,10 +20,12 @@ def lift_config_reg(generator):
                         continue
                     else:
                         cr_attr = None
+                        doc = None
                         for i in range(len(curr_port.get_attributes())):
                             if(isinstance(curr_port.get_attributes()[i].get(), ConfigRegAttr)):
                                 cr_attr = curr_port.get_attributes()[i].get()
                         if cr_attr:
+                            doc = cr_attr.get_documentation()
                             # need to wire it to the instances parent and up
                             gen = node
                             parent_gen = gen.parent_generator()
@@ -39,7 +41,9 @@ def lift_config_reg(generator):
                                 child_gen = parent_gen
                                 parent_gen = parent_gen.parent_generator()
 
-                            child_port.add_attribute(ConfigRegAttr())
+                            child_port_cra = ConfigRegAttr()
+                            child_port_cra.set_documentation(doc)
+                            child_port.add_attribute(child_port_cra)
 
     v = ConfigRegLiftVisitor()
     v.visit_root(generator)

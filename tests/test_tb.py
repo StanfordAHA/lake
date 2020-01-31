@@ -6,7 +6,7 @@ import fault
 import tempfile
 import kratos as k
 import random as rand
-
+import pytest
 
 def test_tb(word_width=16,
             fetch_width=4,
@@ -89,7 +89,6 @@ def test_tb(word_width=16,
 
         input_data = data
 
-    
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
 

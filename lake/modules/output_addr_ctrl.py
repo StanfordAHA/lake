@@ -93,11 +93,6 @@ class OutputAddrCtrl(Generator):
                       new_addr_gen.ports.addr_out[self.address_width - 1, 0])
 
     @always_comb
-    def port_sel_comb(self):
-        for i in range(self._port_sels.size):
-            self._port_sels[i] = self._port_scheds[i][self._port_sel_ptrs[i]]
-
-    @always_comb
     def set_ren_mult(self):
         self._ren = 0
         for i in range(self.interconnect_output_ports):

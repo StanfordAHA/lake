@@ -22,4 +22,7 @@ if __name__ == "__main__":
                 if(isinstance(curr_port.get_attributes()[i].get(), ConfigRegAttr)):
                     cr_attr = curr_port.get_attributes()[i].get()
             if cr_attr:
-                print(f"port name: {port_name}, doc_string: {cr_attr.get_documentation()}")
+                for i in range(len(curr_port.size)):
+                    curr_port.size[i] -= 1
+                print(f"{curr_port.size}[{curr_port.width - 1}:0] {port_name}: " +
+                      f"{cr_attr.get_documentation()}")

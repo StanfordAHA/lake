@@ -102,6 +102,13 @@ class TBModel(Model):
 
     def output_from_tb(self, valid_data, ack_in):
         # maybe add pause_output for beginning
+        self.output_index_abs = self.index_outer * self.config["stride"] + \
+            self.config["indices"][self.index_inner]
+        self.output_index = self.output_index_abs % self.fetch_width
+
+        self.col_pixels = []
+        for i in range(self.tb_height):
+            self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
         if self.index_inner == self.config["range_inner"] - 1:
             self.index_inner = 0

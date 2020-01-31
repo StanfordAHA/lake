@@ -28,7 +28,10 @@ class Prefetcher(Generator):
         self._valid_read = self.input("valid_read", 1)
 
         self._input_latency = self.input("input_latency", clog2(self.max_prefetch))
-        self._input_latency.add_attribute(ConfigRegAttr())
+        doc = "This register is set to denote the input latency loop for reads. " + \
+              "This is sent to an internal fifo and an almost full signal is " + \
+              "used to pull more reads that the transpose buffers need."
+        self._input_latency.add_attribute(ConfigRegAttr(doc))
 
         self._max_lat = const(self.max_prefetch - 1,
                               clog2(self.max_prefetch))
