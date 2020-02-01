@@ -57,7 +57,7 @@ class InputAddrCtrl(Generator):
                                 self.banks)
 
         wen_full_size = (self.interconnect_input_ports,
-                                        self.multiwrite)
+                         self.multiwrite)
         if(self.multiwrite == 1):
             wen_full_size = (self.interconnect_input_ports, self.multiwrite, 1)
         self._wen_full = self.var("wen_full",
@@ -90,7 +90,7 @@ class InputAddrCtrl(Generator):
         self._local_addrs = self.var("local_addrs",
                                      self.address_width,
                                      size=(self.interconnect_input_ports,
-                                          self.multiwrite),
+                                           self.multiwrite),
                                      packed=True,
                                      explicit_array=True)
 
@@ -104,46 +104,23 @@ class InputAddrCtrl(Generator):
                 else:
                     self.wire(self._wen_reduced[i][j], kts.concat(*concat_ports).r_or())
 
-        #print(f"banks:{self.banks}, ports:{self.interconnect_input_ports}")
         for i in range(self.banks):
             cat = []
             for j in range(self.interconnect_input_ports):
                 cat.append(self._wen_reduced[j][i])
-                # print(cat)
             if(len(cat) > 1):
                 self.wire(self._wen[i], kts.concat(*cat).r_or())
             else:
                 self.wire(self._wen[i], cat[0])
 
         if self.banks == 1 and self.interconnect_input_ports == 1:
-            # self._port_select = self.var("port_select", self.banks)
-            # self.wire(self._port_select, const(0, self.banks))
             self.wire(self._wen, self._valid_in)
         elif self.banks == 1 and self.interconnect_input_ports > 1:
-            # self._port_select = self.var("port_select",
-            #                              clog2(self.interconnect_input_ports),
-            #                              size=self.banks,
-            #                              explicit_array=True,
-            #                              packed=True)
             self.add_code(self.set_wen_single)
-            # self.add_code(self.set_port_select_single)
-        elif self.banks > 1 and self.interconnect_input_ports == 1:
-            # self._port_select = self.var("port_select", self.banks)
-            # self.wire(self._port_select, const(0, self.banks))
-            self.add_code(self.set_wen_mult)
         else:
-            # self._port_select = self.var("port_select",
-            #                              clog2(self.interconnect_input_ports),
-            #                              size=self.banks,
-            #                              explicit_array=True,
-            #                              packed=True)
             self.add_code(self.set_wen_mult)
-           # self.add_code(self.set_port_select_mult)
-
 
         # MAIN
-
-        # self.add_code(self.set_out)
         # Iterate through all banks to priority decode the wen
         self.add_code(self.decode_out)
 
@@ -159,20 +136,15 @@ class InputAddrCtrl(Generator):
                            flush=const(0, 1),
                            step=self._valid_in[i])
 
-            # Get the address for each input port
-            # self.wire(self._local_addrs[i][0],
-            #           self[f"address_gen_{i}"].ports.addr_out[self.address_width - 1, 0])
-
         # Need to check that the add ress falls into the bank for implicit banking
 
         # Then, obey the input schedule to send the proper Aggregator to the output
         # The wen to sram should be that the valid for the selected port is high
         # Do the same thing for the output address
-        assert self.multiwrite <= self.banks and self.multiwrite > 0, "Multiwrite should be between 1 and banks"
+        assert self.multiwrite <= self.banks and self.multiwrite > 0,\
+            "Multiwrite should be between 1 and banks"
         if self.multiwrite > 1:
             size = (self.interconnect_input_ports, self.multiwrite - 1)
-            if(self.multiwrite == 2):
-                size = (self.interconnect_input_ports, self.multiwrite - 1, 1)
             self._offsets_cfg = self.input("offsets_cfg",
                                            self.address_width,
                                            size=size,
@@ -193,7 +165,7 @@ class InputAddrCtrl(Generator):
                     self._wen_full[i][j][k] = 0
                     if(self._valid_in[i]):
                         if(self._local_addrs[i][j][self.mem_addr_width + self.bank_addr_width - 1,
-                                               self.mem_addr_width] == k):
+                                                   self.mem_addr_width] == k):
                             self._wen_full[i][j][k] = 1
 
     @always_comb
@@ -225,46 +197,6 @@ class InputAddrCtrl(Generator):
         for i in range(self.multiwrite - 1):
             for j in range(self.interconnect_input_ports):
                 self._local_addrs[j][i + 1] = self._local_addrs[j][0] + self._offsets_cfg[j][i]
-
-    # @always_comb
-    # def set_wen_mult(self):
-    #     self._wen = 0
-    #     for i in range(self.interconnect_input_ports):
-    #         if(self._valid_in[i]):
-    #             self._wen[self._local_addrs[i][self.mem_addr_width + self.bank_addr_width - 1,
-    #                                            self.mem_addr_width]] = 1
-
-    # @always_comb
-    # def set_wen_single(self):
-    #     self._wen = 0
-    #     for i in range(self.interconnect_input_ports):
-    #         if(self._valid_in[i]):
-    #             self._wen = 1
-
-    # @always_comb
-    # def set_port_select_single(self):
-    #     self._port_select = 0
-    #     for i in range(self.interconnect_input_ports):
-    #         if(self._valid_in[i]):
-    #             self._port_select = i
-
-    # @always_comb
-    # def set_port_select_mult(self):
-    #     self._port_select = 0
-    #     for i in range(self.interconnect_input_ports):
-    #         if(self._valid_in[i]):
-    #             self._port_select[
-    #                 self._local_addrs[i][self.mem_addr_width + self.bank_addr_width - 1,
-    #                                      self.mem_addr_width]] = const(i,
-    #                                                                    self._port_select[0].width)
-
-    # @always_comb
-    # def set_out(self):
-    #     self._data_out = 0
-    #     self._addresses = 0
-    #     for i in range(self.banks):
-    #         self._data_out[i] = self._data_in[self._port_select[i]]
-    #         self._addresses[i] = self._local_addrs[self._port_select[i]][self.mem_addr_width - 1, 0]
 
 
 if __name__ == "__main__":
