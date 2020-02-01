@@ -129,7 +129,7 @@ class TBModel(Model):
         elif self.pause_tb:
             self.pause_tb = 1 - valid_data
         elif self.pause == 0:
-                self.pause_tb = 0
+            self.pause_tb = 0
 
         self.output_index_abs = self.index_outer * self.config["stride"] + \
             self.config["indices"][self.index_inner]
@@ -149,13 +149,16 @@ class TBModel(Model):
 
         print("pause ", self.pause)
         print("prev prev pause output ", self.prev_prev_pause_output)
-        if self.pause_tb or self.pause_output or (self.prev_pause_output == 1 and self.pause_output == 0) or (self.prev_prev_pause_output == 1 and self.prev_pause_output == 0 and self.pause_output == 0):
+        if self.pause_tb or \
+            self.pause_output or \
+            (self.prev_pause_output == 1 and self.pause_output == 0) or \
+            (self.prev_prev_pause_output == 1 and
+                self.prev_pause_output == 0 and self.pause_output == 0):
             self.output_valid = 0
             self.pause = 1
         else:
             self.output_valid = 1
             self.pause = 0
-
 
         self.prev_prev_pause_output = self.prev_pause_output
         self.prev_pause_output = self.pause_output
@@ -188,11 +191,11 @@ class TBModel(Model):
         print("rdy ", self.rdy_to_arbiter)
 
     def transpose_buffer(self, input_data, valid_data, ack_in):
-        print("input data", input_data)
-        print("valid data ", valid_data)
-        print("ack in ", ack_in)
+        # print("input data", input_data)
+        # print("valid data ", valid_data)
+        # print("ack in ", ack_in)
 
         self.input_to_tb(input_data, valid_data)
         self.output_from_tb(valid_data, ack_in)
-        self.print_tb()
-        return self.col_pixels, self.output_valid, self.rdy_to_arbiter, self.index_inner, self.index_outer
+        # self.print_tb()
+        return self.col_pixels, self.output_valid, self.rdy_to_arbiter

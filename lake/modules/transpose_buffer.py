@@ -88,8 +88,8 @@ class TransposeBuffer(Generator):
         self.rdy_to_arbiter = self.output("rdy_to_arbiter", 1)
 
         # local variables
-        self.index_outer = self.output("index_outer", self.max_range_bits)
-        self.index_inner = self.output("index_inner", self.max_range_bits)
+        self.index_outer = self.var("index_outer", self.max_range_bits)
+        self.index_inner = self.var("index_inner", self.max_range_bits)
 
         self.tb = self.var("tb",
                            width=self.word_width,
@@ -303,7 +303,6 @@ class TransposeBuffer(Generator):
         elif ((self.output_index_abs % self.fetch_width) == 0):
             if (self.output_index_abs != self.curr_out_start):
                 self.curr_out_start = self.output_index_abs
-
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def add_pobi(self):

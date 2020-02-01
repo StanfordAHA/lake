@@ -8,6 +8,7 @@ import kratos as k
 import random as rand
 import pytest
 
+
 def test_tb(word_width=16,
             fetch_width=4,
             num_tb=1,
@@ -59,14 +60,14 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 20
+    num_iters = 19
     for i in range(num_iters):
         print()
         print("i: ", i)
 
         data = []
         for j in range(fetch_width):
-            data.append(rand.randint(0,2**word_width-1))
+            data.append(rand.randint(0, 2**word_width - 1))
 
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[j])
@@ -92,25 +93,19 @@ def test_tb(word_width=16,
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
 
-
         if len(input_data) != fetch_width:
             input_data = data[0:4]
-        
-        model_data, model_valid, model_rdy_to_arbiter, model_index_inner, model_index_outer  = \
-                model_tb.transpose_buffer(input_data, valid_data, ack_in)
-        
-        
+
+        model_data, model_valid, model_rdy_to_arbiter = \
+            model_tb.transpose_buffer(input_data, valid_data, ack_in)
+
         tester.eval()
-        #if i < num_iters - 50:
         tester.circuit.output_valid.expect(model_valid)
-        #tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+        # tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
         if model_valid:
             tester.circuit.col_pixels.expect(model_data[0])
 
-        #tester.circuit.index_inner.expect(model_index_inner)
-        #tester.circuit.index_outer.expect(model_index_outer)
         tester.step(2)
-
 
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = "top_dump"
@@ -118,10 +113,3 @@ def test_tb(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
-        #tester.compile_and_run(target="system-verilog",
-        #                       directory=tempdir,
-        #                       magma_output="verilog",
-        #                       simulator="ncsim")
-        #                       #flags=["-Wno-fatal", "--trace"])
-
-test_tb()
