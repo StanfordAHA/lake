@@ -37,7 +37,8 @@ class LakeTop(Generator):
                  tb_height=1,
                  tb_range_max=2048,
                  tb_sched_max=64,
-                 num_tb=1):
+                 num_tb=1,
+                 multiwrite=1):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -64,6 +65,7 @@ class LakeTop(Generator):
         self.tb_height = tb_height
         self.tb_range_max = tb_range_max
         self.tb_sched_max = tb_sched_max
+        self.multiwrite = multiwrite
 
         # phases = [] TODO
 
@@ -203,7 +205,8 @@ class LakeTop(Generator):
                             iterator_support=self.input_iterator_support,
                             max_port_schedule=64,
                             address_width=self.address_width,
-                            data_width=self.mem_width)
+                            data_width=self.mem_width,
+                            multiwrite=self.multiwrite)
         self.add_child(f"input_addr_ctrl", iac,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -211,9 +214,7 @@ class LakeTop(Generator):
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,
                        addr_out=self._addr_to_arb,
-                       data_out=self._data_to_arb,
-                       port_scheds=0,
-                       port_periods=0)
+                       data_out=self._data_to_arb)
 
         #########################################
         ##### END: INPUT ADDRESS CONTROLLER #####
