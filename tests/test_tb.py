@@ -59,7 +59,7 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 25
+    num_iters = 20
     for i in range(num_iters):
         print()
         print("i: ", i)

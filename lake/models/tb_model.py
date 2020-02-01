@@ -128,7 +128,7 @@ class TBModel(Model):
                 self.pause_tb = 0
         elif self.pause_tb:
             self.pause_tb = 1 - valid_data
-        elif self.pause = 0:
+        elif self.pause == 0:
                 self.pause_tb = 0
 
         self.output_index_abs = self.index_outer * self.config["stride"] + \
