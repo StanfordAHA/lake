@@ -28,7 +28,8 @@ def top_test(data_width=16,
              tb_height=1,
              tb_range_max=64,
              tb_sched_max=64,
-             num_tb=1):
+             num_tb=1,
+             multiwrite=2):
 
     new_config = {}
 
@@ -114,7 +115,8 @@ def top_test(data_width=16,
                      tb_height=tb_height,
                      tb_range_max=tb_range_max,
                      tb_sched_max=tb_sched_max,
-                     num_tb=num_tb)
+                     num_tb=num_tb,
+                     multiwrite=multiwrite)
 
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
@@ -160,7 +162,7 @@ def top_test(data_width=16,
         tester.circuit.data_in += 1
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "top_dump"
+        tempdir = "top_dump_new"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",

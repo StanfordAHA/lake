@@ -38,7 +38,7 @@ class LakeTop(Generator):
                  tb_range_max=2048,
                  tb_sched_max=64,
                  num_tb=1,
-                 multiwrite=1):
+                 multiwrite=2):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width

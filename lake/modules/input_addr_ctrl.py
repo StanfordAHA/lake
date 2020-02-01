@@ -56,10 +56,13 @@ class InputAddrCtrl(Generator):
         self._wen = self.output("wen_to_sram",
                                 self.banks)
 
+        wen_full_size = (self.interconnect_input_ports,
+                                        self.multiwrite)
+        if(self.multiwrite == 1):
+            wen_full_size = (self.interconnect_input_ports, self.multiwrite, 1)
         self._wen_full = self.var("wen_full",
                                   self.banks,
-                                  size=(self.interconnect_input_ports,
-                                        self.multiwrite),
+                                  size=wen_full_size,
                                   explicit_array=True,
                                   packed=True)
 
@@ -101,25 +104,16 @@ class InputAddrCtrl(Generator):
                 else:
                     self.wire(self._wen_reduced[i][j], kts.concat(*concat_ports).r_or())
 
+        #print(f"banks:{self.banks}, ports:{self.interconnect_input_ports}")
         for i in range(self.banks):
             cat = []
             for j in range(self.interconnect_input_ports):
                 cat.append(self._wen_reduced[j][i])
-            self.wire(self._wen[i], kts.concat(*cat).r_or())
-
-        assert self.multiwrite <= self.banks and self.multiwrite > 0, "Multiwrite should be between 1 and banks"
-        if self.multiwrite > 1:
-            self._offsets_cfg = self.input("offsets_cfg",
-                                           self.address_width,
-                                           size=(self.interconnect_input_ports,
-                                                 self.multiwrite - 1),
-                                           packed=True,
-                                           explicit_array=True)
-            doc = "These offsets provide the ability to write to multiple banks explicitly"
-            self._offsets_cfg.add_attribute(ConfigRegAttr(doc))
-            self.add_code(self.set_multiwrite_addrs)
-
-
+                # print(cat)
+            if(len(cat) > 1):
+                self.wire(self._wen[i], kts.concat(*cat).r_or())
+            else:
+                self.wire(self._wen[i], cat[0])
 
         if self.banks == 1 and self.interconnect_input_ports == 1:
             # self._port_select = self.var("port_select", self.banks)
@@ -146,6 +140,7 @@ class InputAddrCtrl(Generator):
             self.add_code(self.set_wen_mult)
            # self.add_code(self.set_port_select_mult)
 
+
         # MAIN
 
         # self.add_code(self.set_out)
@@ -165,14 +160,27 @@ class InputAddrCtrl(Generator):
                            step=self._valid_in[i])
 
             # Get the address for each input port
-            self.wire(self._local_addrs[i][0],
-                      self[f"address_gen_{i}"].ports.addr_out[self.address_width - 1, 0])
+            # self.wire(self._local_addrs[i][0],
+            #           self[f"address_gen_{i}"].ports.addr_out[self.address_width - 1, 0])
 
         # Need to check that the add ress falls into the bank for implicit banking
 
         # Then, obey the input schedule to send the proper Aggregator to the output
         # The wen to sram should be that the valid for the selected port is high
         # Do the same thing for the output address
+        assert self.multiwrite <= self.banks and self.multiwrite > 0, "Multiwrite should be between 1 and banks"
+        if self.multiwrite > 1:
+            size = (self.interconnect_input_ports, self.multiwrite - 1)
+            if(self.multiwrite == 2):
+                size = (self.interconnect_input_ports, self.multiwrite - 1, 1)
+            self._offsets_cfg = self.input("offsets_cfg",
+                                           self.address_width,
+                                           size=size,
+                                           packed=True,
+                                           explicit_array=True)
+            doc = "These offsets provide the ability to write to multiple banks explicitly"
+            self._offsets_cfg.add_attribute(ConfigRegAttr(doc))
+            self.add_code(self.set_multiwrite_addrs)
 
     # Update the pointer and mux for input and output schedule
     # Now, obey the input schedule to send to the proper SRAM bank
@@ -181,9 +189,9 @@ class InputAddrCtrl(Generator):
     def set_wen_mult(self):
         for i in range(self.interconnect_input_ports):
             for j in range(self.multiwrite):
-                for k in range(self.bank):
+                for k in range(self.banks):
                     self._wen_full[i][j][k] = 0
-                    if(self.valid_in[i]):
+                    if(self._valid_in[i]):
                         if(self._local_addrs[i][j][self.mem_addr_width + self.bank_addr_width - 1,
                                                self.mem_addr_width] == k):
                             self._wen_full[i][j][k] = 1
@@ -192,13 +200,15 @@ class InputAddrCtrl(Generator):
     def set_wen_single(self):
         for i in range(self.interconnect_input_ports):
             for j in range(self.multiwrite):
-                self._wen_full[i][j] = 0
-                if(self.valid_in[i]):
-                    self._wen_full[i][j] = 1
+                for k in range(self.banks):
+                    self._wen_full[i][j][k] = 0
+                    if(self.valid_in[i]):
+                        self._wen_full[i][j][k] = 1
 
     @always_comb
     def decode_out(self):
         for i in range(self.banks):
+            self._done[i] = 0
             self._data_out[i] = 0
             self._addresses[i] = 0
             for j in range(self.interconnect_input_ports):
@@ -210,6 +220,8 @@ class InputAddrCtrl(Generator):
 
     @always_comb
     def set_multiwrite_addrs(self):
+        for i in range(self.interconnect_input_ports):
+            self._local_addrs[i][0] = self[f"address_gen_{i}"].ports.addr_out[self.address_width - 1, 0]
         for i in range(self.multiwrite - 1):
             for j in range(self.interconnect_input_ports):
                 self._local_addrs[j][i + 1] = self._local_addrs[j][0] + self._offsets_cfg[j][i]
