@@ -58,8 +58,6 @@ class InputAddrCtrl(Generator):
 
         wen_full_size = (self.interconnect_input_ports,
                          self.multiwrite)
-        if(self.multiwrite == 1):
-            wen_full_size = (self.interconnect_input_ports, self.multiwrite, 1)
         self._wen_full = self.var("wen_full",
                                   self.banks,
                                   size=wen_full_size,
@@ -145,6 +143,7 @@ class InputAddrCtrl(Generator):
             "Multiwrite should be between 1 and banks"
         if self.multiwrite > 1:
             size = (self.interconnect_input_ports, self.multiwrite - 1)
+            print(size)
             self._offsets_cfg = self.input("offsets_cfg",
                                            self.address_width,
                                            size=size,

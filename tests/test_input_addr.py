@@ -16,7 +16,8 @@ def test_input_addr_basic(banks,
                           interconnect_input_ports=2,
                           mem_depth=512,
                           iterator_support=6,
-                          address_width=16):
+                          address_width=16,
+                          multiwrite=2):
 
     # Set up model..
     model_iac = InputAddrCtrlModel(
@@ -55,7 +56,8 @@ def test_input_addr_basic(banks,
                         iterator_support=iterator_support,
                         max_port_schedule=64,
                         address_width=address_width,
-                        data_width=16)
+                        data_width=16,
+                        multiwrite=2)
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)

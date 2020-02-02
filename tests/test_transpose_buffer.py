@@ -5,7 +5,7 @@ from kratos import *
 import pytest
 
 
-# @pytest.mark.skip
+@pytest.mark.skip
 def test_transpose_buffer():
     word_width = 1
     fetch_width = 4
@@ -56,5 +56,5 @@ def test_transpose_buffer():
         with tempfile.TemporaryDirectory() as tempdir:
             tester.compile_and_run(target="verilator",
                                    directory=tempdir,
-                                   flags=["-Wno-fatal", "--trace"],
+                                   flags=["-Wno-fatal"],
                                    magma_output="verilog")

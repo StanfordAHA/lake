@@ -90,6 +90,7 @@ def top_test(data_width=16,
     new_config["range_outer_tba_2"] = 62
     new_config["stride_tba_2"] = 4
 
+    # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 512
 
     new_config["sync_grp_sync_group_0"] = 1

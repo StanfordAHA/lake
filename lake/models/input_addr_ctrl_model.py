@@ -12,8 +12,7 @@ class InputAddrCtrlModel(Model):
                  banks,
                  iterator_support,
                  max_port_schedule,
-                 address_width,
-                 multiwrite):
+                 address_width):
 
         self.interconnect_input_ports = interconnect_input_ports
         self.mem_depth = mem_depth
@@ -21,7 +20,6 @@ class InputAddrCtrlModel(Model):
         self.iterator_support = iterator_support
         self.address_width = address_width
         self.max_port_schedule = max_port_schedule
-        self.multiwrite = multiwrite  # Number of extra writes available
 
         self.config = {}
 

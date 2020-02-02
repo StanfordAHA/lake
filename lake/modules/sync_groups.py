@@ -78,6 +78,9 @@ class SyncGroups(Generator):
         self._ren_in = self.input("ren_in",
                                   self.int_out_ports)
 
+        self._ren_int = self.var("ren_int",
+                                 self.int_out_ports)
+
         self._rd_sync_gate = self.output("rd_sync_gate",
                                          self.int_out_ports)
 
@@ -102,20 +105,14 @@ class SyncGroups(Generator):
                                          explicit_array=True,
                                          packed=True)
 
-        self._lowest_in_group = self.var("lowest_in_group",
-                                         self.int_out_ports,
-                                         size=self.int_out_ports,
-                                         explicit_array=True,
-                                         packed=True)
-
-        self._highest_in_group = self.var("highest_in_group",
-                                          self.int_out_ports,
-                                          size=self.int_out_ports,
-                                          explicit_array=True,
-                                          packed=True)
-
         self._group_finished = self.var("group_finished",
                                         self.int_out_ports)
+
+        self._grp_fin_large = self.var("grp_fin_large",
+                                       self.int_out_ports,
+                                       size=self.int_out_ports,
+                                       explicit_array=True,
+                                       packed=True)
 
         self._done = self.var("done", self.int_out_ports)
         self._done_alt = self.var("done_alt", self.int_out_ports)
@@ -124,7 +121,7 @@ class SyncGroups(Generator):
         self.wire(self._data_out, self._data_sync)
         self.wire(self._rd_sync_gate, self._local_gate_reduced)
         # Valid requires gating based on sync_valid
-
+        self.wire(self._ren_int, self._ren_in & self._local_gate_reduced)
         # Add Code
         self.add_code(self.set_sync_agg)
         self.add_code(self.set_sync_valid)
@@ -132,11 +129,10 @@ class SyncGroups(Generator):
         self.add_code(self.set_out_valid)
         self.add_code(self.set_reduce_gate)
         self.add_code(self.set_rd_gates)
-        self.add_code(self.set_lowest_in_grp)
         self.add_code(self.set_tpose)
         self.add_code(self.set_finished)
-        self.add_code(self.set_highest)
         self.add_code(self.next_gate_mask)
+        self.add_code(self.set_grp_fin)
 
     @always_comb
     def set_sync_agg(self):
@@ -194,48 +190,35 @@ class SyncGroups(Generator):
                 self._local_gate_bus[i] = self._local_gate_bus[i] & self._local_gate_mask[i]
 
     @always_comb
-    def set_lowest_in_grp(self):
-        # For each GROUP
-        for i in range(self.int_out_ports):
-            self._lowest_in_group[i] = 0
-            self._done[i] = 0
-            for j in range(self.int_out_ports):
-                if ~self._done[i] & (self._sync_group[j] == (1 << i)):
-                    if self._local_gate_bus[i][j]:
-                        self._done[i] = 1
-                        self._lowest_in_group[i] = j
-
-    @always_comb
     def set_tpose(self):
         for i in range(self.int_out_ports):
             for j in range(self.int_out_ports):
                 self._local_gate_bus_tpose[i][j] = self._local_gate_bus[j][i]
 
     @always_comb
-    def set_finished(self):
+    def set_grp_fin(self):
+        # Group
         for i in range(self.int_out_ports):
-            self._group_finished[i] = 0
-            self._group_finished[i] = ((self._highest_in_group[i] ==
-                                       self._lowest_in_group[i]) &
-                                       ~self._local_gate_mask[i][self._lowest_in_group[i]])
+            # Port
+            for j in range(self.int_out_ports):
+                self._grp_fin_large[i][j] = 1
+                if self._sync_group[j] == (1 << i):
+                    # If either the read had completed or is now being completed...
+                    self._grp_fin_large[i][j] = (~self._local_gate_bus[i][j] |
+                                                 ~self._local_gate_mask[i][j])
 
     @always_comb
-    def set_highest(self):
+    def set_finished(self):
         for i in range(self.int_out_ports):
-            self._highest_in_group[i] = 0
-            self._done_alt[i] = 0
-            for j in range(self.int_out_ports - 1, -1, -1):
-                if ~self._done_alt[i] & (self._sync_group[j] == (1 << i)):
-                    self._done_alt[i] = 1
-                    self._highest_in_group[i] = j
+            self._group_finished[i] = self._grp_fin_large[i].r_and()
 
     @always_comb
     def next_gate_mask(self):
         for i in range(self.int_out_ports):
             for j in range(self.int_out_ports):
                 self._local_gate_mask[i][j] = 1
-                if (self._lowest_in_group[i] == j) & (self._sync_group[j] == (1 << i)):
-                    self._local_gate_mask[i][j] = ~(self._ren_in[j] & self._ack_in[j])
+                if (self._sync_group[j] == (1 << i)):
+                    self._local_gate_mask[i][j] = ~(self._ren_int[j] & self._ack_in[j])
 
 
 if __name__ == "__main__":

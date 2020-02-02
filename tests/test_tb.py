@@ -9,6 +9,7 @@ import random as rand
 import pytest
 
 
+@pytest.mark.skip
 def test_tb(word_width=16,
             fetch_width=4,
             num_tb=1,
@@ -83,23 +84,20 @@ def test_tb(word_width=16,
 
         input_data = data[i * fetch_width % 50:(i * fetch_width + 4) % 50]
 
-    
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
-
 
         if len(input_data) != fetch_width:
             input_data = data[0:4]
         print("input data: ", input_data)
-        
+
         model_data, model_valid, model_rdy_to_arbiter = \
-                model_tb.transpose_buffer(input_data, valid_data, ack_in)
-        
-        
+            model_tb.transpose_buffer(input_data, valid_data, ack_in)
+
         tester.eval()
-        #if i < num_iters - 50:
+        # if i < num_iters - 50:
         tester.circuit.output_valid.expect(model_valid)
-        #tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+        # tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
         print("model rdy: ", model_rdy_to_arbiter)
         print("model output valid: ", model_valid)
         print(model_data[0])
@@ -108,17 +106,9 @@ def test_tb(word_width=16,
 
         tester.step(2)
 
-
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "top_dump"
+        tempdir = "tb_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
-        #tester.compile_and_run(target="system-verilog",
-        #                       directory=tempdir,
-        #                       magma_output="verilog",
-        #                       simulator="ncsim")
-        #                       #flags=["-Wno-fatal", "--trace"])
-
-test_tb()
