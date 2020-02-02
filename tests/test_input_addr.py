@@ -11,13 +11,13 @@ import random as rand
 import pytest
 
 
-#@pytest.mark.parametrize("banks", [2, 4])
-def test_input_addr_basic(banks=2,
-                          interconnect_input_ports=2,
+@pytest.mark.parametrize("banks", [2, 4])
+def test_input_addr_basic(banks,
+                          interconnect_input_ports=1,
                           mem_depth=512,
                           iterator_support=6,
                           address_width=16,
-                          multiwrite=1):
+                          multiwrite=2):
 
     # Set up model..
     model_iac = InputAddrCtrlModel(
@@ -102,5 +102,3 @@ def test_input_addr_basic(banks=2,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
-
-test_input_addr_basic()

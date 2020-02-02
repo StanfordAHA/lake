@@ -97,10 +97,10 @@ class InputAddrCtrl(Generator):
                 concat_ports = []
                 for k in range(self.multiwrite):
                     concat_ports.append(self._wen_full[i][k][j])
-                if(self.multiwrite == 1):
-                    self.wire(self._wen_reduced[i][j], *concat_ports)
-                else:
-                    self.wire(self._wen_reduced[i][j], kts.concat(*concat_ports).r_or())
+                # if(self.multiwrite == 1):
+                #     self.wire(self._wen_reduced[i][j], *concat_ports)
+                # else:
+                self.wire(self._wen_reduced[i][j], kts.concat(*concat_ports).r_or())
 
         for i in range(self.banks):
             cat = []
@@ -143,7 +143,6 @@ class InputAddrCtrl(Generator):
             "Multiwrite should be between 1 and banks"
         if self.multiwrite > 1:
             size = (self.interconnect_input_ports, self.multiwrite - 1)
-            print(size)
             self._offsets_cfg = self.input("offsets_cfg",
                                            self.address_width,
                                            size=size,
@@ -151,7 +150,7 @@ class InputAddrCtrl(Generator):
                                            explicit_array=True)
             doc = "These offsets provide the ability to write to multiple banks explicitly"
             self._offsets_cfg.add_attribute(ConfigRegAttr(doc))
-            self.add_code(self.set_multiwrite_addrs)
+        self.add_code(self.set_multiwrite_addrs)
 
     # Update the pointer and mux for input and output schedule
     # Now, obey the input schedule to send to the proper SRAM bank
