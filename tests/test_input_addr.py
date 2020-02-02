@@ -11,13 +11,13 @@ import random as rand
 import pytest
 
 
-@pytest.mark.parametrize("banks", [2, 4])
-def test_input_addr_basic(banks,
+#@pytest.mark.parametrize("banks", [2, 4])
+def test_input_addr_basic(banks=2,
                           interconnect_input_ports=2,
                           mem_depth=512,
                           iterator_support=6,
                           address_width=16,
-                          multiwrite=2):
+                          multiwrite=1):
 
     # Set up model..
     model_iac = InputAddrCtrlModel(
@@ -57,7 +57,7 @@ def test_input_addr_basic(banks,
                         max_port_schedule=64,
                         address_width=address_width,
                         data_width=16,
-                        multiwrite=2)
+                        multiwrite=multiwrite)
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
@@ -102,3 +102,5 @@ def test_input_addr_basic(banks,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+test_input_addr_basic()
