@@ -6,6 +6,7 @@ import fault
 import tempfile
 from kratos import *
 import kratos as k
+import pytest
 
 
 def test_addr_gen_basic():
