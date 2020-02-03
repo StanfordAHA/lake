@@ -67,7 +67,7 @@ class RegFIFOModel(Model):
             self.reg_array[self.wr_ptr] = data_in
             self.increment_wr()
             self.num_items += 1
-            return (0, 0)
+            return (self.reg_array[self.rd_ptr], 0)
         elif not push and pop:
             if(self.num_items == 0):
                 return (0, 0)
@@ -76,4 +76,4 @@ class RegFIFOModel(Model):
             self.num_items -= 1
             return (dat_out, 1)
         else:
-            return (0, 0)
+            return (self.reg_array[self.rd_ptr], 0)
