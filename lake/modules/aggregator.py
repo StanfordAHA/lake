@@ -78,5 +78,9 @@ class Aggregator(Generator):
 
 
 if __name__ == "__main__":
-    db_dut = Aggregator(word_width=16, mem_word_width=4)
-    verilog(db_dut, filename="aggregator.sv", check_active_high=False, check_multiple_driver=False)
+    db_dut = Aggregator(word_width=16,
+                        mem_word_width=4)
+    verilog(db_dut,
+            filename="aggregator.sv",
+            check_active_high=False,
+            check_multiple_driver=False)

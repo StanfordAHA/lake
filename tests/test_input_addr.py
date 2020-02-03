@@ -1,5 +1,7 @@
 from lake.models.input_addr_ctrl_model import InputAddrCtrlModel
 from lake.modules.input_addr_ctrl import InputAddrCtrl
+from lake.passes.passes import lift_config_reg
+import _kratos
 import magma as m
 from magma import *
 import fault
@@ -9,12 +11,13 @@ import random as rand
 import pytest
 
 
-@pytest.mark.parametrize("banks", [4, 6])
+@pytest.mark.parametrize("banks", [2, 4])
 def test_input_addr_basic(banks,
-                          interconnect_input_ports=2,
+                          interconnect_input_ports=1,
                           mem_depth=512,
                           iterator_support=6,
-                          address_width=16):
+                          address_width=16,
+                          multiwrite=2):
 
     # Set up model..
     model_iac = InputAddrCtrlModel(
@@ -25,23 +28,23 @@ def test_input_addr_basic(banks,
         max_port_schedule=64,
         address_width=address_width)
     new_config = {}
-    new_config['starting_addr_p_0'] = 0
-    new_config['dimensionality_0'] = 3
-    new_config['stride_p_0_0'] = 1
-    new_config['stride_p_0_1'] = 3
-    new_config['stride_p_0_2'] = 9
-    new_config['range_p_0_0'] = 3
-    new_config['range_p_0_1'] = 3
-    new_config['range_p_0_2'] = 3
+    new_config['address_gen_0_starting_addr'] = 0
+    new_config['address_gen_0_dimensionality'] = 3
+    new_config['address_gen_0_strides_0'] = 1
+    new_config['address_gen_0_strides_1'] = 3
+    new_config['address_gen_0_strides_2'] = 9
+    new_config['address_gen_0_ranges_0'] = 3
+    new_config['address_gen_0_ranges_1'] = 3
+    new_config['address_gen_0_ranges_2'] = 3
 
-    new_config['starting_addr_p_1'] = mem_depth
-    new_config['dimensionality_1'] = 3
-    new_config['stride_p_1_0'] = 1
-    new_config['stride_p_1_1'] = 3
-    new_config['stride_p_1_2'] = 9
-    new_config['range_p_1_0'] = 3
-    new_config['range_p_1_1'] = 3
-    new_config['range_p_1_2'] = 3
+    new_config['address_gen_1_starting_addr'] = mem_depth
+    new_config['address_gen_1_dimensionality'] = 3
+    new_config['address_gen_1_strides_0'] = 1
+    new_config['address_gen_1_strides_1'] = 3
+    new_config['address_gen_1_strides_2'] = 9
+    new_config['address_gen_1_ranges_0'] = 3
+    new_config['address_gen_1_ranges_1'] = 3
+    new_config['address_gen_1_ranges_2'] = 3
 
     model_iac.set_config(new_config=new_config)
     ###
@@ -53,8 +56,9 @@ def test_input_addr_basic(banks,
                         iterator_support=iterator_support,
                         max_port_schedule=64,
                         address_width=address_width,
-                        data_width=16)
-
+                        data_width=16,
+                        multiwrite=multiwrite)
+    lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
@@ -77,7 +81,7 @@ def test_input_addr_basic(banks,
 
     data_in = 0
 
-    for i in range(2000):
+    for i in range(1000):
         for j in range(interconnect_input_ports):
             valid_in[j] = rand.randint(0, 1)
         wen = model_iac.get_wen(valid_in)

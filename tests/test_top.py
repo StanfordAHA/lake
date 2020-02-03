@@ -4,6 +4,7 @@ import fault
 import random as rand
 import pytest
 import tempfile
+from lake.passes.passes import lift_config_reg
 
 
 def top_test(data_width=16,
@@ -25,68 +26,76 @@ def top_test(data_width=16,
              align_input=1,
              max_line_length=256,
              tb_height=1,
-             tb_range_max=256,
+             tb_range_max=64,
              tb_sched_max=64,
-             num_tb=1):
+             num_tb=1,
+             multiwrite=2):
 
     new_config = {}
 
-    # Agg buffer
-    new_config["agg_in_period"] = 1  # I don't actually know
-    new_config["agg_in_sched_0"] = 0
-    new_config["agg_out_period"] = 1
-    new_config["agg_out_sched"] = 0
+    # Agg align
+    new_config["agg_align_0_line_length"] = 64
 
-    # Kavya
+    # Agg buffer
+    new_config["agg_in_0_in_period"] = 1  # I don't actually know
+    new_config["agg_in_0_in_sched_0"] = 0
+    new_config["agg_in_0_out_period"] = 1
+    new_config["agg_in_0_out_sched_0"] = 0
+
+    # Input addr ctrl
+    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 1
+    new_config["input_addr_ctrl_address_gen_0_ranges_0"] = 2048
+    new_config["input_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["input_addr_ctrl_address_gen_0_strides_0"] = 1
+
+    # Output addr ctrl
+    new_config["output_addr_ctrl_address_gen_0_dimensionality"] = 2
+    new_config["output_addr_ctrl_address_gen_1_dimensionality"] = 2
+    new_config["output_addr_ctrl_address_gen_2_dimensionality"] = 2
+    new_config["output_addr_ctrl_address_gen_0_ranges_0"] = 16
+    new_config["output_addr_ctrl_address_gen_0_ranges_1"] = 64
+    new_config["output_addr_ctrl_address_gen_1_ranges_0"] = 16
+    new_config["output_addr_ctrl_address_gen_1_ranges_1"] = 64
+    new_config["output_addr_ctrl_address_gen_2_ranges_0"] = 16
+    new_config["output_addr_ctrl_address_gen_2_ranges_1"] = 64
+    new_config["output_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["output_addr_ctrl_address_gen_1_starting_addr"] = 16
+    new_config["output_addr_ctrl_address_gen_2_starting_addr"] = 32 + 512
+    new_config["output_addr_ctrl_address_gen_0_strides_0"] = 1
+    new_config["output_addr_ctrl_address_gen_0_strides_1"] = 16
+    new_config["output_addr_ctrl_address_gen_1_strides_0"] = 1
+    new_config["output_addr_ctrl_address_gen_1_strides_1"] = 16
+    new_config["output_addr_ctrl_address_gen_2_strides_0"] = 1
+    new_config["output_addr_ctrl_address_gen_2_strides_1"] = 16
+
+    # TBA
     new_config["indices_tba_0_0"] = 0
     new_config["indices_tba_0_1"] = 1
     new_config["indices_tba_0_2"] = 2
     new_config["range_inner_tba_0"] = 3
     new_config["range_outer_tba_0"] = 62
-    new_config["stride_tba_0"] = 1
+    new_config["stride_tba_0"] = 4
 
     new_config["indices_tba_1_0"] = 0
     new_config["indices_tba_1_1"] = 1
     new_config["indices_tba_1_2"] = 2
     new_config["range_inner_tba_1"] = 3
     new_config["range_outer_tba_1"] = 62
-    new_config["stride_tba_1"] = 1
+    new_config["stride_tba_1"] = 4
 
     new_config["indices_tba_2_0"] = 0
     new_config["indices_tba_2_1"] = 1
     new_config["indices_tba_2_2"] = 2
     new_config["range_inner_tba_2"] = 3
     new_config["range_outer_tba_2"] = 62
-    new_config["stride_tba_2"] = 1
-    # new_config["tb_index_for_data"] = 0
+    new_config["stride_tba_2"] = 4
 
-    # Aligner
-    new_config["line_length"] = 64
+    # Sets multiwrite
+    new_config["input_addr_ctrl_offsets_cfg_0_0"] = 512
 
-    # Input addr ctrl
-    new_config["dimensionality_i"] = 1
-    new_config["range_i_0_0"] = 2048
-    new_config["starting_addr_i_0"] = 0
-    new_config["stride_i_0_0"] = 1
-
-    new_config["dimensionality_o_0"] = 2
-    new_config["dimensionality_o_1"] = 2
-    new_config["dimensionality_o_2"] = 2
-    new_config["range_o_0_0"] = 16
-    new_config["range_o_0_1"] = 64
-    new_config["range_o_1_0"] = 16
-    new_config["range_o_1_1"] = 64
-    new_config["range_o_2_0"] = 16
-    new_config["range_o_2_1"] = 64
-    new_config["starting_addr_o_0"] = 0
-    new_config["starting_addr_o_1"] = 16
-    new_config["starting_addr_o_2"] = 32
-    new_config["stride_o_0_0"] = 1
-    new_config["stride_o_0_1"] = 16
-    new_config["stride_o_1_0"] = 1
-    new_config["stride_o_1_1"] = 16
-    new_config["stride_o_2_0"] = 1
-    new_config["stride_o_2_1"] = 16
+    new_config["sync_grp_sync_group_0"] = 1
+    new_config["sync_grp_sync_group_1"] = 1
+    new_config["sync_grp_sync_group_2"] = 1
 
     ### DUT
     lt_dut = LakeTop(data_width=data_width,
@@ -109,9 +118,16 @@ def top_test(data_width=16,
                      tb_height=tb_height,
                      tb_range_max=tb_range_max,
                      tb_sched_max=tb_sched_max,
-                     num_tb=num_tb)
+                     num_tb=num_tb,
+                     multiwrite=multiwrite)
 
-    magma_dut = kts.util.to_magma(lt_dut, flatten_array=True, check_multiple_driver=False)
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
+
+    magma_dut = kts.util.to_magma(lt_dut,
+                                  flatten_array=True,
+                                  check_multiple_driver=False,
+                                  optimize_if=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
@@ -138,13 +154,18 @@ def top_test(data_width=16,
         tester.circuit.data_in += 1
         tester.step(2)
 
+    tester.step(1)
     tester.circuit.arb_ren_in = 1
+    tester.circuit.data_in += 1
+    tester.eval()
+    tester.step(1)
 
     for i in range(100):
         tester.step(2)
+        tester.circuit.data_in += 1
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "./top_dump"
+        tempdir = "top_dump_new"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",

@@ -67,6 +67,8 @@ class RWArbiter(Generator):
         self._data_to_mem = self.output("data_to_mem", self.fetch_width)
         self._addr_to_mem = self.output("addr_to_mem", self.mem_addr_width)
 
+        self._out_ack = self.output("out_ack", self.int_out_ports)
+
         # Local
         # self._rd_data = self.var("rd_data", self.fetch_width)
         self._wen_int = self.var("wen_int", 1)
@@ -80,6 +82,10 @@ class RWArbiter(Generator):
         self._next_rd_port = self.var("next_rd_port", self.int_out_ports)
 
         self._done = self.var("done", 1)
+
+        # The next read port can be used to acknowledge reads
+        self.wire(self._out_ack,
+                  self._next_rd_port & kts.concat(*([~self._wen_int] * self._out_ack.width)))
 
         self.add_code(self.mem_controls)
         self.add_code(self.set_next_read_port)
@@ -120,16 +126,11 @@ class RWArbiter(Generator):
             self._rd_valid = ~self._wen_int & kts.reduce_or(self._ren_int.r_or())
             self._rd_port = self._next_rd_port
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_comb
     def output_stage(self):
-        if ~self._rst_n:
-            self._out_data = 0
-            self._out_port = 0
-            self._out_valid = 0
-        else:
-            self._out_data = self._data_from_mem
-            self._out_port = self._rd_port
-            self._out_valid = self._rd_valid
+        self._out_data = self._data_from_mem
+        self._out_port = self._rd_port
+        self._out_valid = self._rd_valid
 
 
 if __name__ == "__main__":

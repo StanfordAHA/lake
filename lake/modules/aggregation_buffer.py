@@ -1,6 +1,7 @@
 from kratos import *
 from lake.modules.aggregator import Aggregator
 import kratos as kts
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class AggregationBuffer(Generator):
@@ -48,18 +49,31 @@ class AggregationBuffer(Generator):
         # so...possibly the schedule is a for loop?
         # Tells us where to write successive elements...
         self._in_schedule = self.input("in_sched",
-                                       clog2(agg_height),
+                                       clog2(self.agg_height),
                                        size=self.max_agg_schedule,
                                        explicit_array=True,
                                        packed=True)
+        doc = "Input schedule for aggregation buffer. Enumerate which" + \
+              f" of {self.agg_height} buffers to write to."
+        self._in_schedule.add_attribute(ConfigRegAttr(doc))
+
         self._in_period = self.input("in_period", clog2(self.max_agg_schedule))
+        doc = "Input period for aggregation buffer. 1 is a reasonable" + \
+              " setting for most applications"
+        self._in_period.add_attribute(ConfigRegAttr(doc))
+
         # ...and which order to output the blocks
         self._out_schedule = self.input("out_sched",
                                         clog2(agg_height),
                                         size=self.max_agg_schedule,
                                         explicit_array=True,
                                         packed=True)
+        doc = "Output schedule for aggregation buffer. Enumerate which" + \
+              f" of {self.agg_height} buffers to write to SRAM from."
+        self._out_schedule.add_attribute(ConfigRegAttr(doc))
+
         self._out_period = self.input("out_period", clog2(self.max_agg_schedule))
+        self._out_period.add_attribute(ConfigRegAttr("Output period for aggregation buffer"))
 
         self._in_sched_ptr = self.var("in_sched_ptr", clog2(self.max_agg_schedule))
         self._out_sched_ptr = self.var("out_sched_ptr", clog2(self.max_agg_schedule))
@@ -84,15 +98,14 @@ class AggregationBuffer(Generator):
             # Add in the children aggregators...
             self.add_child(f"agg_{i}",
                            Aggregator(self.data_width,
-                                      mem_word_width=int(self.mem_width / self.data_width)))
-            # Wire it up
-            self.wire(self[f"agg_{i}"].ports.clk, self._clk)
-            self.wire(self[f"agg_{i}"].ports.rst_n, self._rst_n)
-            self.wire(self[f"agg_{i}"].ports.in_pixels, self._data_in)
-            self.wire(self[f"agg_{i}"].ports.valid_in, self._valid_demux[i])
-            self.wire(self[f"agg_{i}"].ports.agg_out, self._aggs_sep[i])
-            self.wire(self[f"agg_{i}"].ports.valid_out, self._valid_out_mux[i])
-            self.wire(self[f"agg_{i}"].ports.next_full, self._next_full[i])
+                                      mem_word_width=int(self.mem_width / self.data_width)),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           in_pixels=self._data_in,
+                           valid_in=self._valid_demux[i],
+                           agg_out=self._aggs_sep[i],
+                           valid_out=self._valid_out_mux[i],
+                           next_full=self._next_full[i])
             portlist = []
             for j in range(int(self.mem_width / self.data_width)):
                 portlist.append(self._aggs_sep[i][int(self.mem_width / self.data_width) - 1 - j])
@@ -141,7 +154,6 @@ class AggregationBuffer(Generator):
     @always_comb
     def output_data_comb(self):
         self._data_out = self._aggs_out[self._out_schedule[self._out_sched_ptr]]
-    # Then, obey the output schedule to send the proper Aggregator to the output
 
 
 if __name__ == "__main__":

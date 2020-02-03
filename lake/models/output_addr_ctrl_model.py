@@ -4,17 +4,17 @@ import math as mt
 import kratos as kts
 
 
-class InputAddrCtrlModel(Model):
+class OutputAddrCtrlModel(Model):
 
     def __init__(self,
-                 interconnect_input_ports,
+                 interconnect_output_ports,
                  mem_depth,
                  banks,
                  iterator_support,
                  max_port_schedule,
                  address_width):
 
-        self.interconnect_input_ports = interconnect_input_ports
+        self.interconnect_output_ports = interconnect_output_ports
         self.mem_depth = mem_depth
         self.banks = banks
         self.iterator_support = iterator_support
