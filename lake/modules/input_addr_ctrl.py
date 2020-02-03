@@ -112,7 +112,7 @@ class InputAddrCtrl(Generator):
                 self.wire(self._wen[i], cat[0])
 
         if self.banks == 1 and self.interconnect_input_ports == 1:
-            self.wire(self._wen, self._valid_in)
+            self.wire(self._wen_full[0][0][0], self._valid_in)
         elif self.banks == 1 and self.interconnect_input_ports > 1:
             self.add_code(self.set_wen_single)
         else:
@@ -172,7 +172,7 @@ class InputAddrCtrl(Generator):
             for j in range(self.multiwrite):
                 for k in range(self.banks):
                     self._wen_full[i][j][k] = 0
-                    if(self.valid_in[i]):
+                    if(self._valid_in[i]):
                         self._wen_full[i][j][k] = 1
 
     @always_comb

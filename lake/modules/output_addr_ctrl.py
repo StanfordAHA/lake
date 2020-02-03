@@ -13,7 +13,6 @@ class OutputAddrCtrl(Generator):
                  mem_depth,
                  banks,
                  iterator_support,
-                 max_port_schedule,
                  address_width):
         super().__init__("output_addr_ctrl", debug=True)
 
@@ -22,7 +21,6 @@ class OutputAddrCtrl(Generator):
         self.banks = banks
         self.iterator_support = iterator_support
         self.address_width = address_width
-        self.max_port_schedule = max_port_schedule
         self.port_sched_width = clog2(self.interconnect_output_ports)
 
         self.mem_addr_width = clog2(self.mem_depth)
@@ -62,9 +60,9 @@ class OutputAddrCtrl(Generator):
                                      explicit_array=True)
 
         if self.banks == 1 and self.interconnect_output_ports == 1:
-            self.wire(self._ren, self._valid_in)
+            self.wire(self._ren[0][0], self._valid_in)
         elif self.banks == 1 and self.interconnect_output_ports > 1:
-            self.add_code(self.set_wen_single)
+            self.add_code(self.set_ren_single)
         elif self.banks > 1 and self.interconnect_output_ports == 1:
             self.add_code(self.set_ren_mult)
         else:
@@ -105,24 +103,7 @@ class OutputAddrCtrl(Generator):
         self._ren = 0
         for i in range(self.interconnect_output_ports):
             if(self._valid_in[i]):
-                self._ren[i] = 1
-
-    @always_comb
-    def set_port_select_single(self):
-        self._port_select = 0
-        for i in range(self.interconnect_output_ports):
-            if(self._valid_in[i]):
-                self._port_select = i
-
-    @always_comb
-    def set_port_select_mult(self):
-        self._port_select = 0
-        for i in range(self.interconnect_output_ports):
-            if(self._valid_in[i]):
-                self._port_select[
-                    self._local_addrs[i][self.mem_addr_width + self.bank_addr_width - 1,
-                                         self.mem_addr_width]] = const(i,
-                                                                       self._port_select[0].width)
+                self._ren[0][i] = 1
 
     @always_comb
     def set_out(self):
@@ -136,6 +117,5 @@ if __name__ == "__main__":
                             mem_depth=512,
                             banks=2,
                             iterator_support=6,
-                            max_port_schedule=64,
                             address_width=16)
     verilog(db_dut, filename="output_addr_ctrl.sv", check_multiple_driver=False)

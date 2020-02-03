@@ -258,7 +258,6 @@ class LakeTop(Generator):
                              mem_depth=self.mem_depth,
                              banks=self.banks,
                              iterator_support=self.output_iterator_support,
-                             max_port_schedule=64,
                              address_width=self.address_width)
 
         self.add_child(f"output_addr_ctrl", oac,

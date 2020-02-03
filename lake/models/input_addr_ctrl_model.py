@@ -35,8 +35,10 @@ class InputAddrCtrlModel(Model):
 
         # Get local list of addresses
         self.addresses = []
-        for i in range(self.interconnect_input_ports):
+        self.data_out = []
+        for i in range(self.banks):
             self.addresses.append(0)
+            self.data_out.append(0)
 
         # Initialize the configuration
         for i in range(self.interconnect_input_ports):
@@ -73,11 +75,32 @@ class InputAddrCtrlModel(Model):
             self.addr_gens[i].set_config(addr_gen_config)
 
     # Retrieve the current addresses from each generator
-    def get_addrs(self):
+    def get_addrs(self, valid):
+        for i in range(self.banks):
+            self.addresses[i] = 0
         for i in range(self.interconnect_input_ports):
-            to_get = self.addr_gens[i]
-            self.addresses[i] = to_get.get_address()
+            if(valid[i]):
+                to_get = self.addr_gens[i]
+                if(self.banks == 1):
+                    self.addresses[0] = to_get.get_address()
+                    break
+                else:
+                    self.addresses[to_get.get_address() >> (self.mem_addr_width)] = to_get.get_address()
         return self.addresses
+
+    def get_data_out(self, valid, data_in):
+        assert len(data_in) == self.interconnect_input_ports, "Should feed proper length data"
+        for i in range(self.banks):
+            self.data_out[i] = 0
+        for i in range(self.interconnect_input_ports):
+            if(valid[i]):
+                to_get = self.addr_gens[i]
+                if(self.banks == 1):
+                    self.data_out[0] = data_in[i]
+                    break
+                else:
+                    self.data_out[to_get.get_address() >> (self.mem_addr_width)] = data_in[i]
+        return self.data_out
 
     # Get the wen for the current valid input
     def get_wen(self, valid):
@@ -85,7 +108,12 @@ class InputAddrCtrlModel(Model):
             self.wen[i] = 0
         for i in range(self.interconnect_input_ports):
             if(valid[i]):
-                self.wen[self.get_addrs()[i] >> (self.mem_addr_width)] = 1
+                to_get = self.addr_gens[i]
+                if(self.banks == 1):
+                    self.wen[0] = 1
+                    break
+                else:
+                    self.wen[to_get.get_address() >> (self.mem_addr_width)] = 1
         return self.wen
 
     # Step the addresses based on valid
@@ -94,10 +122,6 @@ class InputAddrCtrlModel(Model):
             if valid_input:
                 to_step = self.addr_gens[i]
                 to_step.step()
-        # After stepping the adresses, we need to step the
-        for i in range(self.banks):
-            if(valid[self.config[f"port_sched_b_{i}_{self.sched_ptrs[i]}"]]):
-                wen[i] = 1
 
         # Not implemented
     def update_ports(self):
