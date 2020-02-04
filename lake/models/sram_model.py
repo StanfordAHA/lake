@@ -31,7 +31,6 @@ class SRAMModel(Model):
         if cen == 0:
             return rd_reg_ret
         elif wen == 1:
-            self.rd_reg = self.mem[addr]
             self.mem[addr] = data
         else:
             self.rd_reg = self.mem[addr]

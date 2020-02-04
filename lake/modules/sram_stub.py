@@ -51,7 +51,7 @@ class SRAMStub(Generator):
 
     @always_ff((posedge, "clk"))
     def seq_data_out(self):
-        if self._cen:
+        if self._cen & ~self._wen:
             self._data_out = self._data_array[self._addr]
 
 
