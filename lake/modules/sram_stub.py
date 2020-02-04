@@ -7,31 +7,33 @@ class SRAMStub(Generator):
     ##########################
     # Generation             #
     ##########################
-    def __init__(self, width, depth):
-        super().__init__("sram_stub", True)
+    def __init__(self,
+                 width,
+                 depth):
+        super().__init__("sram_stub")
 
         ############################
         # Clock and Reset          #
         ############################
-        self.i_clk = self.clock("i_clk")
+        self._clk = self.clock("clk")
 
         ############################
         # Inputs                   #
         ############################
-        self.i_wen = self.input("i_wen", 1)
-        self.i_cen = self.input("i_cen", 1)
-        self.i_addr = self.input("i_addr", clog2(depth))
-        self.i_data = self.input("i_data", width)
+        self._wen = self.input("wen", 1)
+        self._cen = self.input("cen", 1)
+        self._addr = self.input("addr", clog2(depth))
+        self._data_in = self.input("data_in", width)
 
         ############################
         # Outputs                  #
         ############################
-        self.o_data = self.output("o_data", width)
+        self._data_out = self.output("data_out", width)
 
         ############################
         # Local Variables          #
         ############################
-        self.data_array = self.var("data_array", width=width, size=depth, packed=True)
+        self._data_array = self.var("data_array", width=width, size=depth, packed=True)
 
         ############################
         # Add seq blocks           #
@@ -42,15 +44,15 @@ class SRAMStub(Generator):
     ##########################
     # Access sram array      #
     ##########################
-    @always_ff((posedge, "i_clk"))
+    @always_ff((posedge, "clk"))
     def seq_data_access(self):
-        if self.i_cen & self.i_wen:
-            self.data_array[self.i_addr] = self.i_data
+        if self._cen & self._wen:
+            self._data_array[self._addr] = self._data_in
 
-    @always_ff((posedge, "i_clk"))
+    @always_ff((posedge, "clk"))
     def seq_data_out(self):
-        if self.i_cen:
-            self.o_data = self.data_array[self.i_addr]
+        if self._cen:
+            self._data_out = self._data_array[self._addr]
 
 
 if __name__ == "__main__":

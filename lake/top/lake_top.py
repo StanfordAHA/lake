@@ -346,12 +346,12 @@ class LakeTop(Generator):
         for i in range(self.banks):
             mbank = SRAMStub(self.mem_width, self.mem_depth)
             self.add_child(f"mem_{i}", mbank,
-                           i_clk=self._clk,
-                           i_data=self._mem_data_in[i],
-                           i_addr=self._mem_addr_in[i],
-                           i_cen=self._mem_cen_in[i],
-                           i_wen=self._mem_wen_in[i],
-                           o_data=self._mem_data_out[i])
+                           clk=self._clk,
+                           data_in=self._mem_data_in[i],
+                           addr=self._mem_addr_in[i],
+                           cen=self._mem_cen_in[i],
+                           wen=self._mem_wen_in[i],
+                           data_out=self._mem_data_out[i])
 
         #########################################
         ##### END: DEMUX WRITE/SRAM WRAPPER #####
