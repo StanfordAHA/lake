@@ -59,18 +59,20 @@ def test_sync_groups(int_out_ports,
 
     for i in range(1000):
         # Gen random data
-        ack_in = 0
-        ren_in = 0
+        ack_in = []
+        ren_in = []
         valid_in = []
         data_in = []
         for j in range(int_out_ports):
+            ack_in.append(rand.randint(0, 1))
+            ren_in.append(rand.randint(0, 1))
             valid_in.append(rand.randint(0, 1))
             data_in.append(rand.randint(0, 2 ** fetch_width - 1))
 
         # Apply stimulus to dut
-        tester.circuit.ack_in = ack_in
-        tester.circuit.ren_in = ren_in
         for j in range(int_out_ports):
+            tester.circuit.ren_in[j] = ren_in[j]
+            tester.circuit.ack_in[j] = ack_in[j]
             tester.circuit.valid_in[j] = valid_in[j]
             # tester.circuit.data_in[j] = data_in[j]
         if(int_out_ports == 1):
@@ -96,15 +98,12 @@ def test_sync_groups(int_out_ports,
 
         for j in range(int_out_ports):
             tester.circuit.valid_out[j].expect(model_vo[j])
-            # tester.circuit.rd_sync_cate.expect(model_rd_sync)
+            tester.circuit.rd_sync_gate[j].expect(model_rd_sync[j])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "sync_group_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
-
-# test_sync_groups()
+                               flags=["-Wno-fatal"])

@@ -211,6 +211,7 @@ class SyncGroups(Generator):
 
     @always_comb
     def set_finished(self):
+        # Mark each group as done by reduce anding its wires
         for i in range(self.groups):
             self._group_finished[i] = self._grp_fin_large[i].r_and()
 
