@@ -17,6 +17,7 @@ class SyncGroups(Generator):
         # Absorb inputs
         self.fetch_width = fetch_width
         self.int_out_ports = int_out_ports
+        self.groups = self.int_out_ports
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -64,14 +65,14 @@ class SyncGroups(Generator):
                                   packed=True)
 
         self._sync_valid = self.var("sync_valid", self.int_out_ports)
-        self._data_sync = self.var("data_sync",
-                                   self.fetch_width,
-                                   size=self.int_out_ports,
-                                   explicit_array=True,
-                                   packed=True)
+        self._data_reg = self.var("data_reg",
+                                  self.fetch_width,
+                                  size=self.int_out_ports,
+                                  explicit_array=True,
+                                  packed=True)
 
-        self._valid_sync = self.var("valid_sync",
-                                    self.int_out_ports)
+        self._valid_reg = self.var("valid_reg",
+                                   self.int_out_ports)
 
         # This signal allows us to orchestrate the synchronization groups
         # at the output address controller
@@ -118,7 +119,7 @@ class SyncGroups(Generator):
         self._done_alt = self.var("done_alt", self.int_out_ports)
 
         # Output data is ungated
-        self.wire(self._data_out, self._data_sync)
+        self.wire(self._data_out, self._data_reg)
         self.wire(self._rd_sync_gate, self._local_gate_reduced)
         # Valid requires gating based on sync_valid
         self.wire(self._ren_int, self._ren_in & self._local_gate_reduced)
@@ -139,11 +140,11 @@ class SyncGroups(Generator):
         # For each bit, AND the valids of each group together
         # For bits not in the group, set to 1 in the corresponding mask
         # For the group
-        for i in range(self.int_out_ports):
+        for i in range(self.groups):
             # For the port
             for j in range(self.int_out_ports):
                 if(self._sync_group[j] == (1 << i)):
-                    self._sync_agg[i][j] = self._valid_sync[j]
+                    self._sync_agg[i][j] = self._valid_reg[j]
                 else:
                     self._sync_agg[i][j] = 1
 
@@ -154,18 +155,19 @@ class SyncGroups(Generator):
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_sync_stage(self):
+        # Ports
         for i in range(self.int_out_ports):
             if ~self._rst_n:
-                self._data_sync[i] = 0
-                self._valid_sync[i] = 0
+                self._data_reg[i] = 0
+                self._valid_reg[i] = 0
             # Absorb input data if the whole group is valid
             elif (self._sync_valid & self._sync_group[i]).r_or():
-                self._data_sync[i] = self._data_in[i]
-                self._valid_sync[i] = self._valid_in[i]
+                self._data_reg[i] = self._data_in[i]
+                self._valid_reg[i] = self._valid_in[i]
             # Also absorb input data if not currently holding a valid
-            elif ~self._valid_sync[i]:
-                self._data_sync[i] = self._data_in[i]
-                self._valid_sync[i] = self._valid_in[i]
+            elif ~self._valid_reg[i]:
+                self._data_reg[i] = self._data_in[i]
+                self._valid_reg[i] = self._valid_in[i]
 
     @always_comb
     def set_out_valid(self):
@@ -182,7 +184,7 @@ class SyncGroups(Generator):
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_rd_gates(self):
-        for i in range(self.int_out_ports):
+        for i in range(self.groups):
             if ~self._rst_n | self._group_finished[i]:
                 self._local_gate_bus[i] = ~const(0, self.int_out_ports)
             # Bring this down eventually
@@ -192,13 +194,13 @@ class SyncGroups(Generator):
     @always_comb
     def set_tpose(self):
         for i in range(self.int_out_ports):
-            for j in range(self.int_out_ports):
+            for j in range(self.groups):
                 self._local_gate_bus_tpose[i][j] = self._local_gate_bus[j][i]
 
     @always_comb
     def set_grp_fin(self):
         # Group
-        for i in range(self.int_out_ports):
+        for i in range(self.groups):
             # Port
             for j in range(self.int_out_ports):
                 self._grp_fin_large[i][j] = 1
@@ -209,12 +211,12 @@ class SyncGroups(Generator):
 
     @always_comb
     def set_finished(self):
-        for i in range(self.int_out_ports):
+        for i in range(self.groups):
             self._group_finished[i] = self._grp_fin_large[i].r_and()
 
     @always_comb
     def next_gate_mask(self):
-        for i in range(self.int_out_ports):
+        for i in range(self.groups):
             for j in range(self.int_out_ports):
                 self._local_gate_mask[i][j] = 1
                 if (self._sync_group[j] == (1 << i)):
