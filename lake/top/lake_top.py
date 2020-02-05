@@ -38,7 +38,8 @@ class LakeTop(Generator):
                  tb_range_max=2048,
                  tb_sched_max=64,
                  num_tb=1,
-                 multiwrite=2):
+                 multiwrite=2,
+                 max_prefetch=64):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -66,7 +67,7 @@ class LakeTop(Generator):
         self.tb_range_max = tb_range_max
         self.tb_sched_max = tb_sched_max
         self.multiwrite = multiwrite
-
+        self.max_prefetch = max_prefetch
         # phases = [] TODO
 
         # CLK and RST
@@ -437,7 +438,7 @@ class LakeTop(Generator):
         for i in range(self.interconnect_output_ports):
 
             pref = Prefetcher(fetch_width=self.mem_width,
-                              max_prefetch=64)
+                              max_prefetch=self.max_prefetch)
 
             prefetchers.append(pref)
 
