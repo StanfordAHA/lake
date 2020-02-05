@@ -484,8 +484,7 @@ class LakeTop(Generator):
                                              fetch_width=self.fw_int,
                                              num_tb=self.num_tb,
                                              tb_height=self.tb_height,
-                                             max_range=self.tb_range_max,
-                                             max_schedule_length=self.tb_sched_max)
+                                             max_range=self.tb_range_max)
 
             self.add_child(f"tba_{i}", tba,
                            clk=self._clk,
