@@ -36,7 +36,10 @@ class LakeTop(Generator):
                  max_line_length=2048,
                  tb_height=1,
                  tb_range_max=2048,
-                 num_tb=1):
+                 tb_sched_max=64,
+                 num_tb=1,
+                 multiwrite=2,
+                 max_prefetch=64):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -62,7 +65,9 @@ class LakeTop(Generator):
         self.num_tb = num_tb
         self.tb_height = tb_height
         self.tb_range_max = tb_range_max
-
+        self.tb_sched_max = tb_sched_max
+        self.multiwrite = multiwrite
+        self.max_prefetch = max_prefetch
         # phases = [] TODO
 
         # CLK and RST
@@ -201,7 +206,8 @@ class LakeTop(Generator):
                             iterator_support=self.input_iterator_support,
                             max_port_schedule=64,
                             address_width=self.address_width,
-                            data_width=self.mem_width)
+                            data_width=self.mem_width,
+                            multiwrite=self.multiwrite)
         self.add_child(f"input_addr_ctrl", iac,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -209,9 +215,7 @@ class LakeTop(Generator):
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,
                        addr_out=self._addr_to_arb,
-                       data_out=self._data_to_arb,
-                       port_scheds=0,
-                       port_periods=0)
+                       data_out=self._data_to_arb)
 
         #########################################
         ##### END: INPUT ADDRESS CONTROLLER #####
@@ -255,7 +259,6 @@ class LakeTop(Generator):
                              mem_depth=self.mem_depth,
                              banks=self.banks,
                              iterator_support=self.output_iterator_support,
-                             max_port_schedule=64,
                              address_width=self.address_width)
 
         self.add_child(f"output_addr_ctrl", oac,
@@ -344,12 +347,12 @@ class LakeTop(Generator):
         for i in range(self.banks):
             mbank = SRAMStub(self.mem_width, self.mem_depth)
             self.add_child(f"mem_{i}", mbank,
-                           i_clk=self._clk,
-                           i_data=self._mem_data_in[i],
-                           i_addr=self._mem_addr_in[i],
-                           i_cen=self._mem_cen_in[i],
-                           i_wen=self._mem_wen_in[i],
-                           o_data=self._mem_data_out[i])
+                           clk=self._clk,
+                           data_in=self._mem_data_in[i],
+                           addr=self._mem_addr_in[i],
+                           cen=self._mem_cen_in[i],
+                           wen=self._mem_wen_in[i],
+                           data_out=self._mem_data_out[i])
 
         #########################################
         ##### END: DEMUX WRITE/SRAM WRAPPER #####
@@ -435,7 +438,7 @@ class LakeTop(Generator):
         for i in range(self.interconnect_output_ports):
 
             pref = Prefetcher(fetch_width=self.mem_width,
-                              max_prefetch=64)
+                              max_prefetch=self.max_prefetch)
 
             prefetchers.append(pref)
 

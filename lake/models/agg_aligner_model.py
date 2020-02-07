@@ -26,7 +26,7 @@ class AggAlignerModel(Model):
 
         assert self.config["line_length"] <= self.max_line_length, "Exceeded max line length"
 
-    def input_data(self, data_in, valid_in):
+    def interact(self, data_in, valid_in):
         '''
         Returns (data_out, valid, align)
         '''

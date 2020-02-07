@@ -7,3 +7,7 @@ def increment(var, value):
 
 def decrement(var, value):
     return var - kts.const(value, var.width)
+
+
+def transpose(generator: kts.Generator, port, name):
+    pass

@@ -55,7 +55,7 @@ def test_demux_reads_basic(fetch_width=32,
             # One-Hot encoding in hardware
             port_in_hw[i] = 1 << port_in[i]
 
-        (model_dat, model_val) = model_dr.input_data(data_in, valid_in, port_in)
+        (model_dat, model_val) = model_dr.interact(data_in, valid_in, port_in)
         for i in range(banks):
             tester.circuit.valid_in[i] = valid_in[i]
             setattr(tester.circuit, f"data_in_{i}", data_in[i])

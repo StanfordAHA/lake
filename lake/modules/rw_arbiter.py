@@ -1,6 +1,5 @@
 from kratos import *
 import kratos as kts
-from lake.modules.pipe_reg import PipeReg
 
 
 def create_port_pkt(data_width,
