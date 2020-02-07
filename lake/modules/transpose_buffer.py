@@ -3,6 +3,7 @@ from kratos import *
 from math import log
 from lake.attributes.config_reg_attr import ConfigRegAttr
 
+
 class TransposeBuffer(Generator):
     def __init__(self,
                  # number of bits in a word
@@ -286,7 +287,7 @@ class TransposeBuffer(Generator):
         if ~self.rst_n:
             self.out_buf_index = 1
         elif self.pause_tb:
-            self.out_buf_index = 1 
+            self.out_buf_index = 1
         elif self.pause_output:
             self.out_buf_index = 1
         elif self.prev_pause_output & ~self.pause_output:

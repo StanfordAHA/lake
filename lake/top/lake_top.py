@@ -455,29 +455,6 @@ class LakeTop(Generator):
         #############################
         ##### TRANSPOSE BUFFERS #####
         #############################
-
-        self._range_outer_tba = self.input("range_outer_tba",
-                                           self.max_range_bits,
-                                           size=self.interconnect_output_ports,
-                                           explicit_array=True,
-                                           packed=True)
-        self._range_inner_tba = self.input("range_inner_tba",
-                                           self.max_range_bits,
-                                           size=self.interconnect_output_ports,
-                                           explicit_array=True,
-                                           packed=True)
-        self._stride_tba = self.input("stride_tba",
-                                      self.max_range_bits,
-                                      size=self.interconnect_output_ports,
-                                      explicit_array=True,
-                                      packed=True)
-        self._indices_tba = self.input("indices_tba",
-                                       width=clog2(2 * self.num_tb * self.fw_int),
-                                       size=(self.interconnect_output_ports,
-                                             self.tb_range_max),
-                                       explicit_array=True,
-                                       packed=True)
-
         for i in range(self.interconnect_output_ports):
 
             tba = TransposeBufferAggregation(word_width=self.data_width,
@@ -492,10 +469,6 @@ class LakeTop(Generator):
                            SRAM_to_tb_data=self._data_to_tba_up[i],
                            valid_data=self._valid_to_tba[i],
                            tb_index_for_data=0,
-                           range_outer=self._range_outer_tba[i],
-                           range_inner=self._range_inner_tba[i],
-                           stride=self._stride_tba[i],
-                           indices=self._indices_tba[i],
                            ack_in=self._valid_to_tba[i],
                            tb_to_interconnect_data=self._data_out[i],
                            tb_to_interconnect_valid=self._valid_out[i],

@@ -11,16 +11,16 @@ import pytest
 
 
 def test_tba(word_width=16,
-            fetch_width=4,
-            num_tb=1,
-            tb_height=1,
-            max_range=5):
+             fetch_width=4,
+             num_tb=1,
+             tb_height=1,
+             max_range=5):
 
     model_tba = TBAModel(word_width,
-                        fetch_width,
-                        num_tb,
-                        tb_height,
-                        max_range)
+                         fetch_width,
+                         num_tb,
+                         tb_height,
+                         max_range)
 
     new_config = {}
     new_config["tb_0_range_outer"] = 5
@@ -31,10 +31,10 @@ def test_tba(word_width=16,
     model_tba.set_config(new_config=new_config)
 
     dut = TransposeBufferAggregation(word_width,
-                                    fetch_width,
-                                    num_tb,
-                                    tb_height,
-                                    max_range)
+                                     fetch_width,
+                                     num_tb,
+                                     tb_height,
+                                     max_range)
 
     lift_config_reg(dut.internal_generator)
 
@@ -81,7 +81,7 @@ def test_tba(word_width=16,
         tester.circuit.ack_in = ack_in
 
         model_data, model_valid = \
-                model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data)
+            model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data)
 
         tester.eval()
         tester.circuit.tb_to_interconnect_valid.expect(model_valid)
@@ -96,5 +96,6 @@ def test_tba(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 test_tba()

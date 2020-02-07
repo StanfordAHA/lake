@@ -82,7 +82,7 @@ def test_tb(word_width=16,
         else:
             valid_data = 0
 
-        #valid_data = rand.randint(0, 1)
+        # valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
         input_data = data
@@ -110,5 +110,6 @@ def test_tb(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 test_tb()

@@ -69,26 +69,26 @@ def top_test(data_width=16,
     new_config["output_addr_ctrl_address_gen_2_strides_1"] = 16
 
     # TBA
-    new_config["indices_tba_0_0"] = 0
-    new_config["indices_tba_0_1"] = 1
-    new_config["indices_tba_0_2"] = 2
-    new_config["range_inner_tba_0"] = 3
-    new_config["range_outer_tba_0"] = 62
-    new_config["stride_tba_0"] = 4
+    new_config["tba_0_tb_0_indices_0"] = 0
+    new_config["tba_0_tb_0_indices_1"] = 1
+    new_config["tba_0_tb_0_indices_2"] = 2
+    new_config["tba_0_tb_0_range_inner"] = 3
+    new_config["tba_0_tb_0_range_outer"] = 62
+    new_config["tba_0_tb_0_stride"] = 2
 
-    new_config["indices_tba_1_0"] = 0
-    new_config["indices_tba_1_1"] = 1
-    new_config["indices_tba_1_2"] = 2
-    new_config["range_inner_tba_1"] = 3
-    new_config["range_outer_tba_1"] = 62
-    new_config["stride_tba_1"] = 4
+    new_config["tba_1_tb_0_indices_0"] = 0
+    new_config["tba_1_tb_0_indices_1"] = 1
+    new_config["tba_1_tb_0_indices_2"] = 2
+    new_config["tba_1_tb_0_range_inner"] = 3
+    new_config["tba_1_tb_0_range_outer"] = 62
+    new_config["tba_1_tb_0_stride"] = 2
 
-    new_config["indices_tba_2_0"] = 0
-    new_config["indices_tba_2_1"] = 1
-    new_config["indices_tba_2_2"] = 2
-    new_config["range_inner_tba_2"] = 3
-    new_config["range_outer_tba_2"] = 62
-    new_config["stride_tba_2"] = 4
+    new_config["tba_2_tb_0_indices_0"] = 0
+    new_config["tba_2_tb_0_indices_1"] = 1
+    new_config["tba_2_tb_0_indices_2"] = 2
+    new_config["tba_2_tb_0_range_inner"] = 3
+    new_config["tba_2_tb_0_range_outer"] = 62
+    new_config["tba_2_tb_0_stride"] = 2
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 512

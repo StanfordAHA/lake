@@ -32,7 +32,11 @@ class TBAModel(Model):
 
         self.tbs = []
         for i in range(self.num_tb):
-            self.tbs.append(TBModel(self.word_width, self.fetch_width, self.num_tb, self.tb_height, self.max_range))
+            self.tbs.append(TBModel(self.word_width,
+                                    self.fetch_width,
+                                    self.num_tb,
+                                    self.tb_height,
+                                    self.max_range))
             self.tbs[i].set_config(self.config)
 
         self.arbiter_rdy_all = []
@@ -59,7 +63,11 @@ class TBAModel(Model):
 
         self.tbs = []
         for i in range(self.num_tb):
-            self.tbs.append(TBModel(self.word_width, self.fetch_width, self.num_tb, self.tb_height, self.max_range))
+            self.tbs.append(TBModel(self.word_width,
+                                    self.fetch_width,
+                                    self.num_tb,
+                                    self.tb_height,
+                                    self.max_range))
             self.tbs[i].set_config(self.config)
 
         self.arbiter_rdy_all = []
