@@ -36,3 +36,6 @@ class SRAMModel(Model):
             self.rd_reg = self.mem[addr]
 
         return rd_reg_ret
+
+    def get_rd_reg(self):
+        return self.rd_reg

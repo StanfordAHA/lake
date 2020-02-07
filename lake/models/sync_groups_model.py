@@ -115,7 +115,12 @@ class SyncGroupsModel(Model):
                 self.valid_reg[i] = valid_in[i]
                 self.data_reg[i] = data_in[i]
 
-        for i in range(self.int_out_ports):
-            rd_sync_gate.append(self.local_gate_reduced[i])
+        rd_sync_gate = self.get_rd_sync()
 
         return (data_out, valid_out, rd_sync_gate)
+
+    def get_rd_sync(self):
+        rd_sync_gate = []
+        for i in range(self.int_out_ports):
+            rd_sync_gate.append(self.local_gate_reduced[i])
+        return rd_sync_gate

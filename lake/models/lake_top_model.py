@@ -9,6 +9,7 @@ from lake.models.demux_reads_model import DemuxReadsModel
 from lake.models.sync_groups_model import SyncGroupsModel
 from lake.models.prefetcher_model import PrefetcherModel
 from lake.models.tba_model import TBAModel
+from typing import List
 import math as mt
 import kratos as kts
 
@@ -82,7 +83,7 @@ class LakeTopModel(Model):
                                                          max_line_length=self.max_line_length))
 
         ### AGG BUFF
-        self.agg_buffs = []
+        self.agg_buffs = List[AggBuffModel]
         for port in range(self.interconnect_input_ports):
             self.agg_buffs.append(AggBuffModel(agg_height=self.agg_height,
                                                data_width=self.data_width,
@@ -113,7 +114,7 @@ class LakeTopModel(Model):
                                                int_out_ports=self.interconnect_output_ports))
 
         ### SRAMS
-        self.mems = []
+        self.mems = List[SRAMModel]
         for banks in range(self.banks):
             self.mems.append(SRAMModel(width=self.mem_width,
                                        depth=self.mem_depth))
@@ -128,7 +129,7 @@ class LakeTopModel(Model):
                                            int_out_ports=self.interconnect_output_ports)
 
         ### PREFETCHERS
-        self.prefetchers = []
+        self.prefetchers = List[PrefetcherModel]
         for port in range(self.interconnect_output_ports):
             self.prefetchers.append(PrefetcherModel(fetch_width=self.mem_width,
                                                     max_prefetch=self.max_prefetch))
@@ -221,10 +222,14 @@ class LakeTopModel(Model):
             prefetch_config['input_latency'] = self.config[f"pre_fetch_{i}_input_latency"]
             self.prefetchers[i].set_config(prefetch_config)
 
+        # Config TBA
+
     def interact(self,
                  data_in,
                  addr_in,
-                 valid_in):
+                 valid_in,
+                 wen_en,
+                 ren_en):
         '''
         Top level interactions - - -
         returns (data_out, valid_out)
@@ -254,6 +259,86 @@ class LakeTopModel(Model):
         for i in range(self.interconnect_output_ports):
             pref_step.append(self.prefetchers[i].get_step())
 
+        # Rd sync gate for acks from rw arb
+        rd_sync_gate = self.sync_groups.get_rd_sync()
+        # Also get ren from oac
+        oac_ren = self.oac.get_ren(pref_step)
+
         # OAC
-        # Can only get the ren and
-        (oac_ren, oac_addrs) = self.oac.interact(pref_step, [0] * self.interconnect_output_ports)
+        # First need to get rw_arb acks based on ren + sync group gate
+        # Now we need to squash the acks
+        ack_base = 0
+        for i in range(self.banks):
+            ack_base = (ack_base |
+                        self.rw_arbs[i].get_ack(iac_valid, wen_en, rd_sync_gate & oac_ren[i], ren_en))
+
+        # Final interaction with OAC
+        (oac_ren, oac_addrs) = self.oac.interact(pref_step, ack_base)
+
+        # Get data from mem
+        data_to_arb = []
+        for i in range(self.banks):
+            data_to_arb.append(self.mems[i].get_rd_reg())
+
+        # RW arbs
+        rw_out_dat = []
+        rw_out_port = []
+        rw_out_valid = []
+        rw_cen_mem = []
+        rw_wen_mem = []
+        rw_data_to_mem = []
+        rw_addr_to_mem = []
+        rw_ack = []
+        for i in range(self.banks):
+            (od,
+             op,
+             ov,
+             cm,
+             wm,
+             dm,
+             am,
+             ack) = self.rw_arbs[i].interact(iac_valid[i], wen_en, iac_data[i], iac_addrs[i],
+                                             data_to_arb[i], oac_ren[i], ren_en, oac_addrs[i])
+            rw_out_dat.append(od)
+            rw_out_port.append(op)
+            rw_out_valid.append(ov)
+            rw_cen_mem.append(cm)
+            rw_wen_mem.append(wm)
+            rw_data_to_mem.append(dm)
+            rw_addr_to_mem.append(am)
+            rw_ack.append(rw_ack)
+
+        # HIT SRAM
+        for i in range(self.banks):
+            self.mems[i].interact(rw_wen_mem[i],
+                                  rw_cen_mem[i],
+                                  rw_addr_to_mem[i],
+                                  rw_data_to_mem[i])
+
+        # Demux those reads
+        (demux_dat, demux_valid) = self.demux_reads.interact(rw_out_dat, rw_out_valid, rw_out_port)
+
+        # Requires or'd version of ren
+        ren_base = 0
+        for i in range(self.banks):
+            ren_base = ren_base | oac_ren[i]
+        # Sync groups now
+        (sync_data,
+         sync_valid,
+         rd_sync_gate_x) = self.sync_groups.interact(ack_base, demux_dat, demux_valid, ren_base)
+
+        # Now get the tba rdy and interact with prefetcher
+        tba_rdys = []
+        for i in range(self.interconnect_output_ports):
+            tba_rdys.append(self.tbas[i].get_ready())
+
+        pref_data = []
+        pref_valid = []
+        pref_step_x = []
+        for i in range(self.interconnect_output_ports):
+            (pd, pv, psx) = self.prefetchers[i].interact(sync_data[i], sync_valid[i], tba_rdys[i])
+            pref_data.append(pd)
+            pref_valid.append(pv)
+            pref_step_x.append(psx)
+
+        # Now send this to the TBAs...

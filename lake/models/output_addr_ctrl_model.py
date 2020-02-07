@@ -87,7 +87,7 @@ class OutputAddrCtrlModel(Model):
             self.addresses[i] = to_get.get_address()
         return self.addresses
 
-    # Get the wen for the current valid input
+    # Get the ren for the current valid input
     def get_ren(self, valid):
         for i in range(self.banks):
             for j in range(self.interconnect_output_ports):

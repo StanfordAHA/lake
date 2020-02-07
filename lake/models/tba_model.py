@@ -60,3 +60,6 @@ class TBAModel(Model):
                 AssertionError("Gave bad config...")
             else:
                 self.config[key] = config_val
+
+    def get_ready(self):
+        return self.rdy_to_arbiter

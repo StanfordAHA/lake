@@ -39,7 +39,6 @@ class RWArbiterModel(Model):
         wen_mem = wen_in != 0 and wen_en != 0
         # Signals following may vary
         cen_mem = 0
-        self.ack = 0
         addr_to_mem = 0
 
         self.rd_valid = 0
@@ -57,8 +56,20 @@ class RWArbiterModel(Model):
                     addr_to_mem = rd_addr[i]
                     self.rd_valid = 1
                     self.rd_port = 1 << i
-                    self.ack = 1 << i
                     break
+        ack = self.get_ack(wen_in, wen_en, ren_in, ren_en)
         return (out_dat, out_port, out_valid,
                 cen_mem, wen_mem, data_to_mem,
-                addr_to_mem, self.ack)
+                addr_to_mem, ack)
+
+    def get_ack(self, wen_in, wen_en, ren_in, ren_en):
+        self.ack = 0
+        if wen_in != 0 and wen_en != 0:
+            self.ack = 0
+        elif ren_in != 0 and ren_en != 0:
+            for i in range(self.int_out_ports):
+                # Select lowest
+                if(ren_in & (1 << i) != 0):
+                    self.ack = 1 << i
+                    break
+        return self.ack

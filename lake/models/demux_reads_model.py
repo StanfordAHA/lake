@@ -18,7 +18,7 @@ class DemuxReadsModel(Model):
     def set_config(self, new_config):
         return
 
-    def input_data(self, data_in, valid_in, port_in):
+    def interact(self, data_in, valid_in, port_in):
         '''
         Returns (data_out, valid_out)
         '''
