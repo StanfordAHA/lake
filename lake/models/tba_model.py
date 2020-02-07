@@ -3,7 +3,7 @@ from lake.models.tb_model import TBModel
 
 
 # transpose buffer model
-class TBModel(Model):
+class TBAModel(Model):
 
     def __init__(self,
                  word_width,
@@ -25,17 +25,6 @@ class TBModel(Model):
         self.config["range_inner"] = 1
         self.config["stride"] = 1
         self.config["indices"] = [0]
-
-        self.valid_data_all = []
-        for i in range(self.num_tb):
-            self.valid_data_all.append(0)
-
-        self.data_valid_all = []
-        for i in range(self.num_tb):
-            tb_pixels = []
-            for j in range(self.tb_height):
-                tb_pixels.append(0)
-            self.data_valid_all.append(tb_pixels)
 
         self.output_valid_all = []
         for i in range(self.num_tb):
@@ -64,21 +53,9 @@ class TBModel(Model):
             else:
                 self.config[key] = config_val
 
-    def set_valid_data_all(self, valid_data, tb_index_for_data):
-        if not valid_data:
-            for i in range(self.num_tb):
-                self.valid_data_all[i] = 0
-        else:
-            for i in range(self.num_tb):
-                if i == tb_index_for_data:
-                    self.valid_data_all[i] = 1
-                else:
-                    self.valid_data_all[i] = 0
-
     def set_tb_outputs(self):
         for i in range(self.num_tb):
             self.output_valid_all[i] = self.tbs[i].get_output_valid()
-            self.output_data_all[i] = self.tbs[i].get_col_pixels()
             if self.output_valid_all[i] == 1:
                 self.tb_to_interconnect_data = self.output_data_all[i]
         valid_count = sum(self.output_valid_all)
@@ -97,10 +74,14 @@ class TBModel(Model):
             self.tb_arbiter_rdy = 0
 
     def print_tba(self):
+        return
 
-    def transpose_buffer(self, input_data, valid_data, ack_in):
-        self.set_valid_data_all()
+    def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data):
+        for i in range(self.num_tb):
+            self.tbs[i].input_to_tb(input_data, i == tb_index_for_data)
+            self.tbs[i].output_from_tb(valid_data, ack_in)
+
         self.set_tb_outputs()
         self.send_tba_rdy()
         self.print_tba()
-        return
+        return self.tb_to_interconnect_data, self.tb_to_interconnect_valid
