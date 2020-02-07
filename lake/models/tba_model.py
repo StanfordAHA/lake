@@ -86,4 +86,6 @@ class TBAModel(Model):
         self.set_tb_outputs()
         self.send_tba_rdy()
         self.print_tba()
+        print("tb")
+        self.tbs[0].print_tb(input_data, valid_data, ack_in)
         return self.tb_to_interconnect_data, self.tb_to_interconnect_valid

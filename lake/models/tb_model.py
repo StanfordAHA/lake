@@ -180,7 +180,10 @@ class TBModel(Model):
             self.pause_output = self.prev_pause_output
             self.started = 1
 
-    def print_tb(self):
+    def print_tb(self, input_data, valid_data, ack_in):
+        print("input data: ", input_data)
+        print("valid data: ", valid_data)
+        print("ack in ", ack_in)
         print("tb: ", self.tb)
         print("row index: ", self.row_index)
         print("input buf index: ", self.input_buf_index)
@@ -198,11 +201,7 @@ class TBModel(Model):
         print("rdy ", self.rdy_to_arbiter)
 
     def transpose_buffer(self, input_data, valid_data, ack_in):
-        print("input data", input_data)
-        print("valid data ", valid_data)
-        print("ack in ", ack_in)
-
         self.input_to_tb(input_data, valid_data)
         self.output_from_tb(valid_data, ack_in)
-        self.print_tb()
+        self.print_tb(input_data, valid_data, ack_in)
         return self.col_pixels, self.output_valid, self.rdy_to_arbiter

@@ -45,10 +45,6 @@ def test_tba(word_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
 
-    data = []
-    for i in range(64):
-        data.append(i)
-
     # configuration registers
     tester.circuit.indices_0 = 0
     tester.circuit.indices_1 = 1
@@ -60,47 +56,29 @@ def test_tba(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 25
+    num_iters = 5
     for i in range(num_iters):
         print()
         print("i: ", i)
 
         data = []
         for j in range(fetch_width):
-#            data.append(rand.randint(0, 2**word_width - 1))
-            data.append(j)
+            data.append(rand.randint(0, 2**word_width - 1))
 
         for j in range(fetch_width):
-            setattr(tester.circuit, f"input_data_{j}", data[j])
+            setattr(tester.circuit, f"SRAM_to_tb_data_{j}", data[j])
 
-        # add testing a few dead valid cycles
-        if i == 0:
-            valid_data = 1
-        elif i == 1 or i == 2 or i == 3:
-            valid_data = 0
-        elif i == 4:
-            valid_data = 1
-        elif 4 < i < 9:
-            valid_data = 0
-        elif (i - 9) % 6 == 0:
-            valid_data = 1
-        else:
-            valid_data = 0
-
+        valid_data = 1
         tester.circuit.valid_data = valid_data
 
-        input_data = data
+        tb_index_for_data = 0
+        tester.circuit.tb_index_for_data = tb_index_for_data
 
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
 
-        if len(input_data) != fetch_width:
-            input_data = data[0:4]
-
-        tb_index_for_data = 0
-
         model_data, model_valid = \
-                model_tba.tba_main(input_data, valid_data, ack_in, tb_index_for_data)
+                model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data)
 
         tester.eval()
         tester.circuit.tb_to_interconnect_valid.expect(model_valid)
