@@ -60,7 +60,7 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 19
+    num_iters = 24
     for i in range(num_iters):
         print()
         print("i: ", i)
@@ -113,3 +113,5 @@ def test_tb(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
+test_tb()

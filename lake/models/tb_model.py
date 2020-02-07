@@ -90,6 +90,15 @@ class TBModel(Model):
         self.pause = 1
         self.rdy_to_arbiter = 1
 
+    def get_col_pixels(self):
+        return self.col_pixels
+
+    def get_output_valid(self):
+        return self.output_valid
+
+    def get_rdy_to_arbiter(self):
+        return self.rdy_to_arbiter
+
     def input_to_tb(self, input_data, valid_data):
         # maybe add start data logic
         if valid_data:
@@ -147,8 +156,6 @@ class TBModel(Model):
         for i in range(self.tb_height):
             self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
-        print("pause ", self.pause)
-        print("prev prev pause output ", self.prev_prev_pause_output)
         if self.pause_tb or \
             self.pause_output or \
             (self.prev_pause_output == 1 and self.pause_output == 0) or \
@@ -191,11 +198,11 @@ class TBModel(Model):
         print("rdy ", self.rdy_to_arbiter)
 
     def transpose_buffer(self, input_data, valid_data, ack_in):
-        # print("input data", input_data)
-        # print("valid data ", valid_data)
-        # print("ack in ", ack_in)
+        print("input data", input_data)
+        print("valid data ", valid_data)
+        print("ack in ", ack_in)
 
         self.input_to_tb(input_data, valid_data)
         self.output_from_tb(valid_data, ack_in)
-        # self.print_tb()
+        self.print_tb()
         return self.col_pixels, self.output_valid, self.rdy_to_arbiter
