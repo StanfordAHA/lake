@@ -60,7 +60,7 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 24
+    num_iters = 64
     for i in range(num_iters):
         print()
         print("i: ", i)
@@ -108,7 +108,7 @@ def test_tb(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tb_dump"
+        tempdir = "top_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",

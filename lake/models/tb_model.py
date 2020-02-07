@@ -110,7 +110,6 @@ class TBModel(Model):
                 self.row_index = self.row_index + 1
 
     def output_from_tb(self, valid_data, ack_in):
-        # maybe add pause_output for beginning
         self.output_index_abs = self.index_outer * self.config["stride"] + \
             self.config["indices"][self.index_inner]
         self.output_index = self.output_index_abs % self.fetch_width
@@ -146,8 +145,15 @@ class TBModel(Model):
 
         if ((self.output_index_abs % self.fetch_width == 0) and
                 (self.output_index_abs != self.curr_out_start)):
-            self.curr_out_start = self.output_index_abs
             self.out_buf_index = 1 - self.out_buf_index
+
+        print("printing ", self.index_inner, " ", self.index_outer)
+        if self.index_inner == 0 and self.index_outer == 0:
+            self.out_buf_index = 1
+
+        if ((self.output_index_abs % self.fetch_width == 0) and
+                (self.output_index_abs != self.curr_out_start)):
+            self.curr_out_start = self.output_index_abs
             self.rdy_to_arbiter = 1
         elif ack_in:
             self.rdy_to_arbiter = 0
