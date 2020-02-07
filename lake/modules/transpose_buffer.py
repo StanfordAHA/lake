@@ -3,7 +3,6 @@ from kratos import *
 from math import log
 from lake.attributes.config_reg_attr import ConfigRegAttr
 
-
 class TransposeBuffer(Generator):
     def __init__(self,
                  # number of bits in a word
@@ -50,15 +49,20 @@ class TransposeBuffer(Generator):
         # should be stored in transpose buffer
         self.valid_data = self.input("valid_data", 1)
 
+        # configuration registers
         # the range of the outer for loop in nested for loop for output
         # column address generation
         self.range_outer = self.input("range_outer", self.max_range_bits)
+        self.range_outer.add_attribute(ConfigRegAttr("Outer range for output for loop pattern"))
+
         # the range of the inner for loop in nested for loop for output
         # column address generation
         self.range_inner = self.input("range_inner", self.max_range_bits)
+        self.range_inner.add_attribute(ConfigRegAttr("Inner range for output for for loop pattern"))
 
         # stride for the given application
         self.stride = self.input("stride", self.max_range_bits)
+        self.stride.add_attribute(ConfigRegAttr("Application stride"))
 
         # specifies inner for loop values for output column
         # addressing
@@ -70,6 +74,7 @@ class TransposeBuffer(Generator):
                                   # self.max_range_value
                                   size=self.max_range,
                                   packed=True)
+        self.indices.add_attribute(ConfigRegAttr("Output indices for for loop pattern"))
 
         self._ack_in = self.input("ack_in", 1)
 

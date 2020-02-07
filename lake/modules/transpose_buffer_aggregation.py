@@ -44,22 +44,11 @@ class TransposeBufferAggregation(Generator):
 
         self.valid_data = self.input("valid_data", 1)
         self.tb_index_for_data = self.input("tb_index_for_data", self.num_tb_bits)
-        self.range_outer = self.input("range_outer", clog2(self.max_range))
-        self.range_inner = self.input("range_inner", clog2(self.max_range))
-        self.stride = self.input("stride", clog2(self.max_range))
-        self.indices = self.input("indices",
-                                  width=clog2(2 * self.num_tb * self.fetch_width),
-                                  # the length of indices is equal to range_inner,
-                                  # so the maximum possible size for self.indices
-                                  # is the maximum value of range_inner, which if
-                                  # self.max_range_value
-                                  size=self.max_range,
-                                  packed=True,
-                                  explicit_array=True)
 
         # Ack the ready
         self._ack_in = self.input("ack_in", 1)
 
+        # outputs
         self.tb_to_interconnect_data = self.output("tb_to_interconnect_data",
                                                    width=self.word_width,
                                                    size=self.tb_height,
@@ -93,10 +82,6 @@ class TransposeBufferAggregation(Generator):
                            rst_n=self.rst_n,
                            input_data=self.SRAM_to_tb_data,
                            valid_data=self.valid_data_all[i],
-                           range_outer=self.range_outer,
-                           range_inner=self.range_inner,
-                           stride=self.stride,
-                           indices=self.indices,
                            tb_start_index=self.num_tb * i,
                            col_pixels=self.tb_output_data_all[i],
                            output_valid=self.tb_output_valid_all[i],

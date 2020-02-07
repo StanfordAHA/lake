@@ -1,5 +1,6 @@
 from lake.models.tba_model import TBAModel
 from lake.modules.transpose_buffer_aggregation import TransposeBufferAggregation
+from lake.passes.passes import lift_config_reg
 import magma as m
 from magma import *
 import fault
@@ -22,10 +23,10 @@ def test_tba(word_width=16,
                         max_range)
 
     new_config = {}
-    new_config["range_outer"] = 5
-    new_config["range_inner"] = 3
-    new_config["stride"] = 2
-    new_config["indices"] = [0, 1, 2]
+    new_config["tb_0_range_outer"] = 5
+    new_config["tb_0_range_inner"] = 3
+    new_config["tb_0_stride"] = 2
+    new_config["tb_0_indices"] = [0, 1, 2]
 
     model_tba.set_config(new_config=new_config)
 
@@ -34,6 +35,8 @@ def test_tba(word_width=16,
                                     num_tb,
                                     tb_height,
                                     max_range)
+
+    lift_config_reg(dut.internal_generator)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True)
     tester = fault.Tester(magma_dut, magma_dut.clk)
