@@ -39,6 +39,9 @@ class PrefetcherModel(Model):
         return self.cnt
 
     def interact(self, data_in, valid_read, tba_rdy):
+        '''
+        Returns (data, valid, step)
+        '''
         (d_out, v_out) = self.fifo.interact(valid_read, tba_rdy, data_in)
         stp = self.get_step()
         self.update_cnt(valid_read, tba_rdy)

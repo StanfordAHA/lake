@@ -133,7 +133,14 @@ class LakeTopModel(Model):
             self.prefetchers.append(PrefetcherModel(fetch_width=self.mem_width,
                                                     max_prefetch=self.max_prefetch))
 
-        ###
+        ### TBAS
+        self.tbas = []
+        for port in range(self.interconnect_output_ports):
+            self.tbas.append(TBAModel(word_width=self.data_width,
+                                      fetch_width=self.fw_int,
+                                      num_tb=self.num_tb,
+                                      tb_height=self.tb_height,
+                                      max_range=self.tb_range_max))
 
     def set_config(self, new_config):
         # Configure top level
@@ -142,12 +149,111 @@ class LakeTopModel(Model):
                 AssertionError("Gave bad config...")
             else:
                 self.config[key] = config_val
+
         # Configure children
+
+        # Config Agg Align
         for i in range(self.interconnect_input_ports):
-            addr_gen_config = {}
-            addr_gen_config["starting_addr"] = self.config[f"address_gen_{i}_starting_addr"]
-            addr_gen_config["dimensionality"] = self.config[f"address_gen_{i}_dimensionality"]
-            for j in range(self.iterator_support):
-                addr_gen_config[f"stride_{j}"] = self.config[f"address_gen_{i}_strides_{j}"]
-                addr_gen_config[f"range_{j}"] = self.config[f"address_gen_{i}_ranges_{j}"]
-            self.addr_gens[i].set_config(addr_gen_config)
+            agg_aligner_config = {}
+            agg_aligner_config['line_length'] = self.config[f"agg_align_{i}_line_length"]
+            self.agg_aligners[i].set_config(agg_aligner_config)
+
+        # Config Agg Buff
+        for i in range(self.interconnect_input_ports):
+            agg_buff_config = {}
+            agg_buff_config['in_period'] = self.config[f"agg_in_{i}_in_period"]
+            agg_buff_config['out_period'] = self.config[f"agg_in_{i}_out_period"]
+            for j in range(self.max_agg_schedule):
+                agg_buff_config[f"in_sched_{j}"] = self.config[f"agg_in_{i}_in_sched_{j}"]
+                agg_buff_config[f"out_sched_{j}"] = self.config[f"agg_in_{i}_out_sched_{j}"]
+            self.agg_buffs[i].set_config(agg_buff_config)
+
+        # Config IAC
+        iac_config = {}
+        for i in range(self.interconnect_input_ports):
+            iac_config[f"address_gen_{i}_starting_addr"] = \
+                self.config[f"input_addr_ctrl_address_gen_{i}_starting_addr"]
+            iac_config[f"address_gen_{i}_dimensionality"] = \
+                self.config[f"input_addr_ctrl_address_gen_{i}_dimensionality"]
+            for j in range(self.input_iterator_support):
+                iac_config[f"address_gen_{i}_ranges_{j}"] = \
+                    self.config[f"input_addr_ctrl_address_gen_{i}_ranges_{j}"]
+                iac_config[f"address_gen_{i}_strides_{j}"] = \
+                    self.config[f"input_addr_ctrl_address_gen_{i}_strides_{j}"]
+        self.iac.set_config(iac_config)
+
+        # Config OAC
+        oac_config = {}
+        for i in range(self.interconnect_output_ports):
+            oac_config[f"address_gen_{i}_starting_addr"] = \
+                self.config[f"output_addr_ctrl_address_gen_{i}_starting_addr"]
+            oac_config[f"address_gen_{i}_dimensionality"] = \
+                self.config[f"output_addr_ctrl_address_gen_{i}_dimensionality"]
+            for j in range(self.output_iterator_support):
+                oac_config[f"address_gen_{i}_ranges_{j}"] = \
+                    self.config[f"output_addr_ctrl_address_gen_{i}_ranges_{j}"]
+                oac_config[f"address_gen_{i}_strides_{j}"] = \
+                    self.config[f"output_addr_ctrl_address_gen_{i}_strides_{j}"]
+        self.oac.set_config(oac_config)
+
+        # Config RWArbiter
+        rw_arb_config = {}
+        for i in range(self.banks):
+            self.rw_arbs[i].set_config(rw_arb_config)
+
+        # Config SRAM
+        sram_config = {}
+        for i in range(self.banks):
+            self.mems[i].set_config(sram_config)
+
+        # Config DEMUX Reads
+        demux_reads_config = {}
+        self.demux_reads.set_config(demux_reads_config)
+
+        # Config Sync Groups
+        sync_groups_config = {}
+        for i in range(self.interconnect_output_ports):
+            sync_groups_config[f'sync_group_{i}'] = self.config[f"sync_grp_sync_group_{i}"]
+
+        # Config Prefetcher
+        for i in range(self.interconnect_output_ports):
+            prefetch_config = {}
+            prefetch_config['input_latency'] = self.config[f"pre_fetch_{i}_input_latency"]
+            self.prefetchers[i].set_config(prefetch_config)
+
+    def interact(self,
+                 data_in,
+                 addr_in,
+                 valid_in):
+        '''
+        Top level interactions - - -
+        returns (data_out, valid_out)
+        '''
+        valids_align = []
+        aligns_align = []
+        data_align = []
+        # Pass data through agg aligners
+        for i in range(self.interconnect_input_ports):
+            (d_out, v_out, a_out) = self.agg_aligners[i].interact(data_in[i],
+                                                                  valid_in[i])
+
+        # Now send data to agg buffers
+        data_agg_buff = []
+        valid_agg_buff = []
+        for i in range(self.interconnect_input_ports):
+            self.agg_buffs[i].insert(data_align[i], valids_align[i])
+            data_agg_buff.append(self.agg_buffs[i].get_item())
+            valid_agg_buff.append(self.agg_buffs[i].get_valid_out())
+
+        # Now send agg_buff stuff to IAC
+        (iac_valid, iac_data, iac_addrs) = self.iac.interact(valid_agg_buff, data_agg_buff)
+
+        # Get prefetch step for OAC...
+        pref_step = []
+        arb_ack = 0
+        for i in range(self.interconnect_output_ports):
+            pref_step.append(self.prefetchers[i].get_step())
+
+        # OAC
+        # Can only get the ren and
+        (oac_ren, oac_addrs) = self.oac.interact(pref_step, [0] * self.interconnect_output_ports)

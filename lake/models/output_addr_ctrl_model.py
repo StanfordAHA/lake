@@ -71,6 +71,15 @@ class OutputAddrCtrlModel(Model):
                 addr_gen_config[f"range_{j}"] = self.config[f"address_gen_{i}_ranges_{j}"]
             self.addr_gens[i].set_config(addr_gen_config)
 
+    def interact(self, valid_in, step_in):
+        '''
+        Returns (ren, addrs)
+        '''
+        ren = self.get_ren(valid_in)
+        addrs = self.get_addrs()
+        self.step_addrs(valid_in, step_in)
+        return (ren, addrs)
+
     # Retrieve the current addresses from each generator
     def get_addrs(self):
         for i in range(self.interconnect_output_ports):

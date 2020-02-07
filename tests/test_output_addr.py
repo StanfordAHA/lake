@@ -81,14 +81,15 @@ def test_output_addr_basic(banks,
         for j in range(interconnect_output_ports):
             valid_in[j] = rand.randint(0, 1)
             step_in[j] = rand.randint(0, 1)
-        ren = model_oac.get_ren(valid_in)
 
         for z in range(interconnect_output_ports):
             tester.circuit.valid_in[z] = valid_in[z]
             tester.circuit.step_in[z] = step_in[z]
 
-        addrs = model_oac.get_addrs()
-        model_oac.step_addrs(valid_in, step_in)
+        (ren, addrs) = model_oac.interact(valid_in, step_in)
+        # ren = model_oac.get_ren(valid_in)
+        # addrs = model_oac.get_addrs()
+        # model_oac.step_addrs(valid_in, step_in)
 
         tester.eval()
 

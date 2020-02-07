@@ -89,11 +89,11 @@ def test_input_addr_basic(banks,
         # Deal with wen
         for j in range(interconnect_input_ports):
             valid_in[j] = rand.randint(0, 1)
-        wen = model_iac.get_wen(valid_in)
         # Deal with data in
         for j in range(interconnect_input_ports):
             data_in[j] = rand.randint(0, 2 ** 16 - 1)
-        data_out = model_iac.get_data_out(valid_in, data_in)
+        # Deal with addresses
+        (wen, data_out, addrs) = model_iac.interact(valid_in, data_in)
 
         for z in range(interconnect_input_ports):
             tester.circuit.valid_in[z] = valid_in[z]
@@ -102,10 +102,6 @@ def test_input_addr_basic(banks,
         else:
             for z in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{z}", data_in[z])
-
-        # Deal with addresses
-        addrs = model_iac.get_addrs(valid_in)
-        model_iac.step_addrs(valid_in)
 
         tester.eval()
 

@@ -75,6 +75,16 @@ class InputAddrCtrlModel(Model):
             self.addr_gens[i].set_config(addr_gen_config)
 
     # Retrieve the current addresses from each generator
+    def interact(self, valid, data_in):
+        '''
+        Returns (valid, data, addrs)
+        '''
+        wen = self.get_wen(valid)
+        data_out = self.get_data_out(valid, data_in)
+        addrs = self.get_addrs(valid)
+        self.step_addrs(valid)
+        return(wen, data_out, addrs)
+
     def get_addrs(self, valid):
         for i in range(self.banks):
             self.addresses[i] = 0
