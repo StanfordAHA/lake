@@ -57,7 +57,7 @@ class TBAModel(Model):
         for i in range(self.num_tb):
             self.output_valid_all[i] = self.tbs[i].get_output_valid()
             if self.output_valid_all[i] == 1:
-                self.tb_to_interconnect_data = self.output_data_all[i]
+                self.tb_to_interconnect_data = self.tbs[i].get_col_pixels()
         valid_count = sum(self.output_valid_all)
         if valid_count > 0:
             self.tb_to_interconnect_valid = 1
@@ -74,12 +74,14 @@ class TBAModel(Model):
             self.tb_arbiter_rdy = 0
 
     def print_tba(self):
-        return
+        print("output valid all ", self.output_valid_all)
+        print("arbiter rdy all ", self.arbiter_rdy_all)
 
     def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data):
         for i in range(self.num_tb):
             self.tbs[i].input_to_tb(input_data, i == tb_index_for_data)
             self.tbs[i].output_from_tb(valid_data, ack_in)
+            print("col pixels ", i, " ", self.tbs[i].get_col_pixels())
 
         self.set_tb_outputs()
         self.send_tba_rdy()

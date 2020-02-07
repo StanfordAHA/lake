@@ -60,14 +60,15 @@ def test_tba(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 4
+    num_iters = 25
     for i in range(num_iters):
         print()
         print("i: ", i)
 
         data = []
         for j in range(fetch_width):
-            data.append(rand.randint(0, 2**word_width - 1))
+#            data.append(rand.randint(0, 2**word_width - 1))
+            data.append(j)
 
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[j])
