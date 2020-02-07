@@ -45,10 +45,6 @@ def test_tb(word_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
 
-    data = []
-    for i in range(64):
-        data.append(i)
-
     # configuration registers
     tester.circuit.indices_0 = 0
     tester.circuit.indices_1 = 1
@@ -60,7 +56,7 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 64
+    num_iters = 46
     for i in range(num_iters):
         print()
         print("i: ", i)
@@ -86,6 +82,7 @@ def test_tb(word_width=16,
         else:
             valid_data = 0
 
+        #valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
         input_data = data

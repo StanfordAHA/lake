@@ -53,6 +53,7 @@ class TBModel(Model):
         self.started = 0
         self.rdy_to_arbiter = 1
         self.pause = 1
+        self.restarting = 0
 
     def set_config(self, new_config):
         for key, config_val in new_config.items():
@@ -89,6 +90,7 @@ class TBModel(Model):
         self.started = 0
         self.pause = 1
         self.rdy_to_arbiter = 1
+        self.restarting = 0
 
     def get_col_pixels(self):
         return self.col_pixels
@@ -113,10 +115,18 @@ class TBModel(Model):
         self.output_index_abs = self.index_outer * self.config["stride"] + \
             self.config["indices"][self.index_inner]
         self.output_index = self.output_index_abs % self.fetch_width
-
+        self.prev_col_pixels = self.col_pixels
         self.col_pixels = []
         for i in range(self.tb_height):
             self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
+
+        #if (self.index_inner == self.config["range_inner"] - 1) and \
+        #        (self.index_outer == self.config["range_outer"] - 1):
+        #    self.restarting = 1
+        #elif self.restarting:
+        #    self.restarting = 1
+        #else:
+        #    self.restarting = 0
 
         if self.index_inner == self.config["range_inner"] - 1:
             self.index_inner = 0
@@ -195,6 +205,8 @@ class TBModel(Model):
         print("input buf index: ", self.input_buf_index)
         print("out buf index ", self.out_buf_index)
         print("col pixels ", self.col_pixels)
+        print("prev col pixels ", self.prev_col_pixels)
+        print("restarting ", self.restarting)
         print("output index ", self.output_index)
         print("index inner ", self.index_inner)
         print("index outer ", self.index_outer)
@@ -210,4 +222,7 @@ class TBModel(Model):
         self.input_to_tb(input_data, valid_data)
         self.output_from_tb(valid_data, ack_in)
         self.print_tb(input_data, valid_data, ack_in)
-        return self.col_pixels, self.output_valid, self.rdy_to_arbiter
+        if self.restarting:
+            return self.prev_col_pixels, self.output_valid, self.rdy_to_arbiter
+        else:
+            return self.col_pixels, self.output_valid, self.rdy_to_arbiter
