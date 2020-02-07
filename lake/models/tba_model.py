@@ -32,7 +32,7 @@ class TBAModel(Model):
 
         self.tbs = []
         for i in range(self.num_tb):
-            self.tbs.append(TBModel(word_width, fetch_width, num_tb, tb_height, max_range))
+            self.tbs.append(TBModel(self.word_width, self.fetch_width, self.num_tb, self.tb_height, self.max_range))
             self.tbs[i].set_config(self.config)
 
         self.arbiter_rdy_all = []
@@ -52,6 +52,26 @@ class TBAModel(Model):
                 AssertionError("Gave bad config...")
             else:
                 self.config[key] = config_val
+
+        self.output_valid_all = []
+        for i in range(self.num_tb):
+            self.output_valid_all.append(0)
+
+        self.tbs = []
+        for i in range(self.num_tb):
+            self.tbs.append(TBModel(self.word_width, self.fetch_width, self.num_tb, self.tb_height, self.max_range))
+            self.tbs[i].set_config(self.config)
+
+        self.arbiter_rdy_all = []
+        for i in range(self.num_tb):
+            self.arbiter_rdy_all.append(0)
+
+        self.tb_to_interconnect_data = []
+        for i in range(self.tb_height):
+            self.tb_to_interconnect_data.append(0)
+
+        self.tb_to_interconnect_valid = 0
+        self.tb_arbiter_rdy = 0
 
     def set_tb_outputs(self):
         for i in range(self.num_tb):
