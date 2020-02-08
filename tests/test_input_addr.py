@@ -4,6 +4,7 @@ from lake.passes.passes import lift_config_reg
 import _kratos
 import magma as m
 from magma import *
+from utils.util import *
 import fault
 import tempfile
 import kratos as k
@@ -20,7 +21,7 @@ def test_input_addr_basic(banks,
                           address_width=16,
                           multiwrite=1):
 
-    # Set up model..
+    # Set up model...
     model_iac = InputAddrCtrlModel(
         interconnect_input_ports=interconnect_input_ports,
         mem_depth=mem_depth,

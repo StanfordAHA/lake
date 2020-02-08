@@ -101,6 +101,9 @@ class TBAModel(Model):
         else:
             self.tb_arbiter_rdy = 0
 
+    def get_ready(self):
+        return self.tb_arbiter_rdy
+
     def print_tba(self):
         print("output valid all ", self.output_valid_all)
         print("arbiter rdy all ", self.arbiter_rdy_all)
@@ -109,11 +112,11 @@ class TBAModel(Model):
         for i in range(self.num_tb):
             self.tbs[i].input_to_tb(input_data, i == tb_index_for_data)
             self.tbs[i].output_from_tb(valid_data, ack_in)
-            print("col pixels ", i, " ", self.tbs[i].get_col_pixels())
+            # print("col pixels ", i, " ", self.tbs[i].get_col_pixels())
 
         self.set_tb_outputs()
         self.send_tba_rdy()
-        self.print_tba()
-        print("tb")
-        self.tbs[0].print_tb(input_data, valid_data, ack_in)
+        # self.print_tba()
+        # print("tb")
+        # self.tbs[0].print_tb(input_data, valid_data, ack_in)
         return self.tb_to_interconnect_data, self.tb_to_interconnect_valid

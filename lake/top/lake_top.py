@@ -182,8 +182,9 @@ class LakeTop(Generator):
         #######################################
         ##### END: AGG BUFFERS (OPTIONAL) #####
         #######################################
-        self._arb_wen_in = self.input("arb_wen_in", 1)
-        self._arb_ren_in = self.input("arb_ren_in", self.interconnect_output_ports)
+        self._arb_wen_in = self.input("wen_en", 1)
+        self._arb_ren_in = self.input("ren_en", 1)
+        # self._arb_ren_in = self.input("arb_ren_in", self.interconnect_output_ports)
         self._ready_tba = self.var("ready_tba", self.interconnect_output_ports)
         ####################################
         ##### INPUT ADDRESS CONTROLLER #####

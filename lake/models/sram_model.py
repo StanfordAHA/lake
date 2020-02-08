@@ -8,10 +8,10 @@ class SRAMModel(Model):
         self.width = width
         self.depth = depth
 
-        self.rd_reg = 0
+        self.rd_reg = [0] * self.width
         self.mem = []
         for i in range(self.depth):
-            self.mem.append(0)
+            self.mem.append([0] * self.width)
 
     def set_config(self, new_config):
         # No configuration space

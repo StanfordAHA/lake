@@ -103,7 +103,7 @@ class OutputAddrCtrlModel(Model):
     # Step the addresses based on valid
     def step_addrs(self, valid, step):
         for i, valid_input in enumerate(valid):
-            if valid_input & step[i]:
+            if valid_input & ((step & (1 << i)) != 0):
                 to_step = self.addr_gens[i]
                 to_step.step()
 

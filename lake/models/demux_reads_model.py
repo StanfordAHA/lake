@@ -25,7 +25,7 @@ class DemuxReadsModel(Model):
         data_out = []
         valid_out = []
         for i in range(self.int_out_ports):
-            data_out.append(0)
+            data_out.append([0] * self.fetch_width)
             valid_out.append(0)
 
         no_valid = True
@@ -40,7 +40,6 @@ class DemuxReadsModel(Model):
             for j in range(self.banks):
                 if(valid_in[j] & (port_in[j] == i)):
                     data_out[i] = data_in[j]
-                    print(data_in[j])
                     valid_out[i] = 1
                     break
         return (data_out, valid_out)

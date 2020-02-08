@@ -4,6 +4,7 @@ import magma as m
 from magma import *
 import fault
 import tempfile
+from utils.util import *
 import kratos as k
 import random as rand
 
@@ -12,8 +13,10 @@ def test_demux_reads_basic(fetch_width=32,
                            banks=2,
                            int_out_ports=2):
 
+    fw_int = int(fetch_width / 16)
+
     # Set up model...
-    model_dr = DemuxReadsModel(fetch_width=fetch_width,
+    model_dr = DemuxReadsModel(fetch_width=fw_int,
                                banks=banks,
                                int_out_ports=int_out_ports)
 
@@ -42,11 +45,16 @@ def test_demux_reads_basic(fetch_width=32,
 
     rand.seed(0)
 
-    data_in = [0] * banks
+    data_in = []
+    for i in range(banks):
+        row = []
+        for j in range(fw_int):
+            row.append(0)
+        data_in.append(row)
+
     valid_in = [0] * banks
     port_in = [0] * banks
     port_in_hw = [0] * banks
-
     for z in range(1000):
         # Generate new input
         for i in range(banks):
@@ -58,18 +66,18 @@ def test_demux_reads_basic(fetch_width=32,
         (model_dat, model_val) = model_dr.interact(data_in, valid_in, port_in)
         for i in range(banks):
             tester.circuit.valid_in[i] = valid_in[i]
-            setattr(tester.circuit, f"data_in_{i}", data_in[i])
+            data_in_hw = list_to_int(data_in[i], 16)
+            setattr(tester.circuit, f"data_in_{i}", data_in_hw)
             setattr(tester.circuit, f"port_in_{i}", port_in_hw[i])
+
         tester.eval()
 
         for i in range(int_out_ports):
-            getattr(tester.circuit, f"data_out_{i}").expect(model_dat[i])
+            model_dat_hw = list_to_int(model_dat[i], 16)
+            getattr(tester.circuit, f"data_out_{i}").expect(model_dat_hw)
             tester.circuit.valid_out[i].expect(model_val[i])
 
         tester.step(2)
-
-        for i in range(banks):
-            data_in[i] += 1
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",

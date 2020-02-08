@@ -101,7 +101,7 @@ class InputAddrCtrlModel(Model):
     def get_data_out(self, valid, data_in):
         assert len(data_in) == self.interconnect_input_ports, "Should feed proper length data"
         for i in range(self.banks):
-            self.data_out[i] = 0
+            self.data_out[i] = [0] * len(data_in[0])
         for i in range(self.interconnect_input_ports):
             if(valid[i]):
                 to_get = self.addr_gens[i]

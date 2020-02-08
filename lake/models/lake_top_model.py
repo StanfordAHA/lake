@@ -56,7 +56,7 @@ class LakeTopModel(Model):
         self.max_agg_schedule = max_agg_schedule
         self.input_max_port_sched = input_max_port_sched
         self.output_max_port_sched = output_max_port_sched
-        self.input_port_sched_width = clog2(self.interconnect_input_ports)
+        self.input_port_sched_width = kts.clog2(self.interconnect_input_ports)
         self.align_input = align_input
         self.max_line_length = max_line_length
         assert self.mem_width > self.data_width, "Data width needs to be smaller than mem"
@@ -69,9 +69,9 @@ class LakeTopModel(Model):
         self.max_prefetch = max_prefetch
 
         if self.banks == 1:
-            self.address_width = clog2(mem_depth)
+            self.address_width = kts.clog2(mem_depth)
         else:
-            self.address_width = clog2(mem_depth)  # + clog2(banks)
+            self.address_width = kts.clog2(mem_depth)  # + clog2(banks)
 
         self.config = {}
 
@@ -81,14 +81,21 @@ class LakeTopModel(Model):
             for i in range(self.interconnect_input_ports):
                 self.agg_aligners.append(AggAlignerModel(data_width=self.data_width,
                                                          max_line_length=self.max_line_length))
+                self.config[f"agg_align_{i}_line_length"] = 0
 
         ### AGG BUFF
-        self.agg_buffs = List[AggBuffModel]
+        self.agg_buffs = []
         for port in range(self.interconnect_input_ports):
             self.agg_buffs.append(AggBuffModel(agg_height=self.agg_height,
                                                data_width=self.data_width,
                                                mem_width=self.mem_width,
                                                max_agg_schedule=self.max_agg_schedule))
+
+            self.config[f"agg_in_{i}_in_period"] = 0
+            self.config[f"agg_in_{i}_out_period"] = 0
+            for j in range(self.max_agg_schedule):
+                self.config[f"agg_in_{i}_in_sched_{j}"] = 0
+                self.config[f"agg_in_{i}_out_sched_{j}"] = 0
 
         ### INPUT ADDR CTRL
         self.iac = InputAddrCtrlModel(interconnect_input_ports=self.interconnect_input_ports,
@@ -97,6 +104,14 @@ class LakeTopModel(Model):
                                       iterator_support=self.input_iterator_support,
                                       max_port_schedule=self.input_max_port_sched,
                                       address_width=self.address_width)
+        for i in range(self.interconnect_input_ports):
+            self.config[f"input_addr_ctrl_address_gen_{i}_dimensionality"] = 0
+            self.config[f"input_addr_ctrl_address_gen_{i}_starting_addr"] = 0
+            for j in range(self.input_iterator_support):
+                self.config[f"input_addr_ctrl_address_gen_{i}_ranges_{j}"] = 0
+                self.config[f"input_addr_ctrl_address_gen_{i}_strides_{j}"] = 0
+            for j in range(self.multiwrite):
+                self.config[f"input_addr_ctrl_offsets_cfg_{i}_{j}"] = 0
 
         ### OUTPUT ADDR CTRL
         self.oac = OutputAddrCtrlModel(interconnect_output_ports=self.interconnect_output_ports,
@@ -104,6 +119,12 @@ class LakeTopModel(Model):
                                        banks=self.banks,
                                        iterator_support=self.output_iterator_support,
                                        address_width=self.address_width)
+        for i in range(self.interconnect_output_ports):
+            self.config[f"output_addr_ctrl_address_gen_{i}_dimensionality"] = 0
+            self.config[f"output_addr_ctrl_address_gen_{i}_starting_addr"] = 0
+            for j in range(self.input_iterator_support):
+                self.config[f"output_addr_ctrl_address_gen_{i}_ranges_{j}"] = 0
+                self.config[f"output_addr_ctrl_address_gen_{i}_strides_{j}"] = 0
 
         ### RW ARBITER
         # Per bank allocation
@@ -114,25 +135,30 @@ class LakeTopModel(Model):
                                                int_out_ports=self.interconnect_output_ports))
 
         ### SRAMS
-        self.mems = List[SRAMModel]
+        self.mems = []
         for banks in range(self.banks):
-            self.mems.append(SRAMModel(width=self.mem_width,
+            # self.mems.append(SRAMModel(width=self.mem_width,
+            #                           depth=self.mem_depth))
+            self.mems.append(SRAMModel(width=self.fw_int,
                                        depth=self.mem_depth))
 
         ### DEMUX READS
-        self.demux_reads = DemuxReadsModel(fetch_width=self.mem_width,
+        self.demux_reads = DemuxReadsModel(fetch_width=self.fw_int,  # self.mem_width
                                            banks=self.banks,
                                            int_out_ports=self.interconnect_output_ports)
 
         ### SYNC GROUPS
-        self.sync_groups = SyncGroupsModel(fetch_width=self.mem_width,
+        self.sync_groups = SyncGroupsModel(fetch_width=self.fw_int,  # self.mem_width
                                            int_out_ports=self.interconnect_output_ports)
+        for i in range(self.interconnect_output_ports):
+            self.config[f"sync_grp_sync_group_{i}"] = 0
 
         ### PREFETCHERS
-        self.prefetchers = List[PrefetcherModel]
+        self.prefetchers = []
         for port in range(self.interconnect_output_ports):
-            self.prefetchers.append(PrefetcherModel(fetch_width=self.mem_width,
+            self.prefetchers.append(PrefetcherModel(fetch_width=self.fw_int,  # self.mem_width
                                                     max_prefetch=self.max_prefetch))
+            self.config[f"pre_fetch_{port}_input_latency"] = 0
 
         ### TBAS
         self.tbas = []
@@ -142,14 +168,18 @@ class LakeTopModel(Model):
                                       num_tb=self.num_tb,
                                       tb_height=self.tb_height,
                                       max_range=self.tb_range_max))
+            for i in range(self.tb_height):
+                self.config[f"tba_{port}_tb_{i}_range_inner"] = 0
+                self.config[f"tba_{port}_tb_{i}_range_outer"] = 0
+                self.config[f"tba_{port}_tb_{i}_stride"] = 0
+                for j in range(self.tb_sched_max):
+                    self.config[f"tba_{port}_tb_{i}_indices_{j}"] = 0
 
     def set_config(self, new_config):
         # Configure top level
         for key, config_val in new_config.items():
-            if key not in self.config:
-                AssertionError("Gave bad config...")
-            else:
-                self.config[key] = config_val
+            assert key in self.config, f"{key} is not in the configuration..."
+            self.config[key] = config_val
 
         # Configure children
 
@@ -241,6 +271,9 @@ class LakeTopModel(Model):
         for i in range(self.interconnect_input_ports):
             (d_out, v_out, a_out) = self.agg_aligners[i].interact(data_in[i],
                                                                   valid_in[i])
+            data_align.append(d_out)
+            valids_align.append(v_out)
+            aligns_align.append(a_out)
 
         # Now send data to agg buffers
         data_agg_buff = []
@@ -269,12 +302,14 @@ class LakeTopModel(Model):
         # Now we need to squash the acks
         ack_base = 0
         for i in range(self.banks):
+            ren_local = 0
+            for j in range(self.interconnect_output_ports):
+                ren_local = ren_local | ((1 << j) * (rd_sync_gate[j] & oac_ren[i][j]))
             ack_base = (ack_base |
-                        self.rw_arbs[i].get_ack(iac_valid, wen_en, rd_sync_gate & oac_ren[i], ren_en))
+                        self.rw_arbs[i].get_ack(iac_valid, wen_en, ren_local, ren_en))
 
         # Final interaction with OAC
         (oac_ren, oac_addrs) = self.oac.interact(pref_step, ack_base)
-
         # Get data from mem
         data_to_arb = []
         for i in range(self.banks):
@@ -319,9 +354,10 @@ class LakeTopModel(Model):
         (demux_dat, demux_valid) = self.demux_reads.interact(rw_out_dat, rw_out_valid, rw_out_port)
 
         # Requires or'd version of ren
-        ren_base = 0
-        for i in range(self.banks):
-            ren_base = ren_base | oac_ren[i]
+        ren_base = [0] * self.interconnect_output_ports
+        for j in range(self.interconnect_output_ports):
+            for i in range(self.banks):
+                ren_base[j] = ren_base[j] | (oac_ren[i][j])
         # Sync groups now
         (sync_data,
          sync_valid,
@@ -342,3 +378,11 @@ class LakeTopModel(Model):
             pref_step_x.append(psx)
 
         # Now send this to the TBAs...
+        data_out = []
+        valid_out = []
+        for i in range(self.interconnect_output_ports):
+            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0)
+            data_out.append(tb_d)
+            valid_out.append(tb_v)
+
+        return (data_out, valid_out)

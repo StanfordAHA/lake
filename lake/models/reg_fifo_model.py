@@ -18,7 +18,10 @@ class RegFIFOModel(Model):
         self.wr_ptr = 0
 
         self.num_items = 0
-        self.reg_array = [0] * self.depth
+        self.reg_array = []
+        for i in range(self.depth):
+            self.reg_array.append([0] * self.data_width)
+        # self.reg_array = ([0] * self.data_width) * self.depth
 
         self.full = 0
         self.empty = 1
@@ -70,7 +73,7 @@ class RegFIFOModel(Model):
             return (self.reg_array[self.rd_ptr], 0)
         elif not push and pop:
             if(self.num_items == 0):
-                return (0, 0)
+                return (self.reg_array[self.rd_ptr], 0)
             dat_out = self.reg_array[self.rd_ptr]
             self.increment_rd()
             self.num_items -= 1

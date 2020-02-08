@@ -117,6 +117,7 @@ class TBModel(Model):
         self.output_index = self.output_index_abs % self.fetch_width
         self.prev_col_pixels = self.col_pixels
         self.col_pixels = []
+        # print(self.tb)
         for i in range(self.tb_height):
             self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
@@ -157,7 +158,7 @@ class TBModel(Model):
                 (self.output_index_abs != self.curr_out_start)):
             self.out_buf_index = 1 - self.out_buf_index
 
-        print("printing ", self.index_inner, " ", self.index_outer)
+        # print("printing ", self.index_inner, " ", self.index_outer)
         if self.index_inner == 0 and self.index_outer == 0:
             self.out_buf_index = 1
 
@@ -221,7 +222,7 @@ class TBModel(Model):
     def transpose_buffer(self, input_data, valid_data, ack_in):
         self.input_to_tb(input_data, valid_data)
         self.output_from_tb(valid_data, ack_in)
-        self.print_tb(input_data, valid_data, ack_in)
+        # self.print_tb(input_data, valid_data, ack_in)
         if self.restarting:
             return self.prev_col_pixels, self.output_valid, self.rdy_to_arbiter
         else:
