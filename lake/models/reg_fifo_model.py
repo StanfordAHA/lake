@@ -20,7 +20,10 @@ class RegFIFOModel(Model):
         self.num_items = 0
         self.reg_array = []
         for i in range(self.depth):
-            self.reg_array.append([0] * self.data_width)
+            row = []
+            for j in range(self.data_width):
+                row.append(0)
+            self.reg_array.append(row)
         # self.reg_array = ([0] * self.data_width) * self.depth
 
         self.full = 0

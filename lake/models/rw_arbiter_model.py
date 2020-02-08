@@ -51,7 +51,7 @@ class RWArbiterModel(Model):
         elif ren_in != 0 and ren_en != 0:
             for i in range(self.int_out_ports):
                 # Select lowest
-                if(ren_in & (1 << i) != 0):
+                if ren_in[i] != 0:
                     cen_mem = 1
                     addr_to_mem = rd_addr[i]
                     self.rd_valid = 1
@@ -69,7 +69,7 @@ class RWArbiterModel(Model):
         elif ren_in != 0 and ren_en != 0:
             for i in range(self.int_out_ports):
                 # Select lowest
-                if(ren_in & (1 << i) != 0):
+                if ren_in[i] != 0:
                     self.ack = 1 << i
                     break
         return self.ack

@@ -62,7 +62,7 @@ def top_test(data_width=16,
     new_config["output_addr_ctrl_address_gen_2_ranges_1"] = 64
     new_config["output_addr_ctrl_address_gen_0_starting_addr"] = 0
     new_config["output_addr_ctrl_address_gen_1_starting_addr"] = 16
-    new_config["output_addr_ctrl_address_gen_2_starting_addr"] = 32 + 512
+    new_config["output_addr_ctrl_address_gen_2_starting_addr"] = 32
     new_config["output_addr_ctrl_address_gen_0_strides_0"] = 1
     new_config["output_addr_ctrl_address_gen_0_strides_1"] = 16
     new_config["output_addr_ctrl_address_gen_1_strides_0"] = 1
@@ -93,7 +93,7 @@ def top_test(data_width=16,
     new_config["tba_2_tb_0_stride"] = 2
 
     # Sets multiwrite
-    new_config["input_addr_ctrl_offsets_cfg_0_0"] = 512
+    new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
 
     new_config["sync_grp_sync_group_0"] = 1
     new_config["sync_grp_sync_group_1"] = 1
@@ -176,12 +176,12 @@ def top_test(data_width=16,
     ren_en = 0
     addr_in = 0
 
-    for i in range(100):
+    for i in range(300):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
-            data_in[j] = rand.randint(0, 2 ** data_width - 1)
-            valid_in[j] = rand.randint(0, 1)
+            data_in[j] += 1#rand.randint(0, 2 ** data_width - 1)
+            valid_in[j] = 1 #rand.randint(0, 1)
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
@@ -192,6 +192,9 @@ def top_test(data_width=16,
                 setattr(tester.circuit, f"valid_in_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
+
+        if i > 200:
+            ren_en = 1
         tester.circuit.ren_en = ren_en
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
@@ -204,9 +207,10 @@ def top_test(data_width=16,
             tester.circuit.valid_out.expect(mod_vo[0])
         else:
             for j in range(interconnect_output_ports):
-                getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+                #print(f"mod_vo_{j}: {mod_vo[j]}")
                 tester.circuit.valid_out[j].expect(mod_vo[j])
-                # getattr(tester.circuit, f"valid_out_{j}").expect(mod_vo[j])
+                if mod_vo[j]:
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -232,6 +236,8 @@ def top_test(data_width=16,
     # for i in range(100):
     #     tester.step(2)
     #     tester.circuit.data_in += 1
+
+    model_lt.mems[0].dump_mem()
 
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = "top_dump_new"

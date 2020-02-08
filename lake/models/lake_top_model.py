@@ -333,7 +333,7 @@ class LakeTopModel(Model):
              dm,
              am,
              ack) = self.rw_arbs[i].interact(iac_valid[i], wen_en, iac_data[i], iac_addrs[i],
-                                             data_to_arb[i], oac_ren[i], ren_en, oac_addrs[i])
+                                             data_to_arb[i], oac_ren[i], ren_en, oac_addrs)
             rw_out_dat.append(od)
             rw_out_port.append(op)
             rw_out_valid.append(ov)
@@ -342,6 +342,11 @@ class LakeTopModel(Model):
             rw_data_to_mem.append(dm)
             rw_addr_to_mem.append(am)
             rw_ack.append(rw_ack)
+
+
+
+        #print(rw_out_dat)
+        # print(rw_addr_to_mem[0])
 
         # HIT SRAM
         for i in range(self.banks):
@@ -376,6 +381,8 @@ class LakeTopModel(Model):
             pref_data.append(pd)
             pref_valid.append(pv)
             pref_step_x.append(psx)
+
+        # print(pref_valid)
 
         # Now send this to the TBAs...
         data_out = []

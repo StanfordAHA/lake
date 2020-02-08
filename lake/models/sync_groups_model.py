@@ -32,7 +32,10 @@ class SyncGroupsModel(Model):
             self.local_gate_reduced.append(1)
             self.sync_group_valid.append(0)
             self.valid_reg.append(0)
-            self.data_reg.append([0] * self.fetch_width)
+            row = []
+            for j in range(self.fetch_width):
+                row.append(0)
+            self.data_reg.append(row)
 
     def set_config(self, new_config):
         # No configuration space

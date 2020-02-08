@@ -25,7 +25,10 @@ class DemuxReadsModel(Model):
         data_out = []
         valid_out = []
         for i in range(self.int_out_ports):
-            data_out.append([0] * self.fetch_width)
+            row = []
+            for j in range(self.fetch_width):
+                row.append(0)
+            data_out.append(row)
             valid_out.append(0)
 
         no_valid = True

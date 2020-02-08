@@ -84,7 +84,7 @@ class OutputAddrCtrlModel(Model):
     def get_addrs(self):
         for i in range(self.interconnect_output_ports):
             to_get = self.addr_gens[i]
-            self.addresses[i] = to_get.get_address()
+            self.addresses[i] = to_get.get_address() % self.mem_depth
         return self.addresses
 
     # Get the ren for the current valid input
