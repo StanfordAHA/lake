@@ -296,20 +296,24 @@ class LakeTopModel(Model):
         rd_sync_gate = self.sync_groups.get_rd_sync()
         # Also get ren from oac
         oac_ren = self.oac.get_ren(pref_step)
-
         # OAC
         # First need to get rw_arb acks based on ren + sync group gate
         # Now we need to squash the acks
         ack_base = 0
+        ren_local = []
+        for i in range(self.interconnect_output_ports):
+            ren_local.append(0)
+
         for i in range(self.banks):
-            ren_local = 0
             for j in range(self.interconnect_output_ports):
-                ren_local = ren_local | ((1 << j) * (rd_sync_gate[j] & oac_ren[i][j]))
-            ack_base = (ack_base |
-                        self.rw_arbs[i].get_ack(iac_valid, wen_en, ren_local, ren_en))
+                ren_local[j] = ren_local[j] | (rd_sync_gate[j] & oac_ren[i][j]) #((1 << j) * (rd_sync_gate[j] & oac_ren[i][j]))
+            # print(f"valid: {iac_valid}, wen_en: {wen_en}, ren_local: {ren_local}, ren_en: {ren_en}")
+            local_ack = self.rw_arbs[i].get_ack(iac_valid[i], wen_en, ren_local, ren_en)
+            ack_base = (ack_base | local_ack)
 
         # Final interaction with OAC
         (oac_ren, oac_addrs) = self.oac.interact(pref_step, ack_base)
+
         # Get data from mem
         data_to_arb = []
         for i in range(self.banks):
@@ -343,11 +347,6 @@ class LakeTopModel(Model):
             rw_addr_to_mem.append(am)
             rw_ack.append(rw_ack)
 
-
-
-        #print(rw_out_dat)
-        # print(rw_addr_to_mem[0])
-
         # HIT SRAM
         for i in range(self.banks):
             self.mems[i].interact(rw_wen_mem[i],
@@ -357,6 +356,9 @@ class LakeTopModel(Model):
 
         # Demux those reads
         (demux_dat, demux_valid) = self.demux_reads.interact(rw_out_dat, rw_out_valid, rw_out_port)
+
+        #print(demux_dat)
+        #print(demux_valid)
 
         # Requires or'd version of ren
         ren_base = [0] * self.interconnect_output_ports
@@ -368,6 +370,7 @@ class LakeTopModel(Model):
          sync_valid,
          rd_sync_gate_x) = self.sync_groups.interact(ack_base, demux_dat, demux_valid, ren_base)
 
+        print(rd_sync_gate_x)
         # Now get the tba rdy and interact with prefetcher
         tba_rdys = []
         for i in range(self.interconnect_output_ports):

@@ -237,7 +237,7 @@ def top_test(data_width=16,
     #     tester.step(2)
     #     tester.circuit.data_in += 1
 
-    model_lt.mems[0].dump_mem()
+    #model_lt.mems[0].dump_mem()
 
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = "top_dump_new"

@@ -36,14 +36,12 @@ class SRAMModel(Model):
         if cen == 0:
             return rd_reg_ret
         elif wen == 1:
-            print(f"write at addr: {addr}, data: {data}")
-            self.mem[addr] = data
-            print(self.mem[addr])
+            # print(f"write at addr: {addr}, data: {data}")
+            self.mem[addr] = data.copy()
         else:
             # Read
-            # print(f"read at addr: {addr}, data: {self.rd_reg}")
-
             self.rd_reg = self.mem[addr]
+            # print(f"read at addr: {addr}, data: {self.rd_reg}")
 
         return rd_reg_ret
 
