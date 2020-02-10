@@ -41,8 +41,8 @@ class DemuxReadsModel(Model):
 
         for i in range(self.int_out_ports):
             for j in range(self.banks):
-                if(valid_in[j] & (port_in[j] == i)):
-                    data_out[i] = data_in[j]
+                if(valid_in[j] & (port_in[j] == (1 << i))):
+                    data_out[i] = data_in[j].copy()
                     valid_out[i] = 1
                     break
         return (data_out, valid_out)

@@ -245,6 +245,7 @@ class LakeTopModel(Model):
         sync_groups_config = {}
         for i in range(self.interconnect_output_ports):
             sync_groups_config[f'sync_group_{i}'] = self.config[f"sync_grp_sync_group_{i}"]
+        self.sync_groups.set_config(sync_groups_config)
 
         # Config Prefetcher
         for i in range(self.interconnect_output_ports):
@@ -253,6 +254,16 @@ class LakeTopModel(Model):
             self.prefetchers[i].set_config(prefetch_config)
 
         # Config TBA
+        for port in range(self.interconnect_output_ports):
+            tba_config = {}
+            # for i in range(self.tb_height):
+            tba_config[f"range_inner"] = self.config[f"tba_{port}_tb_0_range_inner"]
+            tba_config[f"range_outer"] = self.config[f"tba_{port}_tb_0_range_outer"]
+            tba_config[f"stride"] = self.config[f"tba_{port}_tb_0_stride"]
+            tba_config["indices"] = []
+            for j in range(self.tb_sched_max):
+                tba_config[f"indices"].append(self.config[f"tba_{port}_tb_0_indices_{j}"])
+            self.tbas[port].set_config(tba_config)
 
     def interact(self,
                  data_in,
@@ -296,6 +307,7 @@ class LakeTopModel(Model):
         rd_sync_gate = self.sync_groups.get_rd_sync()
         # Also get ren from oac
         oac_ren = self.oac.get_ren(pref_step)
+
         # OAC
         # First need to get rw_arb acks based on ren + sync group gate
         # Now we need to squash the acks
@@ -306,8 +318,7 @@ class LakeTopModel(Model):
 
         for i in range(self.banks):
             for j in range(self.interconnect_output_ports):
-                ren_local[j] = ren_local[j] | (rd_sync_gate[j] & oac_ren[i][j]) #((1 << j) * (rd_sync_gate[j] & oac_ren[i][j]))
-            # print(f"valid: {iac_valid}, wen_en: {wen_en}, ren_local: {ren_local}, ren_en: {ren_en}")
+                ren_local[j] = ren_local[j] | (rd_sync_gate[j] & oac_ren[i][j])
             local_ack = self.rw_arbs[i].get_ack(iac_valid[i], wen_en, ren_local, ren_en)
             ack_base = (ack_base | local_ack)
 
@@ -329,6 +340,10 @@ class LakeTopModel(Model):
         rw_addr_to_mem = []
         rw_ack = []
         for i in range(self.banks):
+            gated_ren = []
+            for j in range(self.interconnect_output_ports):
+                gated_ren.append(oac_ren[i][j] & rd_sync_gate[j])
+
             (od,
              op,
              ov,
@@ -337,7 +352,7 @@ class LakeTopModel(Model):
              dm,
              am,
              ack) = self.rw_arbs[i].interact(iac_valid[i], wen_en, iac_data[i], iac_addrs[i],
-                                             data_to_arb[i], oac_ren[i], ren_en, oac_addrs)
+                                             data_to_arb[i], gated_ren, ren_en, oac_addrs)
             rw_out_dat.append(od)
             rw_out_port.append(op)
             rw_out_valid.append(ov)
@@ -357,11 +372,10 @@ class LakeTopModel(Model):
         # Demux those reads
         (demux_dat, demux_valid) = self.demux_reads.interact(rw_out_dat, rw_out_valid, rw_out_port)
 
-        #print(demux_dat)
-        #print(demux_valid)
-
         # Requires or'd version of ren
-        ren_base = [0] * self.interconnect_output_ports
+        ren_base = []
+        for j in range(self.interconnect_output_ports):
+            ren_base.append(0)
         for j in range(self.interconnect_output_ports):
             for i in range(self.banks):
                 ren_base[j] = ren_base[j] | (oac_ren[i][j])
@@ -370,7 +384,6 @@ class LakeTopModel(Model):
          sync_valid,
          rd_sync_gate_x) = self.sync_groups.interact(ack_base, demux_dat, demux_valid, ren_base)
 
-        print(rd_sync_gate_x)
         # Now get the tba rdy and interact with prefetcher
         tba_rdys = []
         for i in range(self.interconnect_output_ports):
@@ -378,15 +391,12 @@ class LakeTopModel(Model):
 
         pref_data = []
         pref_valid = []
-        pref_step_x = []
         for i in range(self.interconnect_output_ports):
             (pd, pv, psx) = self.prefetchers[i].interact(sync_data[i], sync_valid[i], tba_rdys[i])
-            pref_data.append(pd)
+            pref_data.append(pd.copy())
             pref_valid.append(pv)
-            pref_step_x.append(psx)
 
-        # print(pref_valid)
-
+        # print(f"pref data: {pref_data}, pref valid: {pref_valid}, tba_rdy: {tba_rdys}")
         # Now send this to the TBAs...
         data_out = []
         valid_out = []
@@ -394,5 +404,7 @@ class LakeTopModel(Model):
             (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0)
             data_out.append(tb_d)
             valid_out.append(tb_v)
+
+        print(f"data_out: {data_out}, valid_out: {valid_out}")
 
         return (data_out, valid_out)

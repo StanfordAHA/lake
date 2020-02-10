@@ -43,10 +43,10 @@ class SRAMModel(Model):
             self.rd_reg = self.mem[addr]
             # print(f"read at addr: {addr}, data: {self.rd_reg}")
 
-        return rd_reg_ret
+        return list(rd_reg_ret)
 
     def get_rd_reg(self):
-        return self.rd_reg
+        return list(self.rd_reg)
 
     def dump_mem(self):
         for i in range(self.depth):

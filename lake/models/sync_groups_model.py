@@ -1,4 +1,5 @@
 from lake.models.model import Model
+import kratos as kts
 
 
 class SyncGroupsModel(Model):
@@ -58,12 +59,12 @@ class SyncGroupsModel(Model):
         data_out = []
         rd_sync_gate = []
 
-        # Use current state of bus to set local gate reduced
-        for i in range(self.int_out_ports):
-            # For this port, just want to check that its corresponding entry is low
-            for j in range(self.groups):
-                if self.config[f"sync_group_{i}"] == (1 << j):
-                    self.local_gate_reduced[i] = self.local_gate[j][i]
+        # # Use current state of bus to set local gate reduced
+        # for i in range(self.int_out_ports):
+        #     # For this port, just want to check that its corresponding entry is low
+        #     for j in range(self.groups):
+        #         if self.config[f"sync_group_{i}"] == (1 << j):
+        #             self.local_gate_reduced[i] = self.local_gate[j][i]
 
         # Set the ren_int, ack_in combo
         ren_int = []
@@ -76,7 +77,9 @@ class SyncGroupsModel(Model):
                 self.local_mask[i][j] = 1
                 # If port j is in group i, set its gate mask
                 if self.config[f"sync_group_{j}"] == (1 << i):
-                    self.local_mask[i][j] = not (ren_int[j] and ack_in[j])
+                    # print(f"ren_int: {ren_int}, ack_in: {ack_in}")
+                    self.local_mask[i][j] = not (ren_int[j] and ((ack_in & (1 << j)) != 0))
+                    # self.local_mask[i][j] = not (ren_int[j] and ack_in[j])
 
         # Get group finished
         group_finished = []
@@ -94,7 +97,7 @@ class SyncGroupsModel(Model):
                 if group_finished[i] == 1:
                     self.local_gate[i][j] = 1
                 else:
-                    self.local_gate[i][j] = self.local_gate[i][j] and self.local_mask[i][j]
+                    self.local_gate[i][j] = self.local_gate[i][j] & self.local_mask[i][j]
 
         # Can get the valid syncs now
         # We do this by checking each groups members
@@ -103,27 +106,36 @@ class SyncGroupsModel(Model):
             self.sync_group_valid[i] = 1
             for j in range(self.int_out_ports):
                 # If any member of the group isn't valid yet, the group isn't valid
-                if self.config[f"sync_group_{j}"] == i and self.valid_reg[j] == 0:
+                if (self.config[f"sync_group_{j}"] == (1 << i)) and self.valid_reg[j] == 0:
                     self.sync_group_valid[i] = 0
 
         # Each port gets its group's sync valid
         for i in range(self.int_out_ports):
-            valid_out.append(self.sync_group_valid[self.config[f'sync_group_{i}']])
-            data_out.append(self.data_reg[i])
+            valid_out.append(self.sync_group_valid[kts.clog2(self.config[f'sync_group_{i}'])])
+            # valid_out.append(self.sync_group_valid[self.config[f'sync_group_{i}']])
+            data_out.append(self.data_reg[i].copy())
 
         # Update the registered valids - we keep these around to track
         # which valids in the group already came
         for i in range(self.int_out_ports):
-            if self.sync_group_valid[self.config[f"sync_group_{i}"]] == 1 or self.valid_reg[i] == 0:
+            group_log = kts.clog2(self.config[f"sync_group_{i}"])
+            if self.sync_group_valid[group_log] == 1 or self.valid_reg[i] == 0:
                 self.valid_reg[i] = valid_in[i]
-                self.data_reg[i] = data_in[i]
+                self.data_reg[i] = data_in[i].copy()
+
+        # Use current state of bus to set local gate reduced
+        for i in range(self.int_out_ports):
+            # For this port, just want to check that its corresponding entry is low
+            for j in range(self.groups):
+                if self.config[f"sync_group_{i}"] == (1 << j):
+                    self.local_gate_reduced[i] = self.local_gate[j][i]
 
         rd_sync_gate = self.get_rd_sync()
 
-        return (data_out, valid_out, rd_sync_gate)
+        return (data_out.copy(), valid_out, rd_sync_gate.copy())
 
     def get_rd_sync(self):
         rd_sync_gate = []
         for i in range(self.int_out_ports):
             rd_sync_gate.append(self.local_gate_reduced[i])
-        return rd_sync_gate
+        return list(rd_sync_gate)

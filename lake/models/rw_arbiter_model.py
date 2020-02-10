@@ -36,7 +36,7 @@ class RWArbiterModel(Model):
         out_port = self.rd_port
         out_valid = self.rd_valid
         data_to_mem = w_data
-        wen_mem = wen_in != 0 and wen_en != 0
+        wen_mem = wen_in & wen_en
         # Signals following may vary
         cen_mem = 0
         addr_to_mem = 0
@@ -58,6 +58,7 @@ class RWArbiterModel(Model):
                     self.rd_port = 1 << i
                     break
         ack = self.get_ack(wen_in, wen_en, ren_in, ren_en)
+        # print(f"cen_mem: {cen_mem}, wen_mem: {wen_mem}")
         return (out_dat, out_port, out_valid,
                 cen_mem, wen_mem, data_to_mem,
                 addr_to_mem, ack)

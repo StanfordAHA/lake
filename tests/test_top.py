@@ -11,7 +11,7 @@ from lake.models.lake_top_model import LakeTopModel
 def top_test(data_width=16,
              mem_width=64,
              mem_depth=512,
-             banks=2,
+             banks=1,
              input_iterator_support=6,
              output_iterator_support=6,
              interconnect_input_ports=1,
@@ -30,7 +30,7 @@ def top_test(data_width=16,
              tb_range_max=64,
              tb_sched_max=64,
              num_tb=1,
-             multiwrite=2,
+             multiwrite=1,
              max_prefetch=64):
 
     new_config = {}
@@ -180,8 +180,8 @@ def top_test(data_width=16,
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
-            data_in[j] += 1#rand.randint(0, 2 ** data_width - 1)
-            valid_in[j] = 1 #rand.randint(0, 1)
+            data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
+            valid_in[j] = 1  # rand.randint(0, 1)
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
@@ -207,7 +207,7 @@ def top_test(data_width=16,
             tester.circuit.valid_out.expect(mod_vo[0])
         else:
             for j in range(interconnect_output_ports):
-                #print(f"mod_vo_{j}: {mod_vo[j]}")
+                # print(f"mod_vo_{j}: {mod_vo[j]}")
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
@@ -237,7 +237,7 @@ def top_test(data_width=16,
     #     tester.step(2)
     #     tester.circuit.data_in += 1
 
-    #model_lt.mems[0].dump_mem()
+    # model_lt.mems[0].dump_mem()
 
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = "top_dump_new"

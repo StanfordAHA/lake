@@ -45,4 +45,4 @@ class PrefetcherModel(Model):
         (d_out, v_out) = self.fifo.interact(valid_read, tba_rdy, data_in)
         stp = self.get_step()
         self.update_cnt(valid_read, tba_rdy)
-        return (d_out, v_out, stp)
+        return (d_out.copy(), v_out, stp)
