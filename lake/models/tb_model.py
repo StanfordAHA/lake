@@ -76,7 +76,6 @@ class TBModel(Model):
         self.out_buf_index = 1
         self.prev_out_buf_index = 0
 
-
         self.col_pixels = []
         for i in range(self.tb_height):
             self.col_pixels.append(0)
@@ -94,7 +93,7 @@ class TBModel(Model):
         self.pause = 1
         self.rdy_to_arbiter = 1
         self.restarting = 0
-        self.ready_bufs = [1,1]
+        self.ready_bufs = [1, 1]
         self.prev_col_pixels = 0
         self.prev_output_valid = 0
         self.prev_col_pixels2 = 0
@@ -118,20 +117,20 @@ class TBModel(Model):
                 self.row_index = 0
                 self.input_buf_index = 1 - self.input_buf_index
                 self.ready_bufs[self.input_buf_index] = 0
-                #self.rdy_to_arbiter = 1
+                # self.rdy_to_arbiter = 1
             else:
                 self.row_index = self.row_index + 1
-                #self.rdy_to_arbiter = 0
+                # self.rdy_to_arbiter = 0
 
         if self.prev_out_buf_index != self.out_buf_index:
             if self.index_inner == 0 and self.index_outer == 0:
-                self.rdy_to_arbiter = self.ready_bufs[1-self.input_buf_index]
+                self.rdy_to_arbiter = self.ready_bufs[1 - self.input_buf_index]
             else:
                 self.rdy_to_arbiter = 1
         elif ack_in:
             self.rdy_to_arbiter = 0
-        
-        #if ack_in:
+
+        # if ack_in:
         #    self.rdy_to_arbiter = 0
 
     def output_from_tb(self, valid_data, ack_in):
