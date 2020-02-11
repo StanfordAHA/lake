@@ -9,6 +9,7 @@ import random as rand
 import pytest
 
 
+@pytest.mark.skip
 def test_tb(word_width=16,
             fetch_width=4,
             num_tb=1,
@@ -105,11 +106,7 @@ def test_tb(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "top_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
-
-
-test_tb()
+                               flags=["-Wno-fatal"])
