@@ -9,6 +9,7 @@ class SyncGroups(Generator):
     '''
     def __init__(self,
                  fetch_width,
+                 data_width,
                  int_out_ports):
 
         assert not (fetch_width & (fetch_width - 1)), "Memory width needs to be a power of 2"
@@ -16,6 +17,8 @@ class SyncGroups(Generator):
         super().__init__("sync_groups", debug=True)
         # Absorb inputs
         self.fetch_width = fetch_width
+        self.data_width = data_width
+        self.fw_int = int(self.fetch_width / self.data_width)
         self.int_out_ports = int_out_ports
         self.groups = self.int_out_ports
 
@@ -28,8 +31,9 @@ class SyncGroups(Generator):
                                   self.int_out_ports)
 
         self._data_in = self.input("data_in",
-                                   self.fetch_width,
-                                   size=self.int_out_ports,
+                                   self.data_width,
+                                   size=(self.int_out_ports,
+                                         self.fw_int),
                                    explicit_array=True,
                                    packed=True)
 
@@ -49,8 +53,9 @@ class SyncGroups(Generator):
 
         # Outputs
         self._data_out = self.output("data_out",
-                                     self.fetch_width,
-                                     size=self.int_out_ports,
+                                     self.data_width,
+                                     size=(self.int_out_ports,
+                                           self.fw_int),
                                      explicit_array=True,
                                      packed=True)
 
@@ -66,8 +71,9 @@ class SyncGroups(Generator):
 
         self._sync_valid = self.var("sync_valid", self.int_out_ports)
         self._data_reg = self.var("data_reg",
-                                  self.fetch_width,
-                                  size=self.int_out_ports,
+                                  self.data_width,
+                                  size=(self.int_out_ports,
+                                        self.fw_int),
                                   explicit_array=True,
                                   packed=True)
 

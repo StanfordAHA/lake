@@ -10,11 +10,13 @@ class RegFIFO(Generator):
     '''
     def __init__(self,
                  data_width,
+                 width_mult,
                  depth):
         super().__init__("reg_fifo")
 
         self.data_width = data_width
         self.depth = depth
+        self.width_mult = width_mult
 
         assert not (depth & (depth - 1)), "FIFO depth needs to be a power of 2"
 
@@ -24,8 +26,16 @@ class RegFIFO(Generator):
         self._clk_en = self.input("clk_en", 1)
 
         # INPUTS
-        self._data_in = self.input("data_in", self.data_width)
-        self._data_out = self.output("data_out", self.data_width)
+        self._data_in = self.input("data_in",
+                                   self.data_width,
+                                   size=self.width_mult,
+                                   explicit_array=True,
+                                   packed=True)
+        self._data_out = self.output("data_out",
+                                     self.data_width,
+                                     size=self.width_mult,
+                                     explicit_array=True,
+                                     packed=True)
 
         self._push = self.input("push", 1)
         self._pop = self.input("pop", 1)
@@ -42,7 +52,8 @@ class RegFIFO(Generator):
         self._write = self.var("write", 1)
         self._reg_array = self.var("reg_array",
                                    self.data_width,
-                                   size=self.depth,
+                                   size=(self.depth,
+                                         self.width_mult),
                                    packed=True,
                                    explicit_array=True)
 

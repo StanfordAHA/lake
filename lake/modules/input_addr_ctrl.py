@@ -18,6 +18,7 @@ class InputAddrCtrl(Generator):
                  max_port_schedule,
                  address_width,
                  data_width,
+                 fetch_width,
                  multiwrite):
         super().__init__("input_addr_ctrl", debug=True)
 
@@ -29,6 +30,8 @@ class InputAddrCtrl(Generator):
         self.max_port_schedule = max_port_schedule
         self.port_sched_width = max(1, clog2(self.interconnect_input_ports))
         self.data_width = data_width
+        self.fetch_width = fetch_width
+        self.fw_int = int(self.fetch_width / self.data_width)
         self.multiwrite = multiwrite
 
         self.mem_addr_width = clog2(self.mem_depth)
@@ -48,7 +51,8 @@ class InputAddrCtrl(Generator):
         self._valid_in = self.input("valid_in", self.interconnect_input_ports)
         self._data_in = self.input("data_in",
                                    self.data_width,
-                                   size=self.interconnect_input_ports,
+                                   size=(self.interconnect_input_ports,
+                                         self.fw_int),
                                    explicit_array=True,
                                    packed=True)
 
@@ -78,7 +82,8 @@ class InputAddrCtrl(Generator):
 
         self._data_out = self.output("data_out",
                                      self.data_width,
-                                     size=self.banks,
+                                     size=(self.banks,
+                                           self.fw_int),
                                      explicit_array=True,
                                      packed=True)
 

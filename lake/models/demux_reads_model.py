@@ -7,10 +7,13 @@ class DemuxReadsModel(Model):
     '''
     def __init__(self,
                  fetch_width,
+                 data_width,
                  banks,
                  int_out_ports):
 
         self.fetch_width = fetch_width
+        self.data_width = data_width
+        self.fw_int = int(fetch_width / data_width)
         self.banks = banks
         self.int_out_ports = int_out_ports
 
@@ -26,9 +29,9 @@ class DemuxReadsModel(Model):
         valid_out = []
         for i in range(self.int_out_ports):
             row = []
-            for j in range(self.fetch_width):
+            for j in range(self.fw_int):
                 row.append(0)
-            data_out.append(row)
+            data_out.append(list(row))
             valid_out.append(0)
 
         no_valid = True
@@ -42,7 +45,8 @@ class DemuxReadsModel(Model):
         for i in range(self.int_out_ports):
             for j in range(self.banks):
                 if(valid_in[j] & (port_in[j] == (1 << i))):
-                    data_out[i] = data_in[j].copy()
+                    data_out[i] = list(data_in[j])
                     valid_out[i] = 1
                     break
+
         return (data_out, valid_out)

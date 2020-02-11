@@ -7,9 +7,11 @@ class RegFIFOModel(Model):
     '''
     def __init__(self,
                  data_width,
+                 width_mult,
                  depth):
 
         self.data_width = data_width
+        self.width_mult = width_mult
         self.depth = depth
 
         self.config = {}
@@ -21,7 +23,7 @@ class RegFIFOModel(Model):
         self.reg_array = []
         for i in range(self.depth):
             row = []
-            for j in range(self.data_width):
+            for j in range(self.width_mult):
                 row.append(0)
             self.reg_array.append(row)
         # self.reg_array = ([0] * self.data_width) * self.depth
@@ -63,14 +65,14 @@ class RegFIFOModel(Model):
             else:
                 dat_out = self.reg_array[self.rd_ptr]
                 self.increment_rd()
-                self.reg_array[self.wr_ptr] = data_in
+                self.reg_array[self.wr_ptr] = list(data_in)
                 self.increment_wr()
                 return (dat_out, 1)
         elif push and not pop:
             # Not full, push an item
             if(self.num_items == self.depth):
                 return (0, 0)
-            self.reg_array[self.wr_ptr] = data_in
+            self.reg_array[self.wr_ptr] = list(data_in)
             self.increment_wr()
             self.num_items += 1
             return (self.reg_array[self.rd_ptr], 0)

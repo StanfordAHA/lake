@@ -5,9 +5,12 @@ import kratos as kts
 class SyncGroupsModel(Model):
     def __init__(self,
                  fetch_width,
+                 data_width,
                  int_out_ports):
 
         self.fetch_width = fetch_width
+        self.data_width = data_width
+        self.fw_int = int(self.fetch_width / self.data_width)
         self.int_out_ports = int_out_ports
         self.groups = self.int_out_ports
 
@@ -78,7 +81,7 @@ class SyncGroupsModel(Model):
                 # If port j is in group i, set its gate mask
                 if self.config[f"sync_group_{j}"] == (1 << i):
                     # print(f"ren_int: {ren_int}, ack_in: {ack_in}")
-                    self.local_mask[i][j] = not (ren_int[j] and ((ack_in & (1 << j)) != 0))
+                    self.local_mask[i][j] = not (ren_int[j] & ((ack_in & (1 << j)) != 0))
                     # self.local_mask[i][j] = not (ren_int[j] and ack_in[j])
 
         # Get group finished
@@ -91,6 +94,8 @@ class SyncGroupsModel(Model):
                 if self.config[f"sync_group_{j}"] == (1 << i):
                     if self.local_gate[i][j] == 1 and self.local_mask[i][j] == 1:
                         group_finished[i] = 0
+
+        rd_sync_gate = self.get_rd_sync()
 
         for i in range(self.groups):
             for j in range(self.int_out_ports):
@@ -130,7 +135,7 @@ class SyncGroupsModel(Model):
                 if self.config[f"sync_group_{i}"] == (1 << j):
                     self.local_gate_reduced[i] = self.local_gate[j][i]
 
-        rd_sync_gate = self.get_rd_sync()
+        # rd_sync_gate = self.get_rd_sync()
 
         return (data_out.copy(), valid_out, rd_sync_gate.copy())
 

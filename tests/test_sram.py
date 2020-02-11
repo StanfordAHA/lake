@@ -9,20 +9,24 @@ import random as rand
 import pytest
 
 
-@pytest.mark.parametrize("width", [16, 32])
+@pytest.mark.parametrize("data_width", [16, 32])
 @pytest.mark.parametrize("depth", [512, 1024])
-def test_sram_basic(width,
-                    depth):
+@pytest.mark.parametrize("width_mult", [1, 2])
+def test_sram_basic(data_width,
+                    depth,
+                    width_mult):
 
     # Set up model...
-    model_sram = SRAMModel(width=width,
+    model_sram = SRAMModel(data_width=data_width,
+                           width_mult=width_mult,
                            depth=depth)
     new_config = {}
     model_sram.set_config(new_config=new_config)
     ###
 
     # Set up dut...
-    dut = SRAMStub(width=width,
+    dut = SRAMStub(data_width=data_width,
+                   width_mult=width_mult,
                    depth=depth)
 
     magma_dut = kts.util.to_magma(dut, flatten_array=True)
@@ -41,23 +45,34 @@ def test_sram_basic(width,
 
     rand.seed(0)
 
+    data = [0 for i in range(width_mult)]
+
     for z in range(1000):
         # Generate new input
         wen = rand.randint(0, 1)
         cen = rand.randint(0, 1)
         addr = rand.randint(0, depth - 1)
-        data = rand.randint(0, 2 ** width - 1)
+        for i in range(width_mult):
+            data[i] = rand.randint(0, 2 ** data_width - 1)
 
         tester.circuit.wen = wen
         tester.circuit.cen = cen
         tester.circuit.addr = addr
-        tester.circuit.data_in = data
+        if width_mult == 1:
+            tester.circuit.data_in = data[0]
+        else:
+            for i in range(width_mult):
+                setattr(tester.circuit, f"data_in_{i}", data[i])
 
         model_dat_out = model_sram.interact(wen, cen, addr, data)
 
         tester.eval()
 
-        tester.circuit.data_out.expect(model_dat_out)
+        if width_mult == 1:
+            tester.circuit.data_out.expect(model_dat_out[0])
+        else:
+            for i in range(width_mult):
+                getattr(tester.circuit, f"data_out_{i}").expect(model_dat_out[i])
 
         tester.step(2)
 

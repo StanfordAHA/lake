@@ -99,6 +99,8 @@ class LakeTopModel(Model):
 
         ### INPUT ADDR CTRL
         self.iac = InputAddrCtrlModel(interconnect_input_ports=self.interconnect_input_ports,
+                                      data_width=self.data_width,
+                                      fetch_width=self.mem_width,
                                       mem_depth=self.mem_depth,
                                       banks=self.banks,
                                       iterator_support=self.input_iterator_support,
@@ -116,6 +118,8 @@ class LakeTopModel(Model):
         ### OUTPUT ADDR CTRL
         self.oac = OutputAddrCtrlModel(interconnect_output_ports=self.interconnect_output_ports,
                                        mem_depth=self.mem_depth,
+                                       data_width=self.data_width,
+                                       fetch_width=self.mem_width,
                                        banks=self.banks,
                                        iterator_support=self.output_iterator_support,
                                        address_width=self.address_width)
@@ -131,6 +135,7 @@ class LakeTopModel(Model):
         self.rw_arbs = []
         for bank in range(self.banks):
             self.rw_arbs.append(RWArbiterModel(fetch_width=self.mem_width,
+                                               data_width=self.data_width,
                                                memory_depth=self.mem_depth,
                                                int_out_ports=self.interconnect_output_ports))
 
@@ -139,16 +144,19 @@ class LakeTopModel(Model):
         for banks in range(self.banks):
             # self.mems.append(SRAMModel(width=self.mem_width,
             #                           depth=self.mem_depth))
-            self.mems.append(SRAMModel(width=self.fw_int,
+            self.mems.append(SRAMModel(data_width=self.data_width,
+                                       width_mult=self.fw_int,
                                        depth=self.mem_depth))
 
         ### DEMUX READS
-        self.demux_reads = DemuxReadsModel(fetch_width=self.fw_int,  # self.mem_width
+        self.demux_reads = DemuxReadsModel(fetch_width=self.mem_width,  # self.mem_width
+                                           data_width=self.data_width,
                                            banks=self.banks,
                                            int_out_ports=self.interconnect_output_ports)
 
         ### SYNC GROUPS
-        self.sync_groups = SyncGroupsModel(fetch_width=self.fw_int,  # self.mem_width
+        self.sync_groups = SyncGroupsModel(fetch_width=self.mem_width,  # self.mem_width
+                                           data_width=self.data_width,
                                            int_out_ports=self.interconnect_output_ports)
         for i in range(self.interconnect_output_ports):
             self.config[f"sync_grp_sync_group_{i}"] = 0
@@ -156,7 +164,8 @@ class LakeTopModel(Model):
         ### PREFETCHERS
         self.prefetchers = []
         for port in range(self.interconnect_output_ports):
-            self.prefetchers.append(PrefetcherModel(fetch_width=self.fw_int,  # self.mem_width
+            self.prefetchers.append(PrefetcherModel(fetch_width=self.mem_width,  # self.mem_width
+                                                    data_width=self.data_width,
                                                     max_prefetch=self.max_prefetch))
             self.config[f"pre_fetch_{port}_input_latency"] = 0
 

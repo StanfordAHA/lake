@@ -12,7 +12,9 @@ class InputAddrCtrlModel(Model):
                  banks,
                  iterator_support,
                  max_port_schedule,
-                 address_width):
+                 address_width,
+                 data_width,
+                 fetch_width):
 
         self.interconnect_input_ports = interconnect_input_ports
         self.mem_depth = mem_depth
@@ -20,6 +22,9 @@ class InputAddrCtrlModel(Model):
         self.iterator_support = iterator_support
         self.address_width = address_width
         self.max_port_schedule = max_port_schedule
+        self.data_width = data_width
+        self.fetch_width = fetch_width
+        self.fw_int = int(self.fetch_width / self.data_width)
 
         self.config = {}
 
@@ -101,7 +106,8 @@ class InputAddrCtrlModel(Model):
     def get_data_out(self, valid, data_in):
         assert len(data_in) == self.interconnect_input_ports, "Should feed proper length data"
         for i in range(self.banks):
-            self.data_out[i] = [0] * len(data_in[0])
+            self.data_out[i] = [0 for z in range(self.fw_int)]
+            # self.data_out[i] = [0] * len(data_in[0])
         for i in range(self.interconnect_input_ports):
             if(valid[i]):
                 to_get = self.addr_gens[i]

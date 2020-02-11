@@ -17,6 +17,7 @@ class RWArbiter(Generator):
     '''
     def __init__(self,
                  fetch_width,
+                 data_width,
                  memory_depth,
                  int_out_ports):
 
@@ -25,6 +26,8 @@ class RWArbiter(Generator):
         super().__init__("rw_arbiter", debug=True)
         # Absorb inputs
         self.fetch_width = fetch_width
+        self.data_width = data_width
+        self.fw_int = int(self.fetch_width / self.data_width)
         self.int_out_ports = int_out_ports
         self.memory_depth = memory_depth
         self.mem_addr_width = clog2(self.memory_depth)
@@ -39,10 +42,18 @@ class RWArbiter(Generator):
         # Inputs
         self._wen_in = self.input("wen_in", 1)
         self._wen_en = self.input("wen_en", 1)
-        self._w_data = self.input("w_data", self.fetch_width)
+        self._w_data = self.input("w_data",
+                                  self.data_width,
+                                  size=self.fw_int,
+                                  explicit_array=True,
+                                  packed=True)
         self._w_addr = self.input("w_addr", self.mem_addr_width)
 
-        self._data_from_mem = self.input("data_from_mem", self.fetch_width)
+        self._data_from_mem = self.input("data_from_mem",
+                                         self.data_width,
+                                         size=self.fw_int,
+                                         explicit_array=True,
+                                         packed=True)
 
         self._ren_in = self.input("ren_in", self.int_out_ports)
         self._ren_en = self.input("ren_en", 1)
@@ -57,13 +68,21 @@ class RWArbiter(Generator):
 
         # Outputs
         # self.port_packed("out_pkt", PortDirection.Out, port_pkt_struct)
-        self._out_data = self.output("out_data", self.fetch_width)
+        self._out_data = self.output("out_data",
+                                     self.data_width,
+                                     size=self.fw_int,
+                                     explicit_array=True,
+                                     packed=True)
         self._out_port = self.output("out_port", self.int_out_ports)
         self._out_valid = self.output("out_valid", 1)
 
         self._cen_mem = self.output("cen_mem", 1)
         self._wen_mem = self.output("wen_mem", 1)
-        self._data_to_mem = self.output("data_to_mem", self.fetch_width)
+        self._data_to_mem = self.output("data_to_mem",
+                                        self.data_width,
+                                        size=self.fw_int,
+                                        explicit_array=True,
+                                        packed=True)
         self._addr_to_mem = self.output("addr_to_mem", self.mem_addr_width)
 
         self._out_ack = self.output("out_ack", self.int_out_ports)

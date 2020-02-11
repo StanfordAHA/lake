@@ -5,15 +5,19 @@ from lake.models.reg_fifo_model import RegFIFOModel
 class PrefetcherModel(Model):
     def __init__(self,
                  fetch_width,
+                 data_width,
                  max_prefetch):
 
         self.fetch_width = fetch_width
         self.max_prefetch = max_prefetch
+        self.data_width = data_width
+        self.fw_int = int(self.fetch_width / self.data_width)
 
         self.config = {}
         self.config['input_latency'] = 0
 
-        self.fifo = RegFIFOModel(data_width=fetch_width,
+        self.fifo = RegFIFOModel(data_width=self.data_width,
+                                 width_mult=self.fw_int,
                                  depth=self.max_prefetch)
 
         self.cnt = 0
@@ -33,7 +37,7 @@ class PrefetcherModel(Model):
             self.cnt += 1
 
     def get_step(self):
-        return (self.cnt + self.config['input_latency']) < (self.max_prefetch - 1)
+        return int((self.cnt + self.config['input_latency']) < (self.max_prefetch - 1))
 
     def get_cnt(self):
         return self.cnt
