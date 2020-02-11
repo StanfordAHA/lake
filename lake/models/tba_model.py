@@ -107,16 +107,21 @@ class TBAModel(Model):
     def print_tba(self):
         print("output valid all ", self.output_valid_all)
         print("arbiter rdy all ", self.arbiter_rdy_all)
+        print("tb arbiter rdy ", self.tb_arbiter_rdy)
 
     def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data):
         for i in range(self.num_tb):
-            self.tbs[i].input_to_tb(input_data, i == tb_index_for_data)
-            self.tbs[i].output_from_tb(valid_data, ack_in)
+            if i == tb_index_for_data:
+                valid_data_i = valid_data
+                ack_in_i = ack_in
+            else:
+                valid_data_i = 0
+                ack_in_i = 0
+            self.tbs[i].input_to_tb(input_data, valid_data_i, ack_in_i)
+            self.tbs[i].output_from_tb(valid_data_i, ack_in_i)
             # print("col pixels ", i, " ", self.tbs[i].get_col_pixels())
 
         self.set_tb_outputs()
         self.send_tba_rdy()
         # self.print_tba()
-        # print("tb")
-        # self.tbs[0].print_tb(input_data, valid_data, ack_in)
         return self.tb_to_interconnect_data, self.tb_to_interconnect_valid

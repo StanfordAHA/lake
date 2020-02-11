@@ -36,6 +36,7 @@ class TBModel(Model):
         self.row_index = 0
         self.input_buf_index = 0
         self.out_buf_index = 1
+        self.prev_out_buf_index = 0
 
         self.col_pixels = []
         for i in range(self.tb_height):
@@ -73,6 +74,8 @@ class TBModel(Model):
         self.row_index = 0
         self.input_buf_index = 0
         self.out_buf_index = 1
+        self.prev_out_buf_index = 0
+
 
         self.col_pixels = []
         for i in range(self.tb_height):
@@ -91,35 +94,59 @@ class TBModel(Model):
         self.pause = 1
         self.rdy_to_arbiter = 1
         self.restarting = 0
+        self.ready_bufs = [1,1]
+        self.prev_col_pixels = 0
+        self.prev_output_valid = 0
+        self.prev_col_pixels2 = 0
+        self.prev_output_valid2 = 0
 
     def get_col_pixels(self):
-        return self.col_pixels
+        return self.prev_col_pixels3
 
     def get_output_valid(self):
-        return self.output_valid
+        return self.prev_output_valid3
 
     def get_rdy_to_arbiter(self):
         return self.rdy_to_arbiter
 
-    def input_to_tb(self, input_data, valid_data):
+    def input_to_tb(self, input_data, valid_data, ack_in):
         # maybe add start data logic
-        if valid_data:
+
+        if valid_data == 1:
             self.tb[self.row_index + self.tb_height * self.input_buf_index] = input_data
             if self.row_index == self.tb_height - 1:
                 self.row_index = 0
                 self.input_buf_index = 1 - self.input_buf_index
+                self.ready_bufs[self.input_buf_index] = 0
+                #self.rdy_to_arbiter = 1
             else:
                 self.row_index = self.row_index + 1
+                #self.rdy_to_arbiter = 0
+
+        if self.prev_out_buf_index != self.out_buf_index:
+            if self.index_inner == 0 and self.index_outer == 0:
+                self.rdy_to_arbiter = self.ready_bufs[1-self.input_buf_index]
+            else:
+                self.rdy_to_arbiter = 1
+        elif ack_in:
+            self.rdy_to_arbiter = 0
+        
+        #if ack_in:
+        #    self.rdy_to_arbiter = 0
 
     def output_from_tb(self, valid_data, ack_in):
+        self.prev_col_pixels3 = self.prev_col_pixels2
+        self.prev_output_valid3 = self.prev_output_valid2
+
+        self.prev_col_pixels2 = self.prev_col_pixels
+        self.prev_output_valid2 = self.prev_output_valid
+        self.prev_col_pixels = self.col_pixels
+        self.prev_output_valid = self.output_valid
         self.output_index_abs = self.index_outer * self.config["stride"] + \
             self.config["indices"][self.index_inner]
         self.output_index = self.output_index_abs % self.fetch_width
         self.prev_col_pixels = self.col_pixels
-        self.col_pixels = []
         # print(self.tb)
-        for i in range(self.tb_height):
-            self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
         # if (self.index_inner == self.config["range_inner"] - 1) and \
         #        (self.index_outer == self.config["range_outer"] - 1):
@@ -129,6 +156,8 @@ class TBModel(Model):
         # else:
         #    self.restarting = 0
 
+        self.prev_out_buf_index = self.out_buf_index
+
         if self.index_inner == self.config["range_inner"] - 1:
             self.index_inner = 0
             if self.index_outer == self.config["range_outer"] - 1:
@@ -137,7 +166,7 @@ class TBModel(Model):
                 self.index_outer = self.index_outer + 1
         else:
             self.index_outer = self.index_outer
-            if self.pause != 1:
+            if self.pause_output != 1:
                 self.index_inner = self.index_inner + 1
 
         if self.index_inner == self.config["range_inner"] - 1:
@@ -158,44 +187,32 @@ class TBModel(Model):
                 (self.output_index_abs != self.curr_out_start)):
             self.out_buf_index = 1 - self.out_buf_index
 
-        # print("printing ", self.index_inner, " ", self.index_outer)
         if self.index_inner == 0 and self.index_outer == 0:
             self.out_buf_index = 1
+            self.prev_out_buf_index = 0
 
+        # needs to become more general past 0, for any in the other double buffer
         if ((self.output_index_abs % self.fetch_width == 0) and
                 (self.output_index_abs != self.curr_out_start)):
             self.curr_out_start = self.output_index_abs
-            self.rdy_to_arbiter = 1
-        elif ack_in:
-            self.rdy_to_arbiter = 0
 
         self.col_pixels = []
         for i in range(self.tb_height):
             self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
-        if self.pause_tb or \
-            self.pause_output or \
-            (self.prev_pause_output == 1 and self.pause_output == 0) or \
-            (self.prev_prev_pause_output == 1 and
-                self.prev_pause_output == 0 and self.pause_output == 0):
-            self.output_valid = 0
-            self.pause = 1
-        else:
-            self.output_valid = 1
-            self.pause = 0
-
-        self.prev_prev_pause_output = self.prev_pause_output
-        self.prev_pause_output = self.pause_output
         if self.pause_tb:
             self.pause_output = 1
-        elif self.pause_output & self.row_index < self.tb_height - 1:
+        elif self.ready_bufs[self.out_buf_index] == 1:
             self.pause_output = 1
         else:
             self.pause_output = 0
 
-        if self.prev_pause_output == 1 and self.pause_output == 0 and self.started == 0:
-            self.pause_output = self.prev_pause_output
-            self.started = 1
+        if self.pause_tb:
+            self.output_valid = 0
+        elif self.ready_bufs[self.out_buf_index] == 1:
+            self.output_valid = 0
+        else:
+            self.output_valid = 1
 
     def print_tb(self, input_data, valid_data, ack_in):
         print("input data: ", input_data)
@@ -205,6 +222,7 @@ class TBModel(Model):
         print("row index: ", self.row_index)
         print("input buf index: ", self.input_buf_index)
         print("out buf index ", self.out_buf_index)
+        print("prev out buf index ", self.prev_out_buf_index)
         print("col pixels ", self.col_pixels)
         print("prev col pixels ", self.prev_col_pixels)
         print("restarting ", self.restarting)
@@ -218,12 +236,11 @@ class TBModel(Model):
         print("prev pause output ", self.prev_pause_output)
         print("started ", self.started)
         print("rdy ", self.rdy_to_arbiter)
+        print("rdy bufs", self.ready_bufs)
+        print("prev output valid", self.prev_output_valid)
 
     def transpose_buffer(self, input_data, valid_data, ack_in):
-        self.input_to_tb(input_data, valid_data)
+        self.input_to_tb(input_data, valid_data, ack_in)
         self.output_from_tb(valid_data, ack_in)
         # self.print_tb(input_data, valid_data, ack_in)
-        if self.restarting:
-            return self.prev_col_pixels, self.output_valid, self.rdy_to_arbiter
-        else:
-            return self.col_pixels, self.output_valid, self.rdy_to_arbiter
+        return self.col_pixels, self.output_valid, self.rdy_to_arbiter
