@@ -4,6 +4,7 @@ from lake.passes.passes import lift_config_reg
 import _kratos
 import magma as m
 from magma import *
+from utils.util import *
 import fault
 import tempfile
 import kratos as k
@@ -11,22 +12,29 @@ import random as rand
 import pytest
 
 
-@pytest.mark.parametrize("banks", [2, 4])
+@pytest.mark.parametrize("banks", [1, 2, 4])
+@pytest.mark.parametrize("interconnect_input_ports", [1, 2])
 def test_input_addr_basic(banks,
-                          interconnect_input_ports=1,
+                          interconnect_input_ports,
                           mem_depth=512,
-                          iterator_support=6,
+                          data_width=16,
+                          fetch_width=32,
+                          iterator_support=4,
                           address_width=16,
-                          multiwrite=2):
+                          multiwrite=1):
 
-    # Set up model..
+    fw_int = int(fetch_width / data_width)
+
+    # Set up model...
     model_iac = InputAddrCtrlModel(
         interconnect_input_ports=interconnect_input_ports,
         mem_depth=mem_depth,
         banks=banks,
         iterator_support=iterator_support,
         max_port_schedule=64,
-        address_width=address_width)
+        address_width=address_width,
+        data_width=data_width,
+        fetch_width=fetch_width)
     new_config = {}
     new_config['address_gen_0_starting_addr'] = 0
     new_config['address_gen_0_dimensionality'] = 3
@@ -57,6 +65,7 @@ def test_input_addr_basic(banks,
                         max_port_schedule=64,
                         address_width=address_width,
                         data_width=16,
+                        fetch_width=fetch_width,
                         multiwrite=multiwrite)
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
@@ -79,23 +88,45 @@ def test_input_addr_basic(banks,
     # Seed for posterity
     rand.seed(0)
 
-    data_in = 0
+    data_in = []
+    # Init blank data input
+    for i in range(interconnect_input_ports):
+        data_in.append([0 for z in range(fw_int)])
 
     for i in range(1000):
+        # Deal with wen
         for j in range(interconnect_input_ports):
             valid_in[j] = rand.randint(0, 1)
-        wen = model_iac.get_wen(valid_in)
+        # Deal with data in
+        for j in range(interconnect_input_ports):
+            for z in range(fw_int):
+                data_in[j][z] = rand.randint(0, 2 ** data_width - 1)
+        # Deal with addresses
+        (wen, data_out, addrs) = model_iac.interact(valid_in, data_in)
 
         for z in range(interconnect_input_ports):
             tester.circuit.valid_in[z] = valid_in[z]
 
-        addrs = model_iac.get_addrs()
+        for z in range(interconnect_input_ports):
+            for word in range(fw_int):
+                setattr(tester.circuit, f"data_in_{z}_{word}", data_in[z][word])
 
         tester.eval()
-        tester.step(2)
+
+        if(banks == 1):
+            tester.circuit.addr_out.expect(addrs[0])
+        else:
+            for z in range(banks):
+                getattr(tester.circuit, f"addr_out_{z}").expect(addrs[z])
 
         for z in range(banks):
             tester.circuit.wen_to_sram[z].expect(wen[z])
+
+        for z in range(banks):
+            for word in range(fw_int):
+                getattr(tester.circuit, f"data_out_{z}_{word}").expect(data_out[z][word])
+
+        tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",

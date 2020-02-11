@@ -4,16 +4,21 @@ import magma as m
 from magma import *
 import fault
 import tempfile
+from utils.util import *
 import kratos as k
 import random as rand
 
 
 def test_demux_reads_basic(fetch_width=32,
+                           data_width=16,
                            banks=2,
                            int_out_ports=2):
 
+    fw_int = int(fetch_width / data_width)
+
     # Set up model...
     model_dr = DemuxReadsModel(fetch_width=fetch_width,
+                               data_width=data_width,
                                banks=banks,
                                int_out_ports=int_out_ports)
 
@@ -23,6 +28,7 @@ def test_demux_reads_basic(fetch_width=32,
 
     # Set up dut...
     dut = DemuxReads(fetch_width=fetch_width,
+                     data_width=data_width,
                      banks=banks,
                      int_out_ports=int_out_ports)
 
@@ -42,11 +48,16 @@ def test_demux_reads_basic(fetch_width=32,
 
     rand.seed(0)
 
-    data_in = [0] * banks
+    data_in = []
+    for i in range(banks):
+        row = []
+        for j in range(fw_int):
+            row.append(0)
+        data_in.append(row)
+
     valid_in = [0] * banks
     port_in = [0] * banks
     port_in_hw = [0] * banks
-
     for z in range(1000):
         # Generate new input
         for i in range(banks):
@@ -54,22 +65,24 @@ def test_demux_reads_basic(fetch_width=32,
             port_in[i] = rand.randint(0, int_out_ports - 1)
             # One-Hot encoding in hardware
             port_in_hw[i] = 1 << port_in[i]
+            for j in range(fw_int):
+                data_in[i][j] = rand.randint(0, 2 ** data_width - 1)
 
-        (model_dat, model_val) = model_dr.input_data(data_in, valid_in, port_in)
+        (model_dat, model_val) = model_dr.interact(data_in, valid_in, port_in_hw)
         for i in range(banks):
             tester.circuit.valid_in[i] = valid_in[i]
-            setattr(tester.circuit, f"data_in_{i}", data_in[i])
             setattr(tester.circuit, f"port_in_{i}", port_in_hw[i])
+            for j in range(fw_int):
+                setattr(tester.circuit, f"data_in_{i}_{j}", data_in[i][j])
+
         tester.eval()
 
         for i in range(int_out_ports):
-            getattr(tester.circuit, f"data_out_{i}").expect(model_dat[i])
+            for j in range(fw_int):
+                getattr(tester.circuit, f"data_out_{i}_{j}").expect(model_dat[i][j])
             tester.circuit.valid_out[i].expect(model_val[i])
 
         tester.step(2)
-
-        for i in range(banks):
-            data_in[i] += 1
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
