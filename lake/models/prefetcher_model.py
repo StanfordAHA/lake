@@ -37,7 +37,7 @@ class PrefetcherModel(Model):
             self.cnt += 1
 
     def get_step(self):
-        return (self.cnt + self.config['input_latency']) < (self.max_prefetch - 1)
+        return int((self.cnt + self.config['input_latency']) < (self.max_prefetch - 1))
 
     def get_cnt(self):
         return self.cnt
