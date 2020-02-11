@@ -10,6 +10,7 @@ import random as rand
 import pytest
 
 
+@pytest.mark.skip
 def test_tba(word_width=16,
              fetch_width=4,
              num_tb=1,
