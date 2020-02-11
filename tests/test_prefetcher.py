@@ -13,11 +13,16 @@ import pytest
 
 def test_prefetcher_basic(input_latency=10,
                           max_prefetch=64,
-                          fetch_width=32):
+                          fetch_width=32,
+                          data_width=16):
 
     assert input_latency < max_prefetch, "Input latency must be smaller than fifo"
+
+    fw_int = int(fetch_width / data_width)
+
     # Set up model..
     model_pf = PrefetcherModel(fetch_width=fetch_width,
+                               data_width=data_width,
                                max_prefetch=max_prefetch)
     new_config = {}
     new_config['input_latency'] = input_latency
@@ -27,6 +32,7 @@ def test_prefetcher_basic(input_latency=10,
 
     # Set up dut...
     dut = Prefetcher(fetch_width=fetch_width,
+                     data_width=data_width,
                      max_prefetch=max_prefetch)
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
@@ -48,16 +54,18 @@ def test_prefetcher_basic(input_latency=10,
     # Seed for posterity
     rand.seed(0)
 
-    data_in = 0
+    data_in = [0 for i in range(fw_int)]
 
     for i in range(1000):
         # Gen random data
-        data_in = rand.randint(0, 2 ** 16 - 1)
+        for j in range(fw_int):
+            data_in[j] = rand.randint(0, 2 ** data_width - 1)
         tba_rdy_in = rand.randint(0, 1)
         valid_read = rand.randint(0, 1)
 
         (model_d, model_v, model_stp) = model_pf.interact(data_in, valid_read, tba_rdy_in)
-        tester.circuit.data_in = data_in
+        for j in range(fw_int):
+            setattr(tester.circuit, f"data_in_{j}", data_in[j])
         tester.circuit.valid_read = valid_read
         tester.circuit.tba_rdy_in = tba_rdy_in
 
@@ -67,7 +75,8 @@ def test_prefetcher_basic(input_latency=10,
         tester.circuit.prefetch_step.expect(model_stp)
         tester.circuit.valid_out.expect(model_v)
         if(model_v):
-            tester.circuit.data_out.expect(model_d)
+            for j in range(fw_int):
+                getattr(tester.circuit, f"data_out_{j}").expect(model_d[j])
 
         tester.step(2)
 

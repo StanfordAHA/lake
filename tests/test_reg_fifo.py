@@ -6,13 +6,17 @@ import fault
 import tempfile
 import kratos as k
 import random as rand
+import pytest
 
 
-def test_reg_fifo_basic(data_width=32,
+@pytest.mark.parametrize("width_mult", [1, 2])
+def test_reg_fifo_basic(width_mult,
+                        data_width=16,
                         depth=64):
 
     # Set up model...
     model_rf = RegFIFOModel(data_width=data_width,
+                            width_mult=width_mult,
                             depth=depth)
     new_config = {}
     model_rf.set_config(new_config=new_config)
@@ -20,6 +24,7 @@ def test_reg_fifo_basic(data_width=32,
 
     # Set up dut...
     dut = RegFIFO(data_width=data_width,
+                  width_mult=width_mult,
                   depth=depth)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True)
@@ -38,7 +43,9 @@ def test_reg_fifo_basic(data_width=32,
 
     rand.seed(0)
 
-    data_in = 0
+    data_in = []
+    for i in range(width_mult):
+        data_in.append(0)
 
     for z in range(1000):
         # Generate new input
@@ -46,6 +53,8 @@ def test_reg_fifo_basic(data_width=32,
         pop = rand.randint(0, 1)
         empty = model_rf.get_empty(push, pop)
         full = model_rf.get_full(push, pop)
+        for i in range(width_mult):
+            data_in[i] = rand.randint(0, 2 ** data_width - 1)
 
         tester.circuit.empty.expect(empty)
         tester.circuit.full.expect(full)
@@ -54,17 +63,23 @@ def test_reg_fifo_basic(data_width=32,
 
         tester.circuit.push = push
         tester.circuit.pop = pop
-        tester.circuit.data_in = data_in
+        if width_mult == 1:
+            tester.circuit.data_in = data_in[0]
+        else:
+            for i in range(width_mult):
+                setattr(tester.circuit, f"data_in_{i}", data_in[i])
 
         tester.eval()
 
         tester.circuit.valid.expect(model_val)
-        if(model_val):
-            tester.circuit.data_out.expect(model_out)
+        if model_val:
+            if width_mult == 1:
+                tester.circuit.data_out.expect(model_out[0])
+            else:
+                for i in range(width_mult):
+                    getattr(tester.circuit, f"data_out_{i}").expect(model_out[i])
 
         tester.step(2)
-
-        data_in += 1
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",

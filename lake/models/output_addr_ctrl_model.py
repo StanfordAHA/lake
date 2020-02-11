@@ -11,13 +11,18 @@ class OutputAddrCtrlModel(Model):
                  mem_depth,
                  banks,
                  iterator_support,
-                 address_width):
+                 address_width,
+                 data_width,
+                 fetch_width):
 
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_depth = mem_depth
         self.banks = banks
         self.iterator_support = iterator_support
         self.address_width = address_width
+        self.data_width = data_width
+        self.fetch_width = fetch_width
+        self.fw_int = int(self.fetch_width / self.data_width)
 
         self.config = {}
 
@@ -87,6 +92,12 @@ class OutputAddrCtrlModel(Model):
             self.addresses[i] = to_get.get_address() % self.mem_depth
         return self.addresses
 
+    def get_addrs_full(self):
+        for i in range(self.interconnect_output_ports):
+            to_get = self.addr_gens[i]
+            self.addresses[i] = to_get.get_address()
+        return self.addresses
+
     # Get the ren for the current valid input
     def get_ren(self, valid):
         for i in range(self.banks):
@@ -97,13 +108,13 @@ class OutputAddrCtrlModel(Model):
                 if(self.banks == 1):
                     self.ren[0][i] = 1
                 else:
-                    self.ren[self.get_addrs()[i] >> (self.mem_addr_width)][i] = 1
+                    self.ren[self.get_addrs_full()[i] >> (self.mem_addr_width)][i] = 1
         return self.ren
 
     # Step the addresses based on valid
     def step_addrs(self, valid, step):
         for i, valid_input in enumerate(valid):
-            if valid_input & ((step & (1 << i)) != 0):
+            if valid_input & step[i]:
                 to_step = self.addr_gens[i]
                 to_step.step()
 

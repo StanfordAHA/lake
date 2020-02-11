@@ -6,17 +6,21 @@ import magma as m
 from magma import *
 import fault
 import tempfile
-import kratos as k
+import kratos as kts
 import random as rand
 import pytest
 
 
 @pytest.mark.parametrize("int_out_ports", [1, 2, 3])
 def test_sync_groups(int_out_ports,
-                     fetch_width=32):
+                     fetch_width=32,
+                     data_width=16):
+
+    fw_int = int(fetch_width / data_width)
 
     # Set up model..
     model_sg = SyncGroupsModel(fetch_width=fetch_width,
+                               data_width=data_width,
                                int_out_ports=int_out_ports)
 
     rand.seed(0)
@@ -25,6 +29,7 @@ def test_sync_groups(int_out_ports,
     new_config = {}
     if int_out_ports == 1:
         new_config['sync_group'] = 1
+        new_config['sync_group_0'] = 1
     elif group_choice == 1:
         new_config['sync_group_0'] = 1
         new_config['sync_group_1'] = 1
@@ -39,10 +44,11 @@ def test_sync_groups(int_out_ports,
 
     # Set up dut...
     dut = SyncGroups(fetch_width=fetch_width,
+                     data_width=data_width,
                      int_out_ports=int_out_ports)
 
     lift_config_reg(dut.internal_generator)
-    magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
+    magma_dut = kts.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
 
@@ -57,29 +63,33 @@ def test_sync_groups(int_out_ports,
     tester.step(2)
     # Seed for posterity
 
+    data_in = []
+    for i in range(int_out_ports):
+        row = []
+        for j in range(fw_int):
+            row.append(0)
+        data_in.append(row)
+
     for i in range(1000):
         # Gen random data
-        ack_in = []
+        ack_in = rand.randint(0, 2 ** int_out_ports - 1)
         ren_in = []
         valid_in = []
-        data_in = []
         for j in range(int_out_ports):
-            ack_in.append(rand.randint(0, 1))
             ren_in.append(rand.randint(0, 1))
             valid_in.append(rand.randint(0, 1))
-            data_in.append(rand.randint(0, 2 ** fetch_width - 1))
+            for k in range(fw_int):
+                data_in[j][k] = rand.randint(0, 2 ** data_width - 1)
 
         # Apply stimulus to dut
+        tester.circuit.ack_in = ack_in
         for j in range(int_out_ports):
             tester.circuit.ren_in[j] = ren_in[j]
-            tester.circuit.ack_in[j] = ack_in[j]
             tester.circuit.valid_in[j] = valid_in[j]
-            # tester.circuit.data_in[j] = data_in[j]
-        if(int_out_ports == 1):
-            tester.circuit.data_in = data_in[0]
-        else:
-            for j in range(int_out_ports):
-                setattr(tester.circuit, f"data_in_{j}", data_in[j])
+
+        for j in range(int_out_ports):
+            for k in range(fw_int):
+                setattr(tester.circuit, f"data_in_{j}_{k}", data_in[j][k])
 
         # Interact w/ model
         (model_do, model_vo, model_rd_sync) = model_sg.interact(ack_in,
@@ -89,12 +99,9 @@ def test_sync_groups(int_out_ports,
 
         tester.eval()
 
-        # Check outputs
-        if int_out_ports == 1:
-            tester.circuit.data_out.expect(model_do[0])
-        else:
-            for j in range(int_out_ports):
-                getattr(tester.circuit, f"data_out_{j}").expect(model_do[j])
+        for j in range(int_out_ports):
+            for k in range(fw_int):
+                getattr(tester.circuit, f"data_out_{j}_{k}").expect(model_do[j][k])
 
         for j in range(int_out_ports):
             tester.circuit.valid_out[j].expect(model_vo[j])

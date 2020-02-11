@@ -13,10 +13,13 @@ class Prefetcher(Generator):
     '''
     def __init__(self,
                  fetch_width,
+                 data_width,
                  max_prefetch):
         super().__init__("prefetcher", debug=True)
         # Capture to the object
         self.fetch_width = fetch_width
+        self.data_width = data_width
+        self.fw_int = int(self.fetch_width / self.data_width)
         self.max_prefetch = max_prefetch
 
         # Clock and Reset
@@ -24,7 +27,11 @@ class Prefetcher(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Inputs
-        self._data_in = self.input("data_in", self.fetch_width)
+        self._data_in = self.input("data_in",
+                                   self.data_width,
+                                   size=self.fw_int,
+                                   explicit_array=True,
+                                   packed=True)
         self._valid_read = self.input("valid_read", 1)
         self._tba_rdy_in = self.input("tba_rdy_in", 1)
 
@@ -38,7 +45,12 @@ class Prefetcher(Generator):
                               clog2(self.max_prefetch))
 
         # Outputs
-        self._data_out = self.output("data_out", self.fetch_width)
+        self._data_out = self.output("data_out",
+                                     self.data_width,
+                                     size=self.fw_int,
+                                     explicit_array=True,
+                                     packed=True)
+
         self._valid_out = self.output("valid_out", 1)
         self._prefetch_step = self.output("prefetch_step", 1)
 
@@ -46,7 +58,8 @@ class Prefetcher(Generator):
         self._cnt = self.var("cnt", clog2(self.max_prefetch))
         self._fifo_empty = self.var("fifo_empty", 1)
 
-        reg_fifo = RegFIFO(data_width=self.fetch_width,
+        reg_fifo = RegFIFO(data_width=self.data_width,
+                           width_mult=self.fw_int,
                            depth=self.max_prefetch)
 
         self.add_child("fifo", reg_fifo,
@@ -79,6 +92,7 @@ class Prefetcher(Generator):
 
 
 if __name__ == "__main__":
-    align_dut = Prefetcher(fetch_width=16,
+    align_dut = Prefetcher(fetch_width=32,
+                           data_width=16,
                            max_prefetch=64)
     verilog(align_dut, filename="prefetcher.sv")

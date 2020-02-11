@@ -16,6 +16,7 @@ class DemuxReads(Generator):
     '''
     def __init__(self,
                  fetch_width,
+                 data_width,
                  banks,
                  int_out_ports):
 
@@ -24,6 +25,8 @@ class DemuxReads(Generator):
         super().__init__("demux_reads", debug=True)
         # Absorb inputs
         self.fetch_width = fetch_width
+        self.data_width = data_width
+        self.fw_int = int(self.fetch_width / self.data_width)
         self.int_out_ports = int_out_ports
         self.banks = banks
 
@@ -33,8 +36,9 @@ class DemuxReads(Generator):
 
         # Inputs
         self._data_in = self.input("data_in",
-                                   self.fetch_width,
-                                   size=self.banks,
+                                   self.data_width,
+                                   size=(self.banks,
+                                         self.fw_int),
                                    explicit_array=True,
                                    packed=True)
         self._valid_in = self.input("valid_in",
@@ -47,8 +51,9 @@ class DemuxReads(Generator):
 
         # Outputs
         self._data_out = self.output("data_out",
-                                     self.fetch_width,
-                                     size=self.int_out_ports,
+                                     self.data_width,
+                                     size=(self.int_out_ports,
+                                           self.fw_int),
                                      explicit_array=True,
                                      packed=True)
 
@@ -68,7 +73,7 @@ class DemuxReads(Generator):
             self._done[i] = 0
             for j in range(self.banks):
                 if ~self._done[i]:
-                    if self._valid_in[j] & (self._port_in[j][i]):
+                    if self._valid_in[j] & self._port_in[j][i]:
                         self._valid_out[i] = 1
                         self._data_out[i] = self._data_in[j]
                         self._done[i] = 1

@@ -3,18 +3,20 @@ from lake.models.model import Model
 
 class SRAMModel(Model):
     def __init__(self,
-                 width,
+                 data_width,
+                 width_mult,
                  depth):
-        self.width = width
+        self.data_width = data_width
+        self.width_mult = width_mult
         self.depth = depth
 
         self.rd_reg = []
-        for i in range(self.width):
+        for i in range(self.width_mult):
             self.rd_reg.append(0)
         self.mem = []
         for i in range(self.depth):
             row = []
-            for j in range(self.width):
+            for j in range(self.width_mult):
                 row.append(0)
             self.mem.append(row)
 
@@ -36,12 +38,10 @@ class SRAMModel(Model):
         if cen == 0:
             return rd_reg_ret
         elif wen == 1:
-            # print(f"write at addr: {addr}, data: {data}")
             self.mem[addr] = data.copy()
         else:
             # Read
             self.rd_reg = self.mem[addr]
-            # print(f"read at addr: {addr}, data: {self.rd_reg}")
 
         return list(rd_reg_ret)
 

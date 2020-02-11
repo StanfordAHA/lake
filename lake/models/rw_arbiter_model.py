@@ -4,6 +4,7 @@ from lake.models.model import Model
 class RWArbiterModel(Model):
     def __init__(self,
                  fetch_width,
+                 data_width,
                  memory_depth,
                  int_out_ports):
         self.fetch_width = fetch_width
@@ -58,7 +59,6 @@ class RWArbiterModel(Model):
                     self.rd_port = 1 << i
                     break
         ack = self.get_ack(wen_in, wen_en, ren_in, ren_en)
-        # print(f"cen_mem: {cen_mem}, wen_mem: {wen_mem}")
         return (out_dat, out_port, out_valid,
                 cen_mem, wen_mem, data_to_mem,
                 addr_to_mem, ack)

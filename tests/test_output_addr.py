@@ -16,15 +16,21 @@ import pytest
 def test_output_addr_basic(banks,
                            interconnect_output_ports,
                            mem_depth=512,
+                           data_width=16,
+                           fetch_width=32,
                            iterator_support=4,
                            address_width=16):
+
+    fw_int = int(fetch_width / data_width)
 
     # Set up model..
     model_oac = OutputAddrCtrlModel(interconnect_output_ports=interconnect_output_ports,
                                     mem_depth=mem_depth,
                                     banks=banks,
                                     iterator_support=iterator_support,
-                                    address_width=address_width)
+                                    address_width=address_width,
+                                    data_width=data_width,
+                                    fetch_width=fetch_width)
 
     new_config = {}
     new_config['address_gen_0_starting_addr'] = 0
@@ -87,9 +93,6 @@ def test_output_addr_basic(banks,
             tester.circuit.step_in[z] = step_in[z]
 
         (ren, addrs) = model_oac.interact(valid_in, step_in)
-        # ren = model_oac.get_ren(valid_in)
-        # addrs = model_oac.get_addrs()
-        # model_oac.step_addrs(valid_in, step_in)
 
         tester.eval()
 
