@@ -405,7 +405,7 @@ class LakeTopModel(Model):
             pref_data.append(pd.copy())
             pref_valid.append(pv)
 
-        print(f"pref data: {pref_data}, pref valid: {pref_valid}, tba_rdy: {tba_rdys}")
+        # print(f"pref data: {pref_data}, pref valid: {pref_valid}, tba_rdy: {tba_rdys}")
         # Now send this to the TBAs...
         data_out = []
         valid_out = []
@@ -414,8 +414,8 @@ class LakeTopModel(Model):
             data_out.append(tb_d)
             valid_out.append(tb_v)
 
-        print(f"data_out: {data_out}, valid_out: {valid_out}")
+        # print(f"data_out: {data_out}, valid_out: {valid_out}")
 
-        print("tb data: ", self.tbas[0].tbs[0].print_tb(pref_data[0], pref_valid[0], pref_valid[0]))
+        # print("tb data: ", self.tbas[0].tbs[0].print_tb(pref_data[0], pref_valid[0], pref_valid[0]))
 
         return (data_out, valid_out)
