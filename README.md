@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/StanfordAHA/lake.svg?branch=master)](https://travis-ci.com/StanfordAHA/lake)
+
 # lake
 lake is a framework for generating synthesizable memory modules from a high-level behavioral specification and widely-available memory macros.
 
