@@ -55,6 +55,7 @@ class TBModel(Model):
         self.rdy_to_arbiter = 1
         self.pause = 1
         self.restarting = 0
+        self.start_data = 0
 
     def set_config(self, new_config):
         for key, config_val in new_config.items():
@@ -98,12 +99,14 @@ class TBModel(Model):
         self.prev_output_valid = 0
         self.prev_col_pixels2 = 0
         self.prev_output_valid2 = 0
+        self.start_data = 0
+        self.old_start_data = 0
 
     def get_col_pixels(self):
-        return self.prev_col_pixels3
+        return self.col_pixels
 
     def get_output_valid(self):
-        return self.prev_output_valid3
+        return self.output_valid
 
     def get_rdy_to_arbiter(self):
         return self.rdy_to_arbiter
@@ -122,6 +125,8 @@ class TBModel(Model):
                 self.row_index = self.row_index + 1
                 # self.rdy_to_arbiter = 0
 
+
+    def send_rdy_to_arbiter(self, input_data, valid_data, ack_in):
         if self.prev_out_buf_index != self.out_buf_index:
             if self.index_inner == 0 and self.index_outer == 0:
                 self.rdy_to_arbiter = self.ready_bufs[1 - self.input_buf_index]
@@ -134,9 +139,6 @@ class TBModel(Model):
         #    self.rdy_to_arbiter = 0
 
     def output_from_tb(self, valid_data, ack_in):
-        self.prev_col_pixels3 = self.prev_col_pixels2
-        self.prev_output_valid3 = self.prev_output_valid2
-
         self.prev_col_pixels2 = self.prev_col_pixels
         self.prev_output_valid2 = self.prev_output_valid
         self.prev_col_pixels = self.col_pixels
@@ -154,6 +156,10 @@ class TBModel(Model):
         #    self.restarting = 1
         # else:
         #    self.restarting = 0
+
+        self.old_start_data = self.start_data
+        if valid_data and (not self.start_data):
+            self.start_data = 1
 
         self.prev_out_buf_index = self.out_buf_index
 
@@ -175,7 +181,7 @@ class TBModel(Model):
                 self.pause_tb = 0
         elif self.pause_tb:
             self.pause_tb = 1 - valid_data
-        elif self.pause == 0:
+        elif self.pause_output == 0:
             self.pause_tb = 0
 
         self.output_index_abs = self.index_outer * self.config["stride"] + \
@@ -201,19 +207,20 @@ class TBModel(Model):
 
         if self.pause_tb:
             self.pause_output = 1
-        elif self.ready_bufs[self.out_buf_index] == 1:
+        elif self.start_data and (not self.old_start_data):
             self.pause_output = 1
         else:
             self.pause_output = 0
 
         if self.pause_tb:
             self.output_valid = 0
-        elif self.ready_bufs[self.out_buf_index] == 1:
+        elif self.pause_tb or self.pause_output:
             self.output_valid = 0
         else:
             self.output_valid = 1
 
     def print_tb(self, input_data, valid_data, ack_in):
+        print()
         print("input data: ", input_data)
         print("valid data: ", valid_data)
         print("ack in ", ack_in)
@@ -237,9 +244,19 @@ class TBModel(Model):
         print("rdy ", self.rdy_to_arbiter)
         print("rdy bufs", self.ready_bufs)
         print("prev output valid", self.prev_output_valid)
+        print("start data", self.start_data)
+        print("old start data", self.old_start_data)
 
     def transpose_buffer(self, input_data, valid_data, ack_in):
         self.input_to_tb(input_data, valid_data, ack_in)
+        self.send_rdy_to_arbiter(input_data, valid_data, ack_in)
         self.output_from_tb(valid_data, ack_in)
-        # self.print_tb(input_data, valid_data, ack_in)
-        return self.col_pixels, self.output_valid, self.rdy_to_arbiter
+#        self.input_to_tb(input_data, valid_data, ack_in)
+#        self.send_rdy_to_arbiter(input_data, valid_data, ack_in)
+        self.print_tb(input_data, valid_data, ack_in)
+        return self.prev_col_pixels, self.prev_output_valid, self.rdy_to_arbiter
+
+    def interact(self, input_data, valid_data, ack_in):
+        self.input_to_tb(input_data, valid_data, ack_in)
+        self.send_rdy_to_arbiter(input_data, valid_data, ack_in)
+        self.output_from_tb(valid_data, ack_in)
