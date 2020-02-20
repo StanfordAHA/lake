@@ -143,9 +143,6 @@ class TBModel(Model):
         self.prev_output_valid2 = self.prev_output_valid
         self.prev_col_pixels = self.col_pixels
         self.prev_output_valid = self.output_valid
-        self.output_index_abs = self.index_outer * self.config["stride"] + \
-            self.config["indices"][self.index_inner]
-        self.output_index = self.output_index_abs % self.fetch_width
         self.prev_col_pixels = self.col_pixels
         # print(self.tb)
 
@@ -162,6 +159,10 @@ class TBModel(Model):
             self.start_data = 1
 
         self.prev_out_buf_index = self.out_buf_index
+
+        self.output_index_abs = self.index_outer * self.config["stride"] + \
+            self.config["indices"][self.index_inner]
+        self.output_index = self.output_index_abs % self.fetch_width
 
         if self.index_inner == self.config["range_inner"] - 1:
             if self.index_outer == self.config["range_outer"] - 1:
