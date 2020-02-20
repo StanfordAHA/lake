@@ -264,15 +264,15 @@ class TransposeBuffer(Generator):
     @always_comb
     def output_from_tb(self):
         for i in range(tb_height):
-            if ((self.output_index_abs % self.fetch_width) == 0):
-                if (self.output_index_abs != self.curr_out_start):
+            if ((self.output_index_abs % self.fetch_width) == 0) & ~(self.output_index_abs == self.curr_out_start):
+                if ~((self.index_inner == 0) & (self.index_outer == 0)):
                     if ~self.out_buf_index:
                         self.col_pixels[i] = self.tb[i][self.output_index]
                     else:
                         self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
                 else:
                     if self.out_buf_index:
-                            self.col_pixels[i] = self.tb[i][self.output_index]
+                        self.col_pixels[i] = self.tb[i][self.output_index]
                     else:
                         self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
             else:

@@ -164,6 +164,16 @@ class TBModel(Model):
         self.prev_out_buf_index = self.out_buf_index
 
         if self.index_inner == self.config["range_inner"] - 1:
+            if self.index_outer == self.config["range_outer"] - 1:
+                self.pause_tb = 1 - valid_data
+            else:
+                self.pause_tb = 0
+        elif self.pause_tb:
+            self.pause_tb = 1 - valid_data
+        elif self.pause_output == 0:
+            self.pause_tb = 0
+
+        if self.index_inner == self.config["range_inner"] - 1:
             self.index_inner = 0
             if self.index_outer == self.config["range_outer"] - 1:
                 self.index_outer = 0
@@ -173,16 +183,6 @@ class TBModel(Model):
             self.index_outer = self.index_outer
             if self.pause_output != 1:
                 self.index_inner = self.index_inner + 1
-
-        if self.index_inner == self.config["range_inner"] - 1:
-            if self.index_outer == self.config["range_outer"] - 1:
-                self.pause_tb = 1 - valid_data
-            else:
-                self.pause_tb = 0
-        elif self.pause_tb:
-            self.pause_tb = 1 - valid_data
-        elif self.pause_output == 0:
-            self.pause_tb = 0
 
         self.output_index_abs = self.index_outer * self.config["stride"] + \
             self.config["indices"][self.index_inner]
