@@ -91,10 +91,10 @@ class TBModel(Model):
         self.old_start_data = 0
 
     def get_col_pixels(self):
-        return self.prev_col_pixels
+        return self.col_pixels
 
     def get_output_valid(self):
-        return self.prev_output_valid
+        return self.output_valid
 
     def get_rdy_to_arbiter(self):
         return self.rdy_to_arbiter
