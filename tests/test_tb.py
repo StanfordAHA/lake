@@ -59,8 +59,6 @@ def test_tb(word_width=16,
 
     num_iters = 128
     for i in range(num_iters):
-        print()
-        print("i: ", i)
 
         data = []
         for j in range(fetch_width):
@@ -68,7 +66,7 @@ def test_tb(word_width=16,
 
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[j])
-        
+
         valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
@@ -85,16 +83,14 @@ def test_tb(word_width=16,
 
         tester.eval()
         tester.circuit.output_valid.expect(model_valid)
-#        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
         if model_valid:
             tester.circuit.col_pixels.expect(model_data[0])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tb"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
-test_tb()
+                               flags=["-Wno-fatal"])

@@ -109,7 +109,6 @@ class TBModel(Model):
             else:
                 self.row_index = self.row_index + 1
 
-
     def send_rdy_to_arbiter(self, input_data, valid_data, ack_in):
         if self.prev_out_buf_index != self.out_buf_index:
             if self.index_inner == 0 and self.index_outer == 0:

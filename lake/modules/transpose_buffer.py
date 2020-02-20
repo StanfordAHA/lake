@@ -93,7 +93,7 @@ class TransposeBuffer(Generator):
         self.output_valid = self.output("output_valid", 1)
         self.rdy_to_arbiter = self.output("rdy_to_arbiter", 1)
 
-        #local variables 
+        # local variables
         self.index_outer = self.var("index_outer", self.max_range_bits)
         self.index_inner = self.var("index_inner", self.max_range_bits)
 
@@ -243,7 +243,8 @@ class TransposeBuffer(Generator):
     @always_comb
     def output_from_tb(self):
         for i in range(tb_height):
-            if ((self.output_index_abs % self.fetch_width) == 0) & ~(self.output_index_abs == self.curr_out_start):
+            if (((self.output_index_abs % self.fetch_width) == 0) &
+               ~(self.output_index_abs == self.curr_out_start)):
                 if ~((self.index_inner == 0) & (self.index_outer == 0)):
                     if ~self.out_buf_index:
                         self.col_pixels[i] = self.tb[i][self.output_index]
@@ -307,6 +308,6 @@ class TransposeBuffer(Generator):
         if ~self.rst_n:
             self.rdy_to_arbiter = 1
         elif self.prev_out_buf_index != self.out_buf_index:
-                self.rdy_to_arbiter = 1
+            self.rdy_to_arbiter = 1
         elif self._ack_in:
             self.rdy_to_arbiter = 0
