@@ -57,9 +57,9 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 35
+    num_iters = 256
     for i in range(num_iters):
-        print()
+        # print()
         print("i: ", i)
 
         data = []
@@ -68,22 +68,8 @@ def test_tb(word_width=16,
 
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[j])
-
-        # add testing a few dead valid cycles
-        if i == 0:
-            valid_data = 1
-        elif i == 1 or i == 2 or i == 3:
-            valid_data = 0
-        elif i == 4:
-            valid_data = 1
-        elif 4 < i < 9:
-            valid_data = 0
-        elif (i - 9) % 6 == 0:
-            valid_data = 1
-        else:
-            valid_data = 0
-
-        # valid_data = rand.randint(0, 1)
+        
+        valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
         input_data = data
@@ -91,22 +77,21 @@ def test_tb(word_width=16,
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
 
-        if len(input_data) != fetch_width:
-            input_data = data[0:4]
-
         model_data, model_valid, model_rdy_to_arbiter = \
-            model_tb.transpose_buffer(input_data, valid_data, ack_in)
+            model_tb.interact(input_data, valid_data, ack_in)
 
         tester.eval()
         tester.circuit.output_valid.expect(model_valid)
-        # tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+#        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
         if model_valid:
             tester.circuit.col_pixels.expect(model_data[0])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "tb"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
+test_tb()

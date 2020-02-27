@@ -194,8 +194,6 @@ class TransposeBuffer(Generator):
             self.pause_output = 1
         elif self.start_data & ~self.old_start_data:
             self.pause_output = 1
-        elif self.pause_output & self.row_index < self.tb_height - 1:
-            self.pause_output = 1
         else:
             self.pause_output = 0
 
@@ -205,20 +203,16 @@ class TransposeBuffer(Generator):
     def update_row_index(self):
         if ~self.rst_n:
             self.row_index = 0
-        elif ~self.valid_data:
-            self.row_index = self.row_index
-        elif self.row_index == self.tb_height - 1:
+        elif self.valid_data & self.row_index == self.tb_height - 1:
             self.row_index = 0
-        else:
+        elif self.valid_data:
             self.row_index = self.row_index + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_buf_ind(self):
         if ~self.rst_n:
             self.input_buf_index = 0
-        elif ~self.valid_data:
-            self.input_buf_index = self.input_buf_index
-        elif self.row_index == self.tb_height - 1:
+        elif self.valid_data & (self.row_index == self.tb_height - 1):
             self.input_buf_index = ~self.input_buf_index
         # else:
         #     self.input_buf_index = self.input_buf_index
@@ -236,9 +230,7 @@ class TransposeBuffer(Generator):
     # input to transpose buffer
     @always_ff((posedge, "clk"))
     def input_to_tb(self):
-        if ~self.valid_data:
-            self.tb = self.tb
-        else:
+        if self.valid_data:
             for i in range(self.fetch_width):
                 self.tb[self.input_index][i] = self.input_data[i]
 
@@ -268,17 +260,10 @@ class TransposeBuffer(Generator):
         self.prev_pause_output = self.pause_output
         if ~self.rst_n:
             self.output_valid = 0
-        elif self.pause_tb:
-            self.output_valid = 0
-        elif self.pause_output:
+        elif self.pause_tb | self.pause_output:
             self.output_valid = 0
         elif self.prev_pause_output & ~self.pause_output:
             self.output_valid = 0
-        elif ((self.output_index_abs % self.fetch_width) == 0):
-            if (self.output_index_abs != self.curr_out_start):
-                self.output_valid = 1
-            else:
-                self.output_valid = 1
         else:
             self.output_valid = 1
 
@@ -286,12 +271,6 @@ class TransposeBuffer(Generator):
     def add_obi(self):
         if ~self.rst_n:
             self.out_buf_index = 1
-        elif self.pause_tb:
-            self.out_buf_index = 1
-        elif self.pause_output:
-            self.out_buf_index = 1
-        elif self.prev_pause_output & ~self.pause_output:
-            self.out_buf_index = self.out_buf_index
         elif ((self.output_index_abs % self.fetch_width) == 0):
             if (self.output_index_abs != self.curr_out_start):
                 self.out_buf_index = ~self.out_buf_index
@@ -300,12 +279,6 @@ class TransposeBuffer(Generator):
     def add_cos(self):
         if ~self.rst_n:
             self.curr_out_start = 0
-        elif self.pause_tb:
-            self.curr_out_start = self.curr_out_start
-        elif self.pause_output:
-            self.curr_out_start = self.curr_out_start
-        elif self.prev_pause_output & ~self.pause_output:
-            self.curr_out_start = self.curr_out_start
         elif ((self.output_index_abs % self.fetch_width) == 0):
             if (self.output_index_abs != self.curr_out_start):
                 self.curr_out_start = self.output_index_abs
@@ -336,6 +309,9 @@ class TransposeBuffer(Generator):
             self.rdy_to_arbiter = 1
         elif self.prev_out_buf_index != self.out_buf_index:
             self.rdy_to_arbiter = 1
+        elif self.tb_height != 1:
+            if self.row_index != self.tb_height - 1:
+                self.rdy_to_arbiter = 1
         elif self._ack_in:
             self.rdy_to_arbiter = 0
 

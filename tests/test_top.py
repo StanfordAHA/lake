@@ -207,7 +207,8 @@ def top_test(data_width=16,
             tester.circuit.valid_out.expect(mod_vo[0])
         else:
             for j in range(interconnect_output_ports):
-                # print(f"mod_vo_{j}: {mod_vo[j]}")
+                #print(f"mod_vo_{j}: {mod_vo[j]}")
+                #print(mod_do[j][0])
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
@@ -246,6 +247,4 @@ def top_test(data_width=16,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
-
-if __name__ == "__main__":
-    top_test()
+top_test()
