@@ -14,7 +14,7 @@ import pytest
 @pytest.mark.parametrize("width_mult", [1, 2])
 @pytest.mark.parametrize("write_ports", [1, 2])
 @pytest.mark.parametrize("read_ports", [1, 2])
-def test_sram_basic(data_width,
+def test_reg_file_basic(data_width,
                     depth,
                     width_mult,
                     write_ports,

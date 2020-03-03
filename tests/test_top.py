@@ -391,7 +391,7 @@ def test_identity_stream(data_width=16,
 def test_top(data_width=16,
              mem_width=64,
              mem_depth=512,
-             banks=1,
+             banks=2,
              input_iterator_support=6,
              output_iterator_support=6,
              interconnect_input_ports=1,
@@ -544,8 +544,7 @@ def test_top(data_width=16,
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
-                                  optimize_if=False,
-                                  check_flip_flop_always_ff=False)
+                                  optimize_if=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
