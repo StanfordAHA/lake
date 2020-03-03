@@ -410,4 +410,4 @@ def test_top(data_width=16,
 
 if __name__ == "__main__":
     # test_identity_stream()
-    top_test()
+    test_top()
