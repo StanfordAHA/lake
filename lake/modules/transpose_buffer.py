@@ -1,6 +1,6 @@
 import kratos
 from kratos import *
-from math import log
+from math import log, floor
 from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
@@ -271,17 +271,15 @@ class TransposeBuffer(Generator):
     def add_obi(self):
         if ~self.rst_n:
             self.out_buf_index = 1
-        elif ((self.output_index_abs % self.fetch_width) == 0):
-            if (self.output_index_abs != self.curr_out_start):
-                self.out_buf_index = ~self.out_buf_index
+        elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
+            self.out_buf_index = ~self.out_buf_index
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def add_cos(self):
         if ~self.rst_n:
             self.curr_out_start = 0
-        elif ((self.output_index_abs % self.fetch_width) == 0):
-            if (self.output_index_abs != self.curr_out_start):
-                self.curr_out_start = self.output_index_abs
+        elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
+            self.curr_out_start = self.curr_out_start + self.fetch_width
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def add_pobi(self):
@@ -296,8 +294,6 @@ class TransposeBuffer(Generator):
             self.start_data = 0
         elif self.valid_data & ~self.start_data:
             self.start_data = 1
-        # else:
-        #     self.start_data = self.start_data
 
         self.old_start_data = self.start_data
 
