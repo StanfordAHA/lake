@@ -8,7 +8,7 @@ import kratos as kts
 
 class StorageConfigSeq(Generator):
     '''
-    Sequence the reads and writes to the storage unit - if dealing with 
+    Sequence the reads and writes to the storage unit - if dealing with
     a storage unit that has multiple r/w, should only use one of the ports
 
     If the storage unit is wider than the data, this sequencer expects all
@@ -54,12 +54,12 @@ class StorageConfigSeq(Generator):
         self._config_en = self.input("config_en", self.total_sets)
 
         self._rd_data_stg = self.input("rd_data_stg", self.data_width,
-                                   size=(self.banks, 
-                                         self.fw_int),
-                                   explicit_array=True,
-                                   packed=True)
+                                       size=(self.banks,
+                                             self.fw_int),
+                                       explicit_array=True,
+                                       packed=True)
 
-        self._wr_data = self.output("wr_data", 
+        self._wr_data = self.output("wr_data",
                                     self.data_width,
                                     size=self.fw_int,
                                     explicit_array=True,
@@ -88,7 +88,9 @@ class StorageConfigSeq(Generator):
                     reduce_var = kts.concat(reduce_var, self._config_en[i + (self.sets_per_macro * (j + 1))])
                 self.wire(self._reduce_en[i], reduce_var.r_or())
             self.add_code(self.demux_set_addr)
-            self.wire(self._addr_out, kts.concat(kts.const(0, width), self._set_to_addr, self._config_addr_in))
+            self.wire(self._addr_out, kts.concat(kts.const(0, width),
+                      self._set_to_addr,
+                      self._config_addr_in))
 
         self._wen_out = self.output("wen_out", self.banks)
         self._ren_out = self.output("ren_out", self.banks)
@@ -141,7 +143,7 @@ class StorageConfigSeq(Generator):
             if self.fw_int == 1:
                 self.wire(self._wen_out, self._config_wr)
             else:
-                self.wire(self._wen_out, 
+                self.wire(self._wen_out,
                           self._config_wr & (self._cnt == (self.fw_int - 1)))
             self.wire(self._ren_out, self._config_rd)
         # Otherwise we need to extract the bank from the set
@@ -149,15 +151,18 @@ class StorageConfigSeq(Generator):
             if self.fw_int == 1:
                 for i in range(self.banks):
                     width = self.sets_per_macro
-                    self.wire(self._wen_out[i], self._config_wr & self._config_en[(i + 1) * width - 1, i * width].r_or())
+                    self.wire(self._wen_out[i], self._config_wr &
+                              self._config_en[(i + 1) * width - 1, i * width].r_or())
             else:
                 for i in range(self.banks):
                     width = self.sets_per_macro
-                    self.wire(self._wen_out[i], self._config_wr & self._config_en[(i + 1) * width - 1, i * width].r_or() & (self._cnt == (self.fw_int - 1)))
+                    self.wire(self._wen_out[i],
+                              self._config_wr & self._config_en[(i + 1) * width - 1, i * width].r_or() &
+                              (self._cnt == (self.fw_int - 1)))
 
             for i in range(self.banks):
                 width = self.sets_per_macro
-                self.wire(self._ren_out[i], 
+                self.wire(self._ren_out[i],
                           self._config_rd & self._config_en[(i + 1) * width - 1, i * width].r_or())
 
     @always_comb
@@ -171,7 +176,7 @@ class StorageConfigSeq(Generator):
     def update_cnt(self):
         if ~self._rst_n:
             self._cnt = 0
-        # Increment when reading/writing - making sure 
+        # Increment when reading/writing - making sure
         # that the sequencing is correct from app level!
         elif self._config_wr | self._config_rd:
             self._cnt = self._cnt + 1
@@ -180,7 +185,7 @@ class StorageConfigSeq(Generator):
     def update_rd_cnt(self):
         if ~self._rst_n:
             self._rd_cnt = 0
-        # Increment when reading/writing - making sure 
+        # Increment when reading/writing - making sure
         # that the sequencing is correct from app level!
         else:
             self._rd_cnt = self._cnt
@@ -189,10 +194,11 @@ class StorageConfigSeq(Generator):
     def write_buffer(self):
         if ~self._rst_n:
             self._data_wr_reg = 0
-        # Increment when reading/writing - making sure 
+        # Increment when reading/writing - making sure
         # that the sequencing is correct from app level!
         elif self._config_wr & (self._cnt < self.fw_int - 1):
             self._data_wr_reg[self._cnt] = self._config_data_in
+
 
 if __name__ == "__main__":
     db_dut = StorageConfigSeq(data_width=16,

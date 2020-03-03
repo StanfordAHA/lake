@@ -7,6 +7,7 @@ import tempfile
 from lake.passes.passes import lift_config_reg
 from lake.models.lake_top_model import LakeTopModel
 
+
 def test_identity_stream(data_width=16,
                          mem_width=64,
                          mem_depth=512,
@@ -66,7 +67,6 @@ def test_identity_stream(data_width=16,
     new_config["tba_0_tb_0_stride"] = 4
 #    new_config["tba_0_tb_0_tb_height"] = 1
     new_config["tba_0_tb_0_dimensionality"] = 2
-
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
@@ -187,7 +187,7 @@ def test_identity_stream(data_width=16,
 #                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-#                 print(f"mod_vo_{j}: {mod_vo[j]}")
+                # print(f"mod_vo_{j}: {mod_vo[j]}")
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
@@ -200,6 +200,7 @@ def test_identity_stream(data_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 def test_identity_stream(data_width=16,
                          mem_width=64,
@@ -386,6 +387,7 @@ def test_identity_stream(data_width=16,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
+
 def test_top(data_width=16,
              mem_width=64,
              mem_depth=512,
@@ -457,8 +459,8 @@ def test_top(data_width=16,
     new_config["tba_0_tb_0_range_outer"] = 62
     new_config["tba_0_tb_0_stride"] = 2
 #    new_config["tba_0_tb_0_tb_height"] = 1
-    #new_config["tba_0_tb_0_dimensionality"] = 2
-    
+    # new_config["tba_0_tb_0_dimensionality"] = 2
+
     new_config["tba_1_tb_0_indices_0"] = 0
     new_config["tba_1_tb_0_indices_1"] = 1
     new_config["tba_1_tb_0_indices_2"] = 2
@@ -557,7 +559,6 @@ def test_top(data_width=16,
     tester.circuit.tba_1_tb_0_dimensionality = 2
     tester.circuit.tba_2_tb_0_dimensionality = 2
 
-
     rand.seed(0)
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
@@ -602,8 +603,8 @@ def test_top(data_width=16,
             tester.circuit.valid_out.expect(mod_vo[0])
         else:
             for j in range(interconnect_output_ports):
-                #print(f"mod_vo_{j}: {mod_vo[j]}")
-                #print(mod_do[j][0])
+                # print(f"mod_vo_{j}: {mod_vo[j]}")
+                # print(mod_do[j][0])
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
@@ -616,6 +617,7 @@ def test_top(data_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 if __name__ == "__main__":
     # test_identity_stream()

@@ -84,7 +84,6 @@ class LakeTop(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
         # Get the input ports from the interconnect

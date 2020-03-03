@@ -56,7 +56,7 @@ class TBModel(Model):
         self.prev_rdy_to_arbiter = 1
         self.rdy2 = 1
         self.prev_rdy_to_arbiter2 = 1
-        self.input_index = 0    
+        self.input_index = 0
         self.prev_pause_output = 1
         self.prev_pause_tb = 1
         self.started = 0
@@ -65,7 +65,6 @@ class TBModel(Model):
         self.prev_out2 = 1
         self.prev_output_valid2 = 0
         self.prev_col_pixels2 = []
-
 
     def set_config(self, new_config):
         for key, config_val in new_config.items():
@@ -127,7 +126,7 @@ class TBModel(Model):
 
     # break up into functions
     def output_from_tb(self, input_data, valid_data, ack_in):
-        
+
         self.prev_output_valid2 = self.prev_output_valid
         self.prev_col_pixels2 = self.prev_col_pixels
 
@@ -154,7 +153,7 @@ class TBModel(Model):
         self.old_start_data = self.start_data
         if valid_data and (not self.start_data):
             self.start_data = 1
-        
+
         if self.pause_tb:
             self.output_valid = 0
         elif self.pause_tb or self.pause_output:
@@ -179,7 +178,6 @@ class TBModel(Model):
                 self.pause_tb = 1 - valid_data
             elif self.pause_output == 0:
                 self.pause_tb = 0
-
 
         if self.config["dimensionality"] == 1:
             if self.index_outer == self.config["range_outer"] - 1:
@@ -231,7 +229,7 @@ class TBModel(Model):
             self.out_buf_index = 1
         elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
             self.out_buf_index = 1 - self.out_buf_index
-        
+
         if self.pause_tb:
             self.pause_output = 1
         elif self.start_data and (not self.old_start_data):
@@ -240,7 +238,7 @@ class TBModel(Model):
             self.pause_output = 0
 
     def print_tb(self, input_data, valid_data, ack_in):
-        print("input index ", self.tb_height*self.input_buf_index + self.row_index)
+        print("input index ", self.tb_height * self.input_buf_index + self.row_index)
         print("input data: ", input_data)
         print("valid data: ", valid_data)
         print("ack in ", ack_in)
@@ -272,17 +270,15 @@ class TBModel(Model):
         print("prev val", self.prev_output_valid)
         print("prev col2", self.prev_col_pixels2)
         print("prev val2", self.prev_output_valid2)
-        
-#        print("ack in", ack_in, "out buf index", self.out_buf_index, "prev", self.prev_out_buf_index, "rdy", self.rdy_to_arbiter, "inner", self.index_inner, "outer", self.index_outer, "pause output", self.pause_output, "prev started", self.prev_started, "output index abs", self.output_index_abs, "curr out start", self.curr_out_start)
 
     def interact(self, input_data, valid_data, ack_in):
-#        print("before")
-#        self.print_tb(input_data, valid_data, ack_in)
+        # print("before")
+        self.print_tb(input_data, valid_data, ack_in)
         self.output_from_tb(input_data, valid_data, ack_in)
-#        print(" ")
-#        print("after")
-#        self.print_tb(input_data, valid_data, ack_in)
-#        print(" ")
+        # print(" ")
+        # print("after")
+        # self.print_tb(input_data, valid_data, ack_in)
+        # print(" ")
         if self.index_inner == 0 and self.index_outer == 0:
             return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter
         else:

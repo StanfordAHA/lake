@@ -402,6 +402,8 @@ class LakeTopModel(Model):
 
         pref_data = []
         pref_valid = []
+        print(f"pref_data: {pref_data}")
+        print(f"pref_valid: {pref_valid}")
         for i in range(self.interconnect_output_ports):
             (pd, pv, psx) = self.prefetchers[i].interact(sync_data[i], sync_valid[i], tba_rdys[i])
             if type(pd) == list:

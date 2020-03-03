@@ -98,4 +98,6 @@ def test_tba(word_width=16,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
-test_tba()
+
+if __name__ == "main":
+    test_tba()
