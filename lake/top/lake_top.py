@@ -11,6 +11,7 @@ from lake.modules.transpose_buffer_aggregation import TransposeBufferAggregation
 from lake.modules.demux_reads import DemuxReads
 from lake.modules.sync_groups import SyncGroups
 from lake.modules.prefetcher import Prefetcher
+from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.passes.passes import lift_config_reg
 import kratos as kts
 

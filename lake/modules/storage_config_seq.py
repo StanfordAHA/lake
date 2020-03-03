@@ -93,45 +93,72 @@ class StorageConfigSeq(Generator):
         self._wen_out = self.output("wen_out", self.banks)
         self._ren_out = self.output("ren_out", self.banks)
 
-        # If we have one bank, we can just always rd/wr from that one
-        if self.banks == 1:
-            self.wire(self._wen_out, self._config_wr)
-            self.wire(self._ren_out, self._config_rd)
-        # Otherwise we need to extract the bank from the set
-        else:
-            # self._bank_sel = self.var("bank_sel", clog2(self.banks))
-            # self._bank_sel_reg = self.var("bank_sel_reg", clog2(self.banks))
-
-            for i in range(self.banks):
-                width = self.sets_per_macro
-                self.wire(self._wen_out[i], 
-                          self._config_wr & self._config_en[(i + 1) * width - 1, i * width].r_or())
-                self.wire(self._ren_out[i], 
-                          self._config_rd & self._config_en[(i + 1) * width - 1, i * width].r_or())
-
         # Handle data passing
         if self.fw_int == 1:
             # If word width is same as data width, just pass everything through
             self.wire(self._wr_data[0], self._config_data_in)
-            self.wire(self._rd_data_out, self._rd_data_stg[0])
+            # self.wire(self._rd_data_out, self._rd_data_stg[0])
+            num = 0
+            for i in range(self.banks):
+                for j in range(self.sets_per_macro):
+                    self.wire(self._rd_data_out[num], self._rd_data_stg[i])
+                    num = num + 1
         else:
             self._data_wr_reg = self.var("data_wr_reg",
                                          self.data_width,
                                          size=self.fw_int - 1,
                                          packed=True,
                                          explicit_array=True)
-            self._data_rd_reg = self.var("data_rd_reg",
-                                         self.data_width,
-                                         size=self.fw_int - 1,
-                                         packed=True,
-                                         explicit_array=True)
+            # self._data_rd_reg = self.var("data_rd_reg",
+            #                              self.data_width,
+            #                              size=self.fw_int - 1,
+            #                              packed=True,
+            #                              explicit_array=True)
 
             # Have word counter for repeated reads/writes
             self._cnt = self.var("cnt", clog2(self.fw_int))
+            self._rd_cnt = self.var("rd_cnt", clog2(self.fw_int))
+            self.add_code(self.update_cnt)
+            self.add_code(self.update_rd_cnt)
+            # Gate wen if not about to finish the word
 
+            num = 0
+            for i in range(self.banks):
+                for j in range(self.sets_per_macro):
+                    self.wire(self._rd_data_out[num], self._rd_data_stg[i][self._rd_cnt])
+                    num = num + 1
 
-        for i in range(self.total_sets):
-            self.wire(self._rd_data_out[i], 0)
+            # Deal with writing to the data buffer
+            self.add_code(self.write_buffer)
+
+            # Wire the reg + such to this guy
+            for i in range(self.fw_int - 1):
+                self.wire(self._wr_data[i], self._data_wr_reg[i])
+            self.wire(self._wr_data[self.fw_int - 1], self._config_data_in)
+
+        # If we have one bank, we can just always rd/wr from that one
+        if self.banks == 1:
+            if self.fw_int == 1:
+                self.wire(self._wen_out, self._config_wr)
+            else:
+                self.wire(self._wen_out, 
+                          self._config_wr & (self._cnt == (self.fw_int - 1)))
+            self.wire(self._ren_out, self._config_rd)
+        # Otherwise we need to extract the bank from the set
+        else:
+            if self.fw_int == 1:
+                for i in range(self.banks):
+                    width = self.sets_per_macro
+                    self.wire(self._wen_out[i], self._config_wr & self._config_en[(i + 1) * width - 1, i * width].r_or())
+            else:
+                for i in range(self.banks):
+                    width = self.sets_per_macro
+                    self.wire(self._wen_out[i], self._config_wr & self._config_en[(i + 1) * width - 1, i * width].r_or() & (self._cnt == (self.fw_int - 1)))
+
+            for i in range(self.banks):
+                width = self.sets_per_macro
+                self.wire(self._ren_out[i], 
+                          self._config_rd & self._config_en[(i + 1) * width - 1, i * width].r_or())
 
     @always_comb
     def demux_set_addr(self):
@@ -140,13 +167,39 @@ class StorageConfigSeq(Generator):
             if self._reduce_en[i]:
                 self._set_to_addr = i
 
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def update_cnt(self):
+        if ~self._rst_n:
+            self._cnt = 0
+        # Increment when reading/writing - making sure 
+        # that the sequencing is correct from app level!
+        elif self._config_wr | self._config_rd:
+            self._cnt = self._cnt + 1
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def update_rd_cnt(self):
+        if ~self._rst_n:
+            self._rd_cnt = 0
+        # Increment when reading/writing - making sure 
+        # that the sequencing is correct from app level!
+        else:
+            self._rd_cnt = self._cnt
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def write_buffer(self):
+        if ~self._rst_n:
+            self._data_wr_reg = 0
+        # Increment when reading/writing - making sure 
+        # that the sequencing is correct from app level!
+        elif self._config_wr & (self._cnt < self.fw_int - 1):
+            self._data_wr_reg[self._cnt] = self._config_data_in
 
 if __name__ == "__main__":
     db_dut = StorageConfigSeq(data_width=16,
                               config_addr_width=8,
                               addr_width=16,
                               fetch_width=64,
-                              total_sets=4,
+                              total_sets=2,
                               sets_per_macro=2)
     verilog(db_dut, filename="storage_config_seq.sv",
             additional_passes={"lift config regs": lift_config_reg})
