@@ -14,27 +14,30 @@ class TransposeBuffer(Generator):
                  # total number of transpose buffers
                  num_tb,
                  # height of this particular transpose buffer
-                 tb_height,
+                 max_tb_height,
                  # maximum value for range parameters in nested for loop
                  # (and as a result, maximum length of indices input vector)
                  # specifying inner for loop values for output column
                  # addressing
-                 max_range):
+                 max_range,
+                 tb_iterator_support):
         super().__init__("transpose_buffer", True)
 
         # generation parameters
         self.word_width = word_width
         self.fetch_width = fetch_width
         self.num_tb = num_tb
-        self.tb_height = tb_height
+        self.max_tb_height = max_tb_height
         self.max_range = max_range
+        self.tb_iterator_support = tb_iterator_support
 
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
         self.tb_col_index_bits = 2 * max(self.fetch_width_bits, self.num_tb_bits) + 1
-        self.tb_height_bits2 = max(1, clog2(2 * self.tb_height))
-        self.tb_height_bits = max(1, clog2(self.tb_height))
+        self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
+        self.max_tb_height_bits = max(1, clog2(self.max_tb_height))
+        self.tb_iterator_support_bits = max(1, clog2(self.tb_iterator_support))
 
         # inputs
         self.clk = self.clock("clk")
@@ -65,6 +68,12 @@ class TransposeBuffer(Generator):
         self.stride = self.input("stride", self.max_range_bits)
         self.stride.add_attribute(ConfigRegAttr("Application stride"))
 
+        self.tb_height = self.input("tb_height", self.max_tb_height_bits)
+        self.tb_height.add_attribute(ConfigRegAttr("Transpose Buffer height"))
+
+        self.dimensionality = self.input("dimensionality", self.tb_iterator_support_bits)
+        self.dimensionality.add_attribute(ConfigRegAttr("Transpose Buffer dimensionality"))
+
         # specifies inner for loop values for output column
         # addressing
         self.indices = self.input("indices",
@@ -87,7 +96,7 @@ class TransposeBuffer(Generator):
         # outputs
         self.col_pixels = self.output("col_pixels",
                                       width=self.word_width,
-                                      size=self.tb_height,
+                                      size=self.max_tb_height,
                                       packed=True,
                                       explicit_array=True)
         self.output_valid = self.output("output_valid", 1)
@@ -99,14 +108,14 @@ class TransposeBuffer(Generator):
 
         self.tb = self.var("tb",
                            width=self.word_width,
-                           size=[2 * self.tb_height, self.fetch_width],
+                           size=[2 * self.max_tb_height, self.fetch_width],
                            packed=True)
 
         self.input_buf_index = self.var("input_buf_index", 1)
         self.out_buf_index = self.var("out_buf_index", 1)
         self.prev_out_buf_index = self.var("prev_out_buf_index", 1)
-        self.row_index = self.var("row_index", self.tb_height_bits)
-        self.input_index = self.var("input_index", self.tb_height_bits2)
+        self.row_index = self.var("row_index", self.max_tb_height_bits)
+        self.input_index = self.var("input_index", self.max_tb_height_bits2)
 
         self.output_index_abs = self.var("output_index_abs", 2 * self.max_range_bits)
         self.output_index_long = self.var("output_index_long", 2 * self.max_range_bits)
@@ -120,33 +129,25 @@ class TransposeBuffer(Generator):
         self.start_data = self.var("start_data", 1)
         self.old_start_data = self.var("old_start_data", 1)
 
-        x = max(self.tb_col_index_bits, 2 * self.max_range_bits)
+        self.pause_output = self.var("pause_output", 1)
+        self.prev_pause_output = self.var("prev_pause_output", 1)
 
         self.add_code(self.set_index_outer)
         self.add_code(self.set_index_inner)
-        self.add_code(self.get_input_index)
-        self.add_code(self.input_to_tb)
+        self.add_code(self.set_pause_tb)
+        self.add_code(self.set_pause_output)
         self.add_code(self.set_row_index)
-        self.add_code(self.get_tb_indices)
+        self.add_code(self.set_input_buf_index)
+        self.add_code(self.set_input_index)
+        self.add_code(self.input_to_tb)
+        self.add_code(self.set_tb_out_indices)
         self.add_code(self.output_from_tb)
         self.add_code(self.set_output_valid)
         self.add_code(self.set_out_buf_index)
-        self.add_code(self.send_rdy_to_arbiter)
-        self.add_code(self.set_pause_output)
-        self.add_code(self.set_pause_tb)
-        self.add_code(self.set_input_buf_index)
-        self.add_code(self.add_curr_out_start)
-        self.add_code(self.add_prev_out_buf_index)
+        self.add_code(self.set_rdy_to_arbiter)
         self.add_code(self.set_start_data)
-
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def set_start_data(self):
-        if ~self.rst_n:
-            self.start_data = 0
-        elif self.valid_data & ~self.start_data:
-            self.start_data = 1
-
-        self.old_start_data = self.start_data
+        self.add_code(self.set_curr_out_start)
+        self.add_code(self.set_prev_out_buf_index)
 
     # get output loop iterators
     # set pause_tb signal to pause input/output depending on
@@ -155,11 +156,19 @@ class TransposeBuffer(Generator):
     def set_index_outer(self):
         if ~self.rst_n:
             self.index_outer = 0
-        elif self.index_inner == self.range_inner - 1:
+        elif self.dimensionality == 1:
             if self.index_outer == self.range_outer - 1:
                 self.index_outer = 0
-            else:
+            elif self.pause_tb:
+                self.index_outer = self.index_outer
+            elif ~self.pause_output:
                 self.index_outer = self.index_outer + 1
+        else:
+            if self.index_inner == self.range_inner - 1:
+                if self.index_outer == self.range_outer - 1:
+                    self.index_outer = 0
+                else:
+                    self.index_outer = self.index_outer + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_index_inner(self):
@@ -174,15 +183,23 @@ class TransposeBuffer(Generator):
     def set_pause_tb(self):
         if ~self.rst_n:
             self.pause_tb = 1
-        elif self.index_inner == self.range_inner - 1:
+        elif self.dimensionality == 1:
             if self.index_outer == self.range_outer - 1:
                 self.pause_tb = ~self.valid_data
-            else:
+            elif self.pause_tb:
+                self.pause_tb = ~self.valid_data
+            elif ~self.pause_output:
                 self.pause_tb = 0
-        elif self.pause_tb:
-            self.pause_tb = ~self.valid_data
-        elif ~self.pause_output:
-            self.pause_tb = 0
+        else:
+            if self.index_inner == self.range_inner - 1:
+                if self.index_outer == self.range_outer - 1:
+                    self.pause_tb = ~self.valid_data
+                else:
+                    self.pause_tb = 0
+            elif self.pause_tb:
+                self.pause_tb = ~self.valid_data
+            elif ~self.pause_output:
+                self.pause_tb = 0
 
     @always_comb
     def set_pause_output(self):
@@ -199,7 +216,7 @@ class TransposeBuffer(Generator):
     def set_row_index(self):
         if ~self.rst_n:
             self.row_index = 0
-        elif self.valid_data & (self.row_index == self.tb_height - 1):
+        elif self.valid_data & self.row_index == self.tb_height - 1:
             self.row_index = 0
         elif self.valid_data:
             self.row_index = self.row_index + 1
@@ -214,12 +231,12 @@ class TransposeBuffer(Generator):
     # for double buffer, get index of row to fill in transpose buffer
     # with input data
     @always_comb
-    def get_input_index(self):
+    def set_input_index(self):
         if self.input_buf_index:
-            self.input_index = const(tb_height, self.tb_height_bits2) + \
-                self.row_index.extend(self.tb_height_bits2)
+            self.input_index = const(self.max_tb_height, self.max_tb_height_bits2) + \
+                self.row_index.extend(self.max_tb_height_bits2)
         else:
-            self.input_index = self.row_index.extend(self.tb_height_bits2)
+            self.input_index = self.row_index.extend(self.max_tb_height_bits2)
 
     # input to transpose buffer
     @always_ff((posedge, "clk"))
@@ -230,11 +247,15 @@ class TransposeBuffer(Generator):
 
     # get relative output column index from absolute output column index
     @always_comb
-    def get_tb_indices(self):
+    def set_tb_out_indices(self):
         self.indices_index_inner = self.indices[self.index_inner]
-        self.output_index_abs = (self.index_outer.extend(2 * self.max_range_bits) *
-                                 self.stride.extend(2 * self.max_range_bits) +
-                                 self.indices_index_inner.extend(2 * self.max_range_bits))
+        if self.dimensionality == 1:
+            self.output_index_abs = self.index_outer.extend(2 * self.max_range_bits) * \
+                                    self.stride.extend(2 * self.max_range_bits)
+        else:
+            self.output_index_abs = self.index_outer.extend(2 * self.max_range_bits) * \
+                                    self.stride.extend(2 * self.max_range_bits) + \
+                                    self.indices_index_inner.extend(2 * self.max_range_bits)
         self.output_index_long = self.output_index_abs % fetch_width
         self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
 
@@ -242,33 +263,24 @@ class TransposeBuffer(Generator):
     # @always_ff((posedge, "clk"))
     @always_comb
     def output_from_tb(self):
-        for i in range(tb_height):
-            if (((self.output_index_abs % self.fetch_width) == 0) &
-               ~(self.output_index_abs == self.curr_out_start)):
-                if ~((self.index_inner == 0) & (self.index_outer == 0)):
-                    if ~self.out_buf_index:
-                        self.col_pixels[i] = self.tb[i][self.output_index]
-                    else:
-                        self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
-                else:
-                    if self.out_buf_index:
-                        self.col_pixels[i] = self.tb[i][self.output_index]
-                    else:
-                        self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
-            else:
+        self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
+        for i in range(max_tb_height):
+            if i < self.tb_height:
                 if self.out_buf_index:
                     self.col_pixels[i] = self.tb[i][self.output_index]
                 else:
-                    self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
+                    self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
 
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
-
-    @always_comb
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid(self):
+        self.prev_pause_output = self.pause_output
         if ~self.rst_n:
             self.output_valid = 0
         elif self.pause_tb | self.pause_output:
+            self.output_valid = 0
+        elif self.prev_pause_output & ~self.pause_output:
             self.output_valid = 0
         else:
             self.output_valid = 1
@@ -277,37 +289,40 @@ class TransposeBuffer(Generator):
     def set_out_buf_index(self):
         if ~self.rst_n:
             self.out_buf_index = 1
-        elif self.pause_tb | self.pause_output:
-            self.out_buf_index = 1
-        elif (self.index_inner == 0) & (self.index_outer == 0):
-            self.out_buf_index = 1
-        elif ((self.output_index_abs % self.fetch_width) == 0):
-            if (self.output_index_abs != self.curr_out_start):
-                self.out_buf_index = ~self.out_buf_index
+        elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
+            self.out_buf_index = ~self.out_buf_index
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def add_curr_out_start(self):
+    def set_curr_out_start(self):
         if ~self.rst_n:
             self.curr_out_start = 0
-        elif ((self.output_index_abs % self.fetch_width) == 0):
-            if (self.output_index_abs != self.curr_out_start):
-                self.curr_out_start = self.output_index_abs
+        elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
+            self.curr_out_start = self.curr_out_start + self.fetch_width
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def add_prev_out_buf_index(self):
+    def set_prev_out_buf_index(self):
         if ~self.rst_n:
             self.prev_out_buf_index = 0
         else:
-            if (self.index_inner == 0) & (self.index_outer == 0):
-                self.prev_out_buf_index = 0
-            else:
-                self.prev_out_buf_index = self.out_buf_index
+            self.prev_out_buf_index = self.out_buf_index
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def send_rdy_to_arbiter(self):
+    def set_start_data(self):
+        if ~self.rst_n:
+            self.start_data = 0
+        elif self.valid_data & ~self.start_data:
+            self.start_data = 1
+
+        self.old_start_data = self.start_data
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_rdy_to_arbiter(self):
         if ~self.rst_n:
             self.rdy_to_arbiter = 1
         elif self.prev_out_buf_index != self.out_buf_index:
             self.rdy_to_arbiter = 1
+        elif self.tb_height != 1:
+            if self.row_index != self.tb_height - 1:
+                self.rdy_to_arbiter = 1
         elif self._ack_in:
             self.rdy_to_arbiter = 0
