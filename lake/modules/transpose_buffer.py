@@ -148,6 +148,9 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_start_data)
         self.add_code(self.set_curr_out_start)
         self.add_code(self.set_prev_out_buf_index)
+        self.add_code(self.set_output_index)
+        self.add_code(self.set_prev_pause_output)
+        self.add_code(self.set_old_start_data)
 
     # get output loop iterators
     # set pause_tb signal to pause input/output depending on
@@ -263,7 +266,6 @@ class TransposeBuffer(Generator):
     # @always_ff((posedge, "clk"))
     @always_comb
     def output_from_tb(self):
-        self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
         for i in range(max_tb_height):
             if i < self.tb_height:
                 if self.out_buf_index:
@@ -271,11 +273,14 @@ class TransposeBuffer(Generator):
                 else:
                     self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
 
+    @always_ff((posedge, "clk"))
+    def set_output_index(self):
+        self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
+
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid(self):
-        self.prev_pause_output = self.pause_output
         if ~self.rst_n:
             self.output_valid = 0
         elif self.pause_tb | self.pause_output:
@@ -284,6 +289,10 @@ class TransposeBuffer(Generator):
             self.output_valid = 0
         else:
             self.output_valid = 1
+
+    @always_ff((posedge, "clk"))
+    def set_prev_pause_output(self):
+        self.prev_pause_output = self.pause_output
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_out_buf_index(self):
@@ -313,6 +322,8 @@ class TransposeBuffer(Generator):
         elif self.valid_data & ~self.start_data:
             self.start_data = 1
 
+    @always_ff((posedge, "clk"))
+    def set_old_start_data(self):
         self.old_start_data = self.start_data
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
