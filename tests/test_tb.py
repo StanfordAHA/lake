@@ -14,7 +14,8 @@ def test_tb(word_width=16,
             fetch_width=4,
             num_tb=1,
             max_tb_height=1,
-            max_range=5):
+            max_range=5,
+            tb_iterator_support=2):
 
     model_tb = TBModel(word_width,
                        fetch_width,
@@ -35,7 +36,8 @@ def test_tb(word_width=16,
                           fetch_width,
                           num_tb,
                           max_tb_height,
-                          max_range)
+                          max_range,
+                          tb_iterator_support)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True)
     tester = fault.Tester(magma_dut, magma_dut.clk)
@@ -56,6 +58,7 @@ def test_tb(word_width=16,
     tester.circuit.range_inner = 3
     tester.circuit.stride = 2
     tester.circuit.tb_height = 1
+    tester.circuit.dimensionality = 2
 
     rand.seed(0)
 

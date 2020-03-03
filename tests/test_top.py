@@ -30,6 +30,7 @@ def top_test(data_width=16,
              tb_range_max=64,
              tb_sched_max=64,
              num_tb=1,
+             tb_iterator_support=2,
              multiwrite=1,
              max_prefetch=64):
 
@@ -77,7 +78,8 @@ def top_test(data_width=16,
     new_config["tba_0_tb_0_range_inner"] = 3
     new_config["tba_0_tb_0_range_outer"] = 62
     new_config["tba_0_tb_0_stride"] = 2
-#    new_config["tba_0_tb_0_height"] = 1
+#    new_config["tba_0_tb_0_tb_height"] = 1
+#    new_config["tba_0_tb_0_dimensionality"] = 2
     
     new_config["tba_1_tb_0_indices_0"] = 0
     new_config["tba_1_tb_0_indices_1"] = 1
@@ -85,7 +87,8 @@ def top_test(data_width=16,
     new_config["tba_1_tb_0_range_inner"] = 3
     new_config["tba_1_tb_0_range_outer"] = 62
     new_config["tba_1_tb_0_stride"] = 2
-#    new_config["tba_1_tb_0_height"] = 1
+#    new_config["tba_1_tb_0_tb_height"] = 1
+#    new_config["tba_1_tb_0_dimensionality"] = 2
 
     new_config["tba_2_tb_0_indices_0"] = 0
     new_config["tba_2_tb_0_indices_1"] = 1
@@ -93,7 +96,8 @@ def top_test(data_width=16,
     new_config["tba_2_tb_0_range_inner"] = 3
     new_config["tba_2_tb_0_range_outer"] = 62
     new_config["tba_2_tb_0_stride"] = 2
-#    new_config["tba_2_tb_0_height"] = 1
+#    new_config["tba_2_tb_0_tb_height"] = 1
+#    new_config["tba_2_tb_0_dimensionality"] = 2
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
@@ -123,6 +127,7 @@ def top_test(data_width=16,
                             tb_range_max=tb_range_max,
                             tb_sched_max=tb_sched_max,
                             num_tb=num_tb,
+                            tb_iterator_support=tb_iterator_support,
                             multiwrite=multiwrite,
                             max_prefetch=max_prefetch)
 
@@ -169,6 +174,10 @@ def top_test(data_width=16,
     tester.circuit.tba_0_tb_0_tb_height = 1
     tester.circuit.tba_1_tb_0_tb_height = 1
     tester.circuit.tba_2_tb_0_tb_height = 1
+    tester.tba_0_tb_0_dimensionality = 2
+    tester.tba_1_tb_0_dimensionality = 2
+    tester.tba_2_tb_0_dimensionality = 2
+
 
     rand.seed(0)
     tester.circuit.clk = 0

@@ -38,6 +38,7 @@ class LakeTop(Generator):
                  tb_range_max=2048,
                  tb_sched_max=64,
                  num_tb=1,
+                 tb_iterator_support=2,
                  multiwrite=2,
                  max_prefetch=64):
         super().__init__("LakeTop", debug=True)
@@ -66,6 +67,7 @@ class LakeTop(Generator):
         self.max_tb_height = max_tb_height
         self.tb_range_max = tb_range_max
         self.tb_sched_max = tb_sched_max
+        self.tb_iterator_support = tb_iterator_support
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
         # phases = [] TODO
@@ -465,7 +467,8 @@ class LakeTop(Generator):
                                              fetch_width=self.fw_int,
                                              num_tb=self.num_tb,
                                              max_tb_height=self.max_tb_height,
-                                             max_range=self.tb_range_max)
+                                             max_range=self.tb_range_max,
+                                             tb_iterator_support=self.tb_iterator_support)
 
             self.add_child(f"tba_{i}", tba,
                            clk=self._clk,

@@ -20,7 +20,8 @@ class TransposeBufferAggregation(Generator):
                  # (and as a result, maximum length of indices input vector)
                  # specifying inner for loop values for output column
                  # addressing
-                 max_range):
+                 max_range,
+                 tb_iterator_support):
         super().__init__("transpose_buffer_aggregation", True)
 
         # generation parameters
@@ -29,6 +30,7 @@ class TransposeBufferAggregation(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.max_range = max_range
+        self.tb_iterator_support = tb_iterator_support
 
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
@@ -77,7 +79,8 @@ class TransposeBufferAggregation(Generator):
                                            self.fetch_width,
                                            self.num_tb,
                                            self.max_tb_height,
-                                           self.max_range),
+                                           self.max_range,
+                                           self.tb_iterator_support),
                            clk=self.clk,
                            rst_n=self.rst_n,
                            input_data=self.SRAM_to_tb_data,
