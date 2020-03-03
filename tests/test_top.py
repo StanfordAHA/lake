@@ -193,7 +193,7 @@ def test_identity_stream(data_width=16,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
-def top_test(data_width=16,
+def test_top(data_width=16,
              mem_width=64,
              mem_depth=512,
              banks=2,
@@ -261,21 +261,21 @@ def top_test(data_width=16,
     new_config["tba_0_tb_0_indices_2"] = 2
     new_config["tba_0_tb_0_range_inner"] = 3
     new_config["tba_0_tb_0_range_outer"] = 62
-    new_config["tba_0_tb_0_stride"] = 1
+    new_config["tba_0_tb_0_stride"] = 2
 
     new_config["tba_1_tb_0_indices_0"] = 0
     new_config["tba_1_tb_0_indices_1"] = 1
     new_config["tba_1_tb_0_indices_2"] = 2
     new_config["tba_1_tb_0_range_inner"] = 3
     new_config["tba_1_tb_0_range_outer"] = 62
-    new_config["tba_1_tb_0_stride"] = 1
+    new_config["tba_1_tb_0_stride"] = 2
 
     new_config["tba_2_tb_0_indices_0"] = 0
     new_config["tba_2_tb_0_indices_1"] = 1
     new_config["tba_2_tb_0_indices_2"] = 2
     new_config["tba_2_tb_0_range_inner"] = 3
     new_config["tba_2_tb_0_range_outer"] = 62
-    new_config["tba_2_tb_0_stride"] = 1
+    new_config["tba_2_tb_0_stride"] = 2
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
@@ -401,7 +401,7 @@ def top_test(data_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "top_dump_new"
+        tempdir = "top_dump_conv"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
@@ -409,5 +409,5 @@ def top_test(data_width=16,
 
 
 if __name__ == "__main__":
-    test_identity_stream()
-    #top_test()
+    # test_identity_stream()
+    top_test()
