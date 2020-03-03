@@ -34,7 +34,7 @@ class LakeTop(Generator):
                  output_max_port_sched=64,
                  align_input=1,
                  max_line_length=2048,
-                 tb_height=1,
+                 max_tb_height=1,
                  tb_range_max=2048,
                  tb_sched_max=64,
                  num_tb=1,
@@ -63,7 +63,7 @@ class LakeTop(Generator):
         assert self.mem_width > self.data_width, "Data width needs to be smaller than mem"
         self.fw_int = int(self.mem_width / self.data_width)
         self.num_tb = num_tb
-        self.tb_height = tb_height
+        self.max_tb_height = max_tb_height
         self.tb_range_max = tb_range_max
         self.tb_sched_max = tb_sched_max
         self.multiwrite = multiwrite
@@ -464,7 +464,7 @@ class LakeTop(Generator):
             tba = TransposeBufferAggregation(word_width=self.data_width,
                                              fetch_width=self.fw_int,
                                              num_tb=self.num_tb,
-                                             tb_height=self.tb_height,
+                                             max_tb_height=self.max_tb_height,
                                              max_range=self.tb_range_max)
 
             self.add_child(f"tba_{i}", tba,

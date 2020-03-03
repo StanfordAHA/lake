@@ -14,7 +14,7 @@ class TransposeBuffer(Generator):
                  # total number of transpose buffers
                  num_tb,
                  # height of this particular transpose buffer
-                 tb_height,
+                 max_tb_height,
                  # maximum value for range parameters in nested for loop
                  # (and as a result, maximum length of indices input vector)
                  # specifying inner for loop values for output column
@@ -26,15 +26,15 @@ class TransposeBuffer(Generator):
         self.word_width = word_width
         self.fetch_width = fetch_width
         self.num_tb = num_tb
-        self.tb_height = tb_height
+        self.max_tb_height = max_tb_height
         self.max_range = max_range
 
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
         self.tb_col_index_bits = 2 * max(self.fetch_width_bits, self.num_tb_bits) + 1
-        self.tb_height_bits2 = max(1, clog2(2 * self.tb_height))
-        self.tb_height_bits = max(1, clog2(self.tb_height))
+        self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
+        self.max_tb_height_bits = max(1, clog2(self.max_tb_height))
 
         # inputs
         self.clk = self.clock("clk")
@@ -65,6 +65,9 @@ class TransposeBuffer(Generator):
         self.stride = self.input("stride", self.max_range_bits)
         self.stride.add_attribute(ConfigRegAttr("Application stride"))
 
+        self.tb_height = self.input("tb_height", self.max_tb_height_bits)
+        self.tb_height.add_attribute(ConfigRegAttr("Transpose Buffer height"))
+
         # specifies inner for loop values for output column
         # addressing
         self.indices = self.input("indices",
@@ -87,7 +90,7 @@ class TransposeBuffer(Generator):
         # outputs
         self.col_pixels = self.output("col_pixels",
                                       width=self.word_width,
-                                      size=self.tb_height,
+                                      size=self.max_tb_height,
                                       packed=True,
                                       explicit_array=True)
         self.output_valid = self.output("output_valid", 1)
@@ -99,14 +102,14 @@ class TransposeBuffer(Generator):
 
         self.tb = self.var("tb",
                            width=self.word_width,
-                           size=[2 * self.tb_height, self.fetch_width],
+                           size=[2 * self.max_tb_height, self.fetch_width],
                            packed=True)
 
         self.input_buf_index = self.var("input_buf_index", 1)
         self.out_buf_index = self.var("out_buf_index", 1)
         self.prev_out_buf_index = self.var("prev_out_buf_index", 1)
-        self.row_index = self.var("row_index", self.tb_height_bits)
-        self.input_index = self.var("input_index", self.tb_height_bits2)
+        self.row_index = self.var("row_index", self.max_tb_height_bits)
+        self.input_index = self.var("input_index", self.max_tb_height_bits2)
 
         self.output_index_abs = self.var("output_index_abs", 2 * self.max_range_bits)
         self.output_index_long = self.var("output_index_long", 2 * self.max_range_bits)
@@ -211,10 +214,10 @@ class TransposeBuffer(Generator):
     @always_comb
     def set_input_index(self):
         if self.input_buf_index:
-            self.input_index = const(tb_height, self.tb_height_bits2) + \
-                self.row_index.extend(self.tb_height_bits2)
+            self.input_index = const(self.max_tb_height, self.max_tb_height_bits2) + \
+                self.row_index.extend(self.max_tb_height_bits2)
         else:
-            self.input_index = self.row_index.extend(self.tb_height_bits2)
+            self.input_index = self.row_index.extend(self.max_tb_height_bits2)
 
     # input to transpose buffer
     @always_ff((posedge, "clk"))
@@ -236,11 +239,12 @@ class TransposeBuffer(Generator):
     @always_ff((posedge, "clk"))
     def output_from_tb(self):
         self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
-        for i in range(tb_height):
-            if self.out_buf_index:
-                self.col_pixels[i] = self.tb[i][self.output_index]
-            else:
-                self.col_pixels[i] = self.tb[i + self.tb_height][self.output_index]
+        for i in range(max_tb_height):
+            if i < self.tb_height:
+                if self.out_buf_index:
+                    self.col_pixels[i] = self.tb[i][self.output_index]
+                else:
+                    self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
 
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately

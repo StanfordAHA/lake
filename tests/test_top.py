@@ -26,7 +26,7 @@ def top_test(data_width=16,
              output_max_port_sched=64,
              align_input=1,
              max_line_length=256,
-             tb_height=1,
+             max_tb_height=1,
              tb_range_max=64,
              tb_sched_max=64,
              num_tb=1,
@@ -77,13 +77,15 @@ def top_test(data_width=16,
     new_config["tba_0_tb_0_range_inner"] = 3
     new_config["tba_0_tb_0_range_outer"] = 62
     new_config["tba_0_tb_0_stride"] = 2
-
+#    new_config["tba_0_tb_0_height"] = 1
+    
     new_config["tba_1_tb_0_indices_0"] = 0
     new_config["tba_1_tb_0_indices_1"] = 1
     new_config["tba_1_tb_0_indices_2"] = 2
     new_config["tba_1_tb_0_range_inner"] = 3
     new_config["tba_1_tb_0_range_outer"] = 62
     new_config["tba_1_tb_0_stride"] = 2
+#    new_config["tba_1_tb_0_height"] = 1
 
     new_config["tba_2_tb_0_indices_0"] = 0
     new_config["tba_2_tb_0_indices_1"] = 1
@@ -91,6 +93,7 @@ def top_test(data_width=16,
     new_config["tba_2_tb_0_range_inner"] = 3
     new_config["tba_2_tb_0_range_outer"] = 62
     new_config["tba_2_tb_0_stride"] = 2
+#    new_config["tba_2_tb_0_height"] = 1
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
@@ -116,7 +119,7 @@ def top_test(data_width=16,
                             output_max_port_sched=output_max_port_sched,
                             align_input=align_input,
                             max_line_length=max_line_length,
-                            tb_height=tb_height,
+                            tb_height=max_tb_height,
                             tb_range_max=tb_range_max,
                             tb_sched_max=tb_sched_max,
                             num_tb=num_tb,
@@ -143,7 +146,7 @@ def top_test(data_width=16,
                      output_max_port_sched=output_max_port_sched,
                      align_input=align_input,
                      max_line_length=max_line_length,
-                     tb_height=tb_height,
+                     max_tb_height=max_tb_height,
                      tb_range_max=tb_range_max,
                      tb_sched_max=tb_sched_max,
                      num_tb=num_tb,
@@ -162,6 +165,10 @@ def top_test(data_width=16,
     ###
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
+
+    tester.circuit.tba_0_tb_0_tb_height = 1
+    tester.circuit.tba_1_tb_0_tb_height = 1
+    tester.circuit.tba_2_tb_0_tb_height = 1
 
     rand.seed(0)
     tester.circuit.clk = 0

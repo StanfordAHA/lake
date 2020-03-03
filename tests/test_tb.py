@@ -13,13 +13,13 @@ import pytest
 def test_tb(word_width=16,
             fetch_width=4,
             num_tb=1,
-            tb_height=1,
+            max_tb_height=1,
             max_range=5):
 
     model_tb = TBModel(word_width,
                        fetch_width,
                        num_tb,
-                       tb_height,
+                       max_tb_height,
                        max_range)
 
     new_config = {}
@@ -27,13 +27,14 @@ def test_tb(word_width=16,
     new_config["range_inner"] = 3
     new_config["stride"] = 2
     new_config["indices"] = [0, 1, 2]
+    new_config["tb_height"] = 1
 
     model_tb.set_config(new_config=new_config)
 
     dut = TransposeBuffer(word_width,
                           fetch_width,
                           num_tb,
-                          tb_height,
+                          max_tb_height,
                           max_range)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True)
@@ -54,10 +55,11 @@ def test_tb(word_width=16,
     tester.circuit.range_outer = 5
     tester.circuit.range_inner = 3
     tester.circuit.stride = 2
+    tester.circuit.tb_height = 1
 
     rand.seed(0)
 
-    num_iters = 66
+    num_iters = 50
     for i in range(num_iters):
         # print()
         print("i: ", i)
