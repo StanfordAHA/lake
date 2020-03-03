@@ -125,7 +125,6 @@ class TransposeBuffer(Generator):
         self.curr_out_start = self.var("curr_out_start", 2 * self.max_range_bits)
 
         self.pause_tb = self.var("pause_tb", 1)
-        self.pause_output = self.var("pause_output", 1)
         self.start_data = self.var("start_data", 1)
         self.old_start_data = self.var("old_start_data", 1)
 
@@ -179,6 +178,8 @@ class TransposeBuffer(Generator):
             self.index_inner = 0
         elif self.index_inner == self.range_inner - 1:
             self.index_inner = 0
+        elif self.pause_tb:
+            self.index_inner = self.index_inner
         elif ~self.pause_output:
             self.index_inner = self.index_inner + 1
 
@@ -230,6 +231,8 @@ class TransposeBuffer(Generator):
             self.input_buf_index = 0
         elif self.valid_data & (self.row_index == self.tb_height - 1):
             self.input_buf_index = ~self.input_buf_index
+        # else:
+        #     self.input_buf_index = self.input_buf_index
 
     # for double buffer, get index of row to fill in transpose buffer
     # with input data
@@ -260,11 +263,9 @@ class TransposeBuffer(Generator):
                                     self.stride.extend(2 * self.max_range_bits) + \
                                     self.indices_index_inner.extend(2 * self.max_range_bits)
         self.output_index_long = self.output_index_abs % fetch_width
-        self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
 
     # output column from transpose buffer
-    # @always_ff((posedge, "clk"))
-    @always_comb
+    @always_ff((posedge, "clk"))
     def output_from_tb(self):
         for i in range(max_tb_height):
             if i < self.tb_height:
@@ -329,6 +330,8 @@ class TransposeBuffer(Generator):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_rdy_to_arbiter(self):
         if ~self.rst_n:
+            self.rdy_to_arbiter = 1
+        elif self.start_data & ~self.old_start_data:
             self.rdy_to_arbiter = 1
         elif self.prev_out_buf_index != self.out_buf_index:
             self.rdy_to_arbiter = 1
