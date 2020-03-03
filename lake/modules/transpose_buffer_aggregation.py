@@ -15,20 +15,22 @@ class TransposeBufferAggregation(Generator):
                  # total number of transpose buffers
                  num_tb,
                  # height of this particular transpose buffer
-                 tb_height,
+                 max_tb_height,
                  # maximum value for range parameters in nested for loop
                  # (and as a result, maximum length of indices input vector)
                  # specifying inner for loop values for output column
                  # addressing
-                 max_range):
+                 max_range,
+                 tb_iterator_support):
         super().__init__("transpose_buffer_aggregation", True)
 
         # generation parameters
         self.word_width = word_width
         self.fetch_width = fetch_width
         self.num_tb = num_tb
-        self.tb_height = tb_height
+        self.max_tb_height = max_tb_height
         self.max_range = max_range
+        self.tb_iterator_support = tb_iterator_support
 
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
@@ -51,7 +53,7 @@ class TransposeBufferAggregation(Generator):
         # outputs
         self.tb_to_interconnect_data = self.output("tb_to_interconnect_data",
                                                    width=self.word_width,
-                                                   size=self.tb_height,
+                                                   size=self.max_tb_height,
                                                    packed=True)
         self.tb_to_interconnect_valid = self.output("tb_to_interconnect_valid", 1)
         self.tb_arbiter_rdy = self.output("tb_arbiter_rdy", 1)
@@ -64,20 +66,21 @@ class TransposeBufferAggregation(Generator):
 
         self.tb_output_data_all = self.var("tb_output_data_all",
                                            width=self.word_width,
-                                           size=[self.num_tb, self.tb_height],
+                                           size=[self.num_tb, self.max_tb_height],
                                            packed=True)
         self.tb_output_valid_all = self.var("tb_output_valid_all", width=1, size=self.num_tb, packed=True)
         self.tb_arbiter_rdy_all = self.var("tb_arbiter_rdy_all", width=1, size=self.num_tb, packed=True)
         self.output_valid = self.var("output_valid", 1)
-        self.output_inter = self.var("output_inter", width=self.word_width, size=self.tb_height, packed=True)
+        self.output_inter = self.var("output_inter", width=self.word_width, size=self.max_tb_height, packed=True)
 
         for i in range(self.num_tb):
             self.add_child(f"tb_{i}",
                            TransposeBuffer(self.word_width,
                                            self.fetch_width,
                                            self.num_tb,
-                                           self.tb_height,
-                                           self.max_range),
+                                           self.max_tb_height,
+                                           self.max_range,
+                                           self.tb_iterator_support),
                            clk=self.clk,
                            rst_n=self.rst_n,
                            input_data=self.SRAM_to_tb_data,
