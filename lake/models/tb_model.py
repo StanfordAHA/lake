@@ -194,9 +194,8 @@ class TBModel(Model):
         for i in range(self.tb_height):
             self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
-        if ((self.output_index_abs % self.fetch_width == 0) and
-                (self.output_index_abs != self.curr_out_start)):
-            self.curr_out_start = self.output_index_abs
+        if self.output_index_abs >= self.curr_out_start + self.fetch_width:
+            self.curr_out_start = self.curr_out_start + self.fetch_width
 
         self.output_index_abs = self.index_outer * self.config["stride"] + \
             self.config["indices"][self.index_inner]
@@ -209,17 +208,9 @@ class TBModel(Model):
 
         if (self.index_inner == 0) and (self.index_outer == 0):
             self.out_buf_index = 1
-        elif ((self.output_index_abs % self.fetch_width == 0) and (self.output_index_abs != self.curr_out_start)):
+        elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
             self.out_buf_index = 1 - self.out_buf_index
         
-#        if valid_data:
-#            self.tb[self.row_index + self.tb_height * self.input_buf_index] = input_data
-#            if self.row_index == self.tb_height - 1:
-#                self.row_index = 0
-#                self.input_buf_index = 1 - self.input_buf_index
-#            else:
-#                self.row_index = self.row_index + 1
-
         if self.pause_tb:
             self.pause_output = 1
         elif self.start_data and (not self.old_start_data):
@@ -271,4 +262,7 @@ class TBModel(Model):
         print("after")
         self.print_tb(input_data, valid_data, ack_in)
         print(" ")
-        return self.prev_col_pixels2, self.prev_output_valid2, self.rdy_to_arbiter
+        if self.index_inner == 0 and self.index_outer == 0:
+            return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter
+        else:
+            return self.prev_col_pixels2, self.prev_output_valid2, self.rdy_to_arbiter
