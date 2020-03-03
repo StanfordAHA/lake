@@ -176,12 +176,15 @@ class TransposeBuffer(Generator):
     def set_index_inner(self):
         if ~self.rst_n:
             self.index_inner = 0
-        elif self.index_inner == self.range_inner - 1:
+        elif self.dimensionality == 1:
             self.index_inner = 0
-        elif self.pause_tb:
-            self.index_inner = self.index_inner
-        elif ~self.pause_output:
-            self.index_inner = self.index_inner + 1
+        else:
+            if self.index_inner == self.range_inner - 1:
+                self.index_inner = 0
+            elif self.pause_tb:
+                self.index_inner = self.index_inner
+            elif ~self.pause_output:
+                self.index_inner = self.index_inner + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_pause_tb(self):
@@ -254,11 +257,12 @@ class TransposeBuffer(Generator):
     # get relative output column index from absolute output column index
     @always_comb
     def set_tb_out_indices(self):
-        self.indices_index_inner = self.indices[self.index_inner]
         if self.dimensionality == 1:
+            self.indices_index_inner = 0
             self.output_index_abs = self.index_outer.extend(2 * self.max_range_bits) * \
                                     self.stride.extend(2 * self.max_range_bits)
         else:
+            self.indices_index_inner = self.indices[self.index_inner]
             self.output_index_abs = self.index_outer.extend(2 * self.max_range_bits) * \
                                     self.stride.extend(2 * self.max_range_bits) + \
                                     self.indices_index_inner.extend(2 * self.max_range_bits)

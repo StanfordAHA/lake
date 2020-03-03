@@ -181,6 +181,7 @@ class LakeTopModel(Model):
                 self.config[f"tba_{port}_tb_{i}_range_inner"] = 0
                 self.config[f"tba_{port}_tb_{i}_range_outer"] = 0
                 self.config[f"tba_{port}_tb_{i}_stride"] = 0
+                self.config[f"tba_{port}_tb_{i}_dimensionality"] = 0
                 for j in range(self.tb_sched_max):
                     self.config[f"tba_{port}_tb_{i}_indices_{j}"] = 0
 
@@ -270,6 +271,7 @@ class LakeTopModel(Model):
             tba_config[f"range_outer"] = self.config[f"tba_{port}_tb_0_range_outer"]
             tba_config[f"stride"] = self.config[f"tba_{port}_tb_0_stride"]
             tba_config["indices"] = []
+            tba_config[f"dimensionality"] = self.config[f"tba_{port}_tb_0_dimensionality"]
             for j in range(self.tb_sched_max):
                 tba_config[f"indices"].append(self.config[f"tba_{port}_tb_0_indices_{j}"])
             self.tbas[port].set_config(tba_config)
@@ -402,7 +404,10 @@ class LakeTopModel(Model):
         pref_valid = []
         for i in range(self.interconnect_output_ports):
             (pd, pv, psx) = self.prefetchers[i].interact(sync_data[i], sync_valid[i], tba_rdys[i])
-            pref_data.append(pd.copy())
+            if type(pd) == list:
+                pref_data.append(pd.copy())
+            else:
+                pref_data.append(pd)
             pref_valid.append(pv)
 
         # print(f"pref data: {pref_data}, pref valid: {pref_valid}, tba_rdy: {tba_rdys}")

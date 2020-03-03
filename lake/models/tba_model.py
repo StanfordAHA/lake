@@ -25,6 +25,7 @@ class TBAModel(Model):
         self.config["range_inner"] = 1
         self.config["stride"] = 1
         self.config["indices"] = [0]
+        self.config["dimensionality"] = 1
 
         self.output_valid_all = []
         for i in range(self.num_tb):
