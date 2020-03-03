@@ -1,6 +1,6 @@
 import kratos
 from kratos import *
-from math import log, floor
+from math import log
 from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
@@ -115,21 +115,12 @@ class TransposeBuffer(Generator):
                                             clog2(2 * self.num_tb * self.fetch_width))
         self.curr_out_start = self.var("curr_out_start", 2 * self.max_range_bits)
 
-        # self.tb_distance = self.var("tb_distance", self.tb_col_index_bits)
-        # delete this signal? or keep for code clarity
-        # self.tb0_start = self.var("tb0_start", self.tb_col_index_bits)
-        # self.tb0_end = self.var("tb0_end", self.tb_col_index_bits)
-        # self.tb1_start = self.var("tb1_start", self.tb_col_index_bits)
-        # self.tb1_end = self.var("tb1_end", self.tb_col_index_bits)
-        self.num_valid = self.var("num_valid", self.tb_height_bits)
         self.pause_tb = self.var("pause_tb", 1)
         self.start_data = self.var("start_data", 1)
         self.old_start_data = self.var("old_start_data", 1)
 
         self.pause_output = self.var("pause_output", 1)
         self.prev_pause_output = self.var("prev_pause_output", 1)
-
-        x = max(self.tb_col_index_bits, 2 * self.max_range_bits)
 
         self.add_code(self.get_output_loop_iterators)
         self.add_code(self.get_input_index)
@@ -138,9 +129,7 @@ class TransposeBuffer(Generator):
         self.add_code(self.get_tb_indices)
         self.add_code(self.output_from_tb)
         self.add_code(self.set_output_valid_out_buf_index)
-        # self.add_code(self.tb_col_indices)
         self.add_code(self.send_rdy_to_arbiter)
-        self.add_code(self.num_valid_set)
         self.add_code(self.indicate_start_data)
         self.add_code(self.set_pause_output)
         self.add_code(self.set_pause_tb)
@@ -310,26 +299,3 @@ class TransposeBuffer(Generator):
                 self.rdy_to_arbiter = 1
         elif self._ack_in:
             self.rdy_to_arbiter = 0
-
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def num_valid_set(self):
-        if ~self.rst_n:
-            self.num_valid = 0
-        elif self.prev_out_buf_index != self.out_buf_index:
-            self.num_valid = 0
-        elif (self.num_valid < self.tb_height) & (self.valid_data):
-            self.num_valid = self.num_valid + 1
-        # elif (self.num_valid < self.tb_height) & (~self.valid_data):
-        #     self.num_valid = self.num_valid
-        # else:
-        #     self.num_valid = self.num_valid
-
-    # get starting and ending column indices that represent both buffers part
-    # of transpose buffer double buffer
-    @always_comb
-    def tb_col_indices(self):
-        self.tb_distance = self.fetch_width * self.num_tb
-        self.tb0_start = self.tb_start_index.extend(self.tb_col_index_bits)
-        self.tb0_end = self.tb0_start + self.fetch_width - 1
-        self.tb1_start = self.tb0_start + self.tb_distance
-        self.tb1_end = self.tb1_start + self.fetch_width - 1
