@@ -263,4 +263,4 @@ def top_test(data_width=16,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
-top_test()
+#top_test()
