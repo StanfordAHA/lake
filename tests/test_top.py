@@ -457,7 +457,7 @@ def test_top(data_width=16,
     new_config["tba_0_tb_0_range_outer"] = 62
     new_config["tba_0_tb_0_stride"] = 2
 #    new_config["tba_0_tb_0_tb_height"] = 1
-#    new_config["tba_0_tb_0_dimensionality"] = 2
+    #new_config["tba_0_tb_0_dimensionality"] = 2
     
     new_config["tba_1_tb_0_indices_0"] = 0
     new_config["tba_1_tb_0_indices_1"] = 1

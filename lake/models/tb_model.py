@@ -66,6 +66,7 @@ class TBModel(Model):
         self.prev_output_valid2 = 0
         self.prev_col_pixels2 = []
 
+
     def set_config(self, new_config):
         for key, config_val in new_config.items():
             if key not in self.config:
@@ -137,7 +138,6 @@ class TBModel(Model):
         self.prev_rdy_to_arbiter2 = self.prev_rdy_to_arbiter
         self.prev_rdy_to_arbiter = self.rdy_to_arbiter
 
-    def send_rdy_to_arbiter(self, input_data, valid_data, ack_in):
         if self.prev_out_buf_index != self.out_buf_index:
             self.rdy_to_arbiter = 1
         elif self.tb_height != 1:
@@ -154,6 +154,7 @@ class TBModel(Model):
         self.old_start_data = self.start_data
         if valid_data and (not self.start_data):
             self.start_data = 1
+        
         if self.pause_tb:
             self.output_valid = 0
         elif self.pause_tb or self.pause_output:
