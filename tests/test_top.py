@@ -127,7 +127,6 @@ def top_test(data_width=16,
                             tb_range_max=tb_range_max,
                             tb_sched_max=tb_sched_max,
                             num_tb=num_tb,
-                            tb_iterator_support=tb_iterator_support,
                             multiwrite=multiwrite,
                             max_prefetch=max_prefetch)
 
@@ -155,6 +154,7 @@ def top_test(data_width=16,
                      tb_range_max=tb_range_max,
                      tb_sched_max=tb_sched_max,
                      num_tb=num_tb,
+                     tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch)
 
@@ -174,9 +174,9 @@ def top_test(data_width=16,
     tester.circuit.tba_0_tb_0_tb_height = 1
     tester.circuit.tba_1_tb_0_tb_height = 1
     tester.circuit.tba_2_tb_0_tb_height = 1
-    tester.tba_0_tb_0_dimensionality = 2
-    tester.tba_1_tb_0_dimensionality = 2
-    tester.tba_2_tb_0_dimensionality = 2
+    tester.circuit.tba_0_tb_0_dimensionality = 2
+    tester.circuit.tba_1_tb_0_dimensionality = 2
+    tester.circuit.tba_2_tb_0_dimensionality = 2
 
 
     rand.seed(0)
