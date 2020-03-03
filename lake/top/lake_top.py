@@ -106,6 +106,8 @@ class LakeTop(Generator):
         self._config_data_out = self.output("config_data_out",
                                             self.config_data_width)
 
+        self.wire(self._config_data_out, 0)
+
         self._config_read = self.input("config_read", 1)
         self._config_write = self.input("config_write", 1)
         self._config_en = self.input("config_en", 1)
@@ -524,4 +526,5 @@ if __name__ == "__main__":
     verilog(lake_dut, filename="lake_top.sv",
             check_multiple_driver=False,
             optimize_if=False,
-            additional_passes={"lift config regs": lift_config_reg})
+            additional_passes={"lift config regs": lift_config_reg},
+            check_flip_flop_always_ff=False)
