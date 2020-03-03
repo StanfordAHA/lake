@@ -273,7 +273,7 @@ class TBModel(Model):
 
     def interact(self, input_data, valid_data, ack_in):
         # print("before")
-        self.print_tb(input_data, valid_data, ack_in)
+        # self.print_tb(input_data, valid_data, ack_in)
         self.output_from_tb(input_data, valid_data, ack_in)
         # print(" ")
         # print("after")
