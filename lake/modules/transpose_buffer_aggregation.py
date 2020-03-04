@@ -21,6 +21,7 @@ class TransposeBufferAggregation(Generator):
                  # specifying inner for loop values for output column
                  # addressing
                  max_range,
+                 max_stride,
                  tb_iterator_support):
         super().__init__("transpose_buffer_aggregation", True)
 
@@ -30,6 +31,7 @@ class TransposeBufferAggregation(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.max_range = max_range
+        self.max_stride = max_stride
         self.tb_iterator_support = tb_iterator_support
 
         self.num_tb_bits = max(1, clog2(self.num_tb))
@@ -83,6 +85,7 @@ class TransposeBufferAggregation(Generator):
                                            self.num_tb,
                                            self.max_tb_height,
                                            self.max_range,
+                                           self.max_stride,
                                            self.tb_iterator_support),
                            clk=self.clk,
                            rst_n=self.rst_n,

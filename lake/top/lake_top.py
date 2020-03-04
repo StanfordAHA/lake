@@ -37,6 +37,7 @@ class LakeTop(Generator):
                  max_line_length=2048,
                  max_tb_height=1,
                  tb_range_max=2048,
+                 max_tb_stride=15,
                  tb_sched_max=64,
                  num_tb=1,
                  tb_iterator_support=2,
@@ -69,6 +70,7 @@ class LakeTop(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.tb_range_max = tb_range_max
+        self.max_tb_stride = max_tb_stride
         self.tb_sched_max = tb_sched_max
         self.tb_iterator_support = tb_iterator_support
         self.multiwrite = multiwrite
@@ -492,6 +494,7 @@ class LakeTop(Generator):
                                              num_tb=self.num_tb,
                                              max_tb_height=self.max_tb_height,
                                              max_range=self.tb_range_max,
+                                             max_stride=self.max_tb_stride,
                                              tb_iterator_support=self.tb_iterator_support)
 
             self.add_child(f"tba_{i}", tba,

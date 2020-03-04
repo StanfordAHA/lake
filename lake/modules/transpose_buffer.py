@@ -20,6 +20,7 @@ class TransposeBuffer(Generator):
                  # specifying inner for loop values for output column
                  # addressing
                  max_range,
+                 max_stride,
                  tb_iterator_support):
         super().__init__("transpose_buffer", True)
 
@@ -29,16 +30,18 @@ class TransposeBuffer(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.max_range = max_range
+        self.max_stride = max_stride
         self.tb_iterator_support = tb_iterator_support
 
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
+        self.max_stride_bits = max(1, clog2(self.max_stride))
         self.tb_col_index_bits = 2 * max(self.fetch_width_bits, self.num_tb_bits) + 1
         self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
         self.max_tb_height_bits = max(1, clog2(self.max_tb_height))
         self.tb_iterator_support_bits = max(1, clog2(self.tb_iterator_support))
-
+    
         # inputs
         self.clk = self.clock("clk")
         # active low asynchronous reset
@@ -65,7 +68,7 @@ class TransposeBuffer(Generator):
         self.range_inner.add_attribute(ConfigRegAttr("Inner range for output for for loop pattern"))
 
         # stride for the given application
-        self.stride = self.input("stride", self.max_range_bits)
+        self.stride = self.input("stride", self.max_stride_bits)
         self.stride.add_attribute(ConfigRegAttr("Application stride"))
 
         self.tb_height = self.input("tb_height", self.max_tb_height_bits)
@@ -259,13 +262,16 @@ class TransposeBuffer(Generator):
     def set_tb_out_indices(self):
         if self.dimensionality == 1:
             self.indices_index_inner = 0
-            self.output_index_abs = (self.index_outer.extend(2 * self.max_range_bits) *
-                                     self.stride.extend(2 * self.max_range_bits))
+            self.output_index_abs = self.index_outer.extend( \
+                max(2 * self.max_range_bits, 2 * self.max_stride_bits)) * \
+                self.stride.extend(max(2 * self.max_range_bits, 2 * self.max_stride_bits))
         else:
             self.indices_index_inner = self.indices[self.index_inner]
-            self.output_index_abs = (self.index_outer.extend(2 * self.max_range_bits) *
-                                     self.stride.extend(2 * self.max_range_bits) +
-                                     self.indices_index_inner.extend(2 * self.max_range_bits))
+            self.output_index_abs = (self.index_outer.extend( \
+                max(2 * self.max_range_bits, 2 * self.max_stride_bits)) * \
+                self.stride.extend(max(2 * self.max_range_bits, 2 * self.max_stride_bits)) \
+                + self.indices_index_inner.extend( \
+                    max(2 * self.max_range_bits, 2 * self.max_stride_bits)))
         self.output_index_long = self.output_index_abs % fetch_width
 
     # output column from transpose buffer
