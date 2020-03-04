@@ -323,11 +323,11 @@ class LakeTopModel(Model):
         # First need to get rw_arb acks based on ren + sync group gate
         # Now we need to squash the acks
         ack_base = 0
-        ren_local = []
-        for i in range(self.interconnect_output_ports):
-            ren_local.append(0)
 
         for i in range(self.banks):
+            ren_local = []
+            for j in range(self.interconnect_output_ports):
+                ren_local.append(0)
             for j in range(self.interconnect_output_ports):
                 ren_local[j] = ren_local[j] | (rd_sync_gate[j] & oac_ren[i][j])
             local_ack = self.rw_arbs[i].get_ack(iac_valid[i], wen_en, ren_local, ren_en)
@@ -390,6 +390,7 @@ class LakeTopModel(Model):
         for j in range(self.interconnect_output_ports):
             for i in range(self.banks):
                 ren_base[j] = ren_base[j] | (oac_ren[i][j])
+
         # Sync groups now
         (sync_data,
          sync_valid,
@@ -410,9 +411,6 @@ class LakeTopModel(Model):
                 pref_data.append(pd)
             pref_valid.append(pv)
 
-        print(f"pref_data: {pref_data}")
-        print(f"pref_valid: {pref_valid}")
-        # print(f"pref data: {pref_data}, pref valid: {pref_valid}, tba_rdy: {tba_rdys}")
         # Now send this to the TBAs...
         data_out = []
         valid_out = []
@@ -420,9 +418,5 @@ class LakeTopModel(Model):
             (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0)
             data_out.append(tb_d)
             valid_out.append(tb_v)
-
-        # print(f"data_out: {data_out}, valid_out: {valid_out}")
-
-        # print("tb data: ", self.tbas[0].tbs[0].print_tb(pref_data[0], pref_valid[0], pref_valid[0]))
 
         return (data_out, valid_out)

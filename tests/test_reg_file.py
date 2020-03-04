@@ -15,10 +15,10 @@ import pytest
 @pytest.mark.parametrize("write_ports", [1, 2])
 @pytest.mark.parametrize("read_ports", [1, 2])
 def test_reg_file_basic(data_width,
-                    depth,
-                    width_mult,
-                    write_ports,
-                    read_ports):
+                        depth,
+                        width_mult,
+                        write_ports,
+                        read_ports):
 
     addr_width = kts.clog2(depth)
 
