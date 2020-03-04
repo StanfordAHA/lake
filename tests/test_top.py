@@ -41,16 +41,18 @@ def test_identity_stream(data_width=16,
     new_config["agg_align_0_line_length"] = 64
 
     # Agg buffer
-    new_config["agg_in_0_in_period"] = 0  # I don't actually know
+    new_config["agg_in_0_in_period"] = 1  # I don't actually know
     new_config["agg_in_0_in_sched_0"] = 0
-    new_config["agg_in_0_out_period"] = 0
+    new_config["agg_in_0_out_period"] = 1
     new_config["agg_in_0_out_sched_0"] = 0
 
     # Input addr ctrl
-    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 1
-    new_config["input_addr_ctrl_address_gen_0_ranges_0"] = 12
+    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 2
     new_config["input_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["input_addr_ctrl_address_gen_0_ranges_0"] = 12
     new_config["input_addr_ctrl_address_gen_0_strides_0"] = 1
+    new_config["input_addr_ctrl_address_gen_0_ranges_1"] = 100
+    new_config["input_addr_ctrl_address_gen_0_strides_1"] = 12
 
     # Output addr ctrl
     new_config["output_addr_ctrl_address_gen_0_dimensionality"] = 1
@@ -73,6 +75,7 @@ def test_identity_stream(data_width=16,
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
 
     new_config["sync_grp_sync_group_0"] = 1
+    
 
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
@@ -140,6 +143,8 @@ def test_identity_stream(data_width=16,
         setattr(tester.circuit, key, value)
 
     tester.circuit.tba_0_tb_0_tb_height = 1
+
+    tester.circuit.sync_grp_sync_group[0] = 1;
 
     rand.seed(0)
     tester.circuit.clk = 0
@@ -429,5 +434,5 @@ def test_top(data_width=16,
 
 
 if __name__ == "__main__":
-    # test_identity_stream()
-    test_top()
+    test_identity_stream()
+    # test_top()
