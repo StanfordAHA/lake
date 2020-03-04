@@ -279,7 +279,7 @@ class TBModel(Model):
         # print("after")
         # self.print_tb(input_data, valid_data, ack_in)
         # print(" ")
-        if self.index_inner == 0 and self.index_outer == 0:
-            return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter
-        else:
-            return self.prev_col_pixels2, self.prev_output_valid2, self.rdy_to_arbiter
+#        if self.index_inner == 0 and self.index_outer == 0:
+#            return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter
+#        else:
+        return self.prev_col_pixels2, self.prev_output_valid2, self.rdy_to_arbiter
