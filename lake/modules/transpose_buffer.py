@@ -24,7 +24,10 @@ class TransposeBuffer(Generator):
                  tb_iterator_support):
         super().__init__("transpose_buffer", True)
 
-        # generation parameters
+        #########################
+        # GENERATION PARAMETERS #
+        #########################
+
         self.word_width = word_width
         self.fetch_width = fetch_width
         self.num_tb = num_tb
@@ -33,7 +36,10 @@ class TransposeBuffer(Generator):
         self.max_stride = max_stride
         self.tb_iterator_support = tb_iterator_support
 
-        # bits for generation paramteres
+        ##################################
+        # BITS FOR GENERATION PARAMETERS #
+        ##################################
+
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
