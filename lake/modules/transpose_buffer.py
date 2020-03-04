@@ -33,6 +33,7 @@ class TransposeBuffer(Generator):
         self.max_stride = max_stride
         self.tb_iterator_support = tb_iterator_support
 
+        # bits for generation paramteres
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
@@ -41,8 +42,11 @@ class TransposeBuffer(Generator):
         self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
         self.max_tb_height_bits = max(1, clog2(self.max_tb_height))
         self.tb_iterator_support_bits = max(1, clog2(self.tb_iterator_support))
-    
-        # inputs
+        
+        ##########
+        # INPUTS #
+        ##########
+
         self.clk = self.clock("clk")
         # active low asynchronous reset
         self.rst_n = self.reset("rst_n", 1)
@@ -56,7 +60,17 @@ class TransposeBuffer(Generator):
         # should be stored in transpose buffer
         self.valid_data = self.input("valid_data", 1)
 
-        # configuration registers
+        self._ack_in = self.input("ack_in", 1)
+
+        # absolute value index of the first column of this transpose buffer
+        # (absolute in that, each transpose buffer will have a unique index)
+        self.tb_start_index = self.input("tb_start_index",
+                                         max(1, clog2(self.num_tb * self.num_tb)))
+
+        ###########################
+        # CONFIGURATION REGISTERS #
+        ###########################
+
         # the range of the outer for loop in nested for loop for output
         # column address generation
         self.range_outer = self.input("range_outer", self.max_range_bits)
@@ -89,14 +103,10 @@ class TransposeBuffer(Generator):
                                   packed=True)
         self.indices.add_attribute(ConfigRegAttr("Output indices for for loop pattern"))
 
-        self._ack_in = self.input("ack_in", 1)
+        ###########
+        # OUTPUTS #
+        ###########
 
-        # absolute value index of the first column of this transpose buffer
-        # (absolute in that, each transpose buffer will have a unique index)
-        self.tb_start_index = self.input("tb_start_index",
-                                         max(1, clog2(self.num_tb * self.num_tb)))
-
-        # outputs
         self.col_pixels = self.output("col_pixels",
                                       width=self.word_width,
                                       size=self.max_tb_height,
@@ -105,14 +115,18 @@ class TransposeBuffer(Generator):
         self.output_valid = self.output("output_valid", 1)
         self.rdy_to_arbiter = self.output("rdy_to_arbiter", 1)
 
-        # local variables
-        self.index_outer = self.var("index_outer", self.max_range_bits)
-        self.index_inner = self.var("index_inner", self.max_range_bits)
+        ###################
+        # LOCAL VARIABLES #
+        ###################
 
+        # transpose buffer
         self.tb = self.var("tb",
                            width=self.word_width,
                            size=[2 * self.max_tb_height, self.fetch_width],
                            packed=True)
+
+        self.index_outer = self.var("index_outer", self.max_range_bits)
+        self.index_inner = self.var("index_inner", self.max_range_bits)
 
         self.input_buf_index = self.var("input_buf_index", 1)
         self.out_buf_index = self.var("out_buf_index", 1)
@@ -127,22 +141,23 @@ class TransposeBuffer(Generator):
                                             clog2(2 * self.num_tb * self.fetch_width))
         self.curr_out_start = self.var("curr_out_start", 2 * self.max_range_bits)
 
-        self.pause_tb = self.var("pause_tb", 1)
         self.start_data = self.var("start_data", 1)
         self.old_start_data = self.var("old_start_data", 1)
 
+        self.pause_tb = self.var("pause_tb", 1)
         self.pause_output = self.var("pause_output", 1)
         self.prev_pause_output = self.var("prev_pause_output", 1)
+
+        ##########################
+        # SEQUENTIAL CODE BLOCKS #
+        ##########################
 
         self.add_code(self.set_index_outer)
         self.add_code(self.set_index_inner)
         self.add_code(self.set_pause_tb)
-        self.add_code(self.set_pause_output)
         self.add_code(self.set_row_index)
         self.add_code(self.set_input_buf_index)
-        self.add_code(self.set_input_index)
         self.add_code(self.input_to_tb)
-        self.add_code(self.set_tb_out_indices)
         self.add_code(self.output_from_tb)
         self.add_code(self.set_output_valid)
         self.add_code(self.set_out_buf_index)
@@ -153,6 +168,14 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_output_index)
         self.add_code(self.set_prev_pause_output)
         self.add_code(self.set_old_start_data)
+
+        #############################
+        # COMBINATIONAL CODE BLOCKS #
+        #############################
+
+        self.add_code(self.set_pause_output)
+        self.add_code(self.set_input_index)
+        self.add_code(self.set_tb_out_indices)
 
     # get output loop iterators
     # set pause_tb signal to pause input/output depending on
