@@ -259,13 +259,13 @@ class TransposeBuffer(Generator):
     def set_tb_out_indices(self):
         if self.dimensionality == 1:
             self.indices_index_inner = 0
-            self.output_index_abs = self.index_outer.extend(2 * self.max_range_bits) * \
-                                    self.stride.extend(2 * self.max_range_bits)
+            self.output_index_abs = (self.index_outer.extend(2 * self.max_range_bits) *
+                                     self.stride.extend(2 * self.max_range_bits))
         else:
             self.indices_index_inner = self.indices[self.index_inner]
-            self.output_index_abs = self.index_outer.extend(2 * self.max_range_bits) * \
-                                    self.stride.extend(2 * self.max_range_bits) + \
-                                    self.indices_index_inner.extend(2 * self.max_range_bits)
+            self.output_index_abs = (self.index_outer.extend(2 * self.max_range_bits) *
+                                     self.stride.extend(2 * self.max_range_bits) +
+                                     self.indices_index_inner.extend(2 * self.max_range_bits))
         self.output_index_long = self.output_index_abs % fetch_width
 
     # output column from transpose buffer

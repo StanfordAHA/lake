@@ -71,7 +71,10 @@ class TransposeBufferAggregation(Generator):
         self.tb_output_valid_all = self.var("tb_output_valid_all", width=1, size=self.num_tb, packed=True)
         self.tb_arbiter_rdy_all = self.var("tb_arbiter_rdy_all", width=1, size=self.num_tb, packed=True)
         self.output_valid = self.var("output_valid", 1)
-        self.output_inter = self.var("output_inter", width=self.word_width, size=self.max_tb_height, packed=True)
+        self.output_inter = self.var("output_inter",
+                                     width=self.word_width,
+                                     size=self.max_tb_height,
+                                     packed=True)
 
         for i in range(self.num_tb):
             self.add_child(f"tb_{i}",

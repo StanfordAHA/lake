@@ -73,7 +73,7 @@ def test_tb(word_width=16,
 
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[j])
-        
+
         valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
@@ -99,4 +99,5 @@ def test_tb(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 test_tb()

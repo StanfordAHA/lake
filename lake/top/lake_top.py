@@ -11,6 +11,7 @@ from lake.modules.transpose_buffer_aggregation import TransposeBufferAggregation
 from lake.modules.demux_reads import DemuxReads
 from lake.modules.sync_groups import SyncGroups
 from lake.modules.prefetcher import Prefetcher
+from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.passes.passes import lift_config_reg
 import kratos as kts
 
@@ -40,7 +41,9 @@ class LakeTop(Generator):
                  num_tb=1,
                  tb_iterator_support=2,
                  multiwrite=2,
-                 max_prefetch=64):
+                 max_prefetch=64,
+                 config_data_width=16,
+                 config_addr_width=8):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -70,12 +73,18 @@ class LakeTop(Generator):
         self.tb_iterator_support = tb_iterator_support
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
+        self.config_data_width = config_data_width
+        self.config_addr_width = config_addr_width
+
+        self.data_words_per_set = 2 ** self.config_addr_width
+        self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
         # phases = [] TODO
 
         # CLK and RST
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
+        # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
         # Get the input ports from the interconnect
         self._data_in = self.input("data_in",
@@ -88,6 +97,21 @@ class LakeTop(Generator):
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
+
+        self._config_data_in = self.input("config_data_in",
+                                          self.config_data_width)
+
+        self._config_addr_in = self.input("config_addr_in",
+                                          self.config_addr_width)
+
+        self._config_data_out = self.output("config_data_out",
+                                            self.config_data_width)
+
+        self.wire(self._config_data_out, 0)
+
+        self._config_read = self.input("config_read", 1)
+        self._config_write = self.input("config_write", 1)
+        self._config_en = self.input("config_en", 1)
 
         self._valid_in = self.input("valid_in",
                                     self.interconnect_input_ports)
@@ -504,4 +528,5 @@ if __name__ == "__main__":
     verilog(lake_dut, filename="lake_top.sv",
             check_multiple_driver=False,
             optimize_if=False,
-            additional_passes={"lift config regs": lift_config_reg})
+            additional_passes={"lift config regs": lift_config_reg},
+            check_flip_flop_always_ff=False)
