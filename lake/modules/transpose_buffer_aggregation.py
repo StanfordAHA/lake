@@ -91,7 +91,6 @@ class TransposeBufferAggregation(Generator):
                            rst_n=self.rst_n,
                            input_data=self.SRAM_to_tb_data,
                            valid_data=self.valid_data_all[i],
-                           tb_start_index=self.num_tb * i,
                            col_pixels=self.tb_output_data_all[i],
                            output_valid=self.tb_output_valid_all[i],
                            rdy_to_arbiter=self.tb_arbiter_rdy_all[i],

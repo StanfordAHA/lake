@@ -42,6 +42,7 @@ class TransposeBuffer(Generator):
         self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
         self.max_tb_height_bits = max(1, clog2(self.max_tb_height))
         self.tb_iterator_support_bits = max(1, clog2(self.tb_iterator_support))
+        self.max_range_stride_bits2 = max(2 * self.max_range_bits, 2 * self.max_stride_bits)
         
         ##########
         # INPUTS #
@@ -61,11 +62,6 @@ class TransposeBuffer(Generator):
         self.valid_data = self.input("valid_data", 1)
 
         self._ack_in = self.input("ack_in", 1)
-
-        # absolute value index of the first column of this transpose buffer
-        # (absolute in that, each transpose buffer will have a unique index)
-        self.tb_start_index = self.input("tb_start_index",
-                                         max(1, clog2(self.num_tb * self.num_tb)))
 
         ###########################
         # CONFIGURATION REGISTERS #
@@ -134,12 +130,12 @@ class TransposeBuffer(Generator):
         self.row_index = self.var("row_index", self.max_tb_height_bits)
         self.input_index = self.var("input_index", self.max_tb_height_bits2)
 
-        self.output_index_abs = self.var("output_index_abs", 2 * self.max_range_bits)
-        self.output_index_long = self.var("output_index_long", 2 * self.max_range_bits)
+        self.output_index_abs = self.var("output_index_abs", self.max_range_stride_bits2)
+        self.output_index_long = self.var("output_index_long", self.max_range_stride_bits2)
         self.output_index = self.var("output_index", self.fetch_width_bits)
         self.indices_index_inner = self.var("indices_index_inner",
                                             clog2(2 * self.num_tb * self.fetch_width))
-        self.curr_out_start = self.var("curr_out_start", 2 * self.max_range_bits)
+        self.curr_out_start = self.var("curr_out_start", self.max_range_stride_bits2)
 
         self.start_data = self.var("start_data", 1)
         self.old_start_data = self.var("old_start_data", 1)
@@ -285,16 +281,13 @@ class TransposeBuffer(Generator):
     def set_tb_out_indices(self):
         if self.dimensionality == 1:
             self.indices_index_inner = 0
-            self.output_index_abs = self.index_outer.extend( \
-                max(2 * self.max_range_bits, 2 * self.max_stride_bits)) * \
-                self.stride.extend(max(2 * self.max_range_bits, 2 * self.max_stride_bits))
+            self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
+                self.stride.extend(self.max_range_stride_bits2)
         else:
             self.indices_index_inner = self.indices[self.index_inner]
-            self.output_index_abs = (self.index_outer.extend( \
-                max(2 * self.max_range_bits, 2 * self.max_stride_bits)) * \
-                self.stride.extend(max(2 * self.max_range_bits, 2 * self.max_stride_bits)) \
-                + self.indices_index_inner.extend( \
-                    max(2 * self.max_range_bits, 2 * self.max_stride_bits)))
+            self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
+                self.stride.extend(self.max_range_stride_bits2) \
+                + self.indices_index_inner.extend(self.max_range_stride_bits2)
         self.output_index_long = self.output_index_abs % fetch_width
 
     # output column from transpose buffer
