@@ -131,8 +131,7 @@ def test_identity_stream(data_width=16,
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
-                                  optimize_if=False,
-                                  check_flip_flop_always_ff=False)
+                                  optimize_if=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
@@ -182,9 +181,9 @@ def test_identity_stream(data_width=16,
         # Now check the outputs
         if(interconnect_output_ports == 1):
             print("")
-#            tester.circuit.valid_out.expect(mod_vo[0])
-#            if mod_vo[0]:
-#                tester.circuit.data_out.expect(mod_do[0][0])
+            tester.circuit.valid_out.expect(mod_vo[0])
+            if mod_vo[0]:
+                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
 #                 print(f"mod_vo_{j}: {mod_vo[j]}")
@@ -456,5 +455,5 @@ def top_test(data_width=16,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
-#test_identity_stream()
-top_test()
+test_identity_stream()
+#top_test()
