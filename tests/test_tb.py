@@ -15,6 +15,7 @@ def test_tb(word_width=16,
             num_tb=1,
             max_tb_height=1,
             max_range=5,
+            max_stride=15,
             tb_iterator_support=2):
 
     model_tb = TBModel(word_width,
@@ -37,6 +38,7 @@ def test_tb(word_width=16,
                           num_tb,
                           max_tb_height,
                           max_range,
+                          max_stride,
                           tb_iterator_support)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_flip_flop_always_ff=False)

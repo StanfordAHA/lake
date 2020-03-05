@@ -16,7 +16,7 @@ def test_identity_stream(data_width=16,
                          input_iterator_support=6,
                          output_iterator_support=6,
                          interconnect_input_ports=1,
-                         interconnect_output_ports=1,
+                         interconnect_output_ports=3,
                          mem_input_ports=1,
                          mem_output_ports=1,
                          use_sram_stub=1,
@@ -61,15 +61,24 @@ def test_identity_stream(data_width=16,
     new_config["output_addr_ctrl_address_gen_0_strides_0"] = 1
 
     # TBA
+
+    # NOTE: both these configurations result in equivalent functionality
+
+    # if dimensionality == 1 version
+    new_config["tba_0_tb_0_range_outer"] = 12
+    new_config["tba_0_tb_0_stride"] = 1
+    new_config["tba_0_tb_0_dimensionality"] = 1
+
+    # if dimensionality == 2 version
     new_config["tba_0_tb_0_indices_0"] = 0
     new_config["tba_0_tb_0_indices_1"] = 1
     new_config["tba_0_tb_0_indices_2"] = 2
     new_config["tba_0_tb_0_indices_3"] = 3
     new_config["tba_0_tb_0_range_inner"] = 4
-    new_config["tba_0_tb_0_range_outer"] = 3
-    new_config["tba_0_tb_0_stride"] = 4
+    # new_config["tba_0_tb_0_range_outer"] = 3
+    # new_config["tba_0_tb_0_stride"] = 4
     # new_config["tba_0_tb_0_tb_height"] = 1
-    new_config["tba_0_tb_0_dimensionality"] = 2
+    # new_config["tba_0_tb_0_dimensionality"] = 2
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
@@ -134,8 +143,7 @@ def test_identity_stream(data_width=16,
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
-                                  optimize_if=False,
-                                  check_flip_flop_always_ff=False)
+                                  optimize_if=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
@@ -144,7 +152,8 @@ def test_identity_stream(data_width=16,
 
     tester.circuit.tba_0_tb_0_tb_height = 1
 
-    tester.circuit.sync_grp_sync_group[0] = 1
+    if interconnect_output_ports == 1:
+        tester.circuit.sync_grp_sync_group[0] = 1
 
     rand.seed(0)
     tester.circuit.clk = 0
@@ -199,7 +208,7 @@ def test_identity_stream(data_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "top_dump_dillon"
+        tempdir = "top_dump_id"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
@@ -226,6 +235,7 @@ def test_top(data_width=16,
              max_line_length=256,
              max_tb_height=1,
              tb_range_max=64,
+             max_tb_stride=15,
              tb_sched_max=64,
              num_tb=1,
              tb_iterator_support=2,
@@ -277,7 +287,7 @@ def test_top(data_width=16,
     new_config["tba_0_tb_0_range_outer"] = 62
     new_config["tba_0_tb_0_stride"] = 2
 #    new_config["tba_0_tb_0_tb_height"] = 1
-    # new_config["tba_0_tb_0_dimensionality"] = 2
+    new_config["tba_0_tb_0_dimensionality"] = 2
 
     new_config["tba_1_tb_0_indices_0"] = 0
     new_config["tba_1_tb_0_indices_1"] = 1
@@ -286,7 +296,7 @@ def test_top(data_width=16,
     new_config["tba_1_tb_0_range_outer"] = 62
     new_config["tba_1_tb_0_stride"] = 2
 #    new_config["tba_1_tb_0_tb_height"] = 1
-#    new_config["tba_1_tb_0_dimensionality"] = 2
+    new_config["tba_1_tb_0_dimensionality"] = 2
 
     new_config["tba_2_tb_0_indices_0"] = 0
     new_config["tba_2_tb_0_indices_1"] = 1
@@ -295,7 +305,7 @@ def test_top(data_width=16,
     new_config["tba_2_tb_0_range_outer"] = 62
     new_config["tba_2_tb_0_stride"] = 2
 #    new_config["tba_2_tb_0_tb_height"] = 1
-#    new_config["tba_2_tb_0_dimensionality"] = 2
+    new_config["tba_2_tb_0_dimensionality"] = 2
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
@@ -350,6 +360,7 @@ def test_top(data_width=16,
                      max_line_length=max_line_length,
                      max_tb_height=max_tb_height,
                      tb_range_max=tb_range_max,
+                     max_tb_stride=max_tb_stride,
                      tb_sched_max=tb_sched_max,
                      num_tb=num_tb,
                      tb_iterator_support=tb_iterator_support,
@@ -373,9 +384,6 @@ def test_top(data_width=16,
     tester.circuit.tba_0_tb_0_tb_height = 1
     tester.circuit.tba_1_tb_0_tb_height = 1
     tester.circuit.tba_2_tb_0_tb_height = 1
-    tester.circuit.tba_0_tb_0_dimensionality = 2
-    tester.circuit.tba_1_tb_0_dimensionality = 2
-    tester.circuit.tba_2_tb_0_dimensionality = 2
 
     rand.seed(0)
     tester.circuit.clk = 0
