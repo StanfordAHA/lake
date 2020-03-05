@@ -164,7 +164,7 @@ class TBModel(Model):
                 self.output_valid = 0
             else:
                 self.output_valid = 1
-    
+
             if self.config["dimensionality"] == 1:
                 if self.index_outer == self.config["range_outer"] - 1:
                     self.pause_tb = 1 - valid_data
@@ -209,10 +209,11 @@ class TBModel(Model):
                     self.input_buf_index = 1 - self.input_buf_index
                 else:
                     self.row_index = self.row_index + 1
-    
+
             self.col_pixels = []
             for i in range(self.tb_height):
-                self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
+                self.col_pixels.append(
+                    self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
             if self.output_index_abs >= self.curr_out_start + self.fetch_width:
                 self.curr_out_start = self.curr_out_start + self.fetch_width
@@ -223,7 +224,7 @@ class TBModel(Model):
                 self.output_index_abs = self.index_outer * self.config["stride"] + \
                     self.config["indices"][self.index_inner]
             self.output_index = self.output_index_abs % self.fetch_width
-    
+
             if (self.prev_ii == 0) and (self.prev_io == 0):
                 self.prev_out_buf_index = 0
             else:

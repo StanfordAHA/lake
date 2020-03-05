@@ -151,7 +151,7 @@ def test_identity_stream(data_width=16,
         setattr(tester.circuit, key, value)
 
     tester.circuit.tba_0_tb_0_tb_height = 1
-   
+
     if interconnect_output_ports == 1:
         tester.circuit.sync_grp_sync_group[0] = 1
 
@@ -444,4 +444,4 @@ def test_top(data_width=16,
 
 if __name__ == "__main__":
     test_identity_stream()
-    #test_top()
+    # test_top()

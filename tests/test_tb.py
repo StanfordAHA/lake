@@ -101,5 +101,3 @@ def test_tb(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
-
-test_tb()
