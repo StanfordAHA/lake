@@ -61,7 +61,9 @@ def test_output_addr_basic(banks,
                          iterator_support=iterator_support,
                          address_width=address_width)
     lift_config_reg(dut.internal_generator)
-    magma_dut = kts.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
+    magma_dut = kts.util.to_magma(dut, flatten_array=True,
+                                  check_multiple_driver=False,
+                                  check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
 

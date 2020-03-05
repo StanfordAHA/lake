@@ -14,7 +14,7 @@ class PipeReg(Generator):
 
         self.stages = stages
 
-        if stages > 0:
+        if stages > 1:
             self._reg_array = self.var("reg_array",
                                        data_width,
                                        size=stages,
@@ -22,6 +22,10 @@ class PipeReg(Generator):
                                        explicit_array=True)
             self.add_code(self.stage_elab)
             self.add_code(self.set_out)
+        elif stages == 1:
+            self._reg_ = self.var("reg_", data_width)
+            self.add_code(self.set_out_one_stage)
+            self.wire(self._data_out, self._reg_)
         else:
             self.wire(self._data_out, self._data_in)
 
@@ -38,6 +42,13 @@ class PipeReg(Generator):
     def set_out(self):
         # Combinationally set this to the last register in the stage array.
         self._data_out = self._reg_array[self.stages - 1]
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_out_one_stage(self):
+        if ~self._rst_n:
+            self._reg_ = 0
+        elif self._clk_en:
+            self._reg_ = self._data_in
 
 
 if __name__ == "__main__":

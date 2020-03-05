@@ -37,7 +37,9 @@ def test_rw_arbiter_basic(int_out_ports,
                     int_out_ports=int_out_ports)
 
     lift_config_reg(dut.internal_generator)
-    magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
+    magma_dut = k.util.to_magma(dut, flatten_array=True,
+                                check_multiple_driver=False,
+                                check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
 

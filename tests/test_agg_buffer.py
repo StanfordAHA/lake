@@ -39,7 +39,8 @@ def test_aggregator_basic(agg_height=4,
                             mem_width=mem_width,
                             max_agg_schedule=max_agg_schedule)
 
-    magma_dut = k.util.to_magma(dut, flatten_array=True)
+    magma_dut = k.util.to_magma(dut, flatten_array=True,
+                                check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
 

@@ -39,7 +39,8 @@ def test_reg_file_basic(data_width,
                        width_mult=width_mult,
                        depth=depth)
 
-    magma_dut = kts.util.to_magma(dut, flatten_array=True)
+    magma_dut = kts.util.to_magma(dut, flatten_array=True,
+                                  check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
 

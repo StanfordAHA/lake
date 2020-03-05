@@ -414,7 +414,6 @@ class LakeTop(Generator):
         ##### DEMUX WRITE/SRAM WRAPPER #####
         ####################################
 
-
         stg_cfg_seq = StorageConfigSeq(data_width=16,
                                        config_addr_width=self.config_addr_width,
                                        addr_width=self.address_width,
@@ -602,4 +601,5 @@ if __name__ == "__main__":
     verilog(lake_dut, filename="lake_top.sv",
             check_multiple_driver=False,
             optimize_if=False,
+            check_flip_flop_always_ff=False,
             additional_passes={"lift config regs": lift_config_reg})

@@ -14,7 +14,7 @@ class RegisterFile(Generator):
                  width_mult,
                  depth
                  ):
-        super().__init__("register_file")
+        super().__init__("register_file", debug=True)
 
         self.width_mult = width_mult
         self.data_width = data_width
@@ -95,4 +95,4 @@ class RegisterFile(Generator):
 
 if __name__ == "__main__":
     dut = RegisterFile(16, 1, 2, 1, 64)
-    verilog(dut, filename="register_file.sv")
+    verilog(dut, filename="register_file.sv", check_flip_flop_always_ff=False)
