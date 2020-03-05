@@ -3,9 +3,12 @@ import magma as m
 import fault
 import tempfile
 from math import ceil, log
-from mantle import Register, CounterModM, DFF
+import pytest
+
 
 def DefineAggregator(word_width, mem_word_width):
+    from mantle import Register, CounterModM, DFF
+
     class _Aggregator(m.Circuit):
         name = 'Aggregator_' + str(word_width) + '_' + str(mem_word_width)
         IO = ['INPUT_PIXELS', m.In(m.Bits[word_width]),
@@ -37,6 +40,8 @@ def DefineAggregator(word_width, mem_word_width):
 def Aggregator(word_width, mem_word_width):
     return DefineAggregator(word_width, mem_word_width)
 
+
+@pytest.mark.skip
 def test_agg_magma(word_width=16, mem_word_width=4):
 
     dut = Aggregator(word_width=word_width, mem_word_width=mem_word_width)
@@ -57,5 +62,3 @@ def test_agg_magma(word_width=16, mem_word_width=4):
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])
-
-test_agg_magma()
