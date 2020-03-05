@@ -143,7 +143,8 @@ def test_identity_stream(data_width=16,
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
-                                  optimize_if=False)
+                                  optimize_if=False,
+                                  check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
@@ -442,6 +443,7 @@ def test_top(data_width=16,
                                flags=["-Wno-fatal"])
 
 
+@pytest.mark.skip
 def test_config_storage(data_width=16,
                         mem_width=64,
                         mem_depth=512,
@@ -649,5 +651,5 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    # test_identity_stream()
-    test_top()
+    test_identity_stream()
+    # test_top()
