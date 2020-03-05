@@ -446,7 +446,6 @@ class LakeTop(Generator):
             self.wire(self._mem_addr_in[i], ternary(self._config_en.r_or(),
                                                     self._mem_addr_cfg,
                                                     self._mem_addr_dp[i]))
-            # self.wire(self._mem_data_in[i], self._mem_data_dp[i])
             self.wire(self._mem_data_in[i], ternary(self._config_en.r_or(),
                                                     self._mem_data_cfg,
                                                     self._mem_data_dp[i]))

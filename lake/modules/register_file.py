@@ -14,7 +14,7 @@ class RegisterFile(Generator):
                  width_mult,
                  depth
                  ):
-        super().__init__("register_file", debug=True)
+        super().__init__("register_file")
 
         self.width_mult = width_mult
         self.data_width = data_width
