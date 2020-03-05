@@ -274,7 +274,7 @@ def test_top(data_width=16,
     new_config["tba_0_tb_0_range_outer"] = 62
     new_config["tba_0_tb_0_stride"] = 2
 #    new_config["tba_0_tb_0_tb_height"] = 1
-    # new_config["tba_0_tb_0_dimensionality"] = 2
+    new_config["tba_0_tb_0_dimensionality"] = 2
 
     new_config["tba_1_tb_0_indices_0"] = 0
     new_config["tba_1_tb_0_indices_1"] = 1
@@ -283,7 +283,7 @@ def test_top(data_width=16,
     new_config["tba_1_tb_0_range_outer"] = 62
     new_config["tba_1_tb_0_stride"] = 2
 #    new_config["tba_1_tb_0_tb_height"] = 1
-#    new_config["tba_1_tb_0_dimensionality"] = 2
+    new_config["tba_1_tb_0_dimensionality"] = 2
 
     new_config["tba_2_tb_0_indices_0"] = 0
     new_config["tba_2_tb_0_indices_1"] = 1
@@ -292,7 +292,7 @@ def test_top(data_width=16,
     new_config["tba_2_tb_0_range_outer"] = 62
     new_config["tba_2_tb_0_stride"] = 2
 #    new_config["tba_2_tb_0_tb_height"] = 1
-#    new_config["tba_2_tb_0_dimensionality"] = 2
+    new_config["tba_2_tb_0_dimensionality"] = 2
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
@@ -370,9 +370,6 @@ def test_top(data_width=16,
     tester.circuit.tba_0_tb_0_tb_height = 1
     tester.circuit.tba_1_tb_0_tb_height = 1
     tester.circuit.tba_2_tb_0_tb_height = 1
-    tester.circuit.tba_0_tb_0_dimensionality = 2
-    tester.circuit.tba_1_tb_0_dimensionality = 2
-    tester.circuit.tba_2_tb_0_dimensionality = 2
 
     rand.seed(0)
     tester.circuit.clk = 0
@@ -425,10 +422,11 @@ def test_top(data_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "top_dump_new"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":
