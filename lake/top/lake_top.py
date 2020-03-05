@@ -37,6 +37,7 @@ class LakeTop(Generator):
                  max_line_length=2048,
                  max_tb_height=1,
                  tb_range_max=2048,
+                 tb_sched_max=64,
                  max_tb_stride=15,
                  num_tb=1,
                  tb_iterator_support=2,

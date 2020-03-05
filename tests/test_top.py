@@ -649,5 +649,5 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    test_identity_stream()
-    # test_top()
+    # test_identity_stream()
+    test_top()
