@@ -76,7 +76,10 @@ class StorageConfigSeq(Generator):
         # One set per macro means we directly send the config address through
         if self.sets_per_macro == 1:
             width = self.addr_width - self.config_addr_width
-            self.wire(self._addr_out, kts.concat(kts.const(0, width), self._config_addr_in))
+            if width > 0:
+                self.wire(self._addr_out, kts.concat(kts.const(0, width), self._config_addr_in))
+            else:
+                self.wire(self._addr_out, self._config_addr_in)
         else:
             width = self.addr_width - self.config_addr_width - clog2(self.sets_per_macro)
             self._set_to_addr = self.var("set_to_addr",
@@ -88,9 +91,12 @@ class StorageConfigSeq(Generator):
                     reduce_var = kts.concat(reduce_var, self._config_en[i + (self.sets_per_macro * (j + 1))])
                 self.wire(self._reduce_en[i], reduce_var.r_or())
             self.add_code(self.demux_set_addr)
-            self.wire(self._addr_out, kts.concat(kts.const(0, width),
-                      self._set_to_addr,
-                      self._config_addr_in))
+            if width > 0:
+                self.wire(self._addr_out, kts.concat(kts.const(0, width),
+                          self._set_to_addr,
+                          self._config_addr_in))
+            else:
+                self.wire(self._addr_out, kts.concat(self._set_to_addr, self._config_addr_in))
 
         self._wen_out = self.output("wen_out", self.banks)
         self._ren_out = self.output("ren_out", self.banks)
