@@ -472,7 +472,8 @@ def test_config_storage(data_width=16,
                         tb_iterator_support=2,
                         multiwrite=1,
                         max_prefetch=64,
-                        config_addr_width=8):
+                        config_addr_width=8,
+                        read_delay=1):
 
     sets_per_macro = int(mem_depth / (2 ** config_addr_width))
     total_sets = sets_per_macro * banks
@@ -572,7 +573,8 @@ def test_config_storage(data_width=16,
                             tb_sched_max=tb_sched_max,
                             num_tb=num_tb,
                             multiwrite=multiwrite,
-                            max_prefetch=max_prefetch)
+                            max_prefetch=max_prefetch,
+                            read_delay=read_delay)
 
     model_lt.set_config(new_config=new_config)
 
@@ -601,7 +603,8 @@ def test_config_storage(data_width=16,
                      tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch,
-                     config_addr_width=config_addr_width)
+                     config_addr_width=config_addr_width,
+                     read_delay=read_delay)
 
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
