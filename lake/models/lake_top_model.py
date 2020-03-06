@@ -9,6 +9,7 @@ from lake.models.demux_reads_model import DemuxReadsModel
 from lake.models.sync_groups_model import SyncGroupsModel
 from lake.models.prefetcher_model import PrefetcherModel
 from lake.models.tba_model import TBAModel
+from lake.models.register_file_model import RegisterFileModel
 from typing import List
 import math as mt
 import kratos as kts
@@ -28,6 +29,7 @@ class LakeTopModel(Model):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=1,
+                 read_delay=1,
                  agg_height=8,
                  max_agg_schedule=64,
                  input_max_port_sched=64,
@@ -67,6 +69,7 @@ class LakeTopModel(Model):
         self.tb_sched_max = tb_sched_max
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
+        self.read_delay = read_delay
 
         if self.banks == 1:
             self.address_width = kts.clog2(mem_depth)
@@ -137,16 +140,26 @@ class LakeTopModel(Model):
             self.rw_arbs.append(RWArbiterModel(fetch_width=self.mem_width,
                                                data_width=self.data_width,
                                                memory_depth=self.mem_depth,
-                                               int_out_ports=self.interconnect_output_ports))
+                                               int_out_ports=self.interconnect_output_ports,
+                                               read_delay=self.read_delay))
 
-        ### SRAMS
         self.mems = []
-        for banks in range(self.banks):
-            # self.mems.append(SRAMModel(width=self.mem_width,
-            #                           depth=self.mem_depth))
-            self.mems.append(SRAMModel(data_width=self.data_width,
-                                       width_mult=self.fw_int,
-                                       depth=self.mem_depth))
+        if self.read_delay == 1:
+            ### SRAMS
+            for banks in range(self.banks):
+                # self.mems.append(SRAMModel(width=self.mem_width,
+                #                           depth=self.mem_depth))
+                self.mems.append(SRAMModel(data_width=self.data_width,
+                                           width_mult=self.fw_int,
+                                           depth=self.mem_depth))
+        else:
+            ### REGFILES
+            for banks in range(self.banks):
+                self.mems.append(RegisterFileModel(data_width=self.data_width,
+                                                   write_ports=self.mem_input_ports,
+                                                   read_ports=self.mem_output_ports,
+                                                   width_mult=self.fw_int,
+                                                   depth=self.mem_depth))
 
         ### DEMUX READS
         self.demux_reads = DemuxReadsModel(fetch_width=self.mem_width,  # self.mem_width
@@ -339,7 +352,10 @@ class LakeTopModel(Model):
         # Get data from mem
         data_to_arb = []
         for i in range(self.banks):
-            data_to_arb.append(self.mems[i].get_rd_reg())
+            if self.read_delay == 1:
+                data_to_arb.append(self.mems[i].get_rd_reg())
+            else:
+                data_to_arb.append(0)
 
         # RW arbs
         rw_out_dat = []
@@ -374,11 +390,21 @@ class LakeTopModel(Model):
             rw_ack.append(rw_ack)
 
         # HIT SRAM
-        for i in range(self.banks):
-            self.mems[i].interact(rw_wen_mem[i],
-                                  rw_cen_mem[i],
-                                  rw_addr_to_mem[i],
-                                  rw_data_to_mem[i])
+        if self.read_delay == 1:
+            for i in range(self.banks):
+                self.mems[i].interact(rw_wen_mem[i],
+                                      rw_cen_mem[i],
+                                      rw_addr_to_mem[i],
+                                      rw_data_to_mem[i])
+        else:
+            rw_out_dat = []
+            for i in range(self.banks):
+                local_rf_read = self.mems[i].interact(rw_wen_mem[i],
+                                                      rw_addr_to_mem[i],
+                                                      rw_addr_to_mem[i],
+                                                      rw_data_to_mem[i])
+                # Hack for one port
+                rw_out_dat.append(local_rf_read[0])
 
         # Demux those reads
         (demux_dat, demux_valid) = self.demux_reads.interact(rw_out_dat, rw_out_valid, rw_out_port)
@@ -420,3 +446,6 @@ class LakeTopModel(Model):
             valid_out.append(tb_v)
 
         return (data_out, valid_out)
+
+    def dump_mem(self):
+        self.mems[0].dump_mem()

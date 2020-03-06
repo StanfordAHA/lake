@@ -19,7 +19,8 @@ class RWArbiter(Generator):
                  fetch_width,
                  data_width,
                  memory_depth,
-                 int_out_ports):
+                 int_out_ports,
+                 read_delay):
 
         assert not (memory_depth & (memory_depth - 1)), "Memory depth needs to be a power of 2"
 
@@ -31,6 +32,7 @@ class RWArbiter(Generator):
         self.int_out_ports = int_out_ports
         self.memory_depth = memory_depth
         self.mem_addr_width = clog2(self.memory_depth)
+        self.read_delay = read_delay
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -107,7 +109,10 @@ class RWArbiter(Generator):
 
         self.add_code(self.mem_controls)
         self.add_code(self.set_next_read_port)
-        self.add_code(self.next_read_valid)
+        if self.read_delay == 1:
+            self.add_code(self.next_read_valid)
+        else:
+            self.add_code(self.zero_delay_read)
         self.add_code(self.output_stage)
 
     @always_comb
@@ -143,6 +148,11 @@ class RWArbiter(Generator):
         else:
             self._rd_valid = ~self._wen_int & kts.reduce_or(self._ren_int.r_or())
             self._rd_port = self._next_rd_port
+
+    @always_comb
+    def zero_delay_read(self):
+        self._rd_valid = ~self._wen_int & kts.reduce_or(self._ren_int.r_or())
+        self._rd_port = self._next_rd_port
 
     @always_comb
     def output_stage(self):

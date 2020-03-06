@@ -13,8 +13,10 @@ import pytest
 
 @pytest.mark.parametrize("int_out_ports", [1, 2, 4])
 @pytest.mark.parametrize("fetch_width", [16, 32])
+@pytest.mark.parametrize("read_delay", [0, 1])
 def test_rw_arbiter_basic(int_out_ports,
                           fetch_width,
+                          read_delay,
                           memory_depth=512,
                           data_width=16):
 
@@ -24,7 +26,8 @@ def test_rw_arbiter_basic(int_out_ports,
     model_rwa = RWArbiterModel(fetch_width=fetch_width,
                                data_width=data_width,
                                memory_depth=memory_depth,
-                               int_out_ports=int_out_ports)
+                               int_out_ports=int_out_ports,
+                               read_delay=read_delay)
 
     new_config = {}
     model_rwa.set_config(new_config=new_config)
@@ -34,7 +37,8 @@ def test_rw_arbiter_basic(int_out_ports,
     dut = RWArbiter(fetch_width=fetch_width,
                     data_width=data_width,
                     memory_depth=memory_depth,
-                    int_out_ports=int_out_ports)
+                    int_out_ports=int_out_ports,
+                    read_delay=read_delay)
 
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True,

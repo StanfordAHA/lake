@@ -216,7 +216,9 @@ def test_identity_stream(data_width=16,
                                flags=["-Wno-fatal", "--trace"])
 
 
-def test_top(data_width=16,
+@pytest.mark.parametrize("read_delay", [0, 1])
+def test_top(read_delay,
+             data_width=16,
              mem_width=64,
              mem_depth=512,
              banks=2,
@@ -337,7 +339,8 @@ def test_top(data_width=16,
                             tb_sched_max=tb_sched_max,
                             num_tb=num_tb,
                             multiwrite=multiwrite,
-                            max_prefetch=max_prefetch)
+                            max_prefetch=max_prefetch,
+                            read_delay=read_delay)
 
     model_lt.set_config(new_config=new_config)
 
@@ -366,7 +369,8 @@ def test_top(data_width=16,
                      num_tb=num_tb,
                      tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
-                     max_prefetch=max_prefetch)
+                     max_prefetch=max_prefetch,
+                     read_delay=read_delay)
 
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
@@ -403,8 +407,8 @@ def test_top(data_width=16,
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
-            data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
-            valid_in[j] = 1  # rand.randint(0, 1)
+            data_in[j] += 1
+            valid_in[j] = 1
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
@@ -677,5 +681,5 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     # test_identity_stream()
-    # test_top()
-    test_config_storage()
+    test_top()
+    # test_config_storage()

@@ -6,10 +6,12 @@ class RWArbiterModel(Model):
                  fetch_width,
                  data_width,
                  memory_depth,
-                 int_out_ports):
+                 int_out_ports,
+                 read_delay):
         self.fetch_width = fetch_width
         self.memory_depth = memory_depth
         self.int_out_ports = int_out_ports
+        self.read_delay = read_delay
 
         self.rd_valid = 0
         self.rd_port = 0
@@ -34,8 +36,12 @@ class RWArbiterModel(Model):
         '''
         # These signals are always this way
         out_dat = data_from_mem
-        out_port = self.rd_port
-        out_valid = self.rd_valid
+        if self.read_delay == 1:
+            out_port = self.rd_port
+            out_valid = self.rd_valid
+        else:
+            out_port = 0
+            out_valid = 0
         data_to_mem = w_data
         wen_mem = wen_in & wen_en
         # Signals following may vary
@@ -57,6 +63,9 @@ class RWArbiterModel(Model):
                     addr_to_mem = rd_addr[i]
                     self.rd_valid = 1
                     self.rd_port = 1 << i
+                    if self.read_delay == 0:
+                        out_valid = 1
+                        out_port = 1 << i
                     break
         ack = self.get_ack(wen_in, wen_en, ren_in, ren_en)
         return (out_dat, out_port, out_valid,

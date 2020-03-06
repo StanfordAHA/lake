@@ -12,6 +12,7 @@ from lake.modules.demux_reads import DemuxReads
 from lake.modules.sync_groups import SyncGroups
 from lake.modules.prefetcher import Prefetcher
 from lake.modules.storage_config_seq import StorageConfigSeq
+from lake.modules.register_file import RegisterFile
 from lake.passes.passes import lift_config_reg
 import kratos as kts
 
@@ -29,6 +30,8 @@ class LakeTop(Generator):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=1,
+                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
+                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=8,
                  max_agg_schedule=64,
                  input_max_port_sched=64,
@@ -77,6 +80,9 @@ class LakeTop(Generator):
         self.max_prefetch = max_prefetch
         self.config_data_width = config_data_width
         self.config_addr_width = config_addr_width
+
+        self.read_delay = read_delay
+        self.rw_same_cycle = rw_same_cycle
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -390,7 +396,8 @@ class LakeTop(Generator):
             rw_arb = RWArbiter(fetch_width=self.mem_width,
                                data_width=self.data_width,
                                int_out_ports=self.interconnect_output_ports,
-                               memory_depth=self.mem_depth)
+                               memory_depth=self.mem_depth,
+                               read_delay=self.read_delay)
             self.arbiters.append(rw_arb)
             self.add_child(f"rw_arb_{i}", rw_arb,
                            clk=self._clk,
@@ -453,17 +460,32 @@ class LakeTop(Generator):
                                                     self._mem_data_dp[i]))
 
         # Wrap sram_stub
-        for i in range(self.banks):
-            mbank = SRAMStub(data_width=self.data_width,
-                             width_mult=self.fw_int,
-                             depth=self.mem_depth)
-            self.add_child(f"mem_{i}", mbank,
-                           clk=self._clk,
-                           data_in=self._mem_data_in[i],
-                           addr=self._mem_addr_in[i],
-                           cen=self._mem_cen_in[i],
-                           wen=self._mem_wen_in[i],
-                           data_out=self._mem_data_out[i])
+        if self.read_delay == 1:
+            for i in range(self.banks):
+                mbank = SRAMStub(data_width=self.data_width,
+                                 width_mult=self.fw_int,
+                                 depth=self.mem_depth)
+                self.add_child(f"mem_{i}", mbank,
+                               clk=self._clk,
+                               data_in=self._mem_data_in[i],
+                               addr=self._mem_addr_in[i],
+                               cen=self._mem_cen_in[i],
+                               wen=self._mem_wen_in[i],
+                               data_out=self._mem_data_out[i])
+        else:
+            for i in range(self.banks):
+                rfile = RegisterFile(data_width=self.data_width,
+                                     write_ports=self.mem_input_ports,
+                                     read_ports=self.mem_output_ports,
+                                     width_mult=self.fw_int,
+                                     depth=self.mem_depth)
+                self.add_child(f"rf_{i}", rfile,
+                               clk=self._clk,
+                               wen=self._mem_wen_in[i],
+                               wr_addr=self._mem_addr_in[i],
+                               rd_addr=self._mem_addr_in[i],
+                               data_in=self._mem_data_in[i],
+                               data_out=self._mem_data_out[i])
 
         #########################################
         ##### END: DEMUX WRITE/SRAM WRAPPER #####
