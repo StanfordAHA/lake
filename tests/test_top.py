@@ -437,13 +437,13 @@ def test_top(data_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir="top_dump_id"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
-@pytest.mark.skip
 def test_config_storage(data_width=16,
                         mem_width=64,
                         mem_depth=512,
@@ -470,6 +470,10 @@ def test_config_storage(data_width=16,
                         multiwrite=1,
                         max_prefetch=64,
                         config_addr_width=8):
+
+    sets_per_macro = int(mem_depth / (2 ** config_addr_width))
+    total_sets = sets_per_macro * banks
+    fw_int = int(mem_width / data_width)
 
     new_config = {}
 
@@ -639,9 +643,31 @@ def test_config_storage(data_width=16,
     tester.circuit.config_write = 0
     tester.circuit.config_data_in = 0
     tester.circuit.config_addr_in = 0
-    for i in range(10):
-        tester.circuit.config_
-        tester.step(2)
+    for i in range(1000):
+        # Pick a set and and addr
+        tester.circuit.config_en = 0
+        tester.circuit.config_write = 0
+        tester.circuit.config_read = 0
+        set_to_poke = rand.randint(0, total_sets - 1)
+        addr = rand.randint(0, 2 ** config_addr_width - 1)
+        data = []
+        for j in range(fw_int):
+            data.append(rand.randint(0, 2 ** data_width - 1))
+
+        tester.circuit.config_addr_in = addr
+        tester.circuit.config_write = 1
+        tester.circuit.config_en[set_to_poke] = 1
+        # Write it
+        for j in range(fw_int):
+            tester.circuit.config_data_in = data[j]
+            tester.step(2)
+
+        tester.circuit.config_write = 0
+        tester.circuit.config_read = 1
+        # Read it
+        for j in range(fw_int):
+            tester.step(2)
+            getattr(tester.circuit, f"config_data_out_{set_to_poke}").expect(data[j])
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
@@ -651,5 +677,6 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    test_identity_stream()
+    # test_identity_stream()
     # test_top()
+    test_config_storage()
