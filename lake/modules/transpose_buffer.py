@@ -150,7 +150,6 @@ class TransposeBuffer(Generator):
 
         self.pause_tb = self.var("pause_tb", 1)
         self.pause_output = self.var("pause_output", 1)
-        self.prev_pause_output = self.var("prev_pause_output", 1)
 
         ##########################
         # SEQUENTIAL CODE BLOCKS #
@@ -171,7 +170,6 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_curr_out_start)
         self.add_code(self.set_prev_out_buf_index)
         self.add_code(self.set_output_index)
-        self.add_code(self.set_prev_pause_output)
         self.add_code(self.set_old_start_data)
 
         #############################
@@ -339,8 +337,6 @@ class TransposeBuffer(Generator):
             self.prev_output_valid = 0
         elif self.pause_tb | self.pause_output:
             self.prev_output_valid = 0
-        #elif self.prev_pause_output & ~self.pause_output:
-        #    self.output_valid = 0
         else:
             self.prev_output_valid = 1
 
@@ -352,10 +348,6 @@ class TransposeBuffer(Generator):
             # this is needed because there is a 2 cycle delay between index_outer and 
             # actual output - change in tb rewrite
             self.output_valid = self.prev_output_valid
-
-    @always_ff((posedge, "clk"))
-    def set_prev_pause_output(self):
-        self.prev_pause_output = self.pause_output
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_out_buf_index(self):
