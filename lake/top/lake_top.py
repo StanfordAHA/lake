@@ -148,7 +148,7 @@ class LakeTop(Generator):
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
         self._gclk = self.var("gclk", 1)
-        self.wire(self._gclk, self._clk & self._tile_en)
+        self.wire(self._gclk, kts.util.clock(self._clk & self._tile_en))
 
 
         ###########################
