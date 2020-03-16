@@ -13,6 +13,7 @@ from lake.modules.sync_groups import SyncGroups
 from lake.modules.prefetcher import Prefetcher
 from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.modules.register_file import RegisterFile
+from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
 import kratos as kts
 
@@ -115,15 +116,10 @@ class LakeTop(Generator):
         self._config_addr_in = self.input("config_addr_in",
                                           self.config_addr_width)
 
-        # self._config_data_out = self.output("config_data_out",
-        #                                     self.config_data_width)
-
         self._config_data_out = self.output("config_data_out", self.config_data_width,
                                             size=self.total_sets,
                                             explicit_array=True,
                                             packed=True)
-
-        # self.wire(self._config_data_out, 0)
 
         self._config_read = self.input("config_read", 1)
         self._config_write = self.input("config_write", 1)
@@ -145,6 +141,15 @@ class LakeTop(Generator):
             self.address_width = clog2(mem_depth)
         else:
             self.address_width = clog2(mem_depth)  # + clog2(banks)
+
+
+        # Add tile enable!
+        self._tile_en = self.input("tile_en", 1)
+        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+
+        self._gclk = self.var("gclk", 1)
+        self.wire(self._gclk, self._clk & self._tile_en)
+
 
         ###########################
         ##### INPUT AGG SCHED #####
@@ -173,7 +178,7 @@ class LakeTop(Generator):
             for i in range(self.interconnect_input_ports):
                 new_child = AggAligner(self.data_width, self.max_line_length)
                 self.add_child(f"agg_align_{i}", new_child,
-                               clk=self._clk,
+                               clk=self._gclk,
                                rst_n=self._rst_n,
                                in_dat=self._data_in[i],
                                in_valid=self._valid_in[i],
@@ -213,7 +218,7 @@ class LakeTop(Generator):
                                                    self.max_agg_schedule)
                 self._agg_buffers.append(agg_buffer_new)
                 self.add_child(f"agg_in_{i}", agg_buffer_new,
-                               clk=self._clk,
+                               clk=self._gclk,
                                rst_n=self._rst_n,
                                data_in=self._data_consume[i],
                                valid_in=self._valid_consume[i],
@@ -256,7 +261,7 @@ class LakeTop(Generator):
                             fetch_width=self.mem_width,
                             multiwrite=self.multiwrite)
         self.add_child(f"input_addr_ctrl", iac,
-                       clk=self._clk,
+                       clk=self._gclk,
                        rst_n=self._rst_n,
                        valid_in=self._to_iac_valid,
                        data_in=self._to_iac_dat,
@@ -309,7 +314,7 @@ class LakeTop(Generator):
                              address_width=self.address_width)
 
         self.add_child(f"output_addr_ctrl", oac,
-                       clk=self._clk,
+                       clk=self._gclk,
                        rst_n=self._rst_n,
                        valid_in=self._prefetch_step,
                        ren=self._ren_out,
@@ -400,7 +405,7 @@ class LakeTop(Generator):
                                read_delay=self.read_delay)
             self.arbiters.append(rw_arb)
             self.add_child(f"rw_arb_{i}", rw_arb,
-                           clk=self._clk,
+                           clk=self._gclk,
                            rst_n=self._rst_n,
                            wen_in=self._wen_to_arb[i],
                            wen_en=self._arb_wen_in,
@@ -431,7 +436,7 @@ class LakeTop(Generator):
                                        sets_per_macro=self.sets_per_macro)
 
         self.add_child(f"config_seq", stg_cfg_seq,
-                       clk=self._clk,
+                       clk=self._gclk,
                        rst_n=self._rst_n,
                        config_data_in=self._config_data_in,
                        config_addr_in=self._config_addr_in,
@@ -466,7 +471,7 @@ class LakeTop(Generator):
                                  width_mult=self.fw_int,
                                  depth=self.mem_depth)
                 self.add_child(f"mem_{i}", mbank,
-                               clk=self._clk,
+                               clk=self._gclk,
                                data_in=self._mem_data_in[i],
                                addr=self._mem_addr_in[i],
                                cen=self._mem_cen_in[i],
@@ -480,7 +485,7 @@ class LakeTop(Generator):
                                      width_mult=self.fw_int,
                                      depth=self.mem_depth)
                 self.add_child(f"rf_{i}", rfile,
-                               clk=self._clk,
+                               clk=self._gclk,
                                wen=self._mem_wen_in[i],
                                wr_addr=self._mem_addr_in[i],
                                rd_addr=self._mem_addr_in[i],
@@ -527,7 +532,7 @@ class LakeTop(Generator):
                              int_out_ports=self.interconnect_output_ports)
 
         self.add_child("demux_rds", dmux_rd,
-                       clk=self._clk,
+                       clk=self._gclk,
                        rst_n=self._rst_n,
                        data_in=self._arb_dat_out,
                        valid_in=self._arb_valid_out,
@@ -546,7 +551,7 @@ class LakeTop(Generator):
             self.wire(self._ren_out_reduced[i], self._ren_out_tpose[i].r_or())
 
         self.add_child("sync_grp", sync_group,
-                       clk=self._clk,
+                       clk=self._gclk,
                        rst_n=self._rst_n,
                        data_in=self._data_to_sync,
                        valid_in=self._valid_to_sync,
@@ -569,7 +574,7 @@ class LakeTop(Generator):
             prefetchers.append(pref)
 
             self.add_child(f"pre_fetch_{i}", pref,
-                           clk=self._clk,
+                           clk=self._gclk,
                            rst_n=self._rst_n,
                            data_in=self._data_to_pref[i],
                            valid_read=self._valid_to_pref[i],
@@ -592,7 +597,7 @@ class LakeTop(Generator):
                                              tb_iterator_support=self.tb_iterator_support)
 
             self.add_child(f"tba_{i}", tba,
-                           clk=self._clk,
+                           clk=self._gclk,
                            rst_n=self._rst_n,
                            SRAM_to_tb_data=self._data_to_tba[i],
                            valid_data=self._valid_to_tba[i],

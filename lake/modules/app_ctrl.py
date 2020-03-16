@@ -8,38 +8,20 @@ import kratos as kts
 
 class AppCtrl(Generator):
     '''
-    Input addressing control from the aggregation buffers to the SRAM
+    Application Controller. 
+        This module holds the logic/expression of read/write sequencing at the application level. 
+        For example, a pure double buffering application needs a deterministic lockstep between sets
+        of reads and writes. The constraint imposed on this application prevents the divided memory space
+        from being self-conflicting.
+        For a line buffer, we only need
     '''
     def __init__(self,
                  interconnect_input_ports,
-                 mem_depth,
-                 banks,
-                 iterator_support,
-                 max_port_schedule,
-                 address_width,
-                 data_width,
-                 fetch_width,
-                 multiwrite):
-        super().__init__("input_addr_ctrl", debug=True)
+                 interconnect_output_ports):
+        super().__init__("app_ctrl", debug=True)
 
-        self.interconnect_input_ports = interconnect_input_ports
-        self.mem_depth = mem_depth
-        self.banks = banks
-        self.iterator_support = iterator_support
-        self.address_width = address_width
-        self.max_port_schedule = max_port_schedule
-        self.port_sched_width = max(1, clog2(self.interconnect_input_ports))
-        self.data_width = data_width
-        self.fetch_width = fetch_width
-        self.fw_int = int(self.fetch_width / self.data_width)
-        self.multiwrite = multiwrite
-
-        self.mem_addr_width = clog2(self.mem_depth)
-        if self.banks > 1:
-            self.bank_addr_width = clog2(self.banks)
-        else:
-            self.bank_addr_width = 0
-        self.address_width = self.mem_addr_width + self.bank_addr_width
+        self.int_in_ports = interconnect_input_ports
+        self.int_out_ports = interconnect_output_ports
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -48,13 +30,11 @@ class AppCtrl(Generator):
         # Inputs
         # phases = [] TODO
         # Take in the valid and data and attach an address + direct to a port
-        self._valid_in = self.input("valid_in", self.interconnect_input_ports)
-        self._data_in = self.input("data_in",
-                                   self.data_width,
-                                   size=(self.interconnect_input_ports,
-                                         self.fw_int),
-                                   explicit_array=True,
-                                   packed=True)
+        self._wen_in = self.input("wen_in", self.int_in_ports)
+        self._ren_in = self.input("ren_in", self.int_out_ports)
+
+        self._tb_valid = self.intput("tb_valid", self.int_out_ports)
+
 
         # Outputs
         self._wen = self.output("wen_to_sram",
