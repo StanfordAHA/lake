@@ -143,6 +143,8 @@ class TransposeBuffer(Generator):
                                             clog2(2 * self.num_tb * self.fetch_width))
         self.curr_out_start = self.var("curr_out_start", self.max_range_stride_bits2)
 
+        self.prev_output_valid = self.var("prev_output_valid", 1)
+
         self.start_data = self.var("start_data", 1)
         self.old_start_data = self.var("old_start_data", 1)
 
@@ -161,6 +163,7 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_input_buf_index)
         self.add_code(self.input_to_tb)
         self.add_code(self.output_from_tb)
+        self.add_code(self.set_prev_output_valid)
         self.add_code(self.set_output_valid)
         self.add_code(self.set_out_buf_index)
         self.add_code(self.set_rdy_to_arbiter)
@@ -329,17 +332,26 @@ class TransposeBuffer(Generator):
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_prev_output_valid(self):
+        if ~self.rst_n:
+            self.prev_output_valid = 0
+        elif self.dimensionality == 0:
+            self.prev_output_valid = 0
+        elif self.pause_tb | self.pause_output:
+            self.prev_output_valid = 0
+        #elif self.prev_pause_output & ~self.pause_output:
+        #    self.output_valid = 0
+        else:
+            self.prev_output_valid = 1
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid(self):
         if ~self.rst_n:
             self.output_valid = 0
-        elif self.dimensionality == 0:
-            self.output_valid = 0
-        elif self.pause_tb | self.pause_output:
-            self.output_valid = 0
-        elif self.prev_pause_output & ~self.pause_output:
-            self.output_valid = 0
         else:
-            self.output_valid = 1
+            # this is needed because there is a 2 cycle delay between index_outer and 
+            # actual output - change in tb rewrite
+            self.output_valid = self.prev_output_valid
 
     @always_ff((posedge, "clk"))
     def set_prev_pause_output(self):
