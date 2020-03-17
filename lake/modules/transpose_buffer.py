@@ -202,7 +202,10 @@ class TransposeBuffer(Generator):
         else:
             if self.index_inner == self.range_inner - 1:
                 if self.index_outer == self.range_outer - 1:
-                    self.index_outer = 0
+                    if self.ren:
+                        self.index_outer = 0
+                    else:
+                        self.index_outer = self.index_outer
                 else:
                     self.index_outer = self.index_outer + 1
 
@@ -228,7 +231,10 @@ class TransposeBuffer(Generator):
             self.pause_tb = 1
         elif self.dimensionality == 1:
             if self.index_outer == self.range_outer - 1:
-                self.pause_tb = ~self.valid_data
+                if self.ren:
+                    self.pause_tb = ~self.valid_data
+                else:
+                    self.pause_tb = 0
             elif self.pause_tb:
                 self.pause_tb = ~self.valid_data
             elif ~self.pause_output:
@@ -236,7 +242,10 @@ class TransposeBuffer(Generator):
         else:
             if self.index_inner == self.range_inner - 1:
                 if self.index_outer == self.range_outer - 1:
-                    self.pause_tb = ~self.valid_data
+                    if self.ren:
+                        self.pause_tb = ~self.valid_data
+                    else:
+                        self.pause_tb = 0
                 else:
                     self.pause_tb = 0
             elif self.pause_tb:
@@ -247,17 +256,7 @@ class TransposeBuffer(Generator):
     @always_comb
     def set_pause_output(self):
         if self.pause_tb:
-            if (self.dimensionality == 1) & \
-                    (self.index_outer == self.range_outer - 1) & \
-                    ~self.ren:
-                        self.pause_output = 0
-            elif (self.dimensionality == 2) & \
-                    (self.index_outer == self.range_outer - 1) & \
-                    (self.index_inner == self.range_inner - 1) & \
-                    ~self.ren:
-                        self.pause_output = 0
-            else:
-                self.pause_output = 1   
+            self.pause_output = 1   
         elif self.start_data & ~self.old_start_data:
             self.pause_output = 1
         else:
@@ -282,8 +281,6 @@ class TransposeBuffer(Generator):
             self.input_buf_index = 0
         elif self.valid_data & (self.row_index == self.tb_height - 1):
             self.input_buf_index = ~self.input_buf_index
-        # else:
-        #     self.input_buf_index = self.input_buf_index
 
     # for double buffer, get index of row to fill in transpose buffer
     # with input data
@@ -343,12 +340,10 @@ class TransposeBuffer(Generator):
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    #@always_comb
     def set_prev_output_valid(self):
-        #if ~self.rst_n:
-        #    self.prev_output_valid = 0
-        #elif self.dimensionality == 0:
-        if self.dimensionality == 0:
+        if ~self.rst_n:
+            self.prev_output_valid = 0
+        elif self.dimensionality == 0:
             self.prev_output_valid = 0
         elif self.pause_output:
             self.prev_output_valid = 0
