@@ -118,6 +118,8 @@ class LakeTop(Generator):
         self._valid_in = self.input("valid_in",
                                     self.interconnect_input_ports)
 
+        self._output_en = self.input("output_en", 1)
+
         self._data_out = self.output("data_out",
                                      self.data_width,
                                      size=self.interconnect_output_ports,
@@ -506,7 +508,8 @@ class LakeTop(Generator):
                            ack_in=self._valid_to_tba[i],
                            tb_to_interconnect_data=self._data_out[i],
                            tb_to_interconnect_valid=self._valid_out[i],
-                           tb_arbiter_rdy=self._ready_tba[i])
+                           tb_arbiter_rdy=self._ready_tba[i],
+                           tba_ren=self._output_en)
 
         ####################
         ##### ADD CODE #####

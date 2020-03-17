@@ -66,8 +66,8 @@ class TransposeBuffer(Generator):
         # valid indicating whether data input from SRAM is valid and
         # should be stored in transpose buffer
         self.valid_data = self.input("valid_data", 1)
-
-        self._ack_in = self.input("ack_in", 1)
+        self.ack_in = self.input("ack_in", 1)
+        self.ren = self.input("ren", 1)
 
         ###########################
         # CONFIGURATION REGISTERS #
@@ -191,7 +191,10 @@ class TransposeBuffer(Generator):
             self.index_outer = 0
         elif self.dimensionality == 1:
             if self.index_outer == self.range_outer - 1:
-                self.index_outer = 0
+                if self.ren:
+                    self.index_outer = 0
+                else:
+                    self.index_outer = self.index_outer
             elif self.pause_tb:
                 self.index_outer = self.index_outer
             elif ~self.pause_output:
@@ -244,11 +247,21 @@ class TransposeBuffer(Generator):
     @always_comb
     def set_pause_output(self):
         if self.pause_tb:
-            self.pause_output = 1
+            if (self.dimensionality == 1) & \
+                    (self.index_outer == self.range_outer - 1) & \
+                    ~self.ren:
+                        self.pause_output = 0
+            elif (self.dimensionality == 2) & \
+                    (self.index_outer == self.range_outer - 1) & \
+                    (self.index_inner == self.range_inner - 1) & \
+                    ~self.ren:
+                        self.pause_output = 0
+            else:
+                self.pause_output = 1   
         elif self.start_data & ~self.old_start_data:
             self.pause_output = 1
         else:
-            self.pause_output = 0
+            self.pause_output = ~self.ren
 
     # get index of row to fill in transpose buffer with input data
     # for one of the two buffers in double buffer
@@ -330,12 +343,14 @@ class TransposeBuffer(Generator):
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    #@always_comb
     def set_prev_output_valid(self):
-        if ~self.rst_n:
+        #if ~self.rst_n:
+        #    self.prev_output_valid = 0
+        #elif self.dimensionality == 0:
+        if self.dimensionality == 0:
             self.prev_output_valid = 0
-        elif self.dimensionality == 0:
-            self.prev_output_valid = 0
-        elif self.pause_tb | self.pause_output:
+        elif self.pause_output:
             self.prev_output_valid = 0
         else:
             self.prev_output_valid = 1
@@ -396,5 +411,5 @@ class TransposeBuffer(Generator):
         elif self.tb_height != 1:
             if self.row_index != self.tb_height - 1:
                 self.rdy_to_arbiter = 1
-        elif self._ack_in:
+        elif self.ack_in:
             self.rdy_to_arbiter = 0

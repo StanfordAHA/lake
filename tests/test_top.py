@@ -143,7 +143,8 @@ def test_identity_stream(data_width=16,
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
-                                  optimize_if=False)
+                                  optimize_if=False,
+                                  check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
@@ -188,6 +189,9 @@ def test_identity_stream(data_width=16,
         if i > 200:
             ren_en = 1
         tester.circuit.ren_en = ren_en
+
+        output_en = rand.randint(0, 1) #(i % 2)
+        tester.circuit.output_en = output_en
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
 
@@ -373,7 +377,8 @@ def test_top(data_width=16,
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
-                                  optimize_if=False)
+                                  optimize_if=False,
+                                  check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
@@ -418,6 +423,8 @@ def test_top(data_width=16,
             ren_en = 1
         tester.circuit.ren_en = ren_en
 
+        output_en = 1
+        tester.circuit.output_en = output_en
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
 
         tester.eval()
