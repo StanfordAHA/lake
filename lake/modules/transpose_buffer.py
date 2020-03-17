@@ -191,7 +191,7 @@ class TransposeBuffer(Generator):
             self.index_outer = 0
         elif self.dimensionality == 1:
             if self.index_outer == self.range_outer - 1:
-                if self.ren:
+                if ~self.pause_output:
                     self.index_outer = 0
                 else:
                     self.index_outer = self.index_outer
@@ -202,7 +202,7 @@ class TransposeBuffer(Generator):
         else:
             if self.index_inner == self.range_inner - 1:
                 if self.index_outer == self.range_outer - 1:
-                    if self.ren:
+                    if ~self.pause_output:
                         self.index_outer = 0
                     else:
                         self.index_outer = self.index_outer
@@ -217,7 +217,7 @@ class TransposeBuffer(Generator):
             self.index_inner = 0
         else:
             if self.index_inner == self.range_inner - 1:
-                if self.ren:
+                if ~self.pause_output:
                     self.index_inner = 0
                 else:
                     self.index_inner = self.index_inner
@@ -234,7 +234,7 @@ class TransposeBuffer(Generator):
             self.pause_tb = 1
         elif self.dimensionality == 1:
             if self.index_outer == self.range_outer - 1:
-                if self.ren:
+                if ~self.pause_output:
                     self.pause_tb = ~self.valid_data
                 else:
                     self.pause_tb = 0
@@ -245,7 +245,7 @@ class TransposeBuffer(Generator):
         else:
             if self.index_inner == self.range_inner - 1:
                 if self.index_outer == self.range_outer - 1:
-                    if self.ren:
+                    if ~self.pause_output:
                         self.pause_tb = ~self.valid_data
                     else:
                         self.pause_tb = 0
