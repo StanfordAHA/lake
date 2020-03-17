@@ -21,32 +21,32 @@ import kratos as kts
 class LakeTop(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
-                 mem_width=64,
-                 mem_depth=512,
-                 banks=2,
-                 input_iterator_support=6,  # Addr Controllers
-                 output_iterator_support=6,
-                 interconnect_input_ports=1,  # Connection to int
-                 interconnect_output_ports=3,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
+                 mem_width=16,
+                 mem_depth=32,
+                 banks=1,
+                 input_iterator_support=2,  # Addr Controllers
+                 output_iterator_support=2,
+                 interconnect_input_ports=2,  # Connection to int
+                 interconnect_output_ports=2,
+                 mem_input_ports=2,
+                 mem_output_ports=2,
                  use_sram_stub=1,
-                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=8,
+                 read_delay=0,  # Cycle delay in read (SRAM vs Register File)
+                 rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
+                 agg_height=0,
                  max_agg_schedule=64,
                  input_max_port_sched=64,
                  output_max_port_sched=64,
-                 align_input=1,
+                 align_input=0,
                  max_line_length=2048,
                  max_tb_height=1,
                  tb_range_max=2048,
                  tb_sched_max=64,
                  max_tb_stride=15,
-                 num_tb=1,
+                 num_tb=0,
                  tb_iterator_support=2,
-                 multiwrite=2,
-                 max_prefetch=64,
+                 multiwrite=1,
+                 max_prefetch=8,
                  config_data_width=16,
                  config_addr_width=8):
         super().__init__("LakeTop", debug=True)
@@ -69,7 +69,7 @@ class LakeTop(Generator):
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
         self.align_input = align_input
         self.max_line_length = max_line_length
-        assert self.mem_width > self.data_width, "Data width needs to be smaller than mem"
+        assert self.mem_width <= self.data_width, "Data width needs to be smaller than mem"
         self.fw_int = int(self.mem_width / self.data_width)
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
@@ -88,17 +88,17 @@ class LakeTop(Generator):
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
 
-        self.sets_per_macro = int(self.mem_depth / self.data_words_per_set)
-        self.total_sets = self.banks * self.sets_per_macro
+        self.sets_per_macro = max(1, int(self.mem_depth / self.data_words_per_set))
+        self.total_sets = max(1, self.banks * self.sets_per_macro)
         # phases = [] TODO
 
         # CLK and RST
-        self._clk = self.clock("clk")
+        self._gclk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
-        # Get the input ports from the interconnect
+        # Get the input portI  from the interconnect
         self._data_in = self.input("data_in",
                                    self.data_width,
                                    size=self.interconnect_input_ports,
@@ -109,6 +109,9 @@ class LakeTop(Generator):
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
+
+        self._wen = self.input("wen", self.interconnect_input_ports)
+        self._ren = self.input("ren", self.interconnect_output_ports)
 
         self._config_data_in = self.input("config_data_in",
                                           self.config_data_width)
@@ -147,8 +150,8 @@ class LakeTop(Generator):
         self._tile_en = self.input("tile_en", 1)
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
-        self._gclk = self.var("gclk", 1)
-        self.wire(self._gclk, kts.util.clock(self._clk & self._tile_en))
+        # self._gclk = self.var("gclk", 1)
+        # self.wire(self._gclk, kts.util.clock(self._clk & self._tile_en))
 
 
         ###########################
@@ -346,6 +349,7 @@ class LakeTop(Generator):
         self._mem_data_out = self.var("mem_data_out",
                                       self.data_width,
                                       size=(self.banks,
+                                            self.mem_output_ports,
                                             self.fw_int),
                                       packed=True,
                                       explicit_array=True)
@@ -353,6 +357,7 @@ class LakeTop(Generator):
         self._mem_data_in = self.var("mem_data_in",
                                      self.data_width,
                                      size=(self.banks,
+                                           self.mem_input_ports,
                                            self.fw_int),
                                      packed=True,
                                      explicit_array=True)
@@ -402,7 +407,8 @@ class LakeTop(Generator):
                                data_width=self.data_width,
                                int_out_ports=self.interconnect_output_ports,
                                memory_depth=self.mem_depth,
-                               read_delay=self.read_delay)
+                               read_delay=self.read_delay,
+                               rw_same_cycle=self.rw_same_cycle)
             self.arbiters.append(rw_arb)
             self.add_child(f"rw_arb_{i}", rw_arb,
                            clk=self._gclk,
@@ -551,16 +557,17 @@ class LakeTop(Generator):
             self.wire(self._ren_out_reduced[i], self._ren_out_tpose[i].r_or())
 
         self.add_child("sync_grp", sync_group,
-                       clk=self._gclk,
-                       rst_n=self._rst_n,
-                       data_in=self._data_to_sync,
-                       valid_in=self._valid_to_sync,
-                       data_out=self._data_to_pref,
-                       valid_out=self._valid_to_pref,
-                       ren_in=self._ren_out_reduced,
-                       rd_sync_gate=self._rd_sync_gate,
-                       ack_in=self._ack_reduced)
+                    clk=self._gclk,
+                    rst_n=self._rst_n,
+                    data_in=self._data_to_sync,
+                    valid_in=self._valid_to_sync,
+                    data_out=self._data_to_pref,
+                    valid_out=self._valid_to_pref,
+                    ren_in=self._ren_out_reduced,
+                    rd_sync_gate=self._rd_sync_gate,
+                    ack_in=self._ack_reduced)
 
+        # This is the end of the line if we aren't using tb
         ######################
         ##### PREFETCHER #####
         ######################
@@ -568,44 +575,55 @@ class LakeTop(Generator):
         for i in range(self.interconnect_output_ports):
 
             pref = Prefetcher(fetch_width=self.mem_width,
-                              data_width=self.data_width,
-                              max_prefetch=self.max_prefetch)
+                            data_width=self.data_width,
+                            max_prefetch=self.max_prefetch)
 
             prefetchers.append(pref)
 
-            self.add_child(f"pre_fetch_{i}", pref,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           data_in=self._data_to_pref[i],
-                           valid_read=self._valid_to_pref[i],
-                           tba_rdy_in=self._ready_tba[i],
-                           data_out=self._data_to_tba[i],
-                           valid_out=self._valid_to_tba[i],
-                           prefetch_step=self._prefetch_step[i])
+            if self.num_tb == 0:
+                self.add_child(f"pre_fetch_{i}", pref,
+                               clk=self._gclk,
+                               rst_n=self._rst_n,
+                               data_in=self._data_to_pref[i],
+                               valid_read=self._valid_to_pref[i],
+                               tba_rdy_in=self._ren[i],
+                               data_out=self._data_out[i],
+                               valid_out=self._valid_out[i],
+                               prefetch_step=self._prefetch_step[i])
+            else:
+                self.add_child(f"pre_fetch_{i}", pref,
+                            clk=self._gclk,
+                            rst_n=self._rst_n,
+                            data_in=self._data_to_pref[i],
+                            valid_read=self._valid_to_pref[i],
+                            tba_rdy_in=self._ready_tba[i],
+                            data_out=self._data_to_tba[i],
+                            valid_out=self._valid_to_tba[i],
+                            prefetch_step=self._prefetch_step[i])
 
-        #############################
-        ##### TRANSPOSE BUFFERS #####
-        #############################
-        for i in range(self.interconnect_output_ports):
+            #############################
+            ##### TRANSPOSE BUFFERS #####
+            #############################
+            for i in range(self.interconnect_output_ports):
 
-            tba = TransposeBufferAggregation(word_width=self.data_width,
-                                             fetch_width=self.fw_int,
-                                             num_tb=self.num_tb,
-                                             max_tb_height=self.max_tb_height,
-                                             max_range=self.tb_range_max,
-                                             max_stride=self.max_tb_stride,
-                                             tb_iterator_support=self.tb_iterator_support)
+                tba = TransposeBufferAggregation(word_width=self.data_width,
+                                                fetch_width=self.fw_int,
+                                                num_tb=self.num_tb,
+                                                max_tb_height=self.max_tb_height,
+                                                max_range=self.tb_range_max,
+                                                max_stride=self.max_tb_stride,
+                                                tb_iterator_support=self.tb_iterator_support)
 
-            self.add_child(f"tba_{i}", tba,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           SRAM_to_tb_data=self._data_to_tba[i],
-                           valid_data=self._valid_to_tba[i],
-                           tb_index_for_data=0,
-                           ack_in=self._valid_to_tba[i],
-                           tb_to_interconnect_data=self._data_out[i],
-                           tb_to_interconnect_valid=self._valid_out[i],
-                           tb_arbiter_rdy=self._ready_tba[i])
+                self.add_child(f"tba_{i}", tba,
+                            clk=self._gclk,
+                            rst_n=self._rst_n,
+                            SRAM_to_tb_data=self._data_to_tba[i],
+                            valid_data=self._valid_to_tba[i],
+                            tb_index_for_data=0,
+                            ack_in=self._valid_to_tba[i],
+                            tb_to_interconnect_data=self._data_out[i],
+                            tb_to_interconnect_valid=self._valid_out[i],
+                            tb_arbiter_rdy=self._ready_tba[i])
 
         ####################
         ##### ADD CODE #####

@@ -79,7 +79,7 @@ class StorageConfigSeq(Generator):
             if width > 0:
                 self.wire(self._addr_out, kts.concat(kts.const(0, width), self._config_addr_in))
             else:
-                self.wire(self._addr_out, self._config_addr_in)
+                self.wire(self._addr_out, self._config_addr_in[self.addr_width - 1, 0])
         else:
             width = self.addr_width - self.config_addr_width - clog2(self.sets_per_macro)
             self._set_to_addr = self.var("set_to_addr",

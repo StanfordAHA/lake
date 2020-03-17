@@ -22,6 +22,8 @@ class InputAddrCtrl(Generator):
                  multiwrite):
         super().__init__("input_addr_ctrl", debug=True)
 
+        assert multiwrite >= 1, "Multiwrite must be at least 1..."
+
         self.interconnect_input_ports = interconnect_input_ports
         self.mem_depth = mem_depth
         self.banks = banks
