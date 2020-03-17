@@ -151,8 +151,7 @@ class RWArbiter(Generator):
                                      explicit_array=True,
                                      packed=True)
             for i in range(self.strg_rd_ports - 1):
-            # self.add_code(self.count_ren)
-                self.add_code(self.set_next_read_port_alt, i+1)
+                self.add_code(self.set_next_read_port_alt, index=i+1)
 
         # If we have more than one read port, we need to use slightly different logic
         # to set the other reads...
@@ -217,12 +216,11 @@ class RWArbiter(Generator):
         self._done[index] = 0
         for i in range(self.int_out_ports):
             if ~self._done[index]:
-                if self._ren_int[i]:
-                    if(self._idx_cnt[index-1] == index):
-                        self._done[index] = 1
-                        self._rd_addr_sel[index] = self._rd_addr[i]
-                        self._next_rd_port[index] = 1
-                    self._idx_cnt[index-1] = self._idx_cnt[index-1] + 1
+                if self._ren_int[i] & (self._idx_cnt[index-1] == index):
+                    self._done[index] = 1
+                    self._rd_addr_sel[index] = self._rd_addr[i]
+                    self._next_rd_port[index] = 1
+                self._idx_cnt[index-1] = self._idx_cnt[index-1] + 1
 
     @always_comb
     # Find lowest ready
