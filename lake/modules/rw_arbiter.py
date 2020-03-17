@@ -24,8 +24,8 @@ class RWArbiter(Generator):
                  strg_wr_ports=2,
                  strg_rd_ports=2,
                  read_delay=0,
-                 rw_same_cycle=False,
-                 separate_addresses=False):
+                 rw_same_cycle=True,
+                 separate_addresses=True):
 
         assert not (memory_depth & (memory_depth - 1)), "Memory depth needs to be a power of 2"
 
