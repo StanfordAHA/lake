@@ -48,7 +48,8 @@ class LakeTop(Generator):
                  multiwrite=1,
                  max_prefetch=8,
                  config_data_width=16,
-                 config_addr_width=8):
+                 config_addr_width=8,
+                 remove_tb=False):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -81,7 +82,7 @@ class LakeTop(Generator):
         self.max_prefetch = max_prefetch
         self.config_data_width = config_data_width
         self.config_addr_width = config_addr_width
-
+        self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
 
@@ -128,9 +129,6 @@ class LakeTop(Generator):
         self._config_write = self.input("config_write", 1)
         self._config_en = self.input("config_en", self.total_sets)
 
-        self._valid_in = self.input("valid_in",
-                                    self.interconnect_input_ports)
-
         self._data_out = self.output("data_out",
                                      self.data_width,
                                      size=self.interconnect_output_ports,
@@ -147,8 +145,8 @@ class LakeTop(Generator):
 
 
         # Add tile enable!
-        self._tile_en = self.input("tile_en", 1)
-        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        # self._tile_en = self.input("tile_en", 1)
+        # self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
         # self._gclk = self.var("gclk", 1)
         # self.wire(self._gclk, kts.util.clock(self._clk & self._tile_en))
@@ -163,10 +161,11 @@ class LakeTop(Generator):
         ###########################################
         # These variables are holders and can be swapped out if needed
         self._data_consume = self._data_in
-        self._valid_consume = self._valid_in
+        self._valid_consume = self._wen
         # Zero out if not aligning
-        self._align_to_agg = self.var("align_input",
-                                      self.interconnect_input_ports)
+        if(self.agg_height > 0):
+            self._align_to_agg = self.var("align_input",
+                                          self.interconnect_input_ports)
         # Add the aggregation buffer aligners
         if(self.align_input):
             self._data_consume = self.var("data_consume",
@@ -184,12 +183,13 @@ class LakeTop(Generator):
                                clk=self._gclk,
                                rst_n=self._rst_n,
                                in_dat=self._data_in[i],
-                               in_valid=self._valid_in[i],
+                               in_valid=self._wen[i],
                                align=self._align_to_agg[i],
                                out_valid=self._valid_consume[i],
                                out_dat=self._data_consume[i])
         else:
-            self.wire(self._align_to_agg, const(0, self._align_to_agg.width))
+            if self.agg_height > 0:
+                self.wire(self._align_to_agg, const(0, self._align_to_agg.width))
         ################################################
         ##### END: AGGREGATION ALIGNERS (OPTIONAL) #####
         ################################################
@@ -233,22 +233,27 @@ class LakeTop(Generator):
         #######################################
         ##### END: AGG BUFFERS (OPTIONAL) #####
         #######################################
-        self._arb_wen_in = self.input("wen_en", 1)
-        self._arb_ren_in = self.input("ren_en", 1)
+        self._arb_wen_in = self.input("wen_en", self.interconnect_input_ports)
+        self._arb_ren_in = self.input("ren_en", self.interconnect_output_ports)
         # self._arb_ren_in = self.input("arb_ren_in", self.interconnect_output_ports)
         self._ready_tba = self.var("ready_tba", self.interconnect_output_ports)
         ####################################
         ##### INPUT ADDRESS CONTROLLER #####
         ####################################
-        self._wen_to_arb = self.var("wen_to_arb", self.banks)
+        self._wen_to_arb = self.var("wen_to_arb", self.mem_input_ports,
+                                    size=self.banks,
+                                    explicit_array=True,
+                                    packed=True)
         self._addr_to_arb = self.var("addr_to_arb",
                                      self.address_width,
-                                     size=self.banks,
+                                     size=(self.banks,
+                                           self.mem_input_ports),
                                      explicit_array=True,
                                      packed=True)
         self._data_to_arb = self.var("data_to_arb",
                                      self.data_width,
                                      size=(self.banks,
+                                           self.mem_input_ports,
                                            self.fw_int),
                                      explicit_array=True,
                                      packed=True)
@@ -258,15 +263,16 @@ class LakeTop(Generator):
                             mem_depth=self.mem_depth,
                             banks=self.banks,
                             iterator_support=self.input_iterator_support,
-                            max_port_schedule=64,
                             address_width=self.address_width,
                             data_width=self.data_width,
                             fetch_width=self.mem_width,
-                            multiwrite=self.multiwrite)
+                            multiwrite=self.multiwrite,
+                            strg_wr_ports=self.mem_input_ports)
         self.add_child(f"input_addr_ctrl", iac,
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        valid_in=self._to_iac_valid,
+                       wen_en=self._arb_wen_in,
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,
                        addr_out=self._addr_to_arb,
@@ -334,17 +340,21 @@ class LakeTop(Generator):
         self._arb_dat_out = self.var("arb_dat_out",
                                      self.data_width,
                                      size=(self.banks,
+                                           self.mem_output_ports,
                                            self.fw_int),
                                      explicit_array=True,
                                      packed=True)
 
         self._arb_port_out = self.var("arb_port_out",
                                       self.interconnect_output_ports,
-                                      size=self.banks,
+                                      size=(self.banks,
+                                            self.mem_output_ports),
                                       explicit_array=True,
                                       packed=True)
-        self._arb_valid_out = self.var("arb_valid_out",
-                                       self.banks)
+        self._arb_valid_out = self.var("arb_valid_out", self.mem_output_ports,
+                                       size=self.banks,
+                                       explicit_array=True,
+                                       packed=True)
 
         self._mem_data_out = self.var("mem_data_out",
                                       self.data_width,
@@ -353,6 +363,16 @@ class LakeTop(Generator):
                                             self.fw_int),
                                       packed=True,
                                       explicit_array=True)
+
+        self._mem_data_low_pt = self.var("mem_data_low_pt",
+                                         self.data_width,
+                                         size=(self.banks,
+                                               self.fw_int),
+                                         packed=True,
+                                         explicit_array=True)
+
+        for i in range(self.banks):
+            self.wire(self._mem_data_low_pt[i], self._mem_data_out[i][0])
 
         self._mem_data_in = self.var("mem_data_in",
                                      self.data_width,
@@ -365,6 +385,7 @@ class LakeTop(Generator):
         self._mem_data_dp = self.var("mem_data_dp",
                                      self.data_width,
                                      size=(self.banks,
+                                           self.mem_input_ports,
                                            self.fw_int),
                                      packed=True,
                                      explicit_array=True)
@@ -375,17 +396,45 @@ class LakeTop(Generator):
                                       packed=True,
                                       explicit_array=True)
 
-        self._mem_addr_dp = self.var("mem_addr_dp",
-                                     self.address_width,
-                                     size=self.banks,
-                                     packed=True,
-                                     explicit_array=True)
+        if self.rw_same_cycle:
+            self._wr_mem_addr_dp = self.var("wr_mem_addr_dp",
+                                            self.address_width,
+                                            size=(self.banks,
+                                                  self.mem_input_ports),
+                                            explicit_array=True,
+                                            packed=True)
+            self._wr_mem_addr_in = self.var("wr_mem_addr_in",
+                                            self.address_width,
+                                            size=(self.banks,
+                                                  self.mem_input_ports),
+                                            explicit_array=True,
+                                            packed=True)
+            self._rd_mem_addr_dp = self.var("rd_mem_addr_dp",
+                                            self.address_width,
+                                            size=(self.banks,
+                                                  self.mem_output_ports),
+                                            explicit_array=True,
+                                            packed=True)
+            self._rd_mem_addr_in = self.var("rd_mem_addr_in",
+                                            self.address_width,
+                                            size=(self.banks,
+                                                  self.mem_output_ports),
+                                            explicit_array=True,
+                                            packed=True)
 
-        self._mem_addr_in = self.var("mem_addr_in",
-                                     self.address_width,
-                                     size=self.banks,
-                                     packed=True,
-                                     explicit_array=True)
+        else:
+            self._mem_addr_dp = self.var("mem_addr_dp",
+                                        self.address_width,
+                                        size=(self.banks,
+                                              self.mem_input_ports),
+                                        packed=True,
+                                        explicit_array=True)
+            self._mem_addr_in = self.var("mem_addr_in",
+                                         self.address_width,
+                                         size=(self.banks,
+                                               self.mem_input_ports),
+                                         packed=True,
+                                         explicit_array=True)
 
         self._mem_addr_cfg = self.var("mem_addr_cfg", self.address_width)
 
@@ -395,31 +444,47 @@ class LakeTop(Generator):
         self._mem_ren_cfg = self.var("mem_ren_cfg", self.banks)
         self._mem_wen_cfg = self.var("mem_wen_cfg", self.banks)
 
-        self._mem_cen_datapath = self.var("mem_cen_datapath", self.banks)
-        self._mem_wen_datapath = self.var("mem_wen_datapath", self.banks)
+        self._mem_cen_datapath = self.var("mem_cen_datapath", self.mem_output_ports,
+                                          size=self.banks,
+                                          explicit_array=True,
+                                          packed=True)
+        self._mem_wen_datapath = self.var("mem_wen_datapath", self.mem_input_ports,
+                                          size=self.banks,
+                                          explicit_array=True,
+                                          packed=True)
 
-        self._mem_cen_in = self.var("mem_cen_in", self.banks)
-        self._mem_wen_in = self.var("mem_wen_in", self.banks)
+        self._mem_cen_in = self.var("mem_cen_in", self.mem_output_ports,
+                                    size=self.banks,
+                                    explicit_array=True,
+                                    packed=True)
+        self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
+                                    size=self.banks,
+                                    explicit_array=True,
+                                    packed=True)
 
         self.arbiters = []
         for i in range(self.banks):
             rw_arb = RWArbiter(fetch_width=self.mem_width,
                                data_width=self.data_width,
-                               int_out_ports=self.interconnect_output_ports,
                                memory_depth=self.mem_depth,
+                               int_in_ports=self.interconnect_output_ports,
+                               int_out_ports=self.interconnect_input_ports,
+                               strg_wr_ports=self.mem_input_ports,
+                               strg_rd_ports=self.mem_output_ports,
                                read_delay=self.read_delay,
-                               rw_same_cycle=self.rw_same_cycle)
+                               rw_same_cycle=self.rw_same_cycle,
+                               separate_addresses=self.rw_same_cycle)
             self.arbiters.append(rw_arb)
             self.add_child(f"rw_arb_{i}", rw_arb,
                            clk=self._gclk,
                            rst_n=self._rst_n,
                            wen_in=self._wen_to_arb[i],
-                           wen_en=self._arb_wen_in,
+                        #    wen_en=kts.concat(*[self._arb_wen_in] * self.mem_input_ports),
                            w_data=self._data_to_arb[i],
                            w_addr=self._addr_to_arb[i],
                            data_from_mem=self._mem_data_out[i],
                            ren_in=(self._ren_out[i] & self._rd_sync_gate),
-                           ren_en=self._arb_ren_in[0],
+                           ren_en=self._arb_ren_in,
                            rd_addr=self._addr_out,
                            out_data=self._arb_dat_out[i],
                            out_port=self._arb_port_out[i],
@@ -427,8 +492,15 @@ class LakeTop(Generator):
                            cen_mem=self._mem_cen_datapath[i],
                            wen_mem=self._mem_wen_datapath[i],
                            data_to_mem=self._mem_data_dp[i],
-                           addr_to_mem=self._mem_addr_dp[i],
+                        #    addr_to_mem=self._mem_addr_dp[i],
                            out_ack=self._arb_acks[i])
+
+            # Bind the separate addrs
+            if self.rw_same_cycle:
+                self.wire(rw_arb.ports.wr_addr_to_mem, self._wr_mem_addr_dp[i])
+                self.wire(rw_arb.ports.rd_addr_to_mem, self._rd_mem_addr_dp[i])
+            else:
+                self.wire(rw_arb.ports.addr_to_mem, self._mem_addr_dp[i])
 
         ####################################
         ##### DEMUX WRITE/SRAM WRAPPER #####
@@ -449,7 +521,7 @@ class LakeTop(Generator):
                        config_wr=self._config_write,
                        config_rd=self._config_read,
                        config_en=self._config_en,
-                       rd_data_stg=self._mem_data_out,
+                       rd_data_stg=self._mem_data_low_pt,
                        wr_data=self._mem_data_cfg,
                        rd_data_out=self._config_data_out,
                        addr_out=self._mem_addr_cfg,
@@ -457,18 +529,51 @@ class LakeTop(Generator):
                        ren_out=self._mem_ren_cfg)
 
         for i in range(self.banks):
-            self.wire(self._mem_wen_in[i], ternary(self._config_en.r_or(),
-                                                   self._mem_wen_cfg[i],
-                                                   self._mem_wen_datapath[i]))
-            self.wire(self._mem_cen_in[i], ternary(self._config_en.r_or(),
-                                                   self._mem_wen_cfg[i] | self._mem_ren_cfg[i],
-                                                   self._mem_cen_datapath[i]))
-            self.wire(self._mem_addr_in[i], ternary(self._config_en.r_or(),
-                                                    self._mem_addr_cfg,
-                                                    self._mem_addr_dp[i]))
-            self.wire(self._mem_data_in[i], ternary(self._config_en.r_or(),
-                                                    self._mem_data_cfg,
-                                                    self._mem_data_dp[i]))
+            # If we are not sharing the ports...
+            if self.rw_same_cycle:
+                self.wire(self._mem_wen_in[i][0], ternary(self._config_en.r_or(),
+                                                          self._mem_wen_cfg[i],
+                                                          self._mem_wen_datapath[i][0]))
+                # Treat cen as ren for all intents and purpose
+                self.wire(self._mem_cen_in[i][0], ternary(self._config_en.r_or(),
+                                                          self._mem_ren_cfg[i],
+                                                          self._mem_cen_datapath[i][0]))
+                self.wire(self._wr_mem_addr_in[i][0], ternary(self._config_en.r_or(),
+                                                              self._mem_addr_cfg,
+                                                              self._wr_mem_addr_dp[i][0]))
+                self.wire(self._rd_mem_addr_in[i][0], ternary(self._config_en.r_or(),
+                                                              self._mem_addr_cfg,
+                                                              self._rd_mem_addr_dp[i][0]))
+                self.wire(self._mem_data_in[i][0], ternary(self._config_en.r_or(),
+                                                           self._mem_data_cfg,
+                                                           self._mem_data_dp[i][0]))
+                # Don't route the config to any but the first port
+                for j in range(self.mem_input_ports - 1):
+                    self.wire(self._mem_wen_in[i][j + 1], self._mem_wen_datapath[i][j + 1])
+                    self.wire(self._wr_mem_addr_in[i][j + 1], self._wr_mem_addr_dp[i][j + 1])
+                    self.wire(self._mem_data_in[i][j + 1], self._mem_data_dp[i][j + 1])
+                for j in range(self.mem_output_ports - 1):
+                    self.wire(self._mem_cen_in[i][j + 1], self._mem_cen_datapath[i][j + 1])
+                    self.wire(self._rd_mem_addr_in[i][j + 1], self._rd_mem_addr_dp[i][j + 1])
+            else:
+                self.wire(self._mem_wen_in[i][0], ternary(self._config_en.r_or(),
+                                                          self._mem_wen_cfg[i],
+                                                          self._mem_wen_datapath[i][0]))
+                self.wire(self._mem_cen_in[i][0], ternary(self._config_en.r_or(),
+                                                          self._mem_wen_cfg[i] | self._mem_ren_cfg[i],
+                                                          self._mem_cen_datapath[i][0]))
+                self.wire(self._mem_addr_in[i][0], ternary(self._config_en.r_or(),
+                                                           self._mem_addr_cfg,
+                                                           self._mem_addr_dp[i][0]))
+                self.wire(self._mem_data_in[i][0], ternary(self._config_en.r_or(),
+                                                           self._mem_data_cfg,
+                                                           self._mem_data_dp[i][0]))
+                # Don't route the config to any but the first port
+                for j in range(self.mem_input_ports - 1):
+                    self.wire(self._mem_wen_in[i][j + 1], self._mem_wen_datapath[i][j + 1])
+                    self.wire(self._mem_cen_in[i][j + 1], self._mem_cen_datapath[i][j + 1])
+                    self.wire(self._mem_addr_in[i][j + 1], self._mem_addr_dp[i][j + 1])
+                    self.wire(self._mem_data_in[i][j + 1], self._mem_data_dp[i][j + 1])
 
         # Wrap sram_stub
         if self.read_delay == 1:
@@ -490,13 +595,22 @@ class LakeTop(Generator):
                                      read_ports=self.mem_output_ports,
                                      width_mult=self.fw_int,
                                      depth=self.mem_depth)
-                self.add_child(f"rf_{i}", rfile,
-                               clk=self._gclk,
-                               wen=self._mem_wen_in[i],
-                               wr_addr=self._mem_addr_in[i],
-                               rd_addr=self._mem_addr_in[i],
-                               data_in=self._mem_data_in[i],
-                               data_out=self._mem_data_out[i])
+                if self.rw_same_cycle:
+                    self.add_child(f"rf_{i}", rfile,
+                                   clk=self._gclk,
+                                   wen=self._mem_wen_in[i],
+                                   wr_addr=self._wr_mem_addr_in[i],
+                                   rd_addr=self._rd_mem_addr_in[i],
+                                   data_in=self._mem_data_in[i],
+                                   data_out=self._mem_data_out[i])
+                else:
+                    self.add_child(f"rf_{i}", rfile,
+                                   clk=self._gclk,
+                                   wen=self._mem_wen_in[i],
+                                   wr_addr=self._mem_addr_in[i],
+                                   rd_addr=self._mem_addr_in[i],
+                                   data_in=self._mem_data_in[i],
+                                   data_out=self._mem_data_out[i])
 
         #########################################
         ##### END: DEMUX WRITE/SRAM WRAPPER #####
@@ -537,93 +651,135 @@ class LakeTop(Generator):
                              banks=self.banks,
                              int_out_ports=self.interconnect_output_ports)
 
-        self.add_child("demux_rds", dmux_rd,
-                       clk=self._gclk,
-                       rst_n=self._rst_n,
-                       data_in=self._arb_dat_out,
-                       valid_in=self._arb_valid_out,
-                       port_in=self._arb_port_out,
-                       data_out=self._data_to_sync,
-                       valid_out=self._valid_to_sync)
+        self._arb_dat_out_f = self.var("arb_dat_out_f",
+                                       self.data_width,
+                                       size=(self.banks * self.mem_output_ports,
+                                             self.fw_int),
+                                       explicit_array=True,
+                                       packed=True)
 
-        #######################
-        ##### SYNC GROUPS #####
-        #######################
-        sync_group = SyncGroups(fetch_width=self.mem_width,
-                                data_width=self.data_width,
-                                int_out_ports=self.interconnect_output_ports)
+        self._arb_port_out_f = self.var("arb_port_out_f",
+                                      self.interconnect_output_ports,
+                                      size=(self.banks * self.mem_output_ports),
+                                      explicit_array=True,
+                                      packed=True)
+        self._arb_valid_out_f = self.var("arb_valid_out_f", self.mem_output_ports * self.banks)
 
-        for i in range(self.interconnect_output_ports):
-            self.wire(self._ren_out_reduced[i], self._ren_out_tpose[i].r_or())
+        tmp_cnt = 0
+        for i in range(self.banks):
+            for j in range(self.mem_output_ports):
+                self.wire(self._arb_dat_out_f[tmp_cnt], self._arb_dat_out[i][j])
+                self.wire(self._arb_port_out_f[tmp_cnt], self._arb_port_out[i][j])
+                self.wire(self._arb_valid_out_f[tmp_cnt], self._arb_valid_out[i][j])
+                tmp_cnt = tmp_cnt + 1
 
-        self.add_child("sync_grp", sync_group,
-                    clk=self._gclk,
-                    rst_n=self._rst_n,
-                    data_in=self._data_to_sync,
-                    valid_in=self._valid_to_sync,
-                    data_out=self._data_to_pref,
-                    valid_out=self._valid_to_pref,
-                    ren_in=self._ren_out_reduced,
-                    rd_sync_gate=self._rd_sync_gate,
-                    ack_in=self._ack_reduced)
 
-        # This is the end of the line if we aren't using tb
-        ######################
-        ##### PREFETCHER #####
-        ######################
-        prefetchers = []
-        for i in range(self.interconnect_output_ports):
+        # If this is end of the road...
+        if self.remove_tb:
+            assert self.fw_int == 1, "Make it easier on me now..."
+            self.add_child("demux_rds", dmux_rd,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           data_in=self._arb_dat_out_f,
+                           valid_in=self._arb_valid_out_f,
+                           port_in=self._arb_port_out_f,
+                        #    data_out=self._data_to_sync,
+                           valid_out=self._valid_out)
+            for i in range(self.interconnect_output_ports):
+                self.wire(self._data_out[i], dmux_rd.ports.data_out[0])
 
-            pref = Prefetcher(fetch_width=self.mem_width,
-                            data_width=self.data_width,
-                            max_prefetch=self.max_prefetch)
+        else:
 
-            prefetchers.append(pref)
+            self.add_child("demux_rds", dmux_rd,
+                        clk=self._gclk,
+                        rst_n=self._rst_n,
+                        data_in=self._arb_dat_out_f,
+                        valid_in=self._arb_valid_out_f,
+                        port_in=self._arb_port_out_f,
+                        data_out=self._data_to_sync,
+                        valid_out=self._valid_to_sync)
 
-            if self.num_tb == 0:
-                self.add_child(f"pre_fetch_{i}", pref,
-                               clk=self._gclk,
-                               rst_n=self._rst_n,
-                               data_in=self._data_to_pref[i],
-                               valid_read=self._valid_to_pref[i],
-                               tba_rdy_in=self._ren[i],
-                               data_out=self._data_out[i],
-                               valid_out=self._valid_out[i],
-                               prefetch_step=self._prefetch_step[i])
-            else:
-                self.add_child(f"pre_fetch_{i}", pref,
-                            clk=self._gclk,
-                            rst_n=self._rst_n,
-                            data_in=self._data_to_pref[i],
-                            valid_read=self._valid_to_pref[i],
-                            tba_rdy_in=self._ready_tba[i],
-                            data_out=self._data_to_tba[i],
-                            valid_out=self._valid_to_tba[i],
-                            prefetch_step=self._prefetch_step[i])
+            #######################
+            ##### SYNC GROUPS #####
+            #######################
+            sync_group = SyncGroups(fetch_width=self.mem_width,
+                                    data_width=self.data_width,
+                                    int_out_ports=self.interconnect_output_ports)
 
-            #############################
-            ##### TRANSPOSE BUFFERS #####
-            #############################
+            for i in range(self.interconnect_output_ports):
+                self.wire(self._ren_out_reduced[i], self._ren_out_tpose[i].r_or())
+
+            self.add_child("sync_grp", sync_group,
+                        clk=self._gclk,
+                        rst_n=self._rst_n,
+                        data_in=self._data_to_sync,
+                        valid_in=self._valid_to_sync,
+                        data_out=self._data_to_pref,
+                        valid_out=self._valid_to_pref,
+                        ren_in=self._ren_out_reduced,
+                        rd_sync_gate=self._rd_sync_gate,
+                        ack_in=self._ack_reduced)
+
+            # This is the end of the line if we aren't using tb
+            ######################
+            ##### PREFETCHER #####
+            ######################
+            prefetchers = []
             for i in range(self.interconnect_output_ports):
 
-                tba = TransposeBufferAggregation(word_width=self.data_width,
-                                                fetch_width=self.fw_int,
-                                                num_tb=self.num_tb,
-                                                max_tb_height=self.max_tb_height,
-                                                max_range=self.tb_range_max,
-                                                max_stride=self.max_tb_stride,
-                                                tb_iterator_support=self.tb_iterator_support)
+                pref = Prefetcher(fetch_width=self.mem_width,
+                                data_width=self.data_width,
+                                max_prefetch=self.max_prefetch)
 
-                self.add_child(f"tba_{i}", tba,
-                            clk=self._gclk,
-                            rst_n=self._rst_n,
-                            SRAM_to_tb_data=self._data_to_tba[i],
-                            valid_data=self._valid_to_tba[i],
-                            tb_index_for_data=0,
-                            ack_in=self._valid_to_tba[i],
-                            tb_to_interconnect_data=self._data_out[i],
-                            tb_to_interconnect_valid=self._valid_out[i],
-                            tb_arbiter_rdy=self._ready_tba[i])
+                prefetchers.append(pref)
+
+                if self.num_tb == 0:
+                    assert self.fw_int == 1, \
+                        "If no transpose buffer, data width needs match memory width"
+                    self.add_child(f"pre_fetch_{i}", pref,
+                                clk=self._gclk,
+                                rst_n=self._rst_n,
+                                data_in=self._data_to_pref[i],
+                                valid_read=self._valid_to_pref[i],
+                                tba_rdy_in=self._ren[i],
+                                #    data_out=self._data_out[i],
+                                valid_out=self._valid_out[i],
+                                prefetch_step=self._prefetch_step[i])
+                    self.wire(self._data_out[i], pref.ports.data_out[0])
+                else:
+                    self.add_child(f"pre_fetch_{i}", pref,
+                                clk=self._gclk,
+                                rst_n=self._rst_n,
+                                data_in=self._data_to_pref[i],
+                                valid_read=self._valid_to_pref[i],
+                                tba_rdy_in=self._ready_tba[i],
+                                data_out=self._data_to_tba[i],
+                                valid_out=self._valid_to_tba[i],
+                                prefetch_step=self._prefetch_step[i])
+
+                    #############################
+                    ##### TRANSPOSE BUFFERS #####
+                    #############################
+                    for i in range(self.interconnect_output_ports):
+
+                        tba = TransposeBufferAggregation(word_width=self.data_width,
+                                                        fetch_width=self.fw_int,
+                                                        num_tb=self.num_tb,
+                                                        max_tb_height=self.max_tb_height,
+                                                        max_range=self.tb_range_max,
+                                                        max_stride=self.max_tb_stride,
+                                                        tb_iterator_support=self.tb_iterator_support)
+
+                        self.add_child(f"tba_{i}", tba,
+                                    clk=self._gclk,
+                                    rst_n=self._rst_n,
+                                    SRAM_to_tb_data=self._data_to_tba[i],
+                                    valid_data=self._valid_to_tba[i],
+                                    tb_index_for_data=0,
+                                    ack_in=self._valid_to_tba[i],
+                                    tb_to_interconnect_data=self._data_out[i],
+                                    tb_to_interconnect_valid=self._valid_out[i],
+                                    tb_arbiter_rdy=self._ready_tba[i])
 
         ####################
         ##### ADD CODE #####
