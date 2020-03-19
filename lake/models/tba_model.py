@@ -110,6 +110,10 @@ class TBAModel(Model):
         print("arbiter rdy all ", self.arbiter_rdy_all)
         print("tb arbiter rdy ", self.tb_arbiter_rdy)
 
+    def print_tba_tb(self, input_data, valid_data, ack_in, tb_index_for_data, ren):
+        self.tbs[0].print_tb(input_data, valid_data, ack_in, ren)
+        print()
+
     def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data, ren):
         for i in range(self.num_tb):
             if i == tb_index_for_data:
