@@ -25,6 +25,7 @@ class TBAModel(Model):
         self.config["range_inner"] = 1
         self.config["stride"] = 1
         self.config["indices"] = [0]
+        self.config["dimensionality"] = 1
 
         self.output_valid_all = []
         for i in range(self.num_tb):
@@ -117,8 +118,7 @@ class TBAModel(Model):
             else:
                 valid_data_i = 0
                 ack_in_i = 0
-            self.tbs[i].input_to_tb(input_data, valid_data_i, ack_in_i)
-            self.tbs[i].output_from_tb(valid_data_i, ack_in_i)
+            self.tbs[i].interact(input_data, valid_data_i, ack_in_i)
             # print("col pixels ", i, " ", self.tbs[i].get_col_pixels())
 
         self.set_tb_outputs()

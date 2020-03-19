@@ -9,6 +9,7 @@ from lake.models.demux_reads_model import DemuxReadsModel
 from lake.models.sync_groups_model import SyncGroupsModel
 from lake.models.prefetcher_model import PrefetcherModel
 from lake.models.tba_model import TBAModel
+from lake.models.register_file_model import RegisterFileModel
 from typing import List
 import math as mt
 import kratos as kts
@@ -28,6 +29,7 @@ class LakeTopModel(Model):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=1,
+                 read_delay=1,
                  agg_height=8,
                  max_agg_schedule=64,
                  input_max_port_sched=64,
@@ -67,6 +69,7 @@ class LakeTopModel(Model):
         self.tb_sched_max = tb_sched_max
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
+        self.read_delay = read_delay
 
         if self.banks == 1:
             self.address_width = kts.clog2(mem_depth)
@@ -137,16 +140,26 @@ class LakeTopModel(Model):
             self.rw_arbs.append(RWArbiterModel(fetch_width=self.mem_width,
                                                data_width=self.data_width,
                                                memory_depth=self.mem_depth,
-                                               int_out_ports=self.interconnect_output_ports))
+                                               int_out_ports=self.interconnect_output_ports,
+                                               read_delay=self.read_delay))
 
-        ### SRAMS
         self.mems = []
-        for banks in range(self.banks):
-            # self.mems.append(SRAMModel(width=self.mem_width,
-            #                           depth=self.mem_depth))
-            self.mems.append(SRAMModel(data_width=self.data_width,
-                                       width_mult=self.fw_int,
-                                       depth=self.mem_depth))
+        if self.read_delay == 1:
+            ### SRAMS
+            for banks in range(self.banks):
+                # self.mems.append(SRAMModel(width=self.mem_width,
+                #                           depth=self.mem_depth))
+                self.mems.append(SRAMModel(data_width=self.data_width,
+                                           width_mult=self.fw_int,
+                                           depth=self.mem_depth))
+        else:
+            ### REGFILES
+            for banks in range(self.banks):
+                self.mems.append(RegisterFileModel(data_width=self.data_width,
+                                                   write_ports=self.mem_input_ports,
+                                                   read_ports=self.mem_output_ports,
+                                                   width_mult=self.fw_int,
+                                                   depth=self.mem_depth))
 
         ### DEMUX READS
         self.demux_reads = DemuxReadsModel(fetch_width=self.mem_width,  # self.mem_width
@@ -181,6 +194,7 @@ class LakeTopModel(Model):
                 self.config[f"tba_{port}_tb_{i}_range_inner"] = 0
                 self.config[f"tba_{port}_tb_{i}_range_outer"] = 0
                 self.config[f"tba_{port}_tb_{i}_stride"] = 0
+                self.config[f"tba_{port}_tb_{i}_dimensionality"] = 0
                 for j in range(self.tb_sched_max):
                     self.config[f"tba_{port}_tb_{i}_indices_{j}"] = 0
 
@@ -270,6 +284,7 @@ class LakeTopModel(Model):
             tba_config[f"range_outer"] = self.config[f"tba_{port}_tb_0_range_outer"]
             tba_config[f"stride"] = self.config[f"tba_{port}_tb_0_stride"]
             tba_config["indices"] = []
+            tba_config[f"dimensionality"] = self.config[f"tba_{port}_tb_0_dimensionality"]
             for j in range(self.tb_sched_max):
                 tba_config[f"indices"].append(self.config[f"tba_{port}_tb_0_indices_{j}"])
             self.tbas[port].set_config(tba_config)
@@ -321,11 +336,11 @@ class LakeTopModel(Model):
         # First need to get rw_arb acks based on ren + sync group gate
         # Now we need to squash the acks
         ack_base = 0
-        ren_local = []
-        for i in range(self.interconnect_output_ports):
-            ren_local.append(0)
 
         for i in range(self.banks):
+            ren_local = []
+            for j in range(self.interconnect_output_ports):
+                ren_local.append(0)
             for j in range(self.interconnect_output_ports):
                 ren_local[j] = ren_local[j] | (rd_sync_gate[j] & oac_ren[i][j])
             local_ack = self.rw_arbs[i].get_ack(iac_valid[i], wen_en, ren_local, ren_en)
@@ -337,7 +352,10 @@ class LakeTopModel(Model):
         # Get data from mem
         data_to_arb = []
         for i in range(self.banks):
-            data_to_arb.append(self.mems[i].get_rd_reg())
+            if self.read_delay == 1:
+                data_to_arb.append(self.mems[i].get_rd_reg())
+            else:
+                data_to_arb.append(0)
 
         # RW arbs
         rw_out_dat = []
@@ -372,11 +390,21 @@ class LakeTopModel(Model):
             rw_ack.append(rw_ack)
 
         # HIT SRAM
-        for i in range(self.banks):
-            self.mems[i].interact(rw_wen_mem[i],
-                                  rw_cen_mem[i],
-                                  rw_addr_to_mem[i],
-                                  rw_data_to_mem[i])
+        if self.read_delay == 1:
+            for i in range(self.banks):
+                self.mems[i].interact(rw_wen_mem[i],
+                                      rw_cen_mem[i],
+                                      rw_addr_to_mem[i],
+                                      rw_data_to_mem[i])
+        else:
+            rw_out_dat = []
+            for i in range(self.banks):
+                local_rf_read = self.mems[i].interact(rw_wen_mem[i],
+                                                      rw_addr_to_mem[i],
+                                                      rw_addr_to_mem[i],
+                                                      rw_data_to_mem[i])
+                # Hack for one port
+                rw_out_dat.append(local_rf_read[0])
 
         # Demux those reads
         (demux_dat, demux_valid) = self.demux_reads.interact(rw_out_dat, rw_out_valid, rw_out_port)
@@ -388,6 +416,7 @@ class LakeTopModel(Model):
         for j in range(self.interconnect_output_ports):
             for i in range(self.banks):
                 ren_base[j] = ren_base[j] | (oac_ren[i][j])
+
         # Sync groups now
         (sync_data,
          sync_valid,
@@ -402,10 +431,12 @@ class LakeTopModel(Model):
         pref_valid = []
         for i in range(self.interconnect_output_ports):
             (pd, pv, psx) = self.prefetchers[i].interact(sync_data[i], sync_valid[i], tba_rdys[i])
-            pref_data.append(pd.copy())
+            if type(pd) == list:
+                pref_data.append(pd.copy())
+            else:
+                pref_data.append(pd)
             pref_valid.append(pv)
 
-        # print(f"pref data: {pref_data}, pref valid: {pref_valid}, tba_rdy: {tba_rdys}")
         # Now send this to the TBAs...
         data_out = []
         valid_out = []
@@ -414,8 +445,7 @@ class LakeTopModel(Model):
             data_out.append(tb_d)
             valid_out.append(tb_v)
 
-        # print(f"data_out: {data_out}, valid_out: {valid_out}")
-
-        # print("tb data: ", self.tbas[0].tbs[0].print_tb(pref_data[0], pref_valid[0], pref_valid[0]))
-
         return (data_out, valid_out)
+
+    def dump_mem(self):
+        self.mems[0].dump_mem()

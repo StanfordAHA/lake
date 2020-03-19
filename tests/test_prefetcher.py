@@ -35,7 +35,9 @@ def test_prefetcher_basic(input_latency=10,
                      data_width=data_width,
                      max_prefetch=max_prefetch)
     lift_config_reg(dut.internal_generator)
-    magma_dut = k.util.to_magma(dut, flatten_array=True, check_multiple_driver=False)
+    magma_dut = k.util.to_magma(dut, flatten_array=True,
+                                check_multiple_driver=False,
+                                check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
 
