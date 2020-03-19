@@ -65,10 +65,10 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 32
+    num_iters = 100
     for i in range(num_iters):
         # print()
-        print("i: ", i)
+        # print("i: ", i)
 
         data = []
         for j in range(fetch_width):
@@ -89,13 +89,13 @@ def test_tb(word_width=16,
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
         
-        ren = i % 2
+        ren = 1
         tester.circuit.ren = ren
 
         model_data, model_valid, model_rdy_to_arbiter = \
             model_tb.interact(input_data, valid_data, ack_in, ren)
 
-        print("i: ", i, " model valid ", model_valid, " model data ", model_data)
+        # print("i: ", i, " model valid ", model_valid, " model data ", model_data)
         tester.eval()
         tester.circuit.output_valid.expect(model_valid)
 #        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
@@ -119,6 +119,22 @@ def test_id(word_width=16,
             max_stride=15,
             tb_iterator_support=2):
 
+    model_tb = TBModel(word_width,
+                       fetch_width,
+                       num_tb,
+                       max_tb_height,
+                       max_range)
+
+    new_config = {}
+    new_config["range_outer"] = 12
+    new_config["range_inner"] = 3
+    new_config["stride"] = 1
+    new_config["indices"] = [0, 1, 2]
+    new_config["tb_height"] = 1
+    new_config["dimensionality"] = 1
+
+    model_tb.set_config(new_config=new_config)
+
     dut = TransposeBuffer(word_width,
                           fetch_width,
                           num_tb,
@@ -129,6 +145,7 @@ def test_id(word_width=16,
 
     magma_dut = k.util.to_magma(dut, flatten_array=True)
     tester = fault.Tester(magma_dut, magma_dut.clk)
+
     tester.circuit.clk = 0
     tester.circuit.rst_n = 1
     tester.step(2)
@@ -138,20 +155,20 @@ def test_id(word_width=16,
 
     # configuration registers
 
-     # if dimensionality == 1 version
-    tester.circuit.range_outer = 12
-    tester.circuit.stride = 1
-    tester.circuit.dimensionality = 1
+    # dimensionality = 1 version
     tester.circuit.indices_0 = 0
     tester.circuit.indices_1 = 1
     tester.circuit.indices_2 = 2
 
+    tester.circuit.range_outer = 12
     tester.circuit.range_inner = 3
+    tester.circuit.stride = 1
     tester.circuit.tb_height = 1
+    tester.circuit.dimensionality = 1
 
     rand.seed(0)
 
-    num_iters = 50
+    num_iters = 100
     for i in range(num_iters):
         # print()
         # print("i: ", i)
@@ -166,20 +183,27 @@ def test_id(word_width=16,
         valid_data = 1
         tester.circuit.valid_data = valid_data
         
-        ren = i % 2
-        tester.circuit.ren = ren
-
         input_data = data
 
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
 
-        tester.eval()
+        ren = 1#i % 2
+        tester.circuit.ren = ren
 
+        model_data, model_valid, model_rdy_to_arbiter = \
+            model_tb.interact(input_data, valid_data, ack_in, ren)
+
+        tester.eval()
+        tester.circuit.output_valid.expect(model_valid)
+#        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+        if model_valid:
+            tester.circuit.col_pixels.expect(model_data[0])
+        
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tb"
+        tempdir = "tb_id"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
@@ -187,4 +211,4 @@ def test_id(word_width=16,
 
 if __name__ == "__main__":
     test_tb()
-    # test_id()
+    #test_id()
