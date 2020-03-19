@@ -30,6 +30,7 @@ def test_tb(word_width=16,
     new_config["stride"] = 2
     new_config["indices"] = [0, 1, 2]
     new_config["tb_height"] = 1
+    new_config["dimensionality"] = 2
 
     model_tb.set_config(new_config=new_config)
 
@@ -64,10 +65,10 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 50
+    num_iters = 32
     for i in range(num_iters):
         # print()
-        # print("i: ", i)
+        print("i: ", i)
 
         data = []
         for j in range(fetch_width):
@@ -76,22 +77,30 @@ def test_tb(word_width=16,
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[j])
 
-        valid_data = rand.randint(0, 1)
+        if i % fetch_width == 0:
+            valid_data = 1 
+        else:
+            valid_data = 0
+
         tester.circuit.valid_data = valid_data
 
         input_data = data
 
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
+        
+        ren = i % 2
+        tester.circuit.ren = ren
 
         model_data, model_valid, model_rdy_to_arbiter = \
-            model_tb.interact(input_data, valid_data, ack_in)
+            model_tb.interact(input_data, valid_data, ack_in, ren)
 
+        print("i: ", i, " model valid ", model_valid, " model data ", model_data)
         tester.eval()
         tester.circuit.output_valid.expect(model_valid)
 #        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
-        if model_valid:
-            tester.circuit.col_pixels.expect(model_data[0])
+#        if model_valid:
+#            tester.circuit.col_pixels.expect(model_data[0])
 
         tester.step(2)
 
@@ -177,5 +186,5 @@ def test_id(word_width=16,
                                flags=["-Wno-fatal", "--trace"])
 
 if __name__ == "__main__":
-    # test_tb()
-    test_id()
+    test_tb()
+    # test_id()
