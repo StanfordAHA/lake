@@ -216,8 +216,8 @@ def test_identity_stream(data_width=16,
                                flags=["-Wno-fatal", "--trace"])
 
 
-@pytest.mark.parametrize("read_delay", [0, 1])
-def test_top(read_delay,
+# @pytest.mark.parametrize("read_delay", [0, 1])
+def test_top(read_delay=1,
              data_width=16,
              mem_width=64,
              mem_depth=512,

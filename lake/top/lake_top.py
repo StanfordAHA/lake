@@ -21,35 +21,35 @@ import kratos as kts
 class LakeTop(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
-                 mem_width=16,
+                 mem_width=64,
                  mem_depth=32,
                  banks=1,
-                 input_iterator_support=2,  # Addr Controllers
-                 output_iterator_support=2,
-                 interconnect_input_ports=2,  # Connection to int
+                 input_iterator_support=6,  # Addr Controllers
+                 output_iterator_support=6,
+                 interconnect_input_ports=1,  # Connection to int
                  interconnect_output_ports=2,
-                 mem_input_ports=2,
-                 mem_output_ports=2,
+                 mem_input_ports=1,
+                 mem_output_ports=1,
                  use_sram_stub=1,
-                 read_delay=0,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
-                 agg_height=0,
+                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
+                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 agg_height=8,
                  max_agg_schedule=64,
                  input_max_port_sched=64,
                  output_max_port_sched=64,
-                 align_input=0,
+                 align_input=1,
                  max_line_length=2048,
                  max_tb_height=1,
                  tb_range_max=2048,
                  tb_sched_max=64,
                  max_tb_stride=15,
-                 num_tb=0,
+                 num_tb=1,
                  tb_iterator_support=2,
                  multiwrite=1,
-                 max_prefetch=8,
+                 max_prefetch=64,
                  config_data_width=16,
                  config_addr_width=8,
-                 remove_tb=True):
+                 remove_tb=False):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -70,7 +70,7 @@ class LakeTop(Generator):
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
         self.align_input = align_input
         self.max_line_length = max_line_length
-        assert self.mem_width <= self.data_width, "Data width needs to be smaller than mem"
+        assert self.mem_width >= self.data_width, "Data width needs to be smaller than mem"
         self.fw_int = int(self.mem_width / self.data_width)
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
@@ -474,8 +474,8 @@ class LakeTop(Generator):
             rw_arb = RWArbiter(fetch_width=self.mem_width,
                                data_width=self.data_width,
                                memory_depth=self.mem_depth,
-                               int_in_ports=self.interconnect_output_ports,
-                               int_out_ports=self.interconnect_input_ports,
+                               int_in_ports=self.interconnect_input_ports,
+                               int_out_ports=self.interconnect_output_ports,
                                strg_wr_ports=self.mem_input_ports,
                                strg_rd_ports=self.mem_output_ports,
                                read_delay=self.read_delay,
@@ -658,7 +658,8 @@ class LakeTop(Generator):
         dmux_rd = DemuxReads(fetch_width=self.mem_width,
                              data_width=self.data_width,
                              banks=self.banks,
-                             int_out_ports=self.interconnect_output_ports)
+                             int_out_ports=self.interconnect_output_ports,
+                             strg_rd_ports=self.mem_output_ports)
 
         self._arb_dat_out_f = self.var("arb_dat_out_f",
                                        self.data_width,

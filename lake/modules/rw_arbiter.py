@@ -213,7 +213,7 @@ class RWArbiter(Generator):
     # Prioritizes writes over reads
     def mem_controls_combined(self, idx):
         self._wen_mem[idx] = self._wen_int[idx]
-        self._cen_mem[idx] = (self._wen_int[idx] | (self._next_rd_port[idx] != 0))
+        self._cen_mem[idx] = (self._wen_int[idx] | (self._next_rd_port[idx].r_or()))
         self._data_to_mem[idx] = self._w_data[idx]
         # Consume wr over read
         if(self._wen_int[idx]):
