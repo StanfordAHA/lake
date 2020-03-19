@@ -153,15 +153,11 @@ class TBModel(Model):
             if self.start_data and not self.old_start_data:
                 self.rdy_to_arbiter = 1
             elif self.prev_out_buf_index != self.out_buf_index:
-                print("READY 1")
                 self.rdy_to_arbiter = 1
             elif self.tb_height != 1:
-                print("READY 2")
                 if self.row_index != self.tb_height - 1:
-                    print("READY 3")
                     self.rdy_to_arbiter = 1
             elif ack_in:
-                print("READY 4")
                 self.rdy_to_arbiter = 0
 
             self.old_start_data = self.start_data

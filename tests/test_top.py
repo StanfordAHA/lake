@@ -62,7 +62,6 @@ def test_identity_stream(data_width=16,
 
     # TBA
 
-    # NOTE: both these configurations result in equivalent functionality
 
     # if dimensionality == 1 version
     new_config["tba_0_tb_0_range_outer"] = 12
@@ -75,10 +74,7 @@ def test_identity_stream(data_width=16,
     new_config["tba_0_tb_0_indices_2"] = 2
     new_config["tba_0_tb_0_indices_3"] = 3
     new_config["tba_0_tb_0_range_inner"] = 4
-    # new_config["tba_0_tb_0_range_outer"] = 3
-    # new_config["tba_0_tb_0_stride"] = 4
     # new_config["tba_0_tb_0_tb_height"] = 1
-    # new_config["tba_0_tb_0_dimensionality"] = 2
 
     # Sets multiwrite
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
@@ -450,5 +446,5 @@ def test_top(data_width=16,
 
 
 if __name__ == "__main__":
-    # test_identity_stream()
-    test_top()
+    test_identity_stream()
+    # test_top()
