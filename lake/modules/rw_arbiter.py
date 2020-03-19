@@ -105,7 +105,6 @@ class RWArbiter(Generator):
                                         self.data_width,
                                         size=(self.strg_wr_ports,
                                               self.fw_int),
-                                              
                                         explicit_array=True,
                                         packed=True)
         # In this case, need separate addresses
@@ -124,7 +123,7 @@ class RWArbiter(Generator):
         else:
             assert self.strg_rd_ports == self.strg_wr_ports, \
                 "Cannot have coalesced address with mismatch port count"
-            assert self.rw_same_cycle == False, \
+            assert not self.rw_same_cycle, \
                 "Cannot read and write with a shared address...set rw_same_cycle to false"
             self._addr_to_mem = self.output("addr_to_mem", self.mem_addr_width,
                                             size=self.strg_rd_ports,
@@ -159,7 +158,7 @@ class RWArbiter(Generator):
                                      explicit_array=True,
                                      packed=True)
             for i in range(self.strg_rd_ports - 1):
-                self.add_code(self.set_next_read_port_alt, index=i+1)
+                self.add_code(self.set_next_read_port_alt, index=i + 1)
 
         # If we have more than one read port, we need to use slightly different logic
         # to set the other reads...
@@ -170,7 +169,6 @@ class RWArbiter(Generator):
             for j in range(self.strg_rd_ports - 1):
                 temp_port = kts.concat(temp_port, self._next_rd_port[j + 1][i])
             self.wire(self._next_rd_port_red[i], temp_port.r_or())
-
 
         # The next read port can be used to acknowledge reads
         # We do not need to gate the ack if we can read and write in the same cycle
@@ -257,12 +255,13 @@ class RWArbiter(Generator):
             self._rd_port[idx] = 0
             self._rd_valid[idx] = 0
         else:
-            self._rd_valid[idx] = (~self._wen_int[idx] | (self.rw_same_cycle == True)) & (self._next_rd_port[idx].r_or())
+            self._rd_valid[idx] = ((~self._wen_int[idx] | (self.rw_same_cycle)) &
+                                   (self._next_rd_port[idx].r_or()))
             self._rd_port[idx] = self._next_rd_port[idx]
 
     @always_comb
     def zero_delay_read(self, idx):
-        self._rd_valid[idx] = (~self._wen_int[idx] | (self.rw_same_cycle == True)) & (self._next_rd_port[idx].r_or())
+        self._rd_valid[idx] = (~self._wen_int[idx] | (self.rw_same_cycle)) & (self._next_rd_port[idx].r_or())
         self._rd_port[idx] = self._next_rd_port[idx]
 
     @always_comb

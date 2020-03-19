@@ -25,12 +25,9 @@ module LakeTop (
   input logic [1:0] [31:0] output_addr_ctrl_address_gen_1_ranges,
   input logic [31:0] output_addr_ctrl_address_gen_1_starting_addr,
   input logic [1:0] [31:0] output_addr_ctrl_address_gen_1_strides,
-  input logic [2:0] pre_fetch_0_input_latency,
-  input logic [2:0] pre_fetch_1_input_latency,
   input logic [1:0] ren,
   input logic [1:0] ren_en,
   input logic rst_n,
-  input logic [1:0] [1:0] sync_grp_sync_group,
   output logic [1:0] valid_out,
   input logic [1:0] wen,
   input logic [1:0] wen_en
@@ -48,8 +45,7 @@ logic [1:0][1:0] arb_port_out_f;
 logic [0:0][1:0] arb_valid_out;
 logic [1:0] arb_valid_out_f;
 logic [0:0][1:0][0:0][15:0] data_to_arb;
-logic [1:0][0:0][15:0] data_to_pref;
-logic [1:0][0:0][15:0] data_to_sync;
+logic [1:0][0:0][15:0] demux_rds_data_out;
 logic [4:0] mem_addr_cfg;
 logic [0:0][1:0] mem_cen_datapath;
 logic [0:0][1:0] mem_cen_in;
@@ -62,24 +58,11 @@ logic mem_ren_cfg;
 logic mem_wen_cfg;
 logic [0:0][1:0] mem_wen_datapath;
 logic [0:0][1:0] mem_wen_in;
-logic [0:0][15:0] pre_fetch_0_data_in;
-logic [0:0][15:0] pre_fetch_0_data_out;
-logic pre_fetch_0_prefetch_step;
-logic pre_fetch_0_tba_rdy_in;
-logic pre_fetch_0_valid_out;
-logic pre_fetch_0_valid_read;
-logic [0:0][15:0] pre_fetch_1_data_in;
-logic [0:0][15:0] pre_fetch_1_data_out;
-logic pre_fetch_1_prefetch_step;
-logic pre_fetch_1_tba_rdy_in;
-logic pre_fetch_1_valid_out;
-logic pre_fetch_1_valid_read;
 logic [1:0] prefetch_step;
 logic [0:0][1:0][4:0] rd_mem_addr_dp;
 logic [0:0][1:0][4:0] rd_mem_addr_in;
 logic [1:0] rd_sync_gate;
 logic [0:0][1:0] ren_out;
-logic [1:0] ren_out_reduced;
 logic [1:0] ren_out_tpose;
 logic [1:0][0:0][15:0] rf_0_data_in;
 logic [1:0][0:0][15:0] rf_0_data_out;
@@ -100,8 +83,6 @@ logic [1:0][0:0][15:0] rw_arb_0_w_data;
 logic [1:0] rw_arb_0_wen_in;
 logic [1:0] rw_arb_0_wen_mem;
 logic [1:0][4:0] rw_arb_0_wr_addr_to_mem;
-logic [1:0] valid_to_pref;
-logic [1:0] valid_to_sync;
 logic [0:0][1:0] wen_to_arb;
 logic [0:0][1:0][4:0] wr_mem_addr_dp;
 logic [0:0][1:0][4:0] wr_mem_addr_in;
@@ -143,20 +124,8 @@ assign arb_valid_out_f[0] = arb_valid_out[0][0];
 assign arb_dat_out_f[1] = arb_dat_out[0][1];
 assign arb_port_out_f[1] = arb_port_out[0][1];
 assign arb_valid_out_f[1] = arb_valid_out[0][1];
-assign ren_out_reduced[0] = |ren_out_tpose[0];
-assign ren_out_reduced[1] = |ren_out_tpose[1];
-assign pre_fetch_0_data_in = data_to_pref[0];
-assign pre_fetch_0_valid_read = valid_to_pref[0];
-assign pre_fetch_0_tba_rdy_in = ren[0];
-assign valid_out[0] = pre_fetch_0_valid_out;
-assign prefetch_step[0] = pre_fetch_0_prefetch_step;
-assign data_out[0] = pre_fetch_0_data_out[0];
-assign pre_fetch_1_data_in = data_to_pref[1];
-assign pre_fetch_1_valid_read = valid_to_pref[1];
-assign pre_fetch_1_tba_rdy_in = ren[1];
-assign valid_out[1] = pre_fetch_1_valid_out;
-assign prefetch_step[1] = pre_fetch_1_prefetch_step;
-assign data_out[1] = pre_fetch_1_data_out[0];
+assign data_out[0] = demux_rds_data_out[0];
+assign data_out[1] = demux_rds_data_out[0];
 always_comb begin
   ack_transpose[0] = arb_acks[0][0];
   ack_transpose[1] = arb_acks[0][1];
@@ -250,48 +219,11 @@ register_file rf_0 (
 demux_reads demux_rds (
   .clk(clk),
   .data_in(arb_dat_out_f),
-  .data_out(data_to_sync),
+  .data_out(demux_rds_data_out),
   .port_in(arb_port_out_f),
   .rst_n(rst_n),
   .valid_in(arb_valid_out_f),
-  .valid_out(valid_to_sync)
-);
-
-sync_groups sync_grp (
-  .ack_in(ack_reduced),
-  .clk(clk),
-  .data_in(data_to_sync),
-  .data_out(data_to_pref),
-  .rd_sync_gate(rd_sync_gate),
-  .ren_in(ren_out_reduced),
-  .rst_n(rst_n),
-  .sync_group(sync_grp_sync_group),
-  .valid_in(valid_to_sync),
-  .valid_out(valid_to_pref)
-);
-
-prefetcher pre_fetch_0 (
-  .clk(clk),
-  .data_in(pre_fetch_0_data_in),
-  .data_out(pre_fetch_0_data_out),
-  .input_latency(pre_fetch_0_input_latency),
-  .prefetch_step(pre_fetch_0_prefetch_step),
-  .rst_n(rst_n),
-  .tba_rdy_in(pre_fetch_0_tba_rdy_in),
-  .valid_out(pre_fetch_0_valid_out),
-  .valid_read(pre_fetch_0_valid_read)
-);
-
-prefetcher pre_fetch_1 (
-  .clk(clk),
-  .data_in(pre_fetch_1_data_in),
-  .data_out(pre_fetch_1_data_out),
-  .input_latency(pre_fetch_1_input_latency),
-  .prefetch_step(pre_fetch_1_prefetch_step),
-  .rst_n(rst_n),
-  .tba_rdy_in(pre_fetch_1_tba_rdy_in),
-  .valid_out(pre_fetch_1_valid_out),
-  .valid_read(pre_fetch_1_valid_read)
+  .valid_out(valid_out)
 );
 
 endmodule   // LakeTop
@@ -616,111 +548,6 @@ addr_gen_2 address_gen_1 (
 
 endmodule   // output_addr_ctrl
 
-module prefetcher (
-  input logic clk,
-  input logic [0:0] [15:0] data_in,
-  output logic [0:0] [15:0] data_out,
-  input logic [2:0] input_latency,
-  output logic prefetch_step,
-  input logic rst_n,
-  input logic tba_rdy_in,
-  output logic valid_out,
-  input logic valid_read
-);
-
-logic [2:0] cnt;
-logic fifo_empty;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    cnt <= 3'h0;
-  end
-  else if (valid_read & (~tba_rdy_in)) begin
-    cnt <= cnt + 3'h1;
-  end
-  else if ((~valid_read) & tba_rdy_in & (~fifo_empty)) begin
-    cnt <= cnt - 3'h1;
-  end
-end
-always_comb begin
-  prefetch_step = (cnt + input_latency) < 3'h7;
-end
-reg_fifo fifo (
-  .clk(clk),
-  .clk_en(1'h1),
-  .data_in(data_in),
-  .data_out(data_out),
-  .empty(fifo_empty),
-  .pop(tba_rdy_in),
-  .push(valid_read),
-  .rst_n(rst_n),
-  .valid(valid_out)
-);
-
-endmodule   // prefetcher
-
-module reg_fifo (
-  input logic clk,
-  input logic clk_en,
-  input logic [0:0] [15:0] data_in,
-  output logic [0:0] [15:0] data_out,
-  output logic empty,
-  output logic full,
-  input logic pop,
-  input logic push,
-  input logic rst_n,
-  output logic valid
-);
-
-logic passthru;
-logic [2:0] rd_ptr;
-logic read;
-logic [7:0][0:0][15:0] reg_array;
-logic [2:0] wr_ptr;
-logic write;
-assign passthru = pop & push & empty;
-assign empty = wr_ptr == rd_ptr;
-assign full = (wr_ptr + 3'h1) == rd_ptr;
-assign read = pop & (~passthru) & (~empty);
-assign write = push & (~passthru) & (~full);
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    rd_ptr <= 3'h0;
-  end
-  else if (read) begin
-    rd_ptr <= rd_ptr + 3'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    wr_ptr <= 3'h0;
-  end
-  else if (write) begin
-    wr_ptr <= wr_ptr + 3'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    reg_array <= 128'h0;
-  end
-  else if (write) begin
-    reg_array[wr_ptr] <= data_in;
-  end
-end
-always_comb begin
-  if (passthru) begin
-    data_out = data_in;
-  end
-  else data_out = reg_array[rd_ptr];
-end
-always_comb begin
-  valid = pop & ((~empty) | passthru);
-end
-endmodule   // reg_fifo
-
 module register_file (
   input logic clk,
   input logic [1:0][0:0] [15:0] data_in,
@@ -877,147 +704,4 @@ assign rd_data_out[0] = rd_data_stg[0];
 assign wen_out = config_wr;
 assign ren_out = config_rd;
 endmodule   // storage_config_seq
-
-module sync_groups (
-  input logic [1:0] ack_in,
-  input logic clk,
-  input logic [1:0][0:0] [15:0] data_in,
-  output logic [1:0][0:0] [15:0] data_out,
-  output logic [1:0] rd_sync_gate,
-  input logic [1:0] ren_in,
-  input logic rst_n,
-  input logic [1:0] [1:0] sync_group,
-  input logic [1:0] valid_in,
-  output logic [1:0] valid_out
-);
-
-logic [1:0][0:0][15:0] data_reg;
-logic [1:0] group_finished;
-logic [1:0][1:0] grp_fin_large;
-logic [1:0][1:0] local_gate_bus;
-logic [1:0][1:0] local_gate_bus_tpose;
-logic [1:0][1:0] local_gate_mask;
-logic [1:0] local_gate_reduced;
-logic [1:0] ren_int;
-logic [1:0][1:0] sync_agg;
-logic [1:0] sync_valid;
-logic [1:0] valid_reg;
-assign data_out = data_reg;
-assign rd_sync_gate = local_gate_reduced;
-assign ren_int = ren_in & local_gate_reduced;
-always_comb begin
-  if (sync_group[0] == 2'h1) begin
-    sync_agg[0][0] = valid_reg[0];
-  end
-  else sync_agg[0][0] = 1'h1;
-  if (sync_group[1] == 2'h1) begin
-    sync_agg[0][1] = valid_reg[1];
-  end
-  else sync_agg[0][1] = 1'h1;
-  if (sync_group[0] == 2'h2) begin
-    sync_agg[1][0] = valid_reg[0];
-  end
-  else sync_agg[1][0] = 1'h1;
-  if (sync_group[1] == 2'h2) begin
-    sync_agg[1][1] = valid_reg[1];
-  end
-  else sync_agg[1][1] = 1'h1;
-end
-always_comb begin
-  sync_valid[0] = &sync_agg[0];
-  sync_valid[1] = &sync_agg[1];
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    data_reg[0] <= 16'h0;
-    valid_reg[0] <= 1'h0;
-  end
-  else if (|(sync_valid & sync_group[0])) begin
-    data_reg[0] <= data_in[0];
-    valid_reg[0] <= valid_in[0];
-  end
-  else if (~valid_reg[0]) begin
-    data_reg[0] <= data_in[0];
-    valid_reg[0] <= valid_in[0];
-  end
-  if (~rst_n) begin
-    data_reg[1] <= 16'h0;
-    valid_reg[1] <= 1'h0;
-  end
-  else if (|(sync_valid & sync_group[1])) begin
-    data_reg[1] <= data_in[1];
-    valid_reg[1] <= valid_in[1];
-  end
-  else if (~valid_reg[1]) begin
-    data_reg[1] <= data_in[1];
-    valid_reg[1] <= valid_in[1];
-  end
-end
-always_comb begin
-  valid_out[0] = |(sync_valid & sync_group[0]);
-  valid_out[1] = |(sync_valid & sync_group[1]);
-end
-always_comb begin
-  local_gate_reduced[0] = &local_gate_bus_tpose[0];
-  local_gate_reduced[1] = &local_gate_bus_tpose[1];
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if ((~rst_n) | group_finished[0]) begin
-    local_gate_bus[0] <= ~2'h0;
-  end
-  else local_gate_bus[0] <= local_gate_bus[0] & local_gate_mask[0];
-  if ((~rst_n) | group_finished[1]) begin
-    local_gate_bus[1] <= ~2'h0;
-  end
-  else local_gate_bus[1] <= local_gate_bus[1] & local_gate_mask[1];
-end
-always_comb begin
-  local_gate_bus_tpose[0][0] = local_gate_bus[0][0];
-  local_gate_bus_tpose[0][1] = local_gate_bus[1][0];
-  local_gate_bus_tpose[1][0] = local_gate_bus[0][1];
-  local_gate_bus_tpose[1][1] = local_gate_bus[1][1];
-end
-always_comb begin
-  group_finished[0] = &grp_fin_large[0];
-  group_finished[1] = &grp_fin_large[1];
-end
-always_comb begin
-  local_gate_mask[0][0] = 1'h1;
-  if (sync_group[0] == 2'h1) begin
-    local_gate_mask[0][0] = ~(ren_int[0] & ack_in[0]);
-  end
-  local_gate_mask[0][1] = 1'h1;
-  if (sync_group[1] == 2'h1) begin
-    local_gate_mask[0][1] = ~(ren_int[1] & ack_in[1]);
-  end
-  local_gate_mask[1][0] = 1'h1;
-  if (sync_group[0] == 2'h2) begin
-    local_gate_mask[1][0] = ~(ren_int[0] & ack_in[0]);
-  end
-  local_gate_mask[1][1] = 1'h1;
-  if (sync_group[1] == 2'h2) begin
-    local_gate_mask[1][1] = ~(ren_int[1] & ack_in[1]);
-  end
-end
-always_comb begin
-  grp_fin_large[0][0] = 1'h1;
-  if (sync_group[0] == 2'h1) begin
-    grp_fin_large[0][0] = (~local_gate_bus[0][0]) | (~local_gate_mask[0][0]);
-  end
-  grp_fin_large[0][1] = 1'h1;
-  if (sync_group[1] == 2'h1) begin
-    grp_fin_large[0][1] = (~local_gate_bus[0][1]) | (~local_gate_mask[0][1]);
-  end
-  grp_fin_large[1][0] = 1'h1;
-  if (sync_group[0] == 2'h2) begin
-    grp_fin_large[1][0] = (~local_gate_bus[1][0]) | (~local_gate_mask[1][0]);
-  end
-  grp_fin_large[1][1] = 1'h1;
-  if (sync_group[1] == 2'h2) begin
-    grp_fin_large[1][1] = (~local_gate_bus[1][1]) | (~local_gate_mask[1][1]);
-  end
-end
-endmodule   // sync_groups
 

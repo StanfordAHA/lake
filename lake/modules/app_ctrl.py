@@ -6,8 +6,8 @@ import kratos as kts
 
 class AppCtrl(Generator):
     '''
-    Application Controller. 
-        This module holds the logic/expression of read/write sequencing at the application level. 
+    Application Controller.
+        This module holds the logic/expression of read/write sequencing at the application level.
         For example, a pure double buffering application needs a deterministic lockstep between sets
         of reads and writes. The constraint imposed on this application prevents the divided memory space
         from being self-conflicting.
@@ -31,7 +31,7 @@ class AppCtrl(Generator):
         self._ren_in = self.input("ren_in", self.int_out_ports)
 
         self._tb_valid = self.intput("tb_valid", self.int_out_ports)
-        
+
         self._valid_out_data = self.output("valid_out_data", self.int_out_ports)
         self._valid_out_stencil = self.output("valid_out_stencil", self.int_out_ports)
 
@@ -51,18 +51,14 @@ class AppCtrl(Generator):
         self._read_iters.add_attribute(ConfigRegAttr("Depth of reads"))
 
 
-
-
-
-
 if __name__ == "__main__":
     db_dut = AppCtrl(interconnect_input_ports=2,
-                           data_width=16,
-                           mem_depth=512,
-                           banks=4,
-                           iterator_support=6,
-                           max_port_schedule=64,
-                           address_width=16,
-                           multiwrite=2)
+                     data_width=16,
+                     mem_depth=512,
+                     banks=4,
+                     iterator_support=6,
+                     max_port_schedule=64,
+                     address_width=16,
+                     multiwrite=2)
     verilog(db_dut, filename="input_addr_ctrl.sv",
             additional_passes={"lift config regs": lift_config_reg})

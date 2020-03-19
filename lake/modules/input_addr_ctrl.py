@@ -75,7 +75,6 @@ class InputAddrCtrl(Generator):
                                   explicit_array=True,
                                   packed=True)
 
-
         self._wen_reduced = self.var("wen_reduced",
                                      self.banks,
                                      size=self.interconnect_input_ports,

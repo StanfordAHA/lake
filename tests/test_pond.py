@@ -9,34 +9,34 @@ from lake.models.lake_top_model import LakeTopModel
 
 
 def test_pond(data_width=16,  # CGRA Params
-                 mem_width=16,
-                 mem_depth=32,
-                 banks=1,
-                 input_iterator_support=2,  # Addr Controllers
-                 output_iterator_support=2,
-                 interconnect_input_ports=2,  # Connection to int
-                 interconnect_output_ports=2,
-                 mem_input_ports=2,
-                 mem_output_ports=2,
-                 use_sram_stub=1,
-                 read_delay=0,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
-                 agg_height=0,
-                 max_agg_schedule=64,
-                 input_max_port_sched=64,
-                 output_max_port_sched=64,
-                 align_input=0,
-                 max_line_length=2048,
-                 max_tb_height=1,
-                 tb_range_max=2048,
-                 tb_sched_max=64,
-                 max_tb_stride=15,
-                 num_tb=0,
-                 tb_iterator_support=2,
-                 multiwrite=1,
-                 max_prefetch=8,
-                 config_data_width=16,
-                 config_addr_width=8):
+              mem_width=16,
+              mem_depth=32,
+              banks=1,
+              input_iterator_support=2,  # Addr Controllers
+              output_iterator_support=2,
+              interconnect_input_ports=2,  # Connection to int
+              interconnect_output_ports=2,
+              mem_input_ports=2,
+              mem_output_ports=2,
+              use_sram_stub=1,
+              read_delay=0,  # Cycle delay in read (SRAM vs Register File)
+              rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
+              agg_height=0,
+              max_agg_schedule=64,
+              input_max_port_sched=64,
+              output_max_port_sched=64,
+              align_input=0,
+              max_line_length=2048,
+              max_tb_height=1,
+              tb_range_max=2048,
+              tb_sched_max=64,
+              max_tb_stride=15,
+              num_tb=0,
+              tb_iterator_support=2,
+              multiwrite=1,
+              max_prefetch=8,
+              config_data_width=16,
+              config_addr_width=8):
 
     new_config = {}
 
@@ -150,21 +150,29 @@ def test_pond(data_width=16,  # CGRA Params
         #     wen_en = 1
         #     ren_en = 3
         #     ren = 0
-        elif i < 13:
-            data_in[0] = data_in[0] + 1
-            valid_in[0] = 1
-            wen_en = 3
-            ren_en = 3
-            ren = 3
+        # elif i < 13:
+        #     data_in[0] = data_in[0] + 1
+        #     valid_in[0] = 1
+        #     wen_en = 3
+        #     ren_en = 3
+        #     ren = 3
         else:
             data_in[0] = data_in[0] + 1
             valid_in[0] = 1
-            data_in[1] = tester.circuit.data_out_0 + tester.circuit.data_out_1
-            valid_in[1] = tester.circuit.valid_out[0]
             wen_en = 3
             ren_en = 3
             ren = 3
 
+        tester.circuit.addr_in = addr_in
+        tester.circuit.wen_en = wen_en
+        tester.circuit.ren_en = ren_en
+        tester.circuit.ren = ren
+
+        tester.eval()
+
+        if i >= 12:
+            data_in[1] = tester.circuit.data_out_0 + tester.circuit.data_out_1
+            valid_in[1] = tester.circuit.valid_out[1]
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
@@ -173,10 +181,6 @@ def test_pond(data_width=16,  # CGRA Params
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
-        tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
-        tester.circuit.ren_en = ren_en
-        tester.circuit.ren = ren
 
         tester.eval()
         tester.step(2)
