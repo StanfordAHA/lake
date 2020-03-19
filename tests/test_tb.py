@@ -99,8 +99,8 @@ def test_tb(word_width=16,
         tester.eval()
         tester.circuit.output_valid.expect(model_valid)
 #        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
-#        if model_valid:
-#            tester.circuit.col_pixels.expect(model_data[0])
+        if model_valid:
+            tester.circuit.col_pixels.expect(model_data[0])
 
         tester.step(2)
 
