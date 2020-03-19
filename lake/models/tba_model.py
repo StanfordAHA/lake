@@ -110,7 +110,7 @@ class TBAModel(Model):
         print("arbiter rdy all ", self.arbiter_rdy_all)
         print("tb arbiter rdy ", self.tb_arbiter_rdy)
 
-    def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data):
+    def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data, ren):
         for i in range(self.num_tb):
             if i == tb_index_for_data:
                 valid_data_i = valid_data
@@ -118,7 +118,7 @@ class TBAModel(Model):
             else:
                 valid_data_i = 0
                 ack_in_i = 0
-            self.tbs[i].interact(input_data, valid_data_i, ack_in_i)
+            self.tbs[i].interact(input_data, valid_data_i, ack_in_i, ren)
             # print("col pixels ", i, " ", self.tbs[i].get_col_pixels())
 
         self.set_tb_outputs()

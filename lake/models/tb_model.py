@@ -123,7 +123,7 @@ class TBModel(Model):
         return self.prev_col_pixels
 
     def get_output_valid(self):
-        return self.prev_output_valid
+        return self.output_valid
 
     def get_rdy_to_arbiter(self):
         return self.rdy_to_arbiter
@@ -312,4 +312,4 @@ class TBModel(Model):
         #self.print_tb(input_data, valid_data, ack_in, ren)
         #print(" ")
         # return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter
-        return self.prev_col_pixels3, self.prev_output_valid2, self.rdy_to_arbiter
+        return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter

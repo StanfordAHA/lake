@@ -281,7 +281,8 @@ class LakeTopModel(Model):
                  addr_in,
                  valid_in,
                  wen_en,
-                 ren_en):
+                 ren_en,
+                 output_en):
         '''
         Top level interactions - - -
         returns (data_out, valid_out)
@@ -415,8 +416,10 @@ class LakeTopModel(Model):
         data_out = []
         valid_out = []
         for i in range(self.interconnect_output_ports):
-            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0)
+            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0, output_en)
             data_out.append(tb_d)
             valid_out.append(tb_v)
+
+        # print("data out ", data_out, " valid_out ", valid_out)
 
         return (data_out, valid_out)

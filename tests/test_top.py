@@ -190,24 +190,24 @@ def test_identity_stream(data_width=16,
             ren_en = 1
         tester.circuit.ren_en = ren_en
 
-        output_en = rand.randint(0, 1) #(i % 2)
+        output_en = 1#rand.randint(0, 1) #(i % 2)
         tester.circuit.output_en = output_en
 
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
 
         tester.eval()
 
         # Now check the outputs
-#        if(interconnect_output_ports == 1):
-#            tester.circuit.valid_out.expect(mod_vo[0])
-#            if mod_vo[0]:
-#                tester.circuit.data_out.expect(mod_do[0][0])
-#        else:
-#            for j in range(interconnect_output_ports):
-#                # print(f"mod_vo_{j}: {mod_vo[j]}")
-#                tester.circuit.valid_out[j].expect(mod_vo[j])
-#                if mod_vo[j]:
-#                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+        if(interconnect_output_ports == 1):
+            tester.circuit.valid_out.expect(mod_vo[0])
+            if mod_vo[0]:
+                tester.circuit.data_out.expect(mod_do[0][0])
+        else:
+            for j in range(interconnect_output_ports):
+                # print(f"mod_vo_{j}: {mod_vo[j]}")
+                tester.circuit.valid_out[j].expect(mod_vo[j])
+                if mod_vo[j]:
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -425,19 +425,19 @@ def test_top(data_width=16,
 
         output_en = rand.randint(0, 1)
         tester.circuit.output_en = output_en
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
 
         tester.eval()
 
         # Now check the outputs
-#        if(interconnect_output_ports == 1):
-#            tester.circuit.data_out.expect(mod_do[0])
-#            tester.circuit.valid_out.expect(mod_vo[0])
-#        else:
-#            for j in range(interconnect_output_ports):
-#                tester.circuit.valid_out[j].expect(mod_vo[j])
-#                if mod_vo[j]:
-#                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+        if(interconnect_output_ports == 1):
+            tester.circuit.data_out.expect(mod_do[0])
+            tester.circuit.valid_out.expect(mod_vo[0])
+        else:
+            for j in range(interconnect_output_ports):
+                tester.circuit.valid_out[j].expect(mod_vo[j])
+                if mod_vo[j]:
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
