@@ -49,7 +49,6 @@ class RWArbiterModel(Model):
         addr_to_mem = 0
 
         self.rd_valid = 0
-        print(f"wen_in: {wen_in}, wen_en:{wen_en}, passed")
         if wen_in != 0 and wen_en != 0:
             cen_mem = 1
             addr_to_mem = w_addr

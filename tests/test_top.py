@@ -166,7 +166,7 @@ def test_identity_stream(data_width=16,
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 1
-    ren_en = 0
+    ren_en = [0] * interconnect_output_ports
     addr_in = 0
 
     for i in range(300):
@@ -187,8 +187,9 @@ def test_identity_stream(data_width=16,
         tester.circuit.wen_en = wen_en
 
         if i > 200:
-            ren_en = 1
-        tester.circuit.ren_en = ren_en
+            for j in range(interconnect_output_ports):
+                ren_en[j] = 1
+                tester.circuit.ren_en[j] = ren_en[j]
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
 
@@ -400,7 +401,7 @@ def test_top(read_delay,
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 1
-    ren_en = 0
+    ren_en = [0] * interconnect_output_ports
     addr_in = 0
 
     for i in range(300):
@@ -421,8 +422,9 @@ def test_top(read_delay,
         tester.circuit.wen_en = wen_en
 
         if i > 200:
-            ren_en = 7
-        tester.circuit.ren_en = ren_en
+            for j in range(interconnect_output_ports):
+                ren_en[j] = 1
+                tester.circuit.ren_en[j] = ren_en[j]
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
 
