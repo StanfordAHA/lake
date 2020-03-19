@@ -62,11 +62,11 @@ def test_input_addr_basic(banks,
                         mem_depth=mem_depth,
                         banks=banks,
                         iterator_support=iterator_support,
-                        max_port_schedule=64,
                         address_width=address_width,
                         data_width=16,
                         fetch_width=fetch_width,
-                        multiwrite=multiwrite)
+                        multiwrite=multiwrite,
+                        strg_wr_ports=1)
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_multiple_driver=False,
@@ -86,6 +86,8 @@ def test_input_addr_basic(banks,
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
+    for i in range(interconnect_input_ports):
+        tester.circuit.wen_en[i] = 1
     tester.step(2)
     # Seed for posterity
     rand.seed(0)
@@ -116,17 +118,16 @@ def test_input_addr_basic(banks,
         tester.eval()
 
         if(banks == 1):
-            tester.circuit.addr_out.expect(addrs[0])
+            tester.circuit.addr_out_0_0.expect(addrs[0])
+            tester.circuit.wen_to_sram.expect(wen[0])
         else:
             for z in range(banks):
-                getattr(tester.circuit, f"addr_out_{z}").expect(addrs[z])
-
-        for z in range(banks):
-            tester.circuit.wen_to_sram[z].expect(wen[z])
+                getattr(tester.circuit, f"addr_out_{z}_0").expect(addrs[z])
+                getattr(tester.circuit, f"wen_to_sram_{z}").expect(wen[z])
 
         for z in range(banks):
             for word in range(fw_int):
-                getattr(tester.circuit, f"data_out_{z}_{word}").expect(data_out[z][word])
+                getattr(tester.circuit, f"data_out_{z}_0_{word}").expect(data_out[z][word])
 
         tester.step(2)
 
@@ -135,3 +136,7 @@ def test_input_addr_basic(banks,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_input_addr_basic()

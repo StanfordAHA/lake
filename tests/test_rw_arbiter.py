@@ -17,8 +17,13 @@ import pytest
 def test_rw_arbiter_basic(int_out_ports,
                           fetch_width,
                           read_delay,
-                          memory_depth=512,
-                          data_width=16):
+                          data_width=16,
+                          memory_depth=256,
+                          int_in_ports=1,
+                          strg_wr_ports=1,
+                          strg_rd_ports=1,
+                          rw_same_cycle=False,
+                          separate_addresses=False):
 
     fw_int = int(fetch_width / data_width)
 
@@ -37,8 +42,13 @@ def test_rw_arbiter_basic(int_out_ports,
     dut = RWArbiter(fetch_width=fetch_width,
                     data_width=data_width,
                     memory_depth=memory_depth,
+                    int_in_ports=int_in_ports,
                     int_out_ports=int_out_ports,
-                    read_delay=read_delay)
+                    strg_wr_ports=strg_wr_ports,
+                    strg_rd_ports=strg_rd_ports,
+                    read_delay=read_delay,
+                    rw_same_cycle=rw_same_cycle,
+                    separate_addresses=separate_addresses)
 
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True,
@@ -66,23 +76,26 @@ def test_rw_arbiter_basic(int_out_ports,
     rand.seed(0)
 
     ren_in = [0 for i in range(int_out_ports)]
+    ren_en = [0 for i in range(int_out_ports)]
 
     w_data = [0 for i in range(fw_int)]
     data_from_mem = [0 for i in range(fw_int)]
 
-    for i in range(1000):
+    # for i in range(1000):
+    for i in range(100):
         # Gen random data
         wen_in = rand.randint(0, 1)
-        wen_en = rand.randint(0, 1)
+        wen_en = 1
 
         for j in range(fw_int):
             w_data[j] = rand.randint(0, 2 ** data_width - 1)
             data_from_mem[j] = rand.randint(0, 2 ** data_width - 1)
         w_addr = rand.randint(0, 2 ** 9 - 1)
 
+        ren_en_base = rand.randint(0, 1)
         for j in range(int_out_ports):
             ren_in[j] = rand.randint(0, 1)
-        ren_en = rand.randint(0, 1)
+            ren_en[j] = ren_en_base
 
         rd_addr = []
         for j in range(int_out_ports):
@@ -94,16 +107,17 @@ def test_rw_arbiter_basic(int_out_ports,
         tester.circuit.w_addr = w_addr
 
         if fw_int == 1:
-            tester.circuit.w_data = w_data[0]
-            tester.circuit.data_from_mem = data_from_mem[0]
+            tester.circuit.w_data_0_0 = w_data[0]
+            tester.circuit.data_from_mem_0_0 = data_from_mem[0]
         else:
             for j in range(fw_int):
-                setattr(tester.circuit, f"w_data_{j}", w_data[j])
-                setattr(tester.circuit, f"data_from_mem_{j}", data_from_mem[j])
+                setattr(tester.circuit, f"w_data_0_{j}", w_data[j])
+                setattr(tester.circuit, f"data_from_mem_0_{j}", data_from_mem[j])
 
         for j in range(int_out_ports):
             tester.circuit.ren_in[j] = ren_in[j]
-        tester.circuit.ren_en = ren_en
+        for j in range(int_out_ports):
+            tester.circuit.ren_en[j] = ren_en[j]
         if(int_out_ports == 1):
             tester.circuit.rd_addr = rd_addr[0]
         else:
@@ -129,17 +143,17 @@ def test_rw_arbiter_basic(int_out_ports,
         if(model_ov):
             tester.circuit.out_port.expect(model_op)
             if fw_int == 1:
-                tester.circuit.out_data.expect(model_od[0])
+                tester.circuit.out_data_0_0.expect(model_od[0])
             else:
                 for j in range(fw_int):
-                    getattr(tester.circuit, f"out_data_{j}").expect(model_od[j])
+                    getattr(tester.circuit, f"out_data_0_{j}").expect(model_od[j])
         tester.circuit.cen_mem.expect(model_cen_mem)
         tester.circuit.wen_mem.expect(model_wen_mem)
         if fw_int == 1:
-            tester.circuit.data_to_mem.expect(model_mem_data[0])
+            tester.circuit.data_to_mem_0_0.expect(model_mem_data[0])
         else:
             for j in range(fw_int):
-                getattr(tester.circuit, f"data_to_mem_{j}").expect(model_mem_data[j])
+                getattr(tester.circuit, f"data_to_mem_0_{j}").expect(model_mem_data[j])
         tester.circuit.addr_to_mem.expect(model_mem_addr)
         tester.circuit.out_ack.expect(model_ack)
 

@@ -34,9 +34,10 @@ def test_pond(data_width=16,  # CGRA Params
               num_tb=0,
               tb_iterator_support=2,
               multiwrite=1,
-              max_prefetch=8,
+              max_prefetch=64,
               config_data_width=16,
-              config_addr_width=8):
+              config_addr_width=8,
+              remove_tb=True):
 
     new_config = {}
 
@@ -74,34 +75,39 @@ def test_pond(data_width=16,  # CGRA Params
     new_config["sync_grp_sync_group_0"] = 1
     new_config["sync_grp_sync_group_1"] = 2
 
-    # model_lt = LakeTopModel(data_width=data_width,
-    #                         mem_width=mem_width,
-    #                         mem_depth=mem_depth,
-    #                         banks=banks,
-    #                         input_iterator_support=input_iterator_support,
-    #                         output_iterator_support=output_iterator_support,
-    #                         interconnect_input_ports=interconnect_input_ports,
-    #                         interconnect_output_ports=interconnect_output_ports,
-    #                         mem_input_ports=mem_input_ports,
-    #                         mem_output_ports=mem_output_ports,
-    #                         use_sram_stub=use_sram_stub,
-    #                         agg_height=agg_height,
-    #                         max_agg_schedule=max_agg_schedule,
-    #                         input_max_port_sched=input_max_port_sched,
-    #                         output_max_port_sched=output_max_port_sched,
-    #                         align_input=align_input,
-    #                         max_line_length=max_line_length,
-    #                         tb_height=max_tb_height,
-    #                         tb_range_max=tb_range_max,
-    #                         tb_sched_max=tb_sched_max,
-    #                         num_tb=num_tb,
-    #                         multiwrite=multiwrite,
-    #                         max_prefetch=max_prefetch)
-
-    # model_lt.set_config(new_config=new_config)
+    # Don't use the model - this is handwritten for now
 
     ### DUT
-    lt_dut = LakeTop()
+    lt_dut = LakeTop(data_width=data_width,  # CGRA Params
+                     mem_width=mem_width,
+                     mem_depth=mem_depth,
+                     banks=banks,
+                     input_iterator_support=input_iterator_support,  # Addr Controllers
+                     output_iterator_support=output_iterator_support,
+                     interconnect_input_ports=interconnect_input_ports,  # Connection to int
+                     interconnect_output_ports=interconnect_output_ports,
+                     mem_input_ports=mem_input_ports,
+                     mem_output_ports=mem_output_ports,
+                     use_sram_stub=use_sram_stub,
+                     read_delay=read_delay,  # Cycle delay in read (SRAM vs Register File)
+                     rw_same_cycle=rw_same_cycle,  # Does the memory allow r+w in same cycle?
+                     agg_height=agg_height,
+                     max_agg_schedule=max_agg_schedule,
+                     input_max_port_sched=input_max_port_sched,
+                     output_max_port_sched=output_max_port_sched,
+                     align_input=align_input,
+                     max_line_length=max_line_length,
+                     max_tb_height=max_tb_height,
+                     tb_range_max=tb_range_max,
+                     tb_sched_max=tb_sched_max,
+                     max_tb_stride=max_tb_stride,
+                     num_tb=num_tb,
+                     tb_iterator_support=tb_iterator_support,
+                     multiwrite=multiwrite,
+                     max_prefetch=max_prefetch,
+                     config_data_width=config_data_width,
+                     config_addr_width=config_addr_width,
+                     remove_tb=remove_tb)
 
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
@@ -132,30 +138,13 @@ def test_pond(data_width=16,  # CGRA Params
     ren = 0
 
     for i in range(32):
-        # Rand data
-        # for j in range(interconnect_input_ports):
-        #     data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
-        #     valid_in[j] = 1  # rand.randint(0, 1)
+        # Incrementing Data
         if i < 12:
             data_in[0] = data_in[0] + 1
             valid_in[0] = 1
             wen_en = 1
             ren_en = 0
             ren = 0
-        # elif i < 15:
-        #     data_in[0] = data_in[0] + 1
-        #     valid_in[0] = 1
-        #     # data_in[1] = tester.circuit.data_out_0 + tester.circuit.data_out_1
-        #     # valid_in[1] = tester.circuit.valid_out[0]
-        #     wen_en = 1
-        #     ren_en = 3
-        #     ren = 0
-        # elif i < 13:
-        #     data_in[0] = data_in[0] + 1
-        #     valid_in[0] = 1
-        #     wen_en = 3
-        #     ren_en = 3
-        #     ren = 3
         else:
             data_in[0] = data_in[0] + 1
             valid_in[0] = 1

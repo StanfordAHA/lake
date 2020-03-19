@@ -216,12 +216,12 @@ def test_identity_stream(data_width=16,
                                flags=["-Wno-fatal", "--trace"])
 
 
-# @pytest.mark.parametrize("read_delay", [0, 1])
-def test_top(read_delay=1,
+@pytest.mark.parametrize("read_delay", [0, 1])
+def test_top(read_delay,
              data_width=16,
              mem_width=64,
              mem_depth=512,
-             banks=2,
+             banks=1,
              input_iterator_support=6,
              output_iterator_support=6,
              interconnect_input_ports=1,
@@ -412,16 +412,16 @@ def test_top(read_delay=1,
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
-            tester.circuit.valid_in = valid_in[0]
+            tester.circuit.wen = valid_in[0]
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
-                setattr(tester.circuit, f"valid_in_{j}", valid_in[j])
+                tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
 
         if i > 200:
-            ren_en = 1
+            ren_en = 7
         tester.circuit.ren_en = ren_en
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
@@ -683,6 +683,6 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    # test_identity_stream()
-    test_top()
+    test_identity_stream()
+    # test_top()
     # test_config_storage()

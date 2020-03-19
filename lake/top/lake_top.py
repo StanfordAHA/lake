@@ -767,27 +767,27 @@ class LakeTop(Generator):
                     #############################
                     ##### TRANSPOSE BUFFERS #####
                     #############################
-                    for i in range(self.interconnect_output_ports):
+            if self.num_tb > 0:
+                for i in range(self.interconnect_output_ports):
 
-                        tba = TransposeBufferAggregation(word_width=self.data_width,
-                                                         fetch_width=self.fw_int,
-                                                         num_tb=self.num_tb,
-                                                         max_tb_height=self.max_tb_height,
-                                                         max_range=self.tb_range_max,
-                                                         max_stride=self.max_tb_stride,
-                                                         tb_iterator_support=self.tb_iterator_support)
+                    tba = TransposeBufferAggregation(word_width=self.data_width,
+                                                     fetch_width=self.fw_int,
+                                                     num_tb=self.num_tb,
+                                                     max_tb_height=self.max_tb_height,
+                                                     max_range=self.tb_range_max,
+                                                     max_stride=self.max_tb_stride,
+                                                     tb_iterator_support=self.tb_iterator_support)
 
-                        self.add_child(f"tba_{i}", tba,
-                                       clk=self._gclk,
-                                       rst_n=self._rst_n,
-                                       SRAM_to_tb_data=self._data_to_tba[i],
-                                       valid_data=self._valid_to_tba[i],
-                                       tb_index_for_data=0,
-                                       ack_in=self._valid_to_tba[i],
-                                       tb_to_interconnect_data=self._data_out[i],
-                                       tb_to_interconnect_valid=self._valid_out[i],
-                                       tb_arbiter_rdy=self._ready_tba[i])
-
+                    self.add_child(f"tba_{i}", tba,
+                                   clk=self._gclk,
+                                   rst_n=self._rst_n,
+                                   SRAM_to_tb_data=self._data_to_tba[i],
+                                   valid_data=self._valid_to_tba[i],
+                                   tb_index_for_data=0,
+                                   ack_in=self._valid_to_tba[i],
+                                   tb_to_interconnect_data=self._data_out[i],
+                                   tb_to_interconnect_valid=self._valid_out[i],
+                                   tb_arbiter_rdy=self._ready_tba[i])
         ####################
         ##### ADD CODE #####
         ####################

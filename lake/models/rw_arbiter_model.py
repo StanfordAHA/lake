@@ -49,7 +49,7 @@ class RWArbiterModel(Model):
         addr_to_mem = 0
 
         self.rd_valid = 0
-
+        print(f"wen_in: {wen_in}, wen_en:{wen_en}, passed")
         if wen_in != 0 and wen_en != 0:
             cen_mem = 1
             addr_to_mem = w_addr
@@ -58,7 +58,7 @@ class RWArbiterModel(Model):
         elif ren_in != 0 and ren_en != 0:
             for i in range(self.int_out_ports):
                 # Select lowest
-                if ren_in[i] != 0:
+                if ren_in[i] != 0 and ren_en[i] != 0:
                     cen_mem = 1
                     addr_to_mem = rd_addr[i]
                     self.rd_valid = 1
@@ -79,7 +79,7 @@ class RWArbiterModel(Model):
         elif ren_in != 0 and ren_en != 0:
             for i in range(self.int_out_ports):
                 # Select lowest
-                if ren_in[i] != 0:
+                if ren_in[i] != 0 and ren_en[i]:
                     self.ack = 1 << i
                     break
         return self.ack
