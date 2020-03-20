@@ -118,34 +118,28 @@ class TBModel(Model):
         self.prev_col_pixels2 = []
         self.prev_col_pixels3 = []
         self.output_valid_prior = 0
+        self.top_col_pixels = []
+        self.top_output_valid = 0
 
     def get_col_pixels(self):
-        return self.prev_col_pixels2
+        return self.top_col_pixels
 
     def get_output_valid(self):
-        return self.prev_output_valid
+        return self.top_output_valid
 
     def get_rdy_to_arbiter(self):
         return self.rdy_to_arbiter
 
     def output_from_tb(self, input_data, valid_data, ack_in, ren):
-
         self.prev_output_valid2 = self.prev_output_valid
-        self.prev_col_pixels3 = self.prev_col_pixels2
         self.prev_col_pixels2 = self.prev_col_pixels
 
         self.prev_ii = self.index_inner
         self.prev_io = self.index_outer
 
-        self.prev_rdy_to_arbiter3 = self.prev_rdy_to_arbiter2
-        self.prev_rdy_to_arbiter2 = self.prev_rdy_to_arbiter
-        self.prev_rdy_to_arbiter = self.rdy_to_arbiter
-
-        self.prev_out2 = self.prev_out_buf_index
-
         self.prev_output_valid = self.output_valid
         self.prev_col_pixels = self.col_pixels
-
+        
         if self.config["dimensionality"] == 0:
             self.output_valid = 0
             self.col_pixels = [0]
@@ -271,6 +265,13 @@ class TBModel(Model):
                 self.pause_output = 1
             else:
                 self.pause_output = 1 - ren
+
+            if self.config["dimensionality"] == 1:
+                self.top_output_valid = self.prev_output_valid
+                self.top_col_pixels = self.prev_col_pixels2
+            else:
+                self.top_output_valid = self.output_valid
+                self.top_col_pixels = self.prev_col_pixels
 
     def print_tb(self, input_data, valid_data, ack_in, ren):
         print("INPUTS")

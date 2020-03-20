@@ -186,7 +186,7 @@ def test_identity_stream(data_width=16,
             ren_en = 1
         tester.circuit.ren_en = ren_en
 
-        output_en = rand.randint(0, 1) #(i % 2)
+        output_en = 1 #rand.randint(0, 1) #(i % 2)
         tester.circuit.output_en = output_en
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
@@ -205,7 +205,7 @@ def test_identity_stream(data_width=16,
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
-        # print(mod_do, " ", mod_vo)
+        # print(i, " ", mod_do, " ", mod_vo)
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
