@@ -226,7 +226,7 @@ def test_top(data_width=16,
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
-
+        # print(mod_do, " " , mod_vo)
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:

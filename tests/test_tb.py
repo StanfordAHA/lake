@@ -98,7 +98,7 @@ def test_tb(word_width=16,
         # print("i: ", i, " model valid ", model_valid, " model data ", model_data)
         tester.eval()
         tester.circuit.output_valid.expect(model_valid)
-#        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+        # tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
         if model_valid:
             tester.circuit.col_pixels.expect(model_data[0])
 
@@ -196,10 +196,11 @@ def test_id(word_width=16,
 
         tester.eval()
         tester.circuit.output_valid.expect(model_valid)
-#        tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
+        # tester.circuit.rdy_to_arbiter.expect(model_rdy_to_arbiter)
         if model_valid:
             tester.circuit.col_pixels.expect(model_data[0])
-        
+        # print("model data ", model_data, " model_valid ", model_valid)
+
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -210,5 +211,5 @@ def test_id(word_width=16,
                                flags=["-Wno-fatal", "--trace"])
 
 if __name__ == "__main__":
-    test_tb()
-    #test_id()
+    # test_tb()
+    test_id()
