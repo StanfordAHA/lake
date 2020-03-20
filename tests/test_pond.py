@@ -183,35 +183,35 @@ def test_pond(data_width=16,  # CGRA Params
 
 
 def test_pond_nestan(data_width=16,  # CGRA Params
-              mem_width=16,
-              mem_depth=32,
-              banks=1,
-              input_iterator_support=2,  # Addr Controllers
-              output_iterator_support=2,
-              interconnect_input_ports=1,  # Connection to int
-              interconnect_output_ports=1,
-              mem_input_ports=1,
-              mem_output_ports=1,
-              use_sram_stub=1,
-              read_delay=0,  # Cycle delay in read (SRAM vs Register File)
-              rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
-              agg_height=0,
-              max_agg_schedule=64,
-              input_max_port_sched=64,
-              output_max_port_sched=64,
-              align_input=0,
-              max_line_length=2048,
-              max_tb_height=1,
-              tb_range_max=2048,
-              tb_sched_max=64,
-              max_tb_stride=15,
-              num_tb=0,
-              tb_iterator_support=2,
-              multiwrite=1,
-              max_prefetch=64,
-              config_data_width=16,
-              config_addr_width=8,
-              remove_tb=True):
+                     mem_width=16,
+                     mem_depth=32,
+                     banks=1,
+                     input_iterator_support=2,  # Addr Controllers
+                     output_iterator_support=2,
+                     interconnect_input_ports=1,  # Connection to int
+                     interconnect_output_ports=1,
+                     mem_input_ports=1,
+                     mem_output_ports=1,
+                     use_sram_stub=1,
+                     read_delay=0,  # Cycle delay in read (SRAM vs Register File)
+                     rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
+                     agg_height=0,
+                     max_agg_schedule=64,
+                     input_max_port_sched=64,
+                     output_max_port_sched=64,
+                     align_input=0,
+                     max_line_length=2048,
+                     max_tb_height=1,
+                     tb_range_max=2048,
+                     tb_sched_max=64,
+                     max_tb_stride=15,
+                     num_tb=0,
+                     tb_iterator_support=2,
+                     multiwrite=1,
+                     max_prefetch=64,
+                     config_data_width=16,
+                     config_addr_width=8,
+                     remove_tb=True):
 
     new_config = {}
 
@@ -324,9 +324,6 @@ def test_pond_nestan(data_width=16,  # CGRA Params
                 tester.circuit.wen[j] = valid_in[j]
 
         tester.eval()
-
-
-        tester.eval()
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -335,6 +332,7 @@ def test_pond_nestan(data_width=16,  # CGRA Params
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 if __name__ == "__main__":
     test_pond_nestan()
