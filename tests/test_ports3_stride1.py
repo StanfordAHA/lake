@@ -220,7 +220,7 @@ def test_ports3_stride1(
             ren_en = 1
         tester.circuit.ren_en = ren_en
 
-        output_en = 1#rand.randint(0, 1)
+        output_en = rand.randint(0, 1)
         tester.circuit.output_en = output_en
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
 

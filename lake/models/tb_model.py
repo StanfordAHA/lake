@@ -122,10 +122,10 @@ class TBModel(Model):
         self.top_output_valid = 0
 
     def get_col_pixels(self):
-        return self.top_col_pixels
+        return self.prev_col_pixels
 
     def get_output_valid(self):
-        return self.top_output_valid
+        return self.output_valid
 
     def get_rdy_to_arbiter(self):
         return self.rdy_to_arbiter
@@ -232,9 +232,6 @@ class TBModel(Model):
             for i in range(self.tb_height):
                 self.col_pixels.append(
                     self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
-            #self.this_iter_curr_out_start = self.curr_out_start
-            #if self.output_index_abs >= self.curr_out_start + self.fetch_width:
-            #    self.curr_out_start = self.curr_out_start + self.fetch_width
 
             if self.config["dimensionality"] == 1:
                 self.output_index_abs = self.index_outer * self.config["stride"]
@@ -248,14 +245,8 @@ class TBModel(Model):
                 self.curr_out_start = self.curr_out_start + self.fetch_width
 
 
-            #if (self.prev_ii == 0) and (self.prev_io == 0):
-            #    self.prev_out_buf_index = 0
-            #else:
             self.prev_out_buf_index = self.out_buf_index
 
-#            if (self.index_inner == 0) and (self.index_outer == 0):
-#                self.out_buf_index = 1
-            
             if (self.output_index_abs >= self.this_iter_curr_out_start + self.fetch_width):
                 self.out_buf_index = 1 - self.out_buf_index
 
@@ -265,13 +256,6 @@ class TBModel(Model):
                 self.pause_output = 1
             else:
                 self.pause_output = 1 - ren
-
-            if self.config["dimensionality"] == 1:
-                self.top_output_valid = self.prev_output_valid
-                self.top_col_pixels = self.prev_col_pixels2
-            else:
-                self.top_output_valid = self.output_valid
-                self.top_col_pixels = self.prev_col_pixels
 
     def print_tb(self, input_data, valid_data, ack_in, ren):
         print("INPUTS")
