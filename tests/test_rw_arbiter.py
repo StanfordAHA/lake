@@ -55,6 +55,7 @@ def test_rw_arbiter_basic(int_out_ports,
                                 check_multiple_driver=False,
                                 check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
     ###
 
     for key, value in new_config.items():

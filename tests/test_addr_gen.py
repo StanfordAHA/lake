@@ -34,7 +34,7 @@ def test_addr_gen_basic():
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
-
+    tester.zero_inputs()
     tester.circuit.dimensionality = 3
     tester.circuit.starting_addr = 0
     tester.circuit.stride_0 = 1

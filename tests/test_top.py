@@ -147,6 +147,7 @@ def test_identity_stream(data_width=16,
                                   check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
     ###
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
@@ -383,6 +384,7 @@ def test_top(read_delay,
                                   check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
     ###
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
@@ -618,6 +620,7 @@ def test_config_storage(data_width=16,
                                   check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
     ###
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)

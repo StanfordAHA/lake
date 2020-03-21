@@ -21,7 +21,7 @@ def test_passthru():
                                 flatten_array=True,
                                 check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
-
+    tester.zero_inputs()
     tester.circuit.clk = 0
     tester.circuit.data_in = 0
     tester.eval()

@@ -43,6 +43,7 @@ def test_tb(word_width=16,
 
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
 
     tester.circuit.clk = 0
     tester.circuit.rst_n = 1

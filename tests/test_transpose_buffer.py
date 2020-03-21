@@ -21,6 +21,7 @@ def test_transpose_buffer():
     magma_dut = kratos.util.to_magma(dut, flatten_array=True)
     verilog(dut, filename="transposebuffer.sv")
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
     tester.circuit.clk = 0
     tester.circuit.rst_n = 1
     tester.step(2)

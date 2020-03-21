@@ -26,6 +26,7 @@ def test_agg_aligner_basic(data_width=16,
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
     ###
 
     for key, value in new_config.items():

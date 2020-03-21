@@ -42,6 +42,7 @@ def test_aggregator_basic(agg_height=4,
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
     ###
 
     num_per_agg = int(mem_width / data_width)
