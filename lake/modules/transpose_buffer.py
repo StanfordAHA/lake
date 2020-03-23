@@ -66,8 +66,8 @@ class TransposeBuffer(Generator):
         # valid indicating whether data input from SRAM is valid and
         # should be stored in transpose buffer
         self.valid_data = self.input("valid_data", 1)
-
-        self._ack_in = self.input("ack_in", 1)
+        self.ack_in = self.input("ack_in", 1)
+        self.ren = self.input("ren", 1)
 
         ###########################
         # CONFIGURATION REGISTERS #
@@ -143,12 +143,13 @@ class TransposeBuffer(Generator):
                                             clog2(2 * self.num_tb * self.fetch_width))
         self.curr_out_start = self.var("curr_out_start", self.max_range_stride_bits2)
 
+        self.prev_output_valid = self.var("prev_output_valid", 1)
+
         self.start_data = self.var("start_data", 1)
         self.old_start_data = self.var("old_start_data", 1)
 
         self.pause_tb = self.var("pause_tb", 1)
         self.pause_output = self.var("pause_output", 1)
-        self.prev_pause_output = self.var("prev_pause_output", 1)
 
         ##########################
         # SEQUENTIAL CODE BLOCKS #
@@ -161,6 +162,7 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_input_buf_index)
         self.add_code(self.input_to_tb)
         self.add_code(self.output_from_tb)
+        self.add_code(self.set_prev_output_valid)
         self.add_code(self.set_output_valid)
         self.add_code(self.set_out_buf_index)
         self.add_code(self.set_rdy_to_arbiter)
@@ -168,7 +170,6 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_curr_out_start)
         self.add_code(self.set_prev_out_buf_index)
         self.add_code(self.set_output_index)
-        self.add_code(self.set_prev_pause_output)
         self.add_code(self.set_old_start_data)
 
         #############################
@@ -190,7 +191,10 @@ class TransposeBuffer(Generator):
             self.index_outer = 0
         elif self.dimensionality == 1:
             if self.index_outer == self.range_outer - 1:
-                self.index_outer = 0
+                if ~self.pause_output:
+                    self.index_outer = 0
+                else:
+                    self.index_outer = self.index_outer
             elif self.pause_tb:
                 self.index_outer = self.index_outer
             elif ~self.pause_output:
@@ -198,8 +202,11 @@ class TransposeBuffer(Generator):
         else:
             if self.index_inner == self.range_inner - 1:
                 if self.index_outer == self.range_outer - 1:
-                    self.index_outer = 0
-                else:
+                    if ~self.pause_output:
+                        self.index_outer = 0
+                    else:
+                        self.index_outer = self.index_outer
+                elif ~self.pause_output:
                     self.index_outer = self.index_outer + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -210,7 +217,10 @@ class TransposeBuffer(Generator):
             self.index_inner = 0
         else:
             if self.index_inner == self.range_inner - 1:
-                self.index_inner = 0
+                if ~self.pause_output:
+                    self.index_inner = 0
+                else:
+                    self.index_inner = self.index_inner
             elif self.pause_tb:
                 self.index_inner = self.index_inner
             elif ~self.pause_output:
@@ -224,7 +234,10 @@ class TransposeBuffer(Generator):
             self.pause_tb = 1
         elif self.dimensionality == 1:
             if self.index_outer == self.range_outer - 1:
-                self.pause_tb = ~self.valid_data
+                if ~self.pause_output:
+                    self.pause_tb = ~self.valid_data
+                else:
+                    self.pause_tb = 0
             elif self.pause_tb:
                 self.pause_tb = ~self.valid_data
             elif ~self.pause_output:
@@ -232,7 +245,10 @@ class TransposeBuffer(Generator):
         else:
             if self.index_inner == self.range_inner - 1:
                 if self.index_outer == self.range_outer - 1:
-                    self.pause_tb = ~self.valid_data
+                    if ~self.pause_output:
+                        self.pause_tb = ~self.valid_data
+                    else:
+                        self.pause_tb = 0
                 else:
                     self.pause_tb = 0
             elif self.pause_tb:
@@ -243,11 +259,11 @@ class TransposeBuffer(Generator):
     @always_comb
     def set_pause_output(self):
         if self.pause_tb:
-            self.pause_output = 1
+            self.pause_output = 1   
         elif self.start_data & ~self.old_start_data:
             self.pause_output = 1
         else:
-            self.pause_output = 0
+            self.pause_output = ~self.ren
 
     # get index of row to fill in transpose buffer with input data
     # for one of the two buffers in double buffer
@@ -268,8 +284,6 @@ class TransposeBuffer(Generator):
             self.input_buf_index = 0
         elif self.valid_data & (self.row_index == self.tb_height - 1):
             self.input_buf_index = ~self.input_buf_index
-        # else:
-        #     self.input_buf_index = self.input_buf_index
 
     # for double buffer, get index of row to fill in transpose buffer
     # with input data
@@ -329,21 +343,24 @@ class TransposeBuffer(Generator):
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_prev_output_valid(self):
+        if ~self.rst_n:
+            self.prev_output_valid = 0
+        elif self.dimensionality == 0:
+            self.prev_output_valid = 0
+        elif self.pause_output:
+            self.prev_output_valid = 0
+        else:
+            self.prev_output_valid = 1
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_output_valid(self):
         if ~self.rst_n:
             self.output_valid = 0
-        elif self.dimensionality == 0:
-            self.output_valid = 0
-        elif self.pause_tb | self.pause_output:
-            self.output_valid = 0
-        elif self.prev_pause_output & ~self.pause_output:
-            self.output_valid = 0
         else:
-            self.output_valid = 1
-
-    @always_ff((posedge, "clk"))
-    def set_prev_pause_output(self):
-        self.prev_pause_output = self.pause_output
+            # this is needed because there is a 2 cycle delay between index_outer and 
+            # actual output - change in tb rewrite
+            self.output_valid = self.prev_output_valid
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_out_buf_index(self):
@@ -392,5 +409,5 @@ class TransposeBuffer(Generator):
         elif self.tb_height != 1:
             if self.row_index != self.tb_height - 1:
                 self.rdy_to_arbiter = 1
-        elif self._ack_in:
+        elif self.ack_in:
             self.rdy_to_arbiter = 0

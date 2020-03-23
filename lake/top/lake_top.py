@@ -129,6 +129,8 @@ class LakeTop(Generator):
         self._config_write = self.input("config_write", 1)
         self._config_en = self.input("config_en", self.total_sets)
 
+        self._output_en = self.input("output_en", 1)
+
         self._data_out = self.output("data_out",
                                      self.data_width,
                                      size=self.interconnect_output_ports,

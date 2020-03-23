@@ -428,7 +428,9 @@ def test_top(read_delay,
                 ren_en[j] = 1
                 tester.circuit.ren_en[j] = ren_en[j]
 
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
+        output_en = rand.randint(0, 1)
+        tester.circuit.output_en = output_en
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
 
         tester.eval()
 
@@ -441,7 +443,7 @@ def test_top(read_delay,
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
-
+        # print(mod_do, " " , mod_vo)
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
