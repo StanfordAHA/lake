@@ -37,12 +37,12 @@ def test_addr_gen_basic():
 
     tester.circuit.dimensionality = 3
     tester.circuit.starting_addr = 0
-    tester.circuit.stride_0 = 1
-    tester.circuit.stride_1 = 3
-    tester.circuit.stride_2 = 9
-    tester.circuit.range_0 = 3
-    tester.circuit.range_1 = 3
-    tester.circuit.range_2 = 3
+    tester.circuit.strides_0 = 1
+    tester.circuit.strides_1 = 3
+    tester.circuit.strides_2 = 9
+    tester.circuit.ranges_0 = 3
+    tester.circuit.ranges_1 = 3
+    tester.circuit.ranges_2 = 3
 
     tester.circuit.clk = 0
     tester.circuit.clk_en = 1
