@@ -75,8 +75,8 @@ class InputAddrCtrlModel(Model):
             addr_gen_config["starting_addr"] = self.config[f"address_gen_{i}_starting_addr"]
             addr_gen_config["dimensionality"] = self.config[f"address_gen_{i}_dimensionality"]
             for j in range(self.iterator_support):
-                addr_gen_config[f"stride_{j}"] = self.config[f"address_gen_{i}_strides_{j}"]
-                addr_gen_config[f"range_{j}"] = self.config[f"address_gen_{i}_ranges_{j}"]
+                addr_gen_config[f"strides_{j}"] = self.config[f"address_gen_{i}_strides_{j}"]
+                addr_gen_config[f"ranges_{j}"] = self.config[f"address_gen_{i}_ranges_{j}"]
             self.addr_gens[i].set_config(addr_gen_config)
 
     # Retrieve the current addresses from each generator
