@@ -83,8 +83,8 @@ def test_identity_stream(data_width=16,
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
 
     new_config["sync_grp_sync_group_0"] = 1
-    new_config["sync_grp_sync_group_1"] = 1
-    new_config["sync_grp_sync_group_2"] = 1
+    # new_config["sync_grp_sync_group_1"] = 1
+    # new_config["sync_grp_sync_group_2"] = 1
 
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
@@ -162,6 +162,7 @@ def test_identity_stream(data_width=16,
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
+    # tester.eval()
     tester.step(2)
 
     data_in = [0] * interconnect_input_ports
@@ -169,6 +170,7 @@ def test_identity_stream(data_width=16,
     wen_en = 1
     ren_en = [0] * interconnect_output_ports
     addr_in = 0
+    output_en = 1
 
     for i in range(300):
         # Rand data
@@ -187,17 +189,18 @@ def test_identity_stream(data_width=16,
             # setattr(tester.circuit, f"wen_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
+        for j in range(interconnect_output_ports):
+            tester.circuit.ren_en[j] = ren_en[j]
 
         if i > 200:
             for j in range(interconnect_output_ports):
                 ren_en[j] = 1
-                tester.circuit.ren_en[j] = ren_en[j]
-
-        output_en = rand.randint(0, 1)
-        tester.circuit.output_en = output_en
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
+        # output_en = 1  # rand.randint(0, 1)
+        tester.circuit.output_en = output_en
 
+        # print(i, " ", mod_do, " " , mod_vo)
         tester.eval()
 
         # Now check the outputs
@@ -446,7 +449,7 @@ def test_top(read_delay,
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
-        # print(mod_do, " " , mod_vo)
+        # print(i, " ", mod_do, " " , mod_vo)
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
