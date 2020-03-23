@@ -148,7 +148,7 @@ class TBModel(Model):
 
         self.prev_output_valid = self.output_valid
         self.prev_col_pixels = self.col_pixels
-        
+
         if self.config["dimensionality"] == 0:
             self.output_valid = 0
             self.col_pixels = [0]
@@ -242,7 +242,7 @@ class TBModel(Model):
                     self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)])
                 else:
                     self.col_pixels.append(
-                            self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
+                        self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
             if self.config["dimensionality"] == 1:
                 self.output_index_abs = self.index_outer * self.config["stride"]
@@ -269,13 +269,13 @@ class TBModel(Model):
 
     def print_tb(self, input_data, valid_data, ack_in, ren):
         print("INPUTS")
-        
+
         print("input data: ", input_data)
         print("valid data: ", valid_data)
         print("ack in ", ack_in)
         print("ren ", ren)
 
-        print("input index ", self.tb_height * self.input_buf_index + self.row_index) 
+        print("input index ", self.tb_height * self.input_buf_index + self.row_index)
         print("tb: ", self.tb)
         print("row index: ", self.row_index)
         print("input buf index: ", self.input_buf_index)

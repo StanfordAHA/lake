@@ -62,7 +62,6 @@ def test_identity_stream(data_width=16,
 
     # TBA
 
-
     # if dimensionality == 1 version
     new_config["tba_0_tb_0_range_outer"] = 12
     new_config["tba_0_tb_0_stride"] = 1
@@ -188,7 +187,7 @@ def test_identity_stream(data_width=16,
             ren_en = 1
         tester.circuit.ren_en = ren_en
 
-        output_en = rand.randint(0, 1) #(i % 2)
+        output_en = rand.randint(0, 1)
         tester.circuit.output_en = output_en
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
@@ -216,6 +215,7 @@ def test_identity_stream(data_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 if __name__ == "__main__":
     test_identity_stream()

@@ -7,6 +7,7 @@ import tempfile
 from lake.passes.passes import lift_config_reg
 from lake.models.lake_top_model import LakeTopModel
 
+
 def test_identity_stream(data_width=16,
                          mem_width=64,
                          mem_depth=512,

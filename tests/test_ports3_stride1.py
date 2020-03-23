@@ -7,34 +7,34 @@ import tempfile
 from lake.passes.passes import lift_config_reg
 from lake.models.lake_top_model import LakeTopModel
 
-def test_ports3_stride1(
-             read_delay=1,
-             data_width=16,
-             mem_width=64,
-             mem_depth=512,
-             banks=1,
-             input_iterator_support=6,
-             output_iterator_support=6,
-             interconnect_input_ports=1,
-             interconnect_output_ports=3,
-             mem_input_ports=1,
-             mem_output_ports=1,
-             use_sram_stub=1,
-             agg_height=8,
-             transpose_height=8,
-             max_agg_schedule=64,
-             input_max_port_sched=64,
-             output_max_port_sched=64,
-             align_input=1,
-             max_line_length=256,
-             max_tb_height=1,
-             tb_range_max=64,
-             max_tb_stride=15,
-             tb_sched_max=64,
-             num_tb=1,
-             tb_iterator_support=2,
-             multiwrite=1,
-             max_prefetch=64):
+
+def test_ports3_stride1(read_delay=1,
+                        data_width=16,
+                        mem_width=64,
+                        mem_depth=512,
+                        banks=1,
+                        input_iterator_support=6,
+                        output_iterator_support=6,
+                        interconnect_input_ports=1,
+                        interconnect_output_ports=3,
+                        mem_input_ports=1,
+                        mem_output_ports=1,
+                        use_sram_stub=1,
+                        agg_height=8,
+                        transpose_height=8,
+                        max_agg_schedule=64,
+                        input_max_port_sched=64,
+                        output_max_port_sched=64,
+                        align_input=1,
+                        max_line_length=256,
+                        max_tb_height=1,
+                        tb_range_max=64,
+                        max_tb_stride=15,
+                        tb_sched_max=64,
+                        num_tb=1,
+                        tb_iterator_support=2,
+                        multiwrite=1,
+                        max_prefetch=64):
 
     new_config = {}
 
@@ -54,7 +54,7 @@ def test_ports3_stride1(
     new_config["input_addr_ctrl_address_gen_0_strides_0"] = 1
     new_config["input_addr_ctrl_address_gen_0_ranges_1"] = 100
     new_config["input_addr_ctrl_address_gen_0_strides_1"] = 16
-    
+
     # Output addr ctrl
     new_config["output_addr_ctrl_address_gen_0_dimensionality"] = 2
     new_config["output_addr_ctrl_address_gen_1_dimensionality"] = 2
@@ -215,7 +215,8 @@ def test_ports3_stride1(
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
-                setattr(tester.circuit, f"valid_in_{j}", valid_in[j])
+                # setattr(tester.circuit, f"valid_in_{j}", valid_in[j])
+                tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
 
@@ -237,11 +238,11 @@ def test_ports3_stride1(
             if mod_vo[0]:
                 tester.circuit.data_out.expect(mod_do[0][0])
         else:
-           for j in range(interconnect_output_ports):
-               tester.circuit.valid_out[j].expect(mod_vo[j])
-               if mod_vo[j]:
-                   getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
-        
+            for j in range(interconnect_output_ports):
+                tester.circuit.valid_out[j].expect(mod_vo[j])
+                if mod_vo[j]:
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+
         print(i, " ", mod_do, " ", mod_vo)
 
         tester.step(2)

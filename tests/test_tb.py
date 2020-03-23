@@ -8,6 +8,7 @@ import kratos as k
 import random as rand
 import pytest
 
+
 def test_tb(word_width=16,
             fetch_width=4,
             num_tb=1,
@@ -65,8 +66,6 @@ def test_tb(word_width=16,
 
     num_iters = 100
     for i in range(num_iters):
-        # print()
-        # print("i: ", i)
 
         data = []
         for j in range(fetch_width):
@@ -76,7 +75,7 @@ def test_tb(word_width=16,
             setattr(tester.circuit, f"input_data_{j}", data[j])
 
         if i % fetch_width == 0:
-            valid_data = 1 
+            valid_data = 1
         else:
             valid_data = 0
 
@@ -86,7 +85,7 @@ def test_tb(word_width=16,
 
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
-        
+
         ren = 1
         tester.circuit.ren = ren
 
@@ -107,6 +106,7 @@ def test_tb(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 def test_id(word_width=16,
             fetch_width=4,
@@ -179,13 +179,13 @@ def test_id(word_width=16,
 
         valid_data = 1
         tester.circuit.valid_data = valid_data
-        
+
         input_data = data
 
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
 
-        ren = 1#i % 2
+        ren = 1
         tester.circuit.ren = ren
 
         model_data, model_valid, model_rdy_to_arbiter = \
@@ -206,13 +206,14 @@ def test_id(word_width=16,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
+
 def test_fw1(word_width=16,
-            fetch_width=1,
-            num_tb=1,
-            max_tb_height=1,
-            max_range=5,
-            max_stride=15,
-            tb_iterator_support=2):
+             fetch_width=1,
+             num_tb=1,
+             max_tb_height=1,
+             max_range=5,
+             max_stride=15,
+             tb_iterator_support=2):
 
     model_tb = TBModel(word_width,
                        fetch_width,
@@ -301,6 +302,7 @@ def test_fw1(word_width=16,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 if __name__ == "__main__":
     # test_tb()

@@ -126,10 +126,10 @@ class TransposeBuffer(Generator):
 
         # transpose buffer
         if self.fetch_width == 1:
-            self.tb = self.var("tb", 
-                    width=self.word_width, 
-                    size=2*self.max_tb_height, 
-                    packed=True)
+            self.tb = self.var("tb",
+                               width=self.word_width,
+                               size=2 * self.max_tb_height,
+                               packed=True)
         else:
             self.tb = self.var("tb",
                                width=self.word_width,
@@ -273,7 +273,7 @@ class TransposeBuffer(Generator):
     @always_comb
     def set_pause_output(self):
         if self.pause_tb:
-            self.pause_output = 1   
+            self.pause_output = 1
         elif self.start_data & ~self.old_start_data:
             self.pause_output = 1
         else:
@@ -380,7 +380,7 @@ class TransposeBuffer(Generator):
         if ~self.rst_n:
             self.output_valid = 0
         else:
-            # this is needed because there is a 2 cycle delay between index_outer and 
+            # this is needed because there is a 2 cycle delay between index_outer and
             # actual output - change in tb rewrite
             self.output_valid = self.prev_output_valid
 
