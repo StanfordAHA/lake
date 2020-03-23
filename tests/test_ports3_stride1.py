@@ -196,7 +196,7 @@ def test_ports3_stride1(
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 1
-    ren_en = 0
+    ren_en = [0] * interconnect_output_ports
     addr_in = 0
 
     for i in range(300):
@@ -217,8 +217,9 @@ def test_ports3_stride1(
         tester.circuit.wen_en = wen_en
 
         if i > 200:
-            ren_en = 1
-        tester.circuit.ren_en = ren_en
+            for j in range(interconnect_output_ports):
+                ren_en[j] = 1
+                tester.circuit.ren_en[j] = ren_en[j]
 
         output_en = rand.randint(0, 1)
         tester.circuit.output_en = output_en

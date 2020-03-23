@@ -39,7 +39,8 @@ def test_reg_file_basic(data_width,
                        width_mult=width_mult,
                        depth=depth)
 
-    magma_dut = kts.util.to_magma(dut, flatten_array=True)
+    magma_dut = kts.util.to_magma(dut, flatten_array=True,
+                                  check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
 
@@ -80,8 +81,19 @@ def test_reg_file_basic(data_width,
 
         for i in range(write_ports):
             tester.circuit.wen[i] = wen[i]
-            for j in range(width_mult):
-                setattr(tester.circuit, f"data_in_{i}_{j}", wr_data[i][j])
+
+        if width_mult == 1 and write_ports == 1:
+            tester.circuit.data_in = wr_data[0][0]
+        elif width_mult == 1:
+            for i in range(write_ports):
+                setattr(tester.circuit, f"data_in_{i}_0", wr_data[i][0])
+        elif write_ports == 1:
+            for i in range(width_mult):
+                setattr(tester.circuit, f"data_in_{i}", wr_data[0][i])
+        else:
+            for i in range(write_ports):
+                for j in range(width_mult):
+                    setattr(tester.circuit, f"data_in_{i}_{j}", wr_data[i][j])
 
         if read_ports == 1:
             tester.circuit.rd_addr = rd_addr[0]
@@ -93,9 +105,18 @@ def test_reg_file_basic(data_width,
 
         tester.eval()
 
-        for i in range(read_ports):
-            for j in range(width_mult):
-                getattr(tester.circuit, f"data_out_{i}_{j}").expect(model_dat_out[i][j])
+        if width_mult == 1 and read_ports == 1:
+            tester.circuit.data_out.expect(model_dat_out[0][0])
+        elif width_mult == 1:
+            for i in range(read_ports):
+                getattr(tester.circuit, f"data_out_{i}_0").expect(model_dat_out[i][0])
+        elif read_ports == 1:
+            for i in range(width_mult):
+                getattr(tester.circuit, f"data_out_{i}").expect(model_dat_out[0][i])
+        else:
+            for i in range(read_ports):
+                for j in range(width_mult):
+                    getattr(tester.circuit, f"data_out_{i}_{j}").expect(model_dat_out[i][j])
 
         tester.step(2)
 
@@ -104,3 +125,7 @@ def test_reg_file_basic(data_width,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_reg_file_basic()

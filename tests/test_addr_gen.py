@@ -31,7 +31,8 @@ def test_addr_gen_basic():
     img_height = 4
     dut = AddrGen(512, 6, 16)
 
-    magma_dut = k.util.to_magma(dut, flatten_array=True)
+    magma_dut = k.util.to_magma(dut, flatten_array=True,
+                                check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
     tester.circuit.dimensionality = 3

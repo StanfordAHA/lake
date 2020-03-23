@@ -36,6 +36,18 @@ class RegisterFileModel(Model):
         '''
 
         # Do the read first - data won't pass through on the same cycle
+
+        if type(rd_addr) is int:
+            rd_addr = [rd_addr]
+        if type(wr_addr) is int:
+            wr_addr = [wr_addr]
+        if type(wen) is int:
+            wen = [wen]
+        if type(data_in) is int:
+            data_in = [data_in]
+        elif type(data_in[0]) is int:
+            data_in = [data_in]
+
         ret_data = []
         for i in range(self.read_ports):
             ret_data.append(self.mem[rd_addr[i]].copy())
@@ -45,6 +57,11 @@ class RegisterFileModel(Model):
                 self.mem[wr_addr[i]] = data_in[i].copy()
 
         return ret_data.copy()
+
+    def get_reads(self, rd_addr):
+        ret_data = []
+        for i in range(self.read_ports):
+            ret_data.append(self.mem[rd_addr[i]].copy())
 
     def dump_mem(self):
         for i in range(self.depth):

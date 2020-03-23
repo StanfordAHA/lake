@@ -233,4 +233,4 @@ class SyncGroups(Generator):
 if __name__ == "__main__":
     db_dut = SyncGroups(fetch_width=64,
                         int_out_ports=2)
-    verilog(db_dut, filename="sync_groups.sv", optimize_if=False)
+    verilog(db_dut, filename="sync_groups.sv", optimize_if=False, check_flip_flop_always_ff=False)
