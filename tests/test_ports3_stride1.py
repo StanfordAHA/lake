@@ -211,7 +211,7 @@ def test_ports3_stride1(
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
-            tester.circuit.valid_in = valid_in[0]
+            tester.circuit.wen = valid_in[0]
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
@@ -236,11 +236,11 @@ def test_ports3_stride1(
             tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
                 tester.circuit.data_out.expect(mod_do[0][0])
-        #else:
-        #    for j in range(interconnect_output_ports):
-        #        tester.circuit.valid_out[j].expect(mod_vo[j])
-        #        if mod_vo[j]:
-        #            getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+        else:
+           for j in range(interconnect_output_ports):
+               tester.circuit.valid_out[j].expect(mod_vo[j])
+               if mod_vo[j]:
+                   getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
         
         print(i, " ", mod_do, " ", mod_vo)
 

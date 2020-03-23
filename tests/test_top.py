@@ -178,11 +178,12 @@ def test_identity_stream(data_width=16,
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
-            tester.circuit.valid_in = valid_in[0]
+            tester.circuit.wen = valid_in[0]
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
-                setattr(tester.circuit, f"valid_in_{j}", valid_in[j])
+                tester.circuit.wen[j] = valid_in[j]
+            # setattr(tester.circuit, f"wen_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
 
@@ -191,7 +192,7 @@ def test_identity_stream(data_width=16,
                 ren_en[j] = 1
                 tester.circuit.ren_en[j] = ren_en[j]
 
-        output_en = rand.randint(0, 1) #(i % 2)
+        output_en = rand.randint(0, 1)
         tester.circuit.output_en = output_en
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
@@ -205,12 +206,10 @@ def test_identity_stream(data_width=16,
                 tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                # print(f"mod_vo_{j}: {mod_vo[j]}")
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
-        
-        # print(i, " ", mod_do, " ", mod_vo)
+
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -693,5 +692,5 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     test_identity_stream()
-    # test_top()
+    # test_top(1)
     # test_config_storage()
