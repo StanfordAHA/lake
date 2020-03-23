@@ -427,11 +427,14 @@ def test_top(read_delay,
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
+        for j in range(interconnect_output_ports):
+            # ren_en[j] = 1
+            tester.circuit.ren_en[j] = ren_en[j]
 
         if i > 200:
             for j in range(interconnect_output_ports):
                 ren_en[j] = 1
-                tester.circuit.ren_en[j] = ren_en[j]
+                # tester.circuit.ren_en[j] = ren_en[j]
 
         output_en = rand.randint(0, 1)
         tester.circuit.output_en = output_en

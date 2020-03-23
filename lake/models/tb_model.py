@@ -131,7 +131,7 @@ class TBModel(Model):
         self.top_output_valid = 0
 
     def get_col_pixels(self):
-        return self.prev_col_pixels
+        return self.col_pixels
 
     def get_output_valid(self):
         return self.output_valid
@@ -149,123 +149,155 @@ class TBModel(Model):
         self.prev_output_valid = self.output_valid
         self.prev_col_pixels = self.col_pixels
 
+        # Grab current values...
+        index_inner_curr = self.index_inner
+        index_outer_curr = self.index_outer
+        pause_tb_curr = self.pause_tb
+        row_index_curr = self.row_index
+        input_buf_index_curr = self.input_buf_index
+        # tb
+        # col pixels
+        output_index_curr = self.output_index
+        prev_output_valid_curr = self.prev_output_valid
+        output_valid_curr = self.output_valid
+        out_buf_index_curr = self.out_buf_index
+        curr_out_start_curr = self.curr_out_start
+        prev_out_buf_index_curr = self.prev_out_buf_index
+        start_data_curr = self.start_data
+        old_start_data_curr = self.old_start_data
+        rdy_to_arbiter_curr = self.rdy_to_arbiter
+        tb_curr = self.tb.copy()
+
+        # Perform combinational updates...
+        if pause_tb_curr:
+            self.pause_output = 1
+        elif start_data_curr and (not old_start_data_curr):
+            self.pause_output = 1
+        else:
+            self.pause_output = 1 - ren
+
+        if self.config["dimensionality"] == 1:
+            self.output_index_abs = index_outer_curr * self.config["stride"]
+        else:
+            self.output_index_abs = index_outer_curr * self.config["stride"] + \
+                self.config["indices"][index_inner_curr]
+
+        # Stateful updates...
+
         if self.config["dimensionality"] == 0:
             self.output_valid = 0
             self.col_pixels = [0]
         else:
-            if self.start_data and not self.old_start_data:
-                self.rdy_to_arbiter = 1
-            elif self.prev_out_buf_index != self.out_buf_index:
-                self.rdy_to_arbiter = 1
-            elif self.tb_height != 1:
-                if self.row_index != self.tb_height - 1:
-                    self.rdy_to_arbiter = 1
-            elif ack_in:
-                self.rdy_to_arbiter = 0
-
-            self.old_start_data = self.start_data
-            if valid_data and (not self.start_data):
-                self.start_data = 1
-
-            self.output_valid = self.output_valid_prior
-            if self.pause_output:
-                self.output_valid_prior = 0
-            else:
-                self.output_valid_prior = 1
-
+            # Index outer
             if self.config["dimensionality"] == 1:
-                if self.index_outer == self.config["range_outer"] - 1:
+                if index_outer_curr == self.config["range_outer"] - 1:
+                    if not self.pause_output:
+                        self.index_outer = 0
+                    else:
+                        self.index_outer = index_outer_curr
+                elif pause_tb_curr:
+                    self.index_outer = index_outer_curr
+                elif not self.pause_output:
+                    self.index_outer = index_outer_curr + 1
+            else:
+                if index_inner_curr == self.config["range_inner"] - 1:
+                    if index_outer_curr == self.config["range_outer"] - 1:
+                        if not self.pause_output:
+                            self.index_outer = 0
+                        else:
+                            self.index_outer = index_outer_curr
+                    elif not self.pause_output:
+                        self.index_outer = index_outer_curr + 1
+            # Index inner
+            if self.config["dimensionality"] == 1:
+                self.index_inner = 0
+            else:
+                if index_inner_curr == self.config["range_inner"] - 1:
+                    if not self.pause_output:
+                        self.index_inner = 0
+                elif pause_tb_curr:
+                    self.index_inner = index_inner_curr
+                elif not self.pause_output:
+                    self.index_inner = index_inner_curr + 1
+            # Pause tb
+            if self.config["dimensionality"] == 1:
+                if index_outer_curr == self.config["range_outer"] - 1:
                     if not self.pause_output:
                         self.pause_tb = 1 - valid_data
                     else:
                         self.pause_tb = 0
-                elif self.pause_tb:
+                elif pause_tb_curr:
                     self.pause_tb = 1 - valid_data
                 elif not self.pause_output:
                     self.pause_tb = 0
             else:
-                if self.index_inner == self.config["range_inner"] - 1:
-                    if self.index_outer == self.config["range_outer"] - 1:
+                if index_inner_curr == self.config["range_inner"] - 1:
+                    if index_outer_curr == self.config["range_outer"] - 1:
                         if not self.pause_output:
                             self.pause_tb = 1 - valid_data
                         else:
                             self.pause_tb = 0
                     else:
                         self.pause_tb = 0
-                elif self.pause_tb == 1:
+                elif pause_tb_curr == 1:
                     self.pause_tb = 1 - valid_data
                 elif not self.pause_output:
                     self.pause_tb = 0
-
-            if self.config["dimensionality"] == 1:
-                if self.index_outer == self.config["range_outer"] - 1:
-                    if not self.pause_output:
-                        self.index_outer = 0
-                    else:
-                        self.index_outer = self.index_outer
-                elif self.pause_tb:
-                    self.index_outer = self.index_outer
-                elif not self.pause_output:
-                    self.index_outer = self.index_outer + 1
-            else:
-                if self.index_inner == self.config["range_inner"] - 1:
-                    if self.index_outer == self.config["range_outer"] - 1:
-                        if not self.pause_output:
-                            self.index_outer = 0
-                        else:
-                            self.index_outer = self.index_outer
-                    elif not self.pause_output:
-                        self.index_outer = self.index_outer + 1
-
-            if self.config["dimensionality"] == 1:
-                self.index_inner = 0
-            else:
-                if self.index_inner == self.config["range_inner"] - 1:
-                    if not self.pause_output:
-                        self.index_inner = 0
-                elif self.pause_tb:
-                    self.index_inner = self.index_inner
-                elif not self.pause_output:
-                    self.index_inner = self.index_inner + 1
-
+            # Row index + input_buf_index + input tb
             if valid_data:
-                self.tb[self.row_index + self.tb_height * self.input_buf_index] = input_data
-                if self.row_index == self.tb_height - 1:
+                self.tb[row_index_curr + self.tb_height * input_buf_index_curr] = input_data
+                if row_index_curr == self.tb_height - 1:
                     self.row_index = 0
-                    self.input_buf_index = 1 - self.input_buf_index
+                    self.input_buf_index = 1 - input_buf_index_curr
                 else:
-                    self.row_index = self.row_index + 1
-
+                    self.row_index = row_index_curr + 1
+            # output from tb
             self.col_pixels = []
             for i in range(self.tb_height):
                 if self.fetch_width == 1:
-                    self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)])
+                    self.col_pixels.append(tb_curr[i + self.tb_height * (1 - out_buf_index_curr)])
                 else:
                     self.col_pixels.append(
-                        self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
-
-            if self.config["dimensionality"] == 1:
-                self.output_index_abs = self.index_outer * self.config["stride"]
-            else:
-                self.output_index_abs = self.index_outer * self.config["stride"] + \
-                    self.config["indices"][self.index_inner]
+                        tb_curr[i + self.tb_height * (1 - out_buf_index_curr)][output_index_curr])
+            # Set output index
             self.output_index = self.output_index_abs % self.fetch_width
 
-            self.this_iter_curr_out_start = self.curr_out_start
-            if self.output_index_abs >= self.curr_out_start + self.fetch_width:
-                self.curr_out_start = self.curr_out_start + self.fetch_width
-
-            self.prev_out_buf_index = self.out_buf_index
-
-            if (self.output_index_abs >= self.this_iter_curr_out_start + self.fetch_width):
-                self.out_buf_index = 1 - self.out_buf_index
-
-            if self.pause_tb:
-                self.pause_output = 1
-            elif self.start_data and (not self.old_start_data):
-                self.pause_output = 1
+            # Set prev output valid
+            if self.pause_output:
+                self.prev_output_valid = 0
             else:
-                self.pause_output = 1 - ren
+                self.prev_output_valid = 1
+
+            # Set output valid
+            self.output_valid = prev_output_valid_curr
+
+            # Set out buf index
+            if (self.output_index_abs >= curr_out_start_curr + self.fetch_width):
+                self.out_buf_index = 1 - out_buf_index_curr
+
+            # Set curr out start
+            if self.output_index_abs >= curr_out_start_curr + self.fetch_width:
+                self.curr_out_start = curr_out_start_curr + self.fetch_width
+
+            # Set pref out buf index
+            self.prev_out_buf_index = out_buf_index_curr
+
+            # Set start data
+            if valid_data and (not start_data_curr):
+                self.start_data = 1
+            # Set old start data
+            self.old_start_data = start_data_curr
+            # Set rdy to arbiter
+            if start_data_curr and not old_start_data_curr:
+                self.rdy_to_arbiter = 1
+            elif prev_out_buf_index_curr != out_buf_index_curr:
+                self.rdy_to_arbiter = 1
+            elif self.tb_height != 1:
+                if row_index_curr != self.tb_height - 1:
+                    self.rdy_to_arbiter = 1
+            elif ack_in:
+                self.rdy_to_arbiter = 0
+
 
     def print_tb(self, input_data, valid_data, ack_in, ren):
         print("INPUTS")
@@ -313,6 +345,6 @@ class TBModel(Model):
         self.output_from_tb(input_data, valid_data, ack_in, ren)
         # print(" ")
         # print("after")
-        # self.print_tb(input_data, valid_data, ack_in, ren)
-        # print(" ")
+        self.print_tb(input_data, valid_data, ack_in, ren)
+        print(" ")
         return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter

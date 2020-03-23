@@ -446,7 +446,7 @@ class LakeTopModel(Model):
             data_out.append(tb_d)
             valid_out.append(tb_v)
         # self.tbas[0].print_tba_tb(pref_data[i], pref_valid[i], pref_valid[i], 0, output_en)
-        # print("data out ", data_out, " valid_out ", valid_out)
+        # print(f"data out {data_out}, valid_out: {valid_out}")
         # print()
         return (data_out, valid_out)
 
