@@ -219,8 +219,9 @@ def test_top(data_width=16,
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.data_out.expect(mod_do[0])
             tester.circuit.valid_out.expect(mod_vo[0])
+            if mod_vo[0]:
+                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
                 tester.circuit.valid_out[j].expect(mod_vo[j])
