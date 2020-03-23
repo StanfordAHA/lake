@@ -80,6 +80,8 @@ def test_identity_stream(data_width=16,
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
 
     new_config["sync_grp_sync_group_0"] = 1
+    new_config["sync_grp_sync_group_1"] = 1
+    new_config["sync_grp_sync_group_2"] = 1
 
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
@@ -186,7 +188,7 @@ def test_identity_stream(data_width=16,
             ren_en = 1
         tester.circuit.ren_en = ren_en
 
-        output_en = 1 #rand.randint(0, 1) #(i % 2)
+        output_en = rand.randint(0, 1) #(i % 2)
         tester.circuit.output_en = output_en
 
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
