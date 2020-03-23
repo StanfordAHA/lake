@@ -27,12 +27,17 @@ class TBModel(Model):
         self.config["dimensionality"] = 1
 
         # initialize transpose buffer
-        self.tb = []
-        for i in range(2 * self.tb_height):
-            row = []
-            for j in range(self.fetch_width):
-                row.append(0)
-            self.tb.append(row)
+        if self.fetch_width == 1:
+            self.tb = []
+            for i in range(2 * self.tb_height):
+                self.tb.append(0)
+        else:
+            self.tb = []
+            for i in range(2 * self.tb_height):
+                row = []
+                for j in range(self.fetch_width):
+                    row.append(0)
+                self.tb.append(row)
 
         self.row_index = 0
         self.input_buf_index = 0
@@ -75,13 +80,17 @@ class TBModel(Model):
             else:
                 self.config[key] = config_val
 
-        # initialize transpose buffer
-        self.tb = []
-        for i in range(2 * self.tb_height):
-            row = []
-            for j in range(self.fetch_width):
-                row.append(0)
-            self.tb.append(row)
+        if self.fetch_width == 1:
+            self.tb = []
+            for i in range(2 * self.tb_height):
+                self.tb.append(0)
+        else:
+            self.tb = []
+            for i in range(2 * self.tb_height):
+                row = []
+                for j in range(self.fetch_width):
+                    row.append(0)
+                self.tb.append(row)
 
         self.row_index = 0
         self.input_buf_index = 0
@@ -188,7 +197,6 @@ class TBModel(Model):
                 elif not self.pause_output:
                     self.pause_tb = 0
 
-
             if self.config["dimensionality"] == 1:
                 if self.index_outer == self.config["range_outer"] - 1:
                     if not self.pause_output:
@@ -230,8 +238,11 @@ class TBModel(Model):
 
             self.col_pixels = []
             for i in range(self.tb_height):
-                self.col_pixels.append(
-                    self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
+                if self.fetch_width == 1:
+                    self.col_pixels.append(self.tb[i + self.tb_height * (1 - self.out_buf_index)])
+                else:
+                    self.col_pixels.append(
+                            self.tb[i + self.tb_height * (1 - self.out_buf_index)][self.output_index])
 
             if self.config["dimensionality"] == 1:
                 self.output_index_abs = self.index_outer * self.config["stride"]
@@ -243,7 +254,6 @@ class TBModel(Model):
             self.this_iter_curr_out_start = self.curr_out_start
             if self.output_index_abs >= self.curr_out_start + self.fetch_width:
                 self.curr_out_start = self.curr_out_start + self.fetch_width
-
 
             self.prev_out_buf_index = self.out_buf_index
 
@@ -278,6 +288,7 @@ class TBModel(Model):
         print("index inner ", self.index_inner)
         print("index outer ", self.index_outer)
         print("curr out start ", self.curr_out_start)
+        print("this iter curr out start", self.this_iter_curr_out_start)
         print("prev output valid", self.prev_output_valid)
         print("output valid ", self.output_valid)
         print("pause tb ", self.pause_tb)
@@ -304,5 +315,4 @@ class TBModel(Model):
         # print("after")
         # self.print_tb(input_data, valid_data, ack_in, ren)
         # print(" ")
-        # return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter
         return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter

@@ -59,10 +59,13 @@ class TransposeBuffer(Generator):
         self.rst_n = self.reset("rst_n", 1)
 
         # data input from SRAM
-        self.input_data = self.input("input_data",
-                                     width=self.word_width,
-                                     size=self.fetch_width,
-                                     packed=True)
+        if self.fetch_width == 1:
+            self.input_data = self.input("input_data", self.word_width)
+        else:
+            self.input_data = self.input("input_data",
+                                         width=self.word_width,
+                                         size=self.fetch_width,
+                                         packed=True)
         # valid indicating whether data input from SRAM is valid and
         # should be stored in transpose buffer
         self.valid_data = self.input("valid_data", 1)
@@ -122,10 +125,16 @@ class TransposeBuffer(Generator):
         ###################
 
         # transpose buffer
-        self.tb = self.var("tb",
-                           width=self.word_width,
-                           size=[2 * self.max_tb_height, self.fetch_width],
-                           packed=True)
+        if self.fetch_width == 1:
+            self.tb = self.var("tb", 
+                    width=self.word_width, 
+                    size=2*self.max_tb_height, 
+                    packed=True)
+        else:
+            self.tb = self.var("tb",
+                               width=self.word_width,
+                               size=[2 * self.max_tb_height, self.fetch_width],
+                               packed=True)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
         self.index_inner = self.var("index_inner", self.max_range_bits)
@@ -137,8 +146,10 @@ class TransposeBuffer(Generator):
         self.input_index = self.var("input_index", self.max_tb_height_bits2)
 
         self.output_index_abs = self.var("output_index_abs", self.max_range_stride_bits2)
-        self.output_index_long = self.var("output_index_long", self.max_range_stride_bits2)
-        self.output_index = self.var("output_index", self.fetch_width_bits)
+        if self.fetch_width != 1:
+            self.output_index_long = self.var("output_index_long", self.max_range_stride_bits2)
+            self.output_index = self.var("output_index", self.fetch_width_bits)
+
         self.indices_index_inner = self.var("indices_index_inner",
                                             clog2(2 * self.num_tb * self.fetch_width))
         self.curr_out_start = self.var("curr_out_start", self.max_range_stride_bits2)
@@ -169,7 +180,8 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_start_data)
         self.add_code(self.set_curr_out_start)
         self.add_code(self.set_prev_out_buf_index)
-        self.add_code(self.set_output_index)
+        if self.fetch_width != 1:
+            self.add_code(self.set_output_index)
         self.add_code(self.set_old_start_data)
 
         #############################
@@ -179,6 +191,8 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_pause_output)
         self.add_code(self.set_input_index)
         self.add_code(self.set_tb_out_indices)
+        if self.fetch_width != 1:
+            self.add_code(self.set_output_index_long)
 
     # get output loop iterators
     # set pause_tb signal to pause input/output depending on
@@ -301,11 +315,10 @@ class TransposeBuffer(Generator):
     @always_ff((posedge, "clk"))
     def input_to_tb(self):
         if self.valid_data:
-            for i in range(self.fetch_width):
-                if self.dimensionality == 0:
-                    self.tb[self.input_index][i] = 0
-                else:
-                    self.tb[self.input_index][i] = self.input_data[i]
+            if self.dimensionality == 0:
+                self.tb[self.input_index] = 0
+            else:
+                self.tb[self.input_index] = self.input_data
 
     # get relative output column index from absolute output column index
     @always_comb
@@ -322,6 +335,9 @@ class TransposeBuffer(Generator):
             self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
                 self.stride.extend(self.max_range_stride_bits2) \
                 + self.indices_index_inner.extend(self.max_range_stride_bits2)
+
+    @always_comb
+    def set_output_index_long(self):
         self.output_index_long = self.output_index_abs % fetch_width
 
     # output column from transpose buffer
@@ -332,13 +348,19 @@ class TransposeBuffer(Generator):
                 if self.dimensionality == 0:
                     self.col_pixels[i] = 0
                 elif self.out_buf_index:
-                    self.col_pixels[i] = self.tb[i][self.output_index]
+                    if self.fetch_width == 1:
+                        self.col_pixels[i] = self.tb[i]
+                    else:
+                        self.col_pixels[i] = self.tb[i][self.output_index]
                 else:
-                    self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
+                    if self.fetch_width == 1:
+                        self.col_pixels[i] = self.tb[i + self.max_tb_height]
+                    else:
+                        self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
 
     @always_ff((posedge, "clk"))
     def set_output_index(self):
-        self.output_index = self.output_index_long[clog2(fetch_width) - 1, 0]
+        self.output_index = self.output_index_long[self.fetch_width_bits - 1, 0]
 
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
