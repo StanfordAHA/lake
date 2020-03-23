@@ -18,8 +18,8 @@ class AddrGenModel(Model):
         self.address = 0
 
         for i in range(self.iterator_support):
-            self.config[f"range_{i}"] = 0
-            self.config[f"stride_{i}"] = 0
+            self.config[f"ranges_{i}"] = 0
+            self.config[f"strides_{i}"] = 0
             self.dim_cnt.append(0)
 
     def set_config(self, new_config):
@@ -42,7 +42,7 @@ class AddrGenModel(Model):
 
             if update_curr:
                 self.dim_cnt[i] = self.dim_cnt[i] + 1
-                if(self.dim_cnt[i] == self.config[f"range_{i}"]):
+                if(self.dim_cnt[i] == self.config[f"ranges_{i}"]):
                     self.dim_cnt[i] = 0
                 else:
                     break
@@ -51,5 +51,5 @@ class AddrGenModel(Model):
 
         self.address = self.config["starting_addr"]
         for i in range(self.config["dimensionality"]):
-            offset = self.dim_cnt[i] * self.config[f"stride_{i}"]
+            offset = self.dim_cnt[i] * self.config[f"strides_{i}"]
             self.address = self.address + offset
