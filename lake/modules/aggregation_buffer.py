@@ -89,7 +89,7 @@ class AggregationBuffer(Generator):
         for i in range(self.agg_height):
             self._aggs_sep.append(self.var(f"aggs_sep_{i}",
                                            self.data_width,
-                                           size=int(self.mem_width / self.data_width),
+                                           size=self.num_per_agg,
                                            packed=True))
         self._valid_demux = self.var("valid_demux", self.agg_height)
         self._next_full = self.var("next_full", self.agg_height)
@@ -98,7 +98,7 @@ class AggregationBuffer(Generator):
             # Add in the children aggregators...
             self.add_child(f"agg_{i}",
                            Aggregator(self.data_width,
-                                      mem_word_width=int(self.mem_width / self.data_width)),
+                                      mem_word_width=self.num_per_agg),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            in_pixels=self._data_in,
@@ -107,9 +107,12 @@ class AggregationBuffer(Generator):
                            valid_out=self._valid_out_mux[i],
                            next_full=self._next_full[i])
             portlist = []
-            for j in range(int(self.mem_width / self.data_width)):
-                portlist.append(self._aggs_sep[i][int(self.mem_width / self.data_width) - 1 - j])
-            self.wire(self._aggs_out[i], kts.concat(*portlist))
+            if self.num_per_agg == 1:
+                self.wire(self._aggs_out[i], self._aggs_sep[i])
+            else:
+                for j in range(self.num_per_agg):
+                    portlist.append(self._aggs_sep[i][self.num_per_agg - 1 - j])
+                self.wire(self._aggs_out[i], kts.concat(*portlist))
 
         # Sequential code blocks
         self.add_code(self.update_in_sched_ptr)

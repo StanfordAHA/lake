@@ -21,13 +21,13 @@ import kratos as kts
 class LakeTop(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
-                 mem_width=64,
-                 mem_depth=32,
-                 banks=1,
+                 mem_width=16,
+                 mem_depth=512,
+                 banks=2,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
                  interconnect_input_ports=1,  # Connection to int
-                 interconnect_output_ports=2,
+                 interconnect_output_ports=1,
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=1,
