@@ -177,7 +177,7 @@ def test_identity_stream(data_width=16,
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             valid_in[j] = 1  # rand.randint(0, 1)
-
+        output_en = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -191,15 +191,11 @@ def test_identity_stream(data_width=16,
         for j in range(interconnect_output_ports):
             tester.circuit.ren_en[j] = ren_en[j]
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
+        tester.circuit.output_en = output_en
 
         if i > 200:
             for j in range(interconnect_output_ports):
                 ren_en[j] = 1
-
-        # output_en = 1  # rand.randint(0, 1)
-        tester.circuit.output_en = output_en
-
-        # print(i, " ", mod_do, " ", mod_vo)
         tester.eval()
 
         # Now check the outputs
@@ -408,7 +404,7 @@ def test_top(read_delay,
     wen_en = 1
     ren_en = [0] * interconnect_output_ports
     addr_in = 0
-
+    output_en = 1
     for i in range(300):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
@@ -416,6 +412,7 @@ def test_top(read_delay,
             data_in[j] += 1
             valid_in[j] = 1
 
+        output_en = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -428,15 +425,12 @@ def test_top(read_delay,
         for j in range(interconnect_output_ports):
             # ren_en[j] = 1
             tester.circuit.ren_en[j] = ren_en[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
+        tester.circuit.output_en = output_en
 
         if i > 200:
             for j in range(interconnect_output_ports):
                 ren_en[j] = 1
-                # tester.circuit.ren_en[j] = ren_en[j]
-
-        output_en = rand.randint(0, 1)
-        tester.circuit.output_en = output_en
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
 
         tester.eval()
 
@@ -450,15 +444,13 @@ def test_top(read_delay,
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
-        # print(i, " ", mod_do, " " , mod_vo)
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="yooo"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_config_storage(data_width=16,

@@ -47,7 +47,6 @@ class TBModel(Model):
         self.ret_output_valid = 0
         self.ret_rdy_to_arb = 1
 
-
         self.col_pixels = []
         for i in range(self.tb_height):
             self.col_pixels.append(0)
@@ -308,7 +307,6 @@ class TBModel(Model):
                     self.rdy_to_arbiter = 1
             elif ack_in:
                 self.rdy_to_arbiter = 0
-
 
     def print_tb(self, input_data, valid_data, ack_in, ren):
         print("INPUTS")
