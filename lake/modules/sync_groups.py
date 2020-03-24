@@ -136,7 +136,8 @@ class SyncGroups(Generator):
             self.add_code(self.set_sync_stage, idx=i)
         self.add_code(self.set_out_valid)
         self.add_code(self.set_reduce_gate)
-        self.add_code(self.set_rd_gates)
+        for i in range(self.groups):
+            self.add_code(self.set_rd_gates, idx=i)
         self.add_code(self.set_tpose)
         self.add_code(self.set_finished)
         self.add_code(self.next_gate_mask)
@@ -189,13 +190,12 @@ class SyncGroups(Generator):
             self._local_gate_reduced[i] = self._local_gate_bus_tpose[i].r_and()
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def set_rd_gates(self):
-        for i in range(self.groups):
-            if ~self._rst_n | self._group_finished[i]:
-                self._local_gate_bus[i] = ~const(0, self.int_out_ports)
-            # Bring this down eventually
-            else:
-                self._local_gate_bus[i] = self._local_gate_bus[i] & self._local_gate_mask[i]
+    def set_rd_gates(self, idx):
+        if ~self._rst_n | self._group_finished[idx]:
+            self._local_gate_bus[idx] = ~const(0, self.int_out_ports)
+        # Bring this down eventually
+        else:
+            self._local_gate_bus[idx] = self._local_gate_bus[idx] & self._local_gate_mask[idx]
 
     @always_comb
     def set_tpose(self):
