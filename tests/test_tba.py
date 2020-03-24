@@ -24,12 +24,12 @@ def test_tba(word_width=16,
                          max_range)
 
     new_config = {}
-    new_config["tb_0_range_outer"] = 5
-    new_config["tb_0_range_inner"] = 3
-    new_config["tb_0_stride"] = 2
-    new_config["tb_0_indices"] = [0, 1, 2]
-    new_config["tb_0_dimensionality"] = 2
-    new_config["tb_0_tb_height"] = 1
+    new_config["range_outer"] = 5
+    new_config["range_inner"] = 3
+    new_config["stride"] = 2
+    new_config["indices"] = [0, 1, 2]
+    new_config["dimensionality"] = 2
+    new_config["tb_height"] = 1
 
     model_tba.set_config(new_config=new_config)
 
@@ -46,23 +46,23 @@ def test_tba(word_width=16,
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
+    # configuration registers
+    tester.circuit.tb_0_indices_0 = 0
+    tester.circuit.tb_0_indices_1 = 1
+    tester.circuit.tb_0_indices_2 = 2
+
+    tester.circuit.tb_0_range_outer = 5
+    tester.circuit.tb_0_range_inner = 3
+    tester.circuit.tb_0_stride = 2
+    tester.circuit.tb_0_dimensionality = 2
+    tester.circuit.tb_0_tb_height = 1
+
     tester.circuit.clk = 0
     tester.circuit.rst_n = 1
     tester.step(2)
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
-
-    # configuration registers
-    tester.circuit.indices_0 = 0
-    tester.circuit.indices_1 = 1
-    tester.circuit.indices_2 = 2
-
-    tester.circuit.range_outer = 5
-    tester.circuit.range_inner = 3
-    tester.circuit.stride = 2
-    tester.circuit.tb_0_dimensionality = 2
-    tester.circuit.tb_0_tb_height = 1
 
     rand.seed(0)
 
