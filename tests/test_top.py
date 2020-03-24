@@ -15,7 +15,7 @@ def test_identity_stream(data_width=16,
                          input_iterator_support=6,
                          output_iterator_support=6,
                          interconnect_input_ports=1,
-                         interconnect_output_ports=1,
+                         interconnect_output_ports=3,
                          mem_input_ports=1,
                          mem_output_ports=1,
                          use_sram_stub=1,
@@ -190,16 +190,16 @@ def test_identity_stream(data_width=16,
         tester.circuit.wen_en = wen_en
         for j in range(interconnect_output_ports):
             tester.circuit.ren_en[j] = ren_en[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
 
         if i > 200:
             for j in range(interconnect_output_ports):
                 ren_en[j] = 1
 
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
         # output_en = 1  # rand.randint(0, 1)
         tester.circuit.output_en = output_en
 
-        print(i, " ", mod_do, " ", mod_vo)
+        # print(i, " ", mod_do, " ", mod_vo)
         tester.eval()
 
         # Now check the outputs
@@ -216,11 +216,10 @@ def test_identity_stream(data_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "top_dump_id"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 @pytest.mark.parametrize("read_delay", [0, 1])
@@ -455,10 +454,11 @@ def test_top(read_delay,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir="yooo"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 def test_config_storage(data_width=16,
@@ -697,6 +697,6 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    test_identity_stream()
-    # test_top(1)
+    # test_identity_stream()
+    test_top(0)
     # test_config_storage()

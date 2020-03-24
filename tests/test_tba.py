@@ -62,14 +62,13 @@ def test_tba(word_width=16,
     tester.step(2)
     tester.circuit.rst_n = 0
     tester.step(2)
+    tester.circuit.tba_ren = 1
     tester.circuit.rst_n = 1
 
     rand.seed(0)
 
-    num_iters = 15
+    num_iters = 100
     for i in range(num_iters):
-        print()
-        print("i: ", i)
 
         data = []
         for j in range(fetch_width):

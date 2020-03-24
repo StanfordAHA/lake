@@ -129,9 +129,7 @@ class TBAModel(Model):
                 ack_in_i = 0
             # self.tbs[i].interact(input_data, valid_data_i, ack_in_i, ren)
             (ret_data, ret_valid, ret_rdy) = self.tbs[i].interact(input_data, valid_data_i, ack_in_i, ren)
-            # print("col pixels ", i, " ", self.tbs[i].get_col_pixels())
 
-        print(f"ret_data: {ret_data}, ret_valid:{ret_valid}")
         # self.set_tb_outputs()
         # self.send_tba_rdy()
         # self.print_tba()

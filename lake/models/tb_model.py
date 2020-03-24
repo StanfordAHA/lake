@@ -144,7 +144,7 @@ class TBModel(Model):
         return self.output_valid
 
     def get_rdy_to_arbiter(self):
-        return self.rdy_to_arb
+        return self.rdy_to_arbiter
 
     def output_from_tb(self, input_data, valid_data, ack_in, ren):
         # self.prev_output_valid2 = self.prev_output_valid
