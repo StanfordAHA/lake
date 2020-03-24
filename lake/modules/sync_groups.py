@@ -191,7 +191,9 @@ class SyncGroups(Generator):
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_rd_gates(self, idx):
-        if ~self._rst_n | self._group_finished[idx]:
+        if ~self._rst_n:
+            self._local_gate_bus[idx] = ~const(0, self.int_out_ports)
+        elif self._group_finished[idx]:
             self._local_gate_bus[idx] = ~const(0, self.int_out_ports)
         # Bring this down eventually
         else:
