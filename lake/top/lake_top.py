@@ -33,10 +33,10 @@ class LakeTop(Generator):
                  use_sram_stub=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=8,
-                 max_agg_schedule=64,
-                 input_max_port_sched=64,
-                 output_max_port_sched=64,
+                 agg_height=4,
+                 max_agg_schedule=32,
+                 input_max_port_sched=32,
+                 output_max_port_sched=32,
                  align_input=1,
                  max_line_length=128,
                  max_tb_height=1,
