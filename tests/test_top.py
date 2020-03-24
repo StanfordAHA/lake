@@ -15,7 +15,7 @@ def test_identity_stream(data_width=16,
                          input_iterator_support=6,
                          output_iterator_support=6,
                          interconnect_input_ports=1,
-                         interconnect_output_ports=3,
+                         interconnect_output_ports=1,
                          mem_input_ports=1,
                          mem_output_ports=1,
                          use_sram_stub=1,
@@ -162,7 +162,6 @@ def test_identity_stream(data_width=16,
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
-    # tester.eval()
     tester.step(2)
 
     data_in = [0] * interconnect_input_ports
@@ -172,7 +171,7 @@ def test_identity_stream(data_width=16,
     addr_in = 0
     output_en = 1
 
-    for i in range(300):
+    for i in range(232):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
@@ -200,7 +199,7 @@ def test_identity_stream(data_width=16,
         # output_en = 1  # rand.randint(0, 1)
         tester.circuit.output_en = output_en
 
-        # print(i, " ", mod_do, " " , mod_vo)
+        print(i, " ", mod_do, " ", mod_vo)
         tester.eval()
 
         # Now check the outputs

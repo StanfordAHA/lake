@@ -43,6 +43,10 @@ class TBModel(Model):
         self.input_buf_index = 0
         self.out_buf_index = 1
         self.prev_out_buf_index = 0
+        self.ret_col_pixels = 0
+        self.ret_output_valid = 0
+        self.ret_rdy_to_arb = 1
+
 
         self.col_pixels = []
         for i in range(self.tb_height):
@@ -55,8 +59,9 @@ class TBModel(Model):
         self.this_iter_curr_out_start = 0
         self.output_valid = 0
         self.pause_tb = 1
-        self.pause_output = 1
+        self.pause_output = 0
         self.rdy_to_arbiter = 1
+        self.prev_output_valid = 0
         self.start_data = 0
         self.old_start_data = 0
         self.prev_rdy_to_arbiter = 1
@@ -105,12 +110,14 @@ class TBModel(Model):
         self.index_inner = 0
         self.index_outer = 0
         self.curr_out_start = 0
-        self.this_iter_curr_out_start = 0
         self.output_valid = 0
         self.pause_tb = 1
-        self.pause_output = 1
+        self.pause_output = 0
         self.rdy_to_arbiter = 1
         self.prev_col_pixels = 0
+        self.ret_col_pixels = 0
+        self.ret_output_valid = 0
+        self.ret_rdy_to_arb = 1
         self.prev_output_valid = 0
         self.start_data = 0
         self.old_start_data = 0
@@ -137,17 +144,21 @@ class TBModel(Model):
         return self.output_valid
 
     def get_rdy_to_arbiter(self):
-        return self.rdy_to_arbiter
+        return self.rdy_to_arb
 
     def output_from_tb(self, input_data, valid_data, ack_in, ren):
-        self.prev_output_valid2 = self.prev_output_valid
-        self.prev_col_pixels2 = self.prev_col_pixels
+        # self.prev_output_valid2 = self.prev_output_valid
+        # self.prev_col_pixels2 = self.prev_col_pixels
 
-        self.prev_ii = self.index_inner
-        self.prev_io = self.index_outer
+        # self.prev_ii = self.index_inner
+        # self.prev_io = self.index_outer
 
-        self.prev_output_valid = self.output_valid
-        self.prev_col_pixels = self.col_pixels
+        # self.prev_output_valid = self.output_valid
+        # self.prev_col_pixels = self.col_pixels
+
+        self.ret_col_pixels = self.col_pixels
+        self.ret_output_valid = self.output_valid
+        self.ret_rdy_to_arb = self.rdy_to_arbiter
 
         # Grab current values...
         index_inner_curr = self.index_inner
@@ -345,6 +356,7 @@ class TBModel(Model):
         self.output_from_tb(input_data, valid_data, ack_in, ren)
         # print(" ")
         # print("after")
-        self.print_tb(input_data, valid_data, ack_in, ren)
-        print(" ")
-        return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter
+        # self.print_tb(input_data, valid_data, ack_in, ren)
+        # print(" ")
+        # return self.prev_col_pixels2, self.prev_output_valid, self.rdy_to_arbiter
+        return self.ret_col_pixels, self.ret_output_valid, self.ret_rdy_to_arb

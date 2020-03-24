@@ -101,11 +101,10 @@ def test_tb(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tb"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_id(word_width=16,
@@ -200,11 +199,10 @@ def test_id(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tb_id"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_fw1(word_width=16,
@@ -227,7 +225,7 @@ def test_fw1(word_width=16,
     new_config["stride"] = 1
     new_config["indices"] = [0, 1, 2]
     new_config["tb_height"] = 1
-    new_config["dimensional1ity"] = 1
+    new_config["dimensionality"] = 1
 
     model_tb.set_config(new_config=new_config)
 
@@ -297,11 +295,10 @@ def test_fw1(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tb"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":

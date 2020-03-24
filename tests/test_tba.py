@@ -28,6 +28,8 @@ def test_tba(word_width=16,
     new_config["tb_0_range_inner"] = 3
     new_config["tb_0_stride"] = 2
     new_config["tb_0_indices"] = [0, 1, 2]
+    new_config["tb_0_dimensionality"] = 2
+    new_config["tb_0_tb_height"] = 1
 
     model_tba.set_config(new_config=new_config)
 
@@ -35,7 +37,9 @@ def test_tba(word_width=16,
                                      fetch_width,
                                      num_tb,
                                      tb_height,
-                                     max_range)
+                                     max_range,
+                                     max_stride=5,
+                                     tb_iterator_support=2)
 
     lift_config_reg(dut.internal_generator)
 
@@ -57,10 +61,12 @@ def test_tba(word_width=16,
     tester.circuit.range_outer = 5
     tester.circuit.range_inner = 3
     tester.circuit.stride = 2
+    tester.circuit.tb_0_dimensionality = 2
+    tester.circuit.tb_0_tb_height = 1
 
     rand.seed(0)
 
-    num_iters = 5
+    num_iters = 15
     for i in range(num_iters):
         print()
         print("i: ", i)
@@ -82,7 +88,7 @@ def test_tba(word_width=16,
         tester.circuit.ack_in = ack_in
 
         model_data, model_valid = \
-            model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data)
+            model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data, 1)
 
         tester.eval()
         tester.circuit.tb_to_interconnect_valid.expect(model_valid)
@@ -92,12 +98,12 @@ def test_tba(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tba"
+        tempdir = "tba_mek"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     test_tba()
