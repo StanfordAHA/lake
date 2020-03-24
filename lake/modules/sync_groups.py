@@ -132,7 +132,8 @@ class SyncGroups(Generator):
         # Add Code
         self.add_code(self.set_sync_agg)
         self.add_code(self.set_sync_valid)
-        self.add_code(self.set_sync_stage)
+        for i in range(self.int_out_ports):
+            self.add_code(self.set_sync_stage, idx=i)
         self.add_code(self.set_out_valid)
         self.add_code(self.set_reduce_gate)
         self.add_code(self.set_rd_gates)
@@ -160,20 +161,19 @@ class SyncGroups(Generator):
             self._sync_valid[i] = self._sync_agg[i].r_and()
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def set_sync_stage(self):
+    def set_sync_stage(self, idx):
         # Ports
-        for i in range(self.int_out_ports):
-            if ~self._rst_n:
-                self._data_reg[i] = 0
-                self._valid_reg[i] = 0
-            # Absorb input data if the whole group is valid
-            elif (self._sync_valid & self._sync_group[i]).r_or():
-                self._data_reg[i] = self._data_in[i]
-                self._valid_reg[i] = self._valid_in[i]
-            # Also absorb input data if not currently holding a valid
-            elif ~self._valid_reg[i]:
-                self._data_reg[i] = self._data_in[i]
-                self._valid_reg[i] = self._valid_in[i]
+        if ~self._rst_n:
+            self._data_reg[idx] = 0
+            self._valid_reg[idx] = 0
+        # Absorb input data if the whole group is valid
+        elif (self._sync_valid & self._sync_group[idx]).r_or():
+            self._data_reg[idx] = self._data_in[idx]
+            self._valid_reg[idx] = self._valid_in[idx]
+        # Also absorb input data if not currently holding a valid
+        elif ~self._valid_reg[idx]:
+            self._data_reg[idx] = self._data_in[idx]
+            self._valid_reg[idx] = self._valid_in[idx]
 
     @always_comb
     def set_out_valid(self):
@@ -232,5 +232,6 @@ class SyncGroups(Generator):
 
 if __name__ == "__main__":
     db_dut = SyncGroups(fetch_width=64,
+                        data_width=16,
                         int_out_ports=2)
     verilog(db_dut, filename="sync_groups.sv", optimize_if=False, check_flip_flop_always_ff=False)
