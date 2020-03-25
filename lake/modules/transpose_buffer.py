@@ -180,9 +180,10 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_start_data)
         self.add_code(self.set_curr_out_start)
         self.add_code(self.set_prev_out_buf_index)
+        self.add_code(self.set_old_start_data)
+
         if self.fetch_width != 1:
             self.add_code(self.set_output_index)
-        self.add_code(self.set_old_start_data)
 
         #############################
         # COMBINATIONAL CODE BLOCKS #
@@ -191,6 +192,7 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_pause_output)
         self.add_code(self.set_input_index)
         self.add_code(self.set_tb_out_indices)
+
         if self.fetch_width != 1:
             self.add_code(self.set_output_index_long)
 
