@@ -148,7 +148,9 @@ class LakeTop(Generator):
         # Add tile enable!
         # self._tile_en = self.input("tile_en", 1)
         # self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
-
+        # either normal or fifo mode rn...
+        self._mode = self.input("mode", 1)
+        self._mode.add_attribute(ConfigRegAttr("MODE!"))
         # self._gclk = self.var("gclk", 1)
         # self.wire(self._gclk, kts.util.clock(self._clk & self._tile_en))
 
