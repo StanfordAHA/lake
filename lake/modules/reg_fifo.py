@@ -91,12 +91,8 @@ class RegFIFO(Generator):
 
         self.wire(self._passthru, self._pop & self._push & self._empty)
 
-        if self.extern_full_empty:
-            # self.wire(self._read, self._pop & ~self._passthru)
-            # self.wire(self._write, self._push & ~self._passthru)
-            self.wire(self._write, self._push & ~self._passthru & ~self._full)
-        else:
-            self.wire(self._write, self._push & ~self._passthru & ~self._full)
+        # Should only write
+        self.wire(self._write, self._push & ~self._passthru & (~self._full | self._pop))
 
         # Boilerplate Add always @(posedge clk, ...) blocks
         if self.parallel:

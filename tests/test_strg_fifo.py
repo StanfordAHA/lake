@@ -7,6 +7,7 @@ import tempfile
 from lake.passes.passes import lift_config_reg
 from lake.models.lake_top_model import LakeTopModel
 from lake.modules.strg_fifo import StrgFIFO
+from lake.models.reg_fifo_model import RegFIFOModel
 
 
 def test_storage_fifo(data_width=16,  # CGRA Params
@@ -15,22 +16,22 @@ def test_storage_fifo(data_width=16,  # CGRA Params
                       banks=2,
                       input_iterator_support=6,  # Addr Controllers
                       output_iterator_support=6,
-                      interconnect_input_ports=2,  # Connection to int
-                      interconnect_output_ports=2,
+                      interconnect_input_ports=1,  # Connection to int
+                      interconnect_output_ports=1,
                       mem_input_ports=1,
                       mem_output_ports=1,
                       use_sram_stub=1,
                       read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                       rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                       agg_height=4,
-                      max_agg_schedule=32,
-                      input_max_port_sched=32,
-                      output_max_port_sched=32,
+                      max_agg_schedule=16,
+                      input_max_port_sched=16,
+                      output_max_port_sched=16,
                       align_input=1,
                       max_line_length=128,
                       max_tb_height=1,
-                      tb_range_max=128,
-                      tb_sched_max=64,
+                      tb_range_max=32,
+                      tb_sched_max=32,
                       max_tb_stride=15,
                       num_tb=1,
                       tb_iterator_support=2,
@@ -42,10 +43,15 @@ def test_storage_fifo(data_width=16,  # CGRA Params
                       fifo_mode=True):
 
     fw_int = int(mem_width / data_width)
+    depth = 100
 
     new_config = {}
-    new_config["fifo_ctrl_fifo_depth"] = 100
+    new_config["fifo_ctrl_fifo_depth"] = depth
     new_config["mode"] = 1
+
+    model_rf = RegFIFOModel(data_width=data_width,
+                            width_mult=fw_int,
+                            depth=depth)
 
     ### DUT
     lt_dut = LakeTop(data_width=data_width,
@@ -108,17 +114,27 @@ def test_storage_fifo(data_width=16,  # CGRA Params
 
     for i in range(40):
         data_in += 1
+        # data_in = rand.randint(0, 2 ** data_width - 1)
+        # push = rand.randint(0, 1)
+        push = 1
+        pop = rand.randint(0, 1)
 
-        if i == 10:
-            pop = 1
+        # if i == 10:
+        #     pop = 1
 
-        tester.circuit.data_in_0 = data_in
-        tester.circuit.wen[0] = push
-        tester.circuit.ren[0] = pop
+        tester.circuit.data_in = data_in
+        tester.circuit.wen = push
+        tester.circuit.ren = pop
+        (model_out, model_val, model_empty, model_full) = model_rf.interact(push, pop, [data_in])
 
         tester.eval()
 
+        # tester.circuit.empty.expect()
         # Now check the outputs
+        print(f"i: {i}, dat: {model_out}, val: {model_val}, e: {model_empty}, f: {model_full}")
+        tester.circuit.valid_out.expect(model_val)
+        if model_val:
+            tester.circuit.data_out.expect(model_out[0])
 
         tester.step(2)
 

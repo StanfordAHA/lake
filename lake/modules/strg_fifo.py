@@ -115,6 +115,9 @@ class StrgFIFO(Generator):
                                        explicit_array=True,
                                        packed=True)
 
+        self._front_push = self.var("front_push", 1)
+        self.wire(self._front_push, self._push & (~self._full | self._pop))
+
         self._front_rf = RegFIFO(data_width=self.data_width,
                                  width_mult=1,
                                  depth=self.fw_int - 1,
@@ -125,7 +128,7 @@ class StrgFIFO(Generator):
                        clk=self._clk,
                        clk_en=kts.const(1, 1),
                        rst_n=self._rst_n,
-                       push=self._push,
+                       push=self._front_push,
                        pop=self._front_pop,
                        empty=self._front_empty,
                        full=self._front_full,
@@ -161,12 +164,15 @@ class StrgFIFO(Generator):
                                 parallel=True,
                                 extern_full_empty=True)
 
+        self._back_pop = self.var("back_pop", 1)
+        self.wire(self._back_pop, self._pop & (~self._empty | self._push))
+
         self.add_child("back_rf", self._back_rf,
                        clk=self._clk,
                        clk_en=kts.const(1, 1),
                        rst_n=self._rst_n,
                        push=self._back_push,
-                       pop=self._pop,
+                       pop=self._back_pop,
                        empty=self._back_empty,
                        full=self._back_full,
                        valid=self._back_valid,
@@ -249,7 +255,10 @@ class StrgFIFO(Generator):
 
         # Data out and valid out are (in the general case) just the data and valid from the back fifo
         # In the case where we have a fresh memory read, it would be from that
-        self.wire(self._data_out, kts.ternary(self._back_pl, self._back_par_in[0], self._back_data_out))
+        bank_idx_read = self._curr_bank_rd
+        if self.read_delay == 1:
+            bank_idx_read = self._prev_bank_rd
+        self.wire(self._data_out, kts.ternary(self._back_pl, self._data_from_strg[bank_idx_read][0], self._back_data_out))
         self.wire(self._valid_out, kts.ternary(self._back_pl, self._pop, self._back_valid))
 
         # Set addresses to storage
@@ -318,9 +327,9 @@ class StrgFIFO(Generator):
             self._back_occ = 0
         elif self._back_pl:
             self._back_occ = self._back_num_load
-        elif self._back_push & ~self._pop:
+        elif self._back_push & ~self._back_pop:
             self._back_occ = self._back_occ + 1
-        elif ~self._back_push & self._pop:
+        elif ~self._back_push & self._back_pop:
             self._back_occ = self._back_occ - 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -329,9 +338,9 @@ class StrgFIFO(Generator):
             self._front_occ = 0
         elif self._front_par_read:
             self._front_occ = 0
-        elif self._push & ~self._front_pop:
+        elif self._front_push & ~self._front_pop:
             self._front_occ = self._front_occ + 1
-        elif ~self._push & self._front_pop:
+        elif ~self._front_push & self._front_pop:
             self._front_occ = self._front_occ - 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -377,7 +386,7 @@ class StrgFIFO(Generator):
         # If the parallel read is happening, but the write is not
         # going through, then you must have a conflict and be queueing
         # Only write the queue for the current bank
-        elif self._front_par_read & ~self._wen_to_strg[idx] & (self._curr_bank_wr):
+        elif self._front_par_read & ~self._wen_to_strg[idx] & (self._curr_bank_wr == idx):
             self._write_queue[idx] = self._front_combined
             self._queued_write[idx] = 1
         elif self._wen_to_strg[idx]:
