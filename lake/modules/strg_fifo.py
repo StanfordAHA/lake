@@ -20,8 +20,10 @@ class StrgFIFO(Generator):
                  banks=2,
                  memory_width=64,
                  rw_same_cycle=False,
-                 read_delay=1):
-        super().__init__("strg_fifo", debug=True)
+                 read_delay=1,
+                 addr_width=9):
+        # super().__init__("strg_fifo", debug=True)
+        super().__init__("strg_fifo")
 
         assert banks > 1 or rw_same_cycle is True, \
             "Can't sustain throughput with this setup. Need potential bandwidth for " + \
@@ -34,6 +36,7 @@ class StrgFIFO(Generator):
         self.rw_same_cycle = rw_same_cycle
         self.read_delay = read_delay
         self.fw_int = int(self.memory_width / self.data_width)
+        self.addr_width = addr_width
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -55,6 +58,16 @@ class StrgFIFO(Generator):
                                                 self.fw_int),
                                           explicit_array=True,
                                           packed=True)
+
+        self._wen_addr = self.var("wen_addr", self.addr_width,
+                                  size=self.banks,
+                                  explicit_array=True,
+                                  packed=True)
+
+        self._ren_addr = self.var("ren_addr", self.addr_width,
+                                  size=self.banks,
+                                  explicit_array=True,
+                                  packed=True)
 
         self._front_combined = self.var("front_combined", self.data_width,
                                         size=self.fw_int,
@@ -239,6 +252,33 @@ class StrgFIFO(Generator):
         self.wire(self._data_out, kts.ternary(self._back_pl, self._back_par_in[0], self._back_data_out))
         self.wire(self._valid_out, kts.ternary(self._back_pl, self._pop, self._back_valid))
 
+        # Set addresses to storage
+        for i in range(self.banks):
+            self.add_code(self.set_wen_addr, idx=i)
+            self.add_code(self.set_ren_addr, idx=i)
+        # Now deal with a shared address vs separate addresses
+        if self.rw_same_cycle:
+            # Separate
+            self._wen_addr_out = self.output("wen_addr_out", self.addr_width,
+                                             size=self.banks,
+                                             explicit_array=True,
+                                             packed=True)
+            self._ren_addr_out = self.output("ren_addr_out", self.addr_width,
+                                             size=self.banks,
+                                             explicit_array=True,
+                                             packed=True)
+            self.wire(self._wen_addr_out, self._wen_addr)
+            self.wire(self._ren_addr_out, self._ren_addr)
+        else:
+            self._addr_out = self.output("addr_out", self.addr_width,
+                                         size=self.banks,
+                                         explicit_array=True,
+                                         packed=True)
+            # If sharing the addresses, send read addr with priority
+            for i in range(self.banks):
+                self.wire(self._addr_out[i],
+                          kts.ternary(self._wen_to_strg[i], self._wen_addr[i], self._ren_addr[i]))
+
         # Do final empty/full
         self._num_items = self.var("num_items", 16)
         self.add_code(self.set_num_items)
@@ -375,6 +415,20 @@ class StrgFIFO(Generator):
         self._num_items = ((self._num_words_mem * self.fw_int).extend(16) +
                            self._front_occ.extend(16) +
                            self._back_occ.extend(16))
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_wen_addr(self, idx):
+        if ~self._rst_n:
+            self._wen_addr[idx] = 0
+        elif self._wen_to_strg[idx]:
+            self._wen_addr[idx] = self._wen_addr[idx] + 1
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_ren_addr(self, idx):
+        if ~self._rst_n:
+            self._ren_addr[idx] = 0
+        elif self._ren_to_strg[idx]:
+            self._ren_addr[idx] = self._ren_addr[idx] + 1
 
 
 if __name__ == "__main__":
