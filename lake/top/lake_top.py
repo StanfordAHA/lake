@@ -917,13 +917,13 @@ class LakeTop(Generator):
 
                 if self.fifo_mode:
                     self.wire(self._data_out[0],
-                            ternary(self._mode,
-                                    self._fifo_data_out,
-                                    self._tb_data_out[0]))
+                              ternary(self._mode,
+                                      self._fifo_data_out,
+                                      self._tb_data_out[0]))
                     self.wire(self._valid_out[0],
-                            ternary(self._mode,
-                                    self._fifo_valid_out,
-                                    self._tb_valid_out[0]))
+                              ternary(self._mode,
+                                      self._fifo_valid_out,
+                                      self._tb_valid_out[0]))
                 else:
                     self.wire(self._data_out[0], self._tb_data_out[0])
                     self.wire(self._valid_out[0], self._tb_valid_out[0])
