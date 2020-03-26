@@ -49,40 +49,42 @@ def lift_config_reg(generator):
     v = ConfigRegLiftVisitor()
     v.visit_root(generator)
 
-# testing indicates whether we are generating verilog (in which case the generator is 
-# automatically provided) or whether we are testing (and needed to specify the 
+
+# testing indicates whether we are generating verilog (in which case the generator is
+# automatically provided) or whether we are testing (and needed to specify the
 # generator explicitly)
 def change_sram_port_names(use_sram_stub, ports, testing, generator):
-     def change_sram_port_names_wrapper(generator):
 
-         class SRAMPortNames(IRVisitor):
-             def __init__(self, use_sram_stub, ports):
-                 IRVisitor.__init__(self)
-                 self.use_sram_stub = use_sram_stub
-                 self.ports = ports
+    def change_sram_port_names_wrapper(generator):
 
-             def visit(self, node):
-                 if isinstance(node, Port):
-                     if not(len(node.get_attributes()) <= 0 or self.use_sram_stub):
-                         for i in range(len(node.get_attributes())):
-                                 if (isinstance(node.get_attributes()[i].get(), SRAMPortAttr)):
-                                    if node.name == "sram_addr":
-                                         node.name = self.ports[0]
-                                    elif node.name == "sram_cen":
-                                        node.name = self.ports[1]
-                                    elif node.name == "sram_clk":
-                                        node.name = self.ports[2]
-                                    elif node.name == "sram_data_in":
-                                        node.name = self.ports[3]
-                                    elif node.name == "sram_data_out":
-                                        node.name = self.ports[4]
-                                    elif node.name == "sram_wen":
-                                        node.name = self.ports[5]
-         
-         v = SRAMPortNames(use_sram_stub, ports)
-         v.visit_root(generator)
+        class SRAMPortNames(IRVisitor):
+            def __init__(self, use_sram_stub, ports):
+                IRVisitor.__init__(self)
+                self.use_sram_stub = use_sram_stub
+                self.ports = ports
 
-     if testing:
-         return change_sram_port_names_wrapper(generator)
-     else:
-         return change_sram_port_names_wrapper
+            def visit(self, node):
+                if isinstance(node, Port):
+                    if not(len(node.get_attributes()) <= 0 or self.use_sram_stub):
+                        for i in range(len(node.get_attributes())):
+                            if (isinstance(node.get_attributes()[i].get(), SRAMPortAttr)):
+                                if node.name == "sram_addr":
+                                    node.name = self.ports[0]
+                                elif node.name == "sram_cen":
+                                    node.name = self.ports[1]
+                                elif node.name == "sram_clk":
+                                    node.name = self.ports[2]
+                                elif node.name == "sram_data_in":
+                                    node.name = self.ports[3]
+                                elif node.name == "sram_data_out":
+                                    node.name = self.ports[4]
+                                elif node.name == "sram_wen":
+                                    node.name = self.ports[5]
+
+        v = SRAMPortNames(use_sram_stub, ports)
+        v.visit_root(generator)
+
+    if testing:
+        return change_sram_port_names_wrapper(generator)
+    else:
+        return change_sram_port_names_wrapper
