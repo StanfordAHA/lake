@@ -53,6 +53,7 @@ class SRAMStubGenerator(Generator):
                                      self.data_width * self.width_mult)
         self._data_out.add_attribute(SRAMPortAttr("sram data out"))
 
+
 if __name__ == "__main__":
     dut = SRAMStubGenerator("TSMC", 16, 1, 124)
     verilog(dut, filename="tsmc_macro.sv")

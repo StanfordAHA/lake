@@ -51,12 +51,12 @@ def lift_config_reg(generator):
 
 
 # Inputs:
-#   - use_sram_stub: if stub is not being used, we are using external provided 
+#   - use_sram_stub: if stub is not being used, we are using external provided
 #       sram macro and should replace port names accordingly
-#   - ports: the port names for the sram macro, provided in alphabetical order 
+#   - ports: the port names for the sram macro, provided in alphabetical order
 #       for replacement
-#   - testing: boolean indicating whether we are generating verilog (in which 
-#       case the generator is automatically provided) or whether we are testing 
+#   - testing: boolean indicating whether we are generating verilog (in which
+#       case the generator is automatically provided) or whether we are testing
 #       (and need to specify the generator explicitly)
 #   - generator: explicit specification of generator if needed
 def change_sram_port_names(use_sram_stub, ports, testing, generator):

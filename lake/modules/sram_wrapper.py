@@ -4,6 +4,7 @@ from lake.modules.sram_stub_generator import SRAMStubGenerator
 from utils.flattenND import FlattenND
 from utils.reverse_flatten import ReverseFlatten
 
+
 # this module instantiates external provided sram macro and flattens input/output data
 # if fetch width is greater than 1
 class SRAMWrapper(Generator):
@@ -38,17 +39,23 @@ class SRAMWrapper(Generator):
                                                 explicit_array=True)
 
             self._mem_data_out_bank = self.output("mem_data_out_bank",
-                                              self.data_width,
-                                              size=(self.mem_output_ports,
-                                                    self.fw_int),
-                                              packed=True,
-                                              explicit_array=True)
-            
+                                                  self.data_width,
+                                                  size=(self.mem_output_ports,
+                                                        self.fw_int),
+                                                  packed=True,
+                                                  explicit_array=True)
+
             # flattened version of input data
-            self._sram_mem_data_in_bank = self.var("sram_mem_data_in_bank", self.data_width*self.fw_int*self.mem_input_ports)
+            self._sram_mem_data_in_bank = self.var("sram_mem_data_in_bank",
+                                                   self.data_width *
+                                                   self.fw_int *
+                                                   self.mem_input_ports)
 
             # flattened version of output data
-            self._sram_mem_data_out_bank = self.var("sram_mem_data_out_bank", self.data_width*self.fw_int*self.mem_output_ports)
+            self._sram_mem_data_out_bank = self.var("sram_mem_data_out_bank",
+                                                    self.data_width *
+                                                    self.fw_int *
+                                                    self.mem_output_ports)
         else:
             self._mem_data_in_bank = self.input("mem_data_in_bank", self.data_width, packed=True)
 
@@ -94,12 +101,14 @@ class SRAMWrapper(Generator):
 
         else:
             self.add_child(f"mem_{self.bank_num}",
-                           mbank,sram_addr=self._mem_addr_in_bank,
+                           mbank,
+                           sram_addr=self._mem_addr_in_bank,
                            sram_cen=~self._mem_cen_in_bank,
                            sram_clk=self._gclk,
                            sram_data_in=self._mem_data_in_bank,
                            sram_data_out=self._mem_data_out_bank,
                            sram_wen=self._mem_wen_in_bank)
+
 
 if __name__ == "__main__":
     dut = SRAMWrapper("TSMC", 16, 4, 128, 1, 1, 7, 4)
