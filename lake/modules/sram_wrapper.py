@@ -49,9 +49,9 @@ class SRAMWrapper(Generator):
 
             self._sram_mem_data_out_bank = self.var("sram_mem_data_out_bank", self.data_width*self.fw_int*self.mem_output_ports)
         else:
-            self._mem_data_in_bank = self.input("mem_data_in_bank", self.data_width)
+            self._mem_data_in_bank = self.input("mem_data_in_bank", self.data_width, packed=True)
 
-            self._mem_data_out_bank = self.output("mem_data_out_bank", self.data_width)
+            self._mem_data_out_bank = self.output("mem_data_out_bank", self.data_width, packed=True)
 
         self._mem_addr_in_bank = self.input("mem_addr_in_bank",
                                             self.address_width)
