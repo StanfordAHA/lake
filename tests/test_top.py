@@ -4,8 +4,73 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.passes.passes import lift_config_reg
+from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
+
+
+@pytest.mark.parametrize("mem_width", [16, 64])
+def test_sram_port_names_change(mem_width,
+                         data_width=16,
+                         mem_depth=512,
+                         banks=2,
+                         input_iterator_support=6,
+                         output_iterator_support=6,
+                         interconnect_input_ports=1,
+                         interconnect_output_ports=3,
+                         mem_input_ports=1,
+                         mem_output_ports=1,
+                         use_sram_stub=0,
+                         sram_ports=["ADDR", "CEB", "CLK", "D", "Q", "WE"],
+                         agg_height=8,
+                         transpose_height=8,
+                         max_agg_schedule=64,
+                         input_max_port_sched=64,
+                         output_max_port_sched=64,
+                         align_input=1,
+                         max_line_length=256,
+                         max_tb_height=1,
+                         tb_range_max=64,
+                         tb_sched_max=64,
+                         num_tb=1,
+                         tb_iterator_support=2,
+                         multiwrite=1,
+                         max_prefetch=64):
+
+    lt_dut = LakeTop(data_width=data_width,
+                     mem_width=mem_width,
+                     mem_depth=mem_depth,
+                     banks=banks,
+                     input_iterator_support=input_iterator_support,
+                     output_iterator_support=output_iterator_support,
+                     interconnect_input_ports=interconnect_input_ports,
+                     interconnect_output_ports=interconnect_output_ports,
+                     mem_input_ports=mem_input_ports,
+                     mem_output_ports=mem_output_ports,
+                     use_sram_stub=use_sram_stub,
+                     agg_height=agg_height,
+                     max_agg_schedule=max_agg_schedule,
+                     input_max_port_sched=input_max_port_sched,
+                     output_max_port_sched=output_max_port_sched,
+                     align_input=align_input,
+                     max_line_length=max_line_length,
+                     max_tb_height=max_tb_height,
+                     tb_range_max=tb_range_max,
+                     tb_sched_max=tb_sched_max,
+                     num_tb=num_tb,
+                     tb_iterator_support=tb_iterator_support,
+                     multiwrite=multiwrite,
+                     max_prefetch=max_prefetch)
+
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
+
+    change_sram_port_names(use_sram_stub, sram_ports, 1, lt_dut.internal_generator)
+
+    magma_dut = kts.util.to_magma(lt_dut,
+                                  flatten_array=True,
+                                  check_multiple_driver=False,
+                                  optimize_if=False,
+                                  check_flip_flop_always_ff=False)
 
 
 def test_identity_stream(data_width=16,

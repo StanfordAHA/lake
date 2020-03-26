@@ -842,4 +842,4 @@ if __name__ == "__main__":
             check_multiple_driver=False,
             optimize_if=False,
             check_flip_flop_always_ff=False,
-            additional_passes={"lift config regs": lift_config_reg, "change sram port names": change_sram_port_names(False, ["ADDR", "CEB", "CLK", "D", "Q", "WE"])})
+            additional_passes={"lift config regs": lift_config_reg, "change sram port names": change_sram_port_names(False, ["ADDR", "CEB", "CLK", "D", "Q", "WE"], 0, 0)})

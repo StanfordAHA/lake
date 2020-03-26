@@ -49,7 +49,10 @@ def lift_config_reg(generator):
     v = ConfigRegLiftVisitor()
     v.visit_root(generator)
 
-def change_sram_port_names(use_sram_stub, ports):
+# testing indicates whether we are generating verilog (in which case the generator is 
+# automatically provided) or whether we are testing (and needed to specify the 
+# generator explicitly)
+def change_sram_port_names(use_sram_stub, ports, testing, generator):
      def change_sram_port_names_wrapper(generator):
 
          class SRAMPortNames(IRVisitor):
@@ -79,4 +82,7 @@ def change_sram_port_names(use_sram_stub, ports):
          v = SRAMPortNames(use_sram_stub, ports)
          v.visit_root(generator)
 
-     return change_sram_port_names_wrapper
+     if testing:
+         return change_sram_port_names_wrapper(generator)
+     else:
+         return change_sram_port_names_wrapper
