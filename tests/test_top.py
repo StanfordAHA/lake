@@ -223,7 +223,7 @@ def test_top(read_delay,
              data_width=16,
              mem_width=64,
              mem_depth=512,
-             banks=1,
+             banks=2,
              input_iterator_support=6,
              output_iterator_support=6,
              interconnect_input_ports=1,
@@ -372,7 +372,8 @@ def test_top(read_delay,
                      tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch,
-                     read_delay=read_delay)
+                     read_delay=read_delay,
+                     fifo_mode=read_delay > 0)
 
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)

@@ -169,7 +169,8 @@ def test_ports3_stride1(read_delay=1,
                      tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch,
-                     read_delay=read_delay)
+                     read_delay=read_delay,
+                     fifo_mode=banks > 1)
 
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
@@ -203,7 +204,7 @@ def test_ports3_stride1(read_delay=1,
     addr_in = 0
     output_en = 1
 
-    for i in range(300):
+    for i in range(1000):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):

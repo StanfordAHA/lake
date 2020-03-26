@@ -305,9 +305,6 @@ class StrgFIFO(Generator):
         self.wire(self._empty, self._num_items == 0)
         self.wire(self._full, self._num_items == (self._fifo_depth))
 
-        self._num_items_out = self.output("num_items_out", 16)
-        self.wire(self._num_items_out, self._num_items)
-
     @always_comb
     def send_writes(self, idx):
         # Send a write to a bank if the read to that bank isn't happening (unless you can do both)

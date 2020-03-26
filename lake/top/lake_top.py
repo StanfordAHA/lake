@@ -597,7 +597,6 @@ class LakeTop(Generator):
         # Wrap sram_stub
         if self.read_delay == 1:
             if self.fifo_mode:
-                self._fifo_num_items_out = self.output("fifo_num_items_out", 16)
                 self._fifo_data_out = self.var("fifo_data_out", self.data_width)
                 self._fifo_valid_out = self.var("fifo_valid_out", 1)
                 self._fifo_empty = self.var("fifo_empty", 1)
@@ -636,8 +635,7 @@ class LakeTop(Generator):
                                data_to_strg=self._fifo_data_to_mem,
                                wen_to_strg=self._fifo_wen_to_mem,
                                ren_to_strg=self._fifo_ren_to_mem,
-                               addr_out=self._fifo_addr_to_mem,
-                               num_items_out=self._fifo_num_items_out)
+                               addr_out=self._fifo_addr_to_mem)
 
                 self._mem_data_in_f = self.var("mem_data_out_f",
                                                self.data_width,
@@ -917,18 +915,22 @@ class LakeTop(Generator):
                                    tb_arbiter_rdy=self._ready_tba[i],
                                    tba_ren=self._output_en)
 
-                self.wire(self._data_out[0],
-                          ternary(self._mode,
-                                  self._fifo_data_out,
-                                  self._tb_data_out[0]))
-                self.wire(self._valid_out[0],
-                          ternary(self._mode,
-                                  self._fifo_valid_out,
-                                  self._tb_valid_out[0]))
+                if self.fifo_mode:
+                    self.wire(self._data_out[0],
+                            ternary(self._mode,
+                                    self._fifo_data_out,
+                                    self._tb_data_out[0]))
+                    self.wire(self._valid_out[0],
+                            ternary(self._mode,
+                                    self._fifo_valid_out,
+                                    self._tb_valid_out[0]))
+                else:
+                    self.wire(self._data_out[0], self._tb_data_out[0])
+                    self.wire(self._valid_out[0], self._tb_valid_out[0])
 
                 for i in range(self.interconnect_output_ports - 1):
-                    self.wire(self._data_out[i + 1], self._tb_data_out[i])
-                    self.wire(self._valid_out[i + 1], self._tb_valid_out[i])
+                    self.wire(self._data_out[i + 1], self._tb_data_out[i + 1])
+                    self.wire(self._valid_out[i + 1], self._tb_valid_out[i + 1])
 
         if self.fifo_mode:
             self._empty = self.output("empty", 1)
