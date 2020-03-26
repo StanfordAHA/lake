@@ -53,7 +53,7 @@ class LakeTop(Generator):
                  config_data_width=16,
                  config_addr_width=8,
                  remove_tb=False,
-                 fifo_mode=True):
+                 fifo_mode=False):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
