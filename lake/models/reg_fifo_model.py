@@ -56,32 +56,38 @@ class RegFIFOModel(Model):
     # Assume full + empty already obeyed
     def interact(self, push, pop, data_in):
         '''
-        Returns (data_out, valid)
+        Returns (data_out, valid, empty, full)
         '''
+        empty_ret = int(self.num_items == 0)
+        full_ret = int(self.num_items == self.depth)
+
         if push and pop:
             # Push and pop on empty passes through
             if(self.num_items == 0):
-                return (data_in, 1)
+                return (data_in, 1, empty_ret, full_ret)
             else:
                 dat_out = self.reg_array[self.rd_ptr]
                 self.increment_rd()
                 self.reg_array[self.wr_ptr] = list(data_in)
                 self.increment_wr()
-                return (dat_out, 1)
+                return (dat_out, 1, empty_ret, full_ret)
         elif push and not pop:
             # Not full, push an item
             if(self.num_items == self.depth):
-                return (0, 0)
+                return ([0], 0, empty_ret, full_ret)
             self.reg_array[self.wr_ptr] = list(data_in)
             self.increment_wr()
             self.num_items += 1
-            return (self.reg_array[self.rd_ptr], 0)
+            # return (self.reg_array[self.rd_ptr], 0, empty_ret, full_ret)
+            return ([0], 0, empty_ret, full_ret)
         elif not push and pop:
             if(self.num_items == 0):
-                return (self.reg_array[self.rd_ptr], 0)
+                # return (self.reg_array[self.rd_ptr], 0, empty_ret, full_ret)
+                return ([0], 0, empty_ret, full_ret)
             dat_out = self.reg_array[self.rd_ptr]
             self.increment_rd()
             self.num_items -= 1
-            return (dat_out, 1)
+            return (dat_out, 1, empty_ret, full_ret)
         else:
-            return (self.reg_array[self.rd_ptr], 0)
+            # return (self.reg_array[self.rd_ptr], 0, empty_ret, full_ret)
+            return ([0], 0, empty_ret, full_ret)

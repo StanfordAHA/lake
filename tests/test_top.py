@@ -73,7 +73,6 @@ def test_sram_port_names_change(mem_width,
                                   check_flip_flop_always_ff=False)
 
 
-@pytest.mark.skip
 def test_identity_stream(data_width=16,
                          mem_width=64,
                          mem_depth=512,
@@ -233,6 +232,7 @@ def test_identity_stream(data_width=16,
     wen_en = 1
     ren_en = [0] * interconnect_output_ports
     addr_in = 0
+    output_en = 1
 
     for i in range(300):
         # Rand data
@@ -240,46 +240,45 @@ def test_identity_stream(data_width=16,
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             valid_in[j] = 1  # rand.randint(0, 1)
-
+        output_en = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
-            tester.circuit.valid_in = valid_in[0]
+            tester.circuit.wen = valid_in[0]
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
-                setattr(tester.circuit, f"valid_in_{j}", valid_in[j])
+                tester.circuit.wen[j] = valid_in[j]
+            # setattr(tester.circuit, f"wen_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
+        for j in range(interconnect_output_ports):
+            tester.circuit.ren_en[j] = ren_en[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
+        tester.circuit.output_en = output_en
 
         if i > 200:
             for j in range(interconnect_output_ports):
                 ren_en[j] = 1
-                tester.circuit.ren_en[j] = ren_en[j]
-
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
-
         tester.eval()
 
         # Now check the outputs
-        # if(interconnect_output_ports == 1):
-        #     tester.circuit.valid_out.expect(mod_vo[0])
-        #     if mod_vo[0]:
-        #         tester.circuit.data_out.expect(mod_do[0][0])
-        # else:
-        #     for j in range(interconnect_output_ports):
-        #         # print(f"mod_vo_{j}: {mod_vo[j]}")
-        #         tester.circuit.valid_out[j].expect(mod_vo[j])
-        #         if mod_vo[j]:
-        #             getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+        if(interconnect_output_ports == 1):
+            tester.circuit.valid_out.expect(mod_vo[0])
+            if mod_vo[0]:
+                tester.circuit.data_out.expect(mod_do[0][0])
+        else:
+            for j in range(interconnect_output_ports):
+                tester.circuit.valid_out[j].expect(mod_vo[j])
+                if mod_vo[j]:
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "top_dump_id"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 @pytest.mark.parametrize("read_delay", [0, 1])
@@ -287,7 +286,7 @@ def test_top(read_delay,
              data_width=16,
              mem_width=64,
              mem_depth=512,
-             banks=1,
+             banks=2,
              input_iterator_support=6,
              output_iterator_support=6,
              interconnect_input_ports=1,
@@ -436,7 +435,8 @@ def test_top(read_delay,
                      tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch,
-                     read_delay=read_delay)
+                     read_delay=read_delay,
+                     fifo_mode=read_delay > 0)
 
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
@@ -468,6 +468,7 @@ def test_top(read_delay,
     wen_en = 1
     ren_en = [0] * interconnect_output_ports
     addr_in = 0
+    output_en = 0
 
     for i in range(300):
         # Rand data
@@ -476,6 +477,7 @@ def test_top(read_delay,
             data_in[j] += 1
             valid_in[j] = 1
 
+        output_en = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -485,26 +487,28 @@ def test_top(read_delay,
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
+        for j in range(interconnect_output_ports):
+            # ren_en[j] = 1
+            tester.circuit.ren_en[j] = ren_en[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
+        tester.circuit.output_en = output_en
 
         if i > 200:
             for j in range(interconnect_output_ports):
                 ren_en[j] = 1
-                tester.circuit.ren_en[j] = ren_en[j]
-
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en)
 
         tester.eval()
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.data_out.expect(mod_do[0])
             tester.circuit.valid_out.expect(mod_vo[0])
+            if mod_vo[0]:
+                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
-
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -750,6 +754,6 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    test_identity_stream()
-    # test_top()
+    # test_identity_stream()
+    test_top(0)
     # test_config_storage()

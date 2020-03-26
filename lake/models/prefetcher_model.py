@@ -46,7 +46,7 @@ class PrefetcherModel(Model):
         '''
         Returns (data, valid, step)
         '''
-        (d_out, v_out) = self.fifo.interact(valid_read, tba_rdy, data_in)
+        (d_out, v_out, empty, full) = self.fifo.interact(valid_read, tba_rdy, data_in)
         stp = self.get_step()
         self.update_cnt(valid_read, tba_rdy)
         if type(d_out) == list:

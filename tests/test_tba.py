@@ -24,10 +24,12 @@ def test_tba(word_width=16,
                          max_range)
 
     new_config = {}
-    new_config["tb_0_range_outer"] = 5
-    new_config["tb_0_range_inner"] = 3
-    new_config["tb_0_stride"] = 2
-    new_config["tb_0_indices"] = [0, 1, 2]
+    new_config["range_outer"] = 5
+    new_config["range_inner"] = 3
+    new_config["stride"] = 2
+    new_config["indices"] = [0, 1, 2]
+    new_config["dimensionality"] = 2
+    new_config["tb_height"] = 1
 
     model_tba.set_config(new_config=new_config)
 
@@ -35,35 +37,38 @@ def test_tba(word_width=16,
                                      fetch_width,
                                      num_tb,
                                      tb_height,
-                                     max_range)
+                                     max_range,
+                                     max_stride=5,
+                                     tb_iterator_support=2)
 
     lift_config_reg(dut.internal_generator)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
+    # configuration registers
+    tester.circuit.tb_0_indices_0 = 0
+    tester.circuit.tb_0_indices_1 = 1
+    tester.circuit.tb_0_indices_2 = 2
+
+    tester.circuit.tb_0_range_outer = 5
+    tester.circuit.tb_0_range_inner = 3
+    tester.circuit.tb_0_stride = 2
+    tester.circuit.tb_0_dimensionality = 2
+    tester.circuit.tb_0_tb_height = 1
+
     tester.circuit.clk = 0
     tester.circuit.rst_n = 1
     tester.step(2)
     tester.circuit.rst_n = 0
     tester.step(2)
+    tester.circuit.tba_ren = 1
     tester.circuit.rst_n = 1
-
-    # configuration registers
-    tester.circuit.indices_0 = 0
-    tester.circuit.indices_1 = 1
-    tester.circuit.indices_2 = 2
-
-    tester.circuit.range_outer = 5
-    tester.circuit.range_inner = 3
-    tester.circuit.stride = 2
 
     rand.seed(0)
 
-    num_iters = 5
+    num_iters = 100
     for i in range(num_iters):
-        print()
-        print("i: ", i)
 
         data = []
         for j in range(fetch_width):
@@ -82,7 +87,7 @@ def test_tba(word_width=16,
         tester.circuit.ack_in = ack_in
 
         model_data, model_valid = \
-            model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data)
+            model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data, 1)
 
         tester.eval()
         tester.circuit.tb_to_interconnect_valid.expect(model_valid)
@@ -92,12 +97,11 @@ def test_tba(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tba"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     test_tba()

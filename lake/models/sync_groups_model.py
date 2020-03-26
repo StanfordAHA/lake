@@ -136,7 +136,6 @@ class SyncGroupsModel(Model):
                     self.local_gate_reduced[i] = self.local_gate[j][i]
 
         # rd_sync_gate = self.get_rd_sync()
-
         return (data_out.copy(), valid_out, rd_sync_gate.copy())
 
     def get_rd_sync(self):
