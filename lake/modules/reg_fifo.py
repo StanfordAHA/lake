@@ -13,14 +13,14 @@ class RegFIFO(Generator):
                  width_mult,
                  depth,
                  parallel=False,
-                 extern_full_empty=False):
+                 break_out_rd_ptr=False):
         super().__init__("reg_fifo")
 
         self.data_width = data_width
         self.depth = depth
         self.width_mult = width_mult
         self.parallel = parallel
-        self.extern_full_empty = extern_full_empty
+        self.break_out_rd_ptr = break_out_rd_ptr
 
         # assert not (depth & (depth - 1)), "FIFO depth needs to be a power of 2"
 
@@ -67,6 +67,9 @@ class RegFIFO(Generator):
         ptr_width = clog2(self.depth)
 
         self._rd_ptr = self.var("rd_ptr", ptr_width)
+        if self.break_out_rd_ptr:
+            self._rd_ptr_out = self.output("rd_ptr_out", ptr_width)
+            self.wire(self._rd_ptr_out, self._rd_ptr)
         self._wr_ptr = self.var("wr_ptr", ptr_width)
         self._read = self.var("read", 1)
         self._write = self.var("write", 1)
@@ -130,7 +133,10 @@ class RegFIFO(Generator):
         if ~self._rst_n:
             self._wr_ptr = 0
         elif self._write:
-            self._wr_ptr = self._wr_ptr + 1
+            if self._wr_ptr == (self.depth - 1):
+                self._wr_ptr = 0
+            else:
+                self._wr_ptr = self._wr_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def wr_ptr_ff_parallel(self):
@@ -141,7 +147,10 @@ class RegFIFO(Generator):
         elif self._parallel_read:
             self._wr_ptr = 0
         elif self._write:
-            self._wr_ptr = self._wr_ptr + 1
+            if self._wr_ptr == (self.depth - 1):
+                self._wr_ptr = 0
+            else:
+                self._wr_ptr = self._wr_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_array_ff(self):

@@ -115,6 +115,8 @@ class StrgFIFO(Generator):
                                        explicit_array=True,
                                        packed=True)
 
+        self._front_rd_ptr = self.var("front_rd_ptr", clog2(self.fw_int - 1 ))
+
         self._front_push = self.var("front_push", 1)
         self.wire(self._front_push, self._push & (~self._full | self._pop))
 
@@ -122,7 +124,10 @@ class StrgFIFO(Generator):
                                  width_mult=1,
                                  depth=self.fw_int - 1,
                                  parallel=True,
-                                 extern_full_empty=True)
+                                 break_out_rd_ptr=True)
+
+        # This one breaks out the read pointer so we can properly
+        # reorder the data to storage
 
         self.add_child("front_rf", self._front_rf,
                        clk=self._clk,
@@ -137,7 +142,8 @@ class StrgFIFO(Generator):
                        parallel_load=kts.const(0, 1),  # We don't need to parallel load the front
                        parallel_in=0,  # Same reason as above
                        parallel_out=self._front_par_out,
-                       num_load=0)
+                       num_load=0,
+                       rd_ptr_out=self._front_rd_ptr)
         self.wire(self._front_rf.ports.data_in[0], self._data_in)
         self.wire(self._front_data_out, self._front_rf.ports.data_out[0])
 
@@ -162,7 +168,7 @@ class StrgFIFO(Generator):
                                 width_mult=1,
                                 depth=self.fw_int,
                                 parallel=True,
-                                extern_full_empty=True)
+                                break_out_rd_ptr=False)
 
         self._back_pop = self.var("back_pop", 1)
         self.wire(self._back_pop, self._pop & (~self._empty | self._push))
@@ -197,8 +203,10 @@ class StrgFIFO(Generator):
             self.wire(self._back_pl, self._ren_to_strg.r_or())
 
         # Combine front end data - just the items + incoming
+        # this data is actually based on the rd_ptr from the front fifo
         for i in range(self.fw_int - 1):
             self.wire(self._front_combined[i], self._front_par_out[i])
+        # This is always true
         self.wire(self._front_combined[self.fw_int - 1], self._data_in)
 
         # prioritize queued writes, otherwise send combined data
