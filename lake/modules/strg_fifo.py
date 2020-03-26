@@ -82,7 +82,7 @@ class StrgFIFO(Generator):
         self._wen_to_strg = self.output("wen_to_strg", self.banks)
         self._ren_to_strg = self.output("ren_to_strg", self.banks)
 
-        self._num_words_mem = self.var("num_words_mem", 16)  # TODO: Change this width based on memory
+        self._num_words_mem = self.var("num_words_mem", self.data_width)
 
         if self.banks == 1:
             self._curr_bank_wr = self.var("curr_bank_wr", 1)
@@ -304,9 +304,9 @@ class StrgFIFO(Generator):
                           kts.ternary(self._wen_to_strg[i], self._wen_addr[i], self._ren_addr[i]))
 
         # Do final empty/full
-        self._num_items = self.var("num_items", 16)
+        self._num_items = self.var("num_items", self.data_width)
         self.add_code(self.set_num_items)
-        self._fifo_depth = self.input("fifo_depth", 16)
+        self._fifo_depth = self.input("fifo_depth", self.data_width)
         self._fifo_depth.add_attribute(ConfigRegAttr("Fifo depth..."))
         self.wire(self._empty, self._num_items == 0)
         self.wire(self._full, self._num_items == (self._fifo_depth))
@@ -450,9 +450,9 @@ class StrgFIFO(Generator):
 
     @always_comb
     def set_num_items(self):
-        self._num_items = ((self._num_words_mem * self.fw_int).extend(16) +
-                           self._front_occ.extend(16) +
-                           self._back_occ.extend(16))
+        self._num_items = ((self._num_words_mem * self.fw_int).extend(self.data_width) +
+                           self._front_occ.extend(self.data_width) +
+                           self._back_occ.extend(self.data_width))
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_wen_addr(self, idx):

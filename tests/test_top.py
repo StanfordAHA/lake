@@ -83,8 +83,6 @@ def test_identity_stream(data_width=16,
     new_config["input_addr_ctrl_offsets_cfg_0_0"] = 0
 
     new_config["sync_grp_sync_group_0"] = 1
-    # new_config["sync_grp_sync_group_1"] = 1
-    # new_config["sync_grp_sync_group_2"] = 1
 
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
@@ -171,7 +169,7 @@ def test_identity_stream(data_width=16,
     addr_in = 0
     output_en = 1
 
-    for i in range(232):
+    for i in range(300):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
@@ -405,7 +403,8 @@ def test_top(read_delay,
     wen_en = 1
     ren_en = [0] * interconnect_output_ports
     addr_in = 0
-    output_en = 1
+    output_en = 0
+
     for i in range(300):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
