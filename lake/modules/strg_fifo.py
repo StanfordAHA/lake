@@ -17,17 +17,12 @@ class StrgFIFO(Generator):
     '''
     def __init__(self,
                  data_width=16,
-                 banks=2,
+                 banks=1,
                  memory_width=64,
                  rw_same_cycle=False,
                  read_delay=1,
                  addr_width=9):
-        # super().__init__("strg_fifo", debug=True)
-        super().__init__("strg_fifo")
-
-        assert banks > 1 or rw_same_cycle is True, \
-            "Can't sustain throughput with this setup. Need potential bandwidth for " + \
-            "1 write and 1 read in a cycle - try using more banks or a macro that supports 1R1W"
+        super().__init__("strg_fifo", debug=True)
 
         # Generation parameters
         self.banks = banks
@@ -35,8 +30,12 @@ class StrgFIFO(Generator):
         self.memory_width = memory_width
         self.rw_same_cycle = rw_same_cycle
         self.read_delay = read_delay
-        self.fw_int = int(self.memory_width / self.data_width)
         self.addr_width = addr_width
+        self.fw_int = int(self.memory_width / self.data_width)
+
+        assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
+            "Can't sustain throughput with this setup. Need potential bandwidth for " + \
+            "1 write and 1 read in a cycle - try using more banks or a macro that supports 1R1W"
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -115,7 +114,7 @@ class StrgFIFO(Generator):
                                        explicit_array=True,
                                        packed=True)
 
-        self._front_rd_ptr = self.var("front_rd_ptr", clog2(self.fw_int))
+        self._front_rd_ptr = self.var("front_rd_ptr", max(1, clog2(self.fw_int)))
 
         self._front_push = self.var("front_push", 1)
         self.wire(self._front_push, self._push & (~self._full | self._pop))
@@ -170,8 +169,14 @@ class StrgFIFO(Generator):
                                 parallel=True,
                                 break_out_rd_ptr=False)
 
+        self._fw_is_1 = self.var("fw_is_1", 1)
+        self.wire(self._fw_is_1, kts.const(self.fw_int == 1, 1))
+
         self._back_pop = self.var("back_pop", 1)
-        self.wire(self._back_pop, self._pop & (~self._empty | self._push))
+        if self.fw_int == 1:
+            self.wire(self._back_pop, self._pop & (~self._empty | self._push) & ~self._back_pl)
+        else:
+            self.wire(self._back_pop, self._pop & (~self._empty | self._push))
 
         self.add_child("back_rf", self._back_rf,
                        clk=self._clk,
@@ -183,7 +188,8 @@ class StrgFIFO(Generator):
                        full=self._back_full,
                        valid=self._back_valid,
                        parallel_read=kts.const(0, 1),
-                       parallel_load=self._back_pl,
+                       # Only do back load when data is going there
+                       parallel_load=self._back_pl & self._back_num_load.r_or(),
                        parallel_in=self._back_par_in,
                        num_load=self._back_num_load)
         self.wire(self._back_rf.ports.data_in[0], self._back_data_in)
@@ -236,9 +242,9 @@ class StrgFIFO(Generator):
         if self.banks > 1:
             self.add_code(self.set_curr_bank_wr)
             self.add_code(self.set_curr_bank_rd)
-            if self.read_delay == 1:
-                self._prev_bank_rd = self.var("prev_bank_rd", kts.clog2(self.banks))
-                self.add_code(self.set_prev_bank_rd)
+        if self.read_delay == 1:
+            self._prev_bank_rd = self.var("prev_bank_rd", max(1, kts.clog2(self.banks)))
+            self.add_code(self.set_prev_bank_rd)
 
         # Parallel load data to back - based on num_load
         index_into = self._curr_bank_rd
@@ -312,30 +318,40 @@ class StrgFIFO(Generator):
         # full and there is an incoming push
         # and there is stuff in memory to be read
         self._wen_to_strg[idx] = ((~self._ren_to_strg[idx] | kts.const(int(self.rw_same_cycle), 1)) &
-                                  (self._queued_write[idx] |
-                                  (((self._front_occ == self.fw_int) & self._push &
-                                    ((self._num_words_mem > 0) | ~self._front_pop)) &
+                                  (self._queued_write[idx] |  # Already queued a write...
+                                  (((self._front_occ == self.fw_int) & self._push &  # Grossness
+                                    (~self._front_pop)) &
                                    (self._curr_bank_wr == idx))))
 
     # Technically the ren should be one hot TODO: make onehot assertion
     @always_comb
     def send_reads(self, idx):
         # Send a read to a bank if there is only read_delay items left and it is being read
-        self._ren_to_strg[idx] = ((self._back_occ == self.read_delay) &
-                                  (self._curr_bank_rd == idx) & self._pop & (self._num_words_mem > 0))
+        self._ren_to_strg[idx] = ((((self._back_occ == self.read_delay) | self._fw_is_1)) &
+                                  (self._curr_bank_rd == idx) &  # Proper bank
+                                  (self._pop | ((self._back_occ == 0) & (self._back_num_load == 0))) &
+                                  ((self._num_words_mem > 1) | ((self._num_words_mem == 1) & ~self._back_pl)))
 
+    # Num load to back is 0 unless we are doing a parallel load
+    # in which case we can count it out
     @always_comb
     def set_back_num_load(self):
-        self._back_num_load = kts.ternary(self._pop,
-                                          kts.const(self.fw_int - 1, self._back_num_load.width),
-                                          kts.const(self.fw_int, self._back_num_load.width))
+        if self._back_pl:
+            self._back_num_load = kts.ternary(self._pop,
+                                              kts.const(self.fw_int - 1, self._back_num_load.width),
+                                              kts.const(self.fw_int, self._back_num_load.width))
+        else:
+            self._back_num_load = 0
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_back_occ(self):
         if ~self._rst_n:
             self._back_occ = 0
         elif self._back_pl:
-            self._back_occ = self._back_num_load
+            if self._back_num_load == 0:
+                self._back_occ = self._back_push.extend(self._back_occ.width)
+            else:
+                self._back_occ = self._back_num_load
         elif self._back_push & ~self._back_pop:
             self._back_occ = self._back_occ + 1
         elif ~self._back_push & self._back_pop:
@@ -372,6 +388,10 @@ class StrgFIFO(Generator):
         if ~self._rst_n:
             self._num_words_mem = 0
         # write and not read
+        # elif ~self._ren_to_strg.r_or() & self._front_par_read:
+        #     self._num_words_mem = self._num_words_mem + 1
+        # elif self._ren_to_strg.r_or() & ~self._front_par_read:
+        #     self._num_words_mem = self._num_words_mem - 1
         elif ~self._back_pl & self._front_par_read:
             self._num_words_mem = self._num_words_mem + 1
         elif self._back_pl & ~self._front_par_read:
@@ -385,8 +405,9 @@ class StrgFIFO(Generator):
     # Also make sure that either the back fifo isn't full or it's being read from
     @always_comb
     def set_front_pop(self):
-        self._front_pop = ((self._num_words_mem == 0) &
-                           ~self._back_pl &
+        self._front_pop = (((self._num_words_mem == 0) | ((self._num_words_mem == 1) & self._back_pl)) &
+                           # You can pop the front if the memory read is being entirely bypassed (fw == 1)
+                           (~self._back_pl | (self._back_pl & (self._back_num_load == 0))) &
                            (~(self._back_occ == self.fw_int) | self._pop) &
                            (~(self._front_occ == 0) | self._push))
 

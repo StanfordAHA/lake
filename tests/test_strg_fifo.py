@@ -10,10 +10,14 @@ from lake.modules.strg_fifo import StrgFIFO
 from lake.models.reg_fifo_model import RegFIFOModel
 
 
-def test_storage_fifo(data_width=16,  # CGRA Params
-                      mem_width=64,
+@pytest.mark.parametrize("mem_width", [16, 32, 64])
+@pytest.mark.parametrize("banks", [1, 2, 3, 4])
+@pytest.mark.parametrize("depth", [16, 100])
+def test_storage_fifo(mem_width,  # CGRA Params
+                      banks,
+                      depth,
+                      data_width=16,
                       mem_depth=512,
-                      banks=2,
                       input_iterator_support=6,  # Addr Controllers
                       output_iterator_support=6,
                       interconnect_input_ports=1,  # Connection to int
@@ -43,8 +47,9 @@ def test_storage_fifo(data_width=16,  # CGRA Params
                       fifo_mode=True):
 
     fw_int = int(mem_width / data_width)
-    # depth = 16
-    depth = 100
+
+    if banks == 1 and fw_int == 1:
+        return
 
     new_config = {}
     new_config["fifo_ctrl_fifo_depth"] = depth
@@ -134,14 +139,11 @@ def test_storage_fifo(data_width=16,  # CGRA Params
         tester.circuit.empty.expect(model_empty)
         tester.circuit.full.expect(model_full)
         # Now check the outputs
-        # print(f"i: {i}, dat: {model_out}, val: {model_val}, e: {model_empty}, f: {model_full}")
         tester.circuit.valid_out.expect(model_val)
         if model_val:
             tester.circuit.data_out.expect(model_out[0])
 
         tester.step(2)
-
-    # print(f"pushes: {push_cnt}, pops: {pop_cnt}")
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
@@ -151,4 +153,6 @@ def test_storage_fifo(data_width=16,  # CGRA Params
 
 
 if __name__ == "__main__":
-    test_storage_fifo()
+    test_storage_fifo(mem_width=32,
+                      banks=2,
+                      depth=100)

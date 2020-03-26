@@ -14,7 +14,7 @@ class RegFIFO(Generator):
                  depth,
                  parallel=False,
                  break_out_rd_ptr=False):
-        super().__init__("reg_fifo")
+        super().__init__("reg_fifo", debug=True)
 
         self.data_width = data_width
         self.depth = depth
@@ -64,7 +64,7 @@ class RegFIFO(Generator):
 
         self._valid = self.output("valid", 1)
 
-        ptr_width = clog2(self.depth)
+        ptr_width = max(1, clog2(self.depth))
 
         self._rd_ptr = self.var("rd_ptr", ptr_width)
         if self.break_out_rd_ptr:
@@ -145,7 +145,7 @@ class RegFIFO(Generator):
         if ~self._rst_n:
             self._wr_ptr = 0
         elif self._parallel_load:
-            self._wr_ptr = self._num_load[clog2(self.depth) - 1, 0]
+            self._wr_ptr = self._num_load[max(1, clog2(self.depth)) - 1, 0]
         elif self._parallel_read:
             if self._push:
                 self._wr_ptr = 1
@@ -202,7 +202,13 @@ class RegFIFO(Generator):
         if ~self._rst_n:
             self._num_items = 0
         elif self._parallel_load:
-            self._num_items = self._num_load
+            # When fetch width > 1, by definition we cannot load
+            # 0 (only fw or fw - 1), but we need to handle this immediate
+            # pass through in these cases
+            if self._num_load == 0:
+                self._num_items = self._push.extend(self._num_items.width)
+            else:
+                self._num_items = self._num_load
         # One can technically push while a parallel
         # read is happening...
         elif self._parallel_read:
