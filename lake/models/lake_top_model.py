@@ -162,13 +162,13 @@ class LakeTopModel(Model):
                                                    depth=self.mem_depth))
 
         ### DEMUX READS
-        self.demux_reads = DemuxReadsModel(fetch_width=self.mem_width,  # self.mem_width
+        self.demux_reads = DemuxReadsModel(fetch_width=self.mem_width,
                                            data_width=self.data_width,
                                            banks=self.banks,
                                            int_out_ports=self.interconnect_output_ports)
 
         ### SYNC GROUPS
-        self.sync_groups = SyncGroupsModel(fetch_width=self.mem_width,  # self.mem_width
+        self.sync_groups = SyncGroupsModel(fetch_width=self.mem_width,
                                            data_width=self.data_width,
                                            int_out_ports=self.interconnect_output_ports)
         for i in range(self.interconnect_output_ports):
@@ -177,7 +177,7 @@ class LakeTopModel(Model):
         ### PREFETCHERS
         self.prefetchers = []
         for port in range(self.interconnect_output_ports):
-            self.prefetchers.append(PrefetcherModel(fetch_width=self.mem_width,  # self.mem_width
+            self.prefetchers.append(PrefetcherModel(fetch_width=self.mem_width,
                                                     data_width=self.data_width,
                                                     max_prefetch=self.max_prefetch))
             self.config[f"pre_fetch_{port}_input_latency"] = 0
@@ -294,7 +294,8 @@ class LakeTopModel(Model):
                  addr_in,
                  valid_in,
                  wen_en,
-                 ren_en):
+                 ren_en,
+                 output_en):
         '''
         Top level interactions - - -
         returns (data_out, valid_out)
@@ -441,10 +442,12 @@ class LakeTopModel(Model):
         data_out = []
         valid_out = []
         for i in range(self.interconnect_output_ports):
-            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0)
+            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0, output_en)
             data_out.append(tb_d)
             valid_out.append(tb_v)
-
+        # self.tbas[0].print_tba_tb(pref_data[i], pref_valid[i], pref_valid[i], 0, output_en)
+        # print(f"data out {data_out}, valid_out: {valid_out}")
+        # print()
         return (data_out, valid_out)
 
     def dump_mem(self):

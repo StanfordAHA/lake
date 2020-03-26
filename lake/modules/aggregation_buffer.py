@@ -21,7 +21,7 @@ class AggregationBuffer(Generator):
         self.data_width = data_width
         self.mem_width = mem_width
         self.max_agg_schedule = max_agg_schedule  # This is the maximum length of the schedule
-        self.num_per_agg = int(self.mem_width / self.data_width)
+        self.fw_int = int(self.mem_width / self.data_width)
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -38,7 +38,7 @@ class AggregationBuffer(Generator):
         self._valid_out = self.output("valid_out", 1)
 
         self._data_out_chop = []
-        for i in range(self.num_per_agg):
+        for i in range(self.fw_int):
             self._data_out_chop.append(self.output(f"data_out_chop_{i}", self.data_width))
             self.add_stmt(
                 self._data_out_chop[i].assign(self._data_out[(self.data_width * (i + 1)) - 1,
@@ -89,7 +89,7 @@ class AggregationBuffer(Generator):
         for i in range(self.agg_height):
             self._aggs_sep.append(self.var(f"aggs_sep_{i}",
                                            self.data_width,
-                                           size=int(self.mem_width / self.data_width),
+                                           size=self.fw_int,
                                            packed=True))
         self._valid_demux = self.var("valid_demux", self.agg_height)
         self._next_full = self.var("next_full", self.agg_height)
@@ -98,7 +98,7 @@ class AggregationBuffer(Generator):
             # Add in the children aggregators...
             self.add_child(f"agg_{i}",
                            Aggregator(self.data_width,
-                                      mem_word_width=int(self.mem_width / self.data_width)),
+                                      mem_word_width=self.fw_int),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            in_pixels=self._data_in,
@@ -107,9 +107,12 @@ class AggregationBuffer(Generator):
                            valid_out=self._valid_out_mux[i],
                            next_full=self._next_full[i])
             portlist = []
-            for j in range(int(self.mem_width / self.data_width)):
-                portlist.append(self._aggs_sep[i][int(self.mem_width / self.data_width) - 1 - j])
-            self.wire(self._aggs_out[i], kts.concat(*portlist))
+            if self.fw_int == 1:
+                self.wire(self._aggs_out[i], self._aggs_sep[i])
+            else:
+                for j in range(self.fw_int):
+                    portlist.append(self._aggs_sep[i][self.fw_int - 1 - j])
+                self.wire(self._aggs_out[i], kts.concat(*portlist))
 
         # Sequential code blocks
         self.add_code(self.update_in_sched_ptr)

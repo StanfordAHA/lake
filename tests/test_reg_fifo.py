@@ -60,7 +60,7 @@ def test_reg_fifo_basic(width_mult,
         tester.circuit.empty.expect(empty)
         tester.circuit.full.expect(full)
 
-        (model_out, model_val) = model_rf.interact(push, pop, data_in)
+        (model_out, model_val, model_empty, model_full) = model_rf.interact(push, pop, data_in)
 
         tester.circuit.push = push
         tester.circuit.pop = pop

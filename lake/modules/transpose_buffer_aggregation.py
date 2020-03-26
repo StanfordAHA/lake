@@ -49,6 +49,8 @@ class TransposeBufferAggregation(Generator):
         self.valid_data = self.input("valid_data", 1)
         self.tb_index_for_data = self.input("tb_index_for_data", self.num_tb_bits)
 
+        self.tba_ren = self.input("tba_ren", 1)
+
         # Ack the ready
         self._ack_in = self.input("ack_in", 1)
 
@@ -94,7 +96,8 @@ class TransposeBufferAggregation(Generator):
                            col_pixels=self.tb_output_data_all[i],
                            output_valid=self.tb_output_valid_all[i],
                            rdy_to_arbiter=self.tb_arbiter_rdy_all[i],
-                           ack_in=self._ack_in)
+                           ack_in=self._ack_in,
+                           ren=self.tba_ren)
 
         self.add_code(self.set_valid_data_all)
         self.set_output_valid()

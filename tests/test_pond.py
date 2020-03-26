@@ -107,7 +107,8 @@ def test_pond(data_width=16,  # CGRA Params
                      max_prefetch=max_prefetch,
                      config_data_width=config_data_width,
                      config_addr_width=config_addr_width,
-                     remove_tb=remove_tb)
+                     remove_tb=remove_tb,
+                     fifo_mode=False)
 
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
@@ -175,11 +176,10 @@ def test_pond(data_width=16,  # CGRA Params
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "pond_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":

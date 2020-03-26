@@ -103,14 +103,23 @@ class TBAModel(Model):
             self.tb_arbiter_rdy = 0
 
     def get_ready(self):
-        return self.tb_arbiter_rdy
+        for i in range(self.num_tb):
+            # return self.tb_arbiter_rdy
+            return self.tbs[i].get_rdy_to_arbiter()
 
     def print_tba(self):
         print("output valid all ", self.output_valid_all)
         print("arbiter rdy all ", self.arbiter_rdy_all)
         print("tb arbiter rdy ", self.tb_arbiter_rdy)
 
-    def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data):
+    def print_tba_tb(self, input_data, valid_data, ack_in, tb_index_for_data, ren):
+        self.tbs[0].print_tb(input_data, valid_data, ack_in, ren)
+        print()
+
+    def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data, ren):
+        ret_data = 0
+        ret_valid = 0
+        ret_rdy = 0
         for i in range(self.num_tb):
             if i == tb_index_for_data:
                 valid_data_i = valid_data
@@ -118,10 +127,11 @@ class TBAModel(Model):
             else:
                 valid_data_i = 0
                 ack_in_i = 0
-            self.tbs[i].interact(input_data, valid_data_i, ack_in_i)
-            # print("col pixels ", i, " ", self.tbs[i].get_col_pixels())
+            # self.tbs[i].interact(input_data, valid_data_i, ack_in_i, ren)
+            (ret_data, ret_valid, ret_rdy) = self.tbs[i].interact(input_data, valid_data_i, ack_in_i, ren)
 
-        self.set_tb_outputs()
-        self.send_tba_rdy()
+        # self.set_tb_outputs()
+        # self.send_tba_rdy()
         # self.print_tba()
-        return self.tb_to_interconnect_data, self.tb_to_interconnect_valid
+        # return self.tb_to_interconnect_data, self.tb_to_interconnect_valid
+        return ret_data, ret_valid
