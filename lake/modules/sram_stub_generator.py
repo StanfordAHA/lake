@@ -10,12 +10,12 @@ class SRAMStubGenerator(Generator):
     ##########################
     def __init__(self,
                  sram_name,
-                 # expected order (alphabetical): addr, cen, clk, data_in, data_out, wen
                  data_width,
                  width_mult,
                  depth):
         super().__init__(sram_name)
 
+        # for provided external sram macro
         self.external = True
 
         self.data_width = data_width
@@ -30,6 +30,9 @@ class SRAMStubGenerator(Generator):
         ############################
         # Inputs                   #
         ############################
+
+        # attribute indicates that all these ports will be renamed to match
+        # the port names for external sram macro
         self._wen = self.input("sram_wen", 1)
         self._wen.add_attribute(SRAMPortAttr("sram wen"))
 

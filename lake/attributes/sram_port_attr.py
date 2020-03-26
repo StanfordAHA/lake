@@ -1,6 +1,7 @@
 import kratos as kts
 
-
+# this attribute indicates sram ports which may be renamed if macro being used requires
+# different port names
 class SRAMPortAttr(kts.Attribute):
     def __init__(self,
                  doc_string=""):
