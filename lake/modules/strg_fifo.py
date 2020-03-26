@@ -387,11 +387,6 @@ class StrgFIFO(Generator):
     def set_num_words_mem(self):
         if ~self._rst_n:
             self._num_words_mem = 0
-        # write and not read
-        # elif ~self._ren_to_strg.r_or() & self._front_par_read:
-        #     self._num_words_mem = self._num_words_mem + 1
-        # elif self._ren_to_strg.r_or() & ~self._front_par_read:
-        #     self._num_words_mem = self._num_words_mem - 1
         elif ~self._back_pl & self._front_par_read:
             self._num_words_mem = self._num_words_mem + 1
         elif self._back_pl & ~self._front_par_read:
