@@ -47,3 +47,32 @@ def lift_config_reg(generator):
 
     v = ConfigRegLiftVisitor()
     v.visit_root(generator)
+
+def change_sram_port_names(use_sram_stub, ports):
+     def change_sram_port_names_wrapper(generator):
+
+         class SRAMPortNames(IRVisitor):
+             def __init__(self, use_sram_stub, ports):
+                 IRVisitor.__init__(self)
+                 self.use_sram_stub = use_sram_stub
+                 self.ports = ports
+
+             def visit(self, node):
+                 if isinstance(node, Port):
+                     if not self.use_sram_stub:
+                         if node.name == "sram_addr":
+                             node.name = self.ports[0]
+                         elif node.name == "sram_cen":
+                             node.name = self.ports[1]
+                         elif node.name == "sram_clk":
+                             node.name = self.ports[2]
+                         elif node.name == "sram_data_in":
+                             node.name = self.ports[3]
+                         elif node.name == "sram_data_out":
+                             node.name = self.ports[4]
+                         elif node.name == "sram_wen":
+                             node.name = self.ports[5]
+         
+         v = SRAMPortNames(use_sram_stub, ports)
+         v.visit_root(generator)
+     return change_sram_port_names_wrapper
