@@ -10,8 +10,8 @@ from lake.modules.strg_fifo import StrgFIFO
 from lake.models.reg_fifo_model import RegFIFOModel
 
 
-@pytest.mark.parametrize("mem_width", [16, 32, 64])
-@pytest.mark.parametrize("banks", [1, 2, 3, 4])
+@pytest.mark.parametrize("mem_width", [16, 64])
+@pytest.mark.parametrize("banks", [1, 2])
 @pytest.mark.parametrize("depth", [16, 100])
 def test_storage_fifo(mem_width,  # CGRA Params
                       banks,
@@ -121,7 +121,7 @@ def test_storage_fifo(mem_width,  # CGRA Params
     push_cnt = 0
     pop_cnt = 0
 
-    for i in range(10000):
+    for i in range(2000):
         data_in = rand.randint(0, 2 ** data_width - 1)
         push = rand.randint(0, 1)
         pop = rand.randint(0, 1)
