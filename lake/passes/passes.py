@@ -2,6 +2,7 @@ import kratos
 from kratos import Attribute, verilog
 from kratos import *
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.sram_port_attr import SRAMPortAttr
 import _kratos
 
 
@@ -59,20 +60,23 @@ def change_sram_port_names(use_sram_stub, ports):
 
              def visit(self, node):
                  if isinstance(node, Port):
-                     if not self.use_sram_stub:
-                         if node.name == "sram_addr":
-                             node.name = self.ports[0]
-                         elif node.name == "sram_cen":
-                             node.name = self.ports[1]
-                         elif node.name == "sram_clk":
-                             node.name = self.ports[2]
-                         elif node.name == "sram_data_in":
-                             node.name = self.ports[3]
-                         elif node.name == "sram_data_out":
-                             node.name = self.ports[4]
-                         elif node.name == "sram_wen":
-                             node.name = self.ports[5]
+                     if not(len(node.get_attributes()) <= 0 or self.use_sram_stub):
+                         for i in range(len(node.get_attributes())):
+                                 if (isinstance(node.get_attributes()[i].get(), SRAMPortAttr)):
+                                    if node.name == "sram_addr":
+                                         node.name = self.ports[0]
+                                    elif node.name == "sram_cen":
+                                        node.name = self.ports[1]
+                                    elif node.name == "sram_clk":
+                                        node.name = self.ports[2]
+                                    elif node.name == "sram_data_in":
+                                        node.name = self.ports[3]
+                                    elif node.name == "sram_data_out":
+                                        node.name = self.ports[4]
+                                    elif node.name == "sram_wen":
+                                        node.name = self.ports[5]
          
          v = SRAMPortNames(use_sram_stub, ports)
          v.visit_root(generator)
+
      return change_sram_port_names_wrapper
