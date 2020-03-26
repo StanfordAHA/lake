@@ -43,6 +43,7 @@ def test_storage_fifo(data_width=16,  # CGRA Params
                       fifo_mode=True):
 
     fw_int = int(mem_width / data_width)
+    # depth = 16
     depth = 100
 
     new_config = {}
@@ -112,38 +113,41 @@ def test_storage_fifo(data_width=16,  # CGRA Params
     push = 1
     pop = 0
 
-    for i in range(40):
-        data_in += 1
-        # data_in = rand.randint(0, 2 ** data_width - 1)
-        # push = rand.randint(0, 1)
-        push = 1
-        pop = rand.randint(0, 1)
+    push_cnt = 0
+    pop_cnt = 0
 
-        # if i == 10:
-        #     pop = 1
+    for i in range(10000):
+        data_in = rand.randint(0, 2 ** data_width - 1)
+        push = rand.randint(0, 1)
+        pop = rand.randint(0, 1)
 
         tester.circuit.data_in = data_in
         tester.circuit.wen = push
         tester.circuit.ren = pop
         (model_out, model_val, model_empty, model_full) = model_rf.interact(push, pop, [data_in])
 
+        push_cnt = push_cnt + push
+        pop_cnt = pop_cnt + pop
+
         tester.eval()
 
-        # tester.circuit.empty.expect()
+        tester.circuit.empty.expect(model_empty)
+        tester.circuit.full.expect(model_full)
         # Now check the outputs
-        print(f"i: {i}, dat: {model_out}, val: {model_val}, e: {model_empty}, f: {model_full}")
+        # print(f"i: {i}, dat: {model_out}, val: {model_val}, e: {model_empty}, f: {model_full}")
         tester.circuit.valid_out.expect(model_val)
         if model_val:
             tester.circuit.data_out.expect(model_out[0])
 
         tester.step(2)
 
+    # print(f"pushes: {push_cnt}, pops: {pop_cnt}")
+
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "strg_fifo_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":

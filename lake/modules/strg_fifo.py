@@ -110,19 +110,19 @@ class StrgFIFO(Generator):
         self._front_valid = self.var("front_valid", 1)
         self._front_par_read = self.var("front_par_read", 1)
         self._front_par_out = self.var("front_par_out", self.data_width,
-                                       size=(self.fw_int - 1,
+                                       size=(self.fw_int,
                                              1),
                                        explicit_array=True,
                                        packed=True)
 
-        self._front_rd_ptr = self.var("front_rd_ptr", clog2(self.fw_int - 1 ))
+        self._front_rd_ptr = self.var("front_rd_ptr", clog2(self.fw_int))
 
         self._front_push = self.var("front_push", 1)
         self.wire(self._front_push, self._push & (~self._full | self._pop))
 
         self._front_rf = RegFIFO(data_width=self.data_width,
                                  width_mult=1,
-                                 depth=self.fw_int - 1,
+                                 depth=self.fw_int,
                                  parallel=True,
                                  break_out_rd_ptr=True)
 
@@ -204,10 +204,10 @@ class StrgFIFO(Generator):
 
         # Combine front end data - just the items + incoming
         # this data is actually based on the rd_ptr from the front fifo
-        for i in range(self.fw_int - 1):
-            self.wire(self._front_combined[i], self._front_par_out[i])
+        for i in range(self.fw_int):
+            self.wire(self._front_combined[i], self._front_par_out[self._front_rd_ptr + i])
         # This is always true
-        self.wire(self._front_combined[self.fw_int - 1], self._data_in)
+        # self.wire(self._front_combined[self.fw_int - 1], self._data_in)
 
         # prioritize queued writes, otherwise send combined data
         for i in range(self.banks):
@@ -252,7 +252,7 @@ class StrgFIFO(Generator):
                                   self._data_from_strg[index_into][i + 1]))
         self.wire(self._back_par_in[self.fw_int - 1],
                   kts.ternary(self._back_num_load == self.fw_int,
-                              self._data_from_strg[index_into][i],
+                              self._data_from_strg[index_into][self.fw_int - 1],
                               kts.const(0, self.data_width)))
 
         # Set the parallel read to the front fifo - analogous with trying to write to the memory
@@ -266,7 +266,8 @@ class StrgFIFO(Generator):
         bank_idx_read = self._curr_bank_rd
         if self.read_delay == 1:
             bank_idx_read = self._prev_bank_rd
-        self.wire(self._data_out, kts.ternary(self._back_pl, self._data_from_strg[bank_idx_read][0], self._back_data_out))
+        self.wire(self._data_out,
+                  kts.ternary(self._back_pl, self._data_from_strg[bank_idx_read][0], self._back_data_out))
         self.wire(self._valid_out, kts.ternary(self._back_pl, self._pop, self._back_valid))
 
         # Set addresses to storage
@@ -302,7 +303,10 @@ class StrgFIFO(Generator):
         self._fifo_depth = self.input("fifo_depth", 16)
         self._fifo_depth.add_attribute(ConfigRegAttr("Fifo depth..."))
         self.wire(self._empty, self._num_items == 0)
-        self.wire(self._full, self._num_items == (self._fifo_depth - 1))
+        self.wire(self._full, self._num_items == (self._fifo_depth))
+
+        self._num_items_out = self.output("num_items_out", 16)
+        self.wire(self._num_items_out, self._num_items)
 
     @always_comb
     def send_writes(self, idx):
@@ -312,7 +316,7 @@ class StrgFIFO(Generator):
         # and there is stuff in memory to be read
         self._wen_to_strg[idx] = ((~self._ren_to_strg[idx] | kts.const(int(self.rw_same_cycle), 1)) &
                                   (self._queued_write[idx] |
-                                  (((self._front_occ == self.fw_int - 1) & self._push &
+                                  (((self._front_occ == self.fw_int) & self._push &
                                     ((self._num_words_mem > 0) | ~self._front_pop)) &
                                    (self._curr_bank_wr == idx))))
 
@@ -345,7 +349,10 @@ class StrgFIFO(Generator):
         if ~self._rst_n:
             self._front_occ = 0
         elif self._front_par_read:
-            self._front_occ = 0
+            if self._front_push:
+                self._front_occ = 1
+            else:
+                self._front_occ = 0
         elif self._front_push & ~self._front_pop:
             self._front_occ = self._front_occ + 1
         elif ~self._front_push & self._front_pop:
@@ -361,7 +368,7 @@ class StrgFIFO(Generator):
     @always_comb
     def set_front_par_read(self):
         # If the front is full and not being drained, need to write out to write queue or memory
-        self._front_par_read = (self._front_occ == self.fw_int - 1) & self._push & ~self._front_pop
+        self._front_par_read = (self._front_occ == self.fw_int) & self._push & ~self._front_pop
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_num_words_mem(self):
@@ -424,7 +431,8 @@ class StrgFIFO(Generator):
     def set_prev_bank_rd(self):
         if ~self._rst_n:
             self._prev_bank_rd = 0
-        elif self._front_par_read:
+        # elif self._front_par_read:
+        else:
             self._prev_bank_rd = self._curr_bank_rd
 
     @always_comb

@@ -22,7 +22,7 @@ class RegFIFO(Generator):
         self.parallel = parallel
         self.break_out_rd_ptr = break_out_rd_ptr
 
-        # assert not (depth & (depth - 1)), "FIFO depth needs to be a power of 2"
+        assert not (depth & (depth - 1)), "FIFO depth needs to be a power of 2"
 
         # CLK and RST
         self._clk = self.clock("clk")
@@ -95,7 +95,6 @@ class RegFIFO(Generator):
         self.wire(self._passthru, self._pop & self._push & self._empty)
 
         # Should only write
-        self.wire(self._write, self._push & ~self._passthru & (~self._full | self._pop))
 
         # Boilerplate Add always @(posedge clk, ...) blocks
         if self.parallel:
@@ -104,7 +103,10 @@ class RegFIFO(Generator):
             self.add_code(self.wr_ptr_ff_parallel)
             self.add_code(self.rd_ptr_ff_parallel)
             self.wire(self._parallel_out, self._reg_array)
+            self.wire(self._write,
+                      self._push & ~self._passthru & (~self._full | (self._pop | self._parallel_read)))
         else:
+            self.wire(self._write, self._push & ~self._passthru & (~self._full | self._pop))
             self.add_code(self.set_num_items)
             self.add_code(self.reg_array_ff)
             self.add_code(self.wr_ptr_ff)
@@ -145,12 +147,16 @@ class RegFIFO(Generator):
         elif self._parallel_load:
             self._wr_ptr = self._num_load[clog2(self.depth) - 1, 0]
         elif self._parallel_read:
-            self._wr_ptr = 0
-        elif self._write:
-            if self._wr_ptr == (self.depth - 1):
-                self._wr_ptr = 0
+            if self._push:
+                self._wr_ptr = 1
             else:
-                self._wr_ptr = self._wr_ptr + 1
+                self._wr_ptr = 0
+        elif self._write:
+            self._wr_ptr = self._wr_ptr + 1
+            # if self._wr_ptr == (self.depth - 1):
+            #     self._wr_ptr = 0
+            # else:
+            #     self._wr_ptr = self._wr_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_array_ff(self):
@@ -166,7 +172,10 @@ class RegFIFO(Generator):
         elif self._parallel_load:
             self._reg_array = self._parallel_in
         elif self._write:
-            self._reg_array[self._wr_ptr] = self._data_in
+            if self._parallel_read:
+                self._reg_array[0] = self._data_in
+            else:
+                self._reg_array[self._wr_ptr] = self._data_in
 
     @always_comb
     def data_out_ff(self):
@@ -194,8 +203,13 @@ class RegFIFO(Generator):
             self._num_items = 0
         elif self._parallel_load:
             self._num_items = self._num_load
+        # One can technically push while a parallel
+        # read is happening...
         elif self._parallel_read:
-            self._num_items = 0
+            if self._push:
+                self._num_items = 1
+            else:
+                self._num_items = 0
         elif self._write & ~self._read:
             self._num_items = self._num_items + 1
         elif ~self._write & self._read:
