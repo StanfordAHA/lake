@@ -12,8 +12,8 @@ class FlattenND(Generator):
             total_dims = total_dims * array_size[i]
             apparent_width = apparent_width * array_size[i]
 
-        self.in_ = self.input("in", width=array_width, size=array_size)
-        self.out_ = self.output("out", width=total_dims)
+        self.in_ = self.input("input_array", width=array_width, size=array_size, packed=True)
+        self.out_ = self.output("output_array", width=total_dims)
 
         self.add_code(self.flatten_array)
 
