@@ -16,6 +16,7 @@ from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
+from utils.sram_macro import SRAMMacroInfo
 import kratos as kts
 
 
@@ -31,8 +32,8 @@ class LakeTop(Generator):
                  interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
-                 use_sram_stub=0,
-                 sram_name="tsmc_sram_stub",
+                 use_sram_stub=1,
+                 sram_macro_info=SRAMMacroInfo(),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
@@ -52,7 +53,7 @@ class LakeTop(Generator):
                  config_data_width=16,
                  config_addr_width=8,
                  remove_tb=False,
-                 fifo_mode=False):
+                 fifo_mode=True):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -66,7 +67,7 @@ class LakeTop(Generator):
         self.mem_input_ports = mem_input_ports
         self.mem_output_ports = mem_output_ports
         self.use_sram_stub = use_sram_stub
-        self.sram_name = sram_name
+        self.sram_macro_info = sram_macro_info
         self.agg_height = agg_height
         self.max_agg_schedule = max_agg_schedule
         self.input_max_port_sched = input_max_port_sched
@@ -696,7 +697,7 @@ class LakeTop(Generator):
 
             for i in range(self.banks):
                 mbank = SRAMWrapper(use_sram_stub=self.use_sram_stub,
-                                    sram_name=self.sram_name,
+                                    sram_name=self.sram_macro_info.get_name(),
                                     data_width=self.data_width,
                                     fw_int=self.fw_int,
                                     mem_depth=self.mem_depth,
@@ -954,19 +955,15 @@ class LakeTop(Generator):
 
 
 if __name__ == "__main__":
-    lake_dut = LakeTop()
+    tsmc_info = SRAMMacroInfo("tsmc_name")
+    lake_dut = LakeTop(sram_macro_info=tsmc_info)
     verilog(lake_dut, filename="lake_top.sv",
             check_multiple_driver=False,
             optimize_if=False,
             check_flip_flop_always_ff=False,
             additional_passes={"lift config regs": lift_config_reg,
                                "change sram port names": change_sram_port_names(
-                                   False,
-                                   ["ADDR",
-                                    "CEB",
-                                    "CLK",
-                                    "D",
-                                    "Q",
-                                    "WE"],
+                                   True,
+                                   tsmc_info.get_ports(),
                                    0,
                                    0)})

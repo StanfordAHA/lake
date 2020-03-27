@@ -6,7 +6,7 @@ import pytest
 import tempfile
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
-
+from utils.sram_macro import SRAMMacroInfo
 
 @pytest.mark.parametrize("mem_width", [16, 64])
 @pytest.mark.parametrize("use_sram_stub", [0, 1])
@@ -21,7 +21,7 @@ def test_sram_port_names_change(mem_width,
                                 interconnect_output_ports=3,
                                 mem_input_ports=1,
                                 mem_output_ports=1,
-                                sram_ports=["ADDR", "CEB", "CLK", "D", "Q", "WE"],
+                                sram_macro_info=SRAMMacroInfo(),
                                 agg_height=8,
                                 transpose_height=8,
                                 max_agg_schedule=64,
@@ -65,7 +65,10 @@ def test_sram_port_names_change(mem_width,
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
 
-    change_sram_port_names(use_sram_stub, sram_ports, 1, lt_dut.internal_generator)
+    change_sram_port_names(use_sram_stub, 
+                           sram_macro_info.get_ports(), 
+                           1, 
+                           lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
