@@ -9,7 +9,9 @@ from lake.models.lake_top_model import LakeTopModel
 
 
 @pytest.mark.parametrize("mem_width", [16, 64])
+@pytest.mark.parametrize("use_sram_stub", [0, 1])
 def test_sram_port_names_change(mem_width,
+                                use_sram_stub,
                                 data_width=16,
                                 mem_depth=512,
                                 banks=2,
@@ -19,7 +21,6 @@ def test_sram_port_names_change(mem_width,
                                 interconnect_output_ports=3,
                                 mem_input_ports=1,
                                 mem_output_ports=1,
-                                use_sram_stub=0,
                                 sram_ports=["ADDR", "CEB", "CLK", "D", "Q", "WE"],
                                 agg_height=8,
                                 transpose_height=8,
