@@ -710,7 +710,7 @@ class LakeTop(Generator):
             else:
                 for i in range(self.banks):
                     mbank = SRAMWrapper(use_sram_stub=self.use_sram_stub,
-                                        sram_name=self.sram_macro_info.get_name(),
+                                        sram_name=self.sram_macro_info.name,
                                         data_width=self.data_width,
                                         fw_int=self.fw_int,
                                         mem_depth=self.mem_depth,
@@ -970,7 +970,7 @@ class LakeTop(Generator):
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
     use_sram_stub = 1
-    fifo_mode = False
+    fifo_mode = True
     lake_dut = LakeTop(sram_macro_info=tsmc_info, use_sram_stub=use_sram_stub, fifo_mode=fifo_mode)
     verilog(lake_dut, filename="lake_top.sv",
             check_multiple_driver=False,
