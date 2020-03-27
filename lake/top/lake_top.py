@@ -1,5 +1,6 @@
 from kratos import *
 from lake.modules.passthru import *
+from lake.modules.sram_stub import SRAMStub
 from lake.modules.sram_wrapper import SRAMWrapper
 from lake.modules.aggregation_buffer import AggregationBuffer
 from lake.modules.input_addr_ctrl import InputAddrCtrl
@@ -695,24 +696,36 @@ class LakeTop(Generator):
                                   self._fifo_addr_to_mem,
                                   self._mem_addr_in))
 
-            for i in range(self.banks):
-                mbank = SRAMWrapper(use_sram_stub=self.use_sram_stub,
-                                    sram_name=self.sram_macro_info.get_name(),
-                                    data_width=self.data_width,
-                                    fw_int=self.fw_int,
-                                    mem_depth=self.mem_depth,
-                                    mem_input_ports=self.mem_input_ports,
-                                    mem_output_ports=self.mem_output_ports,
-                                    address_width=self.address_width,
-                                    bank_num=i)
+                for i in range(self.banks):
+                    mbank = SRAMStub(data_width=self.data_width,
+                                     width_mult=self.fw_int,
+                                     depth=self.mem_depth)
+                    self.add_child(f"mem_{i}", mbank,
+                                   clk=self._gclk,
+                                   data_in=self._mem_data_in_f[i],
+                                   addr=self._mem_addr_in_f[i],
+                                   cen=self._mem_cen_in_f[i],
+                                   wen=self._mem_wen_in_f[i],
+                                   data_out=self._mem_data_out[i])
+            else:
+                for i in range(self.banks):
+                    mbank = SRAMWrapper(use_sram_stub=self.use_sram_stub,
+                                        sram_name=self.sram_macro_info.get_name(),
+                                        data_width=self.data_width,
+                                        fw_int=self.fw_int,
+                                        mem_depth=self.mem_depth,
+                                        mem_input_ports=self.mem_input_ports,
+                                        mem_output_ports=self.mem_output_ports,
+                                        address_width=self.address_width,
+                                        bank_num=i)
 
-                self.add_child(f"sram_wrapper_{i}", mbank,
-                               clk=self._gclk,
-                               mem_data_in_bank=self._mem_data_in[i],
-                               mem_data_out_bank=self._mem_data_out[i],
-                               mem_addr_in_bank=self._mem_addr_in[i],
-                               mem_cen_in_bank=self._mem_cen_in[i],
-                               mem_wen_in_bank=self._mem_wen_in[i])
+                    self.add_child(f"sram_wrapper_{i}", mbank,
+                                   clk=self._gclk,
+                                   mem_data_in_bank=self._mem_data_in[i],
+                                   mem_data_out_bank=self._mem_data_out[i],
+                                   mem_addr_in_bank=self._mem_addr_in[i],
+                                   mem_cen_in_bank=self._mem_cen_in[i],
+                                   mem_wen_in_bank=self._mem_wen_in[i])
 
         else:
             for i in range(self.banks):
