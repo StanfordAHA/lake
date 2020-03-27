@@ -75,14 +75,14 @@ class SRAMWrapper(Generator):
             mbank = SRAMStub(data_width=self.data_width,
                              width_mult=self.fw_int,
                              depth=self.mem_depth)
-                       
+
             self.add_child(f"mem_{self.bank_num}", mbank,
-                                       clk=self._gclk,
-                                       data_in=self._mem_data_in_bank,
-                                       addr=self._mem_addr_in_bank,
-                                       cen=self._mem_cen_in_bank,
-                                       wen=self._mem_wen_in_bank,
-                                       data_out=self._mem_data_out_bank)
+                           clk=self._gclk,
+                           data_in=self._mem_data_in_bank,
+                           addr=self._mem_addr_in_bank,
+                           cen=self._mem_cen_in_bank,
+                           wen=self._mem_wen_in_bank,
+                           data_out=self._mem_data_out_bank)
 
         # instantiante external provided sram macro and flatten input/output data
         # if fetch width is greater than 1
@@ -94,8 +94,8 @@ class SRAMWrapper(Generator):
                                       depth=self.mem_depth)
 
             if self.fw_int > 1:
-                flatten_data_in = FlattenND(self.data_width, 
-                                            self.fw_int, 
+                flatten_data_in = FlattenND(self.data_width,
+                                            self.fw_int,
                                             self.mem_input_ports)
 
                 self.add_child(f"flatten_data_in_{self.bank_num}",
