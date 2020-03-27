@@ -969,14 +969,16 @@ class LakeTop(Generator):
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    lake_dut = LakeTop(sram_macro_info=tsmc_info)
+    use_sram_stub = 1
+    fifo_mode = False
+    lake_dut = LakeTop(sram_macro_info=tsmc_info, use_sram_stub=use_sram_stub, fifo_mode=fifo_mode)
     verilog(lake_dut, filename="lake_top.sv",
             check_multiple_driver=False,
             optimize_if=False,
             check_flip_flop_always_ff=False,
             additional_passes={"lift config regs": lift_config_reg,
                                "change sram port names": change_sram_port_names(
-                                   True,
-                                   tsmc_info.get_ports(),
+                                   use_sram_stub,
+                                   tsmc_info,
                                    0,
                                    0)})

@@ -67,7 +67,7 @@ def test_sram_port_names_change(mem_width,
     lift_config_reg(lt_dut.internal_generator)
 
     change_sram_port_names(use_sram_stub,
-                           sram_macro_info.get_ports(),
+                           sram_macro_info,
                            1,
                            lt_dut.internal_generator)
 
