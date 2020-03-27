@@ -6,8 +6,7 @@ from utils.flattenND import FlattenND
 from utils.reverse_flatten import ReverseFlatten
 
 
-# this module instantiates external provided sram macro and flattens input/output data
-# if fetch width is greater than 1
+# instantiate either sram stub or stub for external provided sram macro
 class SRAMWrapper(Generator):
 
     def __init__(self,
@@ -85,6 +84,8 @@ class SRAMWrapper(Generator):
                                        wen=self._mem_wen_in_bank,
                                        data_out=self._mem_data_out_bank)
 
+        # instantiante external provided sram macro and flatten input/output data
+        # if fetch width is greater than 1
         else:
 
             mbank = SRAMStubGenerator(sram_name=self.sram_name,
