@@ -14,6 +14,7 @@ from lake.modules.prefetcher import Prefetcher
 from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
+from lake.modules.strg_RAM import StrgRAM
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
 import kratos as kts
@@ -613,29 +614,59 @@ class LakeTop(Generator):
                                                   size=self.banks,
                                                   explicit_array=True,
                                                   packed=True)
-                # If we have the fifo mode enabled -
-                # Instantiate a FIFO first off...
-                stfo = StrgFIFO(data_width=self.data_width,
-                                banks=self.banks,
-                                memory_width=self.mem_width,
-                                rw_same_cycle=False,
-                                read_delay=self.read_delay,
-                                addr_width=self.address_width)
-                self.add_child("fifo_ctrl", stfo,
+
+                self._sram_ready_out = self.output("sram_ready_out", 1)
+
+                strg_ram = StrgRAM(data_width=self.data_width,
+                                   banks=self.banks,
+                                   memory_width=self.mem_width,
+                                   memory_depth=self.mem_depth,
+                                   rw_same_cycle=self.rw_same_cycle,
+                                   read_delay=self.read_delay,
+                                   addr_width=16,
+                                   prioritize_write=True)
+
+                self.add_child("sram_ctrl", strg_ram,
                                clk=self._gclk,
                                rst_n=self._rst_n,
+                               wen=self._wen[0],
+                               ren=self._ren[0],
                                data_in=self._data_in[0],
-                               push=self._wen[0],
-                               pop=self._ren[0],
+                               wr_addr_in=self._addr_in[0],
+                               rd_addr_in=self._addr_in[0],
                                data_from_strg=self._mem_data_out,
                                data_out=self._fifo_data_out,
                                valid_out=self._fifo_valid_out,
-                               empty=self._fifo_empty,
-                               full=self._fifo_full,
                                data_to_strg=self._fifo_data_to_mem,
                                wen_to_strg=self._fifo_wen_to_mem,
                                ren_to_strg=self._fifo_ren_to_mem,
-                               addr_out=self._fifo_addr_to_mem)
+                               addr_out=self._fifo_addr_to_mem,
+                               ready=self._sram_ready_out)
+
+
+                # If we have the fifo mode enabled -
+                # Instantiate a FIFO first off...
+                # stfo = StrgFIFO(data_width=self.data_width,
+                #                 banks=self.banks,
+                #                 memory_width=self.mem_width,
+                #                 rw_same_cycle=False,
+                #                 read_delay=self.read_delay,
+                #                 addr_width=self.address_width)
+                # self.add_child("fifo_ctrl", stfo,
+                #                clk=self._gclk,
+                #                rst_n=self._rst_n,
+                #                data_in=self._data_in[0],
+                #                push=self._wen[0],
+                #                pop=self._ren[0],
+                #                data_from_strg=self._mem_data_out,
+                #                data_out=self._fifo_data_out,
+                #                valid_out=self._fifo_valid_out,
+                #                empty=self._fifo_empty,
+                #                full=self._fifo_full,
+                #                data_to_strg=self._fifo_data_to_mem,
+                #                wen_to_strg=self._fifo_wen_to_mem,
+                #                ren_to_strg=self._fifo_ren_to_mem,
+                #                addr_out=self._fifo_addr_to_mem)
 
                 self._mem_data_in_f = self.var("mem_data_out_f",
                                                self.data_width,

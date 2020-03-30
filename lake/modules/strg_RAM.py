@@ -33,6 +33,7 @@ class StrgRAM(Generator):
         self.prioritize_write = prioritize_write
         self.bank_width = clog2(self.banks)
         self.word_width = max(1, clog2(self.fw_int))
+        self.mem_addr_width = clog2(memory_depth)
         self.bank_addr_offset = clog2(self.fw_int) + clog2(self.memory_depth)
 
         # assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
@@ -110,7 +111,7 @@ class StrgRAM(Generator):
         #     self.wire(self._wen_addr_out, self._wr_addr)
         #     self.wire(self._ren_addr_out, self._rd_addr)
         # else:
-        self._addr_out = self.output("addr_out", self.addr_width,
+        self._addr_out = self.output("addr_out", self.mem_addr_width,
                                      size=self.banks,
                                      explicit_array=True,
                                      packed=True)
@@ -133,14 +134,19 @@ class StrgRAM(Generator):
                 self.wire(self._wen_to_strg, self._wen)
                 self.wire(self._ren_to_strg, self._ren)
                 self.wire(self._data_to_strg[0], self._data_in)
-                self.wire(self._addr_out[0], kts.ternary(self._wen_to_strg[0], self._wr_addr, self._rd_addr))
+                self.wire(self._addr_out[0],
+                          kts.ternary(self._wen_to_strg[0],
+                                      self._wr_addr[self.mem_addr_width - 1, 0],
+                                      self._rd_addr[self.mem_addr_width - 1, 0]))
             else:
                 for i in range(self.banks):
                     self.wire(self._data_to_strg[i], self._data_in)
                     self.add_code(self.decode_wen, idx=i)
                     self.add_code(self.decode_ren, idx=i)
                     self.wire(self._addr_out[i],
-                              kts.ternary(self._wen_to_strg[i], self._wr_addr, self._rd_addr))
+                              kts.ternary(self._wen_to_strg[i],
+                                          self._wr_addr[self.mem_addr_width - 1, 0],
+                                          self._rd_addr[self.mem_addr_width - 1, 0]))
             self.wire(self._data_out, self._data_from_strg[self._rd_bank])
         elif self.read_delay == 1:
 
@@ -198,7 +204,7 @@ class StrgRAM(Generator):
             READ.output(self._read_gate, 1)
 
             # In MODIFY we always go back to idle
-            MODIFY.next(IDLE, kts.const(1, 1))
+            MODIFY.next(IDLE, None)  
             MODIFY.output(self._ready, 0)
             MODIFY.output(self._valid_out, 0)
             MODIFY.output(self._data_out, 0)
@@ -293,12 +299,12 @@ class StrgRAM(Generator):
 
     @always_comb
     def set_addr_rmw(self, idx):
-        self._addr_out[idx] = self._rd_addr
+        self._addr_out[idx] = self._rd_addr[self.mem_addr_width + self.word_width - 1, self.word_width]
         # If we are performing the write
         if self._wen & ~self._write_gate:
-            self._addr_out[idx] = self._wr_addr
+            self._addr_out[idx] = self._wr_addr[self.mem_addr_width + self.word_width - 1, self.word_width]
         elif self._write_gate:
-            self._addr_out[idx] = self._addr_to_write
+            self._addr_out[idx] = self._addr_to_write[self.mem_addr_width + self.word_width - 1, self.word_width]
 
     @always_comb
     def set_data_combined(self, idx):
