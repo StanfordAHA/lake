@@ -163,7 +163,7 @@ class StrgRAM(Generator):
             # read-modify-write implies we need to stall upstream
             self._ready = self.output("ready", 1)
             # Otherwise implement the state machine for read-modify-write
-            self.rmw_fsm = self.add_fsm("r_w_seq")
+            self.rmw_fsm = self.add_fsm("r_w_seq", reset_high=False)
             IDLE = self.rmw_fsm.add_state("IDLE")
             READ = self.rmw_fsm.add_state("READ")
             MODIFY = self.rmw_fsm.add_state("MODIFY")
@@ -173,7 +173,7 @@ class StrgRAM(Generator):
             self.rmw_fsm.output(self._data_out)
             self.rmw_fsm.output(self._write_gate)
             self.rmw_fsm.output(self._read_gate)
-            
+
 
             # In IDLE we go to a read state if reading, and modify state
             # if writing....
