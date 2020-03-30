@@ -19,7 +19,7 @@ class StrgRAM(Generator):
                  read_delay=1,
                  addr_width=16,
                  prioritize_write=True):
-        super().__init__("strg_fifo", debug=True)
+        super().__init__("strg_ram", debug=True)
 
         # Generation parameters
         self.banks = banks
@@ -167,7 +167,6 @@ class StrgRAM(Generator):
             IDLE = self.rmw_fsm.add_state("IDLE")
             READ = self.rmw_fsm.add_state("READ")
             MODIFY = self.rmw_fsm.add_state("MODIFY")
-            self.rmw_fsm.set_start_state(IDLE)
             self.rmw_fsm.output(self._ready)
             self.rmw_fsm.output(self._valid_out)
             self.rmw_fsm.output(self._data_out)
@@ -205,6 +204,8 @@ class StrgRAM(Generator):
             MODIFY.output(self._data_out, 0)
             MODIFY.output(self._write_gate, 1)
             MODIFY.output(self._read_gate, 0)
+
+            self.rmw_fsm.set_start_state(IDLE)
 
             if self.banks == 1:
                 self.wire(self._ren_to_strg, (self._wen | self._ren) & self._read_gate)
