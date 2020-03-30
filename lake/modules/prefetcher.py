@@ -15,7 +15,7 @@ class Prefetcher(Generator):
                  fetch_width,
                  data_width,
                  max_prefetch):
-        super().__init__("prefetcher", debug=True)
+        super().__init__("prefetcher")
         # Capture to the object
         self.fetch_width = fetch_width
         self.data_width = data_width

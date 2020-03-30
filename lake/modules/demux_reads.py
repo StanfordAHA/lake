@@ -15,7 +15,7 @@ class DemuxReads(Generator):
 
         assert not (fetch_width & (fetch_width - 1)), "Memory width needs to be a power of 2"
 
-        super().__init__("demux_reads", debug=True)
+        super().__init__("demux_reads")
         # Absorb inputs
         self.fetch_width = fetch_width
         self.data_width = data_width

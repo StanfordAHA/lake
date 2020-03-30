@@ -14,7 +14,7 @@ class SyncGroups(Generator):
 
         assert not (fetch_width & (fetch_width - 1)), "Memory width needs to be a power of 2"
 
-        super().__init__("sync_groups", debug=True)
+        super().__init__("sync_groups")
         # Absorb inputs
         self.fetch_width = fetch_width
         self.data_width = data_width
@@ -130,7 +130,7 @@ class SyncGroups(Generator):
         # Valid requires gating based on sync_valid
         self.wire(self._ren_int, self._ren_in & self._local_gate_reduced)
         # Add Code
-        self.add_code(self.set_sync_agg)
+        self.add_code(self.set_sync_agg, unroll_for=True)
         self.add_code(self.set_sync_valid)
         for i in range(self.int_out_ports):
             self.add_code(self.set_sync_stage, idx=i)
@@ -140,8 +140,8 @@ class SyncGroups(Generator):
             self.add_code(self.set_rd_gates, idx=i)
         self.add_code(self.set_tpose)
         self.add_code(self.set_finished)
-        self.add_code(self.next_gate_mask)
-        self.add_code(self.set_grp_fin)
+        self.add_code(self.next_gate_mask, unroll_for=True)
+        self.add_code(self.set_grp_fin, unroll_for=True)
 
     @always_comb
     def set_sync_agg(self):

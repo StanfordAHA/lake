@@ -958,7 +958,5 @@ class LakeTop(Generator):
 if __name__ == "__main__":
     lake_dut = LakeTop()
     verilog(lake_dut, filename="lake_top.sv",
-            check_multiple_driver=False,
             optimize_if=False,
-            check_flip_flop_always_ff=False,
             additional_passes={"lift config regs": lift_config_reg})
