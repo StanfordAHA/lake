@@ -678,7 +678,10 @@ if __name__ == "__main__":
     use_sram_stub = 1
     fifo_mode = True
     mem_width = 64
-    lake_dut = LakeTop(mem_width=mem_width, sram_macro_info=tsmc_info, use_sram_stub=use_sram_stub, fifo_mode=fifo_mode)
+    lake_dut = LakeTop(mem_width=mem_width,
+                       sram_macro_info=tsmc_info,
+                       use_sram_stub=use_sram_stub,
+                       fifo_mode=fifo_mode)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg,
