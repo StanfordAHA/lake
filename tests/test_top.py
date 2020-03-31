@@ -221,7 +221,7 @@ def test_top(read_delay,
              data_width=16,
              mem_width=64,
              mem_depth=512,
-             banks=1,
+             banks=2,
              input_iterator_support=6,
              output_iterator_support=6,
              interconnect_input_ports=1,
@@ -690,5 +690,5 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     # test_identity_stream()
-    test_top(1)
+    test_top(0)
     # test_config_storage()
