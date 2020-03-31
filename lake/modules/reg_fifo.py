@@ -14,9 +14,10 @@ class RegFIFO(Generator):
                  depth,
                  parallel=False,
                  break_out_rd_ptr=False):
-        super().__init__("reg_fifo", debug=True)
+        super().__init__(f"reg_fifo_d{depth}_w{width_mult}")
 
-        self.data_width = data_width
+        self.data_width = self.parameter("data_width", 16)
+        self.data_width.value = data_width
         self.depth = depth
         self.width_mult = width_mult
         self.parallel = parallel
@@ -224,5 +225,6 @@ class RegFIFO(Generator):
 
 if __name__ == "__main__":
     dut = RegFIFO(data_width=16,
-                  depth=64)
+                  depth=64,
+                  width_mult=4)
     verilog(dut, filename="reg_fifo.sv")

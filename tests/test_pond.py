@@ -42,38 +42,38 @@ def test_pond(data_width=16,  # CGRA Params
     new_config = {}
 
     # Input addr ctrl
-    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 2
-    new_config["input_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["input_addr_ctrl_address_gen_0_ranges_0"] = 16
-    new_config["input_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["input_addr_ctrl_address_gen_0_ranges_1"] = 100
-    new_config["input_addr_ctrl_address_gen_0_strides_1"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 2
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 16
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 0
 
-    new_config["input_addr_ctrl_address_gen_1_dimensionality"] = 2
-    new_config["input_addr_ctrl_address_gen_1_starting_addr"] = 16
-    new_config["input_addr_ctrl_address_gen_1_ranges_0"] = 16
-    new_config["input_addr_ctrl_address_gen_1_strides_0"] = 0
-    new_config["input_addr_ctrl_address_gen_1_ranges_1"] = 100
-    new_config["input_addr_ctrl_address_gen_1_strides_1"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_dimensionality"] = 2
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_starting_addr"] = 16
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_0"] = 16
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_0"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_1"] = 100
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_1"] = 0
 
     # Output addr ctrl
-    new_config["output_addr_ctrl_address_gen_0_dimensionality"] = 2
-    new_config["output_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["output_addr_ctrl_address_gen_0_ranges_0"] = 16
-    new_config["output_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["output_addr_ctrl_address_gen_0_ranges_1"] = 100
-    new_config["output_addr_ctrl_address_gen_0_strides_1"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 2
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 16
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_1"] = 100
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 0
 
-    new_config["output_addr_ctrl_address_gen_1_dimensionality"] = 2
-    new_config["output_addr_ctrl_address_gen_1_starting_addr"] = 16
-    new_config["output_addr_ctrl_address_gen_1_ranges_0"] = 16
-    new_config["output_addr_ctrl_address_gen_1_strides_0"] = 0
-    new_config["output_addr_ctrl_address_gen_1_ranges_1"] = 100
-    new_config["output_addr_ctrl_address_gen_1_strides_1"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 16
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 16
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 100
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 0
 
     # These ports are desynched
-    new_config["sync_grp_sync_group_0"] = 1
-    new_config["sync_grp_sync_group_1"] = 2
+    new_config["strg_ub_sync_grp_sync_group_0"] = 1
+    new_config["strg_ub_sync_grp_sync_group_1"] = 2
 
     # Don't use the model - this is handwritten for now
 

@@ -21,7 +21,7 @@ class StorageConfigSeq(Generator):
                  fetch_width,
                  total_sets,
                  sets_per_macro):
-        super().__init__("storage_config_seq", debug=True)
+        super().__init__("storage_config_seq")
 
         self.data_width = data_width
         self.config_addr_width = config_addr_width

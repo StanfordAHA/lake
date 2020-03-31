@@ -15,7 +15,7 @@ class AggregationBuffer(Generator):
                  mem_width,
                  max_agg_schedule):
 
-        super().__init__("aggregation_buffer", debug=True)
+        super().__init__("aggregation_buffer")
 
         self.agg_height = agg_height
         self.data_width = data_width
@@ -165,7 +165,4 @@ if __name__ == "__main__":
                                mem_width=64,
                                max_agg_schedule=64)
 
-    verilog(db_dut,
-            filename="aggregation_buffer.sv",
-            check_active_high=False,
-            check_multiple_driver=False)
+    verilog(db_dut, filename="aggregation_buffer.sv")

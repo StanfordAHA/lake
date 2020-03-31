@@ -30,7 +30,7 @@ class AppCtrl(Generator):
         self._wen_in = self.input("wen_in", self.int_in_ports)
         self._ren_in = self.input("ren_in", self.int_out_ports)
 
-        self._tb_valid = self.intput("tb_valid", self.int_out_ports)
+        self._tb_valid = self.input("tb_valid", self.int_out_ports)
 
         self._valid_out_data = self.output("valid_out_data", self.int_out_ports)
         self._valid_out_stencil = self.output("valid_out_stencil", self.int_out_ports)
