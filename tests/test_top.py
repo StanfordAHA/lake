@@ -536,7 +536,6 @@ def test_top(read_delay,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
-@pytest.mark.skip
 def test_config_storage(data_width=16,
                         mem_width=64,
                         mem_depth=512,
@@ -774,5 +773,5 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     test_identity_stream()
-    test_top(0)
+    # test_top(0)
     # test_config_storage()
