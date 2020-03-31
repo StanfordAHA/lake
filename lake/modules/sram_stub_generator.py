@@ -26,6 +26,7 @@ class SRAMStubGenerator(Generator):
         # Clock and Reset          #
         ############################
         self._clk = self.clock("sram_clk")
+        self._clk.add_attribute(SRAMPortAttr("sram clk"))
 
         ############################
         # Inputs                   #

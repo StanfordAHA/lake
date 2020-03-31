@@ -1,6 +1,6 @@
 from kratos import *
 from lake.modules.passthru import *
-from lake.modules.sram_stub import SRAMStub
+from lake.modules.sram_wrapper import SRAMWrapper
 from lake.modules.strg_ub import StrgUB
 from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.modules.register_file import RegisterFile
@@ -673,9 +673,10 @@ class LakeTop(Generator):
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = 1
+    use_sram_stub = 0
     fifo_mode = True
-    lake_dut = LakeTop(sram_macro_info=tsmc_info, use_sram_stub=use_sram_stub, fifo_mode=fifo_mode)
+    mem_width = 64
+    lake_dut = LakeTop(mem_width=mem_width, sram_macro_info=tsmc_info, use_sram_stub=use_sram_stub, fifo_mode=fifo_mode)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg,
