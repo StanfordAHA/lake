@@ -51,7 +51,8 @@ class LakeTop(Generator):
                  config_data_width=16,
                  config_addr_width=8,
                  remove_tb=False,
-                 fifo_mode=True):
+                 fifo_mode=True,
+                 add_clk_enable=True):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -943,6 +944,12 @@ class LakeTop(Generator):
         self.add_code(self.transpose_acks)
         self.add_code(self.reduce_acks)
 
+        ########################
+        ##### CLOCK ENABLE #####
+        ########################
+        if add_clk_enable:
+            self.clock_en("clk_en")
+
     @always_comb
     def transpose_acks(self):
         for i in range(self.interconnect_output_ports):
@@ -959,4 +966,5 @@ if __name__ == "__main__":
     lake_dut = LakeTop()
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
-            additional_passes={"lift config regs": lift_config_reg})
+            additional_passes={"lift config regs": lift_config_reg,
+                               "insert_clock_enable": kts.passes.auto_insert_clock_enable})
