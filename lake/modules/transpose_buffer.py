@@ -22,7 +22,7 @@ class TransposeBuffer(Generator):
                  max_range,
                  max_stride,
                  tb_iterator_support):
-        super().__init__("transpose_buffer", True)
+        super().__init__("transpose_buffer")
 
         #########################
         # GENERATION PARAMETERS #

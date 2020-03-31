@@ -13,7 +13,7 @@ class AddrGen(Generator):
                  iterator_support,
                  address_width):
 
-        super().__init__("addr_gen_" + str(iterator_support), debug=True)
+        super().__init__(f"addr_gen_{iterator_support}")
 
         self.mem_depth = mem_depth
         self.mem_addr_width = clog2(self.mem_depth)
@@ -134,4 +134,4 @@ class AddrGen(Generator):
 
 if __name__ == "__main__":
     db_dut = AddrGen(mem_depth=512, iterator_support=6, address_width=16)
-    verilog(db_dut, filename="addr_gen.sv", check_active_high=False)
+    verilog(db_dut, filename="addr_gen.sv")

@@ -23,7 +23,7 @@ class TransposeBufferAggregation(Generator):
                  max_range,
                  max_stride,
                  tb_iterator_support):
-        super().__init__("transpose_buffer_aggregation", True)
+        super().__init__("transpose_buffer_aggregation")
 
         # generation parameters
         self.word_width = word_width

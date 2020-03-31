@@ -2,6 +2,7 @@ from kratos import *
 from lake.modules.aggregator import Aggregator
 from lake.modules.addr_gen import AddrGen
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.passes.passes import lift_config_reg
 
 
 class OutputAddrCtrl(Generator):
@@ -14,7 +15,7 @@ class OutputAddrCtrl(Generator):
                  banks,
                  iterator_support,
                  address_width):
-        super().__init__("output_addr_ctrl", debug=True)
+        super().__init__("output_addr_ctrl")
 
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_depth = mem_depth
@@ -113,9 +114,12 @@ class OutputAddrCtrl(Generator):
 
 
 if __name__ == "__main__":
+    # lifting ports up
+
     db_dut = OutputAddrCtrl(interconnect_output_ports=2,
                             mem_depth=512,
                             banks=2,
                             iterator_support=6,
                             address_width=16)
-    verilog(db_dut, filename="output_addr_ctrl.sv", check_multiple_driver=False)
+    verilog(db_dut, filename="output_addr_ctrl.sv",
+            additional_passes={"lift config regs": lift_config_reg})
