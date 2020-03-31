@@ -8,56 +8,51 @@ from lake.passes.passes import lift_config_reg
 from lake.models.lake_top_model import LakeTopModel
 from lake.modules.strg_fifo import StrgFIFO
 from lake.models.reg_fifo_model import RegFIFOModel
+from lake.models.sram_model import SRAMModel
 
 
 @pytest.mark.parametrize("mem_width", [16, 64])
 @pytest.mark.parametrize("banks", [1, 2])
-@pytest.mark.parametrize("depth", [16, 100])
-def test_storage_fifo(mem_width,  # CGRA Params
-                      banks,
-                      depth,
-                      data_width=16,
-                      mem_depth=512,
-                      input_iterator_support=6,  # Addr Controllers
-                      output_iterator_support=6,
-                      interconnect_input_ports=1,  # Connection to int
-                      interconnect_output_ports=1,
-                      mem_input_ports=1,
-                      mem_output_ports=1,
-                      use_sram_stub=1,
-                      read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                      rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                      agg_height=4,
-                      max_agg_schedule=16,
-                      input_max_port_sched=16,
-                      output_max_port_sched=16,
-                      align_input=1,
-                      max_line_length=128,
-                      max_tb_height=1,
-                      tb_range_max=32,
-                      tb_sched_max=32,
-                      max_tb_stride=15,
-                      num_tb=1,
-                      tb_iterator_support=2,
-                      multiwrite=1,
-                      max_prefetch=64,
-                      config_data_width=16,
-                      config_addr_width=8,
-                      remove_tb=False,
-                      fifo_mode=True):
+def test_storage_ram(mem_width,  # CGRA Params
+                     banks,
+                     data_width=16,
+                     mem_depth=512,
+                     input_iterator_support=6,  # Addr Controllers
+                     output_iterator_support=6,
+                     interconnect_input_ports=1,  # Connection to int
+                     interconnect_output_ports=1,
+                     mem_input_ports=1,
+                     mem_output_ports=1,
+                     use_sram_stub=1,
+                     read_delay=1,  # Cycle delay in read (SRAM vs Register File)
+                     rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                     agg_height=4,
+                     max_agg_schedule=16,
+                     input_max_port_sched=16,
+                     output_max_port_sched=16,
+                     align_input=1,
+                     max_line_length=128,
+                     max_tb_height=1,
+                     tb_range_max=32,
+                     tb_sched_max=32,
+                     max_tb_stride=15,
+                     num_tb=1,
+                     tb_iterator_support=2,
+                     multiwrite=1,
+                     max_prefetch=64,
+                     config_data_width=16,
+                     config_addr_width=8,
+                     remove_tb=False,
+                     fifo_mode=True):
 
     fw_int = int(mem_width / data_width)
 
-    if banks == 1 and fw_int == 1:
-        return
-
     new_config = {}
-    new_config["fifo_ctrl_fifo_depth"] = depth
-    new_config["mode"] = 1
+    new_config["mode"] = 2
 
-    model_rf = RegFIFOModel(data_width=data_width,
-                            width_mult=fw_int,
-                            depth=depth)
+    sram_model = SRAMModel(data_width=data_width,
+                           width_mult=fw_int,
+                           depth=mem_depth)
 
     ### DUT
     lt_dut = LakeTop(data_width=data_width,
@@ -115,35 +110,48 @@ def test_storage_fifo(mem_width,  # CGRA Params
     tester.step(2)
 
     data_in = 0
-    push = 1
-    pop = 0
+    addr_in = 0
 
-    push_cnt = 0
-    pop_cnt = 0
+    write = 0
+    read = 0
 
-    for i in range(2000):
+    prev_wr = 0
+    prev_rd = 0
+
+    stall = fw_int > 1
+
+    for i in range(5000):
         data_in = rand.randint(0, 2 ** data_width - 1)
-        push = rand.randint(0, 1)
-        pop = rand.randint(0, 1)
+        write = rand.randint(0, 1)
+        read = rand.randint(0, 1)
+        addr_in = rand.randint(0, 64)
+
+        if prev_wr == 1 and stall:
+            write = 0
+            read = 0
+            prev_wr = 0
+
+        if write:
+            prev_wr = 1
+            read = 0
 
         tester.circuit.data_in = data_in
-        tester.circuit.wen = push
-        tester.circuit.ren = pop
-        (model_out, model_val, model_empty, model_full) = model_rf.interact(push, pop, [data_in])
-
-        push_cnt = push_cnt + push
-        pop_cnt = pop_cnt + pop
+        tester.circuit.wen = write
+        tester.circuit.ren = read
+        tester.circuit.addr_in = addr_in
+        model_out = sram_model.interact(wen=write, cen=(write | read), addr=addr_in, data=[data_in])
 
         tester.eval()
 
-        tester.circuit.empty.expect(model_empty)
-        tester.circuit.full.expect(model_full)
-        # Now check the outputs
-        tester.circuit.valid_out.expect(model_val)
-        if model_val:
+        # tester.circuit.empty.expect(model_empty)
+        # tester.circuit.full.expect(model_full)
+        # # Now check the outputs
+        tester.circuit.valid_out.expect(prev_rd)
+        if prev_rd:
             tester.circuit.data_out.expect(model_out[0])
 
         tester.step(2)
+        prev_rd = read
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
@@ -153,6 +161,5 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
 
 if __name__ == "__main__":
-    test_storage_fifo(mem_width=32,
-                      banks=1,
-                      depth=100)
+    test_storage_ram(mem_width=16,
+                     banks=2)
