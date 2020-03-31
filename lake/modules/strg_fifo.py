@@ -22,7 +22,7 @@ class StrgFIFO(Generator):
                  rw_same_cycle=False,
                  read_delay=1,
                  addr_width=9):
-        super().__init__("strg_fifo", debug=True)
+        super().__init__("strg_fifo")
 
         # Generation parameters
         self.banks = banks

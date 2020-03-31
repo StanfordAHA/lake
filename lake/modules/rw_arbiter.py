@@ -29,7 +29,7 @@ class RWArbiter(Generator):
 
         assert not (memory_depth & (memory_depth - 1)), "Memory depth needs to be a power of 2"
 
-        super().__init__("rw_arbiter", debug=True)
+        super().__init__("rw_arbiter")
         # Absorb inputs
         self.fetch_width = fetch_width
         self.data_width = data_width
