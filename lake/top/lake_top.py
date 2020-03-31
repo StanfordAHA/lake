@@ -151,8 +151,8 @@ class LakeTop(Generator):
             self.address_width = clog2(mem_depth)  # + clog2(banks)
 
         # Add tile enable!
-        # self._tile_en = self.input("tile_en", 1)
-        # self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        self._tile_en = self.input("tile_en", 1)
+        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
         # either normal or fifo mode rn...
         self.num_modes = 3
         self._mode = self.input("mode", max(1, clog2(self.num_modes)))
