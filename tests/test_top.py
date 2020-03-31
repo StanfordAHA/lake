@@ -536,6 +536,7 @@ def test_top(read_delay,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
+
 def test_config_storage(data_width=16,
                         mem_width=64,
                         mem_depth=512,
