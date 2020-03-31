@@ -201,8 +201,12 @@ class LakeTopModel(Model):
     def set_config(self, new_config):
         # Configure top level
         for key, config_val in new_config.items():
-            assert key in self.config, f"{key} is not in the configuration..."
-            self.config[key] = config_val
+            edited_key = key
+            # Hack for now to not need to reconfigure everything
+            if "strg_ub_" in key:
+                edited_key = key[8:]
+            assert edited_key in self.config, f"{edited_key} is not in the configuration..."
+            self.config[edited_key] = config_val
 
         # Configure children
 

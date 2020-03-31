@@ -58,7 +58,6 @@ def test_agg_magma(word_width=16, mem_word_width=4):
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "agg"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
