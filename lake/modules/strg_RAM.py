@@ -204,7 +204,7 @@ class StrgRAM(Generator):
             READ.output(self._read_gate, 1)
 
             # In MODIFY we always go back to idle
-            MODIFY.next(IDLE, None)  
+            MODIFY.next(IDLE, const(1, 1))  
             MODIFY.output(self._ready, 0)
             MODIFY.output(self._valid_out, 0)
             MODIFY.output(self._data_out, 0)

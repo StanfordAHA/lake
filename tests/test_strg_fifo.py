@@ -154,5 +154,5 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
 if __name__ == "__main__":
     test_storage_fifo(mem_width=32,
-                      banks=2,
+                      banks=1,
                       depth=100)
