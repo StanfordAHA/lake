@@ -492,27 +492,29 @@ class LakeTop(Generator):
         self._mem_wen_cfg = self.var("mem_wen_cfg", self.banks)
 
         self._mem_cen_dp = self.var("mem_cen_dp", self.mem_output_ports,
-                                          size=self.banks,
-                                          explicit_array=True,
-                                          packed=True)
+                                    size=self.banks,
+                                    explicit_array=True,
+                                    packed=True)
+
         self._mem_wen_dp = self.var("mem_wen_dp", self.mem_input_ports,
-                                          size=self.banks,
-                                          explicit_array=True,
-                                          packed=True)
+                                    size=self.banks,
+                                    explicit_array=True,
+                                    packed=True)
 
         self._mem_cen_ub = self.var("mem_cen_ub", self.mem_output_ports,
-                                          size=self.banks,
-                                          explicit_array=True,
-                                          packed=True)
+                                    size=self.banks,
+                                    explicit_array=True,
+                                    packed=True)
         self._mem_wen_ub = self.var("mem_wen_ub", self.mem_input_ports,
-                                          size=self.banks,
-                                          explicit_array=True,
-                                          packed=True)
+                                    size=self.banks,
+                                    explicit_array=True,
+                                    packed=True)
 
         self._mem_cen_in = self.var("mem_cen_in", self.mem_output_ports,
                                     size=self.banks,
                                     explicit_array=True,
                                     packed=True)
+
         self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
                                     size=self.banks,
                                     explicit_array=True,
@@ -637,91 +639,92 @@ class LakeTop(Generator):
         if self.read_delay == 1:
 
             self._all_data_to_mem = self.var("all_data_to_mem", self.data_width,
-                                                size=(self.num_modes,
-                                                    self.banks,
-                                                    self.fw_int),
-                                                explicit_array=True,
-                                                packed=True)
+                                             size=(self.num_modes,
+                                                   self.banks,
+                                                   self.fw_int),
+                                             explicit_array=True,
+                                             packed=True)
             self._all_wen_to_mem = self.var("all_wen_to_mem", self.mem_input_ports,
-                                            size=(self.num_modes, 
-                                                    self.banks),
+                                            size=(self.num_modes,
+                                                  self.banks),
                                             explicit_array=True,
                                             packed=True)
             self._all_ren_to_mem = self.var("all_ren_to_mem", self.mem_output_ports,
                                             size=(self.num_modes,
-                                                    self.banks),
+                                                  self.banks),
                                             explicit_array=True,
                                             packed=True)
 
             self._all_addr_to_mem = self.var("all_addr_to_mem", self.address_width,
-                                                size=(self.num_modes,
-                                                    self.banks),
-                                                explicit_array=True,
-                                                packed=True)
-
+                                             size=(self.num_modes,
+                                                   self.banks),
+                                             explicit_array=True,
+                                             packed=True)
 
             self._fifo_data_out = self.var("fifo_data_out", self.data_width)
             self._fifo_valid_out = self.var("fifo_valid_out", 1)
             self._fifo_empty = self.var("fifo_empty", 1)
             self._fifo_full = self.var("fifo_full", 1)
             self._fifo_data_to_mem = self.var("fifo_data_to_mem", self.data_width,
-                                                size=(self.banks,
+                                              size=(self.banks,
                                                     self.fw_int),
-                                                explicit_array=True,
-                                                packed=True)
+                                              explicit_array=True,
+                                              packed=True)
             self._fifo_wen_to_mem = self.var("fifo_wen_to_mem", self.banks)
             self._fifo_ren_to_mem = self.var("fifo_ren_to_mem", self.banks)
 
             self._fifo_addr_to_mem = self.var("fifo_addr_to_mem", self.address_width,
-                                                size=self.banks,
-                                                explicit_array=True,
-                                                packed=True)
+                                              size=self.banks,
+                                              explicit_array=True,
+                                              packed=True)
 
             self._sram_data_out = self.var("sram_data_out", self.data_width)
             self._sram_valid_out = self.var("sram_valid_out", 1)
             self._sram_empty = self.var("sram_empty", 1)
             self._sram_full = self.var("sram_full", 1)
             self._sram_data_to_mem = self.var("sram_data_to_mem", self.data_width,
-                                                size=(self.banks,
+                                              size=(self.banks,
                                                     self.fw_int),
-                                                explicit_array=True,
-                                                packed=True)
+                                              explicit_array=True,
+                                              packed=True)
             self._sram_wen_to_mem = self.var("sram_wen_to_mem", self.banks)
             self._sram_ren_to_mem = self.var("sram_ren_to_mem", self.banks)
 
             self._sram_addr_to_mem = self.var("sram_addr_to_mem", self.address_width,
-                                                size=self.banks,
-                                                explicit_array=True,
-                                                packed=True)
+                                              size=self.banks,
+                                              explicit_array=True,
+                                              packed=True)
 
-            self._sram_ready_out = self.output("sram_ready_out", 1)
+            if self.fw_int > 1:
+                self._sram_ready_out = self.output("sram_ready_out", 1)
 
             strg_ram = StrgRAM(data_width=self.data_width,
-                                banks=self.banks,
-                                memory_width=self.mem_width,
-                                memory_depth=self.mem_depth,
-                                rw_same_cycle=self.rw_same_cycle,
-                                read_delay=self.read_delay,
-                                addr_width=16,
-                                prioritize_write=True)
+                               banks=self.banks,
+                               memory_width=self.mem_width,
+                               memory_depth=self.mem_depth,
+                               rw_same_cycle=self.rw_same_cycle,
+                               read_delay=self.read_delay,
+                               addr_width=16,
+                               prioritize_write=True)
 
             self.add_child("sram_ctrl", strg_ram,
-                            clk=self._gclk,
-                            rst_n=self._rst_n,
-                            wen=self._wen[0],
-                            ren=self._ren[0],
-                            data_in=self._data_in[0],
-                            wr_addr_in=self._addr_in[0],
-                            rd_addr_in=self._addr_in[0],
-                            data_from_strg=self._mem_data_out,
-                            data_out=self._sram_data_out,
-                            valid_out=self._sram_valid_out,
-                            data_to_strg=self._sram_data_to_mem,
-                            wen_to_strg=self._sram_wen_to_mem,
-                            ren_to_strg=self._sram_ren_to_mem,
-                            addr_out=self._sram_addr_to_mem,
-                            ready=self._sram_ready_out)
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           wen=self._wen[0],
+                           ren=self._ren[0],
+                           data_in=self._data_in[0],
+                           wr_addr_in=self._addr_in[0],
+                           rd_addr_in=self._addr_in[0],
+                           data_from_strg=self._mem_data_out,
+                           data_out=self._sram_data_out,
+                           valid_out=self._sram_valid_out,
+                           data_to_strg=self._sram_data_to_mem,
+                           wen_to_strg=self._sram_wen_to_mem,
+                           ren_to_strg=self._sram_ren_to_mem,
+                           addr_out=self._sram_addr_to_mem)
 
+            if self.fw_int > 1:
+                self.wire(self._sram_ready_out, strg_ram.ports.ready)
 
             # If we have the fifo mode enabled -
             # Instantiate a FIFO first off...
@@ -732,35 +735,35 @@ class LakeTop(Generator):
                             read_delay=self.read_delay,
                             addr_width=self.address_width)
             self.add_child("fifo_ctrl", stfo,
-                            clk=self._gclk,
-                            rst_n=self._rst_n,
-                            data_in=self._data_in[0],
-                            push=self._wen[0],
-                            pop=self._ren[0],
-                            data_from_strg=self._mem_data_out,
-                            data_out=self._fifo_data_out,
-                            valid_out=self._fifo_valid_out,
-                            empty=self._fifo_empty,
-                            full=self._fifo_full,
-                            data_to_strg=self._fifo_data_to_mem,
-                            wen_to_strg=self._fifo_wen_to_mem,
-                            ren_to_strg=self._fifo_ren_to_mem,
-                            addr_out=self._fifo_addr_to_mem)
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           data_in=self._data_in[0],
+                           push=self._wen[0],
+                           pop=self._ren[0],
+                           data_from_strg=self._mem_data_out,
+                           data_out=self._fifo_data_out,
+                           valid_out=self._fifo_valid_out,
+                           empty=self._fifo_empty,
+                           full=self._fifo_full,
+                           data_to_strg=self._fifo_data_to_mem,
+                           wen_to_strg=self._fifo_wen_to_mem,
+                           ren_to_strg=self._fifo_ren_to_mem,
+                           addr_out=self._fifo_addr_to_mem)
 
             self.wire(self._all_data_to_mem[0], self._mem_data_ub)
-            self.wire(self._all_wen_to_mem[0], self._mem_wen_ub) 
+            self.wire(self._all_wen_to_mem[0], self._mem_wen_ub)
             self.wire(self._all_ren_to_mem[0], self._mem_cen_ub)
             self.wire(self._all_addr_to_mem[0], self._mem_addr_ub)
 
             self.wire(self._all_data_to_mem[1], self._fifo_data_to_mem)
             for i in range(self.banks):
-                self.wire(self._all_wen_to_mem[1][i], self._fifo_wen_to_mem[i]) 
+                self.wire(self._all_wen_to_mem[1][i], self._fifo_wen_to_mem[i])
                 self.wire(self._all_ren_to_mem[1][i], self._fifo_ren_to_mem[i])
                 self.wire(self._all_addr_to_mem[1][i], self._fifo_addr_to_mem[i])
 
             self.wire(self._all_data_to_mem[2], self._sram_data_to_mem)
             for i in range(self.banks):
-                self.wire(self._all_wen_to_mem[2][i], self._sram_wen_to_mem[i]) 
+                self.wire(self._all_wen_to_mem[2][i], self._sram_wen_to_mem[i])
                 self.wire(self._all_ren_to_mem[2][i], self._sram_ren_to_mem[i])
                 self.wire(self._all_addr_to_mem[2][i], self._sram_addr_to_mem[i])
 
@@ -772,20 +775,20 @@ class LakeTop(Generator):
 
             for i in range(self.banks):
                 mbank = SRAMStub(data_width=self.data_width,
-                                    width_mult=self.fw_int,
-                                    depth=self.mem_depth)
+                                 width_mult=self.fw_int,
+                                 depth=self.mem_depth)
                 self.add_child(f"mem_{i}", mbank,
-                                clk=self._gclk,
-                                data_in=self._mem_data_in[i],
-                                addr=self._mem_addr_in[i],
-                                cen=self._mem_cen_in[i],
-                                wen=self._mem_wen_in[i],
-                                data_out=self._mem_data_out[i])
+                               clk=self._gclk,
+                               data_in=self._mem_data_in[i],
+                               addr=self._mem_addr_in[i],
+                               cen=self._mem_cen_in[i],
+                               wen=self._mem_wen_in[i],
+                               data_out=self._mem_data_out[i])
 
         else:
 
             self.wire(self._mem_data_dp, self._mem_data_ub)
-            self.wire(self._mem_wen_dp, self._mem_wen_ub) 
+            self.wire(self._mem_wen_dp, self._mem_wen_ub)
             self.wire(self._mem_cen_dp, self._mem_cen_ub)
             if self.rw_same_cycle:
                 self.wire(self._wr_mem_addr_dp, self._wr_mem_addr_ub)
@@ -994,9 +997,9 @@ class LakeTop(Generator):
 
                 if self.fifo_mode:
                     self._all_data_out = self.var("all_data_out", self.data_width,
-                                              size=self.num_modes,
-                                              explicit_array=True,
-                                              packed=True)
+                                                  size=self.num_modes,
+                                                  explicit_array=True,
+                                                  packed=True)
                     self._all_valid_out = self.var("all_valid_out", self.num_modes)
 
                     self.wire(self._all_data_out[0], self._tb_data_out[0])

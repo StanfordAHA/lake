@@ -33,9 +33,9 @@ class StrgFIFO(Generator):
         self.addr_width = addr_width
         self.fw_int = int(self.memory_width / self.data_width)
 
-        assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
-            "Can't sustain throughput with this setup. Need potential bandwidth for " + \
-            "1 write and 1 read in a cycle - try using more banks or a macro that supports 1R1W"
+        # assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
+        #     "Can't sustain throughput with this setup. Need potential bandwidth for " + \
+        #     "1 write and 1 read in a cycle - try using more banks or a macro that supports 1R1W"
 
         # Clock and Reset
         self._clk = self.clock("clk")
