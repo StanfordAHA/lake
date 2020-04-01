@@ -4,7 +4,6 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.passes.passes import lift_config_reg
 from lake.models.lake_top_model import LakeTopModel
 
 
@@ -171,9 +170,6 @@ def test_ports3_stride1(read_delay=1,
                      max_prefetch=max_prefetch,
                      read_delay=read_delay,
                      fifo_mode=banks > 1)
-
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
