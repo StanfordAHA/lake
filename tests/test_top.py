@@ -81,16 +81,14 @@ def test_sram_port_names_change(mem_width,
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
 
-    change_sram_port_names(use_sram_stub,
-                           sram_macro_info,
-                           1,
-                           lt_dut.internal_generator)
+    change_sram_port_pass = change_sram_port_names(use_sram_stub, sram_macro_info)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
                                   optimize_if=False,
-                                  check_flip_flop_always_ff=False)
+                                  check_flip_flop_always_ff=False,
+                                  additional_passes={"change_sran_port": change_sram_port_pass})
 
 
 def test_identity_stream(data_width=16,

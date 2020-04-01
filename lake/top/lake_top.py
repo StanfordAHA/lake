@@ -48,7 +48,8 @@ class LakeTop(Generator):
                  config_addr_width=8,
                  remove_tb=False,
                  fifo_mode=True,
-                 add_clk_enable=False):
+                 add_clk_enable=False,
+                 add_flush=False):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -674,25 +675,25 @@ class LakeTop(Generator):
         if add_clk_enable:
             self.clock_en("clk_en")
 
+        if add_flush:
+            self.add_attribute("sync-reset=flush")
+
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = 1
+    use_sram_stub = True
     fifo_mode = True
     mem_width = 64
     lake_dut = LakeTop(mem_width=mem_width,
                        sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,
-                       fifo_mode=fifo_mode)
+                       fifo_mode=fifo_mode,
+                       add_clk_enable=True,
+                       add_flush=True)
+    sram_port_pass = change_sram_port_names(use_sram_stub=True, sram_macro_info=tsmc_info)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg,
-                               "change sram port names": change_sram_port_names(
-                                   use_sram_stub,
-                                   tsmc_info,
-                                   0,
-                                   0)})
-    # verilog(lake_dut, filename="lake_top.sv",
-    #         optimize_if=False,
-    #         additional_passes={"lift config regs": lift_config_reg,
-    #                            "insert_clock_enable": kts.passes.auto_insert_clock_enable})
+                               "change sram port names": sram_port_pass,
+                               "insert_clock_enable": kts.passes.auto_insert_clock_enable,
+                               "insert_flush": kts.passes.auto_insert_sync_reset})
