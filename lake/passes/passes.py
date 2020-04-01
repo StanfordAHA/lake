@@ -55,11 +55,7 @@ def lift_config_reg(generator):
 #       sram macro and should replace port names accordingly
 #   - sram_macro_info: information about sram macro, including port names to
 #       be replaced
-#   - testing: boolean indicating whether we are generating verilog (in which
-#       case the generator is automatically provided) or whether we are testing
-#       (and need to specify the generator explicitly)
-#   - generator: explicit specification of generator if needed
-def change_sram_port_names(use_sram_stub, sram_macro_info, testing, generator):
+def change_sram_port_names(use_sram_stub, sram_macro_info):
 
     def change_sram_port_names_wrapper(generator):
 
@@ -94,7 +90,4 @@ def change_sram_port_names(use_sram_stub, sram_macro_info, testing, generator):
         v = SRAMPortNames(use_sram_stub, sram_macro_info)
         v.visit_root(generator)
 
-    if testing:
-        return change_sram_port_names_wrapper(generator)
-    else:
-        return change_sram_port_names_wrapper
+    return change_sram_port_names_wrapper
