@@ -4,8 +4,93 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.passes.passes import lift_config_reg
+from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
+from utils.sram_macro import SRAMMacroInfo
+
+
+@pytest.mark.parametrize("mem_width", [16, 64])
+@pytest.mark.parametrize("use_sram_stub", [0, 1])
+@pytest.mark.parametrize("fifo_mode", [0, 1])
+def test_sram_port_names_change(mem_width,
+                                use_sram_stub,
+                                fifo_mode,
+                                data_width=16,
+                                mem_depth=512,
+                                banks=2,
+                                input_iterator_support=6,
+                                output_iterator_support=6,
+                                interconnect_input_ports=1,
+                                interconnect_output_ports=3,
+                                mem_input_ports=1,
+                                mem_output_ports=1,
+                                sram_macro_info=SRAMMacroInfo(),
+                                read_delay=1,
+                                rw_same_cycle=False,
+                                agg_height=8,
+                                max_agg_schedule=64,
+                                input_max_port_sched=64,
+                                output_max_port_sched=64,
+                                align_input=1,
+                                max_line_length=256,
+                                max_tb_height=1,
+                                tb_range_max=64,
+                                tb_sched_max=64,
+                                max_tb_stride=15,
+                                num_tb=1,
+                                tb_iterator_support=2,
+                                multiwrite=1,
+                                max_prefetch=64,
+                                config_data_width=16,
+                                config_addr_width=8,
+                                remove_tb=False):
+
+    lt_dut = LakeTop(data_width=data_width,
+                     mem_width=mem_width,
+                     mem_depth=mem_depth,
+                     banks=banks,
+                     input_iterator_support=input_iterator_support,
+                     output_iterator_support=output_iterator_support,
+                     interconnect_input_ports=interconnect_input_ports,
+                     interconnect_output_ports=interconnect_output_ports,
+                     mem_input_ports=mem_input_ports,
+                     mem_output_ports=mem_output_ports,
+                     use_sram_stub=use_sram_stub,
+                     sram_macro_info=sram_macro_info,
+                     read_delay=read_delay,
+                     rw_same_cycle=rw_same_cycle,
+                     agg_height=agg_height,
+                     max_agg_schedule=max_agg_schedule,
+                     input_max_port_sched=input_max_port_sched,
+                     output_max_port_sched=output_max_port_sched,
+                     align_input=align_input,
+                     max_line_length=max_line_length,
+                     max_tb_height=max_tb_height,
+                     tb_range_max=tb_range_max,
+                     tb_sched_max=tb_sched_max,
+                     max_tb_stride=max_tb_stride,
+                     num_tb=num_tb,
+                     tb_iterator_support=tb_iterator_support,
+                     multiwrite=multiwrite,
+                     max_prefetch=max_prefetch,
+                     config_data_width=config_data_width,
+                     config_addr_width=config_addr_width,
+                     remove_tb=remove_tb,
+                     fifo_mode=fifo_mode)
+
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
+
+    change_sram_port_names(use_sram_stub,
+                           sram_macro_info,
+                           1,
+                           lt_dut.internal_generator)
+
+    magma_dut = kts.util.to_magma(lt_dut,
+                                  flatten_array=True,
+                                  check_multiple_driver=False,
+                                  optimize_if=False,
+                                  check_flip_flop_always_ff=False)
 
 
 def test_identity_stream(data_width=16,
@@ -689,6 +774,6 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    # test_identity_stream()
+    test_identity_stream()
     # test_top(0)
-    test_config_storage()
+    # test_config_storage()
