@@ -455,3 +455,7 @@ class TransposeBuffer(Generator):
                 self.rdy_to_arbiter = 1
         elif self.ack_in:
             self.rdy_to_arbiter = 0
+
+if __name__ == "__main__":
+    dut = TransposeBuffer(16, 4, 1, 1, 9, 5, 2)
+    verilog(dut, filename="transpose_buffer.sv")
