@@ -391,6 +391,14 @@ def test_top(read_delay,
     tester.circuit.strg_ub_tba_1_tb_0_tb_height = 1
     tester.circuit.strg_ub_tba_2_tb_0_tb_height = 1
 
+    tester.circuit.strg_ub_app_ctrl_input_port_0 = 0
+    tester.circuit.strg_ub_app_ctrl_input_port_1 = 0
+    tester.circuit.strg_ub_app_ctrl_input_port_2 = 0
+    tester.circuit.strg_ub_app_ctrl_read_depth_0 = 196
+    tester.circuit.strg_ub_app_ctrl_read_depth_1 = 196
+    tester.circuit.strg_ub_app_ctrl_read_depth_2 = 196
+    tester.circuit.strg_ub_app_ctrl_write_depth = 196
+
     rand.seed(0)
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
@@ -401,9 +409,10 @@ def test_top(read_delay,
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 1
+    ren = 1
+    # ren = [0] * interconnect_output_ports
     ren_en = [0] * interconnect_output_ports
     addr_in = 0
-    output_en = 0
 
     for i in range(300):
         # Rand data
@@ -412,7 +421,8 @@ def test_top(read_delay,
             data_in[j] += 1
             valid_in[j] = 1
 
-        output_en = rand.randint(0, 1)
+        # output_en = rand.randint(0, 1)
+        # ren = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -420,13 +430,18 @@ def test_top(read_delay,
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
-        tester.circuit.addr_in = addr_in
+
+        if interconnect_output_ports == 1:
+            tester.circuit.ren = ren
+        else:
+            for j in range(interconnect_output_ports):
+                tester.circuit.ren[j] = ren
+
         # tester.circuit.wen_en = wen_en
         # for j in range(interconnect_output_ports):
         # ren_en[j] = 1
         # tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
-        tester.circuit.output_en = output_en
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, ren)
 
         if i > 200:
             for j in range(interconnect_output_ports):

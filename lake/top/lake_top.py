@@ -414,8 +414,6 @@ class LakeTop(Generator):
                                             packed=True,
                                             explicit_array=True)
 
-        self._ub_output_en = self.input("output_en", 1)
-
         self.add_child("strg_ub", strg_ub,
                        # clk + rst
                        clk=self._gclk,
@@ -424,7 +422,6 @@ class LakeTop(Generator):
                        data_in=self._data_in,
                        wen_in=self._wen,
                        ren_in=self._ren,
-                       output_en=self._ub_output_en,
                        data_from_strg=self._mem_data_out,
                        # outputs
                        data_out=self._ub_data_out,

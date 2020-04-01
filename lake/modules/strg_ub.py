@@ -114,8 +114,6 @@ class StrgUB(Generator):
                                           packed=True,
                                           explicit_array=True)
 
-        self._output_en = self.input("output_en", 1)
-
         self._data_out = self.output("data_out",
                                      self.data_width,
                                      size=self.interconnect_output_ports,
@@ -611,7 +609,7 @@ class StrgUB(Generator):
                                    tb_to_interconnect_data=self._tb_data_out[i],
                                    tb_to_interconnect_valid=self._tb_valid_out[i],
                                    tb_arbiter_rdy=self._ready_tba[i],
-                                   tba_ren=self._output_en)
+                                   tba_ren=self._ren[i])
 
                 for i in range(self.interconnect_output_ports):
                     self.wire(self._data_out[i], self._tb_data_out[i])
