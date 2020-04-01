@@ -55,27 +55,19 @@ class TBModel(Model):
         self.index_inner = 0
         self.index_outer = 0
         self.curr_out_start = 0
-        self.this_iter_curr_out_start = 0
         self.output_valid = 0
         self.pause_tb = 1
         self.pause_output = 0
         self.rdy_to_arbiter = 1
-        self.prev_output_valid = 0
         self.start_data = 0
         self.old_start_data = 0
-        self.prev_rdy_to_arbiter = 1
-        self.rdy2 = 1
-        self.prev_rdy_to_arbiter2 = 1
-        self.prev_pause_output = 1
-        self.prev_pause_tb = 1
-        self.started = 0
         self.output_index_abs = 0
-        self.prev_started = 0
         self.prev_out2 = 1
         self.prev_output_valid2 = 0
         self.prev_col_pixels2 = []
         self.prev_col_pixels3 = []
         self.output_valid_prior = 0
+        self.on_next_line = 0
 
     def set_config(self, new_config):
         for key, config_val in new_config.items():
@@ -125,16 +117,9 @@ class TBModel(Model):
         self.prev_rdy_to_arbiter2 = 1
         self.prev_pause_output = 1
         self.prev_pause_tb = 1
-        self.started = 0
         self.output_index_abs = 0
-        self.prev_started = 0
-        self.prev_out2 = 1
-        self.prev_output_valid2 = 0
-        self.prev_col_pixels2 = []
-        self.prev_col_pixels3 = []
         self.output_valid_prior = 0
-        self.top_col_pixels = []
-        self.top_output_valid = 0
+        self.on_next_line = 0
 
     def get_col_pixels(self):
         return self.col_pixels
@@ -176,6 +161,7 @@ class TBModel(Model):
         start_data_curr = self.start_data
         old_start_data_curr = self.old_start_data
         rdy_to_arbiter_curr = self.rdy_to_arbiter
+        on_next_line_curr = self.on_next_line
         tb_curr = self.tb.copy()
 
         # Perform combinational updates...
@@ -282,11 +268,39 @@ class TBModel(Model):
             self.output_valid = prev_output_valid_curr
 
             # Set out buf index
-            if (self.output_index_abs >= curr_out_start_curr + self.fetch_width):
-                self.out_buf_index = 1 - out_buf_index_curr
+            if not start_data_curr:
+                self.out_buf_index = 1
+            elif self.config["dimensionality"] == 1:
+                if (index_outer_curr == 0) and (not on_next_line_curr):
+                    self.out_buf_index = 1 - out_buf_index_curr
+                elif (self.output_index_abs >= curr_out_start_curr + self.fetch_width):
+                    self.out_buf_index = 1 - out_buf_index_curr
+            elif self.config["dimensionality"] == 2:
+                if (index_inner_curr == 0) and (index_outer_curr == 0) and (not on_next_line_curr):
+                    self.out_buf_index = 1 - out_buf_index_curr
+                elif (self.output_index_abs >= curr_out_start_curr + self.fetch_width):
+                    self.out_buf_index = 1 - out_buf_index_curr
+
+            # Set on next line
+            if self.config["dimensionality"] == 1:
+                if (index_outer_curr == 0) and (not on_next_line_curr):
+                    self.on_next_line = 1
+                elif (index_outer_curr == self.config["range_outer"] - 1):
+                    self.on_next_line = 0
+            elif self.config["dimensionality"] == 2:
+                if (index_inner_curr == 0) and (index_outer_curr == 0) and (not on_next_line_curr):
+                    self.on_next_line = 1
+                elif (index_inner_curr == self.config["range_inner"] - 1):
+                    if (index_outer_curr == self.config["range_outer"] - 1):
+                        self.on_next_line = 0
 
             # Set curr out start
-            if self.output_index_abs >= curr_out_start_curr + self.fetch_width:
+            if index_outer_curr == 0:
+                if self.config["dimensionality"] == 1:
+                    self.curr_out_start = 0
+                elif (self.config["dimensionality"] == 2) and (index_inner_curr == 0):
+                    self.curr_out_start = 0
+            elif self.output_index_abs >= curr_out_start_curr + self.fetch_width:
                 self.curr_out_start = curr_out_start_curr + self.fetch_width
 
             # Set pref out buf index
@@ -340,7 +354,6 @@ class TBModel(Model):
         print("prev output valid", self.prev_output_valid)
         print("start data", self.start_data)
         print("old start data", self.old_start_data)
-        print("started", self.started)
         print("col pixels", self.col_pixels)
         print("out valid", self.output_valid)
         print("prev col", self.prev_col_pixels)
