@@ -163,6 +163,7 @@ class TransposeBuffer(Generator):
         self.pause_output = self.var("pause_output", 1)
 
         self.on_next_line = self.var("on_next_line", 1)
+
         ##########################
         # SEQUENTIAL CODE BLOCKS #
         ##########################
