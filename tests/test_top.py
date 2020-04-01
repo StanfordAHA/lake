@@ -88,7 +88,7 @@ def test_sram_port_names_change(mem_width,
                                   check_multiple_driver=False,
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False,
-                                  additional_passes={"change_sran_port": change_sram_port_pass})
+                                  additional_passes={"change_sram_port": change_sram_port_pass})
 
 
 def test_identity_stream(data_width=16,
