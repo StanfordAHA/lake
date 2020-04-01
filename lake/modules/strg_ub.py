@@ -13,6 +13,7 @@ from lake.modules.prefetcher import Prefetcher
 from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
+from lake.modules.app_ctrl import AppCtrl
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
 import kratos as kts
@@ -96,10 +97,14 @@ class StrgUB(Generator):
                                    packed=True,
                                    explicit_array=True)
 
-        self._wen = self.input("wen", self.interconnect_input_ports)
-        self._ren = self.input("ren", self.interconnect_output_ports)
-        self._arb_wen_in = self.input("wen_en", self.interconnect_input_ports)
-        self._arb_ren_in = self.input("ren_en", self.interconnect_output_ports)
+        self._wen_in = self.input("wen_in", self.interconnect_input_ports)
+        self._ren_in = self.input("ren_in", self.interconnect_output_ports)
+        # Processed versions of wen and ren from the app ctrl
+        self._wen = self.var("wen", self.interconnect_input_ports)
+        self._ren = self.var("ren", self.interconnect_output_ports)
+
+        self._arb_wen_in = self.var("wen_en", self.interconnect_input_ports)
+        self._arb_ren_in = self.var("ren_en", self.interconnect_output_ports)
 
         self._data_from_strg = self.input("data_from_strg",
                                           self.data_width,
@@ -158,6 +163,26 @@ class StrgUB(Generator):
                                         size=self.banks,
                                         explicit_array=True,
                                         packed=True)
+        if self.num_tb > 0:
+            self._tb_valid_out = self.var("tb_valid_out", self.interconnect_output_ports)
+
+        ####################
+        ##### APP CTRL #####
+        ####################
+        self.app_ctrl = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
+                                interconnect_output_ports=self.interconnect_output_ports)
+        self.add_child("app_ctrl", self.app_ctrl,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       wen_in=self._wen_in,
+                       ren_in=self._ren_in,
+                       tb_valid=self._tb_valid_out,
+                       valid_out_data=self._valid_out,
+                       # valid_out_stencil=,
+                       wen_en=self._arb_wen_in,
+                       ren_en=self._arb_ren_in,
+                       wen_out=self._wen,
+                       ren_out=self._ren)
 
         ###########################
         ##### INPUT AGG SCHED #####
@@ -590,7 +615,7 @@ class StrgUB(Generator):
 
                 for i in range(self.interconnect_output_ports):
                     self.wire(self._data_out[i], self._tb_data_out[i])
-                    self.wire(self._valid_out[i], self._tb_valid_out[i])
+                    # self.wire(self._valid_out[i], self._tb_valid_out[i])
 
         ####################
         ##### ADD CODE #####

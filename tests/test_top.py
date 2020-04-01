@@ -421,10 +421,10 @@ def test_top(read_delay,
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
-        for j in range(interconnect_output_ports):
-            # ren_en[j] = 1
-            tester.circuit.ren_en[j] = ren_en[j]
+        # tester.circuit.wen_en = wen_en
+        # for j in range(interconnect_output_ports):
+        # ren_en[j] = 1
+        # tester.circuit.ren_en[j] = ren_en[j]
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
         tester.circuit.output_en = output_en
 
@@ -434,23 +434,24 @@ def test_top(read_delay,
 
         tester.eval()
 
-        # Now check the outputs
-        if(interconnect_output_ports == 1):
-            tester.circuit.valid_out.expect(mod_vo[0])
-            if mod_vo[0]:
-                tester.circuit.data_out.expect(mod_do[0][0])
-        else:
-            for j in range(interconnect_output_ports):
-                tester.circuit.valid_out[j].expect(mod_vo[j])
-                if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+        # # Now check the outputs
+        # if(interconnect_output_ports == 1):
+        #     tester.circuit.valid_out.expect(mod_vo[0])
+        #     if mod_vo[0]:
+        #         tester.circuit.data_out.expect(mod_do[0][0])
+        # else:
+        #     for j in range(interconnect_output_ports):
+        #         tester.circuit.valid_out[j].expect(mod_vo[j])
+        #         if mod_vo[j]:
+        #             getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "app_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 def test_config_storage(data_width=16,
@@ -690,5 +691,5 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     # test_identity_stream()
-    # test_top(0)
-    test_config_storage()
+    test_top(1)
+    # test_config_storage()
