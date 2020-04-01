@@ -605,7 +605,9 @@ class LakeTop(Generator):
                                mem_data_out_bank=self._mem_data_out[i],
                                mem_addr_in_bank=self._mem_addr_in[i],
                                mem_cen_in_bank=self._mem_cen_in[i],
-                               mem_wen_in_bank=self._mem_wen_in[i])
+                               mem_wen_in_bank=self._mem_wen_in[i],
+                               wtsel=self.sram_macro_info.wtsel_value,
+                               rtsel=self.sram_macro_info.rtsel_value)
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)

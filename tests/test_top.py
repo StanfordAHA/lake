@@ -11,8 +11,10 @@ from utils.sram_macro import SRAMMacroInfo
 
 @pytest.mark.parametrize("mem_width", [16, 64])
 @pytest.mark.parametrize("use_sram_stub", [0, 1])
+@pytest.mark.parametrize("fifo_mode", [0, 1])
 def test_sram_port_names_change(mem_width,
                                 use_sram_stub,
+                                fifo_mode,
                                 data_width=16,
                                 mem_depth=512,
                                 banks=2,
@@ -41,8 +43,7 @@ def test_sram_port_names_change(mem_width,
                                 max_prefetch=64,
                                 config_data_width=16,
                                 config_addr_width=8,
-                                remove_tb=False,
-                                fifo_mode=False):
+                                remove_tb=False):
 
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,

@@ -86,6 +86,10 @@ def change_sram_port_names(use_sram_stub, sram_macro_info, testing, generator):
                                     node.name = self.sram_macro_info.data_out_port_name
                                 elif node.name == "sram_wen":
                                     node.name = self.sram_macro_info.wen_port_name
+                                elif node.name == "sram_wtsel":
+                                    node.name = self.sram_macro_info.wtsel_port_name
+                                elif node.name == "sram_rtsel":
+                                    node.name = self.sram_macro_info.rtsel_port_name
 
         v = SRAMPortNames(use_sram_stub, sram_macro_info)
         v.visit_root(generator)

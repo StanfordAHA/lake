@@ -54,6 +54,12 @@ class SRAMStubGenerator(Generator):
                                      self.data_width * self.width_mult)
         self._data_out.add_attribute(SRAMPortAttr("sram data out"))
 
+        self._wtsel = self.input("sram_wtsel", 2)
+        self._wtsel.add_attribute(SRAMPortAttr("sram wtsel"))
+
+        self._rtsel = self.input("sram_rtsel", 2)
+        self._rtsel.add_attribute(SRAMPortAttr("sram rtsel"))
+
 
 if __name__ == "__main__":
     dut = SRAMStubGenerator("TSMC", 16, 1, 124)

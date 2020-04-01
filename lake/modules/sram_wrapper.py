@@ -71,6 +71,9 @@ class SRAMWrapper(Generator):
 
         self._mem_wen_in_bank = self.input("mem_wen_in_bank", self.mem_input_ports)
 
+        self._wtsel = self.input("wtsel", 2)
+        self._rtsel = self.input("rtsel", 2)
+
         if self.use_sram_stub:
             mbank = SRAMStub(data_width=self.data_width,
                              width_mult=self.fw_int,
@@ -110,7 +113,9 @@ class SRAMWrapper(Generator):
                                sram_clk=self._gclk,
                                sram_data_in=self._sram_mem_data_in_bank,
                                sram_data_out=self._sram_mem_data_out_bank,
-                               sram_wen=self._mem_wen_in_bank)
+                               sram_wen=~self._mem_wen_in_bank,
+                               sram_wtsel=self._wtsel,
+                               sram_rtsel=self._rtsel)
 
                 flatten_data_out = ReverseFlatten(self.data_width,
                                                   self.fw_int,
@@ -129,7 +134,9 @@ class SRAMWrapper(Generator):
                                sram_clk=self._gclk,
                                sram_data_in=self._mem_data_in_bank,
                                sram_data_out=self._mem_data_out_bank,
-                               sram_wen=self._mem_wen_in_bank)
+                               sram_wen=~self._mem_wen_in_bank,
+                               sram_wtsel=self._wtsel,
+                               sram_rtsel=self._rtsel)
 
 
 if __name__ == "__main__":
