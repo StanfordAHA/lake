@@ -43,6 +43,7 @@ class TBModel(Model):
         self.input_buf_index = 0
         self.out_buf_index = 1
         self.prev_out_buf_index = 0
+
         self.ret_col_pixels = 0
         self.ret_output_valid = 0
         self.ret_rdy_to_arb = 1
@@ -93,6 +94,10 @@ class TBModel(Model):
         self.out_buf_index = 1
         self.prev_out_buf_index = 0
 
+        self.ret_col_pixels = 0
+        self.ret_output_valid = 0
+        self.ret_rdy_to_arb = 1
+
         self.col_pixels = []
         for i in range(self.tb_height):
             self.col_pixels.append(0)
@@ -112,11 +117,6 @@ class TBModel(Model):
         self.prev_output_valid = 0
         self.start_data = 0
         self.old_start_data = 0
-        self.prev_rdy_to_arbiter = 1
-        self.rdy2 = 1
-        self.prev_rdy_to_arbiter2 = 1
-        self.prev_pause_output = 1
-        self.prev_pause_tb = 1
         self.output_index_abs = 0
         self.output_valid_prior = 0
         self.on_next_line = 0
