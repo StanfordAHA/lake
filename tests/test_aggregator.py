@@ -67,3 +67,7 @@ def test_aggregator_basic(word_width=16, mem_word_width=4):
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_aggregator_basic()
