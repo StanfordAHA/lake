@@ -45,9 +45,6 @@ class AppCtrlModel(Model):
         curr_read_done_d = self.read_done_d
         curr_write_done_d = self.write_done_d
 
-
-        # print(f"wen_in: {wen_in}, ren_out: {ren_in}")
-
         wen_out = []
         for i in range(self.int_in_ports):
             wen_out.append((self.write_done_d[i] == 0) and (wen_in[i] == 1))
@@ -66,12 +63,14 @@ class AppCtrlModel(Model):
 
         write_done = []
         for i in range(self.int_in_ports):
-            wd_temp = ((wen_in[i] == 1) and (self.write_count[i] == self.config[f'write_depth_{i}'] - 1)) or self.write_done_d[i] == 1
+            wd_temp = (((wen_in[i] == 1) and (self.write_count[i] == self.config[f'write_depth_{i}'] - 1)) or
+                       self.write_done_d[i] == 1)
             write_done.append(wd_temp)
 
         read_done = []
         for i in range(self.int_out_ports):
-            rd_temp = ((ren_in[i] == 1) and (self.read_count[i] == self.config[f'read_depth_{i}'] - 1)) or self.read_done_d[i] == 1
+            rd_temp = (((ren_in[i] == 1) and (self.read_count[i] == self.config[f'read_depth_{i}'] - 1)) or
+                       self.read_done_d[i] == 1 or (self.init_state[i] == 0))
             read_done.append(rd_temp)
 
         # read_done_ff
@@ -106,5 +105,4 @@ class AppCtrlModel(Model):
                 self.read_count[i] = 0
             elif ren_in[i] == 1:
                 self.read_count[i] += 1
-
         return (wen_out, ren_out, wen_en, ren_en, valid_out_data, valid_out_stencil)

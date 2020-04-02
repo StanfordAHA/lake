@@ -88,7 +88,6 @@ class LakeTopModel(Model):
             self.config[f"app_ctrl_input_port_{i}"] = 0
             self.config[f"app_ctrl_read_depth_{i}"] = 0
 
-
         ### INST AGG ALIGNER
         if(self.agg_height > 0):
             self.agg_aligners = []
@@ -317,8 +316,6 @@ class LakeTopModel(Model):
                  data_in,
                  addr_in,
                  valid_in,
-                #  wen_en,
-                #  ren_en,
                  output_en):
         '''
         Top level interactions - - -
@@ -352,7 +349,7 @@ class LakeTopModel(Model):
             self.agg_buffs[i].insert(data_align[i], valids_align[i])
             data_agg_buff.append(self.agg_buffs[i].get_item())
             valid_agg_buff.append(self.agg_buffs[i].get_valid_out())
-        print(f"data_in: {data_in}, wen: {data_agg_buff}, cen_mem: {valid_agg_buff}")
+
         # Now send agg_buff stuff to IAC
         (iac_valid, iac_data, iac_addrs) = self.iac.interact(valid_agg_buff, data_agg_buff)
 
@@ -423,7 +420,7 @@ class LakeTopModel(Model):
             rw_data_to_mem.append(dm)
             rw_addr_to_mem.append(am)
             rw_ack.append(rw_ack)
-
+        # print(f"data_in: {data_in}, wen: {rw_wen_mem}, data_out_mem: {rw_out_dat}")
         # HIT SRAM
         if self.read_delay == 1:
             for i in range(self.banks):
@@ -485,7 +482,6 @@ class LakeTopModel(Model):
         # print(f"data out {data_out}, valid_out: {valid_out}")
         # print()
 
-        # print(f"pref_data: {pref_data}, data_in: {data_in}, data_out: {data_out}, valid_out: {valid_out}, ren_out: {ac_ren_out}, ren_en: {ac_ren_en}")
         return (data_out, valid_out)
 
     def dump_mem(self):

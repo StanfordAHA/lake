@@ -40,4 +40,3 @@ class AggModel(Model):
             else:
                 self.valid_out = 0
         return self.curr_valid
-
