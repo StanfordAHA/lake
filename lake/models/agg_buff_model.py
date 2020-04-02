@@ -43,8 +43,8 @@ class AggBuffModel(Model):
     def insert(self, in_data, valid):
         if valid:
             to_insert = self.aggs[self.config[f"in_sched_{self.in_sched_ptr}"]]
-            to_insert.insert(in_data, valid)
-            if(to_insert.get_valid_out()):
+            ag_valid = to_insert.insert(in_data, valid)
+            if(ag_valid):
                 self.in_sched_ptr += 1
                 if(self.in_sched_ptr >= self.config['in_period']):
                     self.in_sched_ptr = 0

@@ -10,6 +10,7 @@ from lake.models.sync_groups_model import SyncGroupsModel
 from lake.models.prefetcher_model import PrefetcherModel
 from lake.models.tba_model import TBAModel
 from lake.models.register_file_model import RegisterFileModel
+from lake.models.app_ctrl_model import AppCtrlModel
 from typing import List
 import math as mt
 import kratos as kts
@@ -77,6 +78,16 @@ class LakeTopModel(Model):
             self.address_width = kts.clog2(mem_depth)  # + clog2(banks)
 
         self.config = {}
+
+        # Set up model..
+        self.app_ctrl = AppCtrlModel(int_in_ports=self.interconnect_input_ports,
+                                     int_out_ports=self.interconnect_output_ports)
+        for i in range(self.interconnect_input_ports):
+            self.config[f"app_ctrl_write_depth_{i}"] = 0
+        for i in range(self.interconnect_output_ports):
+            self.config[f"app_ctrl_input_port_{i}"] = 0
+            self.config[f"app_ctrl_read_depth_{i}"] = 0
+
 
         ### INST AGG ALIGNER
         if(self.agg_height > 0):
@@ -210,6 +221,15 @@ class LakeTopModel(Model):
 
         # Configure children
 
+        # Config App Ctrl
+        app_ctrl_cfg = {}
+        for i in range(self.interconnect_input_ports):
+            app_ctrl_cfg[f"write_depth_{i}"] = self.config[f"app_ctrl_write_depth_{i}"]
+        for i in range(self.interconnect_output_ports):
+            app_ctrl_cfg[f"read_depth_{i}"] = self.config[f"app_ctrl_read_depth_{i}"]
+            app_ctrl_cfg[f"input_port_{i}"] = self.config[f"app_ctrl_input_port_{i}"]
+        self.app_ctrl.set_config(app_ctrl_cfg)
+
         # Config Agg Align
         for i in range(self.interconnect_input_ports):
             agg_aligner_config = {}
@@ -297,20 +317,30 @@ class LakeTopModel(Model):
                  data_in,
                  addr_in,
                  valid_in,
-                 wen_en,
-                 ren_en,
+                #  wen_en,
+                #  ren_en,
                  output_en):
         '''
         Top level interactions - - -
         returns (data_out, valid_out)
         '''
+
+        (ac_wen_out,
+         ac_ren_out,
+         ac_wen_en,
+         ac_ren_en,
+         ac_valid_out_dat,
+         ac_valid_out_stencil) = self.app_ctrl.interact(wen_in=valid_in,
+                                                        ren_in=output_en,
+                                                        tb_valid=[0] * self.interconnect_output_ports)
+
         valids_align = []
         aligns_align = []
         data_align = []
         # Pass data through agg aligners
         for i in range(self.interconnect_input_ports):
             (d_out, v_out, a_out) = self.agg_aligners[i].interact(data_in[i],
-                                                                  valid_in[i])
+                                                                  ac_wen_out[i])
             data_align.append(d_out)
             valids_align.append(v_out)
             aligns_align.append(a_out)
@@ -322,7 +352,7 @@ class LakeTopModel(Model):
             self.agg_buffs[i].insert(data_align[i], valids_align[i])
             data_agg_buff.append(self.agg_buffs[i].get_item())
             valid_agg_buff.append(self.agg_buffs[i].get_valid_out())
-
+        print(f"data_in: {data_in}, wen: {data_agg_buff}, cen_mem: {valid_agg_buff}")
         # Now send agg_buff stuff to IAC
         (iac_valid, iac_data, iac_addrs) = self.iac.interact(valid_agg_buff, data_agg_buff)
 
@@ -348,7 +378,7 @@ class LakeTopModel(Model):
                 ren_local.append(0)
             for j in range(self.interconnect_output_ports):
                 ren_local[j] = ren_local[j] | (rd_sync_gate[j] & oac_ren[i][j])
-            local_ack = self.rw_arbs[i].get_ack(iac_valid[i], wen_en, ren_local, ren_en)
+            local_ack = self.rw_arbs[i].get_ack(iac_valid[i], ac_wen_en, ren_local, ac_ren_en)
             ack_base = (ack_base | local_ack)
 
         # Final interaction with OAC
@@ -383,8 +413,8 @@ class LakeTopModel(Model):
              wm,
              dm,
              am,
-             ack) = self.rw_arbs[i].interact(iac_valid[i], wen_en, iac_data[i], iac_addrs[i],
-                                             data_to_arb[i], gated_ren, ren_en, oac_addrs)
+             ack) = self.rw_arbs[i].interact(iac_valid[i], ac_wen_en, iac_data[i], iac_addrs[i],
+                                             data_to_arb[i], gated_ren, ac_ren_en, oac_addrs)
             rw_out_dat.append(od)
             rw_out_port.append(op)
             rw_out_valid.append(ov)
@@ -413,6 +443,8 @@ class LakeTopModel(Model):
 
         # Demux those reads
         (demux_dat, demux_valid) = self.demux_reads.interact(rw_out_dat, rw_out_valid, rw_out_port)
+
+        # print(f"data_in: {data_in}, wen: {rw_wen_mem}, cen_mem: {rw_cen_mem}, data_out: {demux_dat}")
 
         # Requires or'd version of ren
         ren_base = []
@@ -446,12 +478,14 @@ class LakeTopModel(Model):
         data_out = []
         valid_out = []
         for i in range(self.interconnect_output_ports):
-            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0, output_en)
+            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0, ac_ren_out[i])
             data_out.append(tb_d)
             valid_out.append(tb_v)
         # self.tbas[0].print_tba_tb(pref_data[i], pref_valid[i], pref_valid[i], 0, output_en)
         # print(f"data out {data_out}, valid_out: {valid_out}")
         # print()
+
+        # print(f"pref_data: {pref_data}, data_in: {data_in}, data_out: {data_out}, valid_out: {valid_out}, ren_out: {ac_ren_out}, ren_en: {ac_ren_en}")
         return (data_out, valid_out)
 
     def dump_mem(self):

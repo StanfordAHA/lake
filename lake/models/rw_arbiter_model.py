@@ -43,6 +43,8 @@ class RWArbiterModel(Model):
             out_port = 0
             out_valid = 0
         data_to_mem = w_data
+        if type(wen_en) is list:
+            wen_en = wen_en[0]
         wen_mem = wen_in & wen_en
         # Signals following may vary
         cen_mem = 0

@@ -84,6 +84,14 @@ def test_identity_stream(data_width=16,
 
     new_config["strg_ub_sync_grp_sync_group_0"] = 1
 
+    new_config["strg_ub_app_ctrl_input_port_0"] = 0
+    new_config["strg_ub_app_ctrl_input_port_1"] = 0
+    new_config["strg_ub_app_ctrl_input_port_2"] = 0
+    new_config["strg_ub_app_ctrl_read_depth_0"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_1"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_2"] = 196
+    new_config["strg_ub_app_ctrl_write_depth_0"] = 196
+
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
                             mem_depth=mem_depth,
@@ -151,6 +159,7 @@ def test_identity_stream(data_width=16,
         setattr(tester.circuit, key, value)
 
     tester.circuit.strg_ub_tba_0_tb_0_tb_height = 1
+    tester.circuit.strg_ub_app_ctrl_write_depth = 196
 
     if interconnect_output_ports == 1:
         tester.circuit.strg_ub_sync_grp_sync_group[0] = 1
@@ -164,10 +173,8 @@ def test_identity_stream(data_width=16,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [1] * interconnect_output_ports
     addr_in = 0
-    output_en = 1
 
     for i in range(300):
         # Rand data
@@ -175,7 +182,7 @@ def test_identity_stream(data_width=16,
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             valid_in[j] = 1  # rand.randint(0, 1)
-        output_en = rand.randint(0, 1)
+
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -183,17 +190,16 @@ def test_identity_stream(data_width=16,
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
-            # setattr(tester.circuit, f"wen_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
-        for j in range(interconnect_output_ports):
-            tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
-        tester.circuit.output_en = output_en
 
-        if i > 200:
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
+
+        if interconnect_output_ports == 1:
+            tester.circuit.ren = ren[0]
+        else:
             for j in range(interconnect_output_ports):
-                ren_en[j] = 1
+                tester.circuit.ren[j] = ren[j]
+
         tester.eval()
 
         # Now check the outputs
@@ -317,6 +323,14 @@ def test_top(read_delay,
     new_config["strg_ub_sync_grp_sync_group_1"] = 1
     new_config["strg_ub_sync_grp_sync_group_2"] = 1
 
+    new_config["strg_ub_app_ctrl_input_port_0"] = 0
+    new_config["strg_ub_app_ctrl_input_port_1"] = 0
+    new_config["strg_ub_app_ctrl_input_port_2"] = 0
+    new_config["strg_ub_app_ctrl_read_depth_0"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_1"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_2"] = 196
+    new_config["strg_ub_app_ctrl_write_depth_0"] = 196
+
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
                             mem_depth=mem_depth,
@@ -391,12 +405,6 @@ def test_top(read_delay,
     tester.circuit.strg_ub_tba_1_tb_0_tb_height = 1
     tester.circuit.strg_ub_tba_2_tb_0_tb_height = 1
 
-    tester.circuit.strg_ub_app_ctrl_input_port_0 = 0
-    tester.circuit.strg_ub_app_ctrl_input_port_1 = 0
-    tester.circuit.strg_ub_app_ctrl_input_port_2 = 0
-    tester.circuit.strg_ub_app_ctrl_read_depth_0 = 196
-    tester.circuit.strg_ub_app_ctrl_read_depth_1 = 196
-    tester.circuit.strg_ub_app_ctrl_read_depth_2 = 196
     tester.circuit.strg_ub_app_ctrl_write_depth = 196
 
     rand.seed(0)
@@ -408,10 +416,7 @@ def test_top(read_delay,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 1
-    ren = 1
-    # ren = [0] * interconnect_output_ports
-    ren_en = [0] * interconnect_output_ports
+    ren = [1] * interconnect_output_ports
     addr_in = 0
 
     for i in range(300):
@@ -419,10 +424,11 @@ def test_top(read_delay,
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
             data_in[j] += 1
-            valid_in[j] = 1
+            valid_in[j] = rand.randint(0, 1)
+        ren_tmp = rand.randint(0, 1)
+        for j in range(interconnect_output_ports):
+            ren[j] = ren_tmp
 
-        # output_en = rand.randint(0, 1)
-        # ren = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -432,33 +438,25 @@ def test_top(read_delay,
                 tester.circuit.wen[j] = valid_in[j]
 
         if interconnect_output_ports == 1:
-            tester.circuit.ren = ren
+            tester.circuit.ren = ren[0]
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.ren[j] = ren
-
-        # tester.circuit.wen_en = wen_en
-        # for j in range(interconnect_output_ports):
-        # ren_en[j] = 1
-        # tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, ren)
-
-        if i > 200:
-            for j in range(interconnect_output_ports):
-                ren_en[j] = 1
+                tester.circuit.ren[j] = ren[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
 
         tester.eval()
 
-        # # Now check the outputs
-        # if(interconnect_output_ports == 1):
-        #     tester.circuit.valid_out.expect(mod_vo[0])
-        #     if mod_vo[0]:
-        #         tester.circuit.data_out.expect(mod_do[0][0])
-        # else:
-        #     for j in range(interconnect_output_ports):
-        #         tester.circuit.valid_out[j].expect(mod_vo[j])
-        #         if mod_vo[j]:
-        #             getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+        # Now check the outputs
+        if(interconnect_output_ports == 1):
+            tester.circuit.valid_out.expect(mod_vo[0])
+            if mod_vo[0]:
+                tester.circuit.data_out.expect(mod_do[0][0])
+        else:
+            for j in range(interconnect_output_ports):
+                tester.circuit.valid_out[j].expect(mod_vo[j])
+                if mod_vo[j]:
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -706,5 +704,5 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     # test_identity_stream()
-    test_top(1)
-    # test_config_storage()
+    # test_top(0)
+    test_config_storage()

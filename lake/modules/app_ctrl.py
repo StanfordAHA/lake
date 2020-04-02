@@ -79,6 +79,7 @@ class AppCtrl(Generator):
         # # Set the wen_en based on write_cnt
         # for i in range(self.int_in_ports):
         #     self.wire(self._wen_en[i], self._write_count[i] <= self._write_depth)
+        self._wr_delay_state_n = self.var("wr_delay_state_n", self.int_out_ports)
 
         # for i in range(self.int_in_ports):
         #     self.wire(self._wen_en[i], self._write_count[i] <= self._write_depth)
@@ -102,7 +103,6 @@ class AppCtrl(Generator):
             else:
                 self.add_code(self.set_read_cnt, idx=i)
 
-        self._wr_delay_state_n = self.var("wr_delay_state_n", self.int_out_ports)
         for i in range(self.int_out_ports):
             if self.int_in_ports == 1:
                 self.add_code(self.set_wr_delay_state_one_wr, idx=i)
@@ -150,7 +150,7 @@ class AppCtrl(Generator):
     @always_comb
     def set_read_done(self, idx):
         self._read_done[idx] = (self._ren_in[idx] & (self._read_count[idx] == (self._read_depth[idx] - 1))) |\
-            self._read_done_ff[idx]
+            self._read_done_ff[idx] | ~self._wr_delay_state_n[idx]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_read_cnt(self, idx):
@@ -176,7 +176,7 @@ class AppCtrl(Generator):
             self._write_count[idx] = 0
         elif self._write_done[idx] & self._read_done[idx]:
             self._write_count[idx] = 0
-        elif self._wen_in[idx]:
+        elif self._wen_in[idx] & ~self._write_done_ff[idx]:
             self._write_count[idx] = self._write_count[idx] + 1
 
     # When we start up, there is no way to read data from storage.
