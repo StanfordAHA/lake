@@ -123,6 +123,9 @@ class StrgUB(Generator):
         self._valid_out = self.output("valid_out",
                                       self.interconnect_output_ports)
 
+        self._valid_out_alt = self.var("valid_out_alt",
+                                       self.interconnect_output_ports)
+
         self._data_to_strg = self.output("data_to_strg",
                                          self.data_width,
                                          size=(self.banks,
@@ -174,13 +177,17 @@ class StrgUB(Generator):
                        rst_n=self._rst_n,
                        wen_in=self._wen_in,
                        ren_in=self._ren_in,
-                       tb_valid=self._tb_valid_out,
                        valid_out_data=self._valid_out,
                        # valid_out_stencil=,
                        wen_en=self._arb_wen_in,
                        ren_en=self._arb_ren_in,
                        wen_out=self._wen,
                        ren_out=self._ren)
+
+        if self.num_tb == 0 or self.remove_tb:
+            self.wire(self.app_ctrl.ports.tb_valid, self._valid_out_alt)
+        else:
+            self.wire(self.app_ctrl.ports.tb_valid, self._tb_valid_out)
 
         ###########################
         ##### INPUT AGG SCHED #####
@@ -506,7 +513,7 @@ class StrgUB(Generator):
                            data_in=self._arb_dat_out_f,
                            valid_in=self._arb_valid_out_f,
                            port_in=self._arb_port_out_f,
-                           valid_out=self._valid_out)
+                           valid_out=self._valid_out_alt)
             for i in range(self.interconnect_output_ports):
                 self.wire(self._data_out[i], dmux_rd.ports.data_out[i])
 
@@ -564,7 +571,7 @@ class StrgUB(Generator):
                                    valid_read=self._valid_to_pref[i],
                                    tba_rdy_in=self._ren[i],
                                    #    data_out=self._data_out[i],
-                                   valid_out=self._valid_out[i],
+                                   valid_out=self._valid_out_alt[i],
                                    prefetch_step=self._prefetch_step[i])
                     self.wire(self._data_out[i], pref.ports.data_out[0])
                 else:
