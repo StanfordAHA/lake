@@ -206,24 +206,12 @@ class TransposeBuffer(Generator):
             self.index_outer = 0
         elif self.dimensionality == 0:
             self.index_outer = 0
-        elif self.dimensionality == 1:
-            if self.index_outer == self.range_outer - 1:
-                if ~self.pause_output:
+        elif (self.dimensionality == 1) | \
+                ((self.dimensionality == 2) & (self.index_inner == self.range_inner - 1)):
+            if ~self.pause_output:
+                if (self.index_outer == self.range_outer - 1):
                     self.index_outer = 0
                 else:
-                    self.index_outer = self.index_outer
-            elif self.pause_tb:
-                self.index_outer = self.index_outer
-            elif ~self.pause_output:
-                self.index_outer = self.index_outer + 1
-        else:
-            if self.index_inner == self.range_inner - 1:
-                if self.index_outer == self.range_outer - 1:
-                    if ~self.pause_output:
-                        self.index_outer = 0
-                    else:
-                        self.index_outer = self.index_outer
-                elif ~self.pause_output:
                     self.index_outer = self.index_outer + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -232,15 +220,10 @@ class TransposeBuffer(Generator):
             self.index_inner = 0
         elif self.dimensionality <= 1:
             self.index_inner = 0
-        else:
+        elif ~self.pause_output:
             if self.index_inner == self.range_inner - 1:
-                if ~self.pause_output:
-                    self.index_inner = 0
-                else:
-                    self.index_inner = self.index_inner
-            elif self.pause_tb:
-                self.index_inner = self.index_inner
-            elif ~self.pause_output:
+                self.index_inner = 0
+            else:
                 self.index_inner = self.index_inner + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
