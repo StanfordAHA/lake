@@ -11,9 +11,8 @@ import random as rand
 import pytest
 
 
-@pytest.mark.parametrize("int_out_ports", [1, 2, 3])
-def test_app_ctrl(int_in_ports,
-                  int_out_ports):
+def test_app_ctrl(int_in_ports=1,
+                  int_out_ports=3):
 
     # Set up model..
     model_ac = AppCtrlModel(int_in_ports=int_in_ports,
