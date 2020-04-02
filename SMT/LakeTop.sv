@@ -186,6 +186,7 @@ register_file rf_0 (
   .data_in(rf_0_data_in),
   .data_out(rf_0_data_out),
   .rd_addr(rf_0_rd_addr),
+  .rst_n(rst_n),
   .wen(rf_0_wen),
   .wr_addr(rf_0_wr_addr)
 );
@@ -477,6 +478,7 @@ endmodule   // output_addr_ctrl
 
 module register_file (
   input logic clk,
+  input logic rst_n,
   input logic [0:0] [15:0] data_in,
   output logic [0:0] [15:0] data_out,
   input logic [4:0] rd_addr,
@@ -486,8 +488,11 @@ module register_file (
 
 logic [31:0][0:0][15:0] data_array;
 
-always_ff @(posedge clk) begin
-  if (wen) begin
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    data_array <= '0;
+  end
+  else if (wen) begin
     data_array[wr_addr] <= data_in;
   end
 end
