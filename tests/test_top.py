@@ -166,17 +166,19 @@ def test_mult_lines_dim1(data_width=16,
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [0] * interconnect_output_ports
     addr_in = 0
     output_en = 1
 
     for i in range(300):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
+        ren_tmp = rand.randint(0, 1)
+        for j in range(interconnect_output_ports):
+            ren[j] = ren_tmp
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
-            valid_in[j] = 1  # rand.randint(0, 1)
-        output_en = rand.randint(0, 1)
+            valid_in[j] = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -184,17 +186,11 @@ def test_mult_lines_dim1(data_width=16,
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
-            # setattr(tester.circuit, f"wen_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
         for j in range(interconnect_output_ports):
-            tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
-        tester.circuit.output_en = output_en
+            tester.circuit.ren[j] = ren[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
 
-        if i > 200:
-            for j in range(interconnect_output_ports):
-                ren_en[j] = 1
         tester.eval()
 
         # Now check the outputs
@@ -403,19 +399,19 @@ def test_mult_lines_dim2(tb0_range_outer,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [0] * interconnect_output_ports
     addr_in = 0
-    output_en = 0
 
     for i in range(300):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
             data_in[j] += 1
-            valid_in[j] = 1
+            valid_in[j] = rand.randint(0, 1)
 
-        output_en = rand.randint(0, 1)
+        ren_tmp = rand.randint(0, 1)
+        for j in range(interconnect_output_ports):
+            ren[j] = ren_tmp
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -424,16 +420,10 @@ def test_mult_lines_dim2(tb0_range_outer,
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
         for j in range(interconnect_output_ports):
             # ren_en[j] = 1
-            tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
-        tester.circuit.output_en = output_en
-
-        if i > 200:
-            for j in range(interconnect_output_ports):
-                ren_en[j] = 1
+            tester.circuit.ren[j] = ren[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
 
         tester.eval()
 
