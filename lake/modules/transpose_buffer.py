@@ -162,6 +162,8 @@ class TransposeBuffer(Generator):
         self.pause_tb = self.var("pause_tb", 1)
         self.pause_output = self.var("pause_output", 1)
 
+        self.on_next_line = self.var("on_next_line", 1)
+
         ##########################
         # SEQUENTIAL CODE BLOCKS #
         ##########################
@@ -183,6 +185,7 @@ class TransposeBuffer(Generator):
         if self.fetch_width != 1:
             self.add_code(self.set_output_index)
         self.add_code(self.set_old_start_data)
+        self.add_code(self.set_on_next_line)
 
         #############################
         # COMBINATIONAL CODE BLOCKS #
@@ -203,24 +206,12 @@ class TransposeBuffer(Generator):
             self.index_outer = 0
         elif self.dimensionality == 0:
             self.index_outer = 0
-        elif self.dimensionality == 1:
-            if self.index_outer == self.range_outer - 1:
-                if ~self.pause_output:
+        elif (self.dimensionality == 1) | \
+                ((self.dimensionality == 2) & (self.index_inner == self.range_inner - 1)):
+            if ~self.pause_output:
+                if (self.index_outer == self.range_outer - 1):
                     self.index_outer = 0
                 else:
-                    self.index_outer = self.index_outer
-            elif self.pause_tb:
-                self.index_outer = self.index_outer
-            elif ~self.pause_output:
-                self.index_outer = self.index_outer + 1
-        else:
-            if self.index_inner == self.range_inner - 1:
-                if self.index_outer == self.range_outer - 1:
-                    if ~self.pause_output:
-                        self.index_outer = 0
-                    else:
-                        self.index_outer = self.index_outer
-                elif ~self.pause_output:
                     self.index_outer = self.index_outer + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -229,15 +220,10 @@ class TransposeBuffer(Generator):
             self.index_inner = 0
         elif self.dimensionality <= 1:
             self.index_inner = 0
-        else:
+        elif ~self.pause_output:
             if self.index_inner == self.range_inner - 1:
-                if ~self.pause_output:
-                    self.index_inner = 0
-                else:
-                    self.index_inner = self.index_inner
-            elif self.pause_tb:
-                self.index_inner = self.index_inner
-            elif ~self.pause_output:
+                self.index_inner = 0
+            else:
                 self.index_inner = self.index_inner + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -246,29 +232,14 @@ class TransposeBuffer(Generator):
             self.pause_tb = 1
         elif self.dimensionality == 0:
             self.pause_tb = 1
-        elif self.dimensionality == 1:
-            if self.index_outer == self.range_outer - 1:
-                if ~self.pause_output:
-                    self.pause_tb = ~self.valid_data
-                else:
-                    self.pause_tb = 0
-            elif self.pause_tb:
+        elif (self.index_outer == self.range_outer - 1) & \
+                ((self.dimensionality == 1) |
+                    ((self.dimensionality == 2) &
+                        (self.index_inner == self.range_inner - 1))):
+            if ~self.pause_output:
                 self.pause_tb = ~self.valid_data
-            elif ~self.pause_output:
-                self.pause_tb = 0
-        else:
-            if self.index_inner == self.range_inner - 1:
-                if self.index_outer == self.range_outer - 1:
-                    if ~self.pause_output:
-                        self.pause_tb = ~self.valid_data
-                    else:
-                        self.pause_tb = 0
-                else:
-                    self.pause_tb = 0
-            elif self.pause_tb:
-                self.pause_tb = ~self.valid_data
-            elif ~self.pause_output:
-                self.pause_tb = 0
+        elif self.pause_tb:
+            self.pause_tb = ~self.valid_data
 
     @always_comb
     def set_pause_output(self):
@@ -381,15 +352,32 @@ class TransposeBuffer(Generator):
             self.output_valid = 0
         else:
             # this is needed because there is a 2 cycle delay between index_outer and
-            # actual output - change in tb rewrite
+            # actual output
             self.output_valid = self.prev_output_valid
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_out_buf_index(self):
         if ~self.rst_n:
             self.out_buf_index = 1
+        elif ~self.start_data:
+            self.out_buf_index = 1
+        elif (self.index_outer == 0) & ~self.on_next_line:
+            if (self.dimensionality == 1) | ((self.dimensionality == 2) & (self.index_inner == 0)):
+                self.out_buf_index = ~self.out_buf_index
         elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
             self.out_buf_index = ~self.out_buf_index
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_on_next_line(self):
+        if ~self.rst_n:
+            self.on_next_line = 0
+        elif (self.index_outer == 0) & ~self.on_next_line:
+            if (self.dimensionality == 1) | ((self.dimensionality == 2) & (self.index_inner == 0)):
+                self.on_next_line = 1
+        elif (self.index_outer == self.range_outer - 1):
+            if (self.dimensionality == 1) | \
+                    ((self.dimensionality == 2) & (self.index_inner == self.range_inner - 1)):
+                self.on_next_line = 0
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_curr_out_start(self):
@@ -397,6 +385,9 @@ class TransposeBuffer(Generator):
             self.curr_out_start = 0
         elif self.dimensionality == 0:
             self.curr_out_start = 0
+        elif (self.index_outer == 0):
+            if (self.dimensionality == 1) | ((self.dimensionality == 2) & (self.index_inner == 0)):
+                self.curr_out_start = 0
         elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
             self.curr_out_start = self.curr_out_start + self.fetch_width
 
@@ -433,3 +424,8 @@ class TransposeBuffer(Generator):
                 self.rdy_to_arbiter = 1
         elif self.ack_in:
             self.rdy_to_arbiter = 0
+
+
+if __name__ == "__main__":
+    dut = TransposeBuffer(16, 4, 1, 1, 9, 5, 2)
+    verilog(dut, filename="transpose_buffer.sv")
