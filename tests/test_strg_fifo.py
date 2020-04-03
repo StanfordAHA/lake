@@ -117,6 +117,8 @@ def test_storage_fifo(mem_width,  # CGRA Params
     push_cnt = 0
     pop_cnt = 0
 
+    tester.circuit.clk_en = 1
+
     for i in range(2000):
         data_in = rand.randint(0, 2 ** data_width - 1)
         push = rand.randint(0, 1)
