@@ -32,34 +32,27 @@ def test_aggregator_basic(word_width=16, mem_word_width=4):
     tester.step(2)
 
     rand.seed(0)
-    rand.randint(0, 1)
 
     data_in = 0
+    valid_in = 0
 
-    for i in range(200):
-        v_out_model = model_agg.get_valid_out()
-        tester.circuit.valid_out.expect(v_out_model)
+    for i in range(2500):
 
-        if(v_out_model == 1):
-            # Check the data on the output...
-            mod_dat_out = model_agg.get_data_out()
-            for i in range(mem_word_width):
-                getattr(tester.circuit, f"agg_out_{i}").expect(mod_dat_out[i])
-
-        valid_next = rand.randint(0, 1)
-        if(valid_next == 1):
-            # Circuit
-            tester.circuit.valid_in = 1
-            tester.circuit.in_pixels = data_in
-            # Model
-            model_agg.insert(data_in, 1)
-
-            data_in = data_in + 1
-        else:
-            tester.circuit.valid_in = 0
-            model_agg.insert(0, 0)
+        valid_in = rand.randint(0, 1)
+        data_in = rand.randint(0, 2 ** 16 - 1)
+        # Circuit
+        tester.circuit.valid_in = valid_in
+        tester.circuit.in_pixels = data_in
+        # Model
+        (model_dat, model_val, model_nf) = model_agg.interact(data_in, valid_in)
 
         tester.eval()
+
+        tester.circuit.valid_out.expect(model_val)
+        if model_val == 1:
+            for i in range(mem_word_width):
+                getattr(tester.circuit, f"agg_out_{i}").expect(model_dat[i])
+
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:

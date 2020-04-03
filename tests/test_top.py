@@ -704,5 +704,5 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     # test_identity_stream()
-    # test_top(0)
-    test_config_storage()
+    test_top(0)
+    # test_config_storage()

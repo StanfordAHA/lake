@@ -41,16 +41,25 @@ class AggBuffModel(Model):
         self.out_sched_ptr = 0
 
     def insert(self, in_data, valid):
-        if valid:
-            to_insert = self.aggs[self.config[f"in_sched_{self.in_sched_ptr}"]]
-            ag_valid = to_insert.insert(in_data, valid)
-            if(ag_valid):
-                self.in_sched_ptr += 1
-                if(self.in_sched_ptr >= self.config['in_period']):
-                    self.in_sched_ptr = 0
+        to_insert = self.aggs[self.config[f"in_sched_{self.in_sched_ptr}"]]
+        ag_valid = to_insert.insert(in_data, valid)
+
+        if(ag_valid):
+            self.in_sched_ptr += 1
+            if(self.in_sched_ptr >= self.config['in_period']):
+                self.in_sched_ptr = 0
+        # if valid:
+        #     to_insert = self.aggs[self.config[f"in_sched_{self.in_sched_ptr}"]]
+        #     ag_valid = to_insert.insert(in_data, valid)
+        #     print(f"in data: {in_data}, ag_valid: {ag_valid}")
+        #     if(ag_valid):
+        #         self.in_sched_ptr += 1
+        #         if(self.in_sched_ptr >= self.config['in_period']):
+        #             self.in_sched_ptr = 0
 
     def get_valid_out(self):
         valid_check_agg = self.aggs[self.config[f"out_sched_{self.out_sched_ptr}"]]
+        print(f"valid_out: {valid_check_agg.get_valid_out()}, out sched ptr: {self.out_sched_ptr}")
         return valid_check_agg.get_valid_out()
 
     def get_item(self):
@@ -59,6 +68,44 @@ class AggBuffModel(Model):
         if(self.out_sched_ptr >= self.config['out_period']):
             self.out_sched_ptr = 0
         return valid_check_agg.get_data_out()
+
+    def interact(self, in_data, valid, write_act):
+        '''
+            Returns (data_out, valid_out)
+        '''
+        in_sched_curr = self.in_sched_ptr
+        out_sched_curr = self.out_sched_ptr
+
+        agg_dat = []
+        agg_valid = []
+        agg_nf = []
+        for i in range(self.agg_height):
+            # Interact with child
+            if i == self.config[f"in_sched_{in_sched_curr}"]:
+                (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(in_data, valid)
+            else:
+                (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(0, 0)
+            agg_dat.append(t_ag_d)
+            agg_valid.append(t_ag_v)
+            agg_nf.append(t_nf)
+
+        ret_data = agg_dat[self.config[f"out_sched_{out_sched_curr}"]]
+        ret_valid = agg_valid[self.config[f"out_sched_{out_sched_curr}"]]
+
+        next_full = agg_nf[self.config[f"in_sched_{in_sched_curr}"]]
+
+        if(next_full == 1):
+            self.in_sched_ptr += 1
+            if(self.in_sched_ptr >= self.config['in_period']):
+                self.in_sched_ptr = 0
+
+        # Would be write_act
+        if(ret_valid == 1):
+            self.out_sched_ptr += 1
+            if(self.out_sched_ptr >= self.config['out_period']):
+                self.out_sched_ptr = 0
+
+        return (ret_data, ret_valid)
 
     def peek(self):
         pass

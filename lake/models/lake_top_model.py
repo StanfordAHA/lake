@@ -346,9 +346,12 @@ class LakeTopModel(Model):
         data_agg_buff = []
         valid_agg_buff = []
         for i in range(self.interconnect_input_ports):
-            self.agg_buffs[i].insert(data_align[i], valids_align[i])
-            data_agg_buff.append(self.agg_buffs[i].get_item())
-            valid_agg_buff.append(self.agg_buffs[i].get_valid_out())
+            # (dt, vt) = self.agg_buffs[i].insert(data_align[i], valids_align[i])
+            (dt, vt) = self.agg_buffs[i].interact(data_align[i], valids_align[i], 0)
+            data_agg_buff.append(dt)
+            valid_agg_buff.append(vt)
+            # data_agg_buff.append(self.agg_buffs[i].get_item())
+            # valid_agg_buff.append(self.agg_buffs[i].get_valid_out())
 
         # Now send agg_buff stuff to IAC
         (iac_valid, iac_data, iac_addrs) = self.iac.interact(valid_agg_buff, data_agg_buff)
@@ -420,7 +423,7 @@ class LakeTopModel(Model):
             rw_data_to_mem.append(dm)
             rw_addr_to_mem.append(am)
             rw_ack.append(rw_ack)
-        # print(f"data_in: {data_in}, wen: {rw_wen_mem}, data_out_mem: {rw_out_dat}")
+
         # HIT SRAM
         if self.read_delay == 1:
             for i in range(self.banks):
@@ -440,8 +443,6 @@ class LakeTopModel(Model):
 
         # Demux those reads
         (demux_dat, demux_valid) = self.demux_reads.interact(rw_out_dat, rw_out_valid, rw_out_port)
-
-        # print(f"data_in: {data_in}, wen: {rw_wen_mem}, cen_mem: {rw_cen_mem}, data_out: {demux_dat}")
 
         # Requires or'd version of ren
         ren_base = []
@@ -478,9 +479,6 @@ class LakeTopModel(Model):
             (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], pref_valid[i], pref_valid[i], 0, ac_ren_out[i])
             data_out.append(tb_d)
             valid_out.append(tb_v)
-        # self.tbas[0].print_tba_tb(pref_data[i], pref_valid[i], pref_valid[i], 0, output_en)
-        # print(f"data out {data_out}, valid_out: {valid_out}")
-        # print()
 
         return (data_out, valid_out)
 

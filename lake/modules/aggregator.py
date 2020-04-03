@@ -18,12 +18,12 @@ class Aggregator(Generator):
         self._valid_in = self.input("valid_in", 1)
 
         # outputs
-        self.agg_out = self.output("agg_out",
-                                   word_width,
-                                   size=mem_word_width,
-                                   packed=True,
-                                   explicit_array=True)
-        self.valid_out = self.output("valid_out", 1)
+        self._agg_out = self.output("agg_out",
+                                    word_width,
+                                    size=mem_word_width,
+                                    packed=True,
+                                    explicit_array=True)
+        self._valid_out = self.output("valid_out", 1)
         self._next_full = self.output("next_full", 1)
 
         self.shift_reg = self.var("shift_reg",
@@ -34,13 +34,13 @@ class Aggregator(Generator):
 
         # local variables
         if(mem_word_width > 1):
-            self.word_count = self.var("word_count", clog2(mem_word_width))
+            self._word_count = self.var("word_count", clog2(mem_word_width))
             self.add_code(self.update_counter_valid)
             self.add_code(self.set_next_full)
             self.add_code(self.update_shift_reg)
             # add combinational blocks
         else:
-            self.wire(self.valid_out, const(1, 1))
+            self.wire(self._valid_out, const(1, 1))
             self.wire(self._next_full, self._valid_in)
             # only add the update counter/valid
             self.wire(self.shift_reg[0], self.in_pixels)
@@ -49,32 +49,32 @@ class Aggregator(Generator):
 
     @always_comb
     def set_next_full(self):
-        self._next_full = self._valid_in & (self.word_count == const(self.mem_word_width - 1,
-                                                                     self.word_count.width))
+        self._next_full = self._valid_in & (self._word_count == const(self.mem_word_width - 1,
+                                                                      self._word_count.width))
 
     # setting valid signal and word_count index
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_counter_valid(self):
         if ~self.rst_n:
-            self.valid_out = 0
-            self.word_count = const(0, self.word_count.width)
-        # no self.word_count in this case
+            self._valid_out = 0
+            self._word_count = const(0, self._word_count.width)
+        # no self._word_count in this case
         elif self._valid_in:
-            if (self.word_count == const(self.mem_word_width - 1, self.word_count.width)):
-                self.valid_out = const(1, 1)
-                self.word_count = const(0, self.word_count.width)
+            if (self._word_count == const(self.mem_word_width - 1, self._word_count.width)):
+                self._valid_out = const(1, 1)
+                self._word_count = const(0, self._word_count.width)
             else:
-                self.valid_out = const(0, 1)
-                self.word_count = self.word_count + const(1, clog2(mem_word_width))
+                self._valid_out = const(0, 1)
+                self._word_count = self._word_count + const(1, clog2(mem_word_width))
 
     @always_ff((posedge, "clk"))
     def update_shift_reg(self):
         if (self._valid_in):
-            self.shift_reg[self.word_count] = self.in_pixels
+            self.shift_reg[self._word_count] = self.in_pixels
 
     @always_comb
     def output_data(self):
-        self.agg_out = self.shift_reg
+        self._agg_out = self.shift_reg
 
 
 if __name__ == "__main__":
