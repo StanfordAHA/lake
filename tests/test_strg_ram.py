@@ -116,7 +116,9 @@ def test_storage_ram(mem_width,  # CGRA Params
 
     stall = fw_int > 1
 
-    for i in range(5000):
+    tester.circuit.clk_en = 1
+
+    for i in range(2000):
         data_in = rand.randint(0, 2 ** data_width - 1)
         write = rand.randint(0, 1)
         read = rand.randint(0, 1)

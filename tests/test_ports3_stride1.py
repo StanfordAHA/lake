@@ -200,6 +200,8 @@ def test_ports3_stride1(read_delay=1,
     addr_in = 0
     output_en = 1
 
+    tester.circuit.clk_en = 1
+
     for i in range(1000):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
@@ -243,10 +245,11 @@ def test_ports3_stride1(read_delay=1,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "dumps"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":
