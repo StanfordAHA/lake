@@ -423,7 +423,7 @@ class LakeTopModel(Model):
             rw_data_to_mem.append(dm)
             rw_addr_to_mem.append(am)
             rw_ack.append(rw_ack)
-
+        print(f"data_in: {data_in}, rw_addr_to_mem: {rw_addr_to_mem}")
         # HIT SRAM
         if self.read_delay == 1:
             for i in range(self.banks):

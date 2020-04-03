@@ -215,8 +215,8 @@ def test_ports3_stride1(read_delay=1,
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
-            data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
-            valid_in[j] = 1  # rand.randint(0, 1)
+            data_in[j] += 1
+            valid_in[j] = rand.randint(0, 1)
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
             ren[j] = ren_tmp

@@ -34,6 +34,8 @@ class SRAMModel(Model):
         '''
         rd_reg_ret = self.rd_reg
 
+        addr = addr % self.depth
+
         # no-op
         if cen == 0:
             return rd_reg_ret
