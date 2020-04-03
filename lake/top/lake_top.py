@@ -1,6 +1,6 @@
 from kratos import *
 from lake.modules.passthru import *
-from lake.modules.sram_stub import SRAMStub
+from lake.modules.sram_wrapper import SRAMWrapper
 
 
 from lake.modules.strg_ub import StrgUB
@@ -9,7 +9,8 @@ from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
 from lake.attributes.config_reg_attr import ConfigRegAttr
-from lake.passes.passes import lift_config_reg
+from lake.passes.passes import lift_config_reg, change_sram_port_names
+from utils.sram_macro import SRAMMacroInfo
 import kratos as kts
 
 
@@ -26,6 +27,7 @@ class LakeTop(Generator):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=1,
+                 sram_macro_info=SRAMMacroInfo(),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
@@ -46,7 +48,8 @@ class LakeTop(Generator):
                  config_addr_width=8,
                  remove_tb=False,
                  fifo_mode=True,
-                 add_clk_enable=False):
+                 add_clk_enable=False,
+                 add_flush=False):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -60,6 +63,7 @@ class LakeTop(Generator):
         self.mem_input_ports = mem_input_ports
         self.mem_output_ports = mem_output_ports
         self.use_sram_stub = use_sram_stub
+        self.sram_macro_info = sram_macro_info
         self.agg_height = agg_height
         self.max_agg_schedule = max_agg_schedule
         self.input_max_port_sched = input_max_port_sched
@@ -136,10 +140,7 @@ class LakeTop(Generator):
         self._valid_out = self.output("valid_out",
                                       self.interconnect_output_ports)
 
-        if self.banks == 1:
-            self.address_width = clog2(mem_depth)
-        else:
-            self.address_width = clog2(mem_depth)  # + clog2(banks)
+        self.address_width = clog2(mem_depth)
 
         # Add tile enable!
         self._tile_en = self.input("tile_en", 1)
@@ -582,17 +583,25 @@ class LakeTop(Generator):
             self.wire(self._mem_addr_dp, self._all_addr_to_mem[self._mode])
 
             for i in range(self.banks):
-                mbank = SRAMStub(data_width=self.data_width,
-                                 width_mult=self.fw_int,
-                                 depth=self.mem_depth)
+                mbank = SRAMWrapper(use_sram_stub=self.use_sram_stub,
+                                    sram_name=self.sram_macro_info.name,
+                                    data_width=self.data_width,
+                                    fw_int=self.fw_int,
+                                    mem_depth=self.mem_depth,
+                                    mem_input_ports=self.mem_input_ports,
+                                    mem_output_ports=self.mem_output_ports,
+                                    address_width=self.address_width,
+                                    bank_num=i)
+
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
-                               data_in=self._mem_data_in[i],
-                               addr=self._mem_addr_in[i],
-                               cen=self._mem_cen_in[i],
-                               wen=self._mem_wen_in[i],
-                               data_out=self._mem_data_out[i])
-
+                               mem_data_in_bank=self._mem_data_in[i],
+                               mem_data_out_bank=self._mem_data_out[i],
+                               mem_addr_in_bank=self._mem_addr_in[i],
+                               mem_cen_in_bank=self._mem_cen_in[i],
+                               mem_wen_in_bank=self._mem_wen_in[i],
+                               wtsel=self.sram_macro_info.wtsel_value,
+                               rtsel=self.sram_macro_info.rtsel_value)
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)
@@ -659,13 +668,25 @@ class LakeTop(Generator):
         if add_clk_enable:
             self.clock_en("clk_en")
 
+        if add_flush:
+            self.add_attribute("sync-reset=flush")
+
 
 if __name__ == "__main__":
-    lake_dut = LakeTop()
+    tsmc_info = SRAMMacroInfo("tsmc_name")
+    use_sram_stub = True
+    fifo_mode = True
+    mem_width = 64
+    lake_dut = LakeTop(mem_width=mem_width,
+                       sram_macro_info=tsmc_info,
+                       use_sram_stub=use_sram_stub,
+                       fifo_mode=fifo_mode,
+                       add_clk_enable=True,
+                       add_flush=True)
+    sram_port_pass = change_sram_port_names(use_sram_stub=True, sram_macro_info=tsmc_info)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
-            additional_passes={"lift config regs": lift_config_reg})
-    # verilog(lake_dut, filename="lake_top.sv",
-    #         optimize_if=False,
-    #         additional_passes={"lift config regs": lift_config_reg,
-    #                            "insert_clock_enable": kts.passes.auto_insert_clock_enable})
+            additional_passes={"lift config regs": lift_config_reg,
+                               "change sram port names": sram_port_pass,
+                               "insert_clock_enable": kts.passes.auto_insert_clock_enable,
+                               "insert_flush": kts.passes.auto_insert_sync_reset})
