@@ -232,29 +232,14 @@ class TransposeBuffer(Generator):
             self.pause_tb = 1
         elif self.dimensionality == 0:
             self.pause_tb = 1
-        elif self.dimensionality == 1:
-            if self.index_outer == self.range_outer - 1:
-                if ~self.pause_output:
-                    self.pause_tb = ~self.valid_data
-                else:
-                    self.pause_tb = 0
-            elif self.pause_tb:
+        elif (self.index_outer == self.range_outer - 1) & \
+                ((self.dimensionality == 1) |
+                    ((self.dimensionality == 2) &
+                        (self.index_inner == self.range_inner - 1))):
+            if ~self.pause_output:
                 self.pause_tb = ~self.valid_data
-            elif ~self.pause_output:
-                self.pause_tb = 0
-        else:
-            if self.index_inner == self.range_inner - 1:
-                if self.index_outer == self.range_outer - 1:
-                    if ~self.pause_output:
-                        self.pause_tb = ~self.valid_data
-                    else:
-                        self.pause_tb = 0
-                else:
-                    self.pause_tb = 0
-            elif self.pause_tb:
-                self.pause_tb = ~self.valid_data
-            elif ~self.pause_output:
-                self.pause_tb = 0
+        elif self.pause_tb:
+            self.pause_tb = ~self.valid_data
 
     @always_comb
     def set_pause_output(self):
