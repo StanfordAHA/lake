@@ -2,7 +2,7 @@ import kratos
 from kratos import *
 from math import log
 from lake.modules.transpose_buffer import TransposeBuffer
-from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.passes.passes import lift_config_reg
 
 
 class TransposeBufferAggregation(Generator):
@@ -142,5 +142,5 @@ class TransposeBufferAggregation(Generator):
 
 
 if __name__ == "__main__":
-    dut = TransposeBufferAggregation(1, 4, 3, 3, 5, 2)
-    verilog(dut, filename="tba.sv")
+    dut = TransposeBufferAggregation(1, 4, 3, 1, 5, 2, 2)
+    verilog(dut, filename="tba.sv", additional_passes={"lift config regs": lift_config_reg})
