@@ -1162,6 +1162,7 @@ def test_config_storage(data_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
