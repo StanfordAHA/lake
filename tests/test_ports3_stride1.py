@@ -245,7 +245,6 @@ def test_ports3_stride1(read_delay=1,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "dumps"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
