@@ -663,9 +663,6 @@ def test_identity_stream(data_width=16,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -903,9 +900,6 @@ def test_top(read_delay,
                      read_delay=read_delay,
                      fifo_mode=read_delay > 0)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -927,6 +921,8 @@ def test_top(read_delay,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
+    tester.eval()
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
