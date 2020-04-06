@@ -142,5 +142,11 @@ class TransposeBufferAggregation(Generator):
 
 
 if __name__ == "__main__":
-    dut = TransposeBufferAggregation(1, 4, 3, 1, 5, 2, 2)
+    dut = TransposeBufferAggregation(word_width=1,
+                                     fetch_width=4,
+                                     num_tb=3,
+                                     max_tb_height=1,
+                                     max_range=5,
+                                     max_stride=2,
+                                     tb_iterator_support=2)
     verilog(dut, filename="tba.sv", additional_passes={"lift config regs": lift_config_reg})
