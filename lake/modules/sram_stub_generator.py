@@ -62,5 +62,9 @@ class SRAMStubGenerator(Generator):
 
 
 if __name__ == "__main__":
-    dut = SRAMStubGenerator("TSMC", 16, 1, 124)
+    # to see interface, mark self.use_stub = True and self.external = False
+    dut = SRAMStubGenerator(sram_name="TSMC",
+                            data_width=16,
+                            width_mult=1,
+                            depth=124)
     verilog(dut, filename="tsmc_macro.sv")
