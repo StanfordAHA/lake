@@ -217,20 +217,20 @@ def test_pond_nestan(data_width=16,  # CGRA Params
     new_config = {}
 
     # Input addr ctrl
-    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 2
+    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 1
     new_config["input_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["input_addr_ctrl_address_gen_0_ranges_0"] = 16
+    new_config["input_addr_ctrl_address_gen_0_ranges_0"] = 32
     new_config["input_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["input_addr_ctrl_address_gen_0_ranges_1"] = 100
-    new_config["input_addr_ctrl_address_gen_0_strides_1"] = 0
+    new_config["input_addr_ctrl_address_gen_0_ranges_1"] = 10
+    new_config["input_addr_ctrl_address_gen_0_strides_1"] = 3
 
     # Output addr ctrl
-    new_config["output_addr_ctrl_address_gen_0_dimensionality"] = 2
+    new_config["output_addr_ctrl_address_gen_0_dimensionality"] = 2 
     new_config["output_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["output_addr_ctrl_address_gen_0_ranges_0"] = 16
+    new_config["output_addr_ctrl_address_gen_0_ranges_0"] = 3
     new_config["output_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["output_addr_ctrl_address_gen_0_ranges_1"] = 100
-    new_config["output_addr_ctrl_address_gen_0_strides_1"] = 0
+    new_config["output_addr_ctrl_address_gen_0_ranges_1"] = 32
+    new_config["output_addr_ctrl_address_gen_0_strides_1"] = 1
 
     # These ports are desynched
     new_config["sync_grp_sync_group_0"] = 1
@@ -291,7 +291,7 @@ def test_pond_nestan(data_width=16,  # CGRA Params
     tester.circuit.rst_n = 1
     tester.step(2)
 
-    data_in = [0] * interconnect_input_ports
+    data_in = [-1] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 0
     ren_en = 0
@@ -324,6 +324,8 @@ def test_pond_nestan(data_width=16,  # CGRA Params
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
+
+
 
         tester.eval()
         tester.step(2)
