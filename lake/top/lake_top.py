@@ -44,7 +44,7 @@ class LakeTop(Generator):
                  tb_iterator_support=2,
                  multiwrite=1,
                  max_prefetch=64,
-                 config_data_width=16,
+                 config_data_width=32,
                  config_addr_width=8,
                  remove_tb=False,
                  fifo_mode=True,
@@ -113,19 +113,34 @@ class LakeTop(Generator):
                                    packed=True,
                                    explicit_array=True)
 
-        self._wen = self.input("wen", self.interconnect_input_ports)
-        self._ren = self.input("ren", self.interconnect_output_ports)
+        self._wen = self.input("wen_in", self.interconnect_input_ports)
+        self._ren = self.input("ren_in", self.interconnect_output_ports)
 
         self._config_data_in = self.input("config_data_in",
                                           self.config_data_width)
 
+        self._config_data_in_shrt = self.var("config_data_in_shrt",
+                                             self.data_width)
+
+        self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
+
         self._config_addr_in = self.input("config_addr_in",
                                           self.config_addr_width)
+
+        self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width,
+                                            size=self.total_sets,
+                                            explicit_array=True,
+                                            packed=True)
 
         self._config_data_out = self.output("config_data_out", self.config_data_width,
                                             size=self.total_sets,
                                             explicit_array=True,
                                             packed=True)
+
+        for i in range(self.total_sets):
+            self.wire(self._config_data_out[i],
+                      self._config_data_out_shrt[i].extend(self.config_data_width))
+
 
         self._config_read = self.input("config_read", 1)
         self._config_write = self.input("config_write", 1)
@@ -263,7 +278,7 @@ class LakeTop(Generator):
         ##### DEMUX WRITE/SRAM WRAPPER #####
         ####################################
 
-        stg_cfg_seq = StorageConfigSeq(data_width=16,
+        stg_cfg_seq = StorageConfigSeq(data_width=self.data_width,
                                        config_addr_width=self.config_addr_width,
                                        addr_width=self.address_width,
                                        fetch_width=self.mem_width,
@@ -273,14 +288,14 @@ class LakeTop(Generator):
         self.add_child(f"config_seq", stg_cfg_seq,
                        clk=self._gclk,
                        rst_n=self._rst_n,
-                       config_data_in=self._config_data_in,
+                       config_data_in=self._config_data_in_shrt,
                        config_addr_in=self._config_addr_in,
                        config_wr=self._config_write,
                        config_rd=self._config_read,
                        config_en=self._config_en,
                        rd_data_stg=self._mem_data_low_pt,
                        wr_data=self._mem_data_cfg,
-                       rd_data_out=self._config_data_out,
+                       rd_data_out=self._config_data_out_shrt,
                        addr_out=self._mem_addr_cfg,
                        wen_out=self._mem_wen_cfg,
                        ren_out=self._mem_ren_cfg)
