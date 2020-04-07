@@ -104,6 +104,24 @@ class LakeTop(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Chaining
+        self._enable_chain_output = self.input("enable_chain_output", 1)
+        
+        self._chain_output_in = self.input("chain_output_in", 
+                                           self.data_width,
+                                           size=self.interconnect_output_ports,
+                                           packed=True,
+                                           explicit_array=True)
+        self._chain_valid_in = self.input("chain_valid_in",
+                                          self.interconnect_output_ports)
+
+        self._chain_output_out = self.output("chain_output_out", 
+                                             self.data_width,
+                                             size=self.interconnect_output_ports,
+                                             packed=True,
+                                             explicit_array=True)
+        self._chain_valid_out = self.output("chain_valid_out", 
+                                            self.interconnect_output_ports)
+
         self._chain_idx = self.input("chain_idx",
                                      self.chain_idx_bits)
         self._chain_idx.add_attribute(ConfigRegAttr("Tile index when having multiple tiles"))
@@ -690,6 +708,23 @@ class LakeTop(Generator):
 
         if add_flush:
             self.add_attribute("sync-reset=flush")
+
+        self.add_code(self.set_chain_output)
+        self.add_code(self.set_chain_valid)
+
+    @always_comb
+    def set_chain_output(self):
+        if self._enable_chain_output:
+            self._chain_output_out = self._chain_output_in
+        else:
+            self._chain_output_out = self._data_out
+
+    @always_comb
+    def set_chain_valid(self):
+        if self._enable_chain_output:
+            self._chain_valid_out = self._chain_valid_in
+        else:
+            self._chain_valid_out = self._valid_out
 
 
 if __name__ == "__main__":
