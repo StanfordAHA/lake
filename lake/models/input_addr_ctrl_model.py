@@ -9,6 +9,7 @@ class InputAddrCtrlModel(Model):
     def __init__(self,
                  interconnect_input_ports,
                  mem_depth,
+                 num_tiles,
                  banks,
                  iterator_support,
                  max_port_schedule,
@@ -18,6 +19,7 @@ class InputAddrCtrlModel(Model):
 
         self.interconnect_input_ports = interconnect_input_ports
         self.mem_depth = mem_depth
+        self.num_tiles = num_tiles
         self.banks = banks
         self.iterator_support = iterator_support
         self.address_width = address_width
@@ -31,12 +33,11 @@ class InputAddrCtrlModel(Model):
         # Create child address generators
         self.addr_gens = []
         for i in range(self.interconnect_input_ports):
-            new_addr_gen = AddrGenModel(mem_depth=self.mem_depth,
-                                        iterator_support=self.iterator_support,
+            new_addr_gen = AddrGenModel(iterator_support=self.iterator_support,
                                         address_width=self.address_width)
             self.addr_gens.append(new_addr_gen)
 
-        self.mem_addr_width = kts.clog2(self.mem_depth)
+        self.mem_addr_width = kts.clog2(self.num_tiles * self.mem_depth)
 
         # Get local list of addresses
         self.addresses = []

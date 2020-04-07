@@ -3,8 +3,7 @@ from lake.models.model import Model
 
 class AddrGenModel(Model):
 
-    def __init__(self, mem_depth, iterator_support, address_width):
-        self.mem_depth = mem_depth
+    def __init__(self, iterator_support, address_width):
         self.iterator_support = iterator_support
         self.address_width = address_width
 
