@@ -6,7 +6,7 @@ import pytest
 import tempfile
 from lake.passes.passes import change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
-from utils.sram_macro import SRAMMacroInfo
+from lake.utils.sram_macro import SRAMMacroInfo
 
 
 def test_mult_lines_dim1(data_width=16,

@@ -1,5 +1,5 @@
 from kratos import *
-from utils.util import increment, decrement
+from lake.utils.util import increment, decrement
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.modules.reg_fifo import RegFIFO
 

@@ -4,7 +4,7 @@ import magma as m
 from magma import *
 import fault
 import tempfile
-from utils.util import *
+from lake.utils.util import *
 import kratos as k
 import random as rand
 
