@@ -153,9 +153,7 @@ class InputAddrCtrl(Generator):
         # Now we should instantiate the child address generators
         # (1 per input port) to send to the sram banks
         for i in range(self.interconnect_input_ports):
-            self.add_child(f"address_gen_{i}", AddrGen(mem_depth=self.mem_depth,
-                                                       num_tiles=self.num_tiles,
-                                                       iterator_support=self.iterator_support,
+            self.add_child(f"address_gen_{i}", AddrGen(iterator_support=self.iterator_support,
                                                        address_width=self.address_width),
                            clk=self._clk,
                            rst_n=self._rst_n,

@@ -1,6 +1,5 @@
 from kratos import *
 from lake.modules.aggregator import Aggregator
-from lake.modules.addr_gen import AddrGen
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
 import kratos as kts
