@@ -4,7 +4,6 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.passes.passes import lift_config_reg
 from lake.models.lake_top_model import LakeTopModel
 from lake.modules.strg_fifo import StrgFIFO
 from lake.models.reg_fifo_model import RegFIFOModel
@@ -92,9 +91,6 @@ def test_storage_fifo(mem_width,  # CGRA Params
                      remove_tb=remove_tb,
                      fifo_mode=fifo_mode)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -120,6 +116,8 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
     push_cnt = 0
     pop_cnt = 0
+
+    tester.circuit.clk_en = 1
 
     for i in range(2000):
         data_in = rand.randint(0, 2 ** data_width - 1)

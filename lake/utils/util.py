@@ -12,6 +12,7 @@ def decrement(var, value):
 def transpose(generator: kts.Generator, port, name):
     pass
 
+
 def int_to_list(data, width, num_items):
     to_ret = []
     comp = 2 ** width - 1
@@ -19,6 +20,7 @@ def int_to_list(data, width, num_items):
         item = (data >> (width * i)) & comp
         to_ret.append(item)
     return to_ret
+
 
 def list_to_int(list_d, width):
     to_ret = 0

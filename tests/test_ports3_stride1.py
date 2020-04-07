@@ -4,7 +4,6 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.passes.passes import lift_config_reg
 from lake.models.lake_top_model import LakeTopModel
 
 
@@ -180,9 +179,6 @@ def test_ports3_stride1(read_delay=1,
                      read_delay=read_delay,
                      fifo_mode=banks > 1)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -210,6 +206,8 @@ def test_ports3_stride1(read_delay=1,
     valid_in = [0] * interconnect_input_ports
     ren = [0] * interconnect_output_ports
     addr_in = 0
+
+    tester.circuit.clk_en = 1
 
     for i in range(1000):
         # Rand data
@@ -255,7 +253,7 @@ def test_ports3_stride1(read_delay=1,
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":

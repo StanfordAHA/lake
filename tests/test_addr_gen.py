@@ -9,8 +9,12 @@ import kratos as k
 import pytest
 
 
-def test_addr_gen_basic():
-    model_ag = AddrGenModel(512, 6, 16)
+def test_addr_gen_basic(depth=512,
+                        addr_width=16,
+                        iterator_support=6):
+    model_ag = AddrGenModel(mem_depth=depth,
+                            iterator_support=iterator_support,
+                            address_width=addr_width)
 
     config_dict = {}
     config_dict["starting_addr"] = 0
@@ -29,7 +33,9 @@ def test_addr_gen_basic():
     stencil_height = 3
     max_range_value = 5
     img_height = 4
-    dut = AddrGen(512, 6, 16)
+    dut = AddrGen(mem_depth=depth,
+                  iterator_support=iterator_support,
+                  address_width=addr_width)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_flip_flop_always_ff=False)
@@ -65,3 +71,7 @@ def test_addr_gen_basic():
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_addr_gen_basic()

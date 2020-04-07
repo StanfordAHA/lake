@@ -4,7 +4,7 @@ from lake.passes.passes import lift_config_reg
 import _kratos
 import magma as m
 from magma import *
-from utils.util import *
+from lake.utils.util import *
 import fault
 import tempfile
 import kratos as k

@@ -4,9 +4,9 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.passes.passes import lift_config_reg, change_sram_port_names
+from lake.passes.passes import change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
-from utils.sram_macro import SRAMMacroInfo
+from lake.utils.sram_macro import SRAMMacroInfo
 
 
 def test_mult_lines_dim1(data_width=16,
@@ -137,9 +137,6 @@ def test_mult_lines_dim1(data_width=16,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -162,6 +159,8 @@ def test_mult_lines_dim1(data_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
+    tester.eval()
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
@@ -372,9 +371,6 @@ def test_mult_lines_dim2(tb0_range_outer,
                      read_delay=read_delay,
                      fifo_mode=read_delay > 0)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -382,6 +378,9 @@ def test_mult_lines_dim2(tb0_range_outer,
                                   check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
+    tester.circuit.clk_en = 1
+    tester.eval()
     ###
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
@@ -515,9 +514,6 @@ def test_sram_port_names_change(mem_width,
                      config_addr_width=config_addr_width,
                      remove_tb=remove_tb,
                      fifo_mode=fifo_mode)
-
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
 
     change_sram_port_pass = change_sram_port_names(use_sram_stub, sram_macro_info)
 
@@ -665,9 +661,6 @@ def test_identity_stream(data_width=16,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -675,6 +668,9 @@ def test_identity_stream(data_width=16,
                                   check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
+    tester.circuit.clk_en = 1
+    tester.eval()
     ###
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
@@ -908,9 +904,6 @@ def test_top(read_delay,
                      read_delay=read_delay,
                      fifo_mode=read_delay > 0)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -934,6 +927,8 @@ def test_top(read_delay,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
+    tester.eval()
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
@@ -1146,9 +1141,6 @@ def test_config_storage(data_width=16,
                      config_addr_width=config_addr_width,
                      read_delay=read_delay)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -1173,6 +1165,7 @@ def test_config_storage(data_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
