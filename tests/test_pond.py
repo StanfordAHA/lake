@@ -217,20 +217,20 @@ def test_pond_nestan(data_width=16,  # CGRA Params
     new_config = {}
 
     # Input addr ctrl
-    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 1
-    new_config["input_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["input_addr_ctrl_address_gen_0_dimensionality"] = 9
     new_config["input_addr_ctrl_address_gen_0_ranges_0"] = 32
+    new_config["input_addr_ctrl_address_gen_0_ranges_1"] = 1
+    new_config["input_addr_ctrl_address_gen_0_starting_addr"] = 0
     new_config["input_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["input_addr_ctrl_address_gen_0_ranges_1"] = 10
-    new_config["input_addr_ctrl_address_gen_0_strides_1"] = 3
+    new_config["input_addr_ctrl_address_gen_0_strides_1"] = 32
 
     # Output addr ctrl
     new_config["output_addr_ctrl_address_gen_0_dimensionality"] = 2 
+    new_config["output_addr_ctrl_address_gen_0_ranges_0"] = 2
+    new_config["output_addr_ctrl_address_gen_0_ranges_1"] = 16
     new_config["output_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["output_addr_ctrl_address_gen_0_ranges_0"] = 3
-    new_config["output_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["output_addr_ctrl_address_gen_0_ranges_1"] = 32
-    new_config["output_addr_ctrl_address_gen_0_strides_1"] = 1
+    new_config["output_addr_ctrl_address_gen_0_strides_0"] = 0
+    new_config["output_addr_ctrl_address_gen_0_strides_1"] = 2
 
     # These ports are desynched
     new_config["sync_grp_sync_group_0"] = 1
