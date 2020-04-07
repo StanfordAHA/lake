@@ -46,6 +46,7 @@ class LakeTop(Generator):
                  max_prefetch=64,
                  config_data_width=16,
                  config_addr_width=8,
+                 num_tiles=1,
                  remove_tb=False,
                  fifo_mode=True,
                  add_clk_enable=False,
@@ -83,6 +84,7 @@ class LakeTop(Generator):
         self.max_prefetch = max_prefetch
         self.config_data_width = config_data_width
         self.config_addr_width = config_addr_width
+        self.num_tiles = num_tiles
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
@@ -93,11 +95,18 @@ class LakeTop(Generator):
 
         self.sets_per_macro = max(1, int(self.mem_depth / self.data_words_per_set))
         self.total_sets = max(1, self.banks * self.sets_per_macro)
+
+        self.chain_idx_bits = max(1, clog2(num_tiles))
         # phases = [] TODO
 
         # CLK and RST
         self._gclk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
+
+        # Chaining
+        self._chain_idx = self.input("chain_idx",
+                                     self.chain_idx_bits)
+        self._chain_idx.add_attribute(ConfigRegAttr("Tile index when having multiple tiles"))
 
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
@@ -140,7 +149,7 @@ class LakeTop(Generator):
         self._valid_out = self.output("valid_out",
                                       self.interconnect_output_ports)
 
-        self.address_width = clog2(mem_depth)
+        self.address_width = clog2(self.num_tiles * self.mem_depth)
 
         # Add tile enable!
         self._tile_en = self.input("tile_en", 1)
@@ -343,6 +352,7 @@ class LakeTop(Generator):
         strg_ub = StrgUB(data_width=self.data_width,
                          mem_width=self.mem_width,
                          mem_depth=self.mem_depth,
+                         num_tiles=self.num_tiles,
                          banks=self.banks,
                          input_iterator_support=self.input_iterator_support,
                          output_iterator_support=self.output_iterator_support,
@@ -513,6 +523,7 @@ class LakeTop(Generator):
                                banks=self.banks,
                                memory_width=self.mem_width,
                                memory_depth=self.mem_depth,
+                               num_tiles=self.num_tiles,
                                rw_same_cycle=self.rw_same_cycle,
                                read_delay=self.read_delay,
                                addr_width=16,
@@ -598,10 +609,12 @@ class LakeTop(Generator):
                                     mem_input_ports=self.mem_input_ports,
                                     mem_output_ports=self.mem_output_ports,
                                     address_width=self.address_width,
-                                    bank_num=i)
+                                    bank_num=i,
+                                    num_tiles=self.num_tiles)
 
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
+                               chain_idx=self._chain_idx,
                                mem_data_in_bank=self._mem_data_in[i],
                                mem_data_out_bank=self._mem_data_out[i],
                                mem_addr_in_bank=self._mem_addr_in[i],

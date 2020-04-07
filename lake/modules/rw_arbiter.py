@@ -19,6 +19,7 @@ class RWArbiter(Generator):
                  fetch_width=16,
                  data_width=16,
                  memory_depth=32,
+                 num_tiles=1,
                  int_in_ports=2,
                  int_out_ports=2,
                  strg_wr_ports=2,
@@ -39,7 +40,8 @@ class RWArbiter(Generator):
         self.strg_wr_ports = strg_wr_ports
         self.strg_rd_ports = strg_rd_ports
         self.memory_depth = memory_depth
-        self.mem_addr_width = clog2(self.memory_depth)
+        self.num_tiles = num_tiles
+        self.mem_addr_width = clog2(self.num_tiles * self.memory_depth)
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         self.separate_addresses = separate_addresses

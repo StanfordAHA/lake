@@ -13,6 +13,7 @@ class InputAddrCtrl(Generator):
     def __init__(self,
                  interconnect_input_ports=2,
                  mem_depth=32,
+                 num_tiles=1,
                  banks=1,
                  iterator_support=6,
                  address_width=5,
@@ -26,6 +27,7 @@ class InputAddrCtrl(Generator):
 
         self.interconnect_input_ports = interconnect_input_ports
         self.mem_depth = mem_depth
+        self.num_tiles = num_tiles
         self.banks = banks
         self.iterator_support = iterator_support
         self.address_width = address_width
@@ -36,7 +38,7 @@ class InputAddrCtrl(Generator):
         self.multiwrite = multiwrite
         self.strg_wr_ports = strg_wr_ports
 
-        self.mem_addr_width = clog2(self.mem_depth)
+        self.mem_addr_width = clog2(self.num_tiles * self.mem_depth)
         if self.banks > 1:
             self.bank_addr_width = clog2(self.banks)
         else:
@@ -152,6 +154,7 @@ class InputAddrCtrl(Generator):
         # (1 per input port) to send to the sram banks
         for i in range(self.interconnect_input_ports):
             self.add_child(f"address_gen_{i}", AddrGen(mem_depth=self.mem_depth,
+                                                       num_tiles=self.num_tiles,
                                                        iterator_support=self.iterator_support,
                                                        address_width=self.address_width),
                            clk=self._clk,

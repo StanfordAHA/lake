@@ -10,13 +10,15 @@ class AddrGen(Generator):
     '''
     def __init__(self,
                  mem_depth,
+                 num_tiles,
                  iterator_support,
                  address_width):
 
         super().__init__(f"addr_gen_{iterator_support}")
 
         self.mem_depth = mem_depth
-        self.mem_addr_width = clog2(self.mem_depth)
+        self.num_tiles = num_tiles
+        self.mem_addr_width = clog2(self.num_tiles * self.mem_depth)
         self.full_addr = self.mem_addr_width
         self.iterator_support = iterator_support
 

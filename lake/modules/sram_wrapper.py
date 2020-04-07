@@ -18,7 +18,8 @@ class SRAMWrapper(Generator):
                  mem_input_ports,
                  mem_output_ports,
                  address_width,
-                 bank_num):
+                 bank_num,
+                 num_tiles):
         super().__init__(f"{sram_name}_generator")
 
         self.use_sram_stub = use_sram_stub
@@ -30,8 +31,15 @@ class SRAMWrapper(Generator):
         self.mem_output_ports = mem_output_ports
         self.address_width = address_width
         self.bank_num = bank_num
+        self.num_tiles = num_tiles
+
+        self.chain_idx_bits = max(1, clog2(num_tiles))
 
         self._gclk = self.clock("clk")
+
+        #self._enable_chain = self.input("enable_chain", 1)
+        self._chain_idx = self.input("chain_idx", self.chain_idx_bits)
+        self._chain_idx_tile = self.var("chain_idx_tile", self.chain_idx_bits)
 
         if self.fw_int > 1:
             self._mem_data_in_bank = self.input("mem_data_in_bank",
@@ -66,11 +74,14 @@ class SRAMWrapper(Generator):
 
         self._mem_addr_in_bank = self.input("mem_addr_in_bank",
                                             self.address_width)
+        self._mem_addr_to_sram = self.var("mem_addr_to_sram", 
+                                          self.address_width-self.chain_idx_bits)
 
         self._mem_cen_in_bank = self.input("mem_cen_in_bank", self.mem_output_ports)
 
         self._mem_wen_in_bank = self.input("mem_wen_in_bank", self.mem_input_ports)
-
+        self._mem_wen_in_bank_chain = self.var("mem_wen_in_bank_chain", self.mem_input_ports)
+       
         self._wtsel = self.input("wtsel", 2)
         self._rtsel = self.input("rtsel", 2)
 
@@ -82,9 +93,9 @@ class SRAMWrapper(Generator):
             self.add_child(f"mem_{self.bank_num}", mbank,
                            clk=self._gclk,
                            data_in=self._mem_data_in_bank,
-                           addr=self._mem_addr_in_bank,
+                           addr=self._mem_addr_to_sram,
                            cen=self._mem_cen_in_bank,
-                           wen=self._mem_wen_in_bank,
+                           wen=self._mem_wen_in_bank_chain,
                            data_out=self._mem_data_out_bank)
 
         # instantiante external provided sram macro and flatten input/output data
@@ -108,12 +119,12 @@ class SRAMWrapper(Generator):
 
                 self.add_child(f"mem_{self.bank_num}",
                                mbank,
-                               sram_addr=self._mem_addr_in_bank,
+                               sram_addr=self.self._mem_addr_to_sram,
                                sram_cen=~self._mem_cen_in_bank,
                                sram_clk=self._gclk,
                                sram_data_in=self._sram_mem_data_in_bank,
                                sram_data_out=self._sram_mem_data_out_bank,
-                               sram_wen=~self._mem_wen_in_bank,
+                               sram_wen=~self._mem_wen_in_bank_chain,
                                sram_wtsel=self._wtsel,
                                sram_rtsel=self._rtsel)
 
@@ -129,15 +140,37 @@ class SRAMWrapper(Generator):
             else:
                 self.add_child(f"mem_{self.bank_num}",
                                mbank,
-                               sram_addr=self._mem_addr_in_bank,
+                               sram_addr=self.self._mem_addr_to_sram,
                                sram_cen=~self._mem_cen_in_bank,
                                sram_clk=self._gclk,
                                sram_data_in=self._mem_data_in_bank,
                                sram_data_out=self._mem_data_out_bank,
-                               sram_wen=~self._mem_wen_in_bank,
+                               sram_wen=~self._mem_wen_in_bank_chain,
                                sram_wtsel=self._wtsel,
                                sram_rtsel=self._rtsel)
 
+        self.add_code(self.set_chain_idx_tile)
+        self.add_code(self.set_mem_addr)
+        self.add_code(self.set_chain_wen)
+
+    @always_comb
+    def set_chain_idx_tile(self):
+        # these ranges are inclusive
+        if self.num_tiles > 1:
+            self._chain_idx_tile = self._mem_addr_in_bank[self.address_width-1,self.address_width-self.chain_idx_bits]
+    
+    @always_comb
+    def set_mem_addr(self):
+        self._mem_addr_to_sram = self._mem_addr_in_bank[self.address_width-self.chain_idx_bits-1, 0]
+
+    @always_comb
+    def set_chain_wen(self):
+        if self.num_tiles == 1:
+            self._mem_wen_in_bank_chain = self._mem_wen_in_bank
+        elif self._chain_idx == self._chain_idx_tile:
+            self._mem_wen_in_bank_chain = self._mem_wen_in_bank
+        else:
+            self._mem_wen_in_bank_chain = 0
 
 if __name__ == "__main__":
     dut = SRAMWrapper(0, "TSMC", 16, 4, 128, 1, 1, 7, 4)

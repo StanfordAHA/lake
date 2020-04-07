@@ -46,6 +46,7 @@ class StrgUB(Generator):
                  tb_iterator_support=2,
                  multiwrite=1,
                  max_prefetch=64,
+                 num_tiles=1,
                  remove_tb=False):
         super().__init__("strg_ub")
 
@@ -76,14 +77,13 @@ class StrgUB(Generator):
         self.tb_iterator_support = tb_iterator_support
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
+        self.num_tiles = num_tiles
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         # phases = [] TODO
-        if self.banks == 1:
-            self.address_width = clog2(mem_depth)
-        else:
-            self.address_width = clog2(mem_depth)  # + clog2(banks)
+
+        self.address_width = clog2(self.num_tiles*self.mem_depth)
 
         # CLK and RST
         self._clk = self.clock("clk")
@@ -265,6 +265,7 @@ class StrgUB(Generator):
         # Connect these inputs ports to an address generator
         iac = InputAddrCtrl(interconnect_input_ports=self.interconnect_input_ports,
                             mem_depth=self.mem_depth,
+                            num_tiles=self.num_tiles,
                             banks=self.banks,
                             iterator_support=self.input_iterator_support,
                             address_width=self.address_width,
@@ -315,7 +316,7 @@ class StrgUB(Generator):
         self._ren_out_reduced = self.var("ren_out_reduced",
                                          self.interconnect_output_ports)
         self._oac_addr_out = self.var("oac_addr_out",
-                                      clog2(self.mem_depth),
+                                      self.address_width,
                                       size=self.interconnect_output_ports,
                                       explicit_array=True,
                                       packed=True)
@@ -324,6 +325,7 @@ class StrgUB(Generator):
         #####################################
         oac = OutputAddrCtrl(interconnect_output_ports=self.interconnect_output_ports,
                              mem_depth=self.mem_depth,
+                             num_tiles=self.num_tiles,
                              banks=self.banks,
                              iterator_support=self.output_iterator_support,
                              address_width=self.address_width)
@@ -377,6 +379,7 @@ class StrgUB(Generator):
             rw_arb = RWArbiter(fetch_width=self.mem_width,
                                data_width=self.data_width,
                                memory_depth=self.mem_depth,
+                               num_tiles=self.num_tiles,
                                int_in_ports=self.interconnect_input_ports,
                                int_out_ports=self.interconnect_output_ports,
                                strg_wr_ports=self.mem_input_ports,
