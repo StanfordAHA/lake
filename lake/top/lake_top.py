@@ -10,7 +10,7 @@ from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
-from utils.sram_macro import SRAMMacroInfo
+from lake.utils.sram_macro import SRAMMacroInfo
 import kratos as kts
 
 

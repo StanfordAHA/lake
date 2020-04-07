@@ -26,6 +26,7 @@ class ReverseFlatten(Generator):
         for i in range(array_size[0]):
             self.out_[i] = self.in_[(i + 1) * apparent_width - 1, i * apparent_width]
 
+
 if __name__ == "__main__":
     # output_array needs to be unpacked for third dimension > 1
     dut = ReverseFlatten(16, 4, 1)
