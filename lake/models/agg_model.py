@@ -14,6 +14,8 @@ class AggModel(Model):
 
         self.word_count = 0
         self.valid_out = 0
+        self.curr_valid = 0
+        self.sr_copy = 0
 
     def set_config(self, **kwargs):
         self.word_count = 0
@@ -21,17 +23,27 @@ class AggModel(Model):
         return
 
     def get_valid_out(self):
-        return self.valid_out
+        return self.curr_valid
 
     def get_data_out(self):
-        return self.shift_reg
+        return self.sr_copy
 
-    def insert(self, data, valid_in):
+    def interact(self, data, valid_in):
+        '''
+            Returns (agg_out, valid_out, next_full)
+        '''
+
+        self.curr_valid = self.valid_out
+        self.sr_copy = self.shift_reg.copy()
+        word_count_curr = self.word_count
+
+        next_full = valid_in & (word_count_curr == self.num_elts - 1)
         if valid_in:
-            self.shift_reg[self.word_count] = data
-            self.word_count = self.word_count + 1
-            if(self.word_count >= self.num_elts):
-                self.word_count = 0
+            if next_full:
                 self.valid_out = 1
+                self.word_count = 0
             else:
                 self.valid_out = 0
+                self.word_count = word_count_curr + 1
+            self.shift_reg[word_count_curr] = data
+        return (self.sr_copy, self.curr_valid, next_full)

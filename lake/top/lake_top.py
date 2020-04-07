@@ -415,21 +415,14 @@ class LakeTop(Generator):
                                             packed=True,
                                             explicit_array=True)
 
-        self._ub_output_en = self.input("output_en", 1)
-        self._ub_wen_en = self.input("wen_en", self.interconnect_input_ports)
-        self._ub_ren_en = self.input("ren_en", self.interconnect_output_ports)
-
         self.add_child("strg_ub", strg_ub,
                        # clk + rst
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        # inputs
                        data_in=self._data_in,
-                       wen=self._wen,
-                       ren=self._ren,
-                       wen_en=self._ub_wen_en,
-                       ren_en=self._ub_ren_en,
-                       output_en=self._ub_output_en,
+                       wen_in=self._wen,
+                       ren_in=self._ren,
                        data_from_strg=self._mem_data_out,
                        # outputs
                        data_out=self._ub_data_out,
