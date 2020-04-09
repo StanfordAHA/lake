@@ -332,7 +332,7 @@ def test_sram_port_names_change(mem_width,
                                   additional_passes={"change_sram_port": change_sram_port_pass})
 
 
-def test_identity_stream(num_tiles=2, 
+def test_identity_stream(num_tiles=2,
                          interconnect_output_ports=1,
                          interconnect_input_ports=3):
 
