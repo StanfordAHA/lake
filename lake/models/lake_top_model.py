@@ -106,6 +106,7 @@ class LakeTopModel(Model):
                                       data_width=self.data_width,
                                       fetch_width=self.mem_width,
                                       mem_depth=self.mem_depth,
+                                      num_tiles=self.num_tiles,
                                       banks=self.banks,
                                       iterator_support=self.input_iterator_support,
                                       max_port_schedule=self.input_max_port_sched,
@@ -122,6 +123,7 @@ class LakeTopModel(Model):
         ### OUTPUT ADDR CTRL
         self.oac = OutputAddrCtrlModel(interconnect_output_ports=self.interconnect_output_ports,
                                        mem_depth=self.mem_depth,
+                                       num_tiles=self.num_tiles,
                                        data_width=self.data_width,
                                        fetch_width=self.mem_width,
                                        banks=self.banks,
@@ -408,7 +410,7 @@ class LakeTopModel(Model):
                     rw_addr_to_mem_sram = rw_addr_to_mem[i] & mask 
                 else:
                     rw_wen_mem_sram = 0
-                    rw_addr_to_mem_sram = rw_addr_to_mem[i]
+                    rw_addr_to_mem_sram = 0 #rw_addr_to_mem[i]
                    
                 self.mems[i].interact(rw_wen_mem_sram,
                                       rw_cen_mem[i],

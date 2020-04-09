@@ -74,8 +74,12 @@ class SRAMWrapper(Generator):
 
         self._mem_addr_in_bank = self.input("mem_addr_in_bank",
                                             self.address_width)
-        self._mem_addr_to_sram = self.var("mem_addr_to_sram", 
-                                          self.address_width-self.chain_idx_bits)
+        if num_tiles == 1:
+            self._mem_addr_to_sram = self.var("mem_addr_to_sram",
+                                              self.address_width)
+        else:
+            self._mem_addr_to_sram = self.var("mem_addr_to_sram", 
+                                              self.address_width-self.chain_idx_bits)
 
         self._mem_cen_in_bank = self.input("mem_cen_in_bank", self.mem_output_ports)
 
@@ -119,7 +123,7 @@ class SRAMWrapper(Generator):
 
                 self.add_child(f"mem_{self.bank_num}",
                                mbank,
-                               sram_addr=self.self._mem_addr_to_sram,
+                               sram_addr=self._mem_addr_to_sram,
                                sram_cen=~self._mem_cen_in_bank,
                                sram_clk=self._gclk,
                                sram_data_in=self._sram_mem_data_in_bank,
@@ -179,5 +183,5 @@ class SRAMWrapper(Generator):
             self._mem_wen_in_bank_chain = 0
 
 if __name__ == "__main__":
-    dut = SRAMWrapper(0, "TSMC", 16, 4, 128, 1, 1, 7, 4)
+    dut = SRAMWrapper(0, "TSMC", 16, 4, 128, 1, 1, 7, 4, num_tiles=1)
     verilog(dut, filename="wrapper.sv")

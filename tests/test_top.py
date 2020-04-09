@@ -357,7 +357,7 @@ def test_identity_stream(data_width=16,
                          tb_iterator_support=2,
                          multiwrite=1,
                          max_prefetch=64,
-                         num_tiles=4):
+                         num_tiles=2):
 
     new_config = {}
 
@@ -509,17 +509,35 @@ def test_identity_stream(data_width=16,
         output_en = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
+            tester.chain_output_in = data_in[0]
             tester.circuit.wen = valid_in[0]
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
+                setattr(tester.circuit, f"chain_output_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
+
             # setattr(tester.circuit, f"wen_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
+
+        # Chaining
+        enable_chain_output = 0
+        tester.enable_chain_output = enable_chain_output
+
+        if(interconnect_output_ports == 1):
+            chain_valid_in = 1
+            tester.circuit.chain_valid_in = chain_valid_in
+        else:
+            chain_valid_in = []
+            for j in range(interconnect_output_ports):
+                setattr(tester.circuit, f"chain_valid_in_{j}", 1)
+                chain_valid_in.append(1)
+
         for j in range(interconnect_output_ports):
             tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo, chain_data, valid_data) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
+
+        (mod_do, mod_vo, chain_data, valid_data) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en, enable_chain_output, data_in, chain_valid_in)
         tester.circuit.output_en = output_en
 
         if i > 200:

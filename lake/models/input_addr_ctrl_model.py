@@ -130,7 +130,11 @@ class InputAddrCtrlModel(Model):
                     self.wen[0] = 1
                     break
                 else:
-                    self.wen[to_get.get_address() >> (self.mem_addr_width)] = 1
+                    print()
+                    print(to_get.get_address())
+                    print(self.wen)
+                    print(kts.clog2(self.mem_depth))
+                    self.wen[to_get.get_address() >> kts.clog2(self.mem_depth)] = 1
         return self.wen
 
     # Step the addresses based on valid
