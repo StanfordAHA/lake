@@ -250,8 +250,9 @@ class StrgUB(Generator):
         ##### END: AGGREGATION ALIGNERS (OPTIONAL) #####
         ################################################
 
-        self._to_iac_dat = self._data_consume
-        self._to_iac_valid = self._valid_consume
+        if self.agg_height == 0:
+            self._to_iac_dat = self._data_consume
+            self._to_iac_valid = self._valid_consume
 
         ##################################
         ##### AGG BUFFERS (OPTIONAL) #####
