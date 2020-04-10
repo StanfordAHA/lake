@@ -78,14 +78,14 @@ class SRAMWrapper(Generator):
             self._mem_addr_to_sram = self.var("mem_addr_to_sram",
                                               self.address_width)
         else:
-            self._mem_addr_to_sram = self.var("mem_addr_to_sram", 
-                                              self.address_width-self.chain_idx_bits)
+            self._mem_addr_to_sram = self.var("mem_addr_to_sram",
+                                              self.address_width - self.chain_idx_bits)
 
         self._mem_cen_in_bank = self.input("mem_cen_in_bank", self.mem_output_ports)
 
         self._mem_wen_in_bank = self.input("mem_wen_in_bank", self.mem_input_ports)
         self._mem_wen_in_bank_chain = self.var("mem_wen_in_bank_chain", self.mem_input_ports)
-       
+
         self._wtsel = self.input("wtsel", 2)
         self._rtsel = self.input("rtsel", 2)
 
@@ -163,15 +163,16 @@ class SRAMWrapper(Generator):
         if self.num_tiles == 1:
             self._chain_idx_tile = 0
         else:
-            self._chain_idx_tile = self._mem_addr_in_bank[self.address_width-1,self.address_width-self.chain_idx_bits]
-    
+            self._chain_idx_tile = self._mem_addr_in_bank[self.address_width - 1,
+                                                          self.address_width - self.chain_idx_bits]
+
     @always_comb
     def set_mem_addr(self):
         # these ranges are inclusive
         if num_tiles == 1:
             self._mem_addr_to_sram = self._mem_addr_in_bank
         else:
-            self._mem_addr_to_sram = self._mem_addr_in_bank[self.address_width-self.chain_idx_bits-1, 0]
+            self._mem_addr_to_sram = self._mem_addr_in_bank[self.address_width - self.chain_idx_bits - 1, 0]
 
     @always_comb
     def set_chain_wen(self):
@@ -181,6 +182,7 @@ class SRAMWrapper(Generator):
             self._mem_wen_in_bank_chain = self._mem_wen_in_bank
         else:
             self._mem_wen_in_bank_chain = 0
+
 
 if __name__ == "__main__":
     dut = SRAMWrapper(0, "TSMC", 16, 4, 128, 1, 1, 7, 4, num_tiles=1)

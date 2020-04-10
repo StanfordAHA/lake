@@ -404,14 +404,15 @@ class LakeTopModel(Model):
         # HIT SRAM
         if self.read_delay == 1:
             for i in range(self.banks):
-                if (self.num_tiles == 1) or ((self.num_tiles > 1) and ((rw_addr_to_mem[i] >> kts.clog2(self.num_tiles)) == self.config["chain_idx"])):
+                if (self.num_tiles == 1) or ((self.num_tiles > 1) and
+                   ((rw_addr_to_mem[i] >> kts.clog2(self.num_tiles)) == self.config["chain_idx"])):
                     rw_wen_mem_sram = rw_wen_mem[i]
                     mask = 2**(kts.clog2(self.num_tiles)) - 1
-                    rw_addr_to_mem_sram = rw_addr_to_mem[i] & mask 
+                    rw_addr_to_mem_sram = rw_addr_to_mem[i] & mask
                 else:
                     rw_wen_mem_sram = 0
-                    rw_addr_to_mem_sram = 0 #rw_addr_to_mem[i]
-                   
+                    rw_addr_to_mem_sram = 0  # rw_addr_to_mem[i]
+
                 self.mems[i].interact(rw_wen_mem_sram,
                                       rw_cen_mem[i],
                                       rw_addr_to_mem_sram,
@@ -469,7 +470,7 @@ class LakeTopModel(Model):
         # print(f"data out {data_out}, valid_out: {valid_out}")
         # print()
 
-         # Chaining
+        # Chaining
         if enable_chain_output:
             chain_output_out = chain_output_in
             chain_valid_out = chain_valid_in

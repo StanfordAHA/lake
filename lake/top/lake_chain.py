@@ -101,7 +101,7 @@ class LakeChain(Generator):
                                         explicit_array=True)
 
         self._valid_out = self.output("valid_out",
-                                      interconnect_output_ports, 
+                                      interconnect_output_ports,
                                       size=num_tiles,
                                       packed=True,
                                       explicit_array=True)
@@ -165,7 +165,7 @@ class LakeChain(Generator):
                            fifo_mode=fifo_mode,
                            add_clk_enable=add_clk_enable,
                            add_flush=add_flush)
-            
+
             self.add_child(f"tile_{i}", tile,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -195,7 +195,7 @@ class LakeChain(Generator):
                            wen_en=self._ub_wen_en,
                            ren_en=self._ub_ren_en)
 
-        #self.add_code(self.set_chain_outputs)
+        # self.add_code(self.set_chain_outputs)
         self.set_chain_outputs(num_tiles, interconnect_output_ports)
         self.add_code(self.set_data_out)
         self.add_code(self.set_valid_out)
@@ -207,7 +207,8 @@ class LakeChain(Generator):
             comb_output.add_stmt(self._chain_valid_out[i].assign(0))
         for i in range(num_tiles):
             for j in range(interconnect_output_ports):
-                if_chain_valid_tile = IfStmt((self._enable_chain_output == 1) & (self._tile_output_en[i][j] == 1))
+                if_chain_valid_tile = IfStmt((self._enable_chain_output == 1) &
+                                             (self._tile_output_en[i][j] == 1))
                 if_chain_valid_tile.then_(self._chain_data_out[j].assign(self._data_out_inter[i][j]))
                 if_chain_valid_tile.then_(self._chain_valid_out[j].assign(self._valid_out_inter[i][j]))
                 comb_output.add_stmt(if_chain_valid_tile)
@@ -225,7 +226,9 @@ class LakeChain(Generator):
         else:
             self._valid_out = self._valid_out_inter
 
+
 if __name__ == "__main__":
     dut = LakeChain(num_tiles=2)
-
-    verilog(dut, filename="top_chain.sv", optimize_if=False, additional_passes={"lift config regs": lift_config_reg})
+    verilog(dut, filename="top_chain.sv",
+            optimize_if=False,
+            additional_passes={"lift config regs": lift_config_reg})

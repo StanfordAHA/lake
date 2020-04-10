@@ -83,7 +83,7 @@ class StrgUB(Generator):
         self.rw_same_cycle = rw_same_cycle
         # phases = [] TODO
 
-        self.address_width = clog2(self.num_tiles*self.mem_depth)
+        self.address_width = clog2(self.num_tiles * self.mem_depth)
 
         # CLK and RST
         self._clk = self.clock("clk")

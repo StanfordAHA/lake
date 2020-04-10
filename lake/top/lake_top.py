@@ -105,12 +105,12 @@ class LakeTop(Generator):
 
         # Chaining
         self._enable_chain_output = self.input("enable_chain_output", 1)
-        
+
         self._chain_idx = self.input("chain_idx",
                                      self.chain_idx_bits)
-        #self._chain_idx.add_attribute(ConfigRegAttr("Tile index when having multiple tiles"))
+        # self._chain_idx.add_attribute(ConfigRegAttr("Tile index when having multiple tiles"))
 
-        self._tile_output_en = self.output("tile_output_en", 
+        self._tile_output_en = self.output("tile_output_en",
                                            1,
                                            size=self.interconnect_output_ports,
                                            packed=True,

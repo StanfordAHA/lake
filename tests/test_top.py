@@ -356,22 +356,22 @@ def test_identity_stream(num_tiles=2,
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 12
-    
+
         # Output addr ctrl
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 1
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 3
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
-    
+
         # TBA
-    
+
         # NOTE: both these configurations result in equivalent functionality
-    
+
         # if dimensionality == 1 version
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_range_outer"] = 12
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_stride"] = 1
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_dimensionality"] = 1
-    
+
         # if dimensionality == 2 version
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_0"] = 0
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_1"] = 1
@@ -391,8 +391,11 @@ def test_identity_stream(num_tiles=2,
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_tb_height"] = 1
 
     ### DUT
-    lt_dut = LakeChain(num_tiles=num_tiles)
-    
+    lt_dut = LakeChain(num_tiles=num_tiles,
+                       banks=banks,
+                       interconnect_input_ports=interconnect_input_ports,
+                       interconnect_output_ports=interconnect_output_ports)
+
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
 
@@ -435,7 +438,6 @@ def test_identity_stream(num_tiles=2,
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
-                #setattr(tester.circuit, f"wen_{j}", valid_in[j])
 
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
@@ -452,13 +454,13 @@ def test_identity_stream(num_tiles=2,
         if i > 200:
             for j in range(interconnect_output_ports):
                 ren_en[j] = 1
-        
+
         tester.eval()
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="id"
+        tempdir = "id"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
