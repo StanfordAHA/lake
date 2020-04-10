@@ -326,7 +326,7 @@ class StrgUB(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        valid_in=self._to_iac_valid,
-                       wen_en=self._arb_wen_in,
+                       wen_en=kts.concat(*([kts.const(1, 1)] * self.interconnect_input_ports)),
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,
                        addr_out=self._addr_to_arb,
