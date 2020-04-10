@@ -55,6 +55,18 @@ class AppCtrl(Generator):
                                       packed=True)
         self._read_depth.add_attribute(ConfigRegAttr("Depth of reads"))
 
+        self._write_depth_strg = self.input("write_depth_strg", 32,
+                                            size=self.int_in_ports,
+                                            explicit_array=True,
+                                            packed=True)
+        self._write_depth_strg.add_attribute(ConfigRegAttr("Depth of writes to memory"))
+
+        self._read_depth_strg = self.input("read_depth_strg", 32,
+                                           size=self.int_out_ports,
+                                           explicit_array=True,
+                                           packed=True)
+        self._read_depth_strg.add_attribute(ConfigRegAttr("Depth of reads to memory"))
+
         self._write_count = self.var("write_count", 32,
                                      size=self.int_in_ports,
                                      explicit_array=True,

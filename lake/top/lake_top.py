@@ -128,9 +128,9 @@ class LakeTop(Generator):
                                           self.config_addr_width)
 
         self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width,
-                                            size=self.total_sets,
-                                            explicit_array=True,
-                                            packed=True)
+                                              size=self.total_sets,
+                                              explicit_array=True,
+                                              packed=True)
 
         self._config_data_out = self.output("config_data_out", self.config_data_width,
                                             size=self.total_sets,
@@ -140,7 +140,6 @@ class LakeTop(Generator):
         for i in range(self.total_sets):
             self.wire(self._config_data_out[i],
                       self._config_data_out_shrt[i].extend(self.config_data_width))
-
 
         self._config_read = self.input("config_read", 1)
         self._config_write = self.input("config_write", 1)

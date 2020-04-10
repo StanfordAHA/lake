@@ -167,6 +167,8 @@ class StrgUB(Generator):
         if self.num_tb > 0:
             self._tb_valid_out = self.var("tb_valid_out", self.interconnect_output_ports)
 
+        self._port_wens = self.var("port_wens", self.interconnect_input_ports)
+
         ####################
         ##### APP CTRL #####
         ####################
@@ -179,8 +181,6 @@ class StrgUB(Generator):
                        ren_in=self._ren_in,
                        valid_out_data=self._valid_out,
                        # valid_out_stencil=,
-                       wen_en=self._arb_wen_in,
-                       ren_en=self._arb_ren_in,
                        wen_out=self._wen,
                        ren_out=self._ren)
 
@@ -188,6 +188,22 @@ class StrgUB(Generator):
             self.wire(self.app_ctrl.ports.tb_valid, self._valid_out_alt)
         else:
             self.wire(self.app_ctrl.ports.tb_valid, self._tb_valid_out)
+
+        self._ren_out_reduced = self.var("ren_out_reduced",
+                                         self.interconnect_output_ports)
+
+        self.app_ctrl_coarse = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
+                                       interconnect_output_ports=self.interconnect_output_ports)
+        self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       wen_in=self._port_wens,
+                       ren_in=self._ren_out_reduced,
+                       tb_valid=kts.const(0, 1),
+                       # valid_out_data=self._valid_out,
+                       # valid_out_stencil=,
+                       wen_out=self._arb_wen_in,
+                       ren_out=self._arb_ren_in)
 
         ###########################
         ##### INPUT AGG SCHED #####
@@ -310,6 +326,7 @@ class StrgUB(Generator):
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,
                        addr_out=self._addr_to_arb,
+                       port_out=self._port_wens,
                        data_out=self._data_to_arb)
 
         #########################################
@@ -342,8 +359,7 @@ class StrgUB(Generator):
                                        size=self.interconnect_output_ports,
                                        explicit_array=True,
                                        packed=True)
-        self._ren_out_reduced = self.var("ren_out_reduced",
-                                         self.interconnect_output_ports)
+
         self._oac_addr_out = self.var("oac_addr_out",
                                       clog2(self.mem_depth),
                                       size=self.interconnect_output_ports,

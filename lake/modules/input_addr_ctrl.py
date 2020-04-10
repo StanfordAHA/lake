@@ -96,6 +96,19 @@ class InputAddrCtrl(Generator):
                                      explicit_array=True,
                                      packed=True)
 
+        self._port_out_exp = self.var("port_out_exp", self.interconnect_input_ports,
+                                      size=self.banks,
+                                      explicit_array=True,
+                                      packed=True)
+
+        self._port_out = self.output("port_out", self.interconnect_input_ports)
+        # Wire to port out
+        for i in range(self.interconnect_input_ports):
+            new_tmp = []
+            for j in range(self.banks):
+                new_tmp.append(self._port_out_exp[j][i])
+            self.wire(self._port_out[i], kts.concat(*new_tmp).r_or())
+
         self._done = self.var("done", self.strg_wr_ports,
                               size=self.banks,
                               explicit_array=True,
@@ -206,6 +219,7 @@ class InputAddrCtrl(Generator):
         for i in range(self.banks):
             self._wen[i][0] = 0
             self._done[i][0] = 0
+            self._port_out_exp[i] = 0
             self._data_out[i][0] = 0
             self._addresses[i][0] = 0
             for j in range(self.interconnect_input_ports):
@@ -215,6 +229,7 @@ class InputAddrCtrl(Generator):
                         # Finds the first one...
                         self._done[i][0] = 1
                         self._wen[i][0] = 1
+                        self._port_out_exp[i][j] = 1
                         self._data_out[i][0] = self._data_in[j]
                         self._addresses[i][0] = self._local_addrs[j][0][self.mem_addr_width - 1, 0]
 
