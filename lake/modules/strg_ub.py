@@ -114,6 +114,10 @@ class StrgUB(Generator):
                                           packed=True,
                                           explicit_array=True)
 
+        if self.agg_height > 0:
+            self._to_iac_valid = self.var("ab_to_mem_valid",
+                                          self.interconnect_input_ports)
+
         self._data_out = self.output("data_out",
                                      self.data_width,
                                      size=self.interconnect_output_ports,
@@ -197,7 +201,7 @@ class StrgUB(Generator):
         self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       wen_in=self._port_wens,
+                       wen_in=self._port_wens & self._to_iac_valid,  # Gets valid and the ack
                        ren_in=self._ren_out_reduced,
                        tb_valid=kts.const(0, 1),
                        # valid_out_data=self._valid_out,
@@ -260,8 +264,8 @@ class StrgUB(Generator):
                                         packed=True,
                                         explicit_array=True)
 
-            self._to_iac_valid = self.var("ab_to_mem_valid",
-                                          self.interconnect_input_ports)
+            # self._to_iac_valid = self.var("ab_to_mem_valid",
+            #                               self.interconnect_input_ports)
 
             self._agg_buffers = []
             # Add input aggregations buffers
