@@ -333,7 +333,8 @@ def test_sram_port_names_change(mem_width,
 
 
 def test_identity_stream(num_tiles=2,
-                         interconnect_output_ports=1,
+                         banks=2,
+                         interconnect_output_ports=3,
                          interconnect_input_ports=3):
 
     new_config = {}
@@ -391,7 +392,7 @@ def test_identity_stream(num_tiles=2,
 
     ### DUT
     lt_dut = LakeChain(num_tiles=num_tiles)
-
+    
     # Run the config reg lift
     lift_config_reg(lt_dut.internal_generator)
 
@@ -433,7 +434,8 @@ def test_identity_stream(num_tiles=2,
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
-                setattr(tester.circuit, f"wen_{j}", valid_in[j])
+                tester.circuit.wen[j] = valid_in[j]
+                #setattr(tester.circuit, f"wen_{j}", valid_in[j])
 
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
