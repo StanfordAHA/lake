@@ -184,7 +184,7 @@ class StorageConfigSeq(Generator):
             self._cnt = 0
         # Increment when reading/writing - making sure
         # that the sequencing is correct from app level!
-        elif self._config_wr | self._config_rd:
+        elif (self._config_wr | self._config_rd) & self._config_en.r_or():
             self._cnt = self._cnt + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
