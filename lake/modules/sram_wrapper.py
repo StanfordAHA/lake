@@ -185,5 +185,14 @@ class SRAMWrapper(Generator):
 
 
 if __name__ == "__main__":
-    dut = SRAMWrapper(0, "TSMC", 16, 4, 128, 1, 1, 7, 4, num_tiles=1)
+    dut = SRAMWrapper(use_sram_stub=0,
+                      sram_name="TSMC",
+                      data_width=16,
+                      fw_int=4,
+                      mem_depth=128,
+                      mem_input_ports=1,
+                      mem_output_ports=1,
+                      address_width=7,
+                      bank_num=4,
+                      num_tiles=1)
     verilog(dut, filename="wrapper.sv")
