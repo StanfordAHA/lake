@@ -561,16 +561,16 @@ def test_chain_mult_tile(num_tiles=2,
 
         # Input addr ctrl
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 2
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 4
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 24
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 0
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0#4
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 8#24
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1#0
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 1
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 4#8#1
 
         # Output addr ctrl
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 1
-        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 24
-        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 4
+        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 8#24
+        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0#4
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
 
         # TBA
@@ -580,7 +580,7 @@ def test_chain_mult_tile(num_tiles=2,
         # if dimensionality == 1 version
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_range_outer"] = 8
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_stride"] = 1
-        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_dimensionality"] = 2
+        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_dimensionality"] = 1#2
 
         # if dimensionality == 2 version
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_0"] = 0
@@ -653,7 +653,7 @@ def test_chain_mult_tile(num_tiles=2,
         tester.circuit.wen_en = wen_en
 
         # Chaining
-        enable_chain_output = 1
+        enable_chain_output = 0
         tester.circuit.enable_chain_output = enable_chain_output
 
         for j in range(interconnect_output_ports):

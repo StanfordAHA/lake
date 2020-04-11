@@ -219,12 +219,14 @@ class LakeChain(Generator):
 
     @always_comb
     def set_valid_out(self):
-        if self._enable_chain_output:
-            for i in range(num_tiles):
-                for j in range(interconnect_output_ports):
+        for i in range(num_tiles):
+            for j in range(interconnect_output_ports):
+                if self._tile_output_en[i][j] == 0:
                     self._valid_out[i][j] = 0
-        else:
-            self._valid_out = self._valid_out_inter
+                elif self._enable_chain_output:
+                    self._valid_out[i][j] = 0
+                else:
+                    self._valid_out[i][j] = self._valid_out_inter[i][j]
 
 
 if __name__ == "__main__":
