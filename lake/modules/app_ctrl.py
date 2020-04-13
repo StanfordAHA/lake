@@ -78,6 +78,9 @@ class AppCtrl(Generator):
                                       packed=True)
         self._input_port.add_attribute(ConfigRegAttr("Relative input port for an output port"))
 
+        self._prefill = self.input("prefill", self.int_out_ports)
+        self._prefill.add_attribute(ConfigRegAttr("Is the input stream prewritten?"))
+
         # # Set the wen_en based on write_cnt
         # for i in range(self.int_in_ports):
         #     self.wire(self._wen_en[i], self._write_count[i] <= self._write_depth)
