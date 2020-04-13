@@ -183,6 +183,7 @@ class StrgUB(Generator):
                        rst_n=self._rst_n,
                        wen_in=self._wen_in,
                        ren_in=self._ren_in,
+                       ren_update=self._tb_valid_out,
                        valid_out_data=self._valid_out,
                        # valid_out_stencil=,
                        wen_out=self._wen,
@@ -204,6 +205,7 @@ class StrgUB(Generator):
                        wen_in=self._port_wens & self._to_iac_valid,  # Gets valid and the ack
                        ren_in=self._ren_out_reduced,
                        tb_valid=kts.const(0, 1),
+                       ren_update=kts.concat(*([kts.const(1,1)] * self.interconnect_output_ports)),
                        # valid_out_data=self._valid_out,
                        # valid_out_stencil=,
                        wen_out=self._arb_wen_in,

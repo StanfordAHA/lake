@@ -29,6 +29,8 @@ class AppCtrl(Generator):
         self._wen_in = self.input("wen_in", self.int_in_ports)
         self._ren_in = self.input("ren_in", self.int_out_ports)
 
+        self._ren_update = self.input("ren_update", self.int_out_ports)
+
         self._tb_valid = self.input("tb_valid", self.int_out_ports)
 
         self._valid_out_data = self.output("valid_out_data", self.int_out_ports)
@@ -158,7 +160,7 @@ class AppCtrl(Generator):
             self._read_count[idx] = 0
         elif self._write_done[self._input_port[idx]] & self._read_done[idx]:
             self._read_count[idx] = 0
-        elif self._ren_in[idx]:
+        elif self._ren_in[idx] & self._ren_update[idx]:
             self._read_count[idx] = self._read_count[idx] + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -167,7 +169,7 @@ class AppCtrl(Generator):
             self._read_count[idx] = 0
         elif self._write_done & self._read_done[idx]:
             self._read_count[idx] = 0
-        elif self._ren_in[idx]:
+        elif self._ren_in[idx] & self._ren_update[idx]:
             self._read_count[idx] = self._read_count[idx] + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
