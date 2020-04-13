@@ -9,7 +9,6 @@ class InputAddrCtrlModel(Model):
     def __init__(self,
                  interconnect_input_ports,
                  mem_depth,
-                 num_tiles,
                  banks,
                  iterator_support,
                  max_port_schedule,
@@ -19,7 +18,6 @@ class InputAddrCtrlModel(Model):
 
         self.interconnect_input_ports = interconnect_input_ports
         self.mem_depth = mem_depth
-        self.num_tiles = num_tiles
         self.banks = banks
         self.iterator_support = iterator_support
         self.address_width = address_width
@@ -37,7 +35,7 @@ class InputAddrCtrlModel(Model):
                                         address_width=self.address_width)
             self.addr_gens.append(new_addr_gen)
 
-        self.mem_addr_width = kts.clog2(self.num_tiles * self.mem_depth)
+        self.mem_addr_width = kts.clog2(self.mem_depth)
 
         # Get local list of addresses
         self.addresses = []
@@ -130,11 +128,7 @@ class InputAddrCtrlModel(Model):
                     self.wen[0] = 1
                     break
                 else:
-                    print()
-                    print(to_get.get_address())
-                    print(self.wen)
-                    print(kts.clog2(self.mem_depth))
-                    self.wen[to_get.get_address() >> kts.clog2(self.mem_depth)] = 1
+                    self.wen[to_get.get_address() >> (self.mem_addr_width)] = 1
         return self.wen
 
     # Step the addresses based on valid

@@ -41,8 +41,7 @@ class LakeTopModel(Model):
                  tb_sched_max=64,
                  num_tb=1,
                  multiwrite=2,
-                 max_prefetch=64,
-                 num_tiles=1):
+                 max_prefetch=64)
 
         self.data_width = data_width
         self.mem_width = mem_width
@@ -71,13 +70,10 @@ class LakeTopModel(Model):
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
         self.read_delay = read_delay
-        self.num_tiles = num_tiles
 
-        self.address_width = kts.clog2(self.num_tiles * self.mem_depth)
+        self.address_width = kts.clog2(self.mem_depth)
 
         self.config = {}
-
-        self.config["chain_idx"] = 0
 
         ### INST AGG ALIGNER
         if(self.agg_height > 0):
@@ -106,7 +102,6 @@ class LakeTopModel(Model):
                                       data_width=self.data_width,
                                       fetch_width=self.mem_width,
                                       mem_depth=self.mem_depth,
-                                      num_tiles=self.num_tiles,
                                       banks=self.banks,
                                       iterator_support=self.input_iterator_support,
                                       max_port_schedule=self.input_max_port_sched,
@@ -123,7 +118,6 @@ class LakeTopModel(Model):
         ### OUTPUT ADDR CTRL
         self.oac = OutputAddrCtrlModel(interconnect_output_ports=self.interconnect_output_ports,
                                        mem_depth=self.mem_depth,
-                                       num_tiles=self.num_tiles,
                                        data_width=self.data_width,
                                        fetch_width=self.mem_width,
                                        banks=self.banks,
@@ -302,10 +296,7 @@ class LakeTopModel(Model):
                  valid_in,
                  wen_en,
                  ren_en,
-                 output_en,
-                 enable_chain_output,
-                 chain_output_in,
-                 chain_valid_in):
+                 output_en):
         '''
         Top level interactions - - -
         returns (data_out, valid_out)
@@ -404,20 +395,10 @@ class LakeTopModel(Model):
         # HIT SRAM
         if self.read_delay == 1:
             for i in range(self.banks):
-                if (self.num_tiles == 1) or ((self.num_tiles > 1) and
-                   ((rw_addr_to_mem[i] >> kts.clog2(self.num_tiles)) == self.config["chain_idx"])):
-                    rw_wen_mem_sram = rw_wen_mem[i]
-                    mask = 2**(kts.clog2(self.num_tiles)) - 1
-                    rw_addr_to_mem_sram = rw_addr_to_mem[i] & mask
-                else:
-                    rw_wen_mem_sram = 0
-                    rw_addr_to_mem_sram = 0  # rw_addr_to_mem[i]
-
-                self.mems[i].interact(rw_wen_mem_sram,
+                self.mems[i].interact(rw_wen_mem[i],
                                       rw_cen_mem[i],
-                                      rw_addr_to_mem_sram,
+                                      rw_addr_to_mem[i],
                                       rw_data_to_mem[i])
-
         else:
             rw_out_dat = []
             for i in range(self.banks):
@@ -470,15 +451,7 @@ class LakeTopModel(Model):
         # print(f"data out {data_out}, valid_out: {valid_out}")
         # print()
 
-        # Chaining
-        if enable_chain_output:
-            chain_output_out = chain_output_in
-            chain_valid_out = chain_valid_in
-        else:
-            chain_output_out = data_out
-            chain_valid_out = valid_out
-
-        return (data_out, valid_out, chain_output_out, chain_valid_out)
+        return (data_out, valid_out)
 
     def dump_mem(self):
         self.mems[0].dump_mem()
