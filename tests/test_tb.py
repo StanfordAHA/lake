@@ -302,6 +302,6 @@ def test_fw1(word_width=16,
 
 
 if __name__ == "__main__":
-    # test_tb()
+    test_tb()
     # test_id()
-    test_fw1()
+    # test_fw1()
