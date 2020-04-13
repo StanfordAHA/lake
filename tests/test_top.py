@@ -940,8 +940,10 @@ def test_top(read_delay,
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
-            data_in[j] += 1
+            #data_in[j] += 1
             valid_in[j] = rand.randint(0, 1)
+            if valid_in[j] == 1:
+                data_in[j] += 1
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
             ren[j] = ren_tmp
@@ -1218,9 +1220,9 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    test_identity_stream()
+    # test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
-    # test_top(0)
+    test_top(0)
     # test_config_storage()
