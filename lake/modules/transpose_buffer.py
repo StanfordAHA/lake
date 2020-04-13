@@ -105,8 +105,8 @@ class TransposeBuffer(Generator):
                                   width=clog2(2 * self.num_tb * self.fetch_width),
                                   # the length of indices is equal to range_inner,
                                   # so the maximum possible size for self.indices
-                                  # is the maximum value of range_inner, which if
-                                  # self.max_range_value
+                                  # is the maximum value of range_inner, which is
+                                  # self.max_range_inner
                                   size=self.max_range_inner,
                                   packed=True)
         self.indices.add_attribute(ConfigRegAttr("Output indices for for loop pattern"))
@@ -140,7 +140,7 @@ class TransposeBuffer(Generator):
                                packed=True)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
-        self.index_inner = self.var("index_inner", self.max_range_bits)
+        self.index_inner = self.var("index_inner", self.max_range_inner_bits)
 
         self.input_buf_index = self.var("input_buf_index", 1)
         self.out_buf_index = self.var("out_buf_index", 1)
