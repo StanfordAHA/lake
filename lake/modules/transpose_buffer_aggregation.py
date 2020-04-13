@@ -37,8 +37,6 @@ class TransposeBufferAggregation(Generator):
         self.tb_iterator_support = tb_iterator_support
 
         self.num_tb_bits = max(1, clog2(self.num_tb))
-        self.max_range_bits = max(1, clog2(self.max_range))
-        self.max_range_inner_bits = max(1, clog2(self.max_range_inner))
 
         # inputs
         self.clk = self.clock("clk")

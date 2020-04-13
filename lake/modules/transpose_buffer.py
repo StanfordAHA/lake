@@ -249,7 +249,7 @@ class TransposeBuffer(Generator):
     def set_pause_output(self):
         if self.pause_tb:
             self.pause_output = 1
-        #elif self.start_data & ~self.old_start_data:
+        # elif self.start_data & ~self.old_start_data:
         #    self.pause_output = 1
         else:
             self.pause_output = ~self.ren
@@ -316,7 +316,6 @@ class TransposeBuffer(Generator):
         self.output_index_long = self.output_index_abs % fetch_width
 
     # output column from transpose buffer
-    #@always_ff((posedge, "clk"))
     @always_comb
     def output_from_tb(self):
         for i in range(max_tb_height):
@@ -425,7 +424,6 @@ class TransposeBuffer(Generator):
             self.rdy_to_arbiter = 0
         elif self.start_data & ~self.old_start_data:
             self.rdy_to_arbiter = 1
-        #elif self.prev_out_buf_index != self.out_buf_index:
         elif self.switch_out_buf:
             self.rdy_to_arbiter = 1
         elif self.tb_height != 1:
