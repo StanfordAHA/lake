@@ -41,7 +41,7 @@ class LakeTopModel(Model):
                  tb_sched_max=64,
                  num_tb=1,
                  multiwrite=2,
-                 max_prefetch=64)
+                 max_prefetch=64):
 
         self.data_width = data_width
         self.mem_width = mem_width

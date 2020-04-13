@@ -1507,8 +1507,8 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     # test_chain_mult_tile()
-    test_chain_3porttile()
-    # test_identity_stream()
+    # test_chain_3porttile()
+    test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
