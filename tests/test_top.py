@@ -562,24 +562,23 @@ def test_chain_mult_tile(num_tiles=2,
 
         # Input addr ctrl
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 2
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0#4
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 8#24
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1#0
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 8
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 8#1
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 8
 
         # Output addr ctrl
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 1
-        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 8#24
-        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0#4
+        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 8
+        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
 
         # TBA
 
-
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_range_outer"] = 8
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_stride"] = 1
-        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_dimensionality"] = 1#2
+        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_dimensionality"] = 1
 
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_0"] = 0
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_1"] = 0
@@ -693,11 +692,11 @@ def test_chain_3porttile(num_tiles=2,
 
         # Input addr ctrl
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 2
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0#4
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 8#24
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1#0
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 8
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 8#1
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 8
 
         # Output addr ctrl
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 1

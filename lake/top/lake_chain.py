@@ -129,9 +129,17 @@ class LakeChain(Generator):
                                         packed=True,
                                         explicit_array=True)
 
-        self.is_valid_ = self.var("is_valid", 1, size=interconnect_output_ports,packed=True,explicit_array=True)
-        self.valids = self.var("valids", clog2(num_tiles), size=interconnect_output_ports,packed=True, explicit_array=True)
+        self.is_valid_ = self.var("is_valid",
+                                  1,
+                                  size=interconnect_output_ports,
+                                  packed=True,
+                                  explicit_array=True)
 
+        self.valids = self.var("valids",
+                               clog2(num_tiles),
+                               size=interconnect_output_ports,
+                               packed=True,
+                               explicit_array=True)
 
         for i in range(num_tiles):
             tile = LakeTop(data_width=data_width,
@@ -206,7 +214,7 @@ class LakeChain(Generator):
     @always_comb
     def set_data_out(self):
         self._data_out = self._data_out_inter
-      
+
     @always_comb
     def set_chain_outputs(self):
         for i in range(interconnect_output_ports):
