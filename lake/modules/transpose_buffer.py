@@ -358,6 +358,8 @@ class TransposeBuffer(Generator):
     def set_output_valid(self):
         if self.dimensionality == 0:
             self.output_valid = 0
+        elif ~self.old_start_data & self.start_data & ~self.pause_tb:
+            self.output_valid = 1
         elif self.pause_output:
             self.output_valid = 0
         else:
