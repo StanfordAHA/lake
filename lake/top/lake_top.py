@@ -698,7 +698,7 @@ class LakeTop(Generator):
             kts.passes.auto_insert_sync_reset(self.internal_generator)
 
         # config regs
-        lift_config_reg(self.internal_generator)
+        # lift_config_reg(self.internal_generator)
 
 
 if __name__ == "__main__":

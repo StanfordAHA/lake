@@ -40,7 +40,7 @@ class LakeChain(Generator):
                  config_addr_width=8,
                  num_tiles=2,
                  remove_tb=False,
-                 fifo_mode=True,
+                 fifo_mode=False,
                  add_clk_enable=False,
                  add_flush=False):
         super().__init__("LakeChain", debug=True)
@@ -83,10 +83,6 @@ class LakeChain(Generator):
         self._config_read = self.input("config_read", 1)
         self._config_write = self.input("config_write", 1)
         self._config_en = self.input("config_en", total_sets)
-
-        self._ub_output_en = self.input("output_en", 1)
-        self._ub_wen_en = self.input("wen_en", interconnect_input_ports)
-        self._ub_ren_en = self.input("ren_en", interconnect_output_ports)
 
         self._data_out = self.output("data_out",
                                      data_width,
@@ -202,14 +198,14 @@ class LakeChain(Generator):
                            # unused currently?
                            tile_en=1,
                            # UB mode
-                           mode=0,
-                           output_en=self._ub_output_en,
-                           wen_en=self._ub_wen_en,
-                           ren_en=self._ub_ren_en)
+                           mode=0)
 
         self.add_code(self.set_data_out)
         self.add_code(self.set_valid_out)
         self.add_code(self.set_chain_outputs)
+
+        # config regs
+        lift_config_reg(self.internal_generator)
 
     @always_comb
     def set_data_out(self):
@@ -248,5 +244,4 @@ class LakeChain(Generator):
 if __name__ == "__main__":
     dut = LakeChain(num_tiles=2)
     verilog(dut, filename="top_chain.sv",
-            optimize_if=False,
-            additional_passes={"lift config regs": lift_config_reg})
+            optimize_if=False)

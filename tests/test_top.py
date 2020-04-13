@@ -577,6 +577,14 @@ def test_chain_mult_tile(num_tiles=2,
 
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_tb_height"] = 1
 
+        new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_0"] = 0
+        new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_1"] = 0
+        new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_2"] = 0
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_0"] = 196
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_1"] = 196
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_2"] = 196
+        new_config[f"tile_{i}_strg_ub_app_ctrl_write_depth_0"] = 8
+
     ### DUT
     lt_dut = LakeChain(num_tiles=num_tiles,
                        banks=banks,
@@ -586,7 +594,7 @@ def test_chain_mult_tile(num_tiles=2,
                        tb_range_max=tb_range_max)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -608,10 +616,8 @@ def test_chain_mult_tile(num_tiles=2,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [1] * interconnect_output_ports
     addr_in = 0
-    output_en = 1
 
     for i in range(2000):
         # Rand data
@@ -620,7 +626,7 @@ def test_chain_mult_tile(num_tiles=2,
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             data_in[j] = data_in[j] % 32
             valid_in[j] = 1  # rand.randint(0, 1)
-        output_en = rand.randint(0, 1)
+
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -630,20 +636,16 @@ def test_chain_mult_tile(num_tiles=2,
                 tester.circuit.wen[j] = valid_in[j]
 
         tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
 
         # Chaining
         enable_chain_output = 0
         tester.circuit.enable_chain_output = enable_chain_output
 
-        for j in range(interconnect_output_ports):
-            tester.circuit.ren_en[j] = ren_en[j]
-
-        tester.circuit.output_en = output_en
-
-        if i > 200:
+        if interconnect_output_ports == 1:
+            tester.circuit.ren = ren[0]
+        else:
             for j in range(interconnect_output_ports):
-                ren_en[j] = 1
+                tester.circuit.ren[j] = ren[j]
 
         tester.eval()
 
@@ -714,10 +716,6 @@ def test_chain_3porttile(num_tiles=2,
         new_config[f"tile_{i}_strg_ub_tba_2_tb_0_stride"] = 1
         new_config[f"tile_{i}_strg_ub_tba_2_tb_0_dimensionality"] = 1
 
-        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_0"] = 0
-        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_1"] = 0
-        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_range_inner"] = 2
-
         # Sets multiwrite
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_offsets_cfg_0_0"] = 0
 
@@ -729,6 +727,15 @@ def test_chain_3porttile(num_tiles=2,
         new_config[f"tile_{i}_strg_ub_tba_1_tb_0_tb_height"] = 1
         new_config[f"tile_{i}_strg_ub_tba_2_tb_0_tb_height"] = 1
 
+        new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_0"] = 0
+        new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_1"] = 0
+        new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_2"] = 0
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_0"] = 8
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_1"] = 8
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_2"] = 8
+
+    new_config["tile_0_strg_ub_app_ctrl_write_depth"] = 8
+    new_config["tile_1_strg_ub_app_ctrl_write_depth"] = 8
     ### DUT
     lt_dut = LakeChain(num_tiles=num_tiles,
                        banks=banks,
@@ -738,7 +745,7 @@ def test_chain_3porttile(num_tiles=2,
                        tb_range_max=tb_range_max)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -757,13 +764,13 @@ def test_chain_3porttile(num_tiles=2,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
+    tester.eval()
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [1] * interconnect_output_ports
     addr_in = 0
-    output_en = 1
 
     for i in range(2000):
         # Rand data
@@ -772,7 +779,12 @@ def test_chain_3porttile(num_tiles=2,
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             data_in[j] = data_in[j] % 32
             valid_in[j] = 1  # rand.randint(0, 1)
-        output_en = rand.randint(0, 1)
+
+        ren_tmp = rand.randint(0, 1)
+
+        for j in range(interconnect_output_ports):
+            ren[j] = ren_tmp
+
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -781,28 +793,22 @@ def test_chain_3porttile(num_tiles=2,
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
 
-        tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
-
         # Chaining
-        enable_chain_output = 0
+        enable_chain_output = 1
         tester.circuit.enable_chain_output = enable_chain_output
 
-        for j in range(interconnect_output_ports):
-            tester.circuit.ren_en[j] = ren_en[j]
-
-        tester.circuit.output_en = output_en
-
-        if i > 200:
+        if interconnect_output_ports == 1:
+            tester.circuit.ren = ren[0]
+        else:
             for j in range(interconnect_output_ports):
-                ren_en[j] = 1
+                tester.circuit.ren[j] = ren[j]
 
         tester.eval()
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "id"
+        tempdir = "cid"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
@@ -1260,10 +1266,11 @@ def test_top(read_delay,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "cid"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 def test_config_storage(data_width=16,
@@ -1501,10 +1508,10 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     # test_chain_mult_tile()
-    # test_chain_3porttile()
+    test_chain_3porttile()
     # test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
-    test_top(0)
+    # test_top(0)
     # test_config_storage()
