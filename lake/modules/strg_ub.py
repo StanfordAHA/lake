@@ -41,6 +41,7 @@ class StrgUB(Generator):
                  max_line_length=128,
                  max_tb_height=1,
                  tb_range_max=128,
+                 tb_range_inner_max=5,
                  tb_sched_max=64,
                  max_tb_stride=15,
                  num_tb=1,
@@ -72,6 +73,7 @@ class StrgUB(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.tb_range_max = tb_range_max
+        self.tb_range_inner_max = tb_range_inner_max
         self.max_tb_stride = max_tb_stride
         self.tb_sched_max = tb_sched_max
         self.tb_iterator_support = tb_iterator_support
@@ -468,7 +470,6 @@ class StrgUB(Generator):
                 self.wire(rw_arb.ports.ren_in, self._ren_out[i] & self._rd_sync_gate)
 
         self.num_tb_bits = max(1, clog2(self.num_tb))
-        self.max_range_bits = max(1, clog2(self.tb_range_max))
 
         self._data_to_sync = self.var("data_to_sync",
                                       self.data_width,
@@ -626,6 +627,7 @@ class StrgUB(Generator):
                                                      num_tb=self.num_tb,
                                                      max_tb_height=self.max_tb_height,
                                                      max_range=self.tb_range_max,
+                                                     max_range_inner=self.tb_range_inner_max,
                                                      max_stride=self.max_tb_stride,
                                                      tb_iterator_support=self.tb_iterator_support)
 

@@ -20,6 +20,7 @@ class TransposeBuffer(Generator):
                  # specifying inner for loop values for output column
                  # addressing
                  max_range,
+                 max_range_inner,
                  max_stride,
                  tb_iterator_support):
         super().__init__("transpose_buffer")
@@ -33,6 +34,7 @@ class TransposeBuffer(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.max_range = max_range
+        self.max_range_inner = max_range_inner
         self.max_stride = max_stride
         self.tb_iterator_support = tb_iterator_support
 
@@ -43,6 +45,7 @@ class TransposeBuffer(Generator):
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
+        self.max_range_inner_bits = max(1, clog2(self.max_range_inner))
         self.max_stride_bits = max(1, clog2(self.max_stride))
         self.tb_col_index_bits = 2 * max(self.fetch_width_bits, self.num_tb_bits) + 1
         self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
@@ -83,7 +86,7 @@ class TransposeBuffer(Generator):
 
         # the range of the inner for loop in nested for loop for output
         # column address generation
-        self.range_inner = self.input("range_inner", self.max_range_bits)
+        self.range_inner = self.input("range_inner", self.max_range_inner_bits)
         self.range_inner.add_attribute(ConfigRegAttr("Inner range for output for for loop pattern"))
 
         # stride for the given application
@@ -102,9 +105,9 @@ class TransposeBuffer(Generator):
                                   width=clog2(2 * self.num_tb * self.fetch_width),
                                   # the length of indices is equal to range_inner,
                                   # so the maximum possible size for self.indices
-                                  # is the maximum value of range_inner, which if
-                                  # self.max_range_value
-                                  size=self.max_range,
+                                  # is the maximum value of range_inner, which is
+                                  # self.max_range_inner
+                                  size=self.max_range_inner,
                                   packed=True)
         self.indices.add_attribute(ConfigRegAttr("Output indices for for loop pattern"))
 
@@ -137,7 +140,7 @@ class TransposeBuffer(Generator):
                                packed=True)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
-        self.index_inner = self.var("index_inner", self.max_range_bits)
+        self.index_inner = self.var("index_inner", self.max_range_inner_bits)
 
         self.input_buf_index = self.var("input_buf_index", 1)
         self.out_buf_index = self.var("out_buf_index", 1)
@@ -313,7 +316,10 @@ class TransposeBuffer(Generator):
         self.output_index_long = self.output_index_abs % fetch_width
 
     # output column from transpose buffer
+<<<<<<< HEAD
     # @always_ff((posedge, "clk"))
+=======
+>>>>>>> 0f9d3d6d35c40f20dc968ba73a19ec08bf0dec10
     @always_comb
     def output_from_tb(self):
         for i in range(max_tb_height):
@@ -422,7 +428,6 @@ class TransposeBuffer(Generator):
             self.rdy_to_arbiter = 0
         elif self.start_data & ~self.old_start_data:
             self.rdy_to_arbiter = 1
-        # elif self.prev_out_buf_index != self.out_buf_index:
         elif self.switch_out_buf:
             self.rdy_to_arbiter = 1
         elif self.tb_height != 1:
