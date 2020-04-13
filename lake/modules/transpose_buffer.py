@@ -246,8 +246,8 @@ class TransposeBuffer(Generator):
     def set_pause_output(self):
         if self.pause_tb:
             self.pause_output = 1
-        elif self.start_data & ~self.old_start_data:
-            self.pause_output = 1
+        #elif self.start_data & ~self.old_start_data:
+        #    self.pause_output = 1
         else:
             self.pause_output = ~self.ren
 
@@ -420,7 +420,8 @@ class TransposeBuffer(Generator):
             self.rdy_to_arbiter = 0
         elif self.start_data & ~self.old_start_data:
             self.rdy_to_arbiter = 1
-        elif self.prev_out_buf_index != self.out_buf_index:
+        #elif self.prev_out_buf_index != self.out_buf_index:
+        elif self.switch_out_buf:
             self.rdy_to_arbiter = 1
         elif self.tb_height != 1:
             if self.row_index != self.tb_height - 1:
