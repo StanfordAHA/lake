@@ -124,14 +124,11 @@ class OutputAddrCtrl(Generator):
         self._addresses = 0
         for i in range(self.interconnect_output_ports):
             self._addresses[i] = self._local_addrs[i][self.mem_addr_width - 1, 0]
-            #if self._enable_chain_output:
             if (self._addresses[i][self.mem_addr_width - 1, self.mem_addr_width - self.chain_idx_bits] ==
                     self._chain_idx):
                 self._tile_output_en[i] = 1
             else:
                 self._tile_output_en[i] = 0
-            #else:
-            #    self._tile_output_en[i] = 1
 
 
 if __name__ == "__main__":

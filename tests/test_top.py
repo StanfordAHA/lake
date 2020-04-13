@@ -701,34 +701,33 @@ def test_chain_3porttile(num_tiles=2,
 
         # Output addr ctrl
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 1
-        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 8#24
-        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0#4
+        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 8
+        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
 
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 1
-        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 8#24
+        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 8
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 1
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
 
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_2_dimensionality"] = 1
-        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_2_ranges_0"] = 8#24
+        new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_2_ranges_0"] = 8
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_2_starting_addr"] = 2
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_2_strides_0"] = 1
 
         # TBA
 
-
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_range_outer"] = 8
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_stride"] = 1
-        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_dimensionality"] = 1#2
+        new_config[f"tile_{i}_strg_ub_tba_0_tb_0_dimensionality"] = 1
 
         new_config[f"tile_{i}_strg_ub_tba_1_tb_0_range_outer"] = 8
         new_config[f"tile_{i}_strg_ub_tba_1_tb_0_stride"] = 1
-        new_config[f"tile_{i}_strg_ub_tba_1_tb_0_dimensionality"] = 1#2
+        new_config[f"tile_{i}_strg_ub_tba_1_tb_0_dimensionality"] = 1
 
         new_config[f"tile_{i}_strg_ub_tba_2_tb_0_range_outer"] = 8
         new_config[f"tile_{i}_strg_ub_tba_2_tb_0_stride"] = 1
-        new_config[f"tile_{i}_strg_ub_tba_2_tb_0_dimensionality"] = 1#2
+        new_config[f"tile_{i}_strg_ub_tba_2_tb_0_dimensionality"] = 1
 
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_0"] = 0
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_1"] = 0
@@ -801,7 +800,7 @@ def test_chain_3porttile(num_tiles=2,
         tester.circuit.wen_en = wen_en
 
         # Chaining
-        enable_chain_output = 1
+        enable_chain_output = 0
         tester.circuit.enable_chain_output = enable_chain_output
 
         for j in range(interconnect_output_ports):

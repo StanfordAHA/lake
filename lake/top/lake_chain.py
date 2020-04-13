@@ -129,6 +129,10 @@ class LakeChain(Generator):
                                         packed=True,
                                         explicit_array=True)
 
+        self.is_valid_ = self.var("is_valid", 1, size=interconnect_output_ports,packed=True,explicit_array=True)
+        self.valids = self.var("valids", clog2(num_tiles), size=interconnect_output_ports,packed=True, explicit_array=True)
+
+
         for i in range(num_tiles):
             tile = LakeTop(data_width=data_width,
                            mem_width=mem_width,
@@ -196,26 +200,59 @@ class LakeChain(Generator):
                            ren_en=self._ub_ren_en)
 
         # self.add_code(self.set_chain_outputs)
-        self.set_chain_outputs(num_tiles, interconnect_output_ports)
+        #self.set_chain_outputs(num_tiles, interconnect_output_ports)
         self.add_code(self.set_data_out)
         self.add_code(self.set_valid_out)
+        self.add_code(self.set_chain_outputs)
 
-    def set_chain_outputs(self, num_tiles, interconnect_output_ports):
-        comb_output = self.combinational()
-        comb_output.add_stmt(self._chain_data_out.assign(self._data_out[0]))
-        for i in range(interconnect_output_ports):
-            comb_output.add_stmt(self._chain_valid_out[i].assign(0))
-        for i in range(num_tiles):
-            for j in range(interconnect_output_ports):
-                if_chain_valid_tile = IfStmt((self._enable_chain_output == 1) &
-                                             (self._tile_output_en[i][j] == 1))
-                if_chain_valid_tile.then_(self._chain_data_out[j].assign(self._data_out_inter[i][j]))
-                if_chain_valid_tile.then_(self._chain_valid_out[j].assign(self._valid_out_inter[i][j]))
-                comb_output.add_stmt(if_chain_valid_tile)
+    #def set_chain_outputs(self, num_tiles, interconnect_output_ports):
+        #comb_output = self.combinational()
+        #comb_output.add_stmt(self._chain_data_out.assign(self._data_out_inter[0]))
+        #for i in range(interconnect_output_ports):
+        #    comb_output.add_stmt(self._chain_valid_out[i].assign(0))
+        ##valids = [0 for _ in range(interconnect_output_ports)]
+        ##is_valid = [0 for _ in range(interconnect_output_ports)]
+        ##for i in range(num_tiles):
+        ##    for j in range(interconnect_output_ports):
+        ##        if self._valid_out_inter[i][j] == 1:
+        ##            valids[j] = i
+        ##            is_valid[j] = 1
+        ##for j in range(interconnect_output_ports):
+        ##    if is_valid[j] == 0:
+        ##        comb_output.add_stmt(self._chain_data_out[j].assign(0))
+        ##        comb_output.add_stmt(self._chain_valid_out[j].assign(0))
+        ##    else:
+        ##        comb_output.add_stmt(self._chain_data_out[j].assign(self._data_out_inter[valids[j]][j]))
+        ##        comb_output.add_stmt(self._chain_valid_out[j].assign(1))
+        #for i in range(num_tiles):
+        #    for j in range(interconnect_output_ports):
+        #        if_chain_valid_tile = IfStmt((self._enable_chain_output == 1) &
+        #                                     (self._tile_output_en[i][j] == 1))
+        #        if_chain_valid_tile.then_(self._chain_data_out[j].assign(self._data_out_inter[i][j]))
+        #        if_chain_valid_tile.then_(self._chain_valid_out[j].assign(self._valid_out_inter[i][j]))
+        #        comb_output.add_stmt(if_chain_valid_tile)
 
     @always_comb
     def set_data_out(self):
         self._data_out = self._data_out_inter
+      
+    @always_comb
+    def set_chain_outputs(self):
+        for i in range(interconnect_output_ports):
+            self.valids[i] = 0
+            self.is_valid_[i] = 0
+        for i in range(num_tiles):
+            for j in range(interconnect_output_ports):
+                if (self._tile_output_en[i][j] == 1):
+                    self.valids[j] = i
+                    self.is_valid_[j] = 1
+        for i in range(interconnect_output_ports):
+            if (self._enable_chain_output == 0) | (self.is_valid_[i] == 0):
+                self._chain_data_out[i] = 0
+                self._chain_valid_out[i] = 0
+            else:
+                self._chain_data_out[i] = self._data_out_inter[self.valids[i]][i]
+                self._chain_valid_out[i] = self._valid_out_inter[self.valids[i]][i]
 
     @always_comb
     def set_valid_out(self):
