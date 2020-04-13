@@ -1,6 +1,6 @@
 from kratos import *
 from lake.top.lake_top import LakeTop
-from utils.sram_macro import SRAMMacroInfo
+from lake.utils.sram_macro import SRAMMacroInfo
 from lake.passes.passes import lift_config_reg
 
 import kratos as kts
