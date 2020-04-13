@@ -540,6 +540,7 @@ def test_sram_port_names_change(mem_width,
                                   additional_passes={"change_sram_port": change_sram_port_pass})
 
 
+# 1 port, tested with enable_chain_output = 0 and = 1
 def test_chain_mult_tile(num_tiles=2,
                          banks=1,
                          interconnect_output_ports=3,
@@ -565,7 +566,7 @@ def test_chain_mult_tile(num_tiles=2,
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 8#24
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1#0
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
-        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 4#8#1
+        new_config[f"tile_{i}_strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 8#1
 
         # Output addr ctrl
         new_config[f"tile_{i}_strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 1
@@ -575,23 +576,16 @@ def test_chain_mult_tile(num_tiles=2,
 
         # TBA
 
-        # NOTE: both these configurations result in equivalent functionality
 
-        # if dimensionality == 1 version
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_range_outer"] = 8
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_stride"] = 1
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_dimensionality"] = 1#2
 
-        # if dimensionality == 2 version
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_0"] = 0
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_indices_1"] = 0
         new_config[f"tile_{i}_strg_ub_tba_0_tb_0_range_inner"] = 2
-        # new_config["tba_0_tb_0_range_outer"] = 3
-    # new_config["tba_0_tb_0_stride"] = 4
-    # new_config["tba_0_tb_0_tb_height"] = 1
-    # new_config["tba_0_tb_0_dimensionality"] = 2
 
-    # Sets multiwrite
+        # Sets multiwrite
         new_config[f"tile_{i}_strg_ub_input_addr_ctrl_offsets_cfg_0_0"] = 0
 
         new_config[f"tile_{i}_strg_ub_sync_grp_sync_group_0"] = 1
@@ -639,6 +633,7 @@ def test_chain_mult_tile(num_tiles=2,
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
+            data_in[j] = data_in[j] % 8
             valid_in[j] = 1  # rand.randint(0, 1)
         output_en = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
