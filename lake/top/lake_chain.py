@@ -199,38 +199,9 @@ class LakeChain(Generator):
                            wen_en=self._ub_wen_en,
                            ren_en=self._ub_ren_en)
 
-        # self.add_code(self.set_chain_outputs)
-        #self.set_chain_outputs(num_tiles, interconnect_output_ports)
         self.add_code(self.set_data_out)
         self.add_code(self.set_valid_out)
         self.add_code(self.set_chain_outputs)
-
-    #def set_chain_outputs(self, num_tiles, interconnect_output_ports):
-        #comb_output = self.combinational()
-        #comb_output.add_stmt(self._chain_data_out.assign(self._data_out_inter[0]))
-        #for i in range(interconnect_output_ports):
-        #    comb_output.add_stmt(self._chain_valid_out[i].assign(0))
-        ##valids = [0 for _ in range(interconnect_output_ports)]
-        ##is_valid = [0 for _ in range(interconnect_output_ports)]
-        ##for i in range(num_tiles):
-        ##    for j in range(interconnect_output_ports):
-        ##        if self._valid_out_inter[i][j] == 1:
-        ##            valids[j] = i
-        ##            is_valid[j] = 1
-        ##for j in range(interconnect_output_ports):
-        ##    if is_valid[j] == 0:
-        ##        comb_output.add_stmt(self._chain_data_out[j].assign(0))
-        ##        comb_output.add_stmt(self._chain_valid_out[j].assign(0))
-        ##    else:
-        ##        comb_output.add_stmt(self._chain_data_out[j].assign(self._data_out_inter[valids[j]][j]))
-        ##        comb_output.add_stmt(self._chain_valid_out[j].assign(1))
-        #for i in range(num_tiles):
-        #    for j in range(interconnect_output_ports):
-        #        if_chain_valid_tile = IfStmt((self._enable_chain_output == 1) &
-        #                                     (self._tile_output_en[i][j] == 1))
-        #        if_chain_valid_tile.then_(self._chain_data_out[j].assign(self._data_out_inter[i][j]))
-        #        if_chain_valid_tile.then_(self._chain_valid_out[j].assign(self._valid_out_inter[i][j]))
-        #        comb_output.add_stmt(if_chain_valid_tile)
 
     @always_comb
     def set_data_out(self):
