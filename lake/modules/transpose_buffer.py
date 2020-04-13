@@ -319,28 +319,16 @@ class TransposeBuffer(Generator):
             if i < self.tb_height:
                 if self.dimensionality == 0:
                     self.col_pixels[i] = 0
-                elif self.out_buf_index:
-                    if self.switch_out_buf:
-                        if self.fetch_width == 1:
-                            self.col_pixels[i] = self.tb[i + self.max_tb_height]
-                        else:
-                            self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
+                elif (self.out_buf_index ^ self.switch_out_buf):
+                    if self.fetch_width == 1:
+                        self.col_pixels[i] = self.tb[i]
                     else:
-                        if self.fetch_width == 1:
-                            self.col_pixels[i] = self.tb[i]
-                        else:
-                            self.col_pixels[i] = self.tb[i][self.output_index]
+                        self.col_pixels[i] = self.tb[i][self.output_index]
                 else:
-                    if self.switch_out_buf:
-                        if self.fetch_width == 1:
-                            self.col_pixels[i] = self.tb[i]
-                        else:
-                            self.col_pixels[i] = self.tb[i][self.output_index]
+                    if self.fetch_width == 1:
+                        self.col_pixels[i] = self.tb[i + self.max_tb_height]
                     else:
-                        if self.fetch_width == 1:
-                            self.col_pixels[i] = self.tb[i + self.max_tb_height]
-                        else:
-                            self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
+                        self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
 
     @always_comb
     def set_output_index(self):
