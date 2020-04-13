@@ -80,7 +80,6 @@ class SyncGroupsModel(Model):
                 self.local_mask[i][j] = 1
                 # If port j is in group i, set its gate mask
                 if self.config[f"sync_group_{j}"] == (1 << i):
-                    # print(f"ren_int: {ren_int}, ack_in: {ack_in}")
                     self.local_mask[i][j] = not (ren_int[j] & ((ack_in & (1 << j)) != 0))
                     # self.local_mask[i][j] = not (ren_int[j] and ack_in[j])
 

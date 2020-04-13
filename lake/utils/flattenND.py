@@ -26,3 +26,9 @@ class FlattenND(Generator):
     def flatten_array(self):
         for i in range(array_size[0]):
             self.out_[(i + 1) * apparent_width - 1, i * apparent_width] = self.in_[i]
+
+
+if __name__ == "__main__":
+    # input_array needs to be unpacked for third dimension > 1
+    dut = FlattenND(16, 4, 1)
+    verilog(dut, filename="flatten.sv")

@@ -2,8 +2,8 @@ from kratos import *
 from math import log
 from lake.modules.sram_stub import SRAMStub
 from lake.modules.sram_stub_generator import SRAMStubGenerator
-from utils.flattenND import FlattenND
-from utils.reverse_flatten import ReverseFlatten
+from lake.utils.flattenND import FlattenND
+from lake.utils.reverse_flatten import ReverseFlatten
 
 
 # instantiate either sram stub or stub for external provided sram macro

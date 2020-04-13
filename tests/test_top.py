@@ -4,7 +4,7 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.passes.passes import lift_config_reg, change_sram_port_names
+from lake.passes.passes import change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
 from utils.sram_macro import SRAMMacroInfo
 from lake.top.lake_chain import LakeChain
@@ -138,9 +138,6 @@ def test_mult_lines_dim1(data_width=16,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -163,21 +160,25 @@ def test_mult_lines_dim1(data_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
+    tester.eval()
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [0] * interconnect_output_ports
     addr_in = 0
     output_en = 1
 
     for i in range(300):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
+        ren_tmp = rand.randint(0, 1)
+        for j in range(interconnect_output_ports):
+            ren[j] = ren_tmp
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
-            valid_in[j] = 1  # rand.randint(0, 1)
-        output_en = rand.randint(0, 1)
+            valid_in[j] = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -185,17 +186,11 @@ def test_mult_lines_dim1(data_width=16,
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
-            # setattr(tester.circuit, f"wen_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
         for j in range(interconnect_output_ports):
-            tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
-        tester.circuit.output_en = output_en
+            tester.circuit.ren[j] = ren[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
 
-        if i > 200:
-            for j in range(interconnect_output_ports):
-                ren_en[j] = 1
         tester.eval()
 
         # Now check the outputs
@@ -377,9 +372,6 @@ def test_mult_lines_dim2(tb0_range_outer,
                      read_delay=read_delay,
                      fifo_mode=read_delay > 0)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -387,6 +379,9 @@ def test_mult_lines_dim2(tb0_range_outer,
                                   check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester.zero_inputs()
+    tester.circuit.clk_en = 1
+    tester.eval()
     ###
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
@@ -404,19 +399,19 @@ def test_mult_lines_dim2(tb0_range_outer,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [0] * interconnect_output_ports
     addr_in = 0
-    output_en = 0
 
     for i in range(300):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
             data_in[j] += 1
-            valid_in[j] = 1
+            valid_in[j] = rand.randint(0, 1)
 
-        output_en = rand.randint(0, 1)
+        ren_tmp = rand.randint(0, 1)
+        for j in range(interconnect_output_ports):
+            ren[j] = ren_tmp
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -425,16 +420,10 @@ def test_mult_lines_dim2(tb0_range_outer,
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
         for j in range(interconnect_output_ports):
             # ren_en[j] = 1
-            tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
-        tester.circuit.output_en = output_en
-
-        if i > 200:
-            for j in range(interconnect_output_ports):
-                ren_en[j] = 1
+            tester.circuit.ren[j] = ren[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
 
         tester.eval()
 
@@ -526,9 +515,6 @@ def test_sram_port_names_change(mem_width,
                      config_addr_width=config_addr_width,
                      remove_tb=remove_tb,
                      fifo_mode=fifo_mode)
-
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
 
     change_sram_port_pass = change_sram_port_names(use_sram_stub, sram_macro_info)
 
@@ -899,6 +885,14 @@ def test_identity_stream(data_width=16,
 
     new_config["strg_ub_sync_grp_sync_group_0"] = 1
 
+    new_config["strg_ub_app_ctrl_input_port_0"] = 0
+    new_config["strg_ub_app_ctrl_input_port_1"] = 0
+    new_config["strg_ub_app_ctrl_input_port_2"] = 0
+    new_config["strg_ub_app_ctrl_read_depth_0"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_1"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_2"] = 196
+    new_config["strg_ub_app_ctrl_write_depth_0"] = 196
+
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
                             mem_depth=mem_depth,
@@ -951,8 +945,6 @@ def test_identity_stream(data_width=16,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch)
 
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -968,6 +960,7 @@ def test_identity_stream(data_width=16,
         setattr(tester.circuit, key, value)
 
     tester.circuit.strg_ub_tba_0_tb_0_tb_height = 1
+    tester.circuit.strg_ub_app_ctrl_write_depth = 196
 
     if interconnect_output_ports == 1:
         tester.circuit.strg_ub_sync_grp_sync_group[0] = 1
@@ -981,10 +974,8 @@ def test_identity_stream(data_width=16,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [1] * interconnect_output_ports
     addr_in = 0
-    output_en = 1
 
     for i in range(300):
         # Rand data
@@ -992,7 +983,7 @@ def test_identity_stream(data_width=16,
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             valid_in[j] = 1  # rand.randint(0, 1)
-        output_en = rand.randint(0, 1)
+
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -1000,17 +991,16 @@ def test_identity_stream(data_width=16,
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
-            # setattr(tester.circuit, f"wen_{j}", valid_in[j])
         tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
-        for j in range(interconnect_output_ports):
-            tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
-        tester.circuit.output_en = output_en
 
-        if i > 200:
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
+
+        if interconnect_output_ports == 1:
+            tester.circuit.ren = ren[0]
+        else:
             for j in range(interconnect_output_ports):
-                ren_en[j] = 1
+                tester.circuit.ren[j] = ren[j]
+
         tester.eval()
 
         # Now check the outputs
@@ -1134,6 +1124,14 @@ def test_top(read_delay,
     new_config["strg_ub_sync_grp_sync_group_1"] = 1
     new_config["strg_ub_sync_grp_sync_group_2"] = 1
 
+    new_config["strg_ub_app_ctrl_input_port_0"] = 0
+    new_config["strg_ub_app_ctrl_input_port_1"] = 0
+    new_config["strg_ub_app_ctrl_input_port_2"] = 0
+    new_config["strg_ub_app_ctrl_read_depth_0"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_1"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_2"] = 196
+    new_config["strg_ub_app_ctrl_write_depth_0"] = 196
+
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
                             mem_depth=mem_depth,
@@ -1190,9 +1188,6 @@ def test_top(read_delay,
                      read_delay=read_delay,
                      fifo_mode=read_delay > 0)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -1208,28 +1203,32 @@ def test_top(read_delay,
     tester.circuit.strg_ub_tba_1_tb_0_tb_height = 1
     tester.circuit.strg_ub_tba_2_tb_0_tb_height = 1
 
+    tester.circuit.strg_ub_app_ctrl_write_depth = 196
+
     rand.seed(0)
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
+    tester.eval()
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 1
-    ren_en = [0] * interconnect_output_ports
+    ren = [1] * interconnect_output_ports
     addr_in = 0
-    output_en = 0
 
-    for i in range(300):
+    for i in range(1000):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
             data_in[j] += 1
-            valid_in[j] = 1
+            valid_in[j] = rand.randint(0, 1)
+        ren_tmp = rand.randint(0, 1)
+        for j in range(interconnect_output_ports):
+            ren[j] = ren_tmp
 
-        output_en = rand.randint(0, 1)
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -1237,17 +1236,13 @@ def test_top(read_delay,
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
                 tester.circuit.wen[j] = valid_in[j]
-        tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
-        for j in range(interconnect_output_ports):
-            # ren_en[j] = 1
-            tester.circuit.ren_en[j] = ren_en[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, wen_en, ren_en, output_en)
-        tester.circuit.output_en = output_en
 
-        if i > 200:
+        if interconnect_output_ports == 1:
+            tester.circuit.ren = ren[0]
+        else:
             for j in range(interconnect_output_ports):
-                ren_en[j] = 1
+                tester.circuit.ren[j] = ren[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
 
         tester.eval()
 
@@ -1261,6 +1256,7 @@ def test_top(read_delay,
                 tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
                     getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -1429,9 +1425,6 @@ def test_config_storage(data_width=16,
                      config_addr_width=config_addr_width,
                      read_delay=read_delay)
 
-    # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
-
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -1456,6 +1449,7 @@ def test_config_storage(data_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
     tester.step(2)
+    tester.circuit.clk_en = 1
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
@@ -1508,9 +1502,9 @@ def test_config_storage(data_width=16,
 if __name__ == "__main__":
     # test_chain_mult_tile()
     # test_chain_3porttile()
-    test_identity_stream()
+    # test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
-    # test_top(0)
+    test_top(0)
     # test_config_storage()

@@ -8,10 +8,10 @@ import kratos as k
 import random as rand
 
 
-def test_aggregator_basic(agg_height=4,
-                          data_width=16,
-                          mem_width=64,
-                          max_agg_schedule=64):
+def test_agg_buff_basic(agg_height=4,
+                        data_width=16,
+                        mem_width=64,
+                        max_agg_schedule=64):
 
     # Set up model...
     model_ab = AggBuffModel(agg_height=agg_height,
@@ -60,35 +60,34 @@ def test_aggregator_basic(agg_height=4,
     rand.randint(0, 1)
 
     data_in = 0
+    valid_in = 0
 
-    for i in range(2000):
-        v_out_model = model_ab.get_valid_out()
-        tester.circuit.valid_out.expect(v_out_model)
-        tester.circuit.write_act = 0
+    write_act = 0
 
-        if(v_out_model == 1):
-            # Check the data on the output...
-            mod_dat_out = model_ab.get_item()
-            for j in range(num_per_agg):
-                getattr(tester.circuit,
-                        f"data_out_chop_{j}").expect(mod_dat_out[j])
+    for i in range(1000):
 
-            tester.circuit.write_act = 1
+        valid_in = rand.randint(0, 1)
+        data_in = rand.randint(0, 2 ** 16 - 1)
+        write_act = 0
 
-        valid_next = rand.randint(0, 1)
-        if(valid_next == 1):
-            data_in = rand.randint(0, 2**30)
-            # Circuit
-            tester.circuit.valid_in = 1
-            tester.circuit.data_in = data_in
-            # Model
-            model_ab.insert(data_in, 1)
-
-        else:
-            tester.circuit.valid_in = 0
-            model_ab.insert(0, 0)
+        # Circuit
+        tester.circuit.valid_in = valid_in
+        tester.circuit.data_in = data_in
+        # Model
+        (mod_dat, mod_val) = model_ab.interact(data_in, valid_in, write_act)
+        if mod_val:
+            write_act = 1
+        tester.circuit.write_act = write_act
 
         tester.eval()
+
+        tester.circuit.valid_out.expect(mod_val)
+        if(mod_val == 1):
+            # Check the data on the output...
+            for j in range(num_per_agg):
+                getattr(tester.circuit,
+                        f"data_out_chop_{j}").expect(mod_dat[j])
+
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -96,3 +95,7 @@ def test_aggregator_basic(agg_height=4,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_agg_buff_basic()
