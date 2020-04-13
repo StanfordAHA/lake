@@ -20,6 +20,7 @@ class TransposeBuffer(Generator):
                  # specifying inner for loop values for output column
                  # addressing
                  max_range,
+                 max_range_inner,
                  max_stride,
                  tb_iterator_support):
         super().__init__("transpose_buffer")
@@ -33,6 +34,7 @@ class TransposeBuffer(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.max_range = max_range
+        self.max_range_inner = max_range_inner
         self.max_stride = max_stride
         self.tb_iterator_support = tb_iterator_support
 
@@ -43,6 +45,7 @@ class TransposeBuffer(Generator):
         self.fetch_width_bits = max(1, clog2(self.fetch_width))
         self.num_tb_bits = max(1, clog2(self.num_tb))
         self.max_range_bits = max(1, clog2(self.max_range))
+        self.max_range_inner_bits = max(1, clog2(self.max_range_inner))
         self.max_stride_bits = max(1, clog2(self.max_stride))
         self.tb_col_index_bits = 2 * max(self.fetch_width_bits, self.num_tb_bits) + 1
         self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
@@ -83,7 +86,7 @@ class TransposeBuffer(Generator):
 
         # the range of the inner for loop in nested for loop for output
         # column address generation
-        self.range_inner = self.input("range_inner", self.max_range_bits)
+        self.range_inner = self.input("range_inner", self.max_range_inner_bits)
         self.range_inner.add_attribute(ConfigRegAttr("Inner range for output for for loop pattern"))
 
         # stride for the given application
@@ -104,7 +107,7 @@ class TransposeBuffer(Generator):
                                   # so the maximum possible size for self.indices
                                   # is the maximum value of range_inner, which if
                                   # self.max_range_value
-                                  size=self.max_range,
+                                  size=self.max_range_inner,
                                   packed=True)
         self.indices.add_attribute(ConfigRegAttr("Output indices for for loop pattern"))
 
