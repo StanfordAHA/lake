@@ -580,10 +580,12 @@ def test_chain_mult_tile(num_tiles=2,
         new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_0"] = 0
         new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_1"] = 0
         new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_2"] = 0
-        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_0"] = 196
-        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_1"] = 196
-        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_2"] = 196
-        new_config[f"tile_{i}_strg_ub_app_ctrl_write_depth_0"] = 8
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_0"] = 32
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_1"] = 32
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_2"] = 32
+
+    new_config["tile_0_strg_ub_app_ctrl_write_depth"] = 32
+    new_config["tile_1_strg_ub_app_ctrl_write_depth"] = 32
 
     ### DUT
     lt_dut = LakeChain(num_tiles=num_tiles,
@@ -652,13 +654,13 @@ def test_chain_mult_tile(num_tiles=2,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "id"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
+# 3 ports, tested with enable_chain_output = 0 and = 1
 def test_chain_3porttile(num_tiles=2,
                          banks=1,
                          interconnect_output_ports=3,
@@ -730,12 +732,12 @@ def test_chain_3porttile(num_tiles=2,
         new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_0"] = 0
         new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_1"] = 0
         new_config[f"tile_{i}_strg_ub_app_ctrl_input_port_2"] = 0
-        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_0"] = 8
-        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_1"] = 8
-        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_2"] = 8
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_0"] = 32
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_1"] = 32
+        new_config[f"tile_{i}_strg_ub_app_ctrl_read_depth_2"] = 32
 
-    new_config["tile_0_strg_ub_app_ctrl_write_depth"] = 8
-    new_config["tile_1_strg_ub_app_ctrl_write_depth"] = 8
+    new_config["tile_0_strg_ub_app_ctrl_write_depth"] = 32
+    new_config["tile_1_strg_ub_app_ctrl_write_depth"] = 32
     ### DUT
     lt_dut = LakeChain(num_tiles=num_tiles,
                        banks=banks,
@@ -794,7 +796,7 @@ def test_chain_3porttile(num_tiles=2,
                 tester.circuit.wen[j] = valid_in[j]
 
         # Chaining
-        enable_chain_output = 1
+        enable_chain_output = 0
         tester.circuit.enable_chain_output = enable_chain_output
 
         if interconnect_output_ports == 1:
@@ -808,11 +810,10 @@ def test_chain_3porttile(num_tiles=2,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "cid"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_identity_stream(data_width=16,
@@ -1266,11 +1267,10 @@ def test_top(read_delay,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "cid"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_config_storage(data_width=16,
@@ -1508,8 +1508,8 @@ def test_config_storage(data_width=16,
 
 if __name__ == "__main__":
     # test_chain_mult_tile()
-    test_chain_3porttile()
-    # test_identity_stream()
+    # test_chain_3porttile()
+    test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
