@@ -92,6 +92,7 @@ class AggregationBuffer(Generator):
                                            size=self.fw_int,
                                            packed=True))
         self._valid_demux = self.var("valid_demux", self.agg_height)
+        self._align_demux = self.var("align_demux", self.agg_height)
         self._next_full = self.var("next_full", self.agg_height)
         self._valid_out_mux = self.var("valid_out_mux", self.agg_height)
         for i in range(self.agg_height):
@@ -105,7 +106,8 @@ class AggregationBuffer(Generator):
                            valid_in=self._valid_demux[i],
                            agg_out=self._aggs_sep[i],
                            valid_out=self._valid_out_mux[i],
-                           next_full=self._next_full[i])
+                           next_full=self._next_full[i],
+                           align=self._align_demux[i])
             portlist = []
             if self.fw_int == 1:
                 self.wire(self._aggs_out[i], self._aggs_sep[i])
@@ -120,6 +122,7 @@ class AggregationBuffer(Generator):
 
         # Combinational code blocks
         self.add_code(self.valid_demux_comb)
+        self.add_code(self.align_demux_comb)
         self.add_code(self.valid_out_comb)
         self.add_code(self.output_data_comb)
 
@@ -149,6 +152,11 @@ class AggregationBuffer(Generator):
     def valid_demux_comb(self):
         self._valid_demux = 0
         self._valid_demux[self._in_schedule[self._in_sched_ptr]] = self._valid_in
+
+    @always_comb
+    def align_demux_comb(self):
+        self._align_demux = 0
+        self._align_demux[self._in_schedule[self._in_sched_ptr]] = self._align
 
     @always_comb
     def valid_out_comb(self):
