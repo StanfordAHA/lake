@@ -319,41 +319,57 @@ class TransposeBuffer(Generator):
                 if self.dimensionality == 0:
                     self.col_pixels[i] = 0
                 elif self.out_buf_index:
-                    if self.fetch_width == 1:
-                        self.col_pixels[i] = self.tb[i]
+                    if ((self.index_outer == 0) & ~self.on_next_line & ((self.dimensionality == 1) | ((self.dimensionality == 2) & (self.index_inner == 0)))) | (self.output_index_abs >= self.curr_out_start + self.fetch_width):
+                        if self.fetch_width == 1:
+                            self.col_pixels[i] = self.tb[i + self.max_tb_height]
+                        else:
+                            self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
                     else:
-                        self.col_pixels[i] = self.tb[i][self.output_index]
+                        if self.fetch_width == 1:
+                            self.col_pixels[i] = self.tb[i]
+                        else:
+                            self.col_pixels[i] = self.tb[i][self.output_index]
                 else:
-                    if self.fetch_width == 1:
-                        self.col_pixels[i] = self.tb[i + self.max_tb_height]
+                    if ((self.index_outer == 0) & ~self.on_next_line & ((self.dimensionality == 1) | ((self.dimensionality == 2) & (self.index_inner == 0)))) | (self.output_index_abs >= self.curr_out_start + self.fetch_width):
+                        if self.fetch_width == 1:
+                            self.col_pixels[i] = self.tb[i]
+                        else:
+                            self.col_pixels[i] = self.tb[i][self.output_index]
                     else:
-                        self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
+                        if self.fetch_width == 1:
+                            self.col_pixels[i] = self.tb[i + self.max_tb_height]
+                        else:
+                            self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
 
-    @always_ff((posedge, "clk"))
+
+    #@always_ff((posedge, "clk"))
+    @always_comb
     def set_output_index(self):
         self.output_index = self.output_index_long[self.fetch_width_bits - 1, 0]
 
     # generates output valid and updates which buffer in double buffer to output from
     # appropriately
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    #@always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_comb
     def set_prev_output_valid(self):
-        if ~self.rst_n:
-            self.prev_output_valid = 0
-        elif self.dimensionality == 0:
+        #if ~self.rst_n:
+        #    self.prev_output_valid = 0
+        if self.dimensionality == 0:
             self.prev_output_valid = 0
         elif self.pause_output:
             self.prev_output_valid = 0
         else:
             self.prev_output_valid = 1
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    #@always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_comb
     def set_output_valid(self):
-        if ~self.rst_n:
-            self.output_valid = 0
-        else:
+        #if ~self.rst_n:
+        #    self.output_valid = 0
+        #else:
             # this is needed because there is a 2 cycle delay between index_outer and
             # actual output
-            self.output_valid = self.prev_output_valid
+        self.output_valid = self.prev_output_valid
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_out_buf_index(self):
