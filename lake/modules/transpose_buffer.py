@@ -313,7 +313,8 @@ class TransposeBuffer(Generator):
         self.output_index_long = self.output_index_abs % fetch_width
 
     # output column from transpose buffer
-    @always_ff((posedge, "clk"))
+    #@always_ff((posedge, "clk"))
+    @always_comb
     def output_from_tb(self):
         for i in range(max_tb_height):
             if i < self.tb_height:

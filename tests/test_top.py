@@ -1218,9 +1218,9 @@ def test_config_storage(data_width=16,
 
 
 if __name__ == "__main__":
-    # test_identity_stream()
+    test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
-    test_top(0)
+    # test_top(0)
     # test_config_storage()
