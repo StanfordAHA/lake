@@ -14,6 +14,7 @@ def test_tb(word_width=16,
             num_tb=1,
             max_tb_height=1,
             max_range=5,
+            max_range_inner=5,
             max_stride=15,
             tb_iterator_support=2):
 
@@ -21,7 +22,8 @@ def test_tb(word_width=16,
                        fetch_width,
                        num_tb,
                        max_tb_height,
-                       max_range)
+                       max_range,
+                       max_range_inner)
 
     new_config = {}
     new_config["range_outer"] = 5
@@ -38,6 +40,7 @@ def test_tb(word_width=16,
                           num_tb,
                           max_tb_height,
                           max_range,
+                          max_range_inner,
                           max_stride,
                           tb_iterator_support)
 
@@ -66,7 +69,6 @@ def test_tb(word_width=16,
 
     num_iters = 100
     for i in range(num_iters):
-
         data = []
         for j in range(fetch_width):
             data.append(rand.randint(0, 2**word_width - 1))
@@ -101,10 +103,11 @@ def test_tb(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir="tb"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 def test_id(word_width=16,
@@ -112,6 +115,7 @@ def test_id(word_width=16,
             num_tb=1,
             max_tb_height=1,
             max_range=12,
+            max_range_inner=5,
             max_stride=15,
             tb_iterator_support=2):
 
@@ -119,7 +123,8 @@ def test_id(word_width=16,
                        fetch_width,
                        num_tb,
                        max_tb_height,
-                       max_range)
+                       max_range,
+                       max_range_inner)
 
     new_config = {}
     new_config["range_outer"] = 12
@@ -136,6 +141,7 @@ def test_id(word_width=16,
                           num_tb,
                           max_tb_height,
                           max_range,
+                          max_range_inner,
                           max_stride,
                           tb_iterator_support)
 
@@ -210,6 +216,7 @@ def test_fw1(word_width=16,
              num_tb=1,
              max_tb_height=1,
              max_range=5,
+             max_range_inner=5,
              max_stride=15,
              tb_iterator_support=2):
 
@@ -217,7 +224,8 @@ def test_fw1(word_width=16,
                        fetch_width,
                        num_tb,
                        max_tb_height,
-                       max_range)
+                       max_range,
+                       max_range_inner)
 
     new_config = {}
     new_config["range_outer"] = 5
@@ -234,6 +242,7 @@ def test_fw1(word_width=16,
                           num_tb,
                           max_tb_height,
                           max_range,
+                          max_range_inner,
                           max_stride,
                           tb_iterator_support)
 

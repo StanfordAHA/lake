@@ -46,10 +46,6 @@ class TBModel(Model):
         self.out_buf_index = 1
         self.prev_out_buf_index = 0
 
-        self.ret_col_pixels = 0
-        self.ret_output_valid = 0
-        self.ret_rdy_to_arb = 1
-
         self.col_pixels = []
         for i in range(self.tb_height):
             self.col_pixels.append(0)
@@ -96,10 +92,6 @@ class TBModel(Model):
         self.out_buf_index = 1
         self.prev_out_buf_index = 0
 
-        self.ret_col_pixels = 0
-        self.ret_output_valid = 0
-        self.ret_rdy_to_arb = 1
-
         self.col_pixels = []
         for i in range(self.tb_height):
             self.col_pixels.append(0)
@@ -113,9 +105,6 @@ class TBModel(Model):
         self.pause_output = 0
         self.rdy_to_arbiter = 1
         self.prev_col_pixels = 0
-        self.ret_col_pixels = 0
-        self.ret_output_valid = 0
-        self.ret_rdy_to_arb = 1
         self.start_data = 0
         self.old_start_data = 0
         self.output_index_abs = 0
@@ -133,10 +122,6 @@ class TBModel(Model):
         return self.rdy_to_arbiter
 
     def output_from_tb(self, input_data, valid_data, ack_in, ren):
-
-        self.ret_col_pixels = self.col_pixels
-        self.ret_output_valid = self.output_valid
-        self.ret_rdy_to_arb = self.rdy_to_arbiter
 
         # Grab current values...
         index_inner_curr = self.index_inner
@@ -164,11 +149,6 @@ class TBModel(Model):
         else:
             self.switch_next_line = 0
 
-        if self.switch_next_line | (self.output_index_abs >= curr_out_start_curr + self.fetch_width):
-            self.switch_out_buf = 1
-        else:
-            self.switch_out_buf = 0
-
         if pause_tb_curr:
             self.pause_output = 1
         else:
@@ -182,6 +162,11 @@ class TBModel(Model):
                 self.config["indices"][index_inner_curr]
 
         self.output_index = self.output_index_abs % self.fetch_width
+    
+        if self.switch_next_line | (self.output_index_abs >= curr_out_start_curr + self.fetch_width):
+            self.switch_out_buf = 1
+        else:
+            self.switch_out_buf = 0
 
         # output from tb
         if self.config["dimensionality"] == 0:
@@ -194,7 +179,7 @@ class TBModel(Model):
                     self.col_pixels.append(tb_curr[i + self.tb_height * (1 - (out_buf_index_curr ^ self.switch_out_buf))])
                 else:
                     self.col_pixels.append(
-                        tb_curr[i + self.tb_height * (1 - (out_buf_index_curr ^ self.switch_out_buf))][output_index_curr])
+                        tb_curr[i + self.tb_height * (1 - (out_buf_index_curr ^ self.switch_out_buf))][self.output_index])
 
              # Set output valid
             if self.pause_output:
