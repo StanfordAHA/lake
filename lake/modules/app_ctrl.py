@@ -155,7 +155,7 @@ class AppCtrl(Generator):
     @always_comb
     def set_read_done(self, idx):
         self._read_done[idx] = (self._ren_in[idx] & (self._read_count[idx] == (self._read_depth[idx] - 1))) |\
-            self._read_done_ff[idx] | ~self._wr_delay_state_n[idx]
+            self._read_done_ff[idx] | (~self._wr_delay_state_n[idx] & ~self._prefill)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_read_cnt(self, idx):
