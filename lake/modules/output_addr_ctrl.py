@@ -41,7 +41,7 @@ class OutputAddrCtrl(Generator):
 
         # Chaining
         self._enable_chain_output = self.input("enable_chain_output", 1)
-        self._chain_idx_input = self.input("chain_idx_input", self.chain_idx_bits)
+        self._chain_idx_output = self.input("chain_idx_output", self.chain_idx_bits)
 
         # Inputs
         # Take in the valid and attach an address + direct to a port
@@ -125,7 +125,7 @@ class OutputAddrCtrl(Generator):
         for i in range(self.interconnect_output_ports):
             self._addresses[i] = self._local_addrs[i][self.mem_addr_width - 1, 0]
             if (self._addresses[i][self.mem_addr_width - 1, self.mem_addr_width - self.chain_idx_bits] ==
-                    self._chain_idx_input):
+                    self._chain_idx_output):
                 self._tile_output_en[i] = 1
             else:
                 self._tile_output_en[i] = 0
