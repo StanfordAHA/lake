@@ -623,6 +623,7 @@ class LakeTop(Generator):
 
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
+                               clk_en=self._clk_en | self._config_en.r_or(),
                                mem_data_in_bank=self._mem_data_in[i],
                                mem_data_out_bank=self._mem_data_out[i],
                                mem_addr_in_bank=self._mem_addr_in[i],

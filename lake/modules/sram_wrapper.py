@@ -33,6 +33,8 @@ class SRAMWrapper(Generator):
 
         self._gclk = self.clock("clk")
 
+        self._clk_en = self.input("clk_en", 1)
+
         if self.fw_int > 1:
             self._mem_data_in_bank = self.input("mem_data_in_bank",
                                                 self.data_width,
