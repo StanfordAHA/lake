@@ -145,6 +145,8 @@ class LakeTop(Generator):
                                             explicit_array=True,
                                             packed=True)
 
+        self._clk_en = self.clock_en("clk_en", 1)
+
         for i in range(self.total_sets):
             self.wire(self._config_data_out[i],
                       self._config_data_out_shrt[i].extend(self.config_data_width))
@@ -295,6 +297,7 @@ class LakeTop(Generator):
         self.add_child(f"config_seq", stg_cfg_seq,
                        clk=self._gclk,
                        rst_n=self._rst_n,
+                       clk_en=self._clk_en | self._config_en.r_or(),
                        config_data_in=self._config_data_in_shrt,
                        config_addr_in=self._config_addr_in,
                        config_wr=self._config_write,
@@ -691,7 +694,7 @@ class LakeTop(Generator):
         ##### CLOCK ENABLE #####
         ########################
         if add_clk_enable:
-            self.clock_en("clk_en")
+            # self.clock_en("clk_en")
             kts.passes.auto_insert_clock_enable(self.internal_generator)
 
         if add_flush:

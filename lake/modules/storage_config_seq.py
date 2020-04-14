@@ -53,6 +53,8 @@ class StorageConfigSeq(Generator):
         self._config_rd = self.input("config_rd", 1)
         self._config_en = self.input("config_en", self.total_sets)
 
+        self._clk_en = self.input("clk_en", 1)
+
         self._rd_data_stg = self.input("rd_data_stg", self.data_width,
                                        size=(self.banks,
                                              self.fw_int),
@@ -182,28 +184,30 @@ class StorageConfigSeq(Generator):
     def update_cnt(self):
         if ~self._rst_n:
             self._cnt = 0
-        # Increment when reading/writing - making sure
-        # that the sequencing is correct from app level!
-        elif (self._config_wr | self._config_rd) & self._config_en.r_or():
-            self._cnt = self._cnt + 1
+        elif self._clk_en:
+            # Increment when reading/writing - making sure
+            # that the sequencing is correct from app level!
+            if (self._config_wr | self._config_rd) & self._config_en.r_or():
+                self._cnt = self._cnt + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_rd_cnt(self):
         if ~self._rst_n:
             self._rd_cnt = 0
-        # Increment when reading/writing - making sure
-        # that the sequencing is correct from app level!
-        else:
+        elif self._clk_en:
+            # Increment when reading/writing - making sure
+            # that the sequencing is correct from app level!
             self._rd_cnt = self._cnt
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def write_buffer(self):
         if ~self._rst_n:
             self._data_wr_reg = 0
-        # Increment when reading/writing - making sure
-        # that the sequencing is correct from app level!
-        elif self._config_wr & (self._cnt < self.fw_int - 1):
-            self._data_wr_reg[self._cnt] = self._config_data_in
+        elif self._clk_en:
+            # Increment when reading/writing - making sure
+            # that the sequencing is correct from app level!
+            if self._config_wr & (self._cnt < self.fw_int - 1):
+                self._data_wr_reg[self._cnt] = self._config_data_in
 
 
 if __name__ == "__main__":
