@@ -106,7 +106,7 @@ class SRAMWrapper(Generator):
                                input_array=self._mem_data_in_bank,
                                output_array=self._sram_mem_data_in_bank)
 
-                self.add_child(f"mem_{self.bank_num}",
+                self.add_child(f"mem_inst_{self.bank_num}",
                                mbank,
                                sram_addr=self._mem_addr_in_bank,
                                sram_cen=~self._mem_cen_in_bank,
@@ -127,7 +127,7 @@ class SRAMWrapper(Generator):
                                output_array=self._mem_data_out_bank)
 
             else:
-                self.add_child(f"mem_{self.bank_num}",
+                self.add_child(f"mem_inst_{self.bank_num}",
                                mbank,
                                sram_addr=self._mem_addr_in_bank,
                                sram_cen=~self._mem_cen_in_bank,
