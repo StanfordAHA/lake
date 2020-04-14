@@ -106,9 +106,12 @@ class LakeTop(Generator):
         # Chaining
         self._enable_chain_output = self.input("enable_chain_output", 1)
 
-        self._chain_idx = self.input("chain_idx",
-                                     self.chain_idx_bits)
-        # self._chain_idx.add_attribute(ConfigRegAttr("Tile index when having multiple tiles"))
+        self._chain_idx_input = self.input("chain_idx_input",
+                                           self.chain_idx_bits)
+        # self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
+        self._chain_idx_output = self.input("chain_idx_output",
+                                            self.chain_idx_bits)
+        # self._chain_idx_output.add_attribute(ConfigRegAttr("Tile output index when having multiple tiles"))
 
         self._tile_output_en = self.output("tile_output_en",
                                            1,
@@ -449,7 +452,7 @@ class LakeTop(Generator):
                        cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem,
                        enable_chain_output=self._enable_chain_output,
-                       chain_idx=self._chain_idx,
+                       chain_idx_input=self._chain_idx_input,
                        tile_output_en=self._tile_output_en)
 
         # Wire addrs
@@ -618,7 +621,7 @@ class LakeTop(Generator):
 
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
-                               chain_idx=self._chain_idx,
+                               chain_idx_input=self._chain_idx_input,
                                mem_data_in_bank=self._mem_data_in[i],
                                mem_data_out_bank=self._mem_data_out[i],
                                mem_addr_in_bank=self._mem_addr_in[i],

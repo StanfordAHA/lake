@@ -38,7 +38,7 @@ class SRAMWrapper(Generator):
         self._gclk = self.clock("clk")
 
         # input "chaining"
-        self._chain_idx = self.input("chain_idx", self.chain_idx_bits)
+        self._chain_idx_input = self.input("chain_idx_input", self.chain_idx_bits)
         self._chain_idx_tile = self.var("chain_idx_tile", self.chain_idx_bits)
 
         if self.fw_int > 1:
@@ -178,7 +178,7 @@ class SRAMWrapper(Generator):
     def set_chain_wen(self):
         if self.num_tiles == 1:
             self._mem_wen_in_bank_chain = self._mem_wen_in_bank
-        elif self._chain_idx == self._chain_idx_tile:
+        elif self._chain_idx_input == self._chain_idx_tile:
             self._mem_wen_in_bank_chain = self._mem_wen_in_bank
         else:
             self._mem_wen_in_bank_chain = 0

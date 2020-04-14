@@ -369,7 +369,7 @@ class StrgUB(Generator):
 
         self.chain_idx_bits = max(1, clog2(num_tiles))
         self._enable_chain_output = self.input("enable_chain_output", 1)
-        self._chain_idx = self.input("chain_idx", self.chain_idx_bits)
+        self._chain_idx_input = self.input("chain_idx_input", self.chain_idx_bits)
         self._tile_output_en = self.output("tile_output_en",
                                            1,
                                            size=self.interconnect_output_ports,
@@ -384,7 +384,7 @@ class StrgUB(Generator):
                        addr_out=self._oac_addr_out,
                        step_in=self._oac_step,
                        enable_chain_output=self._enable_chain_output,
-                       chain_idx=self._chain_idx,
+                       chain_idx_input=self._chain_idx_input,
                        tile_output_en=self._tile_output_en)
 
         for i in range(self.interconnect_output_ports):

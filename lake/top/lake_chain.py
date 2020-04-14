@@ -179,7 +179,8 @@ class LakeChain(Generator):
                            rst_n=self._rst_n,
                            enable_chain_output=self._enable_chain_output,
                            # tile index
-                           chain_idx=i,
+                           chain_idx_input=i,
+                           chain_idx_output=0,
                            tile_output_en=self._tile_output_en[i],
                            # broadcast input data to all tiles
                            data_in=self._data_in,
