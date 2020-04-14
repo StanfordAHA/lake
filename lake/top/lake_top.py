@@ -22,6 +22,8 @@ class LakeTop(Generator):
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
+                 input_config_width=16,
+                 output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
                  mem_input_ports=1,
@@ -59,6 +61,8 @@ class LakeTop(Generator):
         self.banks = banks
         self.input_iterator_support = input_iterator_support
         self.output_iterator_support = output_iterator_support
+        self.input_config_width = input_config_width
+        self.output_config_width = output_config_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_input_ports = mem_input_ports
@@ -383,7 +387,9 @@ class LakeTop(Generator):
                          tb_iterator_support=self.tb_iterator_support,
                          multiwrite=self.multiwrite,
                          max_prefetch=self.max_prefetch,
-                         remove_tb=self.remove_tb)
+                         remove_tb=self.remove_tb,
+                         input_config_width=self.input_config_width,
+                         output_config_width=self.output_config_width)
 
         self._ub_data_to_mem = self.var("ub_data_to_mem",
                                         self.data_width,

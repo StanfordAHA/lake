@@ -19,7 +19,8 @@ class InputAddrCtrl(Generator):
                  data_width=16,
                  fetch_width=16,
                  multiwrite=1,
-                 strg_wr_ports=2):
+                 strg_wr_ports=2,
+                 config_width=16):
         super().__init__("input_addr_ctrl", debug=True)
 
         assert multiwrite >= 1, "Multiwrite must be at least 1..."
@@ -35,6 +36,7 @@ class InputAddrCtrl(Generator):
         self.fw_int = int(self.fetch_width / self.data_width)
         self.multiwrite = multiwrite
         self.strg_wr_ports = strg_wr_ports
+        self.config_width = config_width
 
         self.mem_addr_width = clog2(self.mem_depth)
         if self.banks > 1:
@@ -127,19 +129,7 @@ class InputAddrCtrl(Generator):
                 concat_ports = []
                 for k in range(self.multiwrite):
                     concat_ports.append(self._wen_full[i][k][j])
-                # if(self.multiwrite == 1):
-                #     self.wire(self._wen_reduced[i][j], *concat_ports)
-                # else:
                 self.wire(self._wen_reduced[i][j], kts.concat(*concat_ports).r_or())
-
-        # for i in range(self.banks):
-        #     cat = []
-        #     for j in range(self.interconnect_input_ports):
-        #         cat.append(self._wen_reduced[j][i])
-        #     if(len(cat) > 1):
-        #         self.wire(self._wen[i], kts.concat(*cat).r_or())
-        #     else:
-        #         self.wire(self._wen[i], cat[0])
 
         if self.banks == 1 and self.interconnect_input_ports == 1:
             self.wire(self._wen_full[0][0][0], self._valid_gate)
@@ -166,7 +156,8 @@ class InputAddrCtrl(Generator):
         for i in range(self.interconnect_input_ports):
             self.add_child(f"address_gen_{i}", AddrGen(mem_depth=self.mem_depth,
                                                        iterator_support=self.iterator_support,
-                                                       address_width=self.address_width),
+                                                       address_width=self.address_width,
+                                                       config_width=self.config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            clk_en=const(1, 1),

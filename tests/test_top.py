@@ -989,7 +989,7 @@ def test_top(read_delay,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="cid"
+        tempdir = "cid"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",

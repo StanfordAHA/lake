@@ -27,6 +27,8 @@ class StrgUB(Generator):
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
+                 input_config_width=16,
+                 output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
                  mem_input_ports=1,
@@ -57,6 +59,8 @@ class StrgUB(Generator):
         self.banks = banks
         self.input_iterator_support = input_iterator_support
         self.output_iterator_support = output_iterator_support
+        self.input_config_width = input_config_width
+        self.output_config_width = output_config_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_input_ports = mem_input_ports
@@ -326,7 +330,8 @@ class StrgUB(Generator):
                             data_width=self.data_width,
                             fetch_width=self.mem_width,
                             multiwrite=self.multiwrite,
-                            strg_wr_ports=self.mem_input_ports)
+                            strg_wr_ports=self.mem_input_ports,
+                            config_width=self.input_config_width)
         self.add_child(f"input_addr_ctrl", iac,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -381,7 +386,8 @@ class StrgUB(Generator):
                              mem_depth=self.mem_depth,
                              banks=self.banks,
                              iterator_support=self.output_iterator_support,
-                             address_width=self.address_width)
+                             address_width=self.address_width,
+                             config_width=self.output_config_width)
 
         if self.remove_tb:
             self.wire(self._oac_valid, self._ren)

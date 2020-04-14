@@ -11,7 +11,8 @@ class AddrGen(Generator):
     def __init__(self,
                  mem_depth,
                  iterator_support,
-                 address_width):
+                 address_width,
+                 config_width=16):
 
         super().__init__(f"addr_gen_{iterator_support}")
 
@@ -19,6 +20,7 @@ class AddrGen(Generator):
         self.mem_addr_width = clog2(self.mem_depth)
         self.full_addr = self.mem_addr_width
         self.iterator_support = iterator_support
+        self.config_width = config_width
 
         # PORT DEFS: begin
 
@@ -26,26 +28,26 @@ class AddrGen(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._strides = self.input("strides", 32,
+        self._strides = self.input("strides", self.config_width,
                                    size=self.iterator_support,
                                    packed=True, explicit_array=True)
         self._strides.add_attribute(ConfigRegAttr("Strides of address generator"))
 
-        self._ranges = self.input("ranges", 32,
+        self._ranges = self.input("ranges", self.config_width,
                                   size=self.iterator_support,
                                   packed=True, explicit_array=True)
         self._ranges.add_attribute(ConfigRegAttr("Ranges of address generator"))
 
-        self._starting_addr = self.input("starting_addr", 32)
+        self._starting_addr = self.input("starting_addr", self.config_width)
         self._starting_addr.add_attribute(ConfigRegAttr("Starting address of address generator"))
 
-        self._dimensionality = self.input("dimensionality", 4)
+        self._dimensionality = self.input("dimensionality", 1 + clog2(self.iterator_support))
         self._dimensionality.add_attribute(ConfigRegAttr("Dimensionality of address generator"))
 
         self._step = self.input("step", 1)
 
         # OUTPUTS
-        self._addr_out = self.output("addr_out", 32)
+        self._addr_out = self.output("addr_out", self.config_width)
 
         # MISC
         self._clk_en = self.input("clk_en", 1)
@@ -54,22 +56,22 @@ class AddrGen(Generator):
         # PORT DEFS: end
 
         # LOCAL VARIABLES: begin
-        self._current_loc = self.var("current_loc", 32,
+        self._current_loc = self.var("current_loc", self.config_width,
                                      size=self.iterator_support,
                                      packed=True,
                                      explicit_array=True)
 
-        self._write_addr = self.var("write_addr", 32)
-        self._dim_counter = self.var("dim_counter", 32,
+        self._write_addr = self.var("write_addr", self.config_width)
+        self._dim_counter = self.var("dim_counter", self.config_width,
                                      size=self.iterator_support,
                                      packed=True,
                                      explicit_array=True)
 
         self._update = self.var("update", self.iterator_support)
-        self._strt_addr = self.var("strt_addr", 32)
+        self._strt_addr = self.var("strt_addr", self.config_width)
 
         self._counter_update = self.var("counter_update", 1)
-        self._calc_addr = self.var("calc_addr", 32)
+        self._calc_addr = self.var("calc_addr", self.config_width)
 
         # LOCAL VARIABLES: end
 
