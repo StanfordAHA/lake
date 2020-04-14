@@ -219,7 +219,9 @@ class LakeChain(Generator):
         for i in range(num_tiles):
             for j in range(interconnect_output_ports):
                 if (self._tile_output_en[i][j] == 1):
+                    # keeps track of while tile has data/valid for this port
                     self.valids[j] = i
+                    # indicates that this port value has been updated for some tile
                     self.is_valid_[j] = 1
         for i in range(interconnect_output_ports):
             if (self._enable_chain_output == 0) | (self.is_valid_[i] == 0):
