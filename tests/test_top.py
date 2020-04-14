@@ -4,7 +4,7 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.passes.passes import change_sram_port_names
+from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
 from lake.utils.sram_macro import SRAMMacroInfo
 from lake.top.lake_chain import LakeChain
@@ -137,6 +137,9 @@ def test_mult_lines_dim1(data_width=16,
                      tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch)
+
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -372,6 +375,9 @@ def test_mult_lines_dim2(tb0_range_outer,
                      read_delay=read_delay,
                      fifo_mode=read_delay > 0)
 
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
+
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -518,6 +524,9 @@ def test_sram_port_names_change(mem_width,
 
     change_sram_port_pass = change_sram_port_names(use_sram_stub, sram_macro_info)
 
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
+
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -595,8 +604,7 @@ def test_chain_mult_tile(num_tiles=2,
                        mem_depth=mem_depth,
                        tb_range_max=tb_range_max)
 
-    # Run the config reg lift
-    # lift_config_reg(lt_dut.internal_generator)
+    # config reg lift is part of LakeChain module
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -746,9 +754,7 @@ def test_chain_3porttile(num_tiles=2,
                        mem_depth=mem_depth,
                        tb_range_max=tb_range_max)
 
-    # Run the config reg lift
-    # lift_config_reg(lt_dut.internal_generator)
-
+    # config reg lift is part of Chain module
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -951,6 +957,9 @@ def test_identity_stream(data_width=16,
                      tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
                      max_prefetch=max_prefetch)
+
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -1195,6 +1204,9 @@ def test_top(read_delay,
                      read_delay=read_delay,
                      fifo_mode=read_delay > 0)
 
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
+
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -1431,6 +1443,9 @@ def test_config_storage(data_width=16,
                      max_prefetch=max_prefetch,
                      config_addr_width=config_addr_width,
                      read_delay=read_delay)
+
+    # Run the config reg lift
+    lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
