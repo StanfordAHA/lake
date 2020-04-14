@@ -169,12 +169,14 @@ class TBModel(Model):
             self.col_pixels = []
             for i in range(self.tb_height):
                 if self.fetch_width == 1:
-                    self.col_pixels.append(tb_curr[i + self.tb_height * (1 - (out_buf_index_curr ^ self.switch_out_buf))])
+                    self.col_pixels.append(
+                        tb_curr[i + self.tb_height * (1 - (out_buf_index_curr ^ self.switch_out_buf))])
                 else:
                     self.col_pixels.append(
-                        tb_curr[i + self.tb_height * (1 - (out_buf_index_curr ^ self.switch_out_buf))][output_index_curr])
+                        tb_curr[i + self.tb_height *
+                                (1 - (out_buf_index_curr ^ self.switch_out_buf))][output_index_curr])
 
-             # Set output valid
+            # Set output valid
             if (not old_start_data_curr) and start_data_curr and (not pause_tb_curr):
                 self.output_valid = 1
             elif self.pause_output:
@@ -197,7 +199,9 @@ class TBModel(Model):
             self.output_index_abs = index_outer_curr * self.config["stride"] + \
                 self.config["indices"][index_inner_curr]
 
-        if ((index_outer_curr == 0) and (not on_next_line_curr) and ((self.config["dimensionality"] == 1) or( (self.config["dimensionality"] == 2) & (index_inner_curr == 0)))):
+        if ((index_outer_curr == 0) and (not on_next_line_curr) and
+                ((self.config["dimensionality"] == 1) or
+                 ((self.config["dimensionality"] == 2) & (index_inner_curr == 0)))):
             self.switch_next_line = 1
         else:
             self.switch_next_line = 0
@@ -265,7 +269,7 @@ class TBModel(Model):
                     self.pause_tb = 1 - valid_data
                 elif not self.pause_output:
                     self.pause_tb = 0
-           
+
             # Row index + input_buf_index + input tb
             if valid_data:
                 self.tb[row_index_curr + self.tb_height * input_buf_index_curr] = input_data
@@ -274,7 +278,7 @@ class TBModel(Model):
                     self.input_buf_index = 1 - input_buf_index_curr
                 else:
                     self.row_index = row_index_curr + 1
-            
+
             # Set out buf index
             if not start_data_curr:
                 self.out_buf_index = 1

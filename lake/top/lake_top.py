@@ -50,6 +50,7 @@ class LakeTop(Generator):
                  config_data_width=32,
                  config_addr_width=8,
                  remove_tb=False,
+                 app_ctrl_depth_width=16,
                  fifo_mode=True,
                  add_clk_enable=True,
                  add_flush=True):
@@ -89,6 +90,7 @@ class LakeTop(Generator):
         self.max_prefetch = max_prefetch
         self.config_data_width = config_data_width
         self.config_addr_width = config_addr_width
+        self.app_ctrl_depth_width = app_ctrl_depth_width
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle

@@ -49,7 +49,8 @@ class StrgUB(Generator):
                  num_tb=1,
                  tb_iterator_support=2,
                  multiwrite=1,
-                 max_prefetch=64,
+                 max_prefetch=8,
+                 app_ctrl_depth_width=16,
                  remove_tb=False):
         super().__init__("strg_ub")
 
@@ -83,6 +84,7 @@ class StrgUB(Generator):
         self.tb_iterator_support = tb_iterator_support
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
+        self.app_ctrl_depth_width = app_ctrl_depth_width
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
@@ -183,7 +185,8 @@ class StrgUB(Generator):
         ##### APP CTRL #####
         ####################
         self.app_ctrl = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
-                                interconnect_output_ports=self.interconnect_output_ports)
+                                interconnect_output_ports=self.interconnect_output_ports,
+                                depth_width=self.app_ctrl_depth_width)
         self.add_child("app_ctrl", self.app_ctrl,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -204,7 +207,8 @@ class StrgUB(Generator):
                                          self.interconnect_output_ports)
 
         self.app_ctrl_coarse = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
-                                       interconnect_output_ports=self.interconnect_output_ports)
+                                       interconnect_output_ports=self.interconnect_output_ports,
+                                       depth_width=self.app_ctrl_depth_width)
         self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
                        clk=self._clk,
                        rst_n=self._rst_n,
