@@ -184,30 +184,28 @@ class StorageConfigSeq(Generator):
     def update_cnt(self):
         if ~self._rst_n:
             self._cnt = 0
-        elif self._clk_en:
-            # Increment when reading/writing - making sure
-            # that the sequencing is correct from app level!
-            if (self._config_wr | self._config_rd) & self._config_en.r_or():
-                self._cnt = self._cnt + 1
+        # Increment when reading/writing - making sure
+        # that the sequencing is correct from app level!
+        elif (self._config_wr | self._config_rd) & self._config_en.r_or():
+            self._cnt = self._cnt + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_rd_cnt(self):
         if ~self._rst_n:
             self._rd_cnt = 0
-        elif self._clk_en:
-            # Increment when reading/writing - making sure
-            # that the sequencing is correct from app level!
+        # Increment when reading/writing - making sure
+        # that the sequencing is correct from app level!
+        else:
             self._rd_cnt = self._cnt
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def write_buffer(self):
         if ~self._rst_n:
             self._data_wr_reg = 0
-        elif self._clk_en:
-            # Increment when reading/writing - making sure
-            # that the sequencing is correct from app level!
-            if self._config_wr & (self._cnt < self.fw_int - 1):
-                self._data_wr_reg[self._cnt] = self._config_data_in
+        # Increment when reading/writing - making sure
+        # that the sequencing is correct from app level!
+        elif self._config_wr & (self._cnt < self.fw_int - 1):
+            self._data_wr_reg[self._cnt] = self._config_data_in
 
 
 if __name__ == "__main__":
