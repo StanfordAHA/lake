@@ -5,16 +5,21 @@ import kratos as kts
 class Chain(Generator):
     def __init__(self,
                  data_width,
-                 interconnect_output_ports):
+                 interconnect_output_ports,
+                 chain_idx_bits):
         super().__init__("Chain", debug=True)
 
         # generator parameters
         self.data_width = data_width
         self.interconnect_output_ports = interconnect_output_ports
+        self.chain_idx_bits = chain_idx_bits
 
         # inputs
 
         self._enable_chain_output = self.input("enable_chain_output", 1)
+
+        self._chain_idx_output = self.input("chain_idx_output",
+                                            self.chain_idx_bits)
 
         # data and valid from current tile
         self._curr_tile_valid_out = self.input("curr_tile_valid_out",
@@ -64,21 +69,27 @@ class Chain(Generator):
 
     @always_comb
     def set_data_out(self):
-        self._data_out_tile = self._curr_tile_data_out
+        if self._chain_idx_output == 0:
+            self._data_out_tile = self._chain_data_out
+        else:
+            self._data_out_tile = self._curr_tile_data_out
 
     @always_comb
     def set_valid_out(self):
-        for j in range(self.interconnect_output_ports):
-            if self._tile_output_en[j] == 0:
-                self._valid_out_tile[j] = 0
-            elif self._enable_chain_output:
-                self._valid_out_tile[j] = 0
-            else:
-                self._valid_out_tile[j] = self._curr_tile_valid_out[j]
+        if self._chain_idx_output == 0:
+            self._valid_out_tile = self._chain_valid_out
+        else:
+            for j in range(self.interconnect_output_ports):
+                if self._tile_output_en[j] == 0:
+                    self._valid_out_tile[j] = 0
+                elif self._enable_chain_output:
+                    self._valid_out_tile[j] = 0
+                else:
+                    self._valid_out_tile[j] = self._curr_tile_valid_out[j]
 
     @always_comb
     def set_chain_outputs(self):
-        if ~self._enable_chain_output:
+        if ~self._enable_chain_output | (self._chain_idx_output == 0):
             self._chain_data_out = self._curr_tile_data_out
             for i in range(self.interconnect_output_ports):
                 self._chain_valid_out[i] = 0
@@ -94,5 +105,6 @@ class Chain(Generator):
 
 if __name__ == "__main__":
     dut = Chain(data_width=16,
-                interconnect_output_ports=3)
+                interconnect_output_ports=3,
+                chain_idx_bits=1)
     verilog(dut, filename="chain.sv")

@@ -715,10 +715,12 @@ class LakeTop(Generator):
             self.wire(self._valid_out[i + 1], self._ub_valid_out[i + 1])
 
         chaining = Chain(data_width=self.data_width,
-                         interconnect_output_ports=self.interconnect_output_ports)
+                         interconnect_output_ports=self.interconnect_output_ports,
+                         chain_idx_bits=self.chain_idx_bits)
 
         self.add_child(f"chain", chaining,
                        enable_chain_output=self._enable_chain_output,
+                       chain_idx_output=self._chain_idx_output,
                        curr_tile_valid_out=self._valid_out,
                        curr_tile_data_out=self._data_out,
                        chain_valid_in=self._chain_valid_in,
