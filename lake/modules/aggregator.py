@@ -67,6 +67,8 @@ class Aggregator(Generator):
             else:
                 self._valid_out = const(0, 1)
                 self._word_count = self._word_count + const(1, clog2(mem_word_width))
+        else:
+            self._valid_out = 0
 
     @always_ff((posedge, "clk"))
     def update_shift_reg(self):
