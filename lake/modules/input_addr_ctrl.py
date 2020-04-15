@@ -55,7 +55,7 @@ class InputAddrCtrl(Generator):
         self._valid_in = self.input("valid_in", self.interconnect_input_ports)
         self._wen_en = self.input("wen_en", self.interconnect_input_ports)
         self._valid_gate = self.var("valid_gate", self.interconnect_input_ports)
-        self.wire(self._valid_gate, self._valid_in & self._wen_en)
+        self.wire(self._valid_gate, self._valid_in)
         self._data_in = self.input("data_in",
                                    self.data_width,
                                    size=(self.interconnect_input_ports,
@@ -219,7 +219,9 @@ class InputAddrCtrl(Generator):
                     if self._wen_reduced[j][i]:
                         # Finds the first one...
                         self._done[i][0] = 1
-                        self._wen[i][0] = 1
+                        # self._wen[i][0] = 1
+                        # This should only go through if the wen_en is on...
+                        self._wen[i][0] = self._wen_en[j]
                         self._port_out_exp[i][j] = 1
                         self._data_out[i][0] = self._data_in[j]
                         self._addresses[i][0] = self._local_addrs[j][0][self.mem_addr_width - 1, 0]
@@ -235,7 +237,8 @@ class InputAddrCtrl(Generator):
             for j in range(self.interconnect_input_ports):
                 if ~self._done[i][idx]:
                     if self._wen_reduced[j][i] & (self._idx_cnt[i][idx - 1] == idx):
-                        self._wen[i][idx] = 1
+                        # self._wen[i][idx] = 1
+                        self._wen[i][idx] = self._wen_en[j]
                         self._done[i][idx] = 1
                         self._data_out[i][idx] = self._data_in[j]
                         self._addresses[i][idx] = self._local_addrs[j][0][self.mem_addr_width - 1, 0]
