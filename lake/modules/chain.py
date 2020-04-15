@@ -21,7 +21,6 @@ class Chain(Generator):
         self._chain_idx_output = self.input("chain_idx_output",
                                             self.chain_idx_bits)
 
-        # data and valid from current tile
         self._curr_tile_valid_out = self.input("curr_tile_valid_out",
                                                self.interconnect_output_ports)
 
@@ -31,7 +30,6 @@ class Chain(Generator):
                                               packed=True,
                                               explicit_array=True)
 
-        # data and valid from another tile chained to this tile
         self._chain_valid_in = self.input("chain_valid_in",
                                           self.interconnect_output_ports)
 
@@ -43,17 +41,25 @@ class Chain(Generator):
 
         self._tile_output_en = self.input("tile_output_en",
                                           self.interconnect_output_ports)
-        # muxed data and valid outputs
+
         self._chain_data_out = self.output("chain_data_out",
-                                           data_width,
-                                           size=interconnect_output_ports,
+                                           self.data_width,
+                                           size=self.interconnect_output_ports,
                                            packed=True,
                                            explicit_array=True)
 
         self._chain_valid_out = self.output("chain_valid_out",
-                                            interconnect_output_ports)
+                                            self.interconnect_output_ports)
 
-        # individual tile outputs
+        self._chain_data_out_inter = self.var("chain_data_out_inter",
+                                              self.data_width,
+                                              size=self.interconnect_output_ports,
+                                              packed=True,
+                                              explicit_array=True)
+
+        self._chain_valid_out_inter = self.var("chain_valid_out_inter",
+                                               self.interconnect_output_ports)
+
         self._data_out_tile = self.output("data_out_tile",
                                           self.data_width,
                                           size=self.interconnect_output_ports,
@@ -65,42 +71,50 @@ class Chain(Generator):
 
         self.add_code(self.set_data_out)
         self.add_code(self.set_valid_out)
-        self.add_code(self.set_chain_outputs)
+        self.add_code(self.set_chain_data)
+        self.add_code(self.set_chain_valid)
+        self.add_code(self.set_chain_values)
 
     @always_comb
     def set_data_out(self):
-        if self._chain_idx_output == 0:
-            self._data_out_tile = self._chain_data_out
+        if self._enable_chain_output:
+            self._data_out_tile = self._chain_data_out_inter
         else:
             self._data_out_tile = self._curr_tile_data_out
 
     @always_comb
     def set_valid_out(self):
-        if self._chain_idx_output == 0:
-            self._valid_out_tile = self._chain_valid_out
+        if self._enable_chain_output:
+            if ~(self._chain_idx_output == 0):
+                for i in range(self.interconnect_output_ports):
+                    self._valid_out_tile[i] = 0
+            else:
+                self._valid_out_tile = self._chain_valid_out_inter
         else:
             for j in range(self.interconnect_output_ports):
-                if self._tile_output_en[j] == 0:
-                    self._valid_out_tile[j] = 0
-                elif self._enable_chain_output:
-                    self._valid_out_tile[j] = 0
-                else:
-                    self._valid_out_tile[j] = self._curr_tile_valid_out[j]
+                self._valid_out_tile[j] = self._curr_tile_valid_out[j]
 
     @always_comb
-    def set_chain_outputs(self):
-        if ~self._enable_chain_output | (self._chain_idx_output == 0):
-            self._chain_data_out = self._curr_tile_data_out
+    def set_chain_data(self):
+        self._chain_data_out = self._chain_data_out_inter
+
+    @always_comb
+    def set_chain_valid(self):
+        if (self._chain_idx_output == 0) | (~self._enable_chain_output):
             for i in range(self.interconnect_output_ports):
                 self._chain_valid_out[i] = 0
         else:
-            for i in range(self.interconnect_output_ports):
-                if self._tile_output_en[i] == 1:
-                    self._chain_data_out[i] = self._curr_tile_data_out[i]
-                    self._chain_valid_out[i] = self._curr_tile_valid_out[i]
-                else:
-                    self._chain_data_out[i] = self._chain_data_in[i]
-                    self._chain_valid_out[i] = self._chain_valid_in[i]
+            self._chain_valid_out = self._chain_valid_out_inter
+
+    @always_comb
+    def set_chain_values(self):
+        for i in range(self.interconnect_output_ports):
+            if self._tile_output_en[i] == 1:
+                self._chain_data_out_inter[i] = self._curr_tile_data_out[i]
+                self._chain_valid_out_inter[i] = self._curr_tile_valid_out[i]
+            else:
+                self._chain_data_out_inter[i] = self._chain_data_in[i]
+                self._chain_valid_out_inter[i] = self._chain_valid_in[i]
 
 
 if __name__ == "__main__":
