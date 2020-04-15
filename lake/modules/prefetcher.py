@@ -57,6 +57,7 @@ class Prefetcher(Generator):
         # Local Signals
         self._cnt = self.var("cnt", clog2(self.max_prefetch))
         self._fifo_empty = self.var("fifo_empty", 1)
+        self._fifo_full = self.var("fifo_full", 1)
 
         reg_fifo = RegFIFO(data_width=self.data_width,
                            width_mult=self.fw_int,
@@ -71,6 +72,7 @@ class Prefetcher(Generator):
                        push=self._valid_read,
                        pop=self._tba_rdy_in,
                        empty=self._fifo_empty,
+                       full=self._fifo_full,
                        valid=self._valid_out)
 
         # Generate
@@ -81,14 +83,15 @@ class Prefetcher(Generator):
     def update_cnt(self):
         if ~self._rst_n:
             self._cnt = 0
-        elif(self._valid_read & ~self._tba_rdy_in):
+        elif(self._valid_read & ~self._tba_rdy_in & ~self._fifo_full):
             self._cnt = self._cnt + 1
         elif(~self._valid_read & self._tba_rdy_in & ~self._fifo_empty):
             self._cnt = self._cnt - 1
 
     @always_comb
     def set_prefetch_step(self):
-        self._prefetch_step = (self._cnt + self._input_latency) < (self.max_prefetch - 1)
+        self._prefetch_step = (self._cnt < self._input_latency)
+        # self._prefetch_step = (self._cnt + self._input_latency) < (self.max_prefetch - 1)
 
 
 if __name__ == "__main__":
