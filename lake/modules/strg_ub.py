@@ -111,8 +111,8 @@ class StrgUB(Generator):
         self._wen = self.var("wen", self.interconnect_input_ports)
         self._ren = self.var("ren", self.interconnect_output_ports)
 
-        self._arb_wen_in = self.var("wen_en", self.interconnect_input_ports)
-        self._arb_ren_in = self.var("ren_en", self.interconnect_output_ports)
+        self._arb_wen_en = self.var("arb_wen_en", self.interconnect_input_ports)
+        self._arb_ren_en = self.var("arb_ren_en", self.interconnect_output_ports)
 
         self._data_from_strg = self.input("data_from_strg",
                                           self.data_width,
@@ -218,8 +218,8 @@ class StrgUB(Generator):
                        ren_update=kts.concat(*([kts.const(1, 1)] * self.interconnect_output_ports)),
                        # valid_out_data=self._valid_out,
                        # valid_out_stencil=,
-                       wen_out=self._arb_wen_in,
-                       ren_out=self._arb_ren_in)
+                       wen_out=self._arb_wen_en,
+                       ren_out=self._arb_ren_en)
 
         ###########################
         ##### INPUT AGG SCHED #####
@@ -340,7 +340,8 @@ class StrgUB(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        valid_in=self._to_iac_valid,
-                       wen_en=kts.concat(*([kts.const(1, 1)] * self.interconnect_input_ports)),
+                       # wen_en=kts.concat(*([kts.const(1, 1)] * self.interconnect_input_ports)),
+                       wen_en=self._arb_wen_en,
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,
                        addr_out=self._addr_to_arb,
@@ -457,7 +458,7 @@ class StrgUB(Generator):
                            w_data=self._data_to_arb[i],
                            w_addr=self._addr_to_arb[i],
                            data_from_mem=self._data_from_strg[i],
-                           ren_en=self._arb_ren_in,
+                           ren_en=self._arb_ren_en,
                            rd_addr=self._oac_addr_out,
                            out_data=self._arb_dat_out[i],
                            out_port=self._arb_port_out[i],
