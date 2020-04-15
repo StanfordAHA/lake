@@ -12,8 +12,7 @@ import pytest
 def test_addr_gen_basic(depth=512,
                         addr_width=16,
                         iterator_support=6):
-    model_ag = AddrGenModel(mem_depth=depth,
-                            iterator_support=iterator_support,
+    model_ag = AddrGenModel(iterator_support=iterator_support,
                             address_width=addr_width)
 
     config_dict = {}
@@ -33,8 +32,7 @@ def test_addr_gen_basic(depth=512,
     stencil_height = 3
     max_range_value = 5
     img_height = 4
-    dut = AddrGen(mem_depth=depth,
-                  iterator_support=iterator_support,
+    dut = AddrGen(iterator_support=iterator_support,
                   address_width=addr_width)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True,

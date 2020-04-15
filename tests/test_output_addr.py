@@ -16,6 +16,7 @@ import pytest
 def test_output_addr_basic(banks,
                            interconnect_output_ports,
                            mem_depth=512,
+                           num_tiles=1,
                            data_width=16,
                            fetch_width=32,
                            iterator_support=4,
@@ -57,6 +58,7 @@ def test_output_addr_basic(banks,
     # Set up dut...
     dut = OutputAddrCtrl(interconnect_output_ports=interconnect_output_ports,
                          mem_depth=mem_depth,
+                         num_tiles=num_tiles,
                          banks=banks,
                          iterator_support=iterator_support,
                          address_width=address_width)
@@ -117,3 +119,14 @@ def test_output_addr_basic(banks,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_output_addr_basic(banks=2,
+                           interconnect_output_ports=3,
+                           mem_depth=512,
+                           num_tiles=1,
+                           data_width=16,
+                           fetch_width=32,
+                           iterator_support=4,
+                           address_width=16)
