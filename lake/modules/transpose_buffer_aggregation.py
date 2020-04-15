@@ -21,6 +21,7 @@ class TransposeBufferAggregation(Generator):
                  # specifying inner for loop values for output column
                  # addressing
                  max_range,
+                 max_range_inner,
                  max_stride,
                  tb_iterator_support):
         super().__init__("transpose_buffer_aggregation")
@@ -31,11 +32,11 @@ class TransposeBufferAggregation(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.max_range = max_range
+        self.max_range_inner = max_range_inner
         self.max_stride = max_stride
         self.tb_iterator_support = tb_iterator_support
 
         self.num_tb_bits = max(1, clog2(self.num_tb))
-        self.max_range_bits = max(1, clog2(self.max_range))
 
         # inputs
         self.clk = self.clock("clk")
@@ -87,6 +88,7 @@ class TransposeBufferAggregation(Generator):
                                            self.num_tb,
                                            self.max_tb_height,
                                            self.max_range,
+                                           self.max_range_inner,
                                            self.max_stride,
                                            self.tb_iterator_support),
                            clk=self.clk,
@@ -147,6 +149,7 @@ if __name__ == "__main__":
                                      num_tb=3,
                                      max_tb_height=1,
                                      max_range=5,
+                                     max_range_inner=3,
                                      max_stride=2,
                                      tb_iterator_support=2)
     verilog(dut, filename="tba.sv", additional_passes={"lift config regs": lift_config_reg})

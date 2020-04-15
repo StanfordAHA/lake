@@ -62,7 +62,7 @@ def change_sram_port_names(use_sram_stub, sram_macro_info):
                 self.sram_macro_info = sram_macro_info
 
             def visit(self, node):
-                if not self.use_sram_stub:
+                if self.use_sram_stub:
                     return
                 if isinstance(node, Port):
                     attrs = node.find_attribute(lambda a: isinstance(a, SRAMPortAttr))

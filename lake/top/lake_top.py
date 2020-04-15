@@ -38,6 +38,7 @@ class LakeTop(Generator):
                  max_line_length=128,
                  max_tb_height=1,
                  tb_range_max=128,
+                 tb_range_inner_max=5,
                  tb_sched_max=64,
                  max_tb_stride=15,
                  num_tb=1,
@@ -76,6 +77,7 @@ class LakeTop(Generator):
         self.num_tb = num_tb
         self.max_tb_height = max_tb_height
         self.tb_range_max = tb_range_max
+        self.tb_range_inner_max = tb_range_inner_max
         self.max_tb_stride = max_tb_stride
         self.tb_sched_max = tb_sched_max
         self.tb_iterator_support = tb_iterator_support
@@ -360,6 +362,7 @@ class LakeTop(Generator):
                          max_line_length=self.max_line_length,
                          max_tb_height=self.max_tb_height,
                          tb_range_max=self.tb_range_max,
+                         tb_range_inner_max=self.tb_range_inner_max,
                          tb_sched_max=self.tb_sched_max,
                          max_tb_stride=self.max_tb_stride,
                          num_tb=self.num_tb,
