@@ -157,8 +157,8 @@ def test_pond(data_width=16,  # CGRA Params
         tester.eval()
 
         if i >= 12:
-            data_in[1] = tester.circuit.data_out_0 + tester.circuit.data_out_1
-            valid_in[1] = tester.circuit.valid_out[1]
+            data_in[1] = tester.circuit.data_out_tile_0 + tester.circuit.data_out_tile_1
+            valid_in[1] = tester.circuit.valid_out_tile[1]
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]

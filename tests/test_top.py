@@ -139,7 +139,7 @@ def test_mult_lines_dim1(data_width=16,
                      max_prefetch=max_prefetch)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -376,7 +376,7 @@ def test_mult_lines_dim2(tb0_range_outer,
                      fifo_mode=read_delay > 0)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -525,7 +525,7 @@ def test_sram_port_names_change(mem_width,
     change_sram_port_pass = change_sram_port_names(use_sram_stub, sram_macro_info)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -959,7 +959,7 @@ def test_identity_stream(data_width=16,
                      max_prefetch=max_prefetch)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -1021,14 +1021,14 @@ def test_identity_stream(data_width=16,
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out.expect(mod_vo[0])
+            tester.circuit.valid_out_tile.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out.expect(mod_do[0][0])
+                tester.circuit.data_out_tile.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out[j].expect(mod_vo[j])
+                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -1205,7 +1205,7 @@ def test_top(read_delay,
                      fifo_mode=read_delay > 0)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -1267,14 +1267,14 @@ def test_top(read_delay,
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out.expect(mod_vo[0])
+            tester.circuit.valid_out_tile.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out.expect(mod_do[0][0])
+                tester.circuit.data_out_tile.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out[j].expect(mod_vo[j])
+                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -1445,7 +1445,7 @@ def test_config_storage(data_width=16,
                      read_delay=read_delay)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -1693,7 +1693,7 @@ def test_ports3_stride1(read_delay=1,
                      fifo_mode=banks > 1)
 
     # Run the config reg lift
-    lift_config_reg(lt_dut.internal_generator)
+    # lift_config_reg(lt_dut.internal_generator)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -1754,14 +1754,14 @@ def test_ports3_stride1(read_delay=1,
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out.expect(mod_vo[0])
+            tester.circuit.valid_out_tile.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out.expect(mod_do[0][0])
+                tester.circuit.data_out_tile.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out[j].expect(mod_vo[j])
+                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -1773,9 +1773,9 @@ def test_ports3_stride1(read_delay=1,
 
 
 if __name__ == "__main__":
-    test_chain_mult_tile()
+    # test_chain_mult_tile()
     # test_chain_3porttile()
-    # test_identity_stream()
+    test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)

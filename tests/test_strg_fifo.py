@@ -137,9 +137,9 @@ def test_storage_fifo(mem_width,  # CGRA Params
         tester.circuit.empty.expect(model_empty)
         tester.circuit.full.expect(model_full)
         # Now check the outputs
-        tester.circuit.valid_out.expect(model_val)
+        tester.circuit.valid_out_tile.expect(model_val)
         if model_val:
-            tester.circuit.data_out.expect(model_out[0])
+            tester.circuit.data_out_tile.expect(model_out[0])
 
         tester.step(2)
 
