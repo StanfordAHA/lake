@@ -184,6 +184,15 @@ class StrgUB(Generator):
         ####################
         ##### APP CTRL #####
         ####################
+        self._ack_transpose = self.var("ack_transpose",
+                                       self.banks,
+                                       size=self.interconnect_output_ports,
+                                       explicit_array=True,
+                                       packed=True)
+
+        self._ack_reduced = self.var("ack_reduced",
+                                     self.interconnect_output_ports)
+
         self.app_ctrl = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
                                 interconnect_output_ports=self.interconnect_output_ports,
                                 depth_width=self.app_ctrl_depth_width)
@@ -215,7 +224,8 @@ class StrgUB(Generator):
                        wen_in=self._port_wens & self._to_iac_valid,  # Gets valid and the ack
                        ren_in=self._ren_out_reduced,
                        tb_valid=kts.const(0, 1),
-                       ren_update=kts.concat(*([kts.const(1, 1)] * self.interconnect_output_ports)),
+                       # ren_update=kts.concat(*([kts.const(1, 1)] * self.interconnect_output_ports)),
+                       ren_update=self._ack_reduced,
                        # valid_out_data=self._valid_out,
                        # valid_out_stencil=,
                        wen_out=self._arb_wen_en,
@@ -357,14 +367,6 @@ class StrgUB(Generator):
                                   explicit_array=True,
                                   packed=True)
 
-        self._ack_transpose = self.var("ack_transpose",
-                                       self.banks,
-                                       size=self.interconnect_output_ports,
-                                       explicit_array=True,
-                                       packed=True)
-
-        self._ack_reduced = self.var("ack_reduced",
-                                     self.interconnect_output_ports)
         self._prefetch_step = self.var("prefetch_step", self.interconnect_output_ports)
         self._oac_step = self.var("oac_step", self.interconnect_output_ports)
         self._oac_valid = self.var("oac_valid", self.interconnect_output_ports)
