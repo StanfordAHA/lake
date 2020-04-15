@@ -62,10 +62,7 @@ class OutputAddrCtrl(Generator):
                                       packed=True)
 
         self._tile_output_en = self.output("tile_output_en",
-                                           1,
-                                           size=self.interconnect_output_ports,
-                                           explicit_array=True,
-                                           packed=True)
+                                           self.interconnect_output_ports)
 
         # LOCAL VARS
         self._local_addrs = self.var("local_addrs",
