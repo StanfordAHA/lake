@@ -15,11 +15,13 @@ class AppCtrl(Generator):
     '''
     def __init__(self,
                  interconnect_input_ports,
-                 interconnect_output_ports):
+                 interconnect_output_ports,
+                 depth_width=16):
         super().__init__("app_ctrl", debug=True)
 
         self.int_in_ports = interconnect_input_ports
         self.int_out_ports = interconnect_output_ports
+        self.depth_width = depth_width
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -28,6 +30,8 @@ class AppCtrl(Generator):
         # IO
         self._wen_in = self.input("wen_in", self.int_in_ports)
         self._ren_in = self.input("ren_in", self.int_out_ports)
+
+        self._ren_update = self.input("ren_update", self.int_out_ports)
 
         self._tb_valid = self.input("tb_valid", self.int_out_ports)
 
@@ -38,29 +42,27 @@ class AppCtrl(Generator):
         self.wire(self._valid_out_data, self._tb_valid)
         self.wire(self._valid_out_stencil, self._tb_valid)
 
-        self._wen_en = self.output("wen_en", self.int_in_ports)
-        self._ren_en = self.output("ren_en", self.int_out_ports)
         self._wen_out = self.output("wen_out", self.int_in_ports)
         self._ren_out = self.output("ren_out", self.int_out_ports)
 
-        self._write_depth = self.input("write_depth", 32,
+        self._write_depth = self.input("write_depth", self.depth_width,
                                        size=self.int_in_ports,
                                        explicit_array=True,
                                        packed=True)
         self._write_depth.add_attribute(ConfigRegAttr("Depth of writes"))
 
-        self._read_depth = self.input("read_depth", 32,
+        self._read_depth = self.input("read_depth", self.depth_width,
                                       size=self.int_out_ports,
                                       explicit_array=True,
                                       packed=True)
         self._read_depth.add_attribute(ConfigRegAttr("Depth of reads"))
 
-        self._write_count = self.var("write_count", 32,
+        self._write_count = self.var("write_count", self.depth_width,
                                      size=self.int_in_ports,
                                      explicit_array=True,
                                      packed=True)
 
-        self._read_count = self.var("read_count", 32,
+        self._read_count = self.var("read_count", self.depth_width,
                                     size=self.int_out_ports,
                                     explicit_array=True,
                                     packed=True)
@@ -75,6 +77,9 @@ class AppCtrl(Generator):
                                       explicit_array=True,
                                       packed=True)
         self._input_port.add_attribute(ConfigRegAttr("Relative input port for an output port"))
+
+        self._prefill = self.input("prefill", self.int_out_ports)
+        self._prefill.add_attribute(ConfigRegAttr("Is the input stream prewritten?"))
 
         # # Set the wen_en based on write_cnt
         # for i in range(self.int_in_ports):
@@ -109,9 +114,9 @@ class AppCtrl(Generator):
             else:
                 self.add_code(self.set_wr_delay_state, idx=i)
 
-        self.wire(self._ren_en, self._wr_delay_state_n & ~self._read_done_ff)
-        self.wire(self._wen_en, ~const(0, self.int_in_ports))
-        self.wire(self._ren_out, self._wr_delay_state_n & ~self._read_done_ff & self._ren_in)
+        # If we have prefill enabled, we are skipping the initial delay step...
+        self.wire(self._ren_out,
+                  (self._wr_delay_state_n | self._prefill) & ~self._read_done_ff & self._ren_in)
         self.wire(self._wen_out, ~self._write_done_ff & self._wen_in)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -149,8 +154,9 @@ class AppCtrl(Generator):
 
     @always_comb
     def set_read_done(self, idx):
-        self._read_done[idx] = (self._ren_in[idx] & (self._read_count[idx] == (self._read_depth[idx] - 1))) |\
-            self._read_done_ff[idx] | ~self._wr_delay_state_n[idx]
+        self._read_done[idx] = (self._ren_update[idx] & self._ren_in[idx] &
+                                (self._read_count[idx] == (self._read_depth[idx] - 1))) |\
+            self._read_done_ff[idx] | (~self._prefill[idx] & ~self._wr_delay_state_n[idx])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_read_cnt(self, idx):
@@ -158,7 +164,7 @@ class AppCtrl(Generator):
             self._read_count[idx] = 0
         elif self._write_done[self._input_port[idx]] & self._read_done[idx]:
             self._read_count[idx] = 0
-        elif self._ren_in[idx]:
+        elif self._ren_in[idx] & self._ren_update[idx]:
             self._read_count[idx] = self._read_count[idx] + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -167,7 +173,7 @@ class AppCtrl(Generator):
             self._read_count[idx] = 0
         elif self._write_done & self._read_done[idx]:
             self._read_count[idx] = 0
-        elif self._ren_in[idx]:
+        elif self._ren_in[idx] & self._ren_update[idx]:
             self._read_count[idx] = self._read_count[idx] + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))

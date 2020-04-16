@@ -41,6 +41,8 @@ class SRAMWrapper(Generator):
         self._chain_idx_input = self.input("chain_idx_input", self.chain_idx_bits)
         self._chain_idx_tile = self.var("chain_idx_tile", self.chain_idx_bits)
 
+        self._clk_en = self.input("clk_en", 1)
+
         if self.fw_int > 1:
             self._mem_data_in_bank = self.input("mem_data_in_bank",
                                                 self.data_width,
@@ -121,7 +123,7 @@ class SRAMWrapper(Generator):
                                input_array=self._mem_data_in_bank,
                                output_array=self._sram_mem_data_in_bank)
 
-                self.add_child(f"mem_{self.bank_num}",
+                self.add_child(f"mem_inst_{self.bank_num}",
                                mbank,
                                sram_addr=self._mem_addr_to_sram,
                                sram_cen=~self._mem_cen_in_bank,
@@ -142,7 +144,7 @@ class SRAMWrapper(Generator):
                                output_array=self._mem_data_out_bank)
 
             else:
-                self.add_child(f"mem_{self.bank_num}",
+                self.add_child(f"mem_inst_{self.bank_num}",
                                mbank,
                                sram_addr=self._mem_addr_to_sram,
                                sram_cen=~self._mem_cen_in_bank,

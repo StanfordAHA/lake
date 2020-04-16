@@ -16,6 +16,7 @@ class Aggregator(Generator):
         self.in_pixels = self.input("in_pixels",
                                     word_width)
         self._valid_in = self.input("valid_in", 1)
+        self._align = self.input("align", 1)
 
         # outputs
         self._agg_out = self.output("agg_out",
@@ -49,8 +50,8 @@ class Aggregator(Generator):
 
     @always_comb
     def set_next_full(self):
-        self._next_full = self._valid_in & (self._word_count == const(self.mem_word_width - 1,
-                                                                      self._word_count.width))
+        self._next_full = (self._valid_in & (self._word_count == const(self.mem_word_width - 1,
+                                                                       self._word_count.width))) | self._align
 
     # setting valid signal and word_count index
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -60,12 +61,14 @@ class Aggregator(Generator):
             self._word_count = const(0, self._word_count.width)
         # no self._word_count in this case
         elif self._valid_in:
-            if (self._word_count == const(self.mem_word_width - 1, self._word_count.width)):
+            if (self._word_count == const(self.mem_word_width - 1, self._word_count.width)) | self._align:
                 self._valid_out = const(1, 1)
                 self._word_count = const(0, self._word_count.width)
             else:
                 self._valid_out = const(0, 1)
                 self._word_count = self._word_count + const(1, clog2(mem_word_width))
+        else:
+            self._valid_out = 0
 
     @always_ff((posedge, "clk"))
     def update_shift_reg(self):

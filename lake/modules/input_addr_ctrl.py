@@ -20,7 +20,8 @@ class InputAddrCtrl(Generator):
                  data_width=16,
                  fetch_width=16,
                  multiwrite=1,
-                 strg_wr_ports=2):
+                 strg_wr_ports=2,
+                 config_width=16):
         super().__init__("input_addr_ctrl", debug=True)
 
         assert multiwrite >= 1, "Multiwrite must be at least 1..."
@@ -37,6 +38,7 @@ class InputAddrCtrl(Generator):
         self.fw_int = int(self.fetch_width / self.data_width)
         self.multiwrite = multiwrite
         self.strg_wr_ports = strg_wr_ports
+        self.config_width = config_width
 
         self.mem_addr_width = clog2(self.num_tiles * self.mem_depth)
         if self.banks > 1:
@@ -55,7 +57,7 @@ class InputAddrCtrl(Generator):
         self._valid_in = self.input("valid_in", self.interconnect_input_ports)
         self._wen_en = self.input("wen_en", self.interconnect_input_ports)
         self._valid_gate = self.var("valid_gate", self.interconnect_input_ports)
-        self.wire(self._valid_gate, self._valid_in & self._wen_en)
+        self.wire(self._valid_gate, self._valid_in)
         self._data_in = self.input("data_in",
                                    self.data_width,
                                    size=(self.interconnect_input_ports,
@@ -98,6 +100,19 @@ class InputAddrCtrl(Generator):
                                      explicit_array=True,
                                      packed=True)
 
+        self._port_out_exp = self.var("port_out_exp", self.interconnect_input_ports,
+                                      size=self.banks,
+                                      explicit_array=True,
+                                      packed=True)
+
+        self._port_out = self.output("port_out", self.interconnect_input_ports)
+        # Wire to port out
+        for i in range(self.interconnect_input_ports):
+            new_tmp = []
+            for j in range(self.banks):
+                new_tmp.append(self._port_out_exp[j][i])
+            self.wire(self._port_out[i], kts.concat(*new_tmp).r_or())
+
         self._done = self.var("done", self.strg_wr_ports,
                               size=self.banks,
                               explicit_array=True,
@@ -116,19 +131,7 @@ class InputAddrCtrl(Generator):
                 concat_ports = []
                 for k in range(self.multiwrite):
                     concat_ports.append(self._wen_full[i][k][j])
-                # if(self.multiwrite == 1):
-                #     self.wire(self._wen_reduced[i][j], *concat_ports)
-                # else:
                 self.wire(self._wen_reduced[i][j], kts.concat(*concat_ports).r_or())
-
-        # for i in range(self.banks):
-        #     cat = []
-        #     for j in range(self.interconnect_input_ports):
-        #         cat.append(self._wen_reduced[j][i])
-        #     if(len(cat) > 1):
-        #         self.wire(self._wen[i], kts.concat(*cat).r_or())
-        #     else:
-        #         self.wire(self._wen[i], cat[0])
 
         if self.banks == 1 and self.interconnect_input_ports == 1:
             self.wire(self._wen_full[0][0][0], self._valid_gate)
@@ -154,7 +157,8 @@ class InputAddrCtrl(Generator):
         # (1 per input port) to send to the sram banks
         for i in range(self.interconnect_input_ports):
             self.add_child(f"address_gen_{i}", AddrGen(iterator_support=self.iterator_support,
-                                                       address_width=self.address_width),
+                                                       address_width=self.address_width,
+                                                       config_width=self.config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            clk_en=const(1, 1),
@@ -207,6 +211,7 @@ class InputAddrCtrl(Generator):
         for i in range(self.banks):
             self._wen[i][0] = 0
             self._done[i][0] = 0
+            self._port_out_exp[i] = 0
             self._data_out[i][0] = 0
             self._addresses[i][0] = 0
             for j in range(self.interconnect_input_ports):
@@ -215,7 +220,10 @@ class InputAddrCtrl(Generator):
                     if self._wen_reduced[j][i]:
                         # Finds the first one...
                         self._done[i][0] = 1
-                        self._wen[i][0] = 1
+                        # self._wen[i][0] = 1
+                        # This should only go through if the wen_en is on...
+                        self._wen[i][0] = self._wen_en[j]
+                        self._port_out_exp[i][j] = 1
                         self._data_out[i][0] = self._data_in[j]
                         self._addresses[i][0] = self._local_addrs[j][0][self.mem_addr_width - 1, 0]
 
@@ -230,7 +238,8 @@ class InputAddrCtrl(Generator):
             for j in range(self.interconnect_input_ports):
                 if ~self._done[i][idx]:
                     if self._wen_reduced[j][i] & (self._idx_cnt[i][idx - 1] == idx):
-                        self._wen[i][idx] = 1
+                        # self._wen[i][idx] = 1
+                        self._wen[i][idx] = self._wen_en[j]
                         self._done[i][idx] = 1
                         self._data_out[i][idx] = self._data_in[j]
                         self._addresses[i][idx] = self._local_addrs[j][0][self.mem_addr_width - 1, 0]

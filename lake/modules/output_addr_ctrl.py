@@ -15,7 +15,8 @@ class OutputAddrCtrl(Generator):
                  num_tiles,
                  banks,
                  iterator_support,
-                 address_width):
+                 address_width,
+                 config_width=16):
         super().__init__("output_addr_ctrl")
 
         self.interconnect_output_ports = interconnect_output_ports
@@ -25,6 +26,7 @@ class OutputAddrCtrl(Generator):
         self.iterator_support = iterator_support
         self.address_width = address_width
         self.port_sched_width = clog2(self.interconnect_output_ports)
+        self.config_width = config_width
 
         self.mem_addr_width = clog2(self.num_tiles * self.mem_depth)
         self.chain_idx_bits = max(1, clog2(num_tiles))
@@ -88,7 +90,9 @@ class OutputAddrCtrl(Generator):
         # (1 per input port) to send to the sram banks
         for i in range(self.interconnect_output_ports):
             new_addr_gen = AddrGen(iterator_support=self.iterator_support,
-                                   address_width=self.address_width)
+                                   address_width=self.address_width,
+                                   config_width=self.config_width)
+
             self.add_child(f"address_gen_{i}", new_addr_gen,
                            clk=self._clk,
                            rst_n=self._rst_n,

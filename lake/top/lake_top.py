@@ -23,6 +23,8 @@ class LakeTop(Generator):
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
+                 input_config_width=16,
+                 output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
                  mem_input_ports=1,
@@ -46,10 +48,11 @@ class LakeTop(Generator):
                  tb_iterator_support=2,
                  multiwrite=1,
                  max_prefetch=64,
-                 config_data_width=16,
+                 config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
                  remove_tb=False,
+                 app_ctrl_depth_width=16,
                  fifo_mode=True,
                  add_clk_enable=True,
                  add_flush=True):
@@ -61,6 +64,8 @@ class LakeTop(Generator):
         self.banks = banks
         self.input_iterator_support = input_iterator_support
         self.output_iterator_support = output_iterator_support
+        self.input_config_width = input_config_width
+        self.output_config_width = output_config_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_input_ports = mem_input_ports
@@ -88,6 +93,7 @@ class LakeTop(Generator):
         self.config_data_width = config_data_width
         self.config_addr_width = config_addr_width
         self.num_tiles = num_tiles
+        self.app_ctrl_depth_width = app_ctrl_depth_width
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
@@ -151,19 +157,35 @@ class LakeTop(Generator):
                                    packed=True,
                                    explicit_array=True)
 
-        self._wen = self.input("wen", self.interconnect_input_ports)
-        self._ren = self.input("ren", self.interconnect_output_ports)
+        self._wen = self.input("wen_in", self.interconnect_input_ports)
+        self._ren = self.input("ren_in", self.interconnect_output_ports)
 
         self._config_data_in = self.input("config_data_in",
                                           self.config_data_width)
 
+        self._config_data_in_shrt = self.var("config_data_in_shrt",
+                                             self.data_width)
+
+        self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
+
         self._config_addr_in = self.input("config_addr_in",
                                           self.config_addr_width)
+
+        self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width,
+                                              size=self.total_sets,
+                                              explicit_array=True,
+                                              packed=True)
 
         self._config_data_out = self.output("config_data_out", self.config_data_width,
                                             size=self.total_sets,
                                             explicit_array=True,
                                             packed=True)
+
+        self._clk_en = self.clock_en("clk_en", 1)
+
+        for i in range(self.total_sets):
+            self.wire(self._config_data_out[i],
+                      self._config_data_out_shrt[i].extend(self.config_data_width))
 
         self._config_read = self.input("config_read", 1)
         self._config_write = self.input("config_write", 1)
@@ -310,7 +332,7 @@ class LakeTop(Generator):
         ##### DEMUX WRITE/SRAM WRAPPER #####
         ####################################
 
-        stg_cfg_seq = StorageConfigSeq(data_width=16,
+        stg_cfg_seq = StorageConfigSeq(data_width=self.data_width,
                                        config_addr_width=self.config_addr_width,
                                        addr_width=self.address_width,
                                        fetch_width=self.mem_width,
@@ -320,14 +342,15 @@ class LakeTop(Generator):
         self.add_child(f"config_seq", stg_cfg_seq,
                        clk=self._gclk,
                        rst_n=self._rst_n,
-                       config_data_in=self._config_data_in,
+                       clk_en=self._clk_en | self._config_en.r_or(),
+                       config_data_in=self._config_data_in_shrt,
                        config_addr_in=self._config_addr_in,
                        config_wr=self._config_write,
                        config_rd=self._config_read,
                        config_en=self._config_en,
                        rd_data_stg=self._mem_data_low_pt,
                        wr_data=self._mem_data_cfg,
-                       rd_data_out=self._config_data_out,
+                       rd_data_out=self._config_data_out_shrt,
                        addr_out=self._mem_addr_cfg,
                        wen_out=self._mem_wen_cfg,
                        ren_out=self._mem_ren_cfg)
@@ -415,7 +438,9 @@ class LakeTop(Generator):
                          tb_iterator_support=self.tb_iterator_support,
                          multiwrite=self.multiwrite,
                          max_prefetch=self.max_prefetch,
-                         remove_tb=self.remove_tb)
+                         remove_tb=self.remove_tb,
+                         input_config_width=self.input_config_width,
+                         output_config_width=self.output_config_width)
 
         self._ub_data_to_mem = self.var("ub_data_to_mem",
                                         self.data_width,
@@ -650,6 +675,7 @@ class LakeTop(Generator):
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
                                chain_idx_input=self._chain_idx_input,
+                               clk_en=self._clk_en | self._config_en.r_or(),
                                mem_data_in_bank=self._mem_data_in[i],
                                mem_data_out_bank=self._mem_data_out[i],
                                mem_addr_in_bank=self._mem_addr_in[i],
@@ -738,7 +764,7 @@ class LakeTop(Generator):
         ##### CLOCK ENABLE #####
         ########################
         if add_clk_enable:
-            self.clock_en("clk_en")
+            # self.clock_en("clk_en")
             kts.passes.auto_insert_clock_enable(self.internal_generator)
 
         if add_flush:
@@ -751,7 +777,7 @@ class LakeTop(Generator):
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = True
+    use_sram_stub = False
     fifo_mode = True
     mem_width = 64
     lake_dut = LakeTop(mem_width=mem_width,
@@ -760,7 +786,7 @@ if __name__ == "__main__":
                        fifo_mode=fifo_mode,
                        add_clk_enable=True,
                        add_flush=True)
-    sram_port_pass = change_sram_port_names(use_sram_stub=True, sram_macro_info=tsmc_info)
+    sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
