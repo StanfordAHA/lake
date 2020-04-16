@@ -198,14 +198,14 @@ def test_mult_lines_dim1(data_width=16,
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out.expect(mod_vo[0])
+            tester.circuit.valid_out_tile.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out.expect(mod_do[0][0])
+                tester.circuit.data_out_tile.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out[j].expect(mod_vo[j])
+                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -435,14 +435,14 @@ def test_mult_lines_dim2(tb0_range_outer,
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out.expect(mod_vo[0])
+            tester.circuit.valid_out_tile.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out.expect(mod_do[0][0])
+                tester.circuit.data_out_tile.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out[j].expect(mod_vo[j])
+                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -536,6 +536,7 @@ def test_sram_port_names_change(mem_width,
 
 
 # 1 port, tested with enable_chain_output = 0 and = 1
+@pytest.mark.skip
 def test_chain_mult_tile(num_tiles=2,
                          banks=1,
                          interconnect_output_ports=3,
@@ -669,6 +670,7 @@ def test_chain_mult_tile(num_tiles=2,
 
 
 # 3 ports, tested with enable_chain_output = 0 and = 1
+@pytest.mark.skip
 def test_chain_3porttile(num_tiles=2,
                          banks=1,
                          interconnect_output_ports=3,
@@ -1782,3 +1784,4 @@ if __name__ == "__main__":
     # test_top(0)
     # test_config_storage()
     # test_ports3_stride1()
+    # test_sram_port_names_change(16,0,1)

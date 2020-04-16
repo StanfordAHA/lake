@@ -144,7 +144,7 @@ class SRAMWrapper(Generator):
             else:
                 self.add_child(f"mem_{self.bank_num}",
                                mbank,
-                               sram_addr=self.self._mem_addr_to_sram,
+                               sram_addr=self._mem_addr_to_sram,
                                sram_cen=~self._mem_cen_in_bank,
                                sram_clk=self._gclk,
                                sram_data_in=self._mem_data_in_bank,
