@@ -954,7 +954,7 @@ def test_top(read_delay,
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
             data_in[j] += 1
-            valid_in[j] = rand.randint(0, 1)
+            valid_in[j] = 1  # rand.randint(0, 1)
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
             ren[j] = ren_tmp
@@ -973,6 +973,8 @@ def test_top(read_delay,
             for j in range(interconnect_output_ports):
                 tester.circuit.ren[j] = ren[j]
         (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
+
+        # print(f"{data_in}, {valid_in}, {ren}, {mod_do}, {mod_vo}")
 
         tester.eval()
 
@@ -1237,5 +1239,5 @@ if __name__ == "__main__":
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
-    test_top(0)
+    test_top(1)
     # test_config_storage()
