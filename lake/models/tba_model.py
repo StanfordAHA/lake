@@ -10,7 +10,8 @@ class TBAModel(Model):
                  fetch_width,
                  num_tb,
                  tb_height,
-                 max_range):
+                 max_range,
+                 max_range_inner):
 
         # generation parameters
         self.word_width = word_width
@@ -18,6 +19,7 @@ class TBAModel(Model):
         self.num_tb = num_tb
         self.tb_height = tb_height
         self.max_range = max_range
+        self.max_range_inner = max_range_inner
 
         # configuration registers
         self.config = {}
@@ -37,7 +39,8 @@ class TBAModel(Model):
                                     self.fetch_width,
                                     self.num_tb,
                                     self.tb_height,
-                                    self.max_range))
+                                    self.max_range,
+                                    self.max_range_inner))
             self.tbs[i].set_config(self.config)
 
         self.arbiter_rdy_all = []
@@ -68,7 +71,8 @@ class TBAModel(Model):
                                     self.fetch_width,
                                     self.num_tb,
                                     self.tb_height,
-                                    self.max_range))
+                                    self.max_range,
+                                    self.max_range_inner))
             self.tbs[i].set_config(self.config)
 
         self.arbiter_rdy_all = []

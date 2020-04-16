@@ -39,6 +39,7 @@ class LakeTopModel(Model):
                  max_line_length=2048,
                  tb_height=1,
                  tb_range_max=2048,
+                 tb_range_inner_max=5,
                  tb_sched_max=64,
                  num_tb=1,
                  multiwrite=2,
@@ -67,6 +68,7 @@ class LakeTopModel(Model):
         self.num_tb = num_tb
         self.tb_height = tb_height
         self.tb_range_max = tb_range_max
+        self.tb_range_inner_max = tb_range_inner_max
         self.tb_sched_max = tb_sched_max
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
@@ -196,7 +198,8 @@ class LakeTopModel(Model):
                                       fetch_width=self.fw_int,
                                       num_tb=self.num_tb,
                                       tb_height=self.tb_height,
-                                      max_range=self.tb_range_max))
+                                      max_range=self.tb_range_max,
+                                      max_range_inner=self.tb_range_inner_max))
             for i in range(self.tb_height):
                 self.config[f"tba_{port}_tb_{i}_range_inner"] = 0
                 self.config[f"tba_{port}_tb_{i}_range_outer"] = 0
