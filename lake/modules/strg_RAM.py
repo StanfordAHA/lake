@@ -233,7 +233,7 @@ class StrgRAM(Generator):
             # The read bank is comb if no delay, otherwise delayed
             if self.read_delay == 1:
                 @always_ff((posedge, "clk"), (negedge, "rst_n"))
-                def read_bank_ff():
+                def read_bank_ff(self):
                     if ~self._rst_n:
                         self._rd_bank = 0
                     else:
@@ -242,7 +242,7 @@ class StrgRAM(Generator):
                 self.add_code(read_bank_ff)
             else:
                 @always_comb
-                def read_bank_comb():
+                def read_bank_comb(self):
                     self._rd_bank = \
                         self._rd_addr[self.b_a_off + self.bank_width - 1, self.b_a_off]
                 self.add_code(read_bank_comb)
@@ -252,7 +252,7 @@ class StrgRAM(Generator):
         if self.read_delay == 1:
             if self.rw_same_cycle:
                 @always_ff((posedge, "clk"), (negedge, "rst_n"))
-                def read_valid_ff():
+                def read_valid_ff(self):
                     if ~self._rst_n:
                         self._rd_valid = 0
                     else:
@@ -261,7 +261,7 @@ class StrgRAM(Generator):
                 self.add_code(read_valid_ff)
             else:
                 @always_ff((posedge, "clk"), (negedge, "rst_n"))
-                def read_valid_ff():
+                def read_valid_ff(self):
                     if ~self._rst_n:
                         self._rd_valid = 0
                     else:
@@ -274,13 +274,19 @@ class StrgRAM(Generator):
             else:
                 self.wire(self._rd_valid, self._ren & ~self._wen)
 
-    @always_ff((posedge, "clk"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_dat_to_write(self):
-        self._data_to_write = self._data_in
+        if ~self._rst_n:
+            self._data_to_write = 0
+        else:
+            self._data_to_write = self._data_in
 
-    @always_ff((posedge, "clk"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_addr_to_write(self):
-        self._addr_to_write = self._wr_addr
+        if ~self._rst_n:
+            self._addr_to_write = 0
+        else:
+            self._addr_to_write = self._wr_addr
 
     @always_comb
     def decode_wen(self, idx):
