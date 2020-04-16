@@ -247,8 +247,6 @@ class TransposeBuffer(Generator):
     def set_pause_output(self):
         if self.pause_tb:
             self.pause_output = 1
-        # elif self.start_data & ~self.old_start_data:
-        #    self.pause_output = 1
         else:
             self.pause_output = ~self.ren
 

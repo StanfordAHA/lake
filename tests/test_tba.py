@@ -14,13 +14,15 @@ def test_tba(word_width=16,
              fetch_width=4,
              num_tb=1,
              tb_height=1,
-             max_range=5):
+             max_range=5,
+             max_range_inner=5):
 
     model_tba = TBAModel(word_width,
                          fetch_width,
                          num_tb,
                          tb_height,
-                         max_range)
+                         max_range,
+                         max_range_inner)
 
     new_config = {}
     new_config["range_outer"] = 5
@@ -37,6 +39,7 @@ def test_tba(word_width=16,
                                      num_tb,
                                      tb_height,
                                      max_range,
+                                     max_range_inner,
                                      max_stride=5,
                                      tb_iterator_support=2)
 
