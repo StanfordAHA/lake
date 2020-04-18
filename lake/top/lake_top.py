@@ -112,16 +112,18 @@ class LakeTop(Generator):
         self._gclk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        # Chaining
+        # Chaining config regs
         self._enable_chain_output = self.input("enable_chain_output", 1)
+        self._enable_chain_output.add_attribute(ConfigRegAttr("Enable chain on output"))
 
         self._chain_idx_input = self.input("chain_idx_input",
                                            self.chain_idx_bits)
-        # self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
+        self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
         self._chain_idx_output = self.input("chain_idx_output",
                                             self.chain_idx_bits)
-        # self._chain_idx_output.add_attribute(ConfigRegAttr("Tile output index when having multiple tiles"))
+        self._chain_idx_output.add_attribute(ConfigRegAttr("Tile output index when having multiple tiles"))
 
+        # Chaining signals
         self._chain_valid_in = self.input("chain_valid_in",
                                           self.interconnect_output_ports)
 
@@ -191,23 +193,23 @@ class LakeTop(Generator):
         self._config_write = self.input("config_write", 1)
         self._config_en = self.input("config_en", self.total_sets)
 
-        self._data_out = self.var("data_out",
-                                  self.data_width,
-                                  size=self.interconnect_output_ports,
-                                  packed=True,
-                                  explicit_array=True)
+        self._data_out = self.output("data_out",
+                                     self.data_width,
+                                     size=self.interconnect_output_ports,
+                                     packed=True,
+                                     explicit_array=True)
 
-        self._valid_out = self.var("valid_out",
-                                   self.interconnect_output_ports)
+        self._valid_out = self.output("valid_out",
+                                      self.interconnect_output_ports)
 
-        self._data_out_tile = self.output("data_out_tile",
-                                          self.data_width,
-                                          size=self.interconnect_output_ports,
-                                          packed=True,
-                                          explicit_array=True)
+        self._data_out_tile = self.var("data_out_tile",
+                                       self.data_width,
+                                       size=self.interconnect_output_ports,
+                                       packed=True,
+                                       explicit_array=True)
 
-        self._valid_out_tile = self.output("valid_out_tile",
-                                           self.interconnect_output_ports)
+        self._valid_out_tile = self.var("valid_out_tile",
+                                        self.interconnect_output_ports)
 
         self.address_width = clog2(self.num_tiles * self.mem_depth)
 
@@ -733,15 +735,15 @@ class LakeTop(Generator):
             self.wire(self._all_data_out[2], self._sram_data_out)
             self.wire(self._all_valid_out[2], self._sram_valid_out)
 
-            self.wire(self._data_out[0], self._all_data_out[self._mode])
-            self.wire(self._valid_out[0], self._all_valid_out[self._mode])
+            self.wire(self._data_out_tile[0], self._all_data_out[self._mode])
+            self.wire(self._valid_out_tile[0], self._all_valid_out[self._mode])
         else:
-            self.wire(self._data_out[0], self._ub_data_out[0])
-            self.wire(self._valid_out[0], self._ub_valid_out[0])
+            self.wire(self._data_out_tile[0], self._ub_data_out[0])
+            self.wire(self._valid_out_tile[0], self._ub_valid_out[0])
 
         for i in range(self.interconnect_output_ports - 1):
-            self.wire(self._data_out[i + 1], self._ub_data_out[i + 1])
-            self.wire(self._valid_out[i + 1], self._ub_valid_out[i + 1])
+            self.wire(self._data_out_tile[i + 1], self._ub_data_out[i + 1])
+            self.wire(self._valid_out_tile[i + 1], self._ub_valid_out[i + 1])
 
         chaining = Chain(data_width=self.data_width,
                          interconnect_output_ports=self.interconnect_output_ports,
@@ -750,15 +752,15 @@ class LakeTop(Generator):
         self.add_child(f"chain", chaining,
                        enable_chain_output=self._enable_chain_output,
                        chain_idx_output=self._chain_idx_output,
-                       curr_tile_valid_out=self._valid_out,
-                       curr_tile_data_out=self._data_out,
+                       curr_tile_valid_out=self._valid_out_tile,
+                       curr_tile_data_out=self._data_out_tile,
                        chain_valid_in=self._chain_valid_in,
                        chain_data_in=self._chain_data_in,
                        tile_output_en=self._tile_output_en,
                        chain_data_out=self._chain_data_out,
                        chain_valid_out=self._chain_valid_out,
-                       data_out_tile=self._data_out_tile,
-                       valid_out_tile=self._valid_out_tile)
+                       data_out_tile=self._data_out,
+                       valid_out_tile=self._valid_out)
 
         ########################
         ##### CLOCK ENABLE #####
