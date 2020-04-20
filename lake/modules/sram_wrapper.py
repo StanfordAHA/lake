@@ -84,6 +84,7 @@ class SRAMWrapper(Generator):
                                               self.address_width - self.chain_idx_bits)
 
         self._mem_cen_in_bank = self.input("mem_cen_in_bank", self.mem_output_ports)
+        self._mem_cen_in_bank_chain = self.var("mem_cen_in_bank_chain", self.mem_output_ports)
 
         self._mem_wen_in_bank = self.input("mem_wen_in_bank", self.mem_input_ports)
         self._mem_wen_in_bank_chain = self.var("mem_wen_in_bank_chain", self.mem_input_ports)
@@ -100,7 +101,7 @@ class SRAMWrapper(Generator):
                            clk=self._gclk,
                            data_in=self._mem_data_in_bank,
                            addr=self._mem_addr_to_sram,
-                           cen=self._mem_cen_in_bank,
+                           cen=self._mem_cen_in_bank_chain,
                            wen=self._mem_wen_in_bank_chain,
                            data_out=self._mem_data_out_bank)
 
@@ -126,7 +127,7 @@ class SRAMWrapper(Generator):
                 self.add_child(f"mem_inst_{self.bank_num}",
                                mbank,
                                sram_addr=self._mem_addr_to_sram,
-                               sram_cen=~self._mem_cen_in_bank,
+                               sram_cen=~self._mem_cen_in_bank_chain,
                                sram_clk=self._gclk,
                                sram_data_in=self._sram_mem_data_in_bank,
                                sram_data_out=self._sram_mem_data_out_bank,
@@ -147,7 +148,7 @@ class SRAMWrapper(Generator):
                 self.add_child(f"mem_inst_{self.bank_num}",
                                mbank,
                                sram_addr=self._mem_addr_to_sram,
-                               sram_cen=~self._mem_cen_in_bank,
+                               sram_cen=~self._mem_cen_in_bank_chain,
                                sram_clk=self._gclk,
                                sram_data_in=self._mem_data_in_bank,
                                sram_data_out=self._mem_data_out_bank,
@@ -180,10 +181,13 @@ class SRAMWrapper(Generator):
     def set_chain_wen(self):
         if self.num_tiles == 1:
             self._mem_wen_in_bank_chain = self._mem_wen_in_bank
+            self._mem_cen_in_bank_chain = self._mem_cen_in_bank
         elif self._chain_idx_input == self._chain_idx_tile:
             self._mem_wen_in_bank_chain = self._mem_wen_in_bank
+            self._mem_cen_in_bank_chain = self._mem_cen_in_bank
         else:
             self._mem_wen_in_bank_chain = 0
+            self._mem_cen_in_bank_chain = 0
 
 
 if __name__ == "__main__":

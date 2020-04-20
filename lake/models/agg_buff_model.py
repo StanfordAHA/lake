@@ -60,7 +60,7 @@ class AggBuffModel(Model):
             self.out_sched_ptr = 0
         return valid_check_agg.get_data_out()
 
-    def interact(self, in_data, valid, write_act):
+    def interact(self, in_data, valid, write_act, align):
         '''
             Returns (data_out, valid_out)
         '''
@@ -73,9 +73,9 @@ class AggBuffModel(Model):
         for i in range(self.agg_height):
             # Interact with child
             if i == self.config[f"in_sched_{in_sched_curr}"]:
-                (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(in_data, valid)
+                (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(in_data, valid, align)
             else:
-                (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(0, 0)
+                (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(0, 0, align)
             agg_dat.append(t_ag_d)
             agg_valid.append(t_ag_v)
             agg_nf.append(t_nf)
