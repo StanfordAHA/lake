@@ -75,7 +75,7 @@ class AggBuffModel(Model):
             if i == self.config[f"in_sched_{in_sched_curr}"]:
                 (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(in_data, valid, align)
             else:
-                (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(0, 0, align)
+                (t_ag_d, t_ag_v, t_nf) = self.aggs[i].interact(0, 0, 0)
             agg_dat.append(t_ag_d)
             agg_valid.append(t_ag_v)
             agg_nf.append(t_nf)

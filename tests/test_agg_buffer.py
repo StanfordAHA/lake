@@ -68,13 +68,15 @@ def test_agg_buff_basic(agg_height=4,
 
         valid_in = rand.randint(0, 1)
         data_in = rand.randint(0, 2 ** 16 - 1)
+        align = rand.randint(0, 1)
         write_act = 0
 
         # Circuit
         tester.circuit.valid_in = valid_in
         tester.circuit.data_in = data_in
+        tester.circuit.align = align
         # Model
-        (mod_dat, mod_val) = model_ab.interact(data_in, valid_in, write_act)
+        (mod_dat, mod_val) = model_ab.interact(data_in, valid_in, write_act, align)
         if mod_val:
             write_act = 1
         tester.circuit.write_act = write_act
