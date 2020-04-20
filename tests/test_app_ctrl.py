@@ -27,6 +27,14 @@ def test_app_ctrl(int_in_ports=1,
     new_config['read_depth_2'] = 196
     new_config['write_depth_0'] = 196
 
+    rand.seed(0)
+
+    prefill = []
+    for i in range(int_out_ports):
+        prefill_num = rand.randint(0, 1)
+        new_config[f'prefill_{i}'] = prefill_num
+        prefill.append(prefill_num)
+
     model_ac.set_config(new_config=new_config)
     ###
 
@@ -47,8 +55,6 @@ def test_app_ctrl(int_in_ports=1,
 
     tester.circuit.write_depth = 196
 
-    rand.seed(0)
-
     # initial reset
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
@@ -60,8 +66,9 @@ def test_app_ctrl(int_in_ports=1,
     wen_in = [0] * int_in_ports
     ren_in = [0] * int_out_ports
     tb_valid = [0] * int_out_ports
+    ren_update = [0] * int_out_ports
 
-    for i in range(1000):
+    for i in range(300):
         # Gen random data
         for j in range(int_in_ports):
             wen_in[j] = rand.randint(0, 1)
@@ -69,43 +76,46 @@ def test_app_ctrl(int_in_ports=1,
         for j in range(int_out_ports):
             tb_valid[j] = rand.randint(0, 1)
             ren_in[j] = ren_in_tmp
+            ren_update[j] = rand.randint(0, 1)
 
+        print("wen in ", wen_in)
         # Apply stimulus to dut
         for j in range(int_in_ports):
             tester.circuit.wen_in[j] = wen_in[j]
         for j in range(int_out_ports):
             tester.circuit.ren_in[j] = ren_in[j]
             tester.circuit.tb_valid[j] = tb_valid[j]
+            tester.circuit.ren_update[j] = ren_update[j]
+            tester.circuit.prefill[j] = prefill[j]
 
+        print("wen in ", wen_in)
         # Interact w/ model
         (wen_out,
          ren_out,
-         wen_en,
-         ren_en,
          valid_out_data,
          valid_out_stencil) = model_ac.interact(wen_in=wen_in,
                                                 ren_in=ren_in,
-                                                tb_valid=tb_valid)
+                                                tb_valid=tb_valid,
+                                                ren_update=ren_update)
 
         tester.eval()
 
         for j in range(int_in_ports):
             tester.circuit.wen_out[j].expect(wen_out[j])
-            tester.circuit.wen_en[j].expect(wen_en[j])
 
         for j in range(int_out_ports):
-            tester.circuit.ren_out[j].expect(ren_out[j])
-            tester.circuit.ren_en[j].expect(ren_en[j])
+            # tester.circuit.ren_out[j].expect(ren_out[j])
             tester.circuit.valid_out_data[j].expect(valid_out_data[j])
             tester.circuit.valid_out_stencil[j].expect(valid_out_stencil[j])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "app+ctrl"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":
