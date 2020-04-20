@@ -7,7 +7,7 @@ import tempfile
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
 from lake.utils.sram_macro import SRAMMacroInfo
-from lake.top.lake_chain import LakeChain
+#from lake.top.lake_chain import LakeChain
 
 
 def test_mult_lines_dim1(data_width=16,
@@ -172,7 +172,7 @@ def test_mult_lines_dim1(data_width=16,
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 1
-    ren = [0] * interconnect_output_ports
+    ren_in = [0] * interconnect_output_ports
     addr_in = 0
     output_en = 1
 
@@ -181,7 +181,7 @@ def test_mult_lines_dim1(data_width=16,
         addr_in = rand.randint(0, 2 ** 16 - 1)
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
-            ren[j] = ren_tmp
+            ren_in[j] = ren_tmp
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             valid_in[j] = rand.randint(0, 1)
@@ -194,21 +194,21 @@ def test_mult_lines_dim1(data_width=16,
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
         for j in range(interconnect_output_ports):
-            tester.circuit.ren[j] = ren[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
+            tester.circuit.ren_in[j] = ren_in[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren_in)
 
         tester.eval()
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out_tile.expect(mod_vo[0])
+            tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out_tile.expect(mod_do[0][0])
+                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
+                tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -411,7 +411,7 @@ def test_mult_lines_dim2(tb0_range_outer,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    ren = [0] * interconnect_output_ports
+    ren_in = [0] * interconnect_output_ports
     addr_in = 0
 
     for i in range(300):
@@ -423,7 +423,7 @@ def test_mult_lines_dim2(tb0_range_outer,
 
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
-            ren[j] = ren_tmp
+            ren_in[j] = ren_tmp
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -434,21 +434,21 @@ def test_mult_lines_dim2(tb0_range_outer,
         tester.circuit.addr_in = addr_in
         for j in range(interconnect_output_ports):
             # ren_en[j] = 1
-            tester.circuit.ren[j] = ren[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
+            tester.circuit.ren_in[j] = ren_in[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren_in)
 
         tester.eval()
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out_tile.expect(mod_vo[0])
+            tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out_tile.expect(mod_do[0][0])
+                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
+                tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -635,7 +635,7 @@ def test_chain_mult_tile(num_tiles=2,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    ren = [1] * interconnect_output_ports
+    ren_in = [1] * interconnect_output_ports
     addr_in = 0
 
     for i in range(2000):
@@ -661,10 +661,10 @@ def test_chain_mult_tile(num_tiles=2,
         tester.circuit.enable_chain_output = enable_chain_output
 
         if interconnect_output_ports == 1:
-            tester.circuit.ren = ren[0]
+            tester.circuit.ren_in = ren_in[0]
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.ren[j] = ren[j]
+                tester.circuit.ren_in[j] = ren_in[j]
 
         tester.eval()
 
@@ -787,7 +787,7 @@ def test_chain_3porttile(num_tiles=2,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    ren = [1] * interconnect_output_ports
+    ren_in = [1] * interconnect_output_ports
     addr_in = 0
 
     for i in range(2000):
@@ -801,7 +801,7 @@ def test_chain_3porttile(num_tiles=2,
         ren_tmp = rand.randint(0, 1)
 
         for j in range(interconnect_output_ports):
-            ren[j] = ren_tmp
+            ren_in[j] = ren_tmp
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
@@ -816,10 +816,10 @@ def test_chain_3porttile(num_tiles=2,
         tester.circuit.enable_chain_output = enable_chain_output
 
         if interconnect_output_ports == 1:
-            tester.circuit.ren = ren[0]
+            tester.circuit.ren_in = ren_in[0]
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.ren[j] = ren[j]
+                tester.circuit.ren_in[j] = ren_in[j]
 
         tester.eval()
 
@@ -991,6 +991,10 @@ def test_identity_stream(data_width=16,
     tester.circuit.strg_ub_tba_0_tb_0_tb_height = 1
     tester.circuit.strg_ub_app_ctrl_write_depth = 196
 
+    tester.circuit.enable_chain_output = 0
+    tester.circuit.chain_idx_input = 0
+    tester.circuit.chain_idx_output = 0
+
     if interconnect_output_ports == 1:
         tester.circuit.strg_ub_sync_grp_sync_group[0] = 1
 
@@ -1003,7 +1007,7 @@ def test_identity_stream(data_width=16,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    ren = [1] * interconnect_output_ports
+    ren_in = [1] * interconnect_output_ports
     addr_in = 0
 
     for i in range(300):
@@ -1022,26 +1026,26 @@ def test_identity_stream(data_width=16,
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
 
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren_in)
 
         if interconnect_output_ports == 1:
-            tester.circuit.ren = ren[0]
+            tester.circuit.ren_in = ren_in[0]
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.ren[j] = ren[j]
+                tester.circuit.ren_in[j] = ren_in[j]
 
         tester.eval()
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out_tile.expect(mod_vo[0])
+            tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out_tile.expect(mod_do[0][0])
+                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
+                tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -1251,7 +1255,7 @@ def test_top(read_delay,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    ren = [1] * interconnect_output_ports
+    ren_in = [1] * interconnect_output_ports
     addr_in = 0
 
     for i in range(1000):
@@ -1262,7 +1266,7 @@ def test_top(read_delay,
             valid_in[j] = rand.randint(0, 1)
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
-            ren[j] = ren_tmp
+            ren_in[j] = ren_tmp
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
@@ -1273,24 +1277,24 @@ def test_top(read_delay,
                 tester.circuit.wen[j] = valid_in[j]
 
         if interconnect_output_ports == 1:
-            tester.circuit.ren = ren[0]
+            tester.circuit.ren_in = ren_in[0]
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.ren[j] = ren[j]
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
+                tester.circuit.ren_in[j] = ren_in[j]
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren_in)
 
         tester.eval()
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out_tile.expect(mod_vo[0])
+            tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out_tile.expect(mod_do[0][0])
+                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
+                tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
@@ -1739,7 +1743,7 @@ def test_ports3_stride1(read_delay=1,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    ren = [0] * interconnect_output_ports
+    ren_in = [0] * interconnect_output_ports
     addr_in = 0
 
     tester.circuit.clk_en = 1
@@ -1752,7 +1756,7 @@ def test_ports3_stride1(read_delay=1,
             valid_in[j] = rand.randint(0, 1)
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
-            ren[j] = ren_tmp
+            ren_in[j] = ren_tmp
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
@@ -1762,25 +1766,25 @@ def test_ports3_stride1(read_delay=1,
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
         if interconnect_output_ports == 1:
-            tester.circuit.ren = ren[0]
+            tester.circuit.ren_in = ren_in[0]
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.ren[j] = ren[j]
+                tester.circuit.ren_in[j] = ren_in[j]
 
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren)
+        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren_in)
 
         tester.eval()
 
         # Now check the outputs
         if(interconnect_output_ports == 1):
-            tester.circuit.valid_out_tile.expect(mod_vo[0])
+            tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
-                tester.circuit.data_out_tile.expect(mod_do[0][0])
+                tester.circuit.data_out.expect(mod_do[0][0])
         else:
             for j in range(interconnect_output_ports):
-                tester.circuit.valid_out_tile[j].expect(mod_vo[j])
+                tester.circuit.valid_out[j].expect(mod_vo[j])
                 if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_tile_{j}").expect(mod_do[j][0])
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
