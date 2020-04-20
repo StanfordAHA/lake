@@ -40,11 +40,13 @@ def test_aggregator_basic(word_width=16, mem_word_width=4):
 
         valid_in = rand.randint(0, 1)
         data_in = rand.randint(0, 2 ** 16 - 1)
+        align = rand.randint(0, 1)
         # Circuit
         tester.circuit.valid_in = valid_in
         tester.circuit.in_pixels = data_in
+        tester.circuit.align = align
         # Model
-        (model_dat, model_val, model_nf) = model_agg.interact(data_in, valid_in)
+        (model_dat, model_val, model_nf) = model_agg.interact(data_in, valid_in, align)
 
         tester.eval()
 

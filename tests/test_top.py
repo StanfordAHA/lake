@@ -7,7 +7,7 @@ import tempfile
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.models.lake_top_model import LakeTopModel
 from lake.utils.sram_macro import SRAMMacroInfo
-#from lake.top.lake_chain import LakeChain
+# from lake.top.lake_chain import LakeChain
 
 
 def test_mult_lines_dim1(data_width=16,
