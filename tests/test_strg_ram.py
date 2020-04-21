@@ -144,9 +144,9 @@ def test_storage_ram(mem_width,  # CGRA Params
         # tester.circuit.empty.expect(model_empty)
         # tester.circuit.full.expect(model_full)
         # # Now check the outputs
-        tester.circuit.valid_out_tile.expect(prev_rd)
+        tester.circuit.valid_out.expect(prev_rd)
         if prev_rd:
-            tester.circuit.data_out_tile.expect(model_out[0])
+            tester.circuit.data_out.expect(model_out[0])
 
         tester.step(2)
         prev_rd = read
