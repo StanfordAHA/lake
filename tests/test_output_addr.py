@@ -13,8 +13,10 @@ import pytest
 
 @pytest.mark.parametrize("banks", [1, 2, 4])
 @pytest.mark.parametrize("interconnect_output_ports", [1, 2])
+@pytest.mark.parametrize("enable_chain_output", [0, 1])
 def test_output_addr_basic(banks,
                            interconnect_output_ports,
+                           enable_chain_output,
                            mem_depth=512,
                            num_tiles=1,
                            data_width=16,
@@ -28,6 +30,7 @@ def test_output_addr_basic(banks,
     model_oac = OutputAddrCtrlModel(interconnect_output_ports=interconnect_output_ports,
                                     mem_depth=mem_depth,
                                     banks=banks,
+                                    num_tiles=num_tiles,
                                     iterator_support=iterator_support,
                                     address_width=address_width,
                                     data_width=data_width,
@@ -94,7 +97,8 @@ def test_output_addr_basic(banks,
             tester.circuit.valid_in[z] = valid_in[z]
         tester.circuit.step_in = step_in
 
-        (ren, addrs) = model_oac.interact(valid_in, step_in)
+        tester.circuit.enable_chain_output = enable_chain_output
+        (ren, addrs, tile_output_en) = model_oac.interact(valid_in, step_in, enable_chain_output)
 
         tester.eval()
 
@@ -108,9 +112,11 @@ def test_output_addr_basic(banks,
 
         if(interconnect_output_ports == 1):
             tester.circuit.addr_out.expect(addrs[0])
+            tester.circuit.tile_output_en.expect(tile_output_en[0])
         else:
             for j in range(interconnect_output_ports):
                 getattr(tester.circuit, f"addr_out_{z}").expect(addrs[z])
+                tester.circuit.tile_output_en[j].expect(tile_output_en[j])
 
         tester.step(2)
 
@@ -124,6 +130,7 @@ def test_output_addr_basic(banks,
 if __name__ == "__main__":
     test_output_addr_basic(banks=2,
                            interconnect_output_ports=3,
+                           enable_chain_output=0,
                            mem_depth=512,
                            num_tiles=1,
                            data_width=16,
