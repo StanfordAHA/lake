@@ -46,6 +46,7 @@ class AppCtrlModel(Model):
         print(ren_update)
         print(self.config)
         print()
+
         valid_out_data = tb_valid.copy()
         valid_out_stencil = tb_valid.copy()
 
@@ -73,7 +74,7 @@ class AppCtrlModel(Model):
             rd_temp = (((ren_update[i] == 1) and
                         (ren_in[i] == 1) and
                         (self.read_count[i] == self.config[f'read_depth_{i}'] - 1)) or
-                       self.read_done_d[i] == 1 or
+                       curr_read_done_d[i] == 1 or
                        ((self.config[f'prefill_{i}'] == 0) and (self.init_state[i] == 0)))
             read_done.append(rd_temp)
 
@@ -109,5 +110,12 @@ class AppCtrlModel(Model):
                 self.read_count[i] = 0
             elif (ren_in[i] == 1) & (ren_update[i] == 1):
                 self.read_count[i] += 1
+
         print(wen_out, " ", ren_out, " ", valid_out_data)
+        print(self.read_done_d)
+        print(read_done)
+        print(write_done[self.config[f"input_port_0"]])
+        print(self.read_count)
+        print(self.init_state)
+        print()
         return (wen_out, ren_out, valid_out_data, valid_out_stencil)
