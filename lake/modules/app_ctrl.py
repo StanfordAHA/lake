@@ -46,7 +46,6 @@ class AppCtrl(Generator):
         self._valid_out_stencil = self.output("valid_out_stencil", self.int_out_ports)
 
         # Send tb valid to valid out for now...
-        self.wire(self._valid_out_data, self._tb_valid)
 
         if self.sprt_stcl_valid:
             # Add the config registers to watch
@@ -84,6 +83,9 @@ class AppCtrl(Generator):
 
         else:
             self.wire(self._valid_out_stencil, self._tb_valid)
+
+        # Now gate the valid with stencil valid
+        self.wire(self._valid_out_data, self._tb_valid & self._valid_out_stencil)
 
         self._wen_out = self.output("wen_out", self.int_in_ports)
         self._ren_out = self.output("ren_out", self.int_out_ports)
