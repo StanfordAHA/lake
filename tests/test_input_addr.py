@@ -21,7 +21,8 @@ def test_input_addr_basic(banks,
                           fetch_width=32,
                           iterator_support=4,
                           address_width=16,
-                          multiwrite=1):
+                          multiwrite=1,
+                          num_tiles=1):
 
     fw_int = int(fetch_width / data_width)
 
@@ -30,6 +31,7 @@ def test_input_addr_basic(banks,
         interconnect_input_ports=interconnect_input_ports,
         mem_depth=mem_depth,
         banks=banks,
+        num_tiles=num_tiles,
         iterator_support=iterator_support,
         max_port_schedule=64,
         address_width=address_width,
@@ -61,12 +63,14 @@ def test_input_addr_basic(banks,
     dut = InputAddrCtrl(interconnect_input_ports=interconnect_input_ports,
                         mem_depth=mem_depth,
                         banks=banks,
+                        num_tiles=num_tiles,
                         iterator_support=iterator_support,
                         address_width=address_width,
                         data_width=16,
                         fetch_width=fetch_width,
                         multiwrite=multiwrite,
-                        strg_wr_ports=1)
+                        strg_wr_ports=1,
+                        config_width=16)
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_multiple_driver=False,
@@ -78,8 +82,10 @@ def test_input_addr_basic(banks,
         setattr(tester.circuit, key, value)
 
     valid_in = []
+    wen_en = []
     for i in range(interconnect_input_ports):
         valid_in.append(0)
+        wen_en.append(0)
 
     # initial reset
     tester.circuit.clk = 0
@@ -98,18 +104,21 @@ def test_input_addr_basic(banks,
         data_in.append([0 for z in range(fw_int)])
 
     for i in range(1000):
-        # Deal with wen
+        # Set valid and wen enable
         for j in range(interconnect_input_ports):
             valid_in[j] = rand.randint(0, 1)
+            wen_en[j] = rand.randint(0, 1)
+
         # Deal with data in
         for j in range(interconnect_input_ports):
             for z in range(fw_int):
                 data_in[j][z] = rand.randint(0, 2 ** data_width - 1)
-        # Deal with addresses
-        (wen, data_out, addrs) = model_iac.interact(valid_in, data_in)
+
+        (wen, data_out, addrs, port_out) = model_iac.interact(valid_in, data_in, wen_en)
 
         for z in range(interconnect_input_ports):
             tester.circuit.valid_in[z] = valid_in[z]
+            tester.circuit.wen_en[z] = wen_en[z]
 
         for z in range(interconnect_input_ports):
             for word in range(fw_int):
@@ -129,6 +138,9 @@ def test_input_addr_basic(banks,
             for word in range(fw_int):
                 getattr(tester.circuit, f"data_out_{z}_0_{word}").expect(data_out[z][word])
 
+        for i in range(interconnect_input_ports):
+            tester.circuit.port_out[i].expect(port_out[i])
+
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -139,4 +151,5 @@ def test_input_addr_basic(banks,
 
 
 if __name__ == "__main__":
-    test_input_addr_basic()
+    test_input_addr_basic(banks=1,
+                          interconnect_input_ports=1)

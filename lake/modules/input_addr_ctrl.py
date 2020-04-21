@@ -56,8 +56,7 @@ class InputAddrCtrl(Generator):
         # Take in the valid and data and attach an address + direct to a port
         self._valid_in = self.input("valid_in", self.interconnect_input_ports)
         self._wen_en = self.input("wen_en", self.interconnect_input_ports)
-        self._valid_gate = self.var("valid_gate", self.interconnect_input_ports)
-        self.wire(self._valid_gate, self._valid_in)
+
         self._data_in = self.input("data_in",
                                    self.data_width,
                                    size=(self.interconnect_input_ports,
@@ -134,7 +133,7 @@ class InputAddrCtrl(Generator):
                 self.wire(self._wen_reduced[i][j], kts.concat(*concat_ports).r_or())
 
         if self.banks == 1 and self.interconnect_input_ports == 1:
-            self.wire(self._wen_full[0][0][0], self._valid_gate)
+            self.wire(self._wen_full[0][0][0], self._valid_in)
         elif self.banks == 1 and self.interconnect_input_ports > 1:
             self.add_code(self.set_wen_single)
         else:
@@ -163,7 +162,7 @@ class InputAddrCtrl(Generator):
                            rst_n=self._rst_n,
                            clk_en=const(1, 1),
                            flush=const(0, 1),
-                           step=self._valid_gate[i])
+                           step=self._valid_in[i])
 
         # Need to check that the address falls into the bank for implicit banking
 
@@ -192,7 +191,7 @@ class InputAddrCtrl(Generator):
             for j in range(self.multiwrite):
                 for k in range(self.banks):
                     self._wen_full[i][j][k] = 0
-                    if(self._valid_gate[i]):
+                    if(self._valid_in[i]):
                         if(self._local_addrs[i][j][self.mem_addr_width + self.bank_addr_width - 1,
                                                    self.mem_addr_width] == k):
                             self._wen_full[i][j][k] = 1
@@ -203,7 +202,7 @@ class InputAddrCtrl(Generator):
             for j in range(self.multiwrite):
                 for k in range(self.banks):
                     self._wen_full[i][j][k] = 0
-                    if(self._valid_gate[i]):
+                    if(self._valid_in[i]):
                         self._wen_full[i][j][k] = 1
 
     @always_comb
