@@ -81,7 +81,6 @@ def test_rw_arbiter_basic(int_out_ports,
     w_data = [0 for i in range(fw_int)]
     data_from_mem = [0 for i in range(fw_int)]
 
-    # for i in range(1000):
     for i in range(100):
         # Gen random data
         wen_in = rand.randint(0, 1)
@@ -164,3 +163,8 @@ def test_rw_arbiter_basic(int_out_ports,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+if __name__ == "__main__":
+    test_rw_arbiter_basic(int_out_ports=1,
+                          fetch_width=16,
+                          read_delay=0)
