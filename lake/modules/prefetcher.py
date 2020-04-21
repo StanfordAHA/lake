@@ -90,7 +90,6 @@ class Prefetcher(Generator):
 
     @always_comb
     def set_prefetch_step(self):
-        # self._prefetch_step = (self._cnt < self._input_latency)
         self._prefetch_step = (self._cnt + self._input_latency) < (self.max_prefetch)
 
 

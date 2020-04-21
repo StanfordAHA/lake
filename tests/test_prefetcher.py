@@ -60,6 +60,7 @@ def test_prefetcher_basic(input_latency=10,
 
     for i in range(1000):
         # Gen random data
+        print(i)
         for j in range(fw_int):
             data_in[j] = rand.randint(0, 2 ** data_width - 1)
         tba_rdy_in = rand.randint(0, 1)
@@ -87,3 +88,7 @@ def test_prefetcher_basic(input_latency=10,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_prefetcher_basic()
