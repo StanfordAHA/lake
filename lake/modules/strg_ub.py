@@ -195,7 +195,8 @@ class StrgUB(Generator):
 
         self.app_ctrl = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
                                 interconnect_output_ports=self.interconnect_output_ports,
-                                depth_width=self.app_ctrl_depth_width)
+                                depth_width=self.app_ctrl_depth_width,
+                                sprt_stcl_valid=True)
         self.add_child("app_ctrl", self.app_ctrl,
                        clk=self._clk,
                        rst_n=self._rst_n,
