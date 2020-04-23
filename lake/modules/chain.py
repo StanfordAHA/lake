@@ -7,7 +7,7 @@ class Chain(Generator):
                  data_width,
                  interconnect_output_ports,
                  chain_idx_bits):
-        super().__init__("Chain", debug=True)
+        super().__init__("chain", debug=True)
 
         # generator parameters
         self.data_width = data_width

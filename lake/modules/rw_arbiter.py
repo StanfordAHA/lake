@@ -62,6 +62,14 @@ class RWArbiter(Generator):
                                         self.fw_int),
                                   explicit_array=True,
                                   packed=True)
+        self._w_data_d1 = self.var("w_data_d1",
+                                   self.data_width,
+                                   size=self.fw_int,
+                                   explicit_array=True,
+                                   packed=True)
+
+        self.add_code(self.delay_w_data)
+
         self._w_addr = self.input("w_addr", self.mem_addr_width,
                                   size=self.strg_wr_ports,
                                   explicit_array=True,
@@ -136,9 +144,16 @@ class RWArbiter(Generator):
 
         # Local
         # self._rd_data = self.var("rd_data", self.fetch_width)
+
+        # This signal allows us to directly send a write to a read
+        self._bypass_write = self.var("bypass_write", self.int_out_ports)
+        self._bypass_write_d1 = self.var("bypass_write_d1", self.int_out_ports)
+
         self._wen_int = self.var("wen_int", self.strg_wr_ports)
         self._ren_int = self.var("ren_int", self.int_out_ports)
-        self.wire(self._ren_int, self._ren_in & self._ren_en)
+        # If we are bypassing then we are basically doing a fake read where the source
+        # is the write and not the SRAM
+        self.wire(self._ren_int, self._ren_in & (self._ren_en | self._bypass_write))
         self.wire(self._wen_int, self._wen_in)  # & self._wen_en)
 
         self._rd_valid = self.var("rd_valid", self.strg_rd_ports)
@@ -150,6 +165,13 @@ class RWArbiter(Generator):
                                       size=self.strg_rd_ports,
                                       explicit_array=True,
                                       packed=True)
+
+        self.add_code(self.delay_w_bypass)
+
+        # If we are writing and have an internal read
+        for i in range(self.int_out_ports):
+            self.wire(self._bypass_write[i],
+                      self._wen_int[0] & self._ren_in[i] & (self._rd_addr[i] == self._w_addr))
 
         # For demuxing the read ports
         self._done = self.var("done", self.strg_rd_ports)
@@ -179,7 +201,8 @@ class RWArbiter(Generator):
                       self._next_rd_port_red)
         else:
             self.wire(self._out_ack,
-                      self._next_rd_port_red & kts.concat(*([~self._wen_int] * self._out_ack.width)))
+                      self._next_rd_port_red &
+                      (kts.concat(*([~self._wen_int] * self._out_ack.width)) | self._bypass_write))
 
         # self.add_code(self.mem_controls)
         if self.separate_addresses:
@@ -252,6 +275,20 @@ class RWArbiter(Generator):
                 self._idx_cnt[index - 1] = self._idx_cnt[index - 1] + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def delay_w_bypass(self):
+        if ~self._rst_n:
+            self._bypass_write_d1 = 0
+        else:
+            self._bypass_write_d1 = self._bypass_write
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def delay_w_data(self):
+        if ~self._rst_n:
+            self._w_data_d1 = 0
+        else:
+            self._w_data_d1 = self._w_data[0]
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def next_read_valid(self, idx):
         if ~self._rst_n:
             self._rd_port[idx] = 0
@@ -268,9 +305,13 @@ class RWArbiter(Generator):
 
     @always_comb
     def output_stage(self):
-        self._out_data = self._data_from_mem
+        if self._bypass_write_d1.r_or():
+            self._out_data = self._w_data_d1
+            self._out_valid = 1
+        else:
+            self._out_data = self._data_from_mem
+            self._out_valid = self._rd_valid
         self._out_port = self._rd_port
-        self._out_valid = self._rd_valid
 
 
 if __name__ == "__main__":
