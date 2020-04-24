@@ -213,7 +213,7 @@ class SRAMWrapper(Generator):
             else:
                 self._mem_cen_in_bank_chain = 0
 
-    @always_comb
+    @always_ff((posedge, "clk"))
     def set_valid_data(self):
         for i in range(self.mem_output_ports):
             # read
