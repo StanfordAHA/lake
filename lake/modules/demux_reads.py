@@ -68,6 +68,7 @@ class DemuxReads(Generator):
             self._valid_out[i] = 0
             self._data_out[i] = 0
             self._done[i] = 0
+            self._mem_valid_data_out[i] = 0
             for j in range(self.banks * self.strg_rd_ports):
                 if ~self._done[i]:
                     if self._valid_in[j] & self._port_in[j][i]:
