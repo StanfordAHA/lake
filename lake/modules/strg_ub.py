@@ -52,7 +52,8 @@ class StrgUB(Generator):
                  num_tiles=1,
                  max_prefetch=8,
                  app_ctrl_depth_width=16,
-                 remove_tb=False):
+                 remove_tb=False,
+                 stcl_valid_iter=4):
         super().__init__("strg_ub")
 
         self.data_width = data_width
@@ -90,6 +91,7 @@ class StrgUB(Generator):
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
+        self.stcl_valid_iter = stcl_valid_iter
         # phases = [] TODO
 
         self.address_width = clog2(self.num_tiles * self.mem_depth)
@@ -206,7 +208,9 @@ class StrgUB(Generator):
 
         self.app_ctrl = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
                                 interconnect_output_ports=self.interconnect_output_ports,
-                                depth_width=self.app_ctrl_depth_width)
+                                depth_width=self.app_ctrl_depth_width,
+                                sprt_stcl_valid=True,
+                                stcl_iter_support=self.stcl_valid_iter)
         self.add_child("app_ctrl", self.app_ctrl,
                        clk=self._clk,
                        rst_n=self._rst_n,

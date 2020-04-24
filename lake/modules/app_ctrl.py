@@ -16,12 +16,18 @@ class AppCtrl(Generator):
     def __init__(self,
                  interconnect_input_ports,
                  interconnect_output_ports,
-                 depth_width=16):
+                 depth_width=16,
+                 sprt_stcl_valid=False,
+                 stcl_cnt_width=16,
+                 stcl_iter_support=4):
         super().__init__("app_ctrl", debug=True)
 
         self.int_in_ports = interconnect_input_ports
         self.int_out_ports = interconnect_output_ports
         self.depth_width = depth_width
+        self.sprt_stcl_valid = sprt_stcl_valid
+        self.stcl_cnt_width = stcl_cnt_width
+        self.stcl_iter_support = stcl_iter_support
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -36,11 +42,50 @@ class AppCtrl(Generator):
         self._tb_valid = self.input("tb_valid", self.int_out_ports)
 
         self._valid_out_data = self.output("valid_out_data", self.int_out_ports)
+
         self._valid_out_stencil = self.output("valid_out_stencil", self.int_out_ports)
 
         # Send tb valid to valid out for now...
-        self.wire(self._valid_out_data, self._tb_valid)
-        self.wire(self._valid_out_stencil, self._tb_valid)
+
+        if self.sprt_stcl_valid:
+            # Add the config registers to watch
+            self._ranges = self.input("ranges", self.stcl_cnt_width,
+                                      size=self.stcl_iter_support,
+                                      packed=True,
+                                      explicit_array=True)
+            self._ranges.add_attribute(ConfigRegAttr("Ranges of stencil valid generator"))
+
+            self._threshold = self.input("threshold", self.stcl_cnt_width,
+                                         size=self.stcl_iter_support,
+                                         packed=True,
+                                         explicit_array=True)
+            self._threshold.add_attribute(ConfigRegAttr("Threshold of stencil valid generator"))
+
+            self._dim_counter = self.var("dim_counter", self.stcl_cnt_width,
+                                         size=self.stcl_iter_support,
+                                         packed=True,
+                                         explicit_array=True)
+
+            self._update = self.var("update", self.stcl_iter_support)
+
+            self.wire(self._update[0], const(1, 1))
+            for i in range(self.stcl_iter_support - 1):
+                self.wire(self._update[i + 1],
+                          (self._dim_counter[i] == (self._ranges[i] - 1)) & self._update[i])
+
+            for i in range(self.stcl_iter_support):
+                self.add_code(self.dim_counter_update, idx=i)
+
+            # Now we need to just compute stencil valid
+            threshold_comps = [self._dim_counter[_i] >= self._threshold[_i] for _i in range(self.stcl_iter_support)]
+            self.wire(self._valid_out_stencil[0], kts.concat(*threshold_comps).r_and())
+            self.wire(self._valid_out_stencil[1], kts.const(0, 1))
+
+        else:
+            self.wire(self._valid_out_stencil, self._tb_valid)
+
+        # Now gate the valid with stencil valid
+        self.wire(self._valid_out_data, self._tb_valid & self._valid_out_stencil)
 
         self._wen_out = self.output("wen_out", self.int_in_ports)
         self._ren_out = self.output("ren_out", self.int_out_ports)
@@ -200,6 +245,29 @@ class AppCtrl(Generator):
             self._wr_delay_state_n[idx] = 0
         elif self._write_done:
             self._wr_delay_state_n[idx] = 1
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def dim_counter_update(self, idx):
+        if ~self._rst_n:
+            self._dim_counter[idx] = 0
+        elif self._ren_in[0] & self._ren_update[0]:
+            # if self._update[idx] & (idx < self._dimensionality):
+            if self._update[idx]:
+                if self._dim_counter[idx] == (self._ranges[idx] - 1):
+                    self._dim_counter[idx] = 0
+                else:
+                    self._dim_counter[idx] = self._dim_counter[idx] + 1
+        # elif self._clk_en:
+        #     if self._flush:
+        #         for i in range(self.iterator_support):
+        #             self._dim_counter[i] = 0
+        #     elif (self._step):
+        #         for i in range(self.iterator_support):
+        #             if self._update[i] & (i < self._dimensionality):
+        #                 if self._dim_counter[i] == (self._ranges[i] - 1):
+        #                     self._dim_counter[i] = 0
+        #                 else:
+        #                     self._dim_counter[i] = self._dim_counter[i] + 1
 
 
 if __name__ == "__main__":

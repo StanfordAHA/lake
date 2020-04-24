@@ -55,7 +55,8 @@ class LakeTop(Generator):
                  app_ctrl_depth_width=16,
                  fifo_mode=True,
                  add_clk_enable=True,
-                 add_flush=True):
+                 add_flush=True,
+                 stcl_valid_iter=4):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -98,6 +99,7 @@ class LakeTop(Generator):
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         self.fifo_mode = fifo_mode
+        self.stcl_valid_iter = stcl_valid_iter
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -447,7 +449,8 @@ class LakeTop(Generator):
                          max_prefetch=self.max_prefetch,
                          remove_tb=self.remove_tb,
                          input_config_width=self.input_config_width,
-                         output_config_width=self.output_config_width)
+                         output_config_width=self.output_config_width,
+                         stcl_valid_iter=self.stcl_valid_iter)
 
         self._ub_data_to_mem = self.var("ub_data_to_mem",
                                         self.data_width,
