@@ -127,7 +127,7 @@ class StrgUB(Generator):
                                           size=self.banks,
                                           explicit_array=True,
                                           packed=True)
-        
+
         self._out_mem_valid_data = self.var("out_mem_valid_data",
                                             self.mem_output_ports,
                                             size=self.banks,
@@ -559,10 +559,10 @@ class StrgUB(Generator):
         self._arb_valid_out_f = self.var("arb_valid_out_f", self.mem_output_ports * self.banks)
         self._arb_mem_valid_data_f = self.var("arb_mem_valid_data_f", self.mem_output_ports * self.banks)
 
-        self._arb_mem_valid_data_out = self.var("arb_mem_valid_data_out", 
+        self._arb_mem_valid_data_out = self.var("arb_mem_valid_data_out",
                                                 self.interconnect_output_ports)
 
-        self._mem_valid_data_sync = self.var("mem_valid_data_sync", 
+        self._mem_valid_data_sync = self.var("mem_valid_data_sync",
                                              self.interconnect_output_ports)
 
         self._mem_valid_data_pref = self.var("mem_valid_data_pref",

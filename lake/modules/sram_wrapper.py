@@ -37,13 +37,12 @@ class SRAMWrapper(Generator):
 
         self._gclk = self.clock("clk")
 
-        # input "chaining"
+        # Chaining related signals
         self._chain_idx_input = self.input("chain_idx_input", self.chain_idx_bits)
         self._chain_idx_output = self.input("chain_idx_output", self.chain_idx_bits)
         self._chain_idx_tile = self.var("chain_idx_tile", self.chain_idx_bits)
         self._valid_data = self.output("valid_data", self.mem_output_ports)
 
-        
         self._clk_en = self.input("clk_en", 1)
 
         if self.fw_int > 1:

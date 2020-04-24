@@ -39,7 +39,7 @@ class SyncGroups(Generator):
 
         self._mem_valid_data = self.input("mem_valid_data",
                                           self.int_out_ports)
-        
+
         self._mem_valid_data_out = self.output("mem_valid_data_out",
                                                self.int_out_ports)
 
