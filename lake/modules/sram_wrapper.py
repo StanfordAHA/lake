@@ -39,8 +39,11 @@ class SRAMWrapper(Generator):
 
         # input "chaining"
         self._chain_idx_input = self.input("chain_idx_input", self.chain_idx_bits)
+        self._chain_idx_output = self.input("chain_idx_output", self.chain_idx_bits)
         self._chain_idx_tile = self.var("chain_idx_tile", self.chain_idx_bits)
+        self._valid_data = self.output("valid_data", self.mem_output_ports)
 
+        
         self._clk_en = self.input("clk_en", 1)
 
         if self.fw_int > 1:
@@ -159,6 +162,8 @@ class SRAMWrapper(Generator):
         self.add_code(self.set_chain_idx_tile)
         self.add_code(self.set_mem_addr)
         self.add_code(self.set_chain_wen)
+        self.add_code(self.set_chain_cen)
+        self.add_code(self.set_valid_data)
 
     @always_comb
     def set_chain_idx_tile(self):
@@ -181,13 +186,46 @@ class SRAMWrapper(Generator):
     def set_chain_wen(self):
         if self.num_tiles == 1:
             self._mem_wen_in_bank_chain = self._mem_wen_in_bank
-            self._mem_cen_in_bank_chain = self._mem_cen_in_bank
-        elif self._chain_idx_input == self._chain_idx_tile:
-            self._mem_wen_in_bank_chain = self._mem_wen_in_bank
-            self._mem_cen_in_bank_chain = self._mem_cen_in_bank
+        # write
+        elif self._mem_wen_in_bank:
+            if self._chain_idx_input == self._chain_idx_tile:
+                self._mem_wen_in_bank_chain = self._mem_wen_in_bank
+            else:
+                self._mem_wen_in_bank_chain = 0
+        # read
         else:
             self._mem_wen_in_bank_chain = 0
-            self._mem_cen_in_bank_chain = 0
+
+    @always_comb
+    def set_chain_cen(self):
+        if self.num_tiles == 1:
+            self._mem_cen_in_bank_chain = self._mem_cen_in_bank
+        # write
+        elif self._mem_wen_in_bank:
+            if self._chain_idx_input == self._chain_idx_tile:
+                self._mem_cen_in_bank_chain = self._mem_cen_in_bank
+            else:
+                self._mem_cen_in_bank_chain = 0
+        # read
+        else:
+            if self._chain_idx_output == self._chain_idx_tile:
+                self._mem_cen_in_bank_chain = self._mem_cen_in_bank
+            else:
+                self._mem_cen_in_bank_chain = 0
+
+    @always_comb
+    def set_valid_data(self):
+        for i in range(self.mem_output_ports):
+            # read
+            if ~self._mem_wen_in_bank:
+                if self._chain_idx_output == self._chain_idx_tile:
+                    self._valid_data[i] = self._mem_cen_in_bank
+                else:
+                    self._valid_data[i] = 0
+            else:
+                self._valid_data[i] = 0
+
+
 
 
 if __name__ == "__main__":

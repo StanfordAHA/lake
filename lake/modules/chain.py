@@ -109,7 +109,7 @@ class Chain(Generator):
     @always_comb
     def set_chain_values(self):
         for i in range(self.interconnect_output_ports):
-            if self._tile_output_en[i] == 1:
+            if self._chain_valid_in[i] == 0:
                 self._chain_data_out_inter[i] = self._curr_tile_data_out[i]
                 self._chain_valid_out_inter[i] = self._curr_tile_valid_out[i]
             else:

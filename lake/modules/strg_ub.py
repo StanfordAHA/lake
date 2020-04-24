@@ -122,6 +122,11 @@ class StrgUB(Generator):
                                           packed=True,
                                           explicit_array=True)
 
+        self._mem_valid_data = self.input("mem_valid_data",
+                                          self.mem_output_ports,
+                                          size=self.banks,
+                                          explicit_array=True,
+                                          packed=True)
         if self.agg_height > 0:
             self._to_iac_valid = self.var("ab_to_mem_valid",
                                           self.interconnect_input_ports)
@@ -472,6 +477,7 @@ class StrgUB(Generator):
                            w_data=self._data_to_arb[i],
                            w_addr=self._addr_to_arb[i],
                            data_from_mem=self._data_from_strg[i],
+                           mem_valid_data=self._mem_valid_data[i],
                            ren_en=self._arb_ren_en,
                            rd_addr=self._oac_addr_out,
                            out_data=self._arb_dat_out[i],

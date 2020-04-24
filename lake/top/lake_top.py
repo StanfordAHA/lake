@@ -325,6 +325,11 @@ class LakeTop(Generator):
                                     explicit_array=True,
                                     packed=True)
 
+        self._mem_valid_data = self.var("mem_valid_data", self.mem_output_ports,
+                                        size=self.banks,
+                                        explicit_array=True,
+                                        packed=True)
+
         self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
                                     size=self.banks,
                                     explicit_array=True,
@@ -500,6 +505,7 @@ class LakeTop(Generator):
                        wen_in=self._wen,
                        ren_in=self._ren,
                        data_from_strg=self._mem_data_out,
+                       mem_valid_data=self._mem_valid_data,
                        # outputs
                        data_out=self._ub_data_out,
                        valid_out=self._ub_valid_out,
@@ -677,6 +683,7 @@ class LakeTop(Generator):
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
                                chain_idx_input=self._chain_idx_input,
+                               chain_idx_output=self._chain_idx_output,
                                clk_en=self._clk_en | self._config_en.r_or(),
                                mem_data_in_bank=self._mem_data_in[i],
                                mem_data_out_bank=self._mem_data_out[i],
@@ -684,7 +691,8 @@ class LakeTop(Generator):
                                mem_cen_in_bank=self._mem_cen_in[i],
                                mem_wen_in_bank=self._mem_wen_in[i],
                                wtsel=self.sram_macro_info.wtsel_value,
-                               rtsel=self.sram_macro_info.rtsel_value)
+                               rtsel=self.sram_macro_info.rtsel_value,
+                               valid_data=self._mem_valid_data[i])
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)
