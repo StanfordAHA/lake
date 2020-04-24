@@ -239,7 +239,10 @@ class TransposeBuffer(Generator):
                     ((self.dimensionality == 2) &
                         (self.index_inner == self.range_inner - 1))):
             if ~self.pause_output:
-                self.pause_tb = ~self.valid_data
+                if ~self.rdy_to_arbiter | self.valid_data:
+                    self.pause_tb = 0
+                else:
+                    self.pause_tb = 1
         elif self.pause_tb:
             self.pause_tb = ~self.valid_data
 
