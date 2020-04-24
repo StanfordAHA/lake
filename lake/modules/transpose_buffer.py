@@ -239,6 +239,10 @@ class TransposeBuffer(Generator):
                     ((self.dimensionality == 2) &
                         (self.index_inner == self.range_inner - 1))):
             if ~self.pause_output:
+                # do not need to pause tb if
+                # - rdy is not high as we currently have valid data in tb that we can
+                # keep outputting
+                # - we get valid data as we can output that
                 if ~self.rdy_to_arbiter | self.valid_data:
                     self.pause_tb = 0
                 else:
