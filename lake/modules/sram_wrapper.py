@@ -226,8 +226,6 @@ class SRAMWrapper(Generator):
                 self._valid_data[i] = 0
 
 
-
-
 if __name__ == "__main__":
     dut = SRAMWrapper(use_sram_stub=0,
                       sram_name="TSMC",

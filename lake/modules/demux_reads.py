@@ -35,6 +35,7 @@ class DemuxReads(Generator):
                                          self.fw_int),
                                    explicit_array=True,
                                    packed=True)
+
         self._valid_in = self.input("valid_in", self.banks * self.strg_rd_ports)
         self._port_in = self.input("port_in",
                                    self.int_out_ports,
@@ -53,6 +54,9 @@ class DemuxReads(Generator):
         self._valid_out = self.output("valid_out",
                                       self.int_out_ports)
 
+        self._mem_valid_data = self.input("mem_valid_data", self.banks * self.strg_rd_ports)
+        self._mem_valid_data_out = self.output("mem_valid_data_out", self.int_out_ports)
+
         # Vars
         self._done = self.var("done", self.int_out_ports)
 
@@ -69,6 +73,7 @@ class DemuxReads(Generator):
                     if self._valid_in[j] & self._port_in[j][i]:
                         self._valid_out[i] = 1
                         self._data_out[i] = self._data_in[j]
+                        self._mem_valid_data_out[i] = self._mem_valid_data[j]
                         self._done[i] = 1
 
 

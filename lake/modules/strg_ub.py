@@ -127,6 +127,12 @@ class StrgUB(Generator):
                                           size=self.banks,
                                           explicit_array=True,
                                           packed=True)
+        
+        self._out_mem_valid_data = self.var("out_mem_valid_data",
+                                            self.mem_output_ports,
+                                            size=self.banks,
+                                            explicit_array=True,
+                                            packed=True)
         if self.agg_height > 0:
             self._to_iac_valid = self.var("ab_to_mem_valid",
                                           self.interconnect_input_ports)
@@ -478,6 +484,7 @@ class StrgUB(Generator):
                            w_addr=self._addr_to_arb[i],
                            data_from_mem=self._data_from_strg[i],
                            mem_valid_data=self._mem_valid_data[i],
+                           out_mem_valid_data=self._out_mem_valid_data[i],
                            ren_en=self._arb_ren_en,
                            rd_addr=self._oac_addr_out,
                            out_data=self._arb_dat_out[i],
@@ -550,6 +557,16 @@ class StrgUB(Generator):
                                         explicit_array=True,
                                         packed=True)
         self._arb_valid_out_f = self.var("arb_valid_out_f", self.mem_output_ports * self.banks)
+        self._arb_mem_valid_data_f = self.var("arb_mem_valid_data_f", self.mem_output_ports * self.banks)
+
+        self._arb_mem_valid_data_out = self.var("arb_mem_valid_data_out", 
+                                                self.interconnect_output_ports)
+
+        self._mem_valid_data_sync = self.var("mem_valid_data_sync", 
+                                             self.interconnect_output_ports)
+
+        self._mem_valid_data_pref = self.var("mem_valid_data_pref",
+                                             self.interconnect_output_ports)
 
         tmp_cnt = 0
         for i in range(self.banks):
@@ -557,6 +574,7 @@ class StrgUB(Generator):
                 self.wire(self._arb_dat_out_f[tmp_cnt], self._arb_dat_out[i][j])
                 self.wire(self._arb_port_out_f[tmp_cnt], self._arb_port_out[i][j])
                 self.wire(self._arb_valid_out_f[tmp_cnt], self._arb_valid_out[i][j])
+                self.wire(self._arb_mem_valid_data_f[tmp_cnt], self._out_mem_valid_data[i][j])
                 tmp_cnt = tmp_cnt + 1
 
         # If this is end of the road...
@@ -566,6 +584,8 @@ class StrgUB(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            data_in=self._arb_dat_out_f,
+                           mem_valid_data=self._arb_mem_valid_data_f,
+                           mem_valid_data_out=self._arb_mem_valid_data_out,
                            valid_in=self._arb_valid_out_f,
                            port_in=self._arb_port_out_f,
                            valid_out=self._valid_out_alt)
@@ -577,6 +597,8 @@ class StrgUB(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            data_in=self._arb_dat_out_f,
+                           mem_valid_data=self._arb_mem_valid_data_f,
+                           mem_valid_data_out=self._arb_mem_valid_data_out,
                            valid_in=self._arb_valid_out_f,
                            port_in=self._arb_port_out_f,
                            data_out=self._data_to_sync,
@@ -596,6 +618,8 @@ class StrgUB(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            data_in=self._data_to_sync,
+                           mem_valid_data=self._arb_mem_valid_data_out,
+                           mem_valid_data_out=self._mem_valid_data_sync,
                            valid_in=self._valid_to_sync,
                            data_out=self._data_to_pref,
                            valid_out=self._valid_to_pref,
@@ -623,6 +647,8 @@ class StrgUB(Generator):
                                    clk=self._clk,
                                    rst_n=self._rst_n,
                                    data_in=self._data_to_pref[i],
+                                   mem_valid_data=self._mem_valid_data_sync[i],
+                                   mem_valid_data_out=self._mem_valid_data_pref[i],
                                    valid_read=self._valid_to_pref[i],
                                    tba_rdy_in=self._ren[i],
                                    #    data_out=self._data_out[i],
@@ -634,6 +660,8 @@ class StrgUB(Generator):
                                    clk=self._clk,
                                    rst_n=self._rst_n,
                                    data_in=self._data_to_pref[i],
+                                   mem_valid_data=self._mem_valid_data_sync[i],
+                                   mem_valid_data_out=self._mem_valid_data_pref[i],
                                    valid_read=self._valid_to_pref[i],
                                    tba_rdy_in=self._ready_tba[i],
                                    data_out=self._data_to_tba[i],
@@ -666,7 +694,7 @@ class StrgUB(Generator):
                                    clk=self._clk,
                                    rst_n=self._rst_n,
                                    SRAM_to_tb_data=self._data_to_tba[i],
-                                   valid_data=self._valid_to_tba[i],
+                                   valid_data=self._valid_to_tba[i] & self._mem_valid_data_pref[i],
                                    tb_index_for_data=0,
                                    ack_in=self._valid_to_tba[i],
                                    tb_to_interconnect_data=self._tb_data_out[i],

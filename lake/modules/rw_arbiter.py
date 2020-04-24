@@ -76,6 +76,8 @@ class RWArbiter(Generator):
 
         self._mem_valid_data = self.input("mem_valid_data",
                                           self.strg_rd_ports)
+        self._out_mem_valid_data = self.output("out_mem_valid_data",
+                                               self.strg_rd_ports)
 
         self._ren_in = self.input("ren_in", self.int_out_ports)
         self._ren_en = self.input("ren_en", self.int_out_ports)
@@ -273,7 +275,8 @@ class RWArbiter(Generator):
     def output_stage(self):
         self._out_data = self._data_from_mem
         self._out_port = self._rd_port
-        self._out_valid = self._rd_valid & self._mem_valid_data
+        self._out_valid = self._rd_valid
+        self._out_mem_valid_data = self._mem_valid_data
 
 
 if __name__ == "__main__":

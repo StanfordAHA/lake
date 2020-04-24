@@ -37,6 +37,12 @@ class SyncGroups(Generator):
                                    explicit_array=True,
                                    packed=True)
 
+        self._mem_valid_data = self.input("mem_valid_data",
+                                          self.int_out_ports)
+        
+        self._mem_valid_data_out = self.output("mem_valid_data_out",
+                                               self.int_out_ports)
+
         self._valid_in = self.input("valid_in",
                                     self.int_out_ports)
         # Indicates which port belongs to which synchronization group
@@ -167,13 +173,16 @@ class SyncGroups(Generator):
         if ~self._rst_n:
             self._data_reg[idx] = 0
             self._valid_reg[idx] = 0
+            self._mem_valid_data_out[idx] = 0
         # Absorb input data if the whole group is valid
         elif (self._sync_valid & self._sync_group[idx]).r_or():
             self._data_reg[idx] = self._data_in[idx]
+            self._mem_valid_data_out[idx] = self._mem_valid_data[idx]
             self._valid_reg[idx] = self._valid_in[idx]
         # Also absorb input data if not currently holding a valid
         elif ~self._valid_reg[idx]:
             self._data_reg[idx] = self._data_in[idx]
+            self._mem_valid_data_out[idx] = self._mem_valid_data[idx]
             self._valid_reg[idx] = self._valid_in[idx]
 
     @always_comb
