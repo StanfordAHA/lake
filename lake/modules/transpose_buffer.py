@@ -75,6 +75,8 @@ class TransposeBuffer(Generator):
         self.ack_in = self.input("ack_in", 1)
         self.ren = self.input("ren", 1)
 
+        self.mem_valid_data = self.input("mem_valid_data", 1)
+
         ###########################
         # CONFIGURATION REGISTERS #
         ###########################
@@ -133,11 +135,14 @@ class TransposeBuffer(Generator):
                                width=self.word_width,
                                size=2 * self.max_tb_height,
                                packed=True)
+
         else:
             self.tb = self.var("tb",
                                width=self.word_width,
                                size=[2 * self.max_tb_height, self.fetch_width],
                                packed=True)
+
+        self.tb_valid = self.var("tb_valid", 2 * self.max_tb_height)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
         self.index_inner = self.var("index_inner", self.max_range_inner_bits)
@@ -165,6 +170,8 @@ class TransposeBuffer(Generator):
         self.pause_output = self.var("pause_output", 1)
 
         self.on_next_line = self.var("on_next_line", 1)
+
+        self.mask_valid = self.var("mask_valid", 1)
 
         ##########################
         # SEQUENTIAL CODE BLOCKS #
@@ -198,6 +205,7 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_switch_next_line)
         if self.fetch_width != 1:
             self.add_code(self.set_output_index_long)
+        self.add_code(self.set_mask_valid)
 
     # get output loop iterators
     # set pause_tb signal to pause input/output depending on
@@ -295,8 +303,10 @@ class TransposeBuffer(Generator):
         if self.valid_data:
             if self.dimensionality == 0:
                 self.tb[self.input_index] = 0
+                self.tb_valid[self.input_index] = 0
             else:
                 self.tb[self.input_index] = self.input_data
+                self.tb_valid[self.input_index] = self.mem_valid_data
 
     # get relative output column index from absolute output column index
     @always_comb
@@ -366,7 +376,14 @@ class TransposeBuffer(Generator):
         elif self.pause_output:
             self.output_valid = 0
         else:
-            self.output_valid = 1
+            self.output_valid = self.mask_valid
+
+    @always_comb
+    def set_mask_valid(self):
+        if (self.out_buf_index ^ self.switch_out_buf):
+            self.mask_valid = self.tb_valid[0]
+        else:
+            self.mask_valid = self.tb_valid[1]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_out_buf_index(self):

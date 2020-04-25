@@ -130,19 +130,19 @@ class LakeTop(Generator):
                                           self.interconnect_output_ports)
 
         self._chain_data_in = self.input("chain_data_in",
-                                         data_width,
-                                         size=interconnect_output_ports,
+                                         self.data_width,
+                                         size=self.interconnect_output_ports,
                                          packed=True,
                                          explicit_array=True)
 
         self._chain_data_out = self.output("chain_data_out",
-                                           data_width,
-                                           size=interconnect_output_ports,
+                                           self.data_width,
+                                           size=self.interconnect_output_ports,
                                            packed=True,
                                            explicit_array=True)
 
         self._chain_valid_out = self.output("chain_valid_out",
-                                            interconnect_output_ports)
+                                            self.interconnect_output_ports)
 
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
