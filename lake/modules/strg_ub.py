@@ -693,7 +693,7 @@ class StrgUB(Generator):
                                    clk=self._clk,
                                    rst_n=self._rst_n,
                                    SRAM_to_tb_data=self._data_to_tba[i],
-                                   valid_data=self._valid_to_tba[i], 
+                                   valid_data=self._valid_to_tba[i],
                                    tb_index_for_data=0,
                                    ack_in=self._valid_to_tba[i],
                                    mem_valid_data=self._mem_valid_data_pref[i],
