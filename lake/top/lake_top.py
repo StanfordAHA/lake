@@ -144,9 +144,6 @@ class LakeTop(Generator):
         self._chain_valid_out = self.output("chain_valid_out",
                                             interconnect_output_ports)
 
-        self._tile_output_en = self.var("tile_output_en",
-                                        self.interconnect_output_ports)
-
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
         # Get the input portI  from the interconnect
@@ -516,8 +513,7 @@ class LakeTop(Generator):
                        cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem,
                        enable_chain_output=self._enable_chain_output,
-                       chain_idx_output=self._chain_idx_output,
-                       tile_output_en=self._tile_output_en)
+                       chain_idx_output=self._chain_idx_output)
 
         # Wire addrs
         if self.rw_same_cycle:
@@ -767,7 +763,6 @@ class LakeTop(Generator):
                        curr_tile_data_out=self._data_out_tile,
                        chain_valid_in=self._chain_valid_in,
                        chain_data_in=self._chain_data_in,
-                       tile_output_en=self._tile_output_en,
                        chain_data_out=self._chain_data_out,
                        chain_valid_out=self._chain_valid_out,
                        data_out_tile=self._data_out,

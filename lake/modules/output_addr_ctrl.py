@@ -29,7 +29,6 @@ class OutputAddrCtrl(Generator):
         self.config_width = config_width
 
         self.mem_addr_width = clog2(self.num_tiles * self.mem_depth)
-        self.chain_idx_bits = max(1, clog2(num_tiles))
 
         if self.banks > 1:
             self.bank_addr_width = clog2(self.banks)
@@ -40,10 +39,6 @@ class OutputAddrCtrl(Generator):
         # Clock and Reset
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
-
-        # Chaining
-        self._enable_chain_output = self.input("enable_chain_output", 1)
-        self._chain_idx_output = self.input("chain_idx_output", self.chain_idx_bits)
 
         # Inputs
         # Take in the valid and attach an address + direct to a port
@@ -62,9 +57,6 @@ class OutputAddrCtrl(Generator):
                                       size=self.interconnect_output_ports,
                                       explicit_array=True,
                                       packed=True)
-
-        self._tile_output_en = self.output("tile_output_en",
-                                           self.interconnect_output_ports)
 
         # LOCAL VARS
         self._local_addrs = self.var("local_addrs",
@@ -125,11 +117,6 @@ class OutputAddrCtrl(Generator):
         self._addresses = 0
         for i in range(self.interconnect_output_ports):
             self._addresses[i] = self._local_addrs[i][self.mem_addr_width - 1, 0]
-            if (self._addresses[i][self.mem_addr_width - 1, self.mem_addr_width - self.chain_idx_bits] ==
-                    self._chain_idx_output):
-                self._tile_output_en[i] = 1
-            else:
-                self._tile_output_en[i] = 0
 
 
 if __name__ == "__main__":

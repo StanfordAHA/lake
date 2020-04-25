@@ -39,9 +39,6 @@ class Chain(Generator):
                                          packed=True,
                                          explicit_array=True)
 
-        self._tile_output_en = self.input("tile_output_en",
-                                          self.interconnect_output_ports)
-
         self._chain_data_out = self.output("chain_data_out",
                                            self.data_width,
                                            size=self.interconnect_output_ports,
