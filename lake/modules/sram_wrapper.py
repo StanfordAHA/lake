@@ -129,21 +129,38 @@ class SRAMWrapper(Generator):
                                output_array=self._sram_mem_data_in_bank)
 
                 if compose_wide:
-                    mbank = SRAMStubGenerator(sram_name=self.sram_name,
+                    mbank1 = SRAMStubGenerator(sram_name=self.sram_name,
                                               data_width=self.data_width,
                                               width_mult=self.fw_int // 2,
                                               depth=self.mem_depth)
-                    for j in range(2):
-                        self.add_child(f"mem_inst_{self.bank_num}_pt_{j}",
-                                       mbank,
-                                       sram_addr=self._mem_addr_to_sram,
-                                       sram_cen=~self._mem_cen_in_bank_chain,
-                                       sram_clk=self._gclk,
-                                       sram_data_in=self._sram_mem_data_in_bank[j * 32 + 32 - 1, j * 32],
-                                       sram_data_out=self._sram_mem_data_out_bank[j * 32 + 32 - 1, j * 32],
-                                       sram_wen=~self._mem_wen_in_bank_chain,
-                                       sram_wtsel=self._wtsel,
-                                       sram_rtsel=self._rtsel)
+                    
+                    self.add_child(f"test_{self.bank_num}_pt_1",
+                                   mbank1,
+                                   sram_addr=self._mem_addr_to_sram,
+                                   sram_cen=~self._mem_cen_in_bank_chain,
+                                   sram_clk=self._gclk,
+                                   sram_data_in=self._sram_mem_data_in_bank[32 + 32 - 1, 32],
+                                   sram_data_out=self._sram_mem_data_out_bank[32 + 32 - 1, 32],
+                                   sram_wen=~self._mem_wen_in_bank_chain,
+                                   sram_wtsel=self._wtsel,
+                                   sram_rtsel=self._rtsel)
+
+                    mbank0 = SRAMStubGenerator(sram_name=self.sram_name,
+                                              data_width=self.data_width,
+                                              width_mult=self.fw_int // 2,
+                                              depth=self.mem_depth)
+
+                    self.add_child(f"test_{self.bank_num}_pt_0",
+                                   mbank0,
+                                   sram_addr=self._mem_addr_to_sram,
+                                   sram_cen=~self._mem_cen_in_bank_chain,
+                                   sram_clk=self._gclk,
+                                   sram_data_in=self._sram_mem_data_in_bank[32 - 1, 0],
+                                   sram_data_out=self._sram_mem_data_out_bank[32 - 1, 0],
+                                   sram_wen=~self._mem_wen_in_bank_chain,
+                                   sram_wtsel=self._wtsel,
+                                   sram_rtsel=self._rtsel)
+
                 else:
                     self.add_child(f"mem_inst_{self.bank_num}",
                                    mbank,
