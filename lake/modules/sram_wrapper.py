@@ -116,6 +116,8 @@ class SRAMWrapper(Generator):
                                       width_mult=self.fw_int,
                                       depth=self.mem_depth)
 
+            compose_wide = True
+
             if self.fw_int > 1:
                 flatten_data_in = FlattenND(self.data_width,
                                             self.fw_int,
@@ -126,16 +128,33 @@ class SRAMWrapper(Generator):
                                input_array=self._mem_data_in_bank,
                                output_array=self._sram_mem_data_in_bank)
 
-                self.add_child(f"mem_inst_{self.bank_num}",
-                               mbank,
-                               sram_addr=self._mem_addr_to_sram,
-                               sram_cen=~self._mem_cen_in_bank_chain,
-                               sram_clk=self._gclk,
-                               sram_data_in=self._sram_mem_data_in_bank,
-                               sram_data_out=self._sram_mem_data_out_bank,
-                               sram_wen=~self._mem_wen_in_bank_chain,
-                               sram_wtsel=self._wtsel,
-                               sram_rtsel=self._rtsel)
+                if compose_wide:
+                    mbank = SRAMStubGenerator(sram_name=self.sram_name,
+                                              data_width=self.data_width,
+                                              width_mult=self.fw_int // 2,
+                                              depth=self.mem_depth)
+                    for j in range(2):
+                        self.add_child(f"mem_inst_{self.bank_num}_pt_{j}",
+                                       mbank,
+                                       sram_addr=self._mem_addr_to_sram,
+                                       sram_cen=~self._mem_cen_in_bank_chain,
+                                       sram_clk=self._gclk,
+                                       sram_data_in=self._sram_mem_data_in_bank[j * 32 + 32 - 1, j * 32],
+                                       sram_data_out=self._sram_mem_data_out_bank[j * 32 + 32 - 1, j * 32],
+                                       sram_wen=~self._mem_wen_in_bank_chain,
+                                       sram_wtsel=self._wtsel,
+                                       sram_rtsel=self._rtsel)
+                else:
+                    self.add_child(f"mem_inst_{self.bank_num}",
+                                   mbank,
+                                   sram_addr=self._mem_addr_to_sram,
+                                   sram_cen=~self._mem_cen_in_bank_chain,
+                                   sram_clk=self._gclk,
+                                   sram_data_in=self._sram_mem_data_in_bank,
+                                   sram_data_out=self._sram_mem_data_out_bank,
+                                   sram_wen=~self._mem_wen_in_bank_chain,
+                                   sram_wtsel=self._wtsel,
+                                   sram_rtsel=self._rtsel)
 
                 flatten_data_out = ReverseFlatten(self.data_width,
                                                   self.fw_int,
