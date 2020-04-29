@@ -32,6 +32,7 @@ class SRAMWrapper(Generator):
         self.bank_num = bank_num
 
         self._gclk = self.clock("clk")
+        self._rst_n = self.reset("rst_n")
 
         if self.fw_int > 1:
             self._mem_data_in_bank = self.input("mem_data_in_bank",
@@ -81,6 +82,7 @@ class SRAMWrapper(Generator):
 
             self.add_child(f"mem_{self.bank_num}", mbank,
                            clk=self._gclk,
+                           rst_n=self._rst_n,
                            data_in=self._mem_data_in_bank,
                            addr=self._mem_addr_in_bank,
                            cen=self._mem_cen_in_bank,
