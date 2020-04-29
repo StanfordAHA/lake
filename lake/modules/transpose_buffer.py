@@ -23,7 +23,7 @@ class TransposeBuffer(Generator):
                  max_range_inner,
                  max_stride,
                  tb_iterator_support):
-        super().__init__("transpose_buffer")
+        super().__init__("transpose_buffer", debug=True)
 
         #########################
         # GENERATION PARAMETERS #
@@ -317,6 +317,7 @@ class TransposeBuffer(Generator):
     @always_comb
     def output_from_tb(self):
         for i in range(max_tb_height):
+            self.col_pixels[i] = 0
             if i < self.tb_height:
                 if self.dimensionality == 0:
                     self.col_pixels[i] = 0
