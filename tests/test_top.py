@@ -783,82 +783,311 @@ def test_top(read_delay,
     new_config = {}
 
     # Agg align
-    new_config["strg_ub_agg_align_0_line_length"] = 64
-
-    # Agg buffer
-    new_config["strg_ub_agg_in_0_in_period"] = 1  # I don't actually know
-    new_config["strg_ub_agg_in_0_in_sched_0"] = 0
-    new_config["strg_ub_agg_in_0_out_period"] = 1
-    new_config["strg_ub_agg_in_0_out_sched_0"] = 0
-
-    # Input addr ctrl
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 1
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 2048
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
-
-    # Output addr ctrl
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 2
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
-    new_config["strg_ub_output_addr_ctrl_address_gen_2_dimensionality"] = 2
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_1"] = 64
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 64
-    new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_0"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_1"] = 64
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_2_starting_addr"] = 32
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_0"] = 1
-    new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_1"] = 16
-
-    # TBA
-    new_config["strg_ub_tba_0_tb_0_indices_0"] = 0
-    new_config["strg_ub_tba_0_tb_0_indices_1"] = 1
-    new_config["strg_ub_tba_0_tb_0_indices_2"] = 2
-    new_config["strg_ub_tba_0_tb_0_range_inner"] = 3
-    new_config["strg_ub_tba_0_tb_0_range_outer"] = 62
-    new_config["strg_ub_tba_0_tb_0_stride"] = 2
-#    new_config["tba_0_tb_0_tb_height"] = 1
+    new_config["fifo_ctrl_fifo_depth"] = 65535
+    new_config["strg_ub_agg_align_0_line_length"] = 0
+    new_config["strg_ub_agg_in_0_in_period"] = 2
+    new_config["strg_ub_agg_in_0_in_sched_0"] = 1
+    new_config["strg_ub_agg_in_0_in_sched_1"] = 0
+    new_config["strg_ub_agg_in_0_in_sched_2"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_3"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_4"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_5"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_6"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_7"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_8"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_9"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_10"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_11"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_12"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_13"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_14"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_15"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_16"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_17"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_18"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_19"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_20"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_21"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_22"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_23"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_24"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_25"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_26"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_27"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_28"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_29"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_30"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_31"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_32"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_33"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_34"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_35"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_36"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_37"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_38"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_39"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_40"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_41"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_42"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_43"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_44"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_45"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_46"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_47"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_48"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_49"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_50"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_51"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_52"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_53"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_54"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_55"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_56"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_57"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_58"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_59"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_60"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_61"] = 7
+    new_config["strg_ub_agg_in_0_in_sched_62"] = 4
+    new_config["strg_ub_agg_in_0_in_sched_63"] = 4
+    new_config["strg_ub_agg_in_0_out_period"] = 63
+    new_config["strg_ub_agg_in_0_out_sched_0"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_1"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_2"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_3"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_4"] = 5
+    new_config["strg_ub_agg_in_0_out_sched_5"] = 5
+    new_config["strg_ub_agg_in_0_out_sched_6"] = 1
+    new_config["strg_ub_agg_in_0_out_sched_7"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_8"] = 6
+    new_config["strg_ub_agg_in_0_out_sched_9"] = 1
+    new_config["strg_ub_agg_in_0_out_sched_10"] = 0
+    new_config["strg_ub_agg_in_0_out_sched_11"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_12"] = 1
+    new_config["strg_ub_agg_in_0_out_sched_13"] = 4
+    new_config["strg_ub_agg_in_0_out_sched_14"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_15"] = 1
+    new_config["strg_ub_agg_in_0_out_sched_16"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_17"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_18"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_19"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_20"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_21"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_22"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_23"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_24"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_25"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_26"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_27"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_28"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_29"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_30"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_31"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_32"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_33"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_34"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_35"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_36"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_37"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_38"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_39"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_40"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_41"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_42"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_43"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_44"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_45"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_46"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_47"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_48"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_49"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_50"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_51"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_52"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_53"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_54"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_55"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_56"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_57"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_58"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_59"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_60"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_61"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_62"] = 7
+    new_config["strg_ub_agg_in_0_out_sched_63"] = 7
+    new_config["strg_ub_app_ctrl_input_port"] = 0
+    new_config["strg_ub_app_ctrl_read_depth_0"] = 4
+    new_config["strg_ub_app_ctrl_read_depth_1"] = 0
+    new_config["strg_ub_app_ctrl_read_depth_2"] = 0
+    new_config["strg_ub_app_ctrl_write_depth_0"] = 2
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 1
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 1027
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_2"] = 4294967295
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_3"] = 4294967295
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_4"] = 4294967295
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_5"] = 4294967295
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 4294966912
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 4294967243
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_2"] = 4294967295
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_3"] = 4294967295
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_4"] = 4294967295
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_5"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 1
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 1
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_1"] = 1
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_2"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_3"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_4"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_5"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 4294967180
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 4294967157
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 4294967156
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_2"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_3"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_4"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_5"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 5
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_2"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_3"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_4"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_5"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 4294966789
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_2"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_3"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_4"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_5"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_dimensionality"] = 15
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_0"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_1"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_2"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_3"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_4"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_5"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_starting_addr"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_0"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_1"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_2"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_3"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_4"] = 4294967295
+    new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_5"] = 4294967295
+    new_config["strg_ub_pre_fetch_0_input_latency"] = 4
+    new_config["strg_ub_pre_fetch_1_input_latency"] = 27
+    new_config["strg_ub_pre_fetch_2_input_latency"] = 31
+    new_config["strg_ub_sync_grp_sync_group_0"] = 4
+    new_config["strg_ub_sync_grp_sync_group_1"] = 6
+    new_config["strg_ub_sync_grp_sync_group_2"] = 2
     new_config["strg_ub_tba_0_tb_0_dimensionality"] = 2
+    new_config["strg_ub_tba_0_tb_0_indices_0"] = 3
+    new_config["strg_ub_tba_0_tb_0_indices_1"] = 7
+    new_config["strg_ub_tba_0_tb_0_indices_2"] = 7
+    new_config["strg_ub_tba_0_tb_0_indices_3"] = 7
+    new_config["strg_ub_tba_0_tb_0_indices_4"] = 7
+    new_config["strg_ub_tba_0_tb_0_range_inner"] = 7
+    new_config["strg_ub_tba_0_tb_0_range_outer"] = 2
+    new_config["strg_ub_tba_0_tb_0_stride"] = 15
+    new_config["strg_ub_tba_0_tb_0_tb_height"] = 0
+    new_config["strg_ub_tba_1_tb_0_dimensionality"] = 0
+    new_config["strg_ub_tba_1_tb_0_indices_0"] = 7
+    new_config["strg_ub_tba_1_tb_0_indices_1"] = 7
+    new_config["strg_ub_tba_1_tb_0_indices_2"] = 7
+    new_config["strg_ub_tba_1_tb_0_indices_3"] = 7
+    new_config["strg_ub_tba_1_tb_0_indices_4"] = 7
+    new_config["strg_ub_tba_1_tb_0_range_inner"] = 7
+    new_config["strg_ub_tba_1_tb_0_range_outer"] = 0
+    new_config["strg_ub_tba_1_tb_0_stride"] = 0
+    new_config["strg_ub_tba_1_tb_0_tb_height"] = 0
+    new_config["strg_ub_tba_2_tb_0_dimensionality"] = 0
+    new_config["strg_ub_tba_2_tb_0_indices_0"] = 7
+    new_config["strg_ub_tba_2_tb_0_indices_1"] = 7
+    new_config["strg_ub_tba_2_tb_0_indices_2"] = 7
+    new_config["strg_ub_tba_2_tb_0_indices_3"] = 7
+    new_config["strg_ub_tba_2_tb_0_indices_4"] = 7
+    new_config["strg_ub_tba_2_tb_0_range_inner"] = 7
+    new_config["strg_ub_tba_2_tb_0_range_outer"] = 255
+    new_config["strg_ub_tba_2_tb_0_stride"] = 0
+    new_config["strg_ub_tba_2_tb_0_tb_height"] = 1
+#     new_config["strg_ub_agg_align_0_line_length"] = 64
 
-    new_config["strg_ub_tba_1_tb_0_indices_0"] = 0
-    new_config["strg_ub_tba_1_tb_0_indices_1"] = 1
-    new_config["strg_ub_tba_1_tb_0_indices_2"] = 2
-    new_config["strg_ub_tba_1_tb_0_range_inner"] = 3
-    new_config["strg_ub_tba_1_tb_0_range_outer"] = 62
-    new_config["strg_ub_tba_1_tb_0_stride"] = 2
-#    new_config["tba_1_tb_0_tb_height"] = 1
-    new_config["strg_ub_tba_1_tb_0_dimensionality"] = 2
+#     # Agg buffer
+#     new_config["strg_ub_agg_in_0_in_period"] = 1  # I don't actually know
+#     new_config["strg_ub_agg_in_0_in_sched_0"] = 0
+#     new_config["strg_ub_agg_in_0_out_period"] = 1
+#     new_config["strg_ub_agg_in_0_out_sched_0"] = 0
 
-    new_config["strg_ub_tba_2_tb_0_indices_0"] = 0
-    new_config["strg_ub_tba_2_tb_0_indices_1"] = 1
-    new_config["strg_ub_tba_2_tb_0_indices_2"] = 2
-    new_config["strg_ub_tba_2_tb_0_range_inner"] = 3
-    new_config["strg_ub_tba_2_tb_0_range_outer"] = 62
-    new_config["strg_ub_tba_2_tb_0_stride"] = 2
-#    new_config["tba_2_tb_0_tb_height"] = 1
-    new_config["strg_ub_tba_2_tb_0_dimensionality"] = 2
+#     # Input addr ctrl
+#     new_config["strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 1
+#     new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 2048
+#     new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
+#     new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
 
-    # Sets multiwrite
-    new_config["strg_ub_input_addr_ctrl_offsets_cfg_0_0"] = 0
+#     # Output addr ctrl
+#     new_config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 2
+#     new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
+#     new_config["strg_ub_output_addr_ctrl_address_gen_2_dimensionality"] = 2
+#     new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 16
+#     new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_1"] = 64
+#     new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 16
+#     new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 64
+#     new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_0"] = 16
+#     new_config["strg_ub_output_addr_ctrl_address_gen_2_ranges_1"] = 64
+#     new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
+#     new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 16
+#     new_config["strg_ub_output_addr_ctrl_address_gen_2_starting_addr"] = 32
+#     new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
+#     new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 16
+#     new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
+#     new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 16
+#     new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_0"] = 1
+#     new_config["strg_ub_output_addr_ctrl_address_gen_2_strides_1"] = 16
 
-    new_config["strg_ub_sync_grp_sync_group_0"] = 1
-    new_config["strg_ub_sync_grp_sync_group_1"] = 1
-    new_config["strg_ub_sync_grp_sync_group_2"] = 1
+#     # TBA
+#     new_config["strg_ub_tba_0_tb_0_indices_0"] = 0
+#     new_config["strg_ub_tba_0_tb_0_indices_1"] = 1
+#     new_config["strg_ub_tba_0_tb_0_indices_2"] = 2
+#     new_config["strg_ub_tba_0_tb_0_range_inner"] = 3
+#     new_config["strg_ub_tba_0_tb_0_range_outer"] = 62
+#     new_config["strg_ub_tba_0_tb_0_stride"] = 2
+# #    new_config["tba_0_tb_0_tb_height"] = 1
+#     new_config["strg_ub_tba_0_tb_0_dimensionality"] = 2
 
-    new_config["strg_ub_app_ctrl_input_port_0"] = 0
-    new_config["strg_ub_app_ctrl_input_port_1"] = 0
-    new_config["strg_ub_app_ctrl_input_port_2"] = 0
-    new_config["strg_ub_app_ctrl_read_depth_0"] = 196
-    new_config["strg_ub_app_ctrl_read_depth_1"] = 196
-    new_config["strg_ub_app_ctrl_read_depth_2"] = 196
-    new_config["strg_ub_app_ctrl_write_depth_0"] = 196
+#     new_config["strg_ub_tba_1_tb_0_indices_0"] = 0
+#     new_config["strg_ub_tba_1_tb_0_indices_1"] = 1
+#     new_config["strg_ub_tba_1_tb_0_indices_2"] = 2
+#     new_config["strg_ub_tba_1_tb_0_range_inner"] = 3
+#     new_config["strg_ub_tba_1_tb_0_range_outer"] = 62
+#     new_config["strg_ub_tba_1_tb_0_stride"] = 2
+# #    new_config["tba_1_tb_0_tb_height"] = 1
+#     new_config["strg_ub_tba_1_tb_0_dimensionality"] = 2
+
+#     new_config["strg_ub_tba_2_tb_0_indices_0"] = 0
+#     new_config["strg_ub_tba_2_tb_0_indices_1"] = 1
+#     new_config["strg_ub_tba_2_tb_0_indices_2"] = 2
+#     new_config["strg_ub_tba_2_tb_0_range_inner"] = 3
+#     new_config["strg_ub_tba_2_tb_0_range_outer"] = 62
+#     new_config["strg_ub_tba_2_tb_0_stride"] = 2
+# #    new_config["tba_2_tb_0_tb_height"] = 1
+#     new_config["strg_ub_tba_2_tb_0_dimensionality"] = 2
+
+#     # Sets multiwrite
+#     new_config["strg_ub_input_addr_ctrl_offsets_cfg_0_0"] = 0
+
+#     new_config["strg_ub_sync_grp_sync_group_0"] = 1
+#     new_config["strg_ub_sync_grp_sync_group_1"] = 1
+#     new_config["strg_ub_sync_grp_sync_group_2"] = 1
+
+#     new_config["strg_ub_app_ctrl_input_port_0"] = 0
+#     new_config["strg_ub_app_ctrl_input_port_1"] = 0
+#     new_config["strg_ub_app_ctrl_input_port_2"] = 0
+#     new_config["strg_ub_app_ctrl_read_depth_0"] = 196
+#     new_config["strg_ub_app_ctrl_read_depth_1"] = 196
+#     new_config["strg_ub_app_ctrl_read_depth_2"] = 196
+#     new_config["strg_ub_app_ctrl_write_depth_0"] = 196
 
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
@@ -886,7 +1115,7 @@ def test_top(read_delay,
                             max_prefetch=max_prefetch,
                             read_delay=read_delay)
 
-    model_lt.set_config(new_config=new_config)
+    # model_lt.set_config(new_config=new_config)
 
     ### DUT
     lt_dut = LakeTop(data_width=data_width,
@@ -949,13 +1178,17 @@ def test_top(read_delay,
     ren = [1] * interconnect_output_ports
     addr_in = 0
 
-    for i in range(1000):
+    ren_seq = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1]
+    for i in range(10000):
+        ren_seq.append(0)
+
+    for i in range(100):
         # Rand data
         addr_in = rand.randint(0, 2 ** 16 - 1)
         for j in range(interconnect_input_ports):
             data_in[j] += 1
-            valid_in[j] = rand.randint(0, 1)
-        ren_tmp = rand.randint(0, 1)
+            valid_in[j] = 1 #rand.randint(0, 1)
+        ren_tmp = ren_seq[i] #rand.randint(0, 1)
         for j in range(interconnect_output_ports):
             ren[j] = ren_tmp
 
@@ -977,23 +1210,24 @@ def test_top(read_delay,
         tester.eval()
 
         # Now check the outputs
-        if(interconnect_output_ports == 1):
-            tester.circuit.valid_out.expect(mod_vo[0])
-            if mod_vo[0]:
-                tester.circuit.data_out.expect(mod_do[0][0])
-        else:
-            for j in range(interconnect_output_ports):
-                tester.circuit.valid_out[j].expect(mod_vo[j])
-                if mod_vo[j]:
-                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
+        # if(interconnect_output_ports == 1):
+        #     tester.circuit.valid_out.expect(mod_vo[0])
+        #     if mod_vo[0]:
+        #         tester.circuit.data_out.expect(mod_do[0][0])
+        # else:
+        #     for j in range(interconnect_output_ports):
+        #         tester.circuit.valid_out[j].expect(mod_vo[j])
+        #         if mod_vo[j]:
+        #             getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 def test_config_storage(data_width=16,
@@ -1237,5 +1471,5 @@ if __name__ == "__main__":
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
-    test_top(0)
+    test_top(1)
     # test_config_storage()
