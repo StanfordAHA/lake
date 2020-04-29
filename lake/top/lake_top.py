@@ -685,12 +685,34 @@ if __name__ == "__main__":
     use_sram_stub = True
     fifo_mode = True
     mem_width = 64
-    lake_dut = LakeTop(mem_width=mem_width,
-                       sram_macro_info=tsmc_info,
-                       use_sram_stub=use_sram_stub,
-                       fifo_mode=fifo_mode,
-                       add_clk_enable=True,
-                       add_flush=True)
+    lake_dut = LakeTop(read_delay=1,
+                       data_width=16,
+                       mem_width=64,
+                       mem_depth=512,
+                       banks=1,
+                       input_iterator_support=6,
+                       output_iterator_support=6,
+                       interconnect_input_ports=1,
+                       interconnect_output_ports=3,
+                       mem_input_ports=1,
+                       mem_output_ports=1,
+                       use_sram_stub=1,
+                       agg_height=8,
+                       max_agg_schedule=64,
+                       input_max_port_sched=64,
+                       output_max_port_sched=64,
+                       align_input=1,
+                       max_line_length=256,
+                       max_tb_height=1,
+                       tb_range_max=64,
+                       tb_range_inner_max=5,
+                       max_tb_stride=15,
+                       tb_sched_max=64,
+                       num_tb=1,
+                       tb_iterator_support=2,
+                       multiwrite=1,
+                       max_prefetch=64)
+
     sram_port_pass = change_sram_port_names(use_sram_stub=True, sram_macro_info=tsmc_info)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,

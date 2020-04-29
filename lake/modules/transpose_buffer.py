@@ -283,9 +283,11 @@ class TransposeBuffer(Generator):
             self.input_index = self.row_index.extend(self.max_tb_height_bits2)
 
     # input to transpose buffer
-    @always_ff((posedge, "clk"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def input_to_tb(self):
-        if self.valid_data:
+        if ~self.rst_n:
+            self.tb = 0
+        elif self.valid_data:
             if self.dimensionality == 0:
                 self.tb[self.input_index] = 0
             else:
@@ -399,9 +401,12 @@ class TransposeBuffer(Generator):
         elif self.valid_data & ~self.start_data:
             self.start_data = 1
 
-    @always_ff((posedge, "clk"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_old_start_data(self):
-        self.old_start_data = self.start_data
+        if ~self.rst_n:
+            self.old_start_data = 0
+        else:
+            self.old_start_data = self.start_data
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_rdy_to_arbiter(self):
