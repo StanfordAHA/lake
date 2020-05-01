@@ -221,8 +221,9 @@ class LakeTop(Generator):
 #        self._mode.add_attribute(ConfigRegAttr("MODE!"))
 
         # Currenlt mode = 0 is UB, mode = 1 is FIFO
-        self._gclk = self.var("gclk", 1)
-        self.wire(self._gclk, kts.util.clock(self._clk & self._tile_en))
+        gclk = self.var("gclk", 1)
+        self._gclk = kts.util.clock(gclk)
+        self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
         self._mem_data_out = self.var("mem_data_out",
                                       self.data_width,
