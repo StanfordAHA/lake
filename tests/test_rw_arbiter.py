@@ -164,6 +164,7 @@ def test_rw_arbiter_basic(int_out_ports,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
+
 if __name__ == "__main__":
     test_rw_arbiter_basic(int_out_ports=1,
                           fetch_width=16,

@@ -134,7 +134,7 @@ class SRAMWrapper(Generator):
                                                   data_width=self.data_width,
                                                   width_mult=self.fw_int // 2,
                                                   depth=self.mem_depth)
-                    
+
                         self.add_child(f"mem_inst_{self.bank_num}_pt_{j}",
                                        mbank,
                                        sram_addr=self._mem_addr_to_sram,

@@ -86,15 +86,32 @@ class AppCtrl(Generator):
 
         # Now gate the valid with stencil valid
         self.wire(self._valid_out_data, self._tb_valid & self._valid_out_stencil)
-
+        self._wr_delay_state_n = self.var("wr_delay_state_n", self.int_out_ports)
         self._wen_out = self.output("wen_out", self.int_in_ports)
         self._ren_out = self.output("ren_out", self.int_out_ports)
 
-        self._write_depth = self.input("write_depth", self.depth_width,
-                                       size=self.int_in_ports,
-                                       explicit_array=True,
-                                       packed=True)
-        self._write_depth.add_attribute(ConfigRegAttr("Depth of writes"))
+        self._write_depth_wo = self.input("write_depth_wo", self.depth_width,
+                                          size=self.int_in_ports,
+                                          explicit_array=True,
+                                          packed=True)
+        self._write_depth_wo.add_attribute(ConfigRegAttr("Depth of writes"))
+
+        self._write_depth_ss = self.input("write_depth_ss", self.depth_width,
+                                          size=self.int_in_ports,
+                                          explicit_array=True,
+                                          packed=True)
+        self._write_depth_ss.add_attribute(ConfigRegAttr("Depth of writes"))
+
+        self._write_depth = self.var("write_depth", self.depth_width,
+                                     size=self.int_in_ports,
+                                     explicit_array=True,
+                                     packed=True)
+
+        for i in range(self.int_in_ports):
+            self.wire(self._write_depth[i],
+                      kts.ternary(self._wr_delay_state_n[i],
+                                  self._write_depth_wo[i],
+                                  self._write_depth_ss[i]))
 
         self._read_depth = self.input("read_depth", self.depth_width,
                                       size=self.int_out_ports,
@@ -126,13 +143,6 @@ class AppCtrl(Generator):
         self._prefill = self.input("prefill", self.int_out_ports)
         self._prefill.add_attribute(ConfigRegAttr("Is the input stream prewritten?"))
 
-        # # Set the wen_en based on write_cnt
-        # for i in range(self.int_in_ports):
-        #     self.wire(self._wen_en[i], self._write_count[i] <= self._write_depth)
-        self._wr_delay_state_n = self.var("wr_delay_state_n", self.int_out_ports)
-
-        # for i in range(self.int_in_ports):
-        #     self.wire(self._wen_en[i], self._write_count[i] <= self._write_depth)
         for i in range(self.int_out_ports):
             self.add_code(self.set_read_done, idx=i)
             if self.int_in_ports == 1:
