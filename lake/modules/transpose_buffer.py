@@ -113,6 +113,11 @@ class TransposeBuffer(Generator):
                                   packed=True)
         self.indices.add_attribute(ConfigRegAttr("Output indices for for loop pattern"))
 
+        # offset to start output address if we're starting in the middle of a wider
+        # fetch width word for example
+        self.output_offset = self.input("output_offset", self.fetch_width_bits)
+        self.output_offset.add_attribute(ConfigRegAttr("Output offset"))
+
         ###########
         # OUTPUTS #
         ###########
@@ -155,6 +160,7 @@ class TransposeBuffer(Generator):
         self.input_index = self.var("input_index", self.max_tb_height_bits2)
 
         self.output_index_abs = self.var("output_index_abs", self.max_range_stride_bits2)
+
         if self.fetch_width != 1:
             self.output_index_long = self.var("output_index_long", self.max_range_stride_bits2)
             self.output_index = self.var("output_index", self.fetch_width_bits)
@@ -317,12 +323,14 @@ class TransposeBuffer(Generator):
         elif self.dimensionality == 1:
             self.indices_index_inner = 0
             self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
-                self.stride.extend(self.max_range_stride_bits2)
+                self.stride.extend(self.max_range_stride_bits2) \
+                + self.output_offset.extend(self.max_range_stride_bits2)
         else:
             self.indices_index_inner = self.indices[self.index_inner]
             self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
                 self.stride.extend(self.max_range_stride_bits2) \
-                + self.indices_index_inner.extend(self.max_range_stride_bits2)
+                + self.indices_index_inner.extend(self.max_range_stride_bits2) \
+                + self.output_offset.extend(self.max_range_stride_bits2)
 
     @always_comb
     def set_output_index_long(self):
@@ -445,5 +453,12 @@ class TransposeBuffer(Generator):
 
 
 if __name__ == "__main__":
-    dut = TransposeBuffer(16, 4, 1, 1, 9, 5, 2)
+    dut = TransposeBuffer(word_width=16,
+                          fetch_width=4,
+                          num_tb=1,
+                          max_tb_height=1,
+                          max_range=9,
+                          max_range_inner=5,
+                          max_stride=3,
+                          tb_iterator_support=2)
     verilog(dut, filename="transpose_buffer.sv")
