@@ -115,8 +115,8 @@ class TransposeBuffer(Generator):
 
         # offset to start output address if we're starting in the middle of a wider
         # fetch width word for example
-        self.output_offset = self.input("output_offset", self.fetch_width_bits)
-        self.output_offset.add_attribute(ConfigRegAttr("Output offset"))
+        self.starting_addr = self.input("starting_addr", self.fetch_width_bits)
+        self.starting_addr.add_attribute(ConfigRegAttr("TB starting address"))
 
         ###########
         # OUTPUTS #
@@ -324,13 +324,13 @@ class TransposeBuffer(Generator):
             self.indices_index_inner = 0
             self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
                 self.stride.extend(self.max_range_stride_bits2) \
-                + self.output_offset.extend(self.max_range_stride_bits2)
+                + self.starting_addr.extend(self.max_range_stride_bits2)
         else:
             self.indices_index_inner = self.indices[self.index_inner]
             self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
                 self.stride.extend(self.max_range_stride_bits2) \
                 + self.indices_index_inner.extend(self.max_range_stride_bits2) \
-                + self.output_offset.extend(self.max_range_stride_bits2)
+                + self.starting_addr.extend(self.max_range_stride_bits2)
 
     @always_comb
     def set_output_index_long(self):
