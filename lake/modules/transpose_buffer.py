@@ -353,6 +353,8 @@ class TransposeBuffer(Generator):
                         self.col_pixels[i] = self.tb[i + self.max_tb_height]
                     else:
                         self.col_pixels[i] = self.tb[i + self.max_tb_height][self.output_index]
+            else:
+                self.col_pixels[i] = 0
 
     @always_comb
     def set_output_index(self):
