@@ -110,8 +110,8 @@ class AppCtrl(Generator):
         for i in range(self.int_in_ports):
             self.wire(self._write_depth[i],
                       kts.ternary(self._wr_delay_state_n[i],
-                                  self._write_depth_wo[i],
-                                  self._write_depth_ss[i]))
+                                  self._write_depth_ss[i],
+                                  self._write_depth_wo[i]))
 
         self._read_depth = self.input("read_depth", self.depth_width,
                                       size=self.int_out_ports,
