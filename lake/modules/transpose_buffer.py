@@ -129,7 +129,7 @@ class TransposeBuffer(Generator):
                                       explicit_array=True)
         self.output_valid = self.output("output_valid", 1)
         self.rdy_to_arbiter = self.output("rdy_to_arbiter", 1)
-        
+
         ###################
         # LOCAL VARIABLES #
         ###################
