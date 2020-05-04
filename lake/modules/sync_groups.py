@@ -103,6 +103,14 @@ class SyncGroups(Generator):
                                         explicit_array=True,
                                         packed=True)
 
+        self._local_gate_bus_n = self.var("local_gate_bus_n",
+                                          self.int_out_ports,
+                                          size=self.int_out_ports,
+                                          explicit_array=True,
+                                          packed=True)
+
+        self.wire(self._local_gate_bus, ~self._local_gate_bus_n)
+
         self._local_gate_bus_tpose = self.var("local_gate_bus_tpose",
                                               self.int_out_ports,
                                               size=self.int_out_ports,
@@ -201,12 +209,12 @@ class SyncGroups(Generator):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_rd_gates(self, idx):
         if ~self._rst_n:
-            self._local_gate_bus[idx] = ~const(0, self.int_out_ports)
+            self._local_gate_bus_n[idx] = const(0, self.int_out_ports)
         elif self._group_finished[idx]:
-            self._local_gate_bus[idx] = ~const(0, self.int_out_ports)
+            self._local_gate_bus_n[idx] = const(0, self.int_out_ports)
         # Bring this down eventually
         else:
-            self._local_gate_bus[idx] = self._local_gate_bus[idx] & self._local_gate_mask[idx]
+            self._local_gate_bus_n[idx] = ~(self._local_gate_bus[idx] & self._local_gate_mask[idx])
 
     @always_comb
     def set_tpose(self):
