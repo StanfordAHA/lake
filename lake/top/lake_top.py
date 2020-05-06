@@ -349,8 +349,15 @@ class LakeTop(Generator):
                                        total_sets=self.total_sets,
                                        sets_per_macro=self.sets_per_macro)
 
+        # The clock to config sequencer needs to be the normal clock or
+        # if the tile is off, we bring the clock back in based on config_en
+        cfg_seq_clk = self.var("cfg_seq_clk", 1)
+        self._cfg_seq_clk = kts.util.clock(cfg_seq_clk)
+        # self.wire(cfg_seq_clk, kts.util.clock(self._gclk | (self._clk & self._config_en.r_or())))
+        self.wire(cfg_seq_clk, kts.util.clock(self._gclk))
+
         self.add_child(f"config_seq", stg_cfg_seq,
-                       clk=self._gclk,
+                       clk=self._cfg_seq_clk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en | self._config_en.r_or(),
                        config_data_in=self._config_data_in_shrt,
