@@ -169,9 +169,14 @@ class AppCtrl(Generator):
             else:
                 self.add_code(self.set_wr_delay_state, idx=i)
 
+        self._read_on = self.var("read_on", self.int_out_ports)
+        for i in range(self.int_out_ports):
+            self.wire(self._read_on[i], self._read_depth[i].r_or())
+
         # If we have prefill enabled, we are skipping the initial delay step...
         self.wire(self._ren_out,
-                  (self._wr_delay_state_n | self._prefill) & ~self._read_done_ff & self._ren_in)
+                  (self._wr_delay_state_n | self._prefill) & ~self._read_done_ff & self._ren_in &
+                  self._read_on)
         self.wire(self._wen_out, ~self._write_done_ff & self._wen_in)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
