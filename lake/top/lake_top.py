@@ -115,6 +115,10 @@ class LakeTop(Generator):
         self._rst_n = self.reset("rst_n")
 
         # Chaining config regs
+
+        self._enable_chain_input = self.input("enable_chain_input", 1)
+        self._enable_chain_input.add_attribute(ConfigRegAttr("Enable chain on input"))
+
         self._enable_chain_output = self.input("enable_chain_output", 1)
         self._enable_chain_output.add_attribute(ConfigRegAttr("Enable chain on output"))
 
@@ -681,6 +685,8 @@ class LakeTop(Generator):
 
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
+                               enable_chain_input=self._enable_chain_input,
+                               enable_chain_output=self._enable_chain_output,
                                chain_idx_input=self._chain_idx_input,
                                chain_idx_output=self._chain_idx_output,
                                clk_en=self._clk_en | self._config_en.r_or(),
