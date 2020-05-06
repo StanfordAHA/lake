@@ -202,8 +202,6 @@ class SRAMWrapper(Generator):
         # these ranges are inclusive
         if num_tiles == 1:
             self._mem_addr_to_sram = self._mem_addr_in_bank
-        elif ~self._enable_chain_input:
-            self._mem_addr_to_sram = self._mem_addr_in_bank
         else:
             self._mem_addr_to_sram = self._mem_addr_in_bank[self.address_width - self.chain_idx_bits - 1, 0]
 
