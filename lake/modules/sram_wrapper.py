@@ -251,17 +251,17 @@ class SRAMWrapper(Generator):
     @always_ff((posedge, "clk"))
     def set_valid_data(self):
         for i in range(self.mem_output_ports):
-            if self._enable_chain_output:
-                # read
-                if ~self._mem_wen_in_bank:
+            # read
+            if ~self._mem_wen_in_bank:
+                if self._enable_chain_output:
                     if self._chain_idx_output == self._chain_idx_tile:
                         self._valid_data[i] = self._mem_cen_in_bank
                     else:
                         self._valid_data[i] = 0
                 else:
-                    self._valid_data[i] = 0
+                    self._valid_data[i] = self._mem_cen_in_bank
             else:
-                self._valid_data[i] = self._mem_cen_in_bank
+                self._valid_data[i] = 0
 
 
 if __name__ == "__main__":
