@@ -353,7 +353,8 @@ class LakeTop(Generator):
         # if the tile is off, we bring the clock back in based on config_en
         cfg_seq_clk = self.var("cfg_seq_clk", 1)
         self._cfg_seq_clk = kts.util.clock(cfg_seq_clk)
-        self.wire(cfg_seq_clk, kts.util.clock(self._gclk | (self._clk & self._config_en.r_or())))
+        # self.wire(cfg_seq_clk, kts.util.clock(self._gclk | (self._clk & self._config_en.r_or())))
+        self.wire(cfg_seq_clk, kts.util.clock(self._gclk))
 
         self.add_child(f"config_seq", stg_cfg_seq,
                        clk=self._cfg_seq_clk,
