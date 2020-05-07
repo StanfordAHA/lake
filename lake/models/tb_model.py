@@ -27,19 +27,25 @@ class TBModel(Model):
         self.config["stride"] = 1
         self.config["indices"] = [0]
         self.config["dimensionality"] = 1
+        self.config["starting_addr"] = 0
 
         # initialize transpose buffer
+        self.tb = []
         if self.fetch_width == 1:
-            self.tb = []
             for i in range(2 * self.tb_height):
                 self.tb.append(0)
         else:
-            self.tb = []
             for i in range(2 * self.tb_height):
                 row = []
                 for j in range(self.fetch_width):
                     row.append(0)
                 self.tb.append(row)
+
+        self.tb_valid = []
+        for i in range(2 * self.tb_height):
+            self.tb_valid.append(0)
+
+        self.mask_valid = 0
 
         self.row_index = 0
         self.input_buf_index = 0
@@ -75,17 +81,22 @@ class TBModel(Model):
             else:
                 self.config[key] = config_val
 
+        self.tb = []
         if self.fetch_width == 1:
-            self.tb = []
             for i in range(2 * self.tb_height):
                 self.tb.append(0)
         else:
-            self.tb = []
             for i in range(2 * self.tb_height):
                 row = []
                 for j in range(self.fetch_width):
                     row.append(0)
                 self.tb.append(row)
+
+        self.tb_valid = []
+        for i in range(2 * self.tb_height):
+            self.tb_valid.append(0)
+
+        self.mask_valid = 0
 
         self.row_index = 0
         self.input_buf_index = 0
@@ -121,7 +132,7 @@ class TBModel(Model):
     def get_rdy_to_arbiter(self):
         return self.rdy_to_arbiter
 
-    def output_from_tb(self, input_data, valid_data, ack_in, ren):
+    def output_from_tb(self, input_data, valid_data, ack_in, ren, mem_valid_data):
 
         # Grab current values...
         index_inner_curr = self.index_inner
@@ -157,10 +168,11 @@ class TBModel(Model):
             self.pause_output = 1 - ren
 
         if self.config["dimensionality"] == 1:
-            self.output_index_abs = index_outer_curr * self.config["stride"]
+            self.output_index_abs = index_outer_curr * self.config["stride"] + self.config["starting_addr"]
         else:
             self.output_index_abs = index_outer_curr * self.config["stride"] + \
-                self.config["indices"][index_inner_curr]
+                self.config["indices"][index_inner_curr] + \
+                self.config["starting_addr"]
 
         self.output_index = self.output_index_abs % self.fetch_width
 
@@ -185,11 +197,17 @@ class TBModel(Model):
                         tb_curr[i + self.tb_height * (1 - (out_buf_index_curr ^
                                 self.switch_out_buf))][self.output_index])
 
-            # Set output valid
-            if self.pause_output:
-                self.output_valid = 0
-            else:
-                self.output_valid = 1
+        # Set mask valid
+        if out_buf_index_curr ^ self.switch_out_buf:
+            self.mask_valid = self.tb_valid[0]
+        else:
+            self.mask_valid = self.tb_valid[1]
+
+        # Set output valid
+        if self.pause_output:
+            self.output_valid = 0
+        else:
+            self.output_valid = self.mask_valid
 
         # Stateful updates...
 
@@ -229,7 +247,10 @@ class TBModel(Model):
             if self.config["dimensionality"] == 1:
                 if index_outer_curr == self.config["range_outer"] - 1:
                     if not self.pause_output:
-                        self.pause_tb = 1 - valid_data
+                        if (not self.rdy_to_arbiter) or valid_data:
+                            self.pause_tb = 1
+                        else:
+                            self.pause_tb = 0
                     else:
                         self.pause_tb = 0
                 elif pause_tb_curr:
@@ -240,7 +261,10 @@ class TBModel(Model):
                 if index_inner_curr == self.config["range_inner"] - 1:
                     if index_outer_curr == self.config["range_outer"] - 1:
                         if not self.pause_output:
-                            self.pause_tb = 1 - valid_data
+                            if (not self.rdy_to_arbiter) or valid_data:
+                                self.pause_tb = 1
+                            else:
+                                self.pause_tb = 0
                         else:
                             self.pause_tb = 0
                     else:
@@ -253,6 +277,7 @@ class TBModel(Model):
             # Row index + input_buf_index + input tb
             if valid_data:
                 self.tb[row_index_curr + self.tb_height * input_buf_index_curr] = input_data
+                self.tb_valid[row_index_curr + self.tb_height * input_buf_index_curr] = mem_valid_data
                 if row_index_curr == self.tb_height - 1:
                     self.row_index = 0
                     self.input_buf_index = 1 - input_buf_index_curr
@@ -314,13 +339,14 @@ class TBModel(Model):
             elif ack_in:
                 self.rdy_to_arbiter = 0
 
-    def print_tb(self, input_data, valid_data, ack_in, ren):
+    def print_tb(self, input_data, valid_data, ack_in, ren, mem_valid_data):
         print("INPUTS")
 
         print("input data: ", input_data)
         print("valid data: ", valid_data)
         print("ack in ", ack_in)
         print("ren ", ren)
+        print("mem valid data", mem_valid_data)
 
         print("input index ", self.tb_height * self.input_buf_index + self.row_index)
         print("tb: ", self.tb)
@@ -344,13 +370,15 @@ class TBModel(Model):
         print("col pixels", self.col_pixels)
         print("out valid", self.output_valid)
         print("switch out buf", self.switch_out_buf)
+        print("mask valid", self.mask_valid)
+        print("tb valid", self.tb_valid)
 
-    def interact(self, input_data, valid_data, ack_in, ren):
+    def interact(self, input_data, valid_data, ack_in, ren, mem_valid_data):
         # print("before")
         # self.print_tb(input_data, valid_data, ack_in, ren)
-        self.output_from_tb(input_data, valid_data, ack_in, ren)
-        # print(" ")
+        self.output_from_tb(input_data, valid_data, ack_in, ren, mem_valid_data)
+        print(" ")
         # print("after")
-        # self.print_tb(input_data, valid_data, ack_in, ren)
+        self.print_tb(input_data, valid_data, ack_in, ren, mem_valid_data)
         # print(" ")
         return self.col_pixels, self.output_valid, self.rdy_to_arbiter
