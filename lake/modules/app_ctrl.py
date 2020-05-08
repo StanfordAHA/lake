@@ -79,7 +79,7 @@ class AppCtrl(Generator):
             # Now we need to just compute stencil valid
             threshold_comps = [self._dim_counter[_i] >= self._threshold[_i] for _i in range(self.stcl_iter_support)]
             self.wire(self._valid_out_stencil[0], kts.concat(*threshold_comps).r_and())
-            self.wire(self._valid_out_stencil[1], kts.const(0, 1))
+            self.wire(self._valid_out_stencil[1], kts.concat(*threshold_comps).r_and())
 
         else:
             self.wire(self._valid_out_stencil, self._tb_valid)

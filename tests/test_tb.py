@@ -68,7 +68,7 @@ def test_tb(word_width=16,
 
     rand.seed(0)
 
-    num_iters = 12
+    num_iters = 17
     for i in range(num_iters):
         data = []
         for j in range(fetch_width):
