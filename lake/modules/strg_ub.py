@@ -108,10 +108,35 @@ class StrgUB(Generator):
                                    explicit_array=True)
 
         self._wen_in = self.input("wen_in", self.interconnect_input_ports)
-        self._ren_in = self.input("ren_in", self.interconnect_output_ports)
+        self._ren_input = self.input("ren_in", self.interconnect_output_ports)
+        # Post rate matched
+        self._ren_in = self.var("ren_in_muxed", self.interconnect_output_ports)
         # Processed versions of wen and ren from the app ctrl
         self._wen = self.var("wen", self.interconnect_input_ports)
         self._ren = self.var("ren", self.interconnect_output_ports)
+
+        # Add rate matched
+        # If one input port, let any output port use the wen_in as the ren_in
+        # If more, do the same thing but also provide port selection
+        if self.interconnect_input_ports == 1:
+            self._rate_matched = self.input("rate_matched", self.interconnect_output_ports)
+            self._rate_matched.add_attribute(ConfigRegAttr("Rate matched - 1 or 0"))
+            for i in range(self.interconnect_output_ports):
+                self.wire(self._ren_in[i],
+                          kts.ternary(self._rate_matched[i],
+                                      self._wen_in,
+                                      self._ren_input[i]))
+        else:
+            self._rate_matched = self.input("rate_matched", 1 + kts.clog2(self.interconnect_input_ports),
+                                            size=self.interconnect_output_ports,
+                                            explicit_array=True,
+                                            packed=True)
+            self._rate_matched.add_attribute(ConfigRegAttr("Rate matched [input port | on/off]"))
+            for i in range(self.interconnect_output_ports):
+                self.wire(self._ren_in[i],
+                          kts.ternary(self._rate_matched[i][0],
+                                      self._wen_in[self._rate_matched[i][kts.clog2(self.interconnect_input_ports), 1]],
+                                      self._ren_input[i]))
 
         self._arb_wen_en = self.var("arb_wen_en", self.interconnect_input_ports)
         self._arb_ren_en = self.var("arb_ren_en", self.interconnect_output_ports)

@@ -86,7 +86,7 @@ def test_tb(word_width=16,
 
         input_data = data
 
-        mem_valid_data = valid_data #rand.randint(0, 1)
+        mem_valid_data = valid_data  # rand.randint(0, 1)
         tester.circuit.mem_valid_data = mem_valid_data
 
         ack_in = valid_data
@@ -107,7 +107,7 @@ def test_tb(word_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="tbdump"
+        tempdir = "tbdump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
