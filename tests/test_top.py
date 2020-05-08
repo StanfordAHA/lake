@@ -1840,7 +1840,6 @@ def test_2ports_idstream(data_width=16,
     new_config = {}
 
     new_config["strg_ub_app_ctrl_input_port_0"] = 0
-    new_config["strg_ub_app_ctrl_input_port_1"] = 1
     new_config["strg_ub_app_ctrl_read_depth_0"] = 2 * mem_depth
     new_config["strg_ub_app_ctrl_write_depth_wo_0"] = mem_depth
     new_config["strg_ub_app_ctrl_write_depth_ss_0"] = mem_depth
@@ -1901,6 +1900,58 @@ def test_2ports_idstream(data_width=16,
     new_config["enable_chain_input"] = 0
     new_config["chain_idx_input"] = 0
     new_config["chain_idx_output"] = 0
+
+    new_config["strg_ub_app_ctrl_input_port_1"] = 1
+    new_config["strg_ub_app_ctrl_read_depth_1"] = 2 * mem_depth
+    new_config["strg_ub_app_ctrl_write_depth_wo_1"] = mem_depth
+    new_config["strg_ub_app_ctrl_write_depth_ss_1"] = mem_depth
+    new_config["strg_ub_app_ctrl_coarse_read_depth_1"] = int(mem_depth / fw_int)
+    new_config["strg_ub_app_ctrl_coarse_write_depth_wo_1"] = int(mem_depth / fw_int)
+    new_config["strg_ub_app_ctrl_coarse_write_depth_ss_1"] = int(mem_depth / fw_int)
+
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_dimensionality"] = 2
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_0"] = int(mem_depth / fw_int)
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_1"] = 100
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_2"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_3"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_4"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_5"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_starting_addr"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_0"] = 1
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_1"] = 512
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_2"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_3"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_4"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_5"] = 0
+
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = int(mem_depth / fw_int)
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 100
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_2"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_3"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_4"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_5"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 512
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_2"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_3"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_4"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_5"] = 0
+
+    new_config["strg_ub_tba_1_tb_0_range_outer"] = mem_depth
+    new_config["strg_ub_tba_1_tb_0_starting_addr"] = 0
+    new_config["strg_ub_tba_1_tb_0_stride"] = 1
+    new_config["strg_ub_tba_1_tb_0_dimensionality"] = 2
+    new_config["strg_ub_tba_1_tb_0_indices_0"] = 0
+    new_config["strg_ub_tba_1_tb_0_indices_1"] = 0
+    new_config["strg_ub_tba_1_tb_0_indices_2"] = 0
+    new_config["strg_ub_tba_1_tb_0_indices_3"] = 0
+    new_config["strg_ub_tba_1_tb_0_range_inner"] = 2
+    new_config["strg_ub_tba_1_tb_0_tb_height"] = 1
+
+    new_config["strg_ub_sync_grp_sync_group_1"] = 1
+    new_config["strg_ub_pre_fetch_1_input_latency"] = 4
 
     ### DUT
     lt_dut = LakeTop(data_width=data_width,
