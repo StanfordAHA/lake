@@ -22,7 +22,8 @@ def test_output_addr_basic(banks,
                            data_width=16,
                            fetch_width=32,
                            iterator_support=4,
-                           address_width=16):
+                           address_width=16,
+                           config_width=16):
 
     fw_int = int(fetch_width / data_width)
 
@@ -64,7 +65,8 @@ def test_output_addr_basic(banks,
                          num_tiles=num_tiles,
                          banks=banks,
                          iterator_support=iterator_support,
-                         address_width=address_width)
+                         address_width=address_width,
+                         config_width=config_width)
     lift_config_reg(dut.internal_generator)
     magma_dut = kts.util.to_magma(dut, flatten_array=True,
                                   check_multiple_driver=False,
@@ -112,11 +114,9 @@ def test_output_addr_basic(banks,
 
         if(interconnect_output_ports == 1):
             tester.circuit.addr_out.expect(addrs[0])
-            tester.circuit.tile_output_en.expect(tile_output_en[0])
         else:
             for j in range(interconnect_output_ports):
                 getattr(tester.circuit, f"addr_out_{z}").expect(addrs[z])
-                tester.circuit.tile_output_en[j].expect(tile_output_en[j])
 
         tester.step(2)
 
@@ -136,4 +136,5 @@ if __name__ == "__main__":
                            data_width=16,
                            fetch_width=32,
                            iterator_support=4,
-                           address_width=16)
+                           address_width=16,
+                           config_width=16)
