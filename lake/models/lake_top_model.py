@@ -30,6 +30,7 @@ class LakeTopModel(Model):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=1,
+                 sram_name="default_name",
                  read_delay=1,
                  agg_height=8,
                  max_agg_schedule=64,
@@ -43,7 +44,9 @@ class LakeTopModel(Model):
                  tb_sched_max=64,
                  num_tb=1,
                  multiwrite=2,
-                 max_prefetch=64):
+                 max_prefetch=64,
+                 num_tiles=1,
+                 stcl_valid_iter=4):
 
         self.data_width = data_width
         self.mem_width = mem_width
@@ -73,19 +76,40 @@ class LakeTopModel(Model):
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
         self.read_delay = read_delay
+        self.num_tiles = num_tiles
+        self.stcl_valid_iter = stcl_valid_iter
 
-        self.address_width = kts.clog2(self.mem_depth)
+        self.chain_idx_bits = max(1, kts.clog2(num_tiles)
+        self.address_width = kts.clog2(self.mem_depth * num_tiles)
 
         self.config = {}
+        
+        # top level configuration registers
+
+        # chaining
+        self.config[f"enable_chain_input"] = 0
+        self.config[f"enable_chain_output"] = 0
+        self.config[f"chain_idx_input"] = 0
+        self.config[f"chain_idx_output"] = 0
+        
+        self.config[f"tile_en"] = 0
+        self.config[f"mode"] = 0
 
         # Set up model..
         self.app_ctrl = AppCtrlModel(int_in_ports=self.interconnect_input_ports,
-                                     int_out_ports=self.interconnect_output_ports)
+                                     int_out_ports=self.interconnect_output_ports,
+                                     sprt_stcl_valid=True,
+                                     stcl_iter_support=stcl_iter_support)
         for i in range(self.interconnect_input_ports):
             self.config[f"app_ctrl_write_depth_{i}"] = 0
         for i in range(self.interconnect_output_ports):
             self.config[f"app_ctrl_input_port_{i}"] = 0
             self.config[f"app_ctrl_read_depth_{i}"] = 0
+            self.config[f"app_ctrl_prefill_{i}"] = 0
+
+        for i in range(self.stcl_iter_support):
+            self.config[f'app_ctrl_ranges_{i}'] = 0
+            self.config[f'app_ctrl_app_ctrl_threshold_{i}'] = 0
 
         ### INST AGG ALIGNER
         if(self.agg_height > 0):
@@ -114,10 +138,12 @@ class LakeTopModel(Model):
                                       data_width=self.data_width,
                                       fetch_width=self.mem_width,
                                       mem_depth=self.mem_depth,
+                                      num_tiles=self.num_tiles
                                       banks=self.banks,
                                       iterator_support=self.input_iterator_support,
                                       max_port_schedule=self.input_max_port_sched,
                                       address_width=self.address_width)
+
         for i in range(self.interconnect_input_ports):
             self.config[f"input_addr_ctrl_address_gen_{i}_dimensionality"] = 0
             self.config[f"input_addr_ctrl_address_gen_{i}_starting_addr"] = 0
@@ -130,11 +156,13 @@ class LakeTopModel(Model):
         ### OUTPUT ADDR CTRL
         self.oac = OutputAddrCtrlModel(interconnect_output_ports=self.interconnect_output_ports,
                                        mem_depth=self.mem_depth,
+                                       num_tiles=self.num_tiles,
                                        data_width=self.data_width,
                                        fetch_width=self.mem_width,
                                        banks=self.banks,
                                        iterator_support=self.output_iterator_support,
-                                       address_width=self.address_width)
+                                       address_width=self.address_width,
+                                       chain_idx_output=self.config[f"chain_idx_output"])
         for i in range(self.interconnect_output_ports):
             self.config[f"output_addr_ctrl_address_gen_{i}_dimensionality"] = 0
             self.config[f"output_addr_ctrl_address_gen_{i}_starting_addr"] = 0
@@ -156,11 +184,20 @@ class LakeTopModel(Model):
         if self.read_delay == 1:
             ### SRAMS
             for banks in range(self.banks):
-                # self.mems.append(SRAMModel(width=self.mem_width,
-                #                           depth=self.mem_depth))
-                self.mems.append(SRAMModel(data_width=self.data_width,
-                                           width_mult=self.fw_int,
-                                           depth=self.mem_depth))
+                self.mems.append(SRAMWrapperModel(use_sram_stub=self.use_sram_stub,
+                                                  sram_name=self.sram_name
+                                                  data_width=self.data_width,
+                                                  fw_int=self.fw_int,
+                                                  mem_depth=self.mem_depth,
+                                                  mem_input_ports=self.mem_input_ports,
+                                                  mem_output_ports=self.mem_output_ports,
+                                                  address_width=self.address_width,
+                                                  bank_num=banks,
+                                                  num_tiles=self.num_tiles,
+                                                  enable_chain_input=self.config[f"enable_chain_input"],
+                                                  enable_chain_output=self.config[f"enable_chain_output"],
+                                                  chain_idx_input=self.config[f"chain_idx_input"],
+                                                  chain_idx_output=self.config[f"chain_idx_output"]))
         else:
             ### REGFILES
             for banks in range(self.banks):
@@ -205,6 +242,7 @@ class LakeTopModel(Model):
                 self.config[f"tba_{port}_tb_{i}_range_outer"] = 0
                 self.config[f"tba_{port}_tb_{i}_stride"] = 0
                 self.config[f"tba_{port}_tb_{i}_dimensionality"] = 0
+                self.config[f"tba_{port}_tb_{i}_starting_addr"] = 0
                 for j in range(self.tb_sched_max):
                     self.config[f"tba_{port}_tb_{i}_indices_{j}"] = 0
 
