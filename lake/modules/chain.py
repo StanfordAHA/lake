@@ -16,6 +16,11 @@ class Chain(Generator):
 
         # inputs
 
+        # this is a purely combinational model, so clk and rst_n are unused
+        self.clk = self.clock("clk")
+        # active low asynchronous reset
+        self.rst_n = self.reset("rst_n", 1)
+
         self._enable_chain_output = self.input("enable_chain_output", 1)
 
         self._chain_idx_output = self.input("chain_idx_output",

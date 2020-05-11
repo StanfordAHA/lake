@@ -770,6 +770,8 @@ class LakeTop(Generator):
                          chain_idx_bits=self.chain_idx_bits)
 
         self.add_child(f"chain", chaining,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
                        enable_chain_output=self._enable_chain_output,
                        chain_idx_output=self._chain_idx_output,
                        curr_tile_valid_out=self._valid_out_tile,
