@@ -265,6 +265,11 @@ class LakeTopModel(Model):
         for i in range(self.interconnect_output_ports):
             app_ctrl_cfg[f"read_depth_{i}"] = self.config[f"app_ctrl_read_depth_{i}"]
             app_ctrl_cfg[f"input_port_{i}"] = self.config[f"app_ctrl_input_port_{i}"]
+            app_ctrl_cfg[f"prefill_{i}"] = self.config[f"app_ctrl_prefill_{i}"]
+
+        for i in range(self.stcl_iter_support):
+            app_ctrl_cfg[f"ranges_{i}"] = self.config[f'app_ctrl_ranges_{i}']
+            app_ctrl_cfg[f"threshold_{i}"] = self.config[f'app_ctrl_app_ctrl_threshold_{i}']
         self.app_ctrl.set_config(app_ctrl_cfg)
 
         # Config Agg Align
@@ -346,6 +351,7 @@ class LakeTopModel(Model):
             tba_config[f"stride"] = self.config[f"tba_{port}_tb_0_stride"]
             tba_config["indices"] = []
             tba_config[f"dimensionality"] = self.config[f"tba_{port}_tb_0_dimensionality"]
+            tba_config[f"starting_addr"] = self.config[f"tba_{port}_tb_0_starting_addr"]
             for j in range(self.tb_sched_max):
                 tba_config[f"indices"].append(self.config[f"tba_{port}_tb_0_indices_{j}"])
             self.tbas[port].set_config(tba_config)
