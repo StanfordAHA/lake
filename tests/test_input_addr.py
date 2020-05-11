@@ -37,6 +37,7 @@ def test_input_addr_basic(banks,
         address_width=address_width,
         data_width=data_width,
         fetch_width=fetch_width)
+
     new_config = {}
     new_config['address_gen_0_starting_addr'] = 0
     new_config['address_gen_0_dimensionality'] = 3
@@ -71,12 +72,13 @@ def test_input_addr_basic(banks,
                         multiwrite=multiwrite,
                         strg_wr_ports=1,
                         config_width=16)
+
     lift_config_reg(dut.internal_generator)
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_multiple_driver=False,
                                 check_flip_flop_always_ff=False)
+
     tester = fault.Tester(magma_dut, magma_dut.clk)
-    ###
 
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
@@ -95,7 +97,7 @@ def test_input_addr_basic(banks,
     for i in range(interconnect_input_ports):
         tester.circuit.wen_en[i] = 1
     tester.step(2)
-    # Seed for posterity
+
     rand.seed(0)
 
     data_in = []
@@ -138,8 +140,8 @@ def test_input_addr_basic(banks,
             for word in range(fw_int):
                 getattr(tester.circuit, f"data_out_{z}_0_{word}").expect(data_out[z][word])
 
-        for i in range(interconnect_input_ports):
-            tester.circuit.port_out[i].expect(port_out[i])
+        for j in range(interconnect_input_ports):
+            tester.circuit.port_out[j].expect(port_out[j])
 
         tester.step(2)
 
@@ -152,4 +154,4 @@ def test_input_addr_basic(banks,
 
 if __name__ == "__main__":
     test_input_addr_basic(banks=1,
-                          interconnect_input_ports=1)
+                          interconnect_input_ports=2)
