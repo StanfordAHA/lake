@@ -36,8 +36,7 @@ class SRAMModel(Model):
                  wen,
                  cen,
                  addr,
-                 data,
-                 chain_idx_input):
+                 data):
         '''
         Returns (rd_reg)
         '''

@@ -16,7 +16,12 @@ class SRAMWrapperModel(Model):
                  mem_output_ports,
                  address_width,
                  bank_num,
-                 num_tiles):
+                 num_tiles,
+                 # configuration registers passed down from top level
+                 enable_chain_input,
+                 enable_chain_output,
+                 chain_idx_input,
+                 chain_idx_output):
 
         # generation parameters
         self.use_sram_stub = use_sram_stub
@@ -30,17 +35,16 @@ class SRAMWrapperModel(Model):
         self.bank_num = bank_num
         self.num_tiles = num_tiles
 
+        # configuration registers passed down from top level
+        self.enable_chain_input = enable_chain_input
+        self.enable_chain_output = enable_chain_output
+        self.chain_idx_input = chain_idx_input
+        self.chain_idx_output = chain_idx_output
+
         self.chain_idx_bits = max(1, kts.clog2(num_tiles))
 
         self.prev_wen = 0
         self.prev_cen = 0
-
-        # configuration registers
-        self.config = {}
-        self.config["enable_chain_input"] = 0
-        self.config["enable_chain_output"] = 0
-        self.config["chain_idx_input"] = 0
-        self.config["chain_idx_output"] = 0
 
         self.sram = SRAMModel(data_width,
                               fw_int,
@@ -55,6 +59,7 @@ class SRAMWrapperModel(Model):
                 AssertionError("Gave bad config...")
             else:
                 self.config[key] = config_val
+        # no explicit configuration space for sram wrapper module
 
     def interact(self, data_in, addr, cen, wen, wtsel, rtsel):
 
@@ -68,13 +73,13 @@ class SRAMWrapperModel(Model):
             addr = addr & (2**(self.address_width - self.chain_idx_bits - 1) - 1)
 
         # set chain wen
-        if (self.num_tiles == 1) or (self.config["enable_chain_input"] == 0):
+        if (self.num_tiles == 1) or (self.enable_chain_input == 0):
             wen_chain = wen
         # enable chain input
         else:
             # write
             if wen:
-                if self.config["chain_idx_input"] == chain_idx_tile:
+                if self.chain_idx_input == chain_idx_tile:
                     wen_chain = wen
                 else:
                     wen_chain = 0
@@ -87,8 +92,8 @@ class SRAMWrapperModel(Model):
             cen_chain = cen
         # write
         elif wen:
-            if self.config["enable_chain_input"] == 1:
-                if self.config["chain_idx_input"] == chain_idx_tile:
+            if self.enable_chain_input == 1:
+                if self.chain_idx_input == chain_idx_tile:
                     cen_chain = cen
                 else:
                     cen_chain = 0
@@ -96,8 +101,8 @@ class SRAMWrapperModel(Model):
                 cen_chain = cen
         # read
         else:
-            if self.config["enable_chain_output"] == 1:
-                if self.config["chain_idx_output"] == chain_idx_tile:
+            if self.enable_chain_output == 1:
+                if self.chain_idx_output == chain_idx_tile:
                     cen_chain = cen
                 else:
                     cen_chain = 0
@@ -108,8 +113,8 @@ class SRAMWrapperModel(Model):
         # set valid data
         # read
         if not self.prev_wen:
-            if self.config["enable_chain_output"] == 1:
-                if self.config["chain_idx_output"] == chain_idx_tile:
+            if self.enable_chain_output == 1:
+                if self.chain_idx_output == chain_idx_tile:
                     valid_data = self.prev_cen
                 else:
                     valid_data = 0
@@ -125,13 +130,13 @@ class SRAMWrapperModel(Model):
 
         # cannot have self.use_sram_stub = False because we do not have an external
         # SRAM module to use...please use SRAM Stub
-        assert self.use_sram_stub == 1
+        assert self.use_sram_stub == 1, \
+            "Do not have an external SRAM module to use...please use SRAM Stub"
 
         if self.use_sram_stub:
             data_out = self.sram.interact(wen=wen_chain,
                                           cen=cen_chain,
                                           addr=addr_sram,
-                                          data=data_in,
-                                          chain_idx_input=self.config["chain_idx_input"])
+                                          data=data_in)
 
         return data_out, valid_data

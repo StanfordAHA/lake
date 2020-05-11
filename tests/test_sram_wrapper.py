@@ -18,7 +18,11 @@ def test_sram_wrapper(use_sram_stub=True,
                       mem_output_ports=1,
                       address_width=9,
                       bank_num=1,
-                      num_tiles=1):
+                      num_tiles=1,
+                      enable_chain_input=0,
+                      enable_chain_output=0,
+                      chain_idx_input=0,
+                      chain_idx_output=0):
 
     model_sram_wrapper = SRAMWrapperModel(use_sram_stub,
                                           sram_name,
@@ -29,15 +33,11 @@ def test_sram_wrapper(use_sram_stub=True,
                                           mem_output_ports,
                                           address_width,
                                           bank_num,
-                                          num_tiles)
-
-    new_config = {}
-    new_config["enable_chain_input"] = 0
-    new_config["enable_chain_output"] = 0
-    new_config["chain_idx_input"] = 0
-    new_config["chain_idx_output"] = 0
-
-    model_sram_wrapper.set_config(new_config=new_config)
+                                          num_tiles,
+                                          enable_chain_input,
+                                          enable_chain_output,
+                                          chain_idx_input,
+                                          chain_idx_output)
 
     dut = SRAMWrapper(use_sram_stub,
                       sram_name,
@@ -53,6 +53,16 @@ def test_sram_wrapper(use_sram_stub=True,
     magma_dut = k.util.to_magma(dut, flatten_array=True, check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
+    new_config = {}
+    new_config["enable_chain_input"] = 0
+    new_config["enable_chain_output"] = 0
+    new_config["chain_idx_input"] = 0
+    new_config["chain_idx_output"] = 0
+
+    # configuration registers passed through from top level
+    for key, value in new_config.items():
+        setattr(tester.circuit, key, value)
+
     tester.circuit.clk = 0
     tester.circuit.clk_en = 1
     tester.circuit.rst_n = 1
@@ -60,10 +70,6 @@ def test_sram_wrapper(use_sram_stub=True,
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
-
-    # configuration registers
-    for key, value in new_config.items():
-        setattr(tester.circuit, key, value)
 
     rand.seed(0)
 
@@ -120,4 +126,8 @@ if __name__ == "__main__":
                       mem_output_ports=1,
                       address_width=9,
                       bank_num=1,
-                      num_tiles=1)
+                      num_tiles=1,
+                      enable_chain_input=0,
+                      enable_chain_output=0,
+                      chain_idx_input=0,
+                      chain_idx_output=0)

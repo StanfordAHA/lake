@@ -23,7 +23,8 @@ def test_output_addr_basic(banks,
                            fetch_width=32,
                            iterator_support=4,
                            address_width=16,
-                           config_width=16):
+                           config_width=16,
+                           chain_idx_output=0):
 
     fw_int = int(fetch_width / data_width)
 
@@ -35,7 +36,8 @@ def test_output_addr_basic(banks,
                                     iterator_support=iterator_support,
                                     address_width=address_width,
                                     data_width=data_width,
-                                    fetch_width=fetch_width)
+                                    fetch_width=fetch_width,
+                                    chain_idx_output=chain_idx_output)
 
     new_config = {}
     new_config['address_gen_0_starting_addr'] = 0
@@ -67,7 +69,9 @@ def test_output_addr_basic(banks,
                          iterator_support=iterator_support,
                          address_width=address_width,
                          config_width=config_width)
+
     lift_config_reg(dut.internal_generator)
+
     magma_dut = kts.util.to_magma(dut, flatten_array=True,
                                   check_multiple_driver=False,
                                   check_flip_flop_always_ff=False)
@@ -99,7 +103,10 @@ def test_output_addr_basic(banks,
             tester.circuit.valid_in[z] = valid_in[z]
         tester.circuit.step_in = step_in
 
+        # top level config regs passed down
         tester.circuit.enable_chain_output = enable_chain_output
+        tester.circuit.chain_idx_output = chain_idx_output
+
         (ren, addrs, tile_output_en) = model_oac.interact(valid_in, step_in, enable_chain_output)
 
         tester.eval()
@@ -137,4 +144,5 @@ if __name__ == "__main__":
                            fetch_width=32,
                            iterator_support=4,
                            address_width=16,
-                           config_width=16)
+                           config_width=16,
+                           chain_idx_output=0)
