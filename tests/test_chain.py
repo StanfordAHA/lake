@@ -11,17 +11,15 @@ import pytest
 
 def test_chain_module(data_width=16,
                       interconnect_output_ports=3,
-                      chain_idx_bits=2):
+                      chain_idx_bits=2,
+                      enable_chain_output=0,
+                      chain_idx_output=0):
 
     model_chain = ChainModel(data_width=data_width,
                              interconnect_output_ports=interconnect_output_ports,
-                             chain_idx_bits=chain_idx_bits)
-
-    new_config = {}
-    new_config["enable_chain_output"] = 0
-    new_config["chain_idx_output"] = 0
-
-    model_chain.set_config(new_config=new_config)
+                             chain_idx_bits=chain_idx_bits,
+                             enable_chain_output=0,
+                             chain_idx_output=0)
 
     dut = Chain(data_width=data_width,
                 interconnect_output_ports=interconnect_output_ports,
@@ -39,6 +37,10 @@ def test_chain_module(data_width=16,
     tester.circuit.rst_n = 1
 
     # configuration registers
+    new_config = {}
+    new_config["enable_chain_output"] = 0
+    new_config["chain_idx_output"] = 0
+
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
 
