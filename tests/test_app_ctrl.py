@@ -11,8 +11,8 @@ import random as rand
 import pytest
 
 
-@pytest.mark.parametrize("sprt_stcl_valid", [True, False])
-def test_app_ctrl(sprt_stcl_valid,
+#@pytest.mark.parametrize("sprt_stcl_valid", [True, False])
+def test_app_ctrl(sprt_stcl_valid=False,
                   int_in_ports=1,
                   int_out_ports=3,
                   depth_width=16,
@@ -122,11 +122,10 @@ def test_app_ctrl(sprt_stcl_valid,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        # tempdir = "app+ctrl"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["Wno-fatal"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
