@@ -5,7 +5,7 @@ import random as rand
 import pytest
 import tempfile
 from lake.passes.passes import lift_config_reg, change_sram_port_names
-from lake.models.lake_top_model import LakeTopModel
+#from lake.models.lake_top_model import LakeTopModel
 from lake.utils.sram_macro import SRAMMacroInfo
 # from lake.top.lake_chain import LakeChain
 
@@ -1856,7 +1856,7 @@ def test_2ports_idstream(data_width=16,
     new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_5"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 512
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_2"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_3"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_4"] = 0
@@ -1871,7 +1871,7 @@ def test_2ports_idstream(data_width=16,
     new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_5"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 512
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_2"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_3"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_4"] = 0
@@ -1918,7 +1918,7 @@ def test_2ports_idstream(data_width=16,
     new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_5"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_1_starting_addr"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_0"] = 1
-    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_1"] = 512
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_1"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_2"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_3"] = 0
     new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_4"] = 0
@@ -1933,7 +1933,7 @@ def test_2ports_idstream(data_width=16,
     new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_5"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 512
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_2"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_3"] = 0
     new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_4"] = 0
