@@ -11,6 +11,8 @@ from lake.models.prefetcher_model import PrefetcherModel
 from lake.models.tba_model import TBAModel
 from lake.models.register_file_model import RegisterFileModel
 from lake.models.app_ctrl_model import AppCtrlModel
+from lake.models.sram_wrapper_model import SRAMWrapperModel
+from lake.models.chain_model import ChainModel
 from typing import List
 import math as mt
 import kratos as kts
@@ -59,6 +61,7 @@ class LakeTopModel(Model):
         self.mem_input_ports = mem_input_ports
         self.mem_output_ports = mem_output_ports
         self.use_sram_stub = use_sram_stub
+        self.sram_name = sram_name
         self.agg_height = agg_height
         self.max_agg_schedule = max_agg_schedule
         self.input_max_port_sched = input_max_port_sched
@@ -79,7 +82,7 @@ class LakeTopModel(Model):
         self.num_tiles = num_tiles
         self.stcl_valid_iter = stcl_valid_iter
 
-        self.chain_idx_bits = max(1, kts.clog2(num_tiles)
+        self.chain_idx_bits = max(1, kts.clog2(num_tiles))
         self.address_width = kts.clog2(self.mem_depth * num_tiles)
 
         self.config = {}
@@ -94,12 +97,14 @@ class LakeTopModel(Model):
         
         self.config[f"tile_en"] = 0
         self.config[f"mode"] = 0
+        for i in range(self.interconnect_output_ports):
+            self.config[f"rate_matched_{i}"] = 0
 
         # Set up model..
         self.app_ctrl = AppCtrlModel(int_in_ports=self.interconnect_input_ports,
                                      int_out_ports=self.interconnect_output_ports,
                                      sprt_stcl_valid=True,
-                                     stcl_iter_support=stcl_iter_support)
+                                     stcl_iter_support=self.stcl_valid_iter)
         for i in range(self.interconnect_input_ports):
             self.config[f"app_ctrl_write_depth_{i}"] = 0
         for i in range(self.interconnect_output_ports):
@@ -107,7 +112,7 @@ class LakeTopModel(Model):
             self.config[f"app_ctrl_read_depth_{i}"] = 0
             self.config[f"app_ctrl_prefill_{i}"] = 0
 
-        for i in range(self.stcl_iter_support):
+        for i in range(self.stcl_valid_iter):
             self.config[f'app_ctrl_ranges_{i}'] = 0
             self.config[f'app_ctrl_app_ctrl_threshold_{i}'] = 0
 
@@ -138,7 +143,7 @@ class LakeTopModel(Model):
                                       data_width=self.data_width,
                                       fetch_width=self.mem_width,
                                       mem_depth=self.mem_depth,
-                                      num_tiles=self.num_tiles
+                                      num_tiles=self.num_tiles,
                                       banks=self.banks,
                                       iterator_support=self.input_iterator_support,
                                       max_port_schedule=self.input_max_port_sched,
@@ -185,7 +190,7 @@ class LakeTopModel(Model):
             ### SRAMS
             for banks in range(self.banks):
                 self.mems.append(SRAMWrapperModel(use_sram_stub=self.use_sram_stub,
-                                                  sram_name=self.sram_name
+                                                  sram_name=self.sram_name,
                                                   data_width=self.data_width,
                                                   fw_int=self.fw_int,
                                                   mem_depth=self.mem_depth,
@@ -246,6 +251,14 @@ class LakeTopModel(Model):
                 for j in range(self.tb_sched_max):
                     self.config[f"tba_{port}_tb_{i}_indices_{j}"] = 0
 
+        ### CHAINING
+        self.chain = ChainModel(data_width=self.data_width,
+                                interconnect_output_ports=self.interconnect_output_ports,
+                                chain_idx_bits=self.chain_idx_bits,
+                                enable_chain_output=self.config[f"enable_chain_output"],
+                                chain_idx_output=self.config[f"chain_idx_output"])
+        # chaining configuration registers are passed down from top level
+
     def set_config(self, new_config):
         # Configure top level
         for key, config_val in new_config.items():
@@ -267,7 +280,7 @@ class LakeTopModel(Model):
             app_ctrl_cfg[f"input_port_{i}"] = self.config[f"app_ctrl_input_port_{i}"]
             app_ctrl_cfg[f"prefill_{i}"] = self.config[f"app_ctrl_prefill_{i}"]
 
-        for i in range(self.stcl_iter_support):
+        for i in range(self.stcl_valid_iter):
             app_ctrl_cfg[f"ranges_{i}"] = self.config[f'app_ctrl_ranges_{i}']
             app_ctrl_cfg[f"threshold_{i}"] = self.config[f'app_ctrl_app_ctrl_threshold_{i}']
         self.app_ctrl.set_config(app_ctrl_cfg)
@@ -360,11 +373,19 @@ class LakeTopModel(Model):
                  data_in,
                  addr_in,
                  valid_in,
-                 output_en):
+                 output_en,
+                 wen,
+                 ren,
+                 chain_valid_in,
+                 chain_data_in):
+
         '''
         Top level interactions - - -
         returns (data_out, valid_out)
         '''
+
+        if self.config[f"tile_en"] == 0:
+            return
 
         (ac_wen_out,
          ac_ren_out,
@@ -524,7 +545,9 @@ class LakeTopModel(Model):
             data_out.append(tb_d)
             valid_out.append(tb_v)
 
-        return (data_out, valid_out)
+
+
+        return data_out, valid_out, chain_data_out, chain_valid_out
 
     def dump_mem(self):
         self.mems[0].dump_mem()

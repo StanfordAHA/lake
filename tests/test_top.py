@@ -5,7 +5,7 @@ import random as rand
 import pytest
 import tempfile
 from lake.passes.passes import lift_config_reg, change_sram_port_names
-#from lake.models.lake_top_model import LakeTopModel
+from lake.models.lake_top_model import LakeTopModel
 from lake.utils.sram_macro import SRAMMacroInfo
 # from lake.top.lake_chain import LakeChain
 
@@ -2062,10 +2062,10 @@ def test_2ports_idstream(data_width=16,
 
 
 if __name__ == "__main__":
-    test_2ports_idstream()
+    # test_2ports_idstream()
     # test_chain_mult_tile()
     # test_chain_3porttile()
-    # test_identity_stream()
+    test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
