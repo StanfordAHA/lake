@@ -56,7 +56,6 @@ def test_chain_module(data_width=16,
             chain_valid_in.append(rand.randint(0, 1))
             chain_data_in.append(rand.randint(0, 2**data_width - 1))
 
-
         for j in range(interconnect_output_ports):
             setattr(tester.circuit, f"curr_tile_valid_out_{j}", curr_tile_valid_out[j])
             setattr(tester.circuit, f"curr_tile_data_out_{j}", curr_tile_data_out[j])
@@ -64,8 +63,8 @@ def test_chain_module(data_width=16,
             setattr(tester.circuit, f"chain_data_in_{j}", chain_data_in[j])
 
         model_cdo, model_cvo, model_dot, model_vot = \
-                model_chain.interact(curr_tile_valid_out, curr_tile_data_out, 
-                        chain_valid_in, chain_data_in)
+            model_chain.interact(curr_tile_valid_out, curr_tile_data_out,
+                                 chain_valid_in, chain_data_in)
 
         tester.eval()
 
@@ -78,11 +77,10 @@ def test_chain_module(data_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        gtkwave="dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
