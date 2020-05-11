@@ -7,7 +7,8 @@ class AppCtrlModel(Model):
     '''
     def __init__(self,
                  int_in_ports,
-                 int_out_ports):
+                 int_out_ports,
+                 sprt_stcl_valid=False):
 
         self.int_in_ports = int_in_ports
         self.int_out_ports = int_out_ports

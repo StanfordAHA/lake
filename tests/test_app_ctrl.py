@@ -11,12 +11,18 @@ import random as rand
 import pytest
 
 
-def test_app_ctrl(int_in_ports=1,
-                  int_out_ports=3):
+@pytest.mark.parametrize("sprt_stcl_valid", [True, False])
+def test_app_ctrl(sprt_stcl_valid,
+                  int_in_ports=1,
+                  int_out_ports=3,
+                  depth_width=16,
+                  stcl_cnt_width=16,
+                  stcl_iter_support=4):
 
     # Set up model..
     model_ac = AppCtrlModel(int_in_ports=int_in_ports,
-                            int_out_ports=int_out_ports)
+                            int_out_ports=int_out_ports,
+                            sprt_stcl_valid=sprt_stcl_valid)
 
     new_config = {}
     new_config['input_port_0'] = 0
@@ -40,9 +46,14 @@ def test_app_ctrl(int_in_ports=1,
 
     # Set up dut...
     dut = AppCtrl(interconnect_input_ports=int_in_ports,
-                  interconnect_output_ports=int_out_ports)
+                  interconnect_output_ports=int_out_ports,
+                  depth_width=depth_width,
+                  sprt_stcl_valid=sprt_stcl_valid,
+                  stcl_cnt_width=stcl_cnt_width,
+                  stcl_iter_support=stcl_iter_support)
 
     lift_config_reg(dut.internal_generator)
+
     magma_dut = kts.util.to_magma(dut, flatten_array=True,
                                   check_multiple_driver=False,
                                   check_flip_flop_always_ff=False)
