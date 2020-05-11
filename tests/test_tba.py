@@ -81,10 +81,10 @@ def test_tba(word_width=16,
         for j in range(fetch_width):
             setattr(tester.circuit, f"SRAM_to_tb_data_{j}", data[j])
 
-        valid_data = 1
+        valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
-        mem_valid_data = 1
+        mem_valid_data = rand.randint(0, 1)
         tester.circuit.mem_valid_data = mem_valid_data
 
         tb_index_for_data = 0
