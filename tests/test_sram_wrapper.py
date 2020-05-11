@@ -9,16 +9,16 @@ import random as rand
 import pytest
 
 
-def test_sram_valid_data(use_sram_stub=True,
-                         sram_name="default_name",
-                         data_width=16,
-                         fw_int=4,
-                         mem_depth=512,
-                         mem_input_ports=1,
-                         mem_output_ports=1,
-                         address_width=9,
-                         bank_num=1,
-                         num_tiles=1):
+def test_sram_wrapper(use_sram_stub=True,
+                      sram_name="default_name",
+                      data_width=16,
+                      fw_int=4,
+                      mem_depth=512,
+                      mem_input_ports=1,
+                      mem_output_ports=1,
+                      address_width=9,
+                      bank_num=1,
+                      num_tiles=1):
 
     model_sram_wrapper = SRAMWrapperModel(use_sram_stub,
                                           sram_name,
@@ -80,10 +80,10 @@ def test_sram_valid_data(use_sram_stub=True,
         tester.circuit.mem_addr_in_bank = addr
 
         cen = rand.randint(0, 1)
-        tester.circuit.cen = cen
+        tester.circuit.mem_cen_in_bank = cen
 
         wen = rand.randint(0, 1)
-        tester.circuit.wen = wen
+        tester.circuit.mem_wen_in_bank = wen
 
         wtsel = 1
         tester.circuit.wtsel = wtsel
@@ -97,6 +97,9 @@ def test_sram_valid_data(use_sram_stub=True,
         tester.eval()
 
         tester.circuit.valid_data.expect(model_valid_data)
+        if model_valid_data:
+            for j in range(fw_int):
+                getattr(tester.circuit, f"mem_data_out_bank_0_{j}").expect(model_data_out[j])
 
         tester.step(2)
 
@@ -108,13 +111,13 @@ def test_sram_valid_data(use_sram_stub=True,
 
 
 if __name__ == "__main__":
-    test_sram_valid_data(use_sram_stub=True,
-                         sram_name="default_name",
-                         data_width=16,
-                         fw_int=4,
-                         mem_depth=512,
-                         mem_input_ports=1,
-                         mem_output_ports=1,
-                         address_width=9,
-                         bank_num=1,
-                         num_tiles=1)
+    test_sram_wrapper(use_sram_stub=True,
+                      sram_name="default_name",
+                      data_width=16,
+                      fw_int=4,
+                      mem_depth=512,
+                      mem_input_ports=1,
+                      mem_output_ports=1,
+                      address_width=9,
+                      bank_num=1,
+                      num_tiles=1)
