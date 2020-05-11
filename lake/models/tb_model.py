@@ -184,7 +184,6 @@ class TBModel(Model):
         # output from tb
         if self.config["dimensionality"] == 0:
             self.col_pixels = [0]
-            self.output_valid = 0
         else:
             self.col_pixels = []
             for i in range(self.tb_height):
@@ -204,7 +203,9 @@ class TBModel(Model):
             self.mask_valid = self.tb_valid[1]
 
         # Set output valid
-        if self.pause_output:
+        if self.config["dimensionality"] == 0:
+            self.output_valid = 0
+        elif self.pause_output:
             self.output_valid = 0
         else:
             self.output_valid = self.mask_valid
@@ -243,36 +244,19 @@ class TBModel(Model):
                     self.index_inner = index_inner_curr
                 elif not self.pause_output:
                     self.index_inner = index_inner_curr + 1
+
             # Pause tb
-            if self.config["dimensionality"] == 1:
-                if index_outer_curr == self.config["range_outer"] - 1:
+            if index_outer_curr == self.config["range_outer"] - 1:
+                if (self.config["dimensionality"] == 1) or \
+                        ((self.config["dimensionality"] == 2) and
+                            (index_inner_curr == self.config["range_inner"] - 1)):
                     if not self.pause_output:
-                        if (not self.rdy_to_arbiter) or valid_data:
+                        if (not rdy_to_arbiter_curr) or valid_data:
+                            self.pause_tb = 0
+                        else:
                             self.pause_tb = 1
-                        else:
-                            self.pause_tb = 0
-                    else:
-                        self.pause_tb = 0
-                elif pause_tb_curr:
-                    self.pause_tb = 1 - valid_data
-                elif not self.pause_output:
-                    self.pause_tb = 0
-            else:
-                if index_inner_curr == self.config["range_inner"] - 1:
-                    if index_outer_curr == self.config["range_outer"] - 1:
-                        if not self.pause_output:
-                            if (not self.rdy_to_arbiter) or valid_data:
-                                self.pause_tb = 1
-                            else:
-                                self.pause_tb = 0
-                        else:
-                            self.pause_tb = 0
-                    else:
-                        self.pause_tb = 0
-                elif pause_tb_curr == 1:
-                    self.pause_tb = 1 - valid_data
-                elif not self.pause_output:
-                    self.pause_tb = 0
+            elif pause_tb_curr:
+                self.pause_tb = 1 - valid_data
 
             # Row index + input_buf_index + input tb
             if valid_data:
@@ -326,8 +310,10 @@ class TBModel(Model):
             # Set start data
             if valid_data and (not start_data_curr):
                 self.start_data = 1
+
             # Set old start data
             self.old_start_data = start_data_curr
+
             # Set rdy to arbiter
             if start_data_curr and not old_start_data_curr:
                 self.rdy_to_arbiter = 1
@@ -377,8 +363,8 @@ class TBModel(Model):
         # print("before")
         # self.print_tb(input_data, valid_data, ack_in, ren)
         self.output_from_tb(input_data, valid_data, ack_in, ren, mem_valid_data)
-        print(" ")
+        # print(" ")
         # print("after")
-        self.print_tb(input_data, valid_data, ack_in, ren, mem_valid_data)
+        # self.print_tb(input_data, valid_data, ack_in, ren, mem_valid_data)
         # print(" ")
         return self.col_pixels, self.output_valid, self.rdy_to_arbiter
