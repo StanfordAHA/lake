@@ -11,8 +11,8 @@ import random as rand
 import pytest
 
 
-#@pytest.mark.parametrize("sprt_stcl_valid", [True, False])
-def test_app_ctrl(sprt_stcl_valid=False,
+@pytest.mark.parametrize("sprt_stcl_valid", [True, False])
+def test_app_ctrl(sprt_stcl_valid,
                   int_in_ports=1,
                   int_out_ports=3,
                   depth_width=16,
@@ -22,7 +22,8 @@ def test_app_ctrl(sprt_stcl_valid=False,
     # Set up model..
     model_ac = AppCtrlModel(int_in_ports=int_in_ports,
                             int_out_ports=int_out_ports,
-                            sprt_stcl_valid=sprt_stcl_valid)
+                            sprt_stcl_valid=sprt_stcl_valid,
+                            stcl_iter_support=stcl_iter_support)
 
     new_config = {}
     new_config['input_port_0'] = 0
@@ -33,6 +34,10 @@ def test_app_ctrl(sprt_stcl_valid=False,
     new_config['read_depth_2'] = 196
     new_config['write_depth_0'] = 196
 
+    for i in range(stcl_iter_support):
+        new_config[f'ranges_{i}'] = 4
+        new_config[f'threshold_{i}'] = 4
+
     rand.seed(0)
 
     prefill = []
@@ -42,7 +47,6 @@ def test_app_ctrl(sprt_stcl_valid=False,
         prefill.append(prefill_num)
 
     model_ac.set_config(new_config=new_config)
-    ###
 
     # Set up dut...
     dut = AppCtrl(interconnect_input_ports=int_in_ports,
@@ -89,17 +93,16 @@ def test_app_ctrl(sprt_stcl_valid=False,
             ren_in[j] = ren_in_tmp
             ren_update[j] = rand.randint(0, 1)
 
-        print("wen in ", wen_in)
         # Apply stimulus to dut
         for j in range(int_in_ports):
             tester.circuit.wen_in[j] = wen_in[j]
+
         for j in range(int_out_ports):
             tester.circuit.ren_in[j] = ren_in[j]
             tester.circuit.tb_valid[j] = tb_valid[j]
             tester.circuit.ren_update[j] = ren_update[j]
             tester.circuit.prefill[j] = prefill[j]
 
-        print("wen in ", wen_in)
         # Interact w/ model
         (wen_out,
          ren_out,
@@ -129,5 +132,9 @@ def test_app_ctrl(sprt_stcl_valid=False,
 
 
 if __name__ == "__main__":
-    test_app_ctrl(int_in_ports=1,
-                  int_out_ports=3)
+    test_app_ctrl(sprt_stcl_valid=True,
+                  int_in_ports=1,
+                  int_out_ports=3,
+                  depth_width=16,
+                  stcl_cnt_width=16,
+                  stcl_iter_support=4)

@@ -1,4 +1,5 @@
 from lake.models.model import Model
+import numpy as np
 
 
 class AppCtrlModel(Model):
@@ -8,10 +9,13 @@ class AppCtrlModel(Model):
     def __init__(self,
                  int_in_ports,
                  int_out_ports,
-                 sprt_stcl_valid=False):
+                 sprt_stcl_valid,
+                 stcl_iter_support):
 
         self.int_in_ports = int_in_ports
         self.int_out_ports = int_out_ports
+        self.sprt_stcl_valid = sprt_stcl_valid
+        self.stcl_iter_support = stcl_iter_support
 
         self.config = {}
         for i in range(self.int_in_ports):
@@ -20,6 +24,10 @@ class AppCtrlModel(Model):
             self.config[f'read_depth_{i}'] = 0
             self.config[f'input_port_{i}'] = 0
             self.config[f'prefill_{i}'] = 0
+
+        for i in range(self.stcl_iter_support):
+            self.config[f'ranges_{i}'] = 0
+            self.config[f'threshold_{i}'] = 0
 
         self.write_count = [0] * self.int_in_ports
         self.write_done_d = [0] * self.int_in_ports
@@ -41,15 +49,38 @@ class AppCtrlModel(Model):
         '''
         Returns (wen_out, ren_out, valid_out)
         '''
-        print(wen_in)
-        print(ren_in)
-        print(tb_valid)
-        print(ren_update)
-        print(self.config)
-        print()
 
         valid_out_data = tb_valid.copy()
         valid_out_stencil = tb_valid.copy()
+
+        if self.sprt_stcl_valid:
+            dim_counter = []
+            update = []
+            for i in range(self.stcl_iter_support):
+                dim_counter.append(0)
+                update.append(0)
+
+            update[0] = 1
+            for i in range(self.stcl_iter_support - 1):
+                update[i + 1] = (dim_counter[i] == (self.config[f'ranges_{i}'] - 1)) and update[i]
+
+            for i in range(self.stcl_iter_support):
+                if ren_in[0] and ren_update[0]:
+                    if update[i]:
+                        if dim_counter[i] == (self.config[f'ranges_{i}'] - 1):
+                            dim_counter[i] = 0
+                        else:
+                            dim_counter[i] = dim_counter[i] + 1
+
+            threshold_comps = [dim_counter[i] >= self.config[f'threshold_{i}']
+                               for i in range(self.stcl_iter_support)]
+
+            valid_out_stencil[0] = np.bitwise_and.reduce(threshold_comps)
+            for i in range(self.int_out_ports - 1):
+                valid_out_stencil[i + 1] = 0  # np.bitwise_and.reduce(threshold_comps)
+
+            for i in range(len(valid_out_data)):
+                valid_out_data[i] = valid_out_data[i] & valid_out_stencil[i]
 
         curr_read_done_d = self.read_done_d
         curr_write_done_d = self.write_done_d
@@ -112,11 +143,4 @@ class AppCtrlModel(Model):
             elif (ren_in[i] == 1) & (ren_update[i] == 1):
                 self.read_count[i] += 1
 
-        print(wen_out, " ", ren_out, " ", valid_out_data)
-        print(self.read_done_d)
-        print(read_done)
-        print(write_done[self.config[f"input_port_0"]])
-        print(self.read_count)
-        print(self.init_state)
-        print()
         return (wen_out, ren_out, valid_out_data, valid_out_stencil)
