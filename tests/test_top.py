@@ -1832,7 +1832,7 @@ def test_2ports_idstream(data_width=16,
                          fifo_mode=True,
                          add_clk_enable=True,
                          add_flush=True,
-                         #core_reset_pos=False,
+                         # core_reset_pos=False,
                          stcl_valid_iter=4):
 
     fw_int = mem_width / data_width
@@ -1990,7 +1990,7 @@ def test_2ports_idstream(data_width=16,
                      fifo_mode=fifo_mode,
                      add_clk_enable=add_clk_enable,
                      add_flush=add_flush,
-                     #core_reset_pos=core_reset_pos,
+                     # core_reset_pos=core_reset_pos,
                      stcl_valid_iter=stcl_valid_iter)
 
     # Run the config reg lift
@@ -2054,7 +2054,7 @@ def test_2ports_idstream(data_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="dump"
+        tempdir = "dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
