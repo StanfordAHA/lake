@@ -32,10 +32,12 @@ class SyncGroupsModel(Model):
         self.sync_group_valid = []
         self.valid_reg = []
         self.data_reg = []
+        self.mem_valid_data_out_reg = []
         for i in range(self.int_out_ports):
             self.local_gate_reduced.append(1)
             self.sync_group_valid.append(0)
             self.valid_reg.append(0)
+            self.mem_valid_data_out_reg.append(0)
             row = []
             for j in range(self.fetch_width):
                 row.append(0)
@@ -54,14 +56,15 @@ class SyncGroupsModel(Model):
                  ack_in,
                  data_in,
                  valid_in,
-                 ren_in):
+                 ren_in,
+                 mem_valid_data):
         '''
-        Returns (data_out, valid_out, rd_sync_gate)
+        Returns (data_out, valid_out, rd_sync_gate, mem_valid_data_out)
         '''
         valid_out = []
         data_out = []
         rd_sync_gate = []
-
+        mem_valid_data_out = []
         # # Use current state of bus to set local gate reduced
         # for i in range(self.int_out_ports):
         #     # For this port, just want to check that its corresponding entry is low
@@ -118,6 +121,7 @@ class SyncGroupsModel(Model):
             valid_out.append(self.sync_group_valid[kts.clog2(self.config[f'sync_group_{i}'])])
             # valid_out.append(self.sync_group_valid[self.config[f'sync_group_{i}']])
             data_out.append(self.data_reg[i].copy())
+            mem_valid_data_out.append(self.mem_valid_data_out_reg[i])
 
         # Update the registered valids - we keep these around to track
         # which valids in the group already came
@@ -126,6 +130,7 @@ class SyncGroupsModel(Model):
             if self.sync_group_valid[group_log] == 1 or self.valid_reg[i] == 0:
                 self.valid_reg[i] = valid_in[i]
                 self.data_reg[i] = data_in[i].copy()
+                self.mem_valid_data_out_reg[i] = mem_valid_data[i]
 
         # Use current state of bus to set local gate reduced
         for i in range(self.int_out_ports):
@@ -135,7 +140,7 @@ class SyncGroupsModel(Model):
                     self.local_gate_reduced[i] = self.local_gate[j][i]
 
         # rd_sync_gate = self.get_rd_sync()
-        return (data_out.copy(), valid_out, rd_sync_gate.copy())
+        return (data_out.copy(), valid_out, rd_sync_gate.copy(), mem_valid_data_out)
 
     def get_rd_sync(self):
         rd_sync_gate = []

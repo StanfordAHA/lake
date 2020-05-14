@@ -48,7 +48,8 @@ def test_reg_fifo_basic(width_mult,
     for i in range(width_mult):
         data_in.append(0)
 
-    for z in range(1000):
+    num_iters = 1000
+    for z in range(num_iters):
         # Generate new input
         push = rand.randint(0, 1)
         pop = rand.randint(0, 1)
@@ -60,7 +61,11 @@ def test_reg_fifo_basic(width_mult,
         tester.circuit.empty.expect(empty)
         tester.circuit.full.expect(full)
 
-        (model_out, model_val, model_empty, model_full) = model_rf.interact(push, pop, data_in)
+        mem_valid_data = rand.randint(0, 1)
+        tester.circuit.mem_valid_data = mem_valid_data
+
+        (model_out, model_val, model_empty, model_full, model_mem_valid) = \
+            model_rf.interact(push, pop, data_in, mem_valid_data)
 
         tester.circuit.push = push
         tester.circuit.pop = pop
@@ -74,6 +79,7 @@ def test_reg_fifo_basic(width_mult,
 
         tester.circuit.valid.expect(model_val)
         if model_val:
+            tester.circuit.mem_valid_data_out.expect(model_mem_valid)
             if width_mult == 1:
                 tester.circuit.data_out.expect(model_out[0])
             else:
@@ -87,3 +93,9 @@ def test_reg_fifo_basic(width_mult,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_reg_fifo_basic(width_mult=1,
+                        data_width=16,
+                        depth=64)

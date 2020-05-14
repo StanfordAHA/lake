@@ -100,6 +100,10 @@ def test_rw_arbiter_basic(int_out_ports,
         for j in range(int_out_ports):
             rd_addr.append(rand.randint(0, 2 ** 9 - 1))
 
+        mem_valid_data = []
+        for j in range(strg_rd_ports):
+            mem_valid_data.append(rand.randint(0, 1))
+
         # Apply stimulus to dut
         tester.circuit.wen_in = wen_in
         tester.circuit.wen_en = wen_en
@@ -115,25 +119,32 @@ def test_rw_arbiter_basic(int_out_ports,
 
         for j in range(int_out_ports):
             tester.circuit.ren_in[j] = ren_in[j]
-        for j in range(int_out_ports):
             tester.circuit.ren_en[j] = ren_en[j]
-        if(int_out_ports == 1):
+
+        if (int_out_ports == 1):
             tester.circuit.rd_addr = rd_addr[0]
         else:
             for j in range(int_out_ports):
                 setattr(tester.circuit, f"rd_addr_{j}", rd_addr[j])
 
+        if (strg_rd_ports == 1):
+            tester.circuit.mem_valid_data = mem_valid_data[0]
+        else:
+            for j in range(strg_rd_ports):
+                setattr(tester.circuit, f"mem_valid_data_{j}", mem_valid_data[j])
+
         # Interact w/ model
         (model_od, model_op, model_ov, model_cen_mem,
          model_wen_mem, model_mem_data, model_mem_addr,
-         model_ack) = model_rwa.interact(wen_in,
-                                         wen_en,
-                                         w_data,
-                                         w_addr,
-                                         data_from_mem,
-                                         ren_in,
-                                         ren_en,
-                                         rd_addr)
+         model_ack, model_out_mem_valid_data) = model_rwa.interact(wen_in,
+                                                                   wen_en,
+                                                                   w_data,
+                                                                   w_addr,
+                                                                   data_from_mem,
+                                                                   ren_in,
+                                                                   ren_en,
+                                                                   rd_addr,
+                                                                   mem_valid_data)
 
         tester.eval()
 
@@ -146,15 +157,26 @@ def test_rw_arbiter_basic(int_out_ports,
             else:
                 for j in range(fw_int):
                     getattr(tester.circuit, f"out_data_0_{j}").expect(model_od[j])
+
         tester.circuit.cen_mem.expect(model_cen_mem)
         tester.circuit.wen_mem.expect(model_wen_mem)
+
         if fw_int == 1:
             tester.circuit.data_to_mem_0_0.expect(model_mem_data[0])
         else:
             for j in range(fw_int):
                 getattr(tester.circuit, f"data_to_mem_0_{j}").expect(model_mem_data[j])
+
         tester.circuit.addr_to_mem.expect(model_mem_addr)
         tester.circuit.out_ack.expect(model_ack)
+
+        print(mem_valid_data)
+        print(model_out_mem_valid_data)
+        if strg_rd_ports == 1:
+            tester.circuit.out_mem_valid_data.expect(model_out_mem_valid_data[0])
+        else:
+            for j in range(strg_rd_ports):
+                tester.circuit.out_mem_valid_data[j].expect(model_out_mem_valid_data[j])
 
         tester.step(2)
 

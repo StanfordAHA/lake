@@ -77,9 +77,11 @@ def test_sync_groups(int_out_ports,
         ack_in = rand.randint(0, 2 ** int_out_ports - 1)
         ren_in = []
         valid_in = []
+        mem_valid_data = []
         for j in range(int_out_ports):
             ren_in.append(rand.randint(0, 1))
             valid_in.append(rand.randint(0, 1))
+            mem_valid_data.append(rand.randint(0, 1))
             for k in range(fw_int):
                 data_in[j][k] = rand.randint(0, 2 ** data_width - 1)
 
@@ -88,16 +90,15 @@ def test_sync_groups(int_out_ports,
         for j in range(int_out_ports):
             tester.circuit.ren_in[j] = ren_in[j]
             tester.circuit.valid_in[j] = valid_in[j]
+            tester.circuit.mem_valid_data[j] = mem_valid_data[j]
 
         for j in range(int_out_ports):
             for k in range(fw_int):
                 setattr(tester.circuit, f"data_in_{j}_{k}", data_in[j][k])
 
         # Interact w/ model
-        (model_do, model_vo, model_rd_sync) = model_sg.interact(ack_in,
-                                                                data_in,
-                                                                valid_in,
-                                                                ren_in)
+        (model_do, model_vo, model_rd_sync, model_mem_valid) = \
+            model_sg.interact(ack_in, data_in, valid_in, ren_in, mem_valid_data)
 
         tester.eval()
 
@@ -108,6 +109,7 @@ def test_sync_groups(int_out_ports,
         for j in range(int_out_ports):
             tester.circuit.valid_out[j].expect(model_vo[j])
             tester.circuit.rd_sync_gate[j].expect(model_rd_sync[j])
+            tester.circuit.mem_valid_data_out[j].expect(model_mem_valid[j])
 
         tester.step(2)
 
@@ -116,3 +118,9 @@ def test_sync_groups(int_out_ports,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_sync_groups(int_out_ports=2,
+                     fetch_width=32,
+                     data_width=16)

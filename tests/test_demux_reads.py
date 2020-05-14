@@ -57,21 +57,26 @@ def test_demux_reads_basic(fetch_width=32,
         data_in.append(row)
 
     valid_in = [0] * banks
+    mem_valid_data = [0] * banks
     port_in = [0] * banks
     port_in_hw = [0] * banks
     for z in range(1000):
         # Generate new input
         for i in range(banks):
             valid_in[i] = rand.randint(0, 1)
+            mem_valid_data[i] = rand.randint(0, 1)
             port_in[i] = rand.randint(0, int_out_ports - 1)
             # One-Hot encoding in hardware
             port_in_hw[i] = 1 << port_in[i]
             for j in range(fw_int):
                 data_in[i][j] = rand.randint(0, 2 ** data_width - 1)
 
-        (model_dat, model_val) = model_dr.interact(data_in, valid_in, port_in_hw)
+        model_dat, model_val, model_mem_valid_data_out = \
+            model_dr.interact(data_in, valid_in, port_in_hw, mem_valid_data)
+
         for i in range(banks):
             tester.circuit.valid_in[i] = valid_in[i]
+            tester.circuit.mem_valid_data[i] = mem_valid_data[i]
             setattr(tester.circuit, f"port_in_{i}", port_in_hw[i])
             for j in range(fw_int):
                 setattr(tester.circuit, f"data_in_{i}_{j}", data_in[i][j])
@@ -82,6 +87,7 @@ def test_demux_reads_basic(fetch_width=32,
             for j in range(fw_int):
                 getattr(tester.circuit, f"data_out_{i}_{j}").expect(model_dat[i][j])
             tester.circuit.valid_out[i].expect(model_val[i])
+            tester.circuit.mem_valid_data_out[i].expect(model_mem_valid_data_out[i])
 
         tester.step(2)
 
