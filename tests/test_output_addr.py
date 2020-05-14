@@ -107,7 +107,7 @@ def test_output_addr_basic(banks,
         tester.circuit.enable_chain_output = enable_chain_output
         tester.circuit.chain_idx_output = chain_idx_output
 
-        (ren, addrs, tile_output_en) = model_oac.interact(valid_in, step_in, enable_chain_output)
+        (ren, addrs) = model_oac.interact(valid_in, step_in, enable_chain_output)
 
         tester.eval()
 

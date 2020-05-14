@@ -85,22 +85,17 @@ class OutputAddrCtrlModel(Model):
         Returns (ren, addrs)
         '''
         ren = self.get_ren(valid_in)
-        addrs, tile_output_en = self.get_addrs_tile_en()
+        addrs = self.get_addrs_tile_en()
         self.step_addrs(valid_in, step_in)
-        return (ren, addrs, tile_output_en)
+        return (ren, addrs)
 
     # Retrieve the current addresses from each generator
     def get_addrs_tile_en(self):
-        tile_output_en = []
         for i in range(self.interconnect_output_ports):
             to_get = self.addr_gens[i]
             self.addresses[i] = to_get.get_address() % self.mem_depth
             addr_chain_bits = (self.addresses[i]) >> (self.mem_addr_width - self.chain_idx_bits - 1)
-            if addr_chain_bits == self.chain_idx_output:
-                tile_output_en.append(1)
-            else:
-                tile_output_en.append(0)
-        return self.addresses, tile_output_en
+        return self.addresses
 
     def get_addrs_full(self):
         for i in range(self.interconnect_output_ports):

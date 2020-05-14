@@ -33,7 +33,8 @@ class RWArbiterModel(Model):
                  mem_valid_data):
         '''
         Returns (out_dat, out_port, out_valid,
-                 cen_mem, wen_mem, data_to_mem, addr_to_mem, ack)
+                 cen_mem, wen_mem, data_to_mem, addr_to_mem, ack, 
+                 out_mem_valid_data)
         '''
         # These signals are always this way
         out_dat = data_from_mem

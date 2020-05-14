@@ -140,3 +140,6 @@ class SRAMWrapperModel(Model):
                                           data=data_in)
 
         return data_out, valid_data
+
+    def get_rd_reg(self):
+        return list(self.sram.rd_reg)
