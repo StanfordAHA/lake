@@ -80,9 +80,9 @@ class AppCtrl(Generator):
             threshold_comps = [self._dim_counter[_i] >= self._threshold[_i] for _i in range(self.stcl_iter_support)]
             self.wire(self._valid_out_stencil[0], kts.concat(*threshold_comps).r_and())
             for i in range(self.int_out_ports - 1):
-                self.wire(self._valid_out_stencil[i + 1], 0)
+                # self.wire(self._valid_out_stencil[i + 1], 0)
             # for multiple ports
-            # self.wire(self._valid_out_stencil[1], kts.concat(*threshold_comps).r_and())
+                self.wire(self._valid_out_stencil[1], kts.concat(*threshold_comps).r_and())
 
         else:
             self.wire(self._valid_out_stencil, self._tb_valid)

@@ -191,7 +191,7 @@ class InputAddrCtrl(Generator):
             for j in range(self.multiwrite):
                 for k in range(self.banks):
                     self._wen_full[i][j][k] = 0
-                    if(self._valid_in[i]):
+                    if (self._valid_in[i]):
                         if(self._local_addrs[i][j][self.mem_addr_width + self.bank_addr_width - 1,
                                                    self.mem_addr_width] == k):
                             self._wen_full[i][j][k] = 1
@@ -202,7 +202,7 @@ class InputAddrCtrl(Generator):
             for j in range(self.multiwrite):
                 for k in range(self.banks):
                     self._wen_full[i][j][k] = 0
-                    if(self._valid_in[i]):
+                    if (self._valid_in[i]):
                         self._wen_full[i][j][k] = 1
 
     @always_comb
