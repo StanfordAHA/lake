@@ -120,7 +120,10 @@ class LakeTopModel(Model):
         ### COARSE APP CTRL
         self.app_ctrl_coarse = AppCtrlModel(int_in_ports=self.interconnect_input_ports,
                                             int_out_ports=self.interconnect_output_ports,
-                                            sprt_stcl_valid=False)
+                                            sprt_stcl_valid=False,
+                                            # unused, stencil valid comes from app ctrl,
+                                            # not coarse app ctrl
+                                            stcl_iter_support=0)
 
         for i in range(self.interconnect_input_ports):
             self.config[f"app_ctrl_coarse_write_depth_{i}"] = 0
@@ -195,7 +198,6 @@ class LakeTopModel(Model):
             self.rw_arbs.append(RWArbiterModel(fetch_width=self.mem_width,
                                                data_width=self.data_width,
                                                memory_depth=self.mem_depth,
-                                               num_tiles=self.num_tiles,
                                                int_out_ports=self.interconnect_output_ports,
                                                read_delay=self.read_delay))
 
