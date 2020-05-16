@@ -80,9 +80,9 @@ class AppCtrl(Generator):
             threshold_comps = [self._dim_counter[_i] >= self._threshold[_i] for _i in range(self.stcl_iter_support)]
             self.wire(self._valid_out_stencil[0], kts.concat(*threshold_comps).r_and())
             for i in range(self.int_out_ports - 1):
-                self.wire(self._valid_out_stencil[i + 1], 0)
-            # for multiple ports
-            # self.wire(self._valid_out_stencil[1], kts.concat(*threshold_comps).r_and())
+                # self.wire(self._valid_out_stencil[i + 1], 0)
+                # for multiple ports
+                self.wire(self._valid_out_stencil[i + 1], kts.concat(*threshold_comps).r_and())
 
         else:
             self.wire(self._valid_out_stencil, self._tb_valid)
@@ -234,7 +234,7 @@ class AppCtrl(Generator):
     @always_comb
     def set_read_done(self, idx):
         self._read_done[idx] = (self._ren_update[idx] & self._ren_in[idx] &
-                                (self._read_count[idx] == (self._read_depth[idx] - 1))) |\
+                                (self._read_count[idx] == (self._read_depth[idx] - 1))) | \
             self._read_done_ff[idx] | (~self._prefill[idx] & ~self._wr_delay_state_n[idx])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))

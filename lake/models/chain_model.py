@@ -8,17 +8,18 @@ class ChainModel(Model):
     def __init__(self,
                  data_width,
                  interconnect_output_ports,
-                 chain_idx_bits):
+                 chain_idx_bits,
+                 enable_chain_output,
+                 chain_idx_output):
 
         # generation parameters
         self.data_width = data_width
         self.interconnect_output_ports = interconnect_output_ports
         self.chain_idx_bits = chain_idx_bits
 
-        # configuration registers
-        self.config = {}
-        self.config["enable_chain_output"] = 0
-        self.config["chain_idx_output"] = 0
+        # configuration registers passed down from top level
+        self.enable_chain_output = enable_chain_output
+        self.chain_idx_output = chain_idx_output
 
     def set_config(self, new_config):
         for key, config_val in new_config.items():
@@ -41,15 +42,15 @@ class ChainModel(Model):
 
         # all combinational outputs
         # set data_out_tile
-        if self.config["enable_chain_output"]:
+        if self.enable_chain_output:
             data_out_tile = chain_data_out_inter
         else:
             data_out_tile = curr_tile_data_out
 
         # set valid_out_tile
         valid_out_tile = []
-        if self.config["enable_chain_output"]:
-            if not (self.config["chain_idx_output"] == 0):
+        if self.enable_chain_output:
+            if not (self.chain_idx_output == 0):
                 for i in range(self.interconnect_output_ports):
                     valid_out_tile.append(0)
             else:
@@ -62,8 +63,8 @@ class ChainModel(Model):
 
         # set chain_valid_out
         chain_valid_out = []
-        if (self.config["chain_idx_output"] == 0) or \
-                (not self.config["enable_chain_output"]):
+        if (self.chain_idx_output == 0) or \
+                (not self.enable_chain_output):
             for i in range(self.interconnect_output_ports):
                 chain_valid_out.append(0)
         else:

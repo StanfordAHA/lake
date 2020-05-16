@@ -29,10 +29,12 @@ class RWArbiterModel(Model):
                  data_from_mem,
                  ren_in,
                  ren_en,
-                 rd_addr):
+                 rd_addr,
+                 mem_valid_data):
         '''
         Returns (out_dat, out_port, out_valid,
-                 cen_mem, wen_mem, data_to_mem, addr_to_mem, ack)
+                 cen_mem, wen_mem, data_to_mem, addr_to_mem, ack, 
+                 out_mem_valid_data)
         '''
         # These signals are always this way
         out_dat = data_from_mem
@@ -69,9 +71,12 @@ class RWArbiterModel(Model):
                         out_port = 1 << i
                     break
         ack = self.get_ack(wen_in, wen_en, ren_in, ren_en)
+
+        out_mem_valid_data = mem_valid_data
+
         return (out_dat, out_port, out_valid,
                 cen_mem, wen_mem, data_to_mem,
-                addr_to_mem, ack)
+                addr_to_mem, ack, out_mem_valid_data)
 
     def get_ack(self, wen_in, wen_en, ren_in, ren_en):
         self.ack = 0

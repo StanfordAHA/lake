@@ -47,7 +47,7 @@ class AppCtrlModel(Model):
 
     def interact(self, wen_in, ren_in, tb_valid, ren_update):
         '''
-        Returns (wen_out, ren_out, valid_out)
+        Returns (wen_out, ren_out, valid_out, valid_out_stencil)
         '''
 
         valid_out_data = tb_valid.copy()

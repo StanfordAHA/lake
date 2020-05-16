@@ -5,7 +5,7 @@ import random as rand
 import pytest
 import tempfile
 from lake.passes.passes import lift_config_reg, change_sram_port_names
-#from lake.models.lake_top_model import LakeTopModel
+from lake.models.lake_top_model import LakeTopModel
 from lake.utils.sram_macro import SRAMMacroInfo
 # from lake.top.lake_chain import LakeChain
 
@@ -838,13 +838,17 @@ def test_identity_stream(data_width=16,
                          banks=2,
                          input_iterator_support=6,
                          output_iterator_support=6,
+                         input_config_width=16,
+                         output_config_width=16,
                          interconnect_input_ports=1,
                          interconnect_output_ports=3,
                          mem_input_ports=1,
                          mem_output_ports=1,
                          use_sram_stub=1,
+                         sram_macro_info=SRAMMacroInfo(),
+                         read_delay=1,
+                         rw_same_cycle=False,
                          agg_height=8,
-                         transpose_height=8,
                          max_agg_schedule=64,
                          input_max_port_sched=64,
                          output_max_port_sched=64,
@@ -854,10 +858,20 @@ def test_identity_stream(data_width=16,
                          tb_range_max=64,
                          tb_range_inner_max=5,
                          tb_sched_max=64,
+                         max_tb_stride=15,
                          num_tb=1,
                          tb_iterator_support=2,
                          multiwrite=1,
-                         max_prefetch=64):
+                         max_prefetch=64,
+                         config_data_width=32,
+                         config_addr_width=8,
+                         num_tiles=1,
+                         remove_tb=False,
+                         app_ctrl_depth_width=16,
+                         fifo_mode=True,
+                         add_clk_enable=True,
+                         add_flush=True,
+                         stcl_valid_iter=4):
 
     new_config = {}
 
@@ -917,6 +931,8 @@ def test_identity_stream(data_width=16,
     new_config["strg_ub_app_ctrl_read_depth_2"] = 196
     new_config["strg_ub_app_ctrl_write_depth_0"] = 196
 
+    sram_name = sram_macro_info.name
+
     model_lt = LakeTopModel(data_width=data_width,
                             mem_width=mem_width,
                             mem_depth=mem_depth,
@@ -928,6 +944,7 @@ def test_identity_stream(data_width=16,
                             mem_input_ports=mem_input_ports,
                             mem_output_ports=mem_output_ports,
                             use_sram_stub=use_sram_stub,
+                            sram_name=sram_name,
                             agg_height=agg_height,
                             max_agg_schedule=max_agg_schedule,
                             input_max_port_sched=input_max_port_sched,
@@ -940,7 +957,9 @@ def test_identity_stream(data_width=16,
                             tb_sched_max=tb_sched_max,
                             num_tb=num_tb,
                             multiwrite=multiwrite,
-                            max_prefetch=max_prefetch)
+                            max_prefetch=max_prefetch,
+                            num_tiles=num_tiles,
+                            stcl_valid_iter=stcl_valid_iter)
 
     model_lt.set_config(new_config=new_config)
 
@@ -951,11 +970,16 @@ def test_identity_stream(data_width=16,
                      banks=banks,
                      input_iterator_support=input_iterator_support,
                      output_iterator_support=output_iterator_support,
+                     input_config_width=input_config_width,
+                     output_config_width=output_config_width,
                      interconnect_input_ports=interconnect_input_ports,
                      interconnect_output_ports=interconnect_output_ports,
                      mem_input_ports=mem_input_ports,
                      mem_output_ports=mem_output_ports,
                      use_sram_stub=use_sram_stub,
+                     sram_macro_info=sram_macro_info,
+                     read_delay=read_delay,
+                     rw_same_cycle=rw_same_cycle,
                      agg_height=agg_height,
                      max_agg_schedule=max_agg_schedule,
                      input_max_port_sched=input_max_port_sched,
@@ -966,10 +990,20 @@ def test_identity_stream(data_width=16,
                      tb_range_max=tb_range_max,
                      tb_range_inner_max=tb_range_inner_max,
                      tb_sched_max=tb_sched_max,
+                     max_tb_stride=max_tb_stride,
                      num_tb=num_tb,
                      tb_iterator_support=tb_iterator_support,
                      multiwrite=multiwrite,
-                     max_prefetch=max_prefetch)
+                     max_prefetch=max_prefetch,
+                     config_data_width=config_data_width,
+                     config_addr_width=config_addr_width,
+                     num_tiles=num_tiles,
+                     remove_tb=remove_tb,
+                     app_ctrl_depth_width=app_ctrl_depth_width,
+                     fifo_mode=fifo_mode,
+                     add_clk_enable=add_clk_enable,
+                     add_flush=add_flush,
+                     stcl_valid_iter=stcl_valid_iter)
 
     # Run the config reg lift
     # lift_config_reg(lt_dut.internal_generator)
@@ -1007,6 +1041,9 @@ def test_identity_stream(data_width=16,
 
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
+    chain_data_in = [0] * interconnect_input_ports
+    chain_valid_in = [0] * interconnect_input_ports
+
     ren_in = [1] * interconnect_output_ports
     addr_in = 0
 
@@ -1026,7 +1063,12 @@ def test_identity_stream(data_width=16,
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
 
-        (mod_do, mod_vo) = model_lt.interact(data_in, addr_in, valid_in, ren_in)
+        (mod_do, mod_vo) = model_lt.interact(chain_data_in, 
+                                             chain_valid_in, 
+                                             data_in, 
+                                             addr_in, 
+                                             valid_in, 
+                                             ren_in)
 
         if interconnect_output_ports == 1:
             tester.circuit.ren_in = ren_in[0]
@@ -2062,10 +2104,10 @@ def test_2ports_idstream(data_width=16,
 
 
 if __name__ == "__main__":
-    test_2ports_idstream()
+    # test_2ports_idstream()
     # test_chain_mult_tile()
     # test_chain_3porttile()
-    # test_identity_stream()
+    test_identity_stream()
     # test_mult_lines_dim1()
     # test_mult_lines_dim2(4, 2)
     # test_mult_lines_dim2(3, 3)
