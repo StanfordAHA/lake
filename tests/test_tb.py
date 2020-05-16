@@ -9,7 +9,9 @@ import random as rand
 import pytest
 
 
-def test_tb(word_width=16,
+@pytest.mark.parametrize("start_addr", [0, 1])
+def test_tb(start_addr,
+            word_width=16,
             fetch_width=4,
             num_tb=1,
             max_tb_height=1,
@@ -32,7 +34,7 @@ def test_tb(word_width=16,
     new_config["indices"] = [0, 1, 2]
     new_config["tb_height"] = 1
     new_config["dimensionality"] = 2
-    new_config["starting_addr"] = 0
+    new_config["starting_addr"] = start_addr
 
     model_tb.set_config(new_config=new_config)
 
@@ -65,10 +67,11 @@ def test_tb(word_width=16,
     tester.circuit.stride = 2
     tester.circuit.tb_height = 1
     tester.circuit.dimensionality = 2
+    tester.circuit.starting_addr = start_addr
 
     rand.seed(0)
 
-    num_iters = 12
+    num_iters = 300
     for i in range(num_iters):
         data = []
         for j in range(fetch_width):
@@ -82,11 +85,12 @@ def test_tb(word_width=16,
         else:
             valid_data = 0
 
+        valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
         input_data = data
 
-        mem_valid_data = valid_data  # rand.randint(0, 1)
+        mem_valid_data = rand.randint(0, 1)
         tester.circuit.mem_valid_data = mem_valid_data
 
         ack_in = valid_data
@@ -100,18 +104,18 @@ def test_tb(word_width=16,
 
         # print("i: ", i, " model valid ", model_valid, " model data ", model_data)
         tester.eval()
+
         tester.circuit.output_valid.expect(model_valid)
-#        if model_valid:
-#            tester.circuit.col_pixels.expect(model_data[0])
+        if model_valid:
+            tester.circuit.col_pixels.expect(model_data[0])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tbdump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_id(word_width=16,
@@ -172,10 +176,11 @@ def test_id(word_width=16,
     tester.circuit.stride = 1
     tester.circuit.tb_height = 1
     tester.circuit.dimensionality = 1
+    tester.circuit.starting_addr = 0
 
     rand.seed(0)
 
-    num_iters = 100
+    num_iters = 300
     for i in range(num_iters):
         # print()
         # print("i: ", i)
@@ -187,10 +192,13 @@ def test_id(word_width=16,
         for j in range(fetch_width):
             setattr(tester.circuit, f"input_data_{j}", data[j])
 
-        valid_data = 1
+        valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
         input_data = data
+
+        mem_valid_data = rand.randint(0, 1)
+        tester.circuit.mem_valid_data = mem_valid_data
 
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
@@ -199,9 +207,10 @@ def test_id(word_width=16,
         tester.circuit.ren = ren
 
         model_data, model_valid, model_rdy_to_arbiter = \
-            model_tb.interact(input_data, valid_data, ack_in, ren)
+            model_tb.interact(input_data, valid_data, ack_in, ren, mem_valid_data)
 
         tester.eval()
+
         tester.circuit.output_valid.expect(model_valid)
         if model_valid:
             tester.circuit.col_pixels.expect(model_data[0])
@@ -272,11 +281,12 @@ def test_fw1(word_width=16,
     tester.circuit.stride = 1
     tester.circuit.tb_height = 1
     tester.circuit.dimensionality = 1
+    tester.circuit.starting_addr = 0
 
     rand.seed(0)
 
     data = 0
-    num_iters = 100
+    num_iters = 300
     for i in range(num_iters):
         # print()
         # print("i: ", i)
@@ -284,14 +294,13 @@ def test_fw1(word_width=16,
         data = rand.randint(0, 2**word_width - 1)
         tester.circuit.input_data = data
 
-        if i % fetch_width == 0:
-            valid_data = 1
-        else:
-            valid_data = 0
-
+        valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
 
         input_data = data
+
+        mem_valid_data = rand.randint(0, 1)
+        tester.circuit.mem_valid_data = mem_valid_data
 
         ack_in = valid_data
         tester.circuit.ack_in = ack_in
@@ -300,13 +309,15 @@ def test_fw1(word_width=16,
         tester.circuit.ren = ren
 
         model_data, model_valid, model_rdy_to_arbiter = \
-            model_tb.interact(input_data, valid_data, ack_in, ren)
+            model_tb.interact(input_data, valid_data, ack_in, ren, mem_valid_data)
 
         # print("i: ", i, " model valid ", model_valid, " model data ", model_data)
         tester.eval()
+
         tester.circuit.output_valid.expect(model_valid)
         if model_valid:
             tester.circuit.col_pixels.expect(model_data[0])
+
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:

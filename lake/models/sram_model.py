@@ -36,8 +36,7 @@ class SRAMModel(Model):
                  wen,
                  cen,
                  addr,
-                 data,
-                 chain_idx_input):
+                 data):
         '''
         Returns (rd_reg)
         '''
@@ -45,16 +44,6 @@ class SRAMModel(Model):
         rd_reg_ret = self.rd_reg
 
         addr = addr % self.depth
-
-        if self.num_tiles == 1:
-            self.chain_idx_tile = 0
-        else:
-            self.chain_idx_tile = addr >> (self.address_width - self.chain_idx_bits - 1)
-            addr = addr & (2**(self.address_width - self.chain_idx_bits - 1) - 1)
-
-        if (self.num_tiles > 1) and (chain_idx_input != self.chain_idx_tile):
-            wen = 0
-            cen = 0
 
         # no-op
         if cen == 0:

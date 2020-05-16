@@ -31,6 +31,7 @@ def test_tba(word_width=16,
     new_config["indices"] = [0, 1, 2]
     new_config["dimensionality"] = 2
     new_config["tb_height"] = 1
+    new_config["starting_addr"] = 0
 
     model_tba.set_config(new_config=new_config)
 
@@ -58,6 +59,7 @@ def test_tba(word_width=16,
     tester.circuit.tb_0_stride = 2
     tester.circuit.tb_0_dimensionality = 2
     tester.circuit.tb_0_tb_height = 1
+    tester.circuit.tb_0_starting_addr = 0
 
     tester.circuit.clk = 0
     tester.circuit.rst_n = 1
@@ -79,8 +81,11 @@ def test_tba(word_width=16,
         for j in range(fetch_width):
             setattr(tester.circuit, f"SRAM_to_tb_data_{j}", data[j])
 
-        valid_data = 1
+        valid_data = rand.randint(0, 1)
         tester.circuit.valid_data = valid_data
+
+        mem_valid_data = rand.randint(0, 1)
+        tester.circuit.mem_valid_data = mem_valid_data
 
         tb_index_for_data = 0
         tester.circuit.tb_index_for_data = tb_index_for_data
@@ -89,7 +94,7 @@ def test_tba(word_width=16,
         tester.circuit.ack_in = ack_in
 
         model_data, model_valid = \
-            model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data, 1)
+            model_tba.tba_main(data, valid_data, ack_in, tb_index_for_data, 1, mem_valid_data)
 
         tester.eval()
         tester.circuit.tb_to_interconnect_valid.expect(model_valid)

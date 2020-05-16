@@ -79,7 +79,10 @@ class AppCtrl(Generator):
             # Now we need to just compute stencil valid
             threshold_comps = [self._dim_counter[_i] >= self._threshold[_i] for _i in range(self.stcl_iter_support)]
             self.wire(self._valid_out_stencil[0], kts.concat(*threshold_comps).r_and())
-            self.wire(self._valid_out_stencil[1], kts.const(0, 1))
+            for i in range(self.int_out_ports - 1):
+                # self.wire(self._valid_out_stencil[i + 1], 0)
+                # for multiple ports
+                self.wire(self._valid_out_stencil[i + 1], kts.concat(*threshold_comps).r_and())
 
         else:
             self.wire(self._valid_out_stencil, self._tb_valid)
@@ -140,6 +143,13 @@ class AppCtrl(Generator):
                                       packed=True)
         self._input_port.add_attribute(ConfigRegAttr("Relative input port for an output port"))
 
+        self.out_port_bits = max(1, kts.clog2(self.int_out_ports))
+        self._output_port = self.input("output_port", self.out_port_bits,
+                                       size=self.int_in_ports,
+                                       explicit_array=True,
+                                       packed=True)
+        self._output_port.add_attribute(ConfigRegAttr("Relative output port for an input port"))
+
         self._prefill = self.input("prefill", self.int_out_ports)
         self._prefill.add_attribute(ConfigRegAttr("Is the input stream prewritten?"))
 
@@ -183,7 +193,7 @@ class AppCtrl(Generator):
     def set_write_done_ff(self, idx):
         if ~self._rst_n:
             self._write_done_ff[idx] = 0
-        elif self._write_done[idx] & self._read_done[idx]:
+        elif self._write_done[idx] & self._read_done[self._output_port[idx]]:
             self._write_done_ff[idx] = 0
         elif self._write_done[idx]:
             self._write_done_ff[idx] = 1
@@ -193,6 +203,15 @@ class AppCtrl(Generator):
         self._write_done[idx] = (self._wen_in[idx] &
                                  (self._write_count[idx] == (self._write_depth[idx] - 1))) | \
             self._write_done_ff[idx]
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_write_cnt(self, idx):
+        if ~self._rst_n:
+            self._write_count[idx] = 0
+        elif self._write_done[idx] &  self._read_done[self._output_port[idx]]:
+            self._write_count[idx] = 0
+        elif self._wen_in[idx] & ~self._write_done_ff[idx]:
+            self._write_count[idx] = self._write_count[idx] + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_read_done_ff(self, idx):
@@ -215,7 +234,7 @@ class AppCtrl(Generator):
     @always_comb
     def set_read_done(self, idx):
         self._read_done[idx] = (self._ren_update[idx] & self._ren_in[idx] &
-                                (self._read_count[idx] == (self._read_depth[idx] - 1))) |\
+                                (self._read_count[idx] == (self._read_depth[idx] - 1))) | \
             self._read_done_ff[idx] | (~self._prefill[idx] & ~self._wr_delay_state_n[idx])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -235,15 +254,6 @@ class AppCtrl(Generator):
             self._read_count[idx] = 0
         elif self._ren_in[idx] & self._ren_update[idx]:
             self._read_count[idx] = self._read_count[idx] + 1
-
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def set_write_cnt(self, idx):
-        if ~self._rst_n:
-            self._write_count[idx] = 0
-        elif self._write_done[idx] & self._read_done[idx]:
-            self._write_count[idx] = 0
-        elif self._wen_in[idx] & ~self._write_done_ff[idx]:
-            self._write_count[idx] = self._write_count[idx] + 1
 
     # When we start up, there is no way to read data from storage.
     # We use this flag to gate read logic TODO : change to a separate counter
@@ -272,17 +282,6 @@ class AppCtrl(Generator):
                     self._dim_counter[idx] = 0
                 else:
                     self._dim_counter[idx] = self._dim_counter[idx] + 1
-        # elif self._clk_en:
-        #     if self._flush:
-        #         for i in range(self.iterator_support):
-        #             self._dim_counter[i] = 0
-        #     elif (self._step):
-        #         for i in range(self.iterator_support):
-        #             if self._update[i] & (i < self._dimensionality):
-        #                 if self._dim_counter[i] == (self._ranges[i] - 1):
-        #                     self._dim_counter[i] = 0
-        #                 else:
-        #                     self._dim_counter[i] = self._dim_counter[i] + 1
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from lake.models.model import Model
 from lake.models.addr_gen_model import AddrGenModel
 import math as mt
 import kratos as kts
+import numpy as np
 
 
 class InputAddrCtrlModel(Model):
@@ -90,7 +91,7 @@ class InputAddrCtrlModel(Model):
     # Retrieve the current addresses from each generator
     def interact(self, valid, data_in, wen_en):
         '''
-        Returns (valid, data, addrs)
+        Returns (wen, data, addrs, port_out)
         '''
         wen = self.get_wen(valid, wen_en)
         data_out = self.get_data_out(valid, data_in)
@@ -102,20 +103,18 @@ class InputAddrCtrlModel(Model):
     def get_port_out(self, valid):
         for i in range(self.banks):
             for j in range(self.interconnect_input_ports):
-                self.port_out_exp[i][j] = 0
-        for i in range(self.banks):
-            for j in range(self.interconnect_input_ports):
                 if (valid[j]):
                     self.port_out_exp[i][j] = 1
+                else:
+                    self.port_out_exp[i][j] = 0
 
         port_out = []
         for i in range(self.interconnect_input_ports):
             new_tmp = []
             for j in range(self.banks):
                 new_tmp.append(self.port_out_exp[j][i])
-            concat = 0
-            for i in range(len(new_tmp)):
-                concat = concat or new_tmp[i]
+
+            concat = np.bitwise_or.reduce(new_tmp)
             port_out.append(concat)
 
         return port_out
@@ -124,7 +123,7 @@ class InputAddrCtrlModel(Model):
         for i in range(self.banks):
             self.addresses[i] = 0
         for i in range(self.interconnect_input_ports):
-            if(valid[i]):
+            if (valid[i]):
                 to_get = self.addr_gens[i]
                 if(self.banks == 1):
                     self.addresses[0] = to_get.get_address()
@@ -139,7 +138,7 @@ class InputAddrCtrlModel(Model):
             self.data_out[i] = [0 for z in range(self.fw_int)]
             # self.data_out[i] = [0] * len(data_in[0])
         for i in range(self.interconnect_input_ports):
-            if(valid[i]):
+            if (valid[i]):
                 to_get = self.addr_gens[i]
                 if(self.banks == 1):
                     self.data_out[0] = data_in[i]
@@ -153,15 +152,13 @@ class InputAddrCtrlModel(Model):
         for i in range(self.banks):
             self.wen[i] = 0
         for i in range(self.interconnect_input_ports):
-            if(valid[i]):
+            if (valid[i]):
                 to_get = self.addr_gens[i]
                 if(self.banks == 1):
-                    self.wen[0] = 1
+                    self.wen[0] = wen_en[i]
                     break
                 else:
-                    self.wen[to_get.get_address() >> (self.mem_addr_width)] = 1
-        for i in range(self.interconnect_input_ports):
-            self.wen[i] = wen_en[i] & self.wen[i]
+                    self.wen[to_get.get_address() >> (self.mem_addr_width)] = wen_en[i]
         return self.wen
 
     # Step the addresses based on valid

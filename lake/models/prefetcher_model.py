@@ -42,14 +42,15 @@ class PrefetcherModel(Model):
     def get_cnt(self):
         return self.cnt
 
-    def interact(self, data_in, valid_read, tba_rdy):
+    def interact(self, data_in, valid_read, tba_rdy, mem_valid_data):
         '''
-        Returns (data, valid, step)
+        Returns (data, valid, step, mem_valid_data_out)
         '''
-        (d_out, v_out, empty, full) = self.fifo.interact(valid_read, tba_rdy, data_in)
+        (d_out, v_out, empty, full, mem_valid_data_out) = \
+            self.fifo.interact(valid_read, tba_rdy, data_in, mem_valid_data)
         stp = self.get_step()
         self.update_cnt(valid_read, tba_rdy)
         if type(d_out) == list:
-            return (d_out.copy(), v_out, stp)
+            return (d_out.copy(), v_out, stp, mem_valid_data_out)
         else:
-            return (d_out, v_out, stp)
+            return (d_out, v_out, stp, mem_valid_data_out)
