@@ -81,7 +81,7 @@ class AppCtrl(Generator):
             self.wire(self._valid_out_stencil[0], kts.concat(*threshold_comps).r_and())
             for i in range(self.int_out_ports - 1):
                 # self.wire(self._valid_out_stencil[i + 1], 0)
-            # for multiple ports
+                # for multiple ports
                 self.wire(self._valid_out_stencil[i + 1], kts.concat(*threshold_comps).r_and())
 
         else:
