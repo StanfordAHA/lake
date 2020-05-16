@@ -9,6 +9,7 @@ import random as rand
 import pytest
 
 
+@pytest.mark.skip
 def test_chain_module(data_width=16,
                       interconnect_output_ports=3,
                       chain_idx_bits=2,

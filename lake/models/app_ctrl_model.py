@@ -77,7 +77,7 @@ class AppCtrlModel(Model):
 
             valid_out_stencil[0] = np.bitwise_and.reduce(threshold_comps)
             for i in range(self.int_out_ports - 1):
-                valid_out_stencil[i + 1] = 0  # np.bitwise_and.reduce(threshold_comps)
+                valid_out_stencil[i + 1] = np.bitwise_and.reduce(threshold_comps)
 
             for i in range(len(valid_out_data)):
                 valid_out_data[i] = valid_out_data[i] & valid_out_stencil[i]
