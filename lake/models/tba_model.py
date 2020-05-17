@@ -28,7 +28,6 @@ class TBAModel(Model):
         self.config["stride"] = 1
         self.config["indices"] = [0]
         self.config["dimensionality"] = 1
-        self.config["starting_addr"] = 0
 
         self.output_valid_all = []
         for i in range(self.num_tb):
@@ -121,7 +120,7 @@ class TBAModel(Model):
         self.tbs[0].print_tb(input_data, valid_data, ack_in, ren)
         print()
 
-    def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data, ren, mem_valid_data):
+    def tba_main(self, input_data, valid_data, ack_in, tb_index_for_data, ren):
         ret_data = 0
         ret_valid = 0
         ret_rdy = 0
@@ -132,12 +131,11 @@ class TBAModel(Model):
             else:
                 valid_data_i = 0
                 ack_in_i = 0
-
-            (ret_data, ret_valid, ret_rdy) = self.tbs[i].interact(
-                input_data, valid_data_i, ack_in_i, ren, mem_valid_data)
+            # self.tbs[i].interact(input_data, valid_data_i, ack_in_i, ren)
+            (ret_data, ret_valid, ret_rdy) = self.tbs[i].interact(input_data, valid_data_i, ack_in_i, ren)
 
         # self.set_tb_outputs()
         # self.send_tba_rdy()
         # self.print_tba()
-
+        # return self.tb_to_interconnect_data, self.tb_to_interconnect_valid
         return ret_data, ret_valid

@@ -218,11 +218,11 @@ class LakeTop(Generator):
 
         # Add tile enable!
         self._tile_en = self.input("tile_en", 1)
-        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        # self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
         # either normal or fifo mode rn...
         self.num_modes = 3
         self._mode = self.input("mode", max(1, clog2(self.num_modes)))
-        self._mode.add_attribute(ConfigRegAttr("MODE!"))
+#        self._mode.add_attribute(ConfigRegAttr("MODE!"))
 
         # Currenlt mode = 0 is UB, mode = 1 is FIFO
         gclk = self.var("gclk", 1)

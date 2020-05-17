@@ -21,13 +21,12 @@ class RegFIFOModel(Model):
 
         self.num_items = 0
         self.reg_array = []
-        self.mvd_array = []
         for i in range(self.depth):
             row = []
             for j in range(self.width_mult):
                 row.append(0)
             self.reg_array.append(row)
-            self.mvd_array.append(row)
+        # self.reg_array = ([0] * self.data_width) * self.depth
 
         self.full = 0
         self.empty = 1
@@ -55,9 +54,9 @@ class RegFIFOModel(Model):
             self.wr_ptr = 0
 
     # Assume full + empty already obeyed
-    def interact(self, push, pop, data_in, mem_valid_data):
+    def interact(self, push, pop, data_in):
         '''
-        Returns (data_out, valid, empty, full, mem_valid_data_out)
+        Returns (data_out, valid, empty, full)
         '''
         empty_ret = int(self.num_items == 0)
         full_ret = int(self.num_items == self.depth)
@@ -65,34 +64,30 @@ class RegFIFOModel(Model):
         if push and pop:
             # Push and pop on empty passes through
             if(self.num_items == 0):
-                return (data_in, 1, empty_ret, full_ret, mem_valid_data)
+                return (data_in, 1, empty_ret, full_ret)
             else:
                 dat_out = self.reg_array[self.rd_ptr]
-                mem_valid_data_out = self.mvd_array[self.rd_ptr]
                 self.increment_rd()
                 self.reg_array[self.wr_ptr] = list(data_in)
-                self.mvd_array[self.wr_ptr] = mem_valid_data
                 self.increment_wr()
-                return (dat_out, 1, empty_ret, full_ret, mem_valid_data_out)
+                return (dat_out, 1, empty_ret, full_ret)
         elif push and not pop:
             # Not full, push an item
             if(self.num_items == self.depth):
-                return ([0], 0, empty_ret, full_ret, 0)
+                return ([0], 0, empty_ret, full_ret)
             self.reg_array[self.wr_ptr] = list(data_in)
-            self.mvd_array[self.wr_ptr] = mem_valid_data
             self.increment_wr()
             self.num_items += 1
             # return (self.reg_array[self.rd_ptr], 0, empty_ret, full_ret)
-            return ([0], 0, empty_ret, full_ret, 0)
+            return ([0], 0, empty_ret, full_ret)
         elif not push and pop:
             if(self.num_items == 0):
                 # return (self.reg_array[self.rd_ptr], 0, empty_ret, full_ret)
-                return ([0], 0, empty_ret, full_ret, 0)
+                return ([0], 0, empty_ret, full_ret)
             dat_out = self.reg_array[self.rd_ptr]
-            mem_valid_data_out = self.mvd_array[self.rd_ptr]
             self.increment_rd()
             self.num_items -= 1
-            return (dat_out, 1, empty_ret, full_ret, mem_valid_data_out)
+            return (dat_out, 1, empty_ret, full_ret)
         else:
             # return (self.reg_array[self.rd_ptr], 0, empty_ret, full_ret)
-            return ([0], 0, empty_ret, full_ret, 0)
+            return ([0], 0, empty_ret, full_ret)

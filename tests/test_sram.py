@@ -50,6 +50,8 @@ def test_sram_basic(data_width,
 
     data = [0 for i in range(width_mult)]
 
+    chain_idx_input = 0
+
     for z in range(1000):
         # Generate new input
         wen = rand.randint(0, 1)
@@ -61,6 +63,7 @@ def test_sram_basic(data_width,
         tester.circuit.wen = wen
         tester.circuit.cen = cen
         tester.circuit.addr = addr
+        tester.circuit.chain_idx_input = chain_idx_input
 
         if width_mult == 1:
             tester.circuit.data_in = data[0]
@@ -68,7 +71,7 @@ def test_sram_basic(data_width,
             for i in range(width_mult):
                 setattr(tester.circuit, f"data_in_{i}", data[i])
 
-        model_dat_out = model_sram.interact(wen, cen, addr, data)
+        model_dat_out = model_sram.interact(wen, cen, addr, data, chain_idx_input)
 
         tester.eval()
 

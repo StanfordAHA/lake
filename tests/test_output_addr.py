@@ -22,9 +22,7 @@ def test_output_addr_basic(banks,
                            data_width=16,
                            fetch_width=32,
                            iterator_support=4,
-                           address_width=16,
-                           config_width=16,
-                           chain_idx_output=0):
+                           address_width=16):
 
     fw_int = int(fetch_width / data_width)
 
@@ -36,8 +34,7 @@ def test_output_addr_basic(banks,
                                     iterator_support=iterator_support,
                                     address_width=address_width,
                                     data_width=data_width,
-                                    fetch_width=fetch_width,
-                                    chain_idx_output=chain_idx_output)
+                                    fetch_width=fetch_width)
 
     new_config = {}
     new_config['address_gen_0_starting_addr'] = 0
@@ -67,11 +64,8 @@ def test_output_addr_basic(banks,
                          num_tiles=num_tiles,
                          banks=banks,
                          iterator_support=iterator_support,
-                         address_width=address_width,
-                         config_width=config_width)
-
+                         address_width=address_width)
     lift_config_reg(dut.internal_generator)
-
     magma_dut = kts.util.to_magma(dut, flatten_array=True,
                                   check_multiple_driver=False,
                                   check_flip_flop_always_ff=False)
@@ -103,11 +97,8 @@ def test_output_addr_basic(banks,
             tester.circuit.valid_in[z] = valid_in[z]
         tester.circuit.step_in = step_in
 
-        # top level config regs passed down
         tester.circuit.enable_chain_output = enable_chain_output
-        tester.circuit.chain_idx_output = chain_idx_output
-
-        (ren, addrs) = model_oac.interact(valid_in, step_in, enable_chain_output)
+        (ren, addrs, tile_output_en) = model_oac.interact(valid_in, step_in, enable_chain_output)
 
         tester.eval()
 
@@ -121,9 +112,11 @@ def test_output_addr_basic(banks,
 
         if(interconnect_output_ports == 1):
             tester.circuit.addr_out.expect(addrs[0])
+            tester.circuit.tile_output_en.expect(tile_output_en[0])
         else:
             for j in range(interconnect_output_ports):
                 getattr(tester.circuit, f"addr_out_{z}").expect(addrs[z])
+                tester.circuit.tile_output_en[j].expect(tile_output_en[j])
 
         tester.step(2)
 
@@ -143,6 +136,4 @@ if __name__ == "__main__":
                            data_width=16,
                            fetch_width=32,
                            iterator_support=4,
-                           address_width=16,
-                           config_width=16,
-                           chain_idx_output=0)
+                           address_width=16)

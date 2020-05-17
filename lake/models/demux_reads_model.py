@@ -21,20 +21,18 @@ class DemuxReadsModel(Model):
     def set_config(self, new_config):
         return
 
-    def interact(self, data_in, valid_in, port_in, mem_valid_data):
+    def interact(self, data_in, valid_in, port_in):
         '''
-        Returns (data_out, valid_out, mem_valid_data_out)
+        Returns (data_out, valid_out)
         '''
         data_out = []
         valid_out = []
-        mem_valid_data_out = []
         for i in range(self.int_out_ports):
             row = []
             for j in range(self.fw_int):
                 row.append(0)
             data_out.append(list(row))
             valid_out.append(0)
-            mem_valid_data_out.append(0)
 
         no_valid = True
         for i in range(self.banks):
@@ -42,14 +40,13 @@ class DemuxReadsModel(Model):
                 no_valid = False
 
         if no_valid:
-            return (data_out, valid_out, mem_valid_data_out)
+            return (data_out, valid_out)
 
         for i in range(self.int_out_ports):
             for j in range(self.banks):
                 if(valid_in[j] & (port_in[j] == (1 << i))):
                     data_out[i] = list(data_in[j])
                     valid_out[i] = 1
-                    mem_valid_data_out[i] = mem_valid_data[j]
                     break
 
-        return (data_out, valid_out, mem_valid_data_out)
+        return (data_out, valid_out)

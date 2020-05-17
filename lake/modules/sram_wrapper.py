@@ -258,7 +258,6 @@ class SRAMWrapper(Generator):
                         self._valid_data[i] = 0
                 else:
                     self._valid_data[i] = self._mem_cen_in_bank
-            # write
             else:
                 self._valid_data[i] = 0
 

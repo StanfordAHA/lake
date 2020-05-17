@@ -14,8 +14,7 @@ class OutputAddrCtrlModel(Model):
                  iterator_support,
                  address_width,
                  data_width,
-                 fetch_width,
-                 chain_idx_output):
+                 fetch_width):
 
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_depth = mem_depth
@@ -26,7 +25,6 @@ class OutputAddrCtrlModel(Model):
         self.data_width = data_width
         self.fetch_width = fetch_width
         self.fw_int = int(self.fetch_width / self.data_width)
-        self.chain_idx_output = chain_idx_output
 
         self.config = {}
 
@@ -44,6 +42,8 @@ class OutputAddrCtrlModel(Model):
         self.addresses = []
         for i in range(self.interconnect_output_ports):
             self.addresses.append(0)
+
+        self.config[f"chain_idx_output"] = 0
 
         # Initialize the configuration
         for i in range(self.interconnect_output_ports):
@@ -85,17 +85,22 @@ class OutputAddrCtrlModel(Model):
         Returns (ren, addrs)
         '''
         ren = self.get_ren(valid_in)
-        addrs = self.get_addrs_tile_en()
+        addrs, tile_output_en = self.get_addrs_tile_en()
         self.step_addrs(valid_in, step_in)
-        return (ren, addrs)
+        return (ren, addrs, tile_output_en)
 
     # Retrieve the current addresses from each generator
     def get_addrs_tile_en(self):
+        tile_output_en = []
         for i in range(self.interconnect_output_ports):
             to_get = self.addr_gens[i]
             self.addresses[i] = to_get.get_address() % self.mem_depth
             addr_chain_bits = (self.addresses[i]) >> (self.mem_addr_width - self.chain_idx_bits - 1)
-        return self.addresses
+            if addr_chain_bits == self.config[f"chain_idx_output"]:
+                tile_output_en.append(1)
+            else:
+                tile_output_en.append(0)
+        return self.addresses, tile_output_en
 
     def get_addrs_full(self):
         for i in range(self.interconnect_output_ports):
