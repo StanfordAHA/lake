@@ -345,7 +345,6 @@ class StrgUB(Generator):
                                data_in=self._data_consume[i],
                                valid_in=self._valid_consume[i],
                                align=self._align_to_agg[i],
-                               write_act=const(1, 1),
                                data_out=self._to_iac_dat[i],
                                valid_out=self._to_iac_valid[i])
 

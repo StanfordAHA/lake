@@ -31,7 +31,6 @@ class AggregationBuffer(Generator):
         # Bring in a single element into an AggregationBuffer w/ valid signaling
         self._data_in = self.input("data_in", self.data_width)
         self._valid_in = self.input("valid_in", 1)
-        self._write_act = self.input("write_act", 1)
         self._align = self.input("align", 1)
         # Outputs
         self._data_out = self.output("data_out", self.mem_width)
@@ -142,7 +141,7 @@ class AggregationBuffer(Generator):
     def update_out_sched_ptr(self):
         if ~self._rst_n:
             self._out_sched_ptr = 0
-        elif self._write_act:
+        elif self._valid_out:
             self._out_sched_ptr = \
                 ternary(self._out_sched_ptr == (self._out_period - 1),
                         const(0, self._out_sched_ptr.width),
