@@ -57,7 +57,16 @@ class InputAddrCtrl(Generator):
         self._valid_in = self.input("valid_in", self.interconnect_input_ports)
         self._wen_en = self.input("wen_en", self.interconnect_input_ports)
 
+        self._wen_en_saved = self.var("wen_en_saved", self.interconnect_input_ports)
+
         self._data_in = self.input("data_in",
+                                   self.data_width,
+                                   size=(self.interconnect_input_ports,
+                                         self.fw_int),
+                                   explicit_array=True,
+                                   packed=True)
+
+        self._data_in_saved = self.var("data_in_saved",
                                    self.data_width,
                                    size=(self.interconnect_input_ports,
                                          self.fw_int),
@@ -84,6 +93,13 @@ class InputAddrCtrl(Generator):
                                      explicit_array=True,
                                      packed=True)
 
+        self._wen_reduced_saved = self.var("wen_reduced_saved",
+                                           self.banks,
+                                           size=self.interconnect_input_ports,
+                                           explicit_array=True,
+                                           packed=True)
+
+
         self._addresses = self.output("addr_out",
                                       self.mem_addr_width,
                                       size=(self.banks,
@@ -105,6 +121,9 @@ class InputAddrCtrl(Generator):
                                       packed=True)
 
         self._port_out = self.output("port_out", self.interconnect_input_ports)
+
+        self._counter = self.var("counter", self.port_sched_width)
+
         # Wire to port out
         for i in range(self.interconnect_input_ports):
             new_tmp = []
@@ -119,6 +138,13 @@ class InputAddrCtrl(Generator):
 
         # LOCAL VARS
         self._local_addrs = self.var("local_addrs",
+                                     self.address_width,
+                                     size=(self.interconnect_input_ports,
+                                           self.multiwrite),
+                                     packed=True,
+                                     explicit_array=True)
+
+        self._local_addrs_saved = self.var("local_addrs_saved",
                                      self.address_width,
                                      size=(self.interconnect_input_ports,
                                            self.multiwrite),
@@ -182,6 +208,9 @@ class InputAddrCtrl(Generator):
             self._offsets_cfg.add_attribute(ConfigRegAttr(doc))
         self.add_code(self.set_multiwrite_addrs)
 
+        self.add_code(self.mult_int_ports)
+        self.add_code(self.save_mult_int)
+
     # Update the pointer and mux for input and output schedule
     # Now, obey the input schedule to send to the proper SRAM bank
 
@@ -213,18 +242,43 @@ class InputAddrCtrl(Generator):
             self._port_out_exp[i] = 0
             self._data_out[i][0] = 0
             self._addresses[i][0] = 0
-            for j in range(self.interconnect_input_ports):
-                if ~self._done[i][0]:
-                    # If this input port is active on this bank...
-                    if self._wen_reduced[j][i]:
-                        # Finds the first one...
-                        self._done[i][0] = 1
-                        # self._wen[i][0] = 1
-                        # This should only go through if the wen_en is on...
-                        self._wen[i][0] = self._wen_en[j]
-                        self._port_out_exp[i][j] = 1
-                        self._data_out[i][0] = self._data_in[j]
-                        self._addresses[i][0] = self._local_addrs[j][0][self.mem_addr_width - 1, 0]
+            if ~self._done[i][0]:
+                # If this input port is active on this bank...
+                if self._wen_reduced_saved[self._counter][i]:
+                    self._done[i][0] = 1
+                    # self._wen[i][0] = 1
+                    # This should only go through if the wen_en is on...
+                    self._wen[i][0] = self._wen_en_saved[self._counter]
+                    self._port_out_exp[i][self._counter] = 1
+                    self._data_out[i][0] = self._data_in_saved[self._counter]
+                    self._addresses[i][0] = self._local_addrs_saved[self._counter][0][self.mem_addr_width - 1, 0]
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def save_mult_int(self):
+        if ~self._rst_n:
+            self._wen_en_saved = 0
+            self._wen_reduced_saved = 0
+            self._data_in_saved = 0
+            self._local_addrs_saved = 0
+        elif self._wen_en.r_or():
+            self._wen_en_saved = self._wen_en
+            self._wen_reduced_saved = self._wen_reduced
+            self._data_in_saved = self._data_in
+            self._local_addrs_saved = self._local_addrs
+        elif self._counter == self.interconnect_input_ports - 1:
+            self._wen_en_saved = 0
+            self._wen_reduced_saved = 0
+            self._data_in_saved = 0
+            self._local_addrs_saved = 0
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def mult_int_ports(self):
+        if ~self._rst_n:
+            self._counter = 0
+        elif self._counter == self.interconnect_input_ports - 1:
+            self._counter = 0
+        elif self._wen_en_saved.r_or():
+            self._counter = self._counter + 1
 
     @always_comb
     def decode_out_alt(self, idx):
