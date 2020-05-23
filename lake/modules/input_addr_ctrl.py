@@ -243,8 +243,7 @@ class InputAddrCtrl(Generator):
             self._data_out[i][0] = 0
             self._addresses[i][0] = 0
             if ~self._done[i][0]:
-                # In comb block, directly write data, addr, wen_en from first interconnect
-                # input port
+                # In comb block, directly write data, addr, wen_en from first interconnect input port
                 # If this input port is active on this bank...
                 if self._wen_reduced[0][i]:
                     self._done[i][0] = 1
