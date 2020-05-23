@@ -243,18 +243,20 @@ class InputAddrCtrl(Generator):
             self._data_out[i][0] = 0
             self._addresses[i][0] = 0
             if ~self._done[i][0]:
+                # In comb block, directly write data, addr, wen_en from first interconnect
+                # input port
+                # If this input port is active on this bank...
                 if self._wen_reduced[0][i]:
                     self._done[i][0] = 1
-                    # self._wen[i][0] = 1
                     # This should only go through if the wen_en is on...
                     self._wen[i][0] = self._wen_en[0]
                     self._port_out_exp[i][0] = 1
                     self._data_out[i][0] = self._data_in[0]
                     self._addresses[i][0] = self._local_addrs[0][0][self.mem_addr_width - 1, 0]
+                # Check to write data from other interconnect input ports (other than first)
                 # If this input port is active on this bank...
                 elif self._wen_reduced_saved[self._counter + 1][i]:
                     self._done[i][0] = 1
-                    # self._wen[i][0] = 1
                     # This should only go through if the wen_en is on...
                     self._wen[i][0] = self._wen_en_saved[self._counter + 1]
                     self._port_out_exp[i][self._counter + 1] = 1
@@ -268,6 +270,8 @@ class InputAddrCtrl(Generator):
             self._wen_reduced_saved = 0
             self._data_in_saved = 0
             self._local_addrs_saved = 0
+        # keep track of data from other interconnect input ports since we only are able
+        # to write first interconnect input port at first
         elif self._wen_en.r_or():
             self._wen_en_saved = self._wen_en
             self._wen_reduced_saved = self._wen_reduced
@@ -278,6 +282,8 @@ class InputAddrCtrl(Generator):
             self._wen_reduced_saved = 0
             self._data_in_saved = 0
             self._local_addrs_saved = 0
+        # the data/wen from first interconnect input port is directly written, so
+        # we do not have to resend that to SRAM
         elif self._counter == self.interconnect_input_ports - 2:
             self._wen_en_saved = 0
             self._wen_reduced_saved = 0
@@ -290,6 +296,8 @@ class InputAddrCtrl(Generator):
             self._counter = 0
         elif self.interconnect_input_ports == 1:
             self.counter = 0
+        # the data/wen from first interconnect input port is directly written, so
+        # we do not have to resend that to SRAM
         elif self._counter == self.interconnect_input_ports - 2:
             self._counter = 0
         elif self._wen_en_saved.r_or():
