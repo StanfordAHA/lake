@@ -261,7 +261,7 @@ class StrgUB(Generator):
         self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       wen_in=self._port_wens & self._to_iac_valid,  # Gets valid and the ack
+                       wen_in=self._to_iac_valid,  # self._port_wens & self._to_iac_valid,  # Gets valid and the ack
                        ren_in=self._ren_out_reduced,
                        tb_valid=kts.const(0, 1),
                        # ren_update=kts.concat(*([kts.const(1, 1)] * self.interconnect_output_ports)),
@@ -345,7 +345,6 @@ class StrgUB(Generator):
                                data_in=self._data_consume[i],
                                valid_in=self._valid_consume[i],
                                align=self._align_to_agg[i],
-                               write_act=const(1, 1),
                                data_out=self._to_iac_dat[i],
                                valid_out=self._to_iac_valid[i])
 

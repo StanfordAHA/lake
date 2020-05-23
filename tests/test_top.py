@@ -1063,12 +1063,8 @@ def test_identity_stream(data_width=16,
                 tester.circuit.wen[j] = valid_in[j]
         tester.circuit.addr_in = addr_in
 
-        (mod_do, mod_vo) = model_lt.interact(chain_data_in, 
-                                             chain_valid_in, 
-                                             data_in, 
-                                             addr_in, 
-                                             valid_in, 
-                                             ren_in)
+        (chain_out, chain_valid_out, mod_do, mod_vo) = \
+            model_lt.interact(chain_data_in, chain_valid_in, data_in, addr_in, valid_in, ren_in)
 
         if interconnect_output_ports == 1:
             tester.circuit.ren_in = ren_in[0]

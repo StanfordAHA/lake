@@ -403,6 +403,12 @@ class LakeTopModel(Model):
             self.mem_data_out.append(0)
             self.mem_valid_data.append(0)
 
+        self.iac_port_out = []
+        self.valid_agg_buff = []
+        for i in range(self.interconnect_input_ports):
+            self.iac_port_out.append(0)
+            self.valid_agg_buff.append(0)
+
     def interact(self,
                  chain_valid_in,
                  chain_data_in,
@@ -416,7 +422,8 @@ class LakeTopModel(Model):
         '''
 
         if self.config[f"tile_en"] == 0:
-            return
+            emptyout = [0] * self.interconnect_output_ports
+            return emptyout, emptyout, emptyout, emptyout
 
         (ac_wen_out,
          ac_ren_out,
@@ -429,7 +436,7 @@ class LakeTopModel(Model):
         (arb_wen_en,
          arb_ren_en,
          acc_valid_out_dat,
-         acc_valid_out_stencil) = self.app_ctrl_coarse.interact(wen_in=self.port_wens & self.to_iac_valid,
+         acc_valid_out_stencil) = self.app_ctrl_coarse.interact(wen_in=self.iac_port_out & self.valid_agg_buff,
                                                                 ren_in=1,
                                                                 tb_valid=0,
                                                                 ren_update=ack_reduced)
@@ -464,9 +471,11 @@ class LakeTopModel(Model):
             valid_agg_buff = wen
             data_agg_buff = data_in
 
+        self.valid_agg_buff = valid_agg_buff
+
         # Now send agg_buff stuff to IAC
-        (iac_valid, iac_data, iac_addrs, iac_port_out) = \
-            self.iac.interact(valid_agg_buff, data_agg_buff, arb_wen_en)
+        (iac_valid, iac_data, iac_addrs, self.iac_port_out) = \
+            self.iac.interact(self.valid_agg_buff, data_agg_buff, arb_wen_en)
 
         # Get prefetch step for OAC...
         pref_step = []
@@ -677,4 +686,4 @@ class LakeTopModel(Model):
         else:
             chain_valid_out = chain_valid_out_inter
 
-        return chain_data_out, chain_valid_out, data_out_tile, valid_out_tile
+        return (chain_data_out, chain_valid_out, data_out_tile, valid_out_tile)
