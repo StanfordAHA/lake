@@ -67,11 +67,11 @@ class InputAddrCtrl(Generator):
                                    packed=True)
 
         self._data_in_saved = self.var("data_in_saved",
-                                   self.data_width,
-                                   size=(self.interconnect_input_ports,
-                                         self.fw_int),
-                                   explicit_array=True,
-                                   packed=True)
+                                       self.data_width,
+                                       size=(self.interconnect_input_ports,
+                                             self.fw_int),
+                                       explicit_array=True,
+                                       packed=True)
 
         # Outputs
         self._wen = self.output("wen_to_sram", self.strg_wr_ports,
@@ -98,7 +98,6 @@ class InputAddrCtrl(Generator):
                                            size=self.interconnect_input_ports,
                                            explicit_array=True,
                                            packed=True)
-
 
         self._addresses = self.output("addr_out",
                                       self.mem_addr_width,
@@ -145,11 +144,11 @@ class InputAddrCtrl(Generator):
                                      explicit_array=True)
 
         self._local_addrs_saved = self.var("local_addrs_saved",
-                                     self.address_width,
-                                     size=(self.interconnect_input_ports,
-                                           self.multiwrite),
-                                     packed=True,
-                                     explicit_array=True)
+                                           self.address_width,
+                                           size=(self.interconnect_input_ports,
+                                                 self.multiwrite),
+                                           packed=True,
+                                           explicit_array=True)
 
         for i in range(self.interconnect_input_ports):
             for j in range(self.banks):
