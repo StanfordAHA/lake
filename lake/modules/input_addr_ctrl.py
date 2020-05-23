@@ -207,8 +207,9 @@ class InputAddrCtrl(Generator):
             self._offsets_cfg.add_attribute(ConfigRegAttr(doc))
         self.add_code(self.set_multiwrite_addrs)
 
-        self.add_code(self.mult_int_ports)
-        self.add_code(self.save_mult_int)
+        # to handle multiple input ports going to fewer SRAM write ports
+        self.add_code(self.set_int_ports_counter)
+        self.add_code(self.save_mult_int_signals)
 
     # Update the pointer and mux for input and output schedule
     # Now, obey the input schedule to send to the proper SRAM bank
@@ -253,7 +254,7 @@ class InputAddrCtrl(Generator):
                     self._addresses[i][0] = self._local_addrs_saved[self._counter][0][self.mem_addr_width - 1, 0]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def save_mult_int(self):
+    def save_mult_int_signals(self):
         if ~self._rst_n:
             self._wen_en_saved = 0
             self._wen_reduced_saved = 0
@@ -271,7 +272,7 @@ class InputAddrCtrl(Generator):
             self._local_addrs_saved = 0
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def mult_int_ports(self):
+    def set_int_ports_counter(self):
         if ~self._rst_n:
             self._counter = 0
         elif self._counter == self.interconnect_input_ports - 1:
