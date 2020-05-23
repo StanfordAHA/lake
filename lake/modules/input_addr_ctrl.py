@@ -243,15 +243,23 @@ class InputAddrCtrl(Generator):
             self._data_out[i][0] = 0
             self._addresses[i][0] = 0
             if ~self._done[i][0]:
-                # If this input port is active on this bank...
-                if self._wen_reduced_saved[self._counter][i]:
+                if self._wen_reduced[0][i]:
                     self._done[i][0] = 1
                     # self._wen[i][0] = 1
                     # This should only go through if the wen_en is on...
-                    self._wen[i][0] = self._wen_en_saved[self._counter]
-                    self._port_out_exp[i][self._counter] = 1
-                    self._data_out[i][0] = self._data_in_saved[self._counter]
-                    self._addresses[i][0] = self._local_addrs_saved[self._counter][0][self.mem_addr_width - 1, 0]
+                    self._wen[i][0] = self._wen_en[0]
+                    self._port_out_exp[i][0] = 1
+                    self._data_out[i][0] = self._data_in[0]
+                    self._addresses[i][0] = self._local_addrs[0][0][self.mem_addr_width - 1, 0]
+                # If this input port is active on this bank...
+                elif self._wen_reduced_saved[self._counter + 1][i]:
+                    self._done[i][0] = 1
+                    # self._wen[i][0] = 1
+                    # This should only go through if the wen_en is on...
+                    self._wen[i][0] = self._wen_en_saved[self._counter + 1]
+                    self._port_out_exp[i][self._counter + 1] = 1
+                    self._data_out[i][0] = self._data_in_saved[self._counter + 1]
+                    self._addresses[i][0] = self._local_addrs_saved[self._counter + 1][0][self.mem_addr_width - 1, 0]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def save_mult_int_signals(self):
@@ -265,7 +273,12 @@ class InputAddrCtrl(Generator):
             self._wen_reduced_saved = self._wen_reduced
             self._data_in_saved = self._data_in
             self._local_addrs_saved = self._local_addrs
-        elif self._counter == self.interconnect_input_ports - 1:
+        elif self.interconnect_input_ports == 1:
+            self._wen_en_saved = 0
+            self._wen_reduced_saved = 0
+            self._data_in_saved = 0
+            self._local_addrs_saved = 0
+        elif self._counter == self.interconnect_input_ports - 2:
             self._wen_en_saved = 0
             self._wen_reduced_saved = 0
             self._data_in_saved = 0
@@ -275,7 +288,9 @@ class InputAddrCtrl(Generator):
     def set_int_ports_counter(self):
         if ~self._rst_n:
             self._counter = 0
-        elif self._counter == self.interconnect_input_ports - 1:
+        elif self.interconnect_input_ports == 1:
+            self.counter = 0
+        elif self._counter == self.interconnect_input_ports - 2:
             self._counter = 0
         elif self._wen_en_saved.r_or():
             self._counter = self._counter + 1
