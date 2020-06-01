@@ -2786,6 +2786,13 @@ always_comb begin
         valid_out = 1'h1;
         write_gate = 1'h0;
       end :r_w_seq_READ_Output
+    default: begin
+        data_out = 16'h0;
+        read_gate = 1'h1;
+        ready = 1'h1;
+        valid_out = 1'h0;
+        write_gate = 1'h0;
+    end
   endcase
 end
 endmodule   // strg_ram
