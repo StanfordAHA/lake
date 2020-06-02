@@ -2338,6 +2338,7 @@ logic back_full;
 logic [2:0] back_num_load;
 logic [2:0] back_occ;
 logic [3:0][0:0][15:0] back_par_in;
+logic [3:0][0:0][15:0] back_parallel_out;
 logic back_pl;
 logic back_pop;
 logic back_push;
@@ -2598,6 +2599,7 @@ reg_fifo_d4_w1_unq0 #(
   .mem_valid_data_out(mem_valid_data_out1),
   .num_load(back_num_load),
   .parallel_in(back_par_in),
+  .parallel_out(back_parallel_out),
   .parallel_load(back_rf_parallel_load),
   .parallel_read(1'h0),
   .pop(back_pop),

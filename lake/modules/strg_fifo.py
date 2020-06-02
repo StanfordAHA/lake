@@ -184,6 +184,7 @@ class StrgFIFO(Generator):
 
         self._mem_valid_data_out1 = self.var("mem_valid_data_out1", 1)
 
+        self._back_parallel_out = self.var("back_parallel_out", self.data_width, size=(self.fw_int, 1), explicit_array=True, packed=True)
         self.add_child("back_rf", self._back_rf,
                        clk=self._clk,
                        clk_en=kts.const(1, 1),
@@ -196,6 +197,7 @@ class StrgFIFO(Generator):
                        full=self._back_full,
                        valid=self._back_valid,
                        parallel_read=kts.const(0, 1),
+                       parallel_out=self._back_parallel_out,
                        # Only do back load when data is going there
                        parallel_load=self._back_pl & self._back_num_load.r_or(),
                        parallel_in=self._back_par_in,
