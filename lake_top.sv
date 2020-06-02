@@ -160,7 +160,6 @@ logic [2:0] all_valid_out;
 logic [2:0][0:0] all_wen_to_mem;
 logic [15:0] config_data_in_shrt;
 logic [1:0][15:0] config_data_out_shrt;
-logic config_seq_clk;
 logic config_seq_clk_en;
 logic [1:0][15:0] data_out_tile;
 logic [0:0][9:0] fifo_addr_to_mem;
@@ -224,7 +223,6 @@ assign config_data_out[0] = 32'(config_data_out_shrt[0]);
 assign config_data_out[1] = 32'(config_data_out_shrt[1]);
 assign gclk = clk & tile_en;
 assign mem_data_low_pt[0] = mem_data_out[0][0];
-assign config_seq_clk = gclk;
 assign config_seq_clk_en = clk_en | (|config_en);
 assign mem_wen_in = (|config_en) ? mem_wen_cfg: mem_wen_dp;
 assign mem_cen_in = (|config_en) ? mem_wen_cfg | mem_ren_cfg: mem_cen_dp;
@@ -279,7 +277,7 @@ assign data_out_tile[1] = ub_data_out[1];
 assign valid_out_tile[1] = ub_valid_out[1];
 storage_config_seq config_seq (
   .addr_out(mem_addr_cfg),
-  .clk(config_seq_clk),
+  .clk(gclk),
   .clk_en(config_seq_clk_en),
   .config_addr_in(config_addr_in),
   .config_data_in(config_data_in_shrt),
@@ -2785,12 +2783,13 @@ always_comb begin
         write_gate = 1'h0;
       end :r_w_seq_READ_Output
     default: begin
-   	data_out = 16'h0;
-        read_gate = 1'h1;
-        ready = 1'h1;
-        valid_out = 1'h0;
-        write_gate = 1'h0;
+      data_out = 16'h0;
+      read_gate = 1'h1;
+      ready = 1'h1;
+      valid_out = 1'h0;
+      write_gate = 1'h0;
     end
+
   endcase
 end
 endmodule   // strg_ram
