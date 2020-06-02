@@ -1,7 +1,6 @@
 from kratos import *
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
-from lake.modules.reg_fifo import RegFIFO
 import kratos as kts
 
 

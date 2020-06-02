@@ -236,6 +236,9 @@ class StrgUB(Generator):
                                 depth_width=self.app_ctrl_depth_width,
                                 sprt_stcl_valid=True,
                                 stcl_iter_support=self.stcl_valid_iter)
+
+        self._valid_out_stencil_ = self.var("valid_out_stencil", self.interconnect_output_ports)
+
         self.add_child("app_ctrl", self.app_ctrl,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -243,6 +246,7 @@ class StrgUB(Generator):
                        ren_in=self._ren_in,
                        ren_update=self._tb_valid_out,
                        valid_out_data=self._valid_out,
+                       valid_out_stencil=self._valid_out_stencil_,
                        # valid_out_stencil=,
                        wen_out=self._wen,
                        ren_out=self._ren)
@@ -258,6 +262,10 @@ class StrgUB(Generator):
         self.app_ctrl_coarse = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
                                        interconnect_output_ports=self.interconnect_output_ports,
                                        depth_width=self.app_ctrl_depth_width)
+
+        self._valid_out_data_coarse = self.var("valid_out_data_coarse", self.interconnect_output_ports)
+        self._valid_out_data_stencil = self.var("valid_out_data_stencil", self.interconnect_output_ports)
+
         self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -266,6 +274,8 @@ class StrgUB(Generator):
                        tb_valid=kts.const(0, 1),
                        # ren_update=kts.concat(*([kts.const(1, 1)] * self.interconnect_output_ports)),
                        ren_update=self._ack_reduced,
+                       valid_out_data=self._valid_out_data_coarse,
+                       valid_out_stencil=self._valid_out_data_stencil,
                        # valid_out_data=self._valid_out,
                        # valid_out_stencil=,
                        wen_out=self._arb_wen_en,
