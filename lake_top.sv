@@ -661,10 +661,6 @@ module aggregation_buffer (
   input logic clk_en,
   input logic [15:0] data_in,
   output logic [63:0] data_out,
-  output logic [15:0] data_out_chop_0,
-  output logic [15:0] data_out_chop_1,
-  output logic [15:0] data_out_chop_2,
-  output logic [15:0] data_out_chop_3,
   input logic flush,
   input logic [3:0] in_period,
   input logic [15:0] [1:0] in_sched,
@@ -702,10 +698,6 @@ logic [3:0] next_full;
 logic [3:0] out_sched_ptr;
 logic [3:0] valid_demux;
 logic [3:0] valid_out_mux;
-assign data_out_chop_0 = data_out[15:0];
-assign data_out_chop_1 = data_out[31:16];
-assign data_out_chop_2 = data_out[47:32];
-assign data_out_chop_3 = data_out[63:48];
 assign agg_0_valid_in = valid_demux[0];
 assign valid_out_mux[0] = agg_0_valid_out;
 assign next_full[0] = agg_0_next_full;
@@ -2369,6 +2361,8 @@ logic [0:0][15:0] front_rf_data_in;
 logic [0:0][15:0] front_rf_data_out;
 logic front_valid;
 logic fw_is_1;
+logic mem_valid_data_out;
+logic mem_valid_data_out1;
 logic [15:0] num_items;
 logic [15:0] num_words_mem;
 logic prev_bank_rd;
@@ -2578,6 +2572,7 @@ reg_fifo_d4_w1 #(
   .flush(flush),
   .full(front_full),
   .mem_valid_data(1'h1),
+  .mem_valid_data_out(mem_valid_data_out),
   .num_load(3'h0),
   .parallel_in(64'h0),
   .parallel_load(1'h0),
@@ -2600,6 +2595,7 @@ reg_fifo_d4_w1_unq0 #(
   .flush(flush),
   .full(back_full),
   .mem_valid_data(1'h1),
+  .mem_valid_data_out(mem_valid_data_out1),
   .num_load(back_num_load),
   .parallel_in(back_par_in),
   .parallel_load(back_rf_parallel_load),
@@ -2789,7 +2785,6 @@ always_comb begin
       valid_out = 1'h0;
       write_gate = 1'h0;
     end
-
   endcase
 end
 endmodule   // strg_ram
@@ -2979,6 +2974,9 @@ logic tba_1_tb_to_interconnect_valid;
 logic tba_1_tba_ren;
 logic tba_1_valid_data;
 logic [1:0] valid_consume;
+logic [1:0] valid_out_data_coarse;
+logic [1:0] valid_out_data_stencil;
+logic [1:0] valid_out_stencil;
 logic [1:0] valid_to_pref;
 logic [1:0] valid_to_sync;
 logic [1:0] valid_to_tba;
@@ -3089,6 +3087,7 @@ app_ctrl app_ctrl (
   .tb_valid(tb_valid_out),
   .threshold(app_ctrl_threshold),
   .valid_out_data(valid_out),
+  .valid_out_stencil(valid_out_stencil),
   .wen_in(wen_in),
   .wen_out(wen),
   .write_depth_ss(app_ctrl_write_depth_ss),
@@ -3108,6 +3107,8 @@ app_ctrl_unq0 app_ctrl_coarse (
   .ren_update(ack_reduced),
   .rst_n(rst_n),
   .tb_valid(2'h0),
+  .valid_out_data(valid_out_data_coarse),
+  .valid_out_stencil(valid_out_data_stencil),
   .wen_in(ab_to_mem_valid),
   .wen_out(arb_wen_en),
   .write_depth_ss(app_ctrl_coarse_write_depth_ss),
