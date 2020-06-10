@@ -917,7 +917,7 @@ def test_identity_stream(data_width=16,
     config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
     config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 24
     config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 100
-    config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 5
+    config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 4
     config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
     config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 0
     
@@ -971,7 +971,7 @@ def test_identity_stream(data_width=16,
                  num_tb=1,
                  tb_iterator_support=2,
                  multiwrite=1,
-                 max_prefetch=8,
+                 max_prefetch=64,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=2,
@@ -1008,7 +1008,7 @@ def test_identity_stream(data_width=16,
     tester.step(2)
     tester.circuit.rst_n = 1
 
-    data_in = [-1] * interconnect_input_ports
+    data_in = -1
     valid_in = [0] * interconnect_input_ports
     chain_data_in = [0] * interconnect_input_ports
     chain_valid_in = [0] * interconnect_input_ports
@@ -1018,31 +1018,21 @@ def test_identity_stream(data_width=16,
 
     for i in range(300):
         # Rand data
-        addr_in = rand.randint(0, 2 ** 16 - 1)
-        for j in range(interconnect_input_ports):
-            data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
-            valid_in[j] = 1  # rand.randint(0, 1)
 
-        if(interconnect_input_ports == 1):
-            tester.circuit.data_in = data_in[0]
-            tester.circuit.wen = valid_in[0]
-        else:
-            for j in range(interconnect_input_ports):
-                setattr(tester.circuit, f"data_in_{j}", data_in[j])
-            tester.circuit.wen[0] = valid_in[0]
-            tester.circuit.wen[1] = 0
-
+        data_in += 1
+        tester.circuit.data_in_0 = data_in
         if i > 27:
-            tester.circuit.ren = 3
+            tester.circuit.ren_in = 3
         else:
-            tester.circuit.ren = 0
+            tester.circuit.ren_in = 0
 
+        tester.circuit.wen_in = 1
         tester.eval()
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "updated"
+        tempdir = "updated_"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
