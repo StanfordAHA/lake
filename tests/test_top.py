@@ -855,7 +855,7 @@ def test_identity_stream(data_width=16,
                          align_input=1,
                          max_line_length=256,
                          max_tb_height=1,
-                         tb_range_max=64,
+                         tb_range_max=128,
                          tb_range_inner_max=5,
                          tb_sched_max=64,
                          max_tb_stride=15,
@@ -929,13 +929,13 @@ def test_identity_stream(data_width=16,
     config["strg_ub_sync_grp_sync_group_1"] = 1
 
     config["strg_ub_tba_0_tb_0_dimensionality"] = 1
-    config["strg_ub_tba_0_tb_0_range_outer"] = 48
+    config["strg_ub_tba_0_tb_0_range_outer"] = 96
     config["strg_ub_tba_0_tb_0_starting_addr"] = 0
     config["strg_ub_tba_0_tb_0_stride"] = 1
     config["strg_ub_tba_0_tb_0_tb_height"] = 1
 
     config["strg_ub_tba_1_tb_0_dimensionality"] = 1
-    config["strg_ub_tba_1_tb_0_range_outer"] = 48
+    config["strg_ub_tba_1_tb_0_range_outer"] = 96
     config["strg_ub_tba_1_tb_0_starting_addr"] = 0
     config["strg_ub_tba_1_tb_0_stride"] = 1
     config["strg_ub_tba_1_tb_0_tb_height"] = 1
@@ -1032,7 +1032,7 @@ def test_identity_stream(data_width=16,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "updated_"
+        tempdir = "updated_a"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
