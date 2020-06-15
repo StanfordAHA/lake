@@ -862,7 +862,7 @@ def test_identity_stream(data_width=16,
                          num_tb=1,
                          tb_iterator_support=2,
                          multiwrite=1,
-                         max_prefetch=64,
+                         max_prefetch=8,
                          config_data_width=32,
                          config_addr_width=8,
                          num_tiles=1,
@@ -891,14 +891,14 @@ def test_identity_stream(data_width=16,
     config["strg_ub_app_ctrl_coarse_read_depth_0"] = int(96/4)
     config["strg_ub_app_ctrl_coarse_read_depth_1"] = int(96/4)
     config["strg_ub_app_ctrl_coarse_write_depth_ss_0"] = int(96/4)
-    config["strg_ub_app_ctrl_coarse_write_depth_wo_0"] = int(28/4)
+    config["strg_ub_app_ctrl_coarse_write_depth_wo_0"] = int(50/4)
     config["strg_ub_app_ctrl_input_port_0"] = 0
     config["strg_ub_app_ctrl_input_port_1"] = 0
     config["strg_ub_app_ctrl_output_port_0"] = 1
     config["strg_ub_app_ctrl_read_depth_0"] = 96
     config["strg_ub_app_ctrl_read_depth_1"] = 96
     config["strg_ub_app_ctrl_write_depth_ss_0"] = 96
-    config["strg_ub_app_ctrl_write_depth_wo_0"] = 28
+    config["strg_ub_app_ctrl_write_depth_wo_0"] = 50
 
     config["strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 2
     config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 31
@@ -971,7 +971,7 @@ def test_identity_stream(data_width=16,
                  num_tb=1,
                  tb_iterator_support=2,
                  multiwrite=1,
-                 max_prefetch=64,
+                 max_prefetch=8,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=2,
@@ -1021,7 +1021,7 @@ def test_identity_stream(data_width=16,
 
         data_in += 1
         tester.circuit.data_in_0 = data_in
-        if i > 27:
+        if i > 50:
             tester.circuit.ren_in = 3
         else:
             tester.circuit.ren_in = 0
