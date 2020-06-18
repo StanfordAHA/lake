@@ -8,6 +8,7 @@ mapping constraint and functional model.
 class Accessor:
     def __init__(self):
         self.map_dict = {}
+        self.config_cons_dict = {}
 
     '''
     This method should define all the generator parameter
@@ -17,7 +18,25 @@ class Accessor:
     '''
     def setConstraint(self, **kwargs):
         for k, v in kwargs.items():
-            self.config_cons_dict[k] = v
+            self.config_cons_dict[k] = bound(k + "_bound", 0, v)
+
+    def checkConstraint(self):
+        for k, bd in self.config_cons_dict.items():
+            if k == "st_size":
+                assert bd.inBound(len(self.map_dict)), "too much expr, controller number exceeded!"
+            elif k == "var_dim":
+                for _, ctrl in self.map_dict.items():
+                    assert bd.inBound(ctrl.in_dim), "iterator dimension exceeded!"
+            elif k == "expr_dim":
+                for _, ctrl in self.map_dict.items():
+                    assert bd.inBound(ctrl.out_dim), "output dimension exceeded!"
+            elif k == "expr_piece_dim":
+                for _,ctrl in self.map_dict.items():
+                    for e in ctrl.expr_list:
+                        assert bd.inBound(len(e.bd_list)), "piecewise expression pieces exceeded!"
+
+        print ("All constraints satisfied!")
+
 
     '''
     This method should define all the configuration register
@@ -27,8 +46,9 @@ class Accessor:
     def setConfig(self, **kwargs):
         '''
         example of config:
-            depth:
+            st_name_list: this is for prettyprint
             st_size: 2
+            depth: 36
             var_dim: [2, 2]
             expr_dim: [1, 1]
             var_range_list: [[5, 5], [3,3]]
@@ -53,10 +73,11 @@ class Accessor:
                 var_dim = v
             elif k == "var_range_list":
                 var_range_list =v
-            elif k == "expr_dim_list":
+            elif k == "expr_dim":
                 expr_dim = v
             elif k == "expr_config":
                 expr_config = v
+
 
         var_l = [var("cycle", 0, depth)]
         expr_l = [expr(var_l, [([bound("bd", 0, depth)], [1, 0])])]
@@ -100,7 +121,7 @@ class Accessor:
 
 
     '''
-    Simulator print out info
+    Simulator print out info, add an data interface this will drive memory port
     '''
     def print_sim_info(self):
         for k, is_update in self.is_update_dict.items():
