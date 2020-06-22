@@ -11,10 +11,12 @@ class AddrGen(Generator):
     def __init__(self,
                  iterator_support,
                  address_width,
-                 config_width=16):
+                 config_width=16,
+                 post_config_flush=False):
 
         super().__init__(f"addr_gen_{iterator_support}")
 
+        self.post_config_flush = post_config_flush
         self.iterator_support = iterator_support
         self.config_width = config_width
 
@@ -57,7 +59,6 @@ class AddrGen(Generator):
                                      packed=True,
                                      explicit_array=True)
 
-        self._write_addr = self.var("write_addr", self.config_width)
         self._dim_counter = self.var("dim_counter", self.config_width,
                                      size=self.iterator_support,
                                      packed=True,
@@ -73,20 +74,21 @@ class AddrGen(Generator):
 
         # GENERATION LOGIC: begin
         self.wire(self._strt_addr, self._starting_addr)
-
         self.wire(self._addr_out, self._calc_addr)
 
         # Set update vector
-
         self.wire(self._update[0], const(1, 1))
         for i in range(self.iterator_support - 1):
             self.wire(self._update[i + 1],
                       (self._dim_counter[i] == (self._ranges[i] - 1)) & self._update[i])
 
-        self.add_code(self.calc_addr_comb)
+        # self.add_code(self.calc_addr_comb)
+        if self.post_config_flush:
+            self.add_code(self.calc_addr_ff_pcf)
+        else:
+            self.add_code(self.calc_addr_ff)
         self.add_code(self.dim_counter_update)
-        self.add_code(self.current_loc_update)
-
+        # self.add_code(self.current_loc_update)
         # GENERATION LOGIC: end
 
     @always_comb
@@ -95,6 +97,32 @@ class AddrGen(Generator):
                                  [(ternary(const(i,
                                                  self._dimensionality.width) < self._dimensionality,
                                    self._current_loc[i], const(0, self._calc_addr.width)))
+                                  for i in range(self.iterator_support)] + [self._strt_addr])
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def calc_addr_ff_pcf(self):
+        if ~self._rst_n:
+            self._calc_addr = 0
+        elif self._clk_en:
+            if self._flush:
+                self._calc_addr = self._strt_addr
+            else:
+                self._calc_addr = self._calc_addr + reduce(operator.add,
+                                 [(ternary(self._update[i],
+                                   self._strides[i], const(0, self._calc_addr.width)))
+                                  for i in range(self.iterator_support)])
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def calc_addr_ff(self):
+        if ~self._rst_n:
+            self._calc_addr = 0
+        elif self._clk_en:
+            if self._flush:
+                self._calc_addr = 0
+            else:
+                self._calc_addr = self._calc_addr + reduce(operator.add,
+                                 [(ternary(self._update[i],
+                                   self._strides[i], const(0, self._calc_addr.width)))
                                   for i in range(self.iterator_support)] + [self._strt_addr])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -131,5 +159,5 @@ class AddrGen(Generator):
 
 
 if __name__ == "__main__":
-    db_dut = AddrGen(iterator_support=6, address_width=16)
+    db_dut = AddrGen(iterator_support=6, address_width=16, post_config_flush=False)
     verilog(db_dut, filename="addr_gen.sv")
