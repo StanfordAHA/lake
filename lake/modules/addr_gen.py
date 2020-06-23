@@ -80,7 +80,8 @@ class AddrGen(Generator):
         self.wire(self._update[0], const(1, 1))
         for i in range(self.iterator_support - 1):
             self.wire(self._update[i + 1],
-                      (self._current_loc[i] == (self._ranges[i] - self._strides[i])) & self._update[i])
+                    #   (self._current_loc[i] == (self._ranges[i] - self._strides[i])) & self._update[i])
+                      (self._current_loc[i] == self._ranges[i]) & self._update[i])
 
         self.add_code(self.calc_addr_comb)
         # if self.post_config_flush:
@@ -158,7 +159,8 @@ class AddrGen(Generator):
             elif self._step:
                 for i in range(self.iterator_support):
                     if self._update[i] & (i < self._dimensionality):
-                        if self._current_loc[i] == (self._ranges[i] - self._strides[i]):
+                        # if self._current_loc[i] == (self._ranges[i] - self._strides[i]):
+                        if self._current_loc[i] == self._ranges[i]:
                             self._current_loc[i] = 0
                         else:
                             self._current_loc[i] = self._current_loc[i] + self._strides[i]

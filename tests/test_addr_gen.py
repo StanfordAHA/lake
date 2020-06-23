@@ -44,9 +44,9 @@ def test_addr_gen_basic(depth=512,
     tester.circuit.strides_0 = 1
     tester.circuit.strides_1 = 3
     tester.circuit.strides_2 = 9
-    tester.circuit.ranges_0 = 3
-    tester.circuit.ranges_1 = 3 * 3
-    tester.circuit.ranges_2 = 3 * 9
+    tester.circuit.ranges_0 = (3 - 1)
+    tester.circuit.ranges_1 = (3 - 1) * 3
+    tester.circuit.ranges_2 = (3 - 1) * 9
 
     tester.circuit.clk = 0
     tester.circuit.clk_en = 1
@@ -66,11 +66,10 @@ def test_addr_gen_basic(depth=512,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="idk"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
