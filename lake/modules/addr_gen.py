@@ -42,6 +42,9 @@ class AddrGen(Generator):
         self._dimensionality = self.input("dimensionality", 1 + clog2(self.iterator_support))
         self._dimensionality.add_attribute(ConfigRegAttr("Dimensionality of address generator"))
 
+        self._zero_loop = self.input("nonzero_loop", self.iterator_support)
+        self._zero_loop.add_attribute(ConfigRegAttr("Allows simple repeat loops internal to nesting"))
+
         self._step = self.input("step", 1)
 
         # OUTPUTS
@@ -89,19 +92,18 @@ class AddrGen(Generator):
         self.add_code(self.current_loc_update)
         # GENERATION LOGIC: end
 
-    @always_comb
-    def calc_addr_comb(self):
-        self._calc_addr = reduce(operator.add,
-                                 [self._current_loc[i]
-                                  for i in range(self.iterator_support)] + [self._strt_addr])
-
     # @always_comb
     # def calc_addr_comb(self):
     #     self._calc_addr = reduce(operator.add,
-    #                              [(ternary(const(i,
-    #                                              self._dimensionality.width) < self._dimensionality,
-    #                                self._current_loc[i], const(0, self._calc_addr.width)))
+    #                              [self._current_loc[i]
     #                               for i in range(self.iterator_support)] + [self._strt_addr])
+
+    @always_comb
+    def calc_addr_comb(self):
+        self._calc_addr = reduce(operator.add,
+                                 [(ternary(self._zero_loop[i], const(0, self._calc_addr.width),
+                                   self._current_loc[i]))
+                                  for i in range(self.iterator_support)] + [self._strt_addr])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def dim_counter_update(self):
