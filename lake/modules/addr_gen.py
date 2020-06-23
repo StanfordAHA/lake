@@ -80,14 +80,11 @@ class AddrGen(Generator):
         self.wire(self._update[0], const(1, 1))
         for i in range(self.iterator_support - 1):
             self.wire(self._update[i + 1],
-                    #   (self._current_loc[i] == (self._ranges[i] - self._strides[i])) & self._update[i])
                       (self._current_loc[i] == self._ranges[i]) & self._update[i])
+        # (self._current_loc[i] == (self._ranges[i] - self._strides[i])) & self._update[i])
 
         self.add_code(self.calc_addr_comb)
-        # if self.post_config_flush:
-            # self.add_code(self.calc_addr_ff_pcf)
-        # else:
-            # self.add_code(self.calc_addr_ff)
+
         # self.add_code(self.dim_counter_update)
         self.add_code(self.current_loc_update)
         # GENERATION LOGIC: end
@@ -104,33 +101,7 @@ class AddrGen(Generator):
     #                              [(ternary(const(i,
     #                                              self._dimensionality.width) < self._dimensionality,
     #                                self._current_loc[i], const(0, self._calc_addr.width)))
-    #                               for i in range(self.iterator_support)] + [self._strt_addr])    
-                                  
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def calc_addr_ff_pcf(self):
-        if ~self._rst_n:
-            self._calc_addr = 0
-        elif self._clk_en:
-            if self._flush:
-                self._calc_addr = self._strt_addr
-            else:
-                self._calc_addr = self._calc_addr + reduce(operator.add,
-                                 [(ternary(self._update[i],
-                                   self._strides[i], const(0, self._calc_addr.width)))
-                                  for i in range(self.iterator_support)])
-
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def calc_addr_ff(self):
-        if ~self._rst_n:
-            self._calc_addr = 0
-        elif self._clk_en:
-            if self._flush:
-                self._calc_addr = 0
-            else:
-                self._calc_addr = self._calc_addr + reduce(operator.add,
-                                 [(ternary(self._update[i],
-                                   self._strides[i], const(0, self._calc_addr.width)))
-                                  for i in range(self.iterator_support)] + [self._strt_addr])
+    #                               for i in range(self.iterator_support)] + [self._strt_addr])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def dim_counter_update(self):
