@@ -80,25 +80,31 @@ class AddrGen(Generator):
         self.wire(self._update[0], const(1, 1))
         for i in range(self.iterator_support - 1):
             self.wire(self._update[i + 1],
-                      (self._dim_counter[i] == (self._ranges[i] - 1)) & self._update[i])
+                      (self._current_loc[i] == (self._ranges[i] - self._strides[i])) & self._update[i])
 
-        # self.add_code(self.calc_addr_comb)
-        if self.post_config_flush:
-            self.add_code(self.calc_addr_ff_pcf)
-        else:
-            self.add_code(self.calc_addr_ff)
-        self.add_code(self.dim_counter_update)
-        # self.add_code(self.current_loc_update)
+        self.add_code(self.calc_addr_comb)
+        # if self.post_config_flush:
+            # self.add_code(self.calc_addr_ff_pcf)
+        # else:
+            # self.add_code(self.calc_addr_ff)
+        # self.add_code(self.dim_counter_update)
+        self.add_code(self.current_loc_update)
         # GENERATION LOGIC: end
 
     @always_comb
     def calc_addr_comb(self):
         self._calc_addr = reduce(operator.add,
-                                 [(ternary(const(i,
-                                                 self._dimensionality.width) < self._dimensionality,
-                                   self._current_loc[i], const(0, self._calc_addr.width)))
+                                 [self._current_loc[i]
                                   for i in range(self.iterator_support)] + [self._strt_addr])
 
+    # @always_comb
+    # def calc_addr_comb(self):
+    #     self._calc_addr = reduce(operator.add,
+    #                              [(ternary(const(i,
+    #                                              self._dimensionality.width) < self._dimensionality,
+    #                                self._current_loc[i], const(0, self._calc_addr.width)))
+    #                               for i in range(self.iterator_support)] + [self._strt_addr])    
+                                  
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def calc_addr_ff_pcf(self):
         if ~self._rst_n:
@@ -152,7 +158,7 @@ class AddrGen(Generator):
             elif self._step:
                 for i in range(self.iterator_support):
                     if self._update[i] & (i < self._dimensionality):
-                        if self._dim_counter[i] == (self._ranges[i] - 1):
+                        if self._current_loc[i] == (self._ranges[i] - self._strides[i]):
                             self._current_loc[i] = 0
                         else:
                             self._current_loc[i] = self._current_loc[i] + self._strides[i]
