@@ -7,7 +7,7 @@ class Counter(Generator):
 
     def __init__(self):
 
-        super().__init__(f"counter_{bound}")
+        super().__init__(f"counter")
 
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
@@ -28,7 +28,7 @@ class Counter(Generator):
                self._current_val += 1
 
 if __name__ == "__main__":
-    counter_dut = counter()
+    counter_dut = Counter()
     verilog(counter_dut, filename = "counter.sv")
 
 
