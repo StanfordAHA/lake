@@ -71,6 +71,8 @@ class map:
         '''
         self.var_list = _var_list
         self.expr_list = _expr_list
+
+        #constraints
         self.in_dim = len(self.var_list)
         self.out_dim = len(self.expr_list)
         self.flatten_eval_vec = [1 for _ in range(self.out_dim)]

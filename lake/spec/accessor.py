@@ -7,7 +7,11 @@ mapping constraint and functional model.
 '''
 class Accessor:
     def __init__(self):
+        #specific for these primitive
+        self.cycle_cnt = map([], [])
         self.map_dict = {}
+
+        #general member for all primitive
         self.config_cons_dict = {}
 
     '''
