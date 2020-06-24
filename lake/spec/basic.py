@@ -74,7 +74,7 @@ class PWA(Generator):
                                               self._iter[j] <= self._ub_arr[j]) \
                                              for j in range(input_dim)])
 
-        self._choice = reduce(operator.add, [self._choice_flatten[i]<<i for i in range(self.piece_num)])
+        self._choice = clog(reduce(operator.add, [self._choice_flatten[i]<<i for i in range(self.piece_num)]))
 
     @always_comb
     def multiply(self):
