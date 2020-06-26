@@ -41,9 +41,6 @@ class PWA(Generator):
         super().__init__(f"pwa", True)
 
 
-        self._clk = self.clock("clk")
-        self._rst_n = self.reset("rst_n")
-
         self.piece_num = piece_num
         self.input_dim = input_dim
 
@@ -56,7 +53,10 @@ class PWA(Generator):
                                   packed = True, explicit_array = True)
         self._iter = self.input("iterator", 32, size = self.input_dim,
                                   packed = True, explicit_array = True)
-        self._choice = self.var("choice", clog2(self.piece_num))
+        if self.piece_num == 1:
+           self._choice = self.var("choice", 1)
+        else:
+            self._choice = self.var("choice", clog2(self.piece_num))
         self._choice_flatten = self.var("ch_flat", width=self.piece_num)
                                         #packed = True, explicit_array = True)
         self._tmp_mul= self.var("tmp_mul", 32, size = self.input_dim,

@@ -1,4 +1,6 @@
 import numpy as np
+from basic import Counter, PWA
+from kratos import *
 
 class bound:
     def __init__(self, n, _lb, _ub):
@@ -35,6 +37,9 @@ class var:
     def getVal(self):
         return self.val
 
+    def generate_verilog(self)->Generator:
+        return Counter()
+
 class expr:
     def __init__(self, _var_list:list, bd_w_list: list):
         '''
@@ -48,7 +53,9 @@ class expr:
         for bd, w in bd_w_list:
             self.weight_list.append(w)
             self.bd_list.append(bd)
+
         self.piece = len(bd_w_list)
+        self.input_dim = len(self.var_list)
 
     def eval(self)->int:
         var_list = [var.getVal() for var in self.var_list]
@@ -61,6 +68,9 @@ class expr:
                     val += weights[idx] * var.getVal()
                 return val
         assert False, "variable exceeded all pieces of bounds."
+
+    def generate_verilog(self)->Generator:
+        return PWA(piece_num=self.piece, input_dim=self.input_dim)
 
 class map:
     def __init__(self, _var_list:list, _expr_list:list):
@@ -97,4 +107,33 @@ class map:
             inc_next = var.update()
             if inc_next == False:
                 break
+
+    def generate_verilog(self)->Generator:
+        ret = Generator("map")
+        clk = ret.clock("clk")
+        rst = ret.reset("rst")
+        out = ret.var("cout", 32, size = self.in_dim, packed = True, explicit_array = True)
+        cnt_list = [var.generate_verilog() for var in self.var_list]
+        for idx, cnt in enumerate(cnt_list):
+            bd = ret.input(f"bd_{idx}", 32)
+            ret.add_child(f"cnt_{idx}", cnt, clk = "clk", rst_n = "rst",
+                          bound = bd, current_val = out[idx])
+
+        pwa_list = [expr.generate_verilog() for expr in self.expr_list]
+        for idx, pwa in enumerate(pwa_list):
+            output = ret.output(f"expr_dim_{idx}", 32)
+            lb_ = ret.input(f"lb_in_{idx}", 32, size = [pwa.piece_num, pwa.input_dim],
+                            packed = True, explicit_array = True)
+            ub_ = ret.input(f"ub_in_{idx}", 32, size = [pwa.piece_num, pwa.input_dim],
+                            packed = True, explicit_array = True)
+            w = ret.input(f"w_in_{idx}", 32, size = [pwa.piece_num, pwa.input_dim+1],
+                            packed = True, explicit_array = True)
+            ret.add_child(f"expr_{idx}", pwa,
+                          iterator = "cout",
+                          value = output,
+                          lb = lb_,
+                          ub = ub_,
+                          weight = w)
+
+        return ret
 

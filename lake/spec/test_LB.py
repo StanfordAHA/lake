@@ -11,7 +11,12 @@ def test_LB():
     i = var("i_wr", 0, 5)
     j = var("j_wr", 0, 5)
     acc_in = expr([i, j], [([bound("i_ss", 0, 5), bound("j_ss", 0, 5)], [1, 6, 0])])
+    print (acc_in.piece)
     acc_ctr_in = map([i, j], [acc_in])
+
+    #try to generate verilog
+    map_generator = acc_ctr_in.generate_verilog()
+    verilog(map_generator, filename= "map_gen.sv")
 
     #input address generator
     i = var("i_in", 0, 5)
