@@ -10,7 +10,6 @@ class AddrGen(Generator):
     '''
     def __init__(self,
                  iterator_support,
-                 address_width,
                  config_width=16):
 
         super().__init__(f"addr_gen_{iterator_support}")
@@ -43,6 +42,7 @@ class AddrGen(Generator):
         self._step = self.input("step", 1)
 
         # OUTPUTS
+        # TODO why is this config width instead of address width?
         self._addr_out = self.output("addr_out", self.config_width)
 
         # MISC
@@ -131,5 +131,5 @@ class AddrGen(Generator):
 
 
 if __name__ == "__main__":
-    db_dut = AddrGen(iterator_support=6, address_width=16)
+    db_dut = AddrGen(iterator_support=6)
     verilog(db_dut, filename="addr_gen.sv")

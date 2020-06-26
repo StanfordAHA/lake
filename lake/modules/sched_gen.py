@@ -29,6 +29,9 @@ class SchedGen(Generator):
         self._clk_en = self.input("clk_en", 1)
         self._flush = self.input("flush", 1)
 
+        # OUTPUTS
+        self._valid_output = self.output("valid_output", 1)
+
         # VARS
         self._valid_out = self.var("valid_out", 1)
         self._cycle_num = self.var("cycle_num", self.config_width)
@@ -39,7 +42,6 @@ class SchedGen(Generator):
         self.add_child(f"sched_addr_gen",
 
                        AddrGen(iterator_support=self.iterator_support,
-                               address_width=0,
                                config_width=self.config_width),
 
                        clk=self._clk,
@@ -50,6 +52,7 @@ class SchedGen(Generator):
                        addr_out=self._addr_out)
 
         self.add_code(self.set_valid_out)
+        self.add_code(self.set_valid_output)
         self.add_code(self.set_cycle_num)
 
     @always_comb
@@ -58,6 +61,10 @@ class SchedGen(Generator):
             self._valid_out = 1
         else:
             self._valid_out = 0
+
+    @always_comb
+    def set_valid_output(self):
+        self._valid_output = self._valid_out
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_cycle_num(self):
