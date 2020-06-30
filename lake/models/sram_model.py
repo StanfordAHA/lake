@@ -1,14 +1,22 @@
 from lake.models.model import Model
+import kratos as kts
 
 
 class SRAMModel(Model):
     def __init__(self,
                  data_width,
                  width_mult,
-                 depth):
+                 depth,
+                 num_tiles):
         self.data_width = data_width
         self.width_mult = width_mult
         self.depth = depth
+        self.num_tiles = num_tiles
+        self.address_width = kts.clog2(self.num_tiles * self.depth)
+
+        self.chain_idx_bits = max(1, kts.clog2(num_tiles))
+
+        self.chain_idx_tile = 0
 
         self.rd_reg = []
         for i in range(self.width_mult):
@@ -32,6 +40,7 @@ class SRAMModel(Model):
         '''
         Returns (rd_reg)
         '''
+
         rd_reg_ret = self.rd_reg
 
         addr = addr % self.depth

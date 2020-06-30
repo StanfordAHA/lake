@@ -27,6 +27,8 @@ class StrgUB(Generator):
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
+                 input_config_width=16,
+                 output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
                  mem_input_ports=1,
@@ -47,8 +49,11 @@ class StrgUB(Generator):
                  num_tb=1,
                  tb_iterator_support=2,
                  multiwrite=1,
-                 max_prefetch=64,
-                 remove_tb=False):
+                 num_tiles=1,
+                 max_prefetch=8,
+                 app_ctrl_depth_width=16,
+                 remove_tb=False,
+                 stcl_valid_iter=4):
         super().__init__("strg_ub")
 
         self.data_width = data_width
@@ -57,6 +62,8 @@ class StrgUB(Generator):
         self.banks = banks
         self.input_iterator_support = input_iterator_support
         self.output_iterator_support = output_iterator_support
+        self.input_config_width = input_config_width
+        self.output_config_width = output_config_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_input_ports = mem_input_ports
@@ -79,14 +86,15 @@ class StrgUB(Generator):
         self.tb_iterator_support = tb_iterator_support
         self.multiwrite = multiwrite
         self.max_prefetch = max_prefetch
+        self.num_tiles = num_tiles
+        self.app_ctrl_depth_width = app_ctrl_depth_width
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
+        self.stcl_valid_iter = stcl_valid_iter
         # phases = [] TODO
-        if self.banks == 1:
-            self.address_width = clog2(mem_depth)
-        else:
-            self.address_width = clog2(mem_depth)  # + clog2(banks)
+
+        self.address_width = clog2(self.num_tiles * self.mem_depth)
 
         # CLK and RST
         self._clk = self.clock("clk")
@@ -100,13 +108,38 @@ class StrgUB(Generator):
                                    explicit_array=True)
 
         self._wen_in = self.input("wen_in", self.interconnect_input_ports)
-        self._ren_in = self.input("ren_in", self.interconnect_output_ports)
+        self._ren_input = self.input("ren_in", self.interconnect_output_ports)
+        # Post rate matched
+        self._ren_in = self.var("ren_in_muxed", self.interconnect_output_ports)
         # Processed versions of wen and ren from the app ctrl
         self._wen = self.var("wen", self.interconnect_input_ports)
         self._ren = self.var("ren", self.interconnect_output_ports)
 
-        self._arb_wen_in = self.var("wen_en", self.interconnect_input_ports)
-        self._arb_ren_in = self.var("ren_en", self.interconnect_output_ports)
+        # Add rate matched
+        # If one input port, let any output port use the wen_in as the ren_in
+        # If more, do the same thing but also provide port selection
+        if self.interconnect_input_ports == 1:
+            self._rate_matched = self.input("rate_matched", self.interconnect_output_ports)
+            self._rate_matched.add_attribute(ConfigRegAttr("Rate matched - 1 or 0"))
+            for i in range(self.interconnect_output_ports):
+                self.wire(self._ren_in[i],
+                          kts.ternary(self._rate_matched[i],
+                                      self._wen_in,
+                                      self._ren_input[i]))
+        else:
+            self._rate_matched = self.input("rate_matched", 1 + kts.clog2(self.interconnect_input_ports),
+                                            size=self.interconnect_output_ports,
+                                            explicit_array=True,
+                                            packed=True)
+            self._rate_matched.add_attribute(ConfigRegAttr("Rate matched [input port | on/off]"))
+            for i in range(self.interconnect_output_ports):
+                self.wire(self._ren_in[i],
+                          kts.ternary(self._rate_matched[i][0],
+                                      self._wen_in[self._rate_matched[i][kts.clog2(self.interconnect_input_ports), 1]],
+                                      self._ren_input[i]))
+
+        self._arb_wen_en = self.var("arb_wen_en", self.interconnect_input_ports)
+        self._arb_ren_en = self.var("arb_ren_en", self.interconnect_output_ports)
 
         self._data_from_strg = self.input("data_from_strg",
                                           self.data_width,
@@ -115,6 +148,21 @@ class StrgUB(Generator):
                                                 self.fw_int),
                                           packed=True,
                                           explicit_array=True)
+
+        self._mem_valid_data = self.input("mem_valid_data",
+                                          self.mem_output_ports,
+                                          size=self.banks,
+                                          explicit_array=True,
+                                          packed=True)
+
+        self._out_mem_valid_data = self.var("out_mem_valid_data",
+                                            self.mem_output_ports,
+                                            size=self.banks,
+                                            explicit_array=True,
+                                            packed=True)
+        if self.agg_height > 0:
+            self._to_iac_valid = self.var("ab_to_mem_valid",
+                                          self.interconnect_input_ports)
 
         self._data_out = self.output("data_out",
                                      self.data_width,
@@ -169,20 +217,33 @@ class StrgUB(Generator):
         if self.num_tb > 0:
             self._tb_valid_out = self.var("tb_valid_out", self.interconnect_output_ports)
 
+        self._port_wens = self.var("port_wens", self.interconnect_input_ports)
+
         ####################
         ##### APP CTRL #####
         ####################
+        self._ack_transpose = self.var("ack_transpose",
+                                       self.banks,
+                                       size=self.interconnect_output_ports,
+                                       explicit_array=True,
+                                       packed=True)
+
+        self._ack_reduced = self.var("ack_reduced",
+                                     self.interconnect_output_ports)
+
         self.app_ctrl = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
-                                interconnect_output_ports=self.interconnect_output_ports)
+                                interconnect_output_ports=self.interconnect_output_ports,
+                                depth_width=self.app_ctrl_depth_width,
+                                sprt_stcl_valid=True,
+                                stcl_iter_support=self.stcl_valid_iter)
         self.add_child("app_ctrl", self.app_ctrl,
                        clk=self._clk,
                        rst_n=self._rst_n,
                        wen_in=self._wen_in,
                        ren_in=self._ren_in,
+                       ren_update=self._tb_valid_out,
                        valid_out_data=self._valid_out,
                        # valid_out_stencil=,
-                       wen_en=self._arb_wen_in,
-                       ren_en=self._arb_ren_in,
                        wen_out=self._wen,
                        ren_out=self._ren)
 
@@ -190,6 +251,25 @@ class StrgUB(Generator):
             self.wire(self.app_ctrl.ports.tb_valid, self._valid_out_alt)
         else:
             self.wire(self.app_ctrl.ports.tb_valid, self._tb_valid_out)
+
+        self._ren_out_reduced = self.var("ren_out_reduced",
+                                         self.interconnect_output_ports)
+
+        self.app_ctrl_coarse = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
+                                       interconnect_output_ports=self.interconnect_output_ports,
+                                       depth_width=self.app_ctrl_depth_width)
+        self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       wen_in=self._to_iac_valid,  # self._port_wens & self._to_iac_valid,  # Gets valid and the ack
+                       ren_in=self._ren_out_reduced,
+                       tb_valid=kts.const(0, 1),
+                       # ren_update=kts.concat(*([kts.const(1, 1)] * self.interconnect_output_ports)),
+                       ren_update=self._ack_reduced,
+                       # valid_out_data=self._valid_out,
+                       # valid_out_stencil=,
+                       wen_out=self._arb_wen_en,
+                       ren_out=self._arb_ren_en)
 
         ###########################
         ##### INPUT AGG SCHED #####
@@ -232,8 +312,9 @@ class StrgUB(Generator):
         ##### END: AGGREGATION ALIGNERS (OPTIONAL) #####
         ################################################
 
-        self._to_iac_dat = self._data_consume
-        self._to_iac_valid = self._valid_consume
+        if self.agg_height == 0:
+            self._to_iac_dat = self._data_consume
+            self._to_iac_valid = self._valid_consume
 
         ##################################
         ##### AGG BUFFERS (OPTIONAL) #####
@@ -246,8 +327,8 @@ class StrgUB(Generator):
                                         packed=True,
                                         explicit_array=True)
 
-            self._to_iac_valid = self.var("ab_to_mem_valid",
-                                          self.interconnect_input_ports)
+            # self._to_iac_valid = self.var("ab_to_mem_valid",
+            #                               self.interconnect_input_ports)
 
             self._agg_buffers = []
             # Add input aggregations buffers
@@ -264,7 +345,6 @@ class StrgUB(Generator):
                                data_in=self._data_consume[i],
                                valid_in=self._valid_consume[i],
                                align=self._align_to_agg[i],
-                               write_act=const(1, 1),
                                data_out=self._to_iac_dat[i],
                                valid_out=self._to_iac_valid[i])
 
@@ -297,21 +377,25 @@ class StrgUB(Generator):
         # Connect these inputs ports to an address generator
         iac = InputAddrCtrl(interconnect_input_ports=self.interconnect_input_ports,
                             mem_depth=self.mem_depth,
+                            num_tiles=self.num_tiles,
                             banks=self.banks,
                             iterator_support=self.input_iterator_support,
                             address_width=self.address_width,
                             data_width=self.data_width,
                             fetch_width=self.mem_width,
                             multiwrite=self.multiwrite,
-                            strg_wr_ports=self.mem_input_ports)
+                            strg_wr_ports=self.mem_input_ports,
+                            config_width=self.input_config_width)
         self.add_child(f"input_addr_ctrl", iac,
                        clk=self._clk,
                        rst_n=self._rst_n,
                        valid_in=self._to_iac_valid,
-                       wen_en=self._arb_wen_in,
+                       # wen_en=kts.concat(*([kts.const(1, 1)] * self.interconnect_input_ports)),
+                       wen_en=self._arb_wen_en,
                        data_in=self._to_iac_dat,
                        wen_to_sram=self._wen_to_arb,
                        addr_out=self._addr_to_arb,
+                       port_out=self._port_wens,
                        data_out=self._data_to_arb)
 
         #########################################
@@ -323,14 +407,6 @@ class StrgUB(Generator):
                                   explicit_array=True,
                                   packed=True)
 
-        self._ack_transpose = self.var("ack_transpose",
-                                       self.banks,
-                                       size=self.interconnect_output_ports,
-                                       explicit_array=True,
-                                       packed=True)
-
-        self._ack_reduced = self.var("ack_reduced",
-                                     self.interconnect_output_ports)
         self._prefetch_step = self.var("prefetch_step", self.interconnect_output_ports)
         self._oac_step = self.var("oac_step", self.interconnect_output_ports)
         self._oac_valid = self.var("oac_valid", self.interconnect_output_ports)
@@ -344,10 +420,9 @@ class StrgUB(Generator):
                                        size=self.interconnect_output_ports,
                                        explicit_array=True,
                                        packed=True)
-        self._ren_out_reduced = self.var("ren_out_reduced",
-                                         self.interconnect_output_ports)
+
         self._oac_addr_out = self.var("oac_addr_out",
-                                      clog2(self.mem_depth),
+                                      self.address_width,
                                       size=self.interconnect_output_ports,
                                       explicit_array=True,
                                       packed=True)
@@ -356,9 +431,11 @@ class StrgUB(Generator):
         #####################################
         oac = OutputAddrCtrl(interconnect_output_ports=self.interconnect_output_ports,
                              mem_depth=self.mem_depth,
+                             num_tiles=self.num_tiles,
                              banks=self.banks,
                              iterator_support=self.output_iterator_support,
-                             address_width=self.address_width)
+                             address_width=self.address_width,
+                             config_width=self.output_config_width)
 
         if self.remove_tb:
             self.wire(self._oac_valid, self._ren)
@@ -366,6 +443,10 @@ class StrgUB(Generator):
         else:
             self.wire(self._oac_valid, self._prefetch_step)
             self.wire(self._oac_step, self._ack_reduced)
+
+        self.chain_idx_bits = max(1, clog2(num_tiles))
+        self._enable_chain_output = self.input("enable_chain_output", 1)
+        self._chain_idx_output = self.input("chain_idx_output", self.chain_idx_bits)
 
         self.add_child(f"output_addr_ctrl", oac,
                        clk=self._clk,
@@ -409,6 +490,7 @@ class StrgUB(Generator):
             rw_arb = RWArbiter(fetch_width=self.mem_width,
                                data_width=self.data_width,
                                memory_depth=self.mem_depth,
+                               num_tiles=self.num_tiles,
                                int_in_ports=self.interconnect_input_ports,
                                int_out_ports=self.interconnect_output_ports,
                                strg_wr_ports=self.mem_input_ports,
@@ -424,7 +506,9 @@ class StrgUB(Generator):
                            w_data=self._data_to_arb[i],
                            w_addr=self._addr_to_arb[i],
                            data_from_mem=self._data_from_strg[i],
-                           ren_en=self._arb_ren_in,
+                           mem_valid_data=self._mem_valid_data[i],
+                           out_mem_valid_data=self._out_mem_valid_data[i],
+                           ren_en=self._arb_ren_en,
                            rd_addr=self._oac_addr_out,
                            out_data=self._arb_dat_out[i],
                            out_port=self._arb_port_out[i],
@@ -496,6 +580,16 @@ class StrgUB(Generator):
                                         explicit_array=True,
                                         packed=True)
         self._arb_valid_out_f = self.var("arb_valid_out_f", self.mem_output_ports * self.banks)
+        self._arb_mem_valid_data_f = self.var("arb_mem_valid_data_f", self.mem_output_ports * self.banks)
+
+        self._arb_mem_valid_data_out = self.var("arb_mem_valid_data_out",
+                                                self.interconnect_output_ports)
+
+        self._mem_valid_data_sync = self.var("mem_valid_data_sync",
+                                             self.interconnect_output_ports)
+
+        self._mem_valid_data_pref = self.var("mem_valid_data_pref",
+                                             self.interconnect_output_ports)
 
         tmp_cnt = 0
         for i in range(self.banks):
@@ -503,6 +597,7 @@ class StrgUB(Generator):
                 self.wire(self._arb_dat_out_f[tmp_cnt], self._arb_dat_out[i][j])
                 self.wire(self._arb_port_out_f[tmp_cnt], self._arb_port_out[i][j])
                 self.wire(self._arb_valid_out_f[tmp_cnt], self._arb_valid_out[i][j])
+                self.wire(self._arb_mem_valid_data_f[tmp_cnt], self._out_mem_valid_data[i][j])
                 tmp_cnt = tmp_cnt + 1
 
         # If this is end of the road...
@@ -512,6 +607,8 @@ class StrgUB(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            data_in=self._arb_dat_out_f,
+                           mem_valid_data=self._arb_mem_valid_data_f,
+                           mem_valid_data_out=self._arb_mem_valid_data_out,
                            valid_in=self._arb_valid_out_f,
                            port_in=self._arb_port_out_f,
                            valid_out=self._valid_out_alt)
@@ -523,6 +620,8 @@ class StrgUB(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            data_in=self._arb_dat_out_f,
+                           mem_valid_data=self._arb_mem_valid_data_f,
+                           mem_valid_data_out=self._arb_mem_valid_data_out,
                            valid_in=self._arb_valid_out_f,
                            port_in=self._arb_port_out_f,
                            data_out=self._data_to_sync,
@@ -542,6 +641,8 @@ class StrgUB(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            data_in=self._data_to_sync,
+                           mem_valid_data=self._arb_mem_valid_data_out,
+                           mem_valid_data_out=self._mem_valid_data_sync,
                            valid_in=self._valid_to_sync,
                            data_out=self._data_to_pref,
                            valid_out=self._valid_to_pref,
@@ -569,6 +670,8 @@ class StrgUB(Generator):
                                    clk=self._clk,
                                    rst_n=self._rst_n,
                                    data_in=self._data_to_pref[i],
+                                   mem_valid_data=self._mem_valid_data_sync[i],
+                                   mem_valid_data_out=self._mem_valid_data_pref[i],
                                    valid_read=self._valid_to_pref[i],
                                    tba_rdy_in=self._ren[i],
                                    #    data_out=self._data_out[i],
@@ -580,6 +683,8 @@ class StrgUB(Generator):
                                    clk=self._clk,
                                    rst_n=self._rst_n,
                                    data_in=self._data_to_pref[i],
+                                   mem_valid_data=self._mem_valid_data_sync[i],
+                                   mem_valid_data_out=self._mem_valid_data_pref[i],
                                    valid_read=self._valid_to_pref[i],
                                    tba_rdy_in=self._ready_tba[i],
                                    data_out=self._data_to_tba[i],
@@ -615,6 +720,7 @@ class StrgUB(Generator):
                                    valid_data=self._valid_to_tba[i],
                                    tb_index_for_data=0,
                                    ack_in=self._valid_to_tba[i],
+                                   mem_valid_data=self._mem_valid_data_pref[i],
                                    tb_to_interconnect_data=self._tb_data_out[i],
                                    tb_to_interconnect_valid=self._tb_valid_out[i],
                                    tb_arbiter_rdy=self._ready_tba[i],

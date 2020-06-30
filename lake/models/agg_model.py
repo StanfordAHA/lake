@@ -28,7 +28,7 @@ class AggModel(Model):
     def get_data_out(self):
         return self.sr_copy
 
-    def interact(self, data, valid_in):
+    def interact(self, data, valid_in, align):
         '''
             Returns (agg_out, valid_out, next_full)
         '''
@@ -37,7 +37,7 @@ class AggModel(Model):
         self.sr_copy = self.shift_reg.copy()
         word_count_curr = self.word_count
 
-        next_full = valid_in & (word_count_curr == self.num_elts - 1)
+        next_full = (valid_in & (word_count_curr == self.num_elts - 1)) | align
         if valid_in:
             if next_full:
                 self.valid_out = 1
@@ -46,4 +46,6 @@ class AggModel(Model):
                 self.valid_out = 0
                 self.word_count = word_count_curr + 1
             self.shift_reg[word_count_curr] = data
+        else:
+            self.valid_out = 0
         return (self.sr_copy, self.curr_valid, next_full)

@@ -8,6 +8,7 @@ from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
+from lake.modules.chain import Chain
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
@@ -22,6 +23,8 @@ class LakeTop(Generator):
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
+                 input_config_width=16,
+                 output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
                  mem_input_ports=1,
@@ -37,20 +40,23 @@ class LakeTop(Generator):
                  align_input=1,
                  max_line_length=128,
                  max_tb_height=1,
-                 tb_range_max=128,
-                 tb_range_inner_max=5,
-                 tb_sched_max=64,
+                 tb_range_max=1024,
+                 tb_range_inner_max=64,
+                 tb_sched_max=16,
                  max_tb_stride=15,
                  num_tb=1,
                  tb_iterator_support=2,
                  multiwrite=1,
-                 max_prefetch=64,
-                 config_data_width=16,
+                 max_prefetch=8,
+                 config_data_width=32,
                  config_addr_width=8,
+                 num_tiles=1,
                  remove_tb=False,
+                 app_ctrl_depth_width=16,
                  fifo_mode=True,
                  add_clk_enable=True,
-                 add_flush=True):
+                 add_flush=True,
+                 stcl_valid_iter=4):
         super().__init__("LakeTop", debug=True)
 
         self.data_width = data_width
@@ -59,6 +65,8 @@ class LakeTop(Generator):
         self.banks = banks
         self.input_iterator_support = input_iterator_support
         self.output_iterator_support = output_iterator_support
+        self.input_config_width = input_config_width
+        self.output_config_width = output_config_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_input_ports = mem_input_ports
@@ -85,21 +93,60 @@ class LakeTop(Generator):
         self.max_prefetch = max_prefetch
         self.config_data_width = config_data_width
         self.config_addr_width = config_addr_width
+        self.num_tiles = num_tiles
+        self.app_ctrl_depth_width = app_ctrl_depth_width
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         self.fifo_mode = fifo_mode
+        self.stcl_valid_iter = stcl_valid_iter
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
 
         self.sets_per_macro = max(1, int(self.mem_depth / self.data_words_per_set))
         self.total_sets = max(1, self.banks * self.sets_per_macro)
+
+        self.chain_idx_bits = max(1, clog2(num_tiles))
         # phases = [] TODO
 
         # CLK and RST
-        self._gclk = self.clock("clk")
+        self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
+
+        # Chaining config regs
+
+        self._enable_chain_input = self.input("enable_chain_input", 1)
+        self._enable_chain_input.add_attribute(ConfigRegAttr("Enable chain on input"))
+
+        self._enable_chain_output = self.input("enable_chain_output", 1)
+        self._enable_chain_output.add_attribute(ConfigRegAttr("Enable chain on output"))
+
+        self._chain_idx_input = self.input("chain_idx_input",
+                                           self.chain_idx_bits)
+        self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
+        self._chain_idx_output = self.input("chain_idx_output",
+                                            self.chain_idx_bits)
+        self._chain_idx_output.add_attribute(ConfigRegAttr("Tile output index when having multiple tiles"))
+
+        # Chaining signals
+        self._chain_valid_in = self.input("chain_valid_in",
+                                          self.interconnect_output_ports)
+
+        self._chain_data_in = self.input("chain_data_in",
+                                         self.data_width,
+                                         size=self.interconnect_output_ports,
+                                         packed=True,
+                                         explicit_array=True)
+
+        self._chain_data_out = self.output("chain_data_out",
+                                           self.data_width,
+                                           size=self.interconnect_output_ports,
+                                           packed=True,
+                                           explicit_array=True)
+
+        self._chain_valid_out = self.output("chain_valid_out",
+                                            self.interconnect_output_ports)
 
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
@@ -115,19 +162,35 @@ class LakeTop(Generator):
                                    packed=True,
                                    explicit_array=True)
 
-        self._wen = self.input("wen", self.interconnect_input_ports)
-        self._ren = self.input("ren", self.interconnect_output_ports)
+        self._wen = self.input("wen_in", self.interconnect_input_ports)
+        self._ren = self.input("ren_in", self.interconnect_output_ports)
 
         self._config_data_in = self.input("config_data_in",
                                           self.config_data_width)
 
+        self._config_data_in_shrt = self.var("config_data_in_shrt",
+                                             self.data_width)
+
+        self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
+
         self._config_addr_in = self.input("config_addr_in",
                                           self.config_addr_width)
+
+        self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width,
+                                              size=self.total_sets,
+                                              explicit_array=True,
+                                              packed=True)
 
         self._config_data_out = self.output("config_data_out", self.config_data_width,
                                             size=self.total_sets,
                                             explicit_array=True,
                                             packed=True)
+
+        self._clk_en = self.clock_en("clk_en", 1)
+
+        for i in range(self.total_sets):
+            self.wire(self._config_data_out[i],
+                      self._config_data_out_shrt[i].extend(self.config_data_width))
 
         self._config_read = self.input("config_read", 1)
         self._config_write = self.input("config_write", 1)
@@ -142,7 +205,16 @@ class LakeTop(Generator):
         self._valid_out = self.output("valid_out",
                                       self.interconnect_output_ports)
 
-        self.address_width = clog2(mem_depth)
+        self._data_out_tile = self.var("data_out_tile",
+                                       self.data_width,
+                                       size=self.interconnect_output_ports,
+                                       packed=True,
+                                       explicit_array=True)
+
+        self._valid_out_tile = self.var("valid_out_tile",
+                                        self.interconnect_output_ports)
+
+        self.address_width = clog2(self.num_tiles * self.mem_depth)
 
         # Add tile enable!
         self._tile_en = self.input("tile_en", 1)
@@ -153,9 +225,9 @@ class LakeTop(Generator):
         self._mode.add_attribute(ConfigRegAttr("MODE!"))
 
         # Currenlt mode = 0 is UB, mode = 1 is FIFO
-
-        # self._gclk = self.var("gclk", 1)
-        # self.wire(self._gclk, kts.util.clock(self._clk & self._tile_en))
+        gclk = self.var("gclk", 1)
+        self._gclk = kts.util.clock(gclk)
+        self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
         self._mem_data_out = self.var("mem_data_out",
                                       self.data_width,
@@ -256,6 +328,11 @@ class LakeTop(Generator):
                                     explicit_array=True,
                                     packed=True)
 
+        self._mem_valid_data = self.var("mem_valid_data", self.mem_output_ports,
+                                        size=self.banks,
+                                        explicit_array=True,
+                                        packed=True)
+
         self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
                                     size=self.banks,
                                     explicit_array=True,
@@ -265,24 +342,32 @@ class LakeTop(Generator):
         ##### DEMUX WRITE/SRAM WRAPPER #####
         ####################################
 
-        stg_cfg_seq = StorageConfigSeq(data_width=16,
+        stg_cfg_seq = StorageConfigSeq(data_width=self.data_width,
                                        config_addr_width=self.config_addr_width,
                                        addr_width=self.address_width,
                                        fetch_width=self.mem_width,
                                        total_sets=self.total_sets,
                                        sets_per_macro=self.sets_per_macro)
 
+        # The clock to config sequencer needs to be the normal clock or
+        # if the tile is off, we bring the clock back in based on config_en
+        cfg_seq_clk = self.var("cfg_seq_clk", 1)
+        self._cfg_seq_clk = kts.util.clock(cfg_seq_clk)
+        # self.wire(cfg_seq_clk, kts.util.clock(self._gclk | (self._clk & self._config_en.r_or())))
+        self.wire(cfg_seq_clk, kts.util.clock(self._gclk))
+
         self.add_child(f"config_seq", stg_cfg_seq,
-                       clk=self._gclk,
+                       clk=self._cfg_seq_clk,
                        rst_n=self._rst_n,
-                       config_data_in=self._config_data_in,
+                       clk_en=self._clk_en | self._config_en.r_or(),
+                       config_data_in=self._config_data_in_shrt,
                        config_addr_in=self._config_addr_in,
                        config_wr=self._config_write,
                        config_rd=self._config_read,
                        config_en=self._config_en,
                        rd_data_stg=self._mem_data_low_pt,
                        wr_data=self._mem_data_cfg,
-                       rd_data_out=self._config_data_out,
+                       rd_data_out=self._config_data_out_shrt,
                        addr_out=self._mem_addr_cfg,
                        wen_out=self._mem_wen_cfg,
                        ren_out=self._mem_ren_cfg)
@@ -345,6 +430,7 @@ class LakeTop(Generator):
         strg_ub = StrgUB(data_width=self.data_width,
                          mem_width=self.mem_width,
                          mem_depth=self.mem_depth,
+                         num_tiles=self.num_tiles,
                          banks=self.banks,
                          input_iterator_support=self.input_iterator_support,
                          output_iterator_support=self.output_iterator_support,
@@ -369,7 +455,10 @@ class LakeTop(Generator):
                          tb_iterator_support=self.tb_iterator_support,
                          multiwrite=self.multiwrite,
                          max_prefetch=self.max_prefetch,
-                         remove_tb=self.remove_tb)
+                         remove_tb=self.remove_tb,
+                         input_config_width=self.input_config_width,
+                         output_config_width=self.output_config_width,
+                         stcl_valid_iter=self.stcl_valid_iter)
 
         self._ub_data_to_mem = self.var("ub_data_to_mem",
                                         self.data_width,
@@ -427,12 +516,15 @@ class LakeTop(Generator):
                        wen_in=self._wen,
                        ren_in=self._ren,
                        data_from_strg=self._mem_data_out,
+                       mem_valid_data=self._mem_valid_data,
                        # outputs
                        data_out=self._ub_data_out,
                        valid_out=self._ub_valid_out,
                        data_to_strg=self._ub_data_to_mem,
                        cen_to_strg=self._ub_cen_to_mem,
-                       wen_to_strg=self._ub_wen_to_mem)
+                       wen_to_strg=self._ub_wen_to_mem,
+                       enable_chain_output=self._enable_chain_output,
+                       chain_idx_output=self._chain_idx_output)
 
         # Wire addrs
         if self.rw_same_cycle:
@@ -509,6 +601,7 @@ class LakeTop(Generator):
                                banks=self.banks,
                                memory_width=self.mem_width,
                                memory_depth=self.mem_depth,
+                               num_tiles=self.num_tiles,
                                rw_same_cycle=self.rw_same_cycle,
                                read_delay=self.read_delay,
                                addr_width=16,
@@ -594,17 +687,24 @@ class LakeTop(Generator):
                                     mem_input_ports=self.mem_input_ports,
                                     mem_output_ports=self.mem_output_ports,
                                     address_width=self.address_width,
-                                    bank_num=i)
+                                    bank_num=i,
+                                    num_tiles=self.num_tiles)
 
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
+                               enable_chain_input=self._enable_chain_input,
+                               enable_chain_output=self._enable_chain_output,
+                               chain_idx_input=self._chain_idx_input,
+                               chain_idx_output=self._chain_idx_output,
+                               clk_en=self._clk_en | self._config_en.r_or(),
                                mem_data_in_bank=self._mem_data_in[i],
                                mem_data_out_bank=self._mem_data_out[i],
                                mem_addr_in_bank=self._mem_addr_in[i],
                                mem_cen_in_bank=self._mem_cen_in[i],
                                mem_wen_in_bank=self._mem_wen_in[i],
                                wtsel=self.sram_macro_info.wtsel_value,
-                               rtsel=self.sram_macro_info.rtsel_value)
+                               rtsel=self.sram_macro_info.rtsel_value,
+                               valid_data=self._mem_valid_data[i])
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)
@@ -655,21 +755,37 @@ class LakeTop(Generator):
             self.wire(self._all_data_out[2], self._sram_data_out)
             self.wire(self._all_valid_out[2], self._sram_valid_out)
 
-            self.wire(self._data_out[0], self._all_data_out[self._mode])
-            self.wire(self._valid_out[0], self._all_valid_out[self._mode])
+            self.wire(self._data_out_tile[0], self._all_data_out[self._mode])
+            self.wire(self._valid_out_tile[0], self._all_valid_out[self._mode])
         else:
-            self.wire(self._data_out[0], self._ub_data_out[0])
-            self.wire(self._valid_out[0], self._ub_valid_out[0])
+            self.wire(self._data_out_tile[0], self._ub_data_out[0])
+            self.wire(self._valid_out_tile[0], self._ub_valid_out[0])
 
         for i in range(self.interconnect_output_ports - 1):
-            self.wire(self._data_out[i + 1], self._ub_data_out[i + 1])
-            self.wire(self._valid_out[i + 1], self._ub_valid_out[i + 1])
+            self.wire(self._data_out_tile[i + 1], self._ub_data_out[i + 1])
+            self.wire(self._valid_out_tile[i + 1], self._ub_valid_out[i + 1])
+
+        chaining = Chain(data_width=self.data_width,
+                         interconnect_output_ports=self.interconnect_output_ports,
+                         chain_idx_bits=self.chain_idx_bits)
+
+        self.add_child(f"chain", chaining,
+                       enable_chain_output=self._enable_chain_output,
+                       chain_idx_output=self._chain_idx_output,
+                       curr_tile_valid_out=self._valid_out_tile,
+                       curr_tile_data_out=self._data_out_tile,
+                       chain_valid_in=self._chain_valid_in,
+                       chain_data_in=self._chain_data_in,
+                       chain_data_out=self._chain_data_out,
+                       chain_valid_out=self._chain_valid_out,
+                       data_out_tile=self._data_out,
+                       valid_out_tile=self._valid_out)
 
         ########################
         ##### CLOCK ENABLE #####
         ########################
         if add_clk_enable:
-            self.clock_en("clk_en")
+            # self.clock_en("clk_en")
             kts.passes.auto_insert_clock_enable(self.internal_generator)
 
         if add_flush:
@@ -682,7 +798,7 @@ class LakeTop(Generator):
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = True
+    use_sram_stub = False
     fifo_mode = True
     mem_width = 64
     lake_dut = LakeTop(mem_width=mem_width,
@@ -691,7 +807,7 @@ if __name__ == "__main__":
                        fifo_mode=fifo_mode,
                        add_clk_enable=True,
                        add_flush=True)
-    sram_port_pass = change_sram_port_names(use_sram_stub=True, sram_macro_info=tsmc_info)
+    sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})

@@ -55,6 +55,8 @@ class TransposeBufferAggregation(Generator):
         # Ack the ready
         self._ack_in = self.input("ack_in", 1)
 
+        self.mem_valid_data = self.input("mem_valid_data", 1)
+
         # outputs
         self.tb_to_interconnect_data = self.output("tb_to_interconnect_data",
                                                    width=self.word_width,
@@ -99,6 +101,7 @@ class TransposeBufferAggregation(Generator):
                            output_valid=self.tb_output_valid_all[i],
                            rdy_to_arbiter=self.tb_arbiter_rdy_all[i],
                            ack_in=self._ack_in,
+                           mem_valid_data=self.mem_valid_data,
                            ren=self.tba_ren)
 
         self.add_code(self.set_valid_data_all)

@@ -9,32 +9,36 @@ class OutputAddrCtrlModel(Model):
     def __init__(self,
                  interconnect_output_ports,
                  mem_depth,
+                 num_tiles,
                  banks,
                  iterator_support,
                  address_width,
                  data_width,
-                 fetch_width):
+                 fetch_width,
+                 chain_idx_output):
 
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_depth = mem_depth
+        self.num_tiles = num_tiles
         self.banks = banks
         self.iterator_support = iterator_support
         self.address_width = address_width
         self.data_width = data_width
         self.fetch_width = fetch_width
         self.fw_int = int(self.fetch_width / self.data_width)
+        self.chain_idx_output = chain_idx_output
 
         self.config = {}
 
         # Create child address generators
         self.addr_gens = []
         for i in range(self.interconnect_output_ports):
-            new_addr_gen = AddrGenModel(mem_depth=self.mem_depth,
-                                        iterator_support=self.iterator_support,
+            new_addr_gen = AddrGenModel(iterator_support=self.iterator_support,
                                         address_width=self.address_width)
             self.addr_gens.append(new_addr_gen)
 
-        self.mem_addr_width = kts.clog2(self.mem_depth)
+        self.mem_addr_width = kts.clog2(self.num_tiles * self.mem_depth)
+        self.chain_idx_bits = max(1, kts.clog2(self.num_tiles))
 
         # Get local list of addresses
         self.addresses = []
@@ -76,20 +80,21 @@ class OutputAddrCtrlModel(Model):
                 addr_gen_config[f"ranges_{j}"] = self.config[f"address_gen_{i}_ranges_{j}"]
             self.addr_gens[i].set_config(addr_gen_config)
 
-    def interact(self, valid_in, step_in):
+    def interact(self, valid_in, step_in, enable_chain_output):
         '''
         Returns (ren, addrs)
         '''
         ren = self.get_ren(valid_in)
-        addrs = self.get_addrs()
+        addrs = self.get_addrs_tile_en()
         self.step_addrs(valid_in, step_in)
         return (ren, addrs)
 
     # Retrieve the current addresses from each generator
-    def get_addrs(self):
+    def get_addrs_tile_en(self):
         for i in range(self.interconnect_output_ports):
             to_get = self.addr_gens[i]
             self.addresses[i] = to_get.get_address() % self.mem_depth
+            addr_chain_bits = (self.addresses[i]) >> (self.mem_addr_width - self.chain_idx_bits - 1)
         return self.addresses
 
     def get_addrs_full(self):

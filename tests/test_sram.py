@@ -9,17 +9,20 @@ import random as rand
 import pytest
 
 
+# this test tests sram_stub as well as part of sram_wrapper in the kratos code
 @pytest.mark.parametrize("data_width", [16, 32])
 @pytest.mark.parametrize("depth", [512, 1024])
 @pytest.mark.parametrize("width_mult", [1, 2])
 def test_sram_basic(data_width,
                     depth,
-                    width_mult):
+                    width_mult,
+                    num_tiles=1):
 
     # Set up model...
     model_sram = SRAMModel(data_width=data_width,
                            width_mult=width_mult,
-                           depth=depth)
+                           depth=depth,
+                           num_tiles=num_tiles)
     new_config = {}
     model_sram.set_config(new_config=new_config)
     ###
@@ -58,6 +61,7 @@ def test_sram_basic(data_width,
         tester.circuit.wen = wen
         tester.circuit.cen = cen
         tester.circuit.addr = addr
+
         if width_mult == 1:
             tester.circuit.data_in = data[0]
         else:
@@ -81,3 +85,10 @@ def test_sram_basic(data_width,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_sram_basic(data_width=16,
+                    depth=512,
+                    width_mult=4,
+                    num_tiles=1)

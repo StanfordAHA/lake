@@ -15,6 +15,7 @@ class StrgRAM(Generator):
                  banks=1,
                  memory_width=64,
                  memory_depth=512,
+                 num_tiles=1,
                  rw_same_cycle=False,  # Same as separate addresses
                  read_delay=1,
                  addr_width=16,
@@ -26,6 +27,7 @@ class StrgRAM(Generator):
         self.data_width = data_width
         self.memory_width = memory_width
         self.memory_depth = memory_depth
+        self.num_tiles = num_tiles
         self.rw_same_cycle = rw_same_cycle
         self.read_delay = read_delay
         self.addr_width = addr_width
@@ -33,8 +35,8 @@ class StrgRAM(Generator):
         self.prioritize_write = prioritize_write
         self.bank_width = clog2(self.banks)
         self.word_width = max(1, clog2(self.fw_int))
-        self.mem_addr_width = clog2(memory_depth)
-        self.b_a_off = clog2(self.fw_int) + clog2(self.memory_depth)
+        self.mem_addr_width = clog2(self.num_tiles * self.memory_depth)
+        self.b_a_off = clog2(self.fw_int) + clog2(self.num_tiles * self.memory_depth)
 
         # assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
         #     "Can't sustain throughput with this setup. Need potential bandwidth for " + \
@@ -233,7 +235,7 @@ class StrgRAM(Generator):
             # The read bank is comb if no delay, otherwise delayed
             if self.read_delay == 1:
                 @always_ff((posedge, "clk"), (negedge, "rst_n"))
-                def read_bank_ff():
+                def read_bank_ff(self):
                     if ~self._rst_n:
                         self._rd_bank = 0
                     else:
@@ -242,7 +244,7 @@ class StrgRAM(Generator):
                 self.add_code(read_bank_ff)
             else:
                 @always_comb
-                def read_bank_comb():
+                def read_bank_comb(self):
                     self._rd_bank = \
                         self._rd_addr[self.b_a_off + self.bank_width - 1, self.b_a_off]
                 self.add_code(read_bank_comb)
@@ -252,7 +254,7 @@ class StrgRAM(Generator):
         if self.read_delay == 1:
             if self.rw_same_cycle:
                 @always_ff((posedge, "clk"), (negedge, "rst_n"))
-                def read_valid_ff():
+                def read_valid_ff(self):
                     if ~self._rst_n:
                         self._rd_valid = 0
                     else:
@@ -261,7 +263,7 @@ class StrgRAM(Generator):
                 self.add_code(read_valid_ff)
             else:
                 @always_ff((posedge, "clk"), (negedge, "rst_n"))
-                def read_valid_ff():
+                def read_valid_ff(self):
                     if ~self._rst_n:
                         self._rd_valid = 0
                     else:
@@ -274,13 +276,19 @@ class StrgRAM(Generator):
             else:
                 self.wire(self._rd_valid, self._ren & ~self._wen)
 
-    @always_ff((posedge, "clk"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_dat_to_write(self):
-        self._data_to_write = self._data_in
+        if ~self._rst_n:
+            self._data_to_write = 0
+        else:
+            self._data_to_write = self._data_in
 
-    @always_ff((posedge, "clk"))
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_addr_to_write(self):
-        self._addr_to_write = self._wr_addr
+        if ~self._rst_n:
+            self._addr_to_write = 0
+        else:
+            self._addr_to_write = self._wr_addr
 
     @always_comb
     def decode_wen(self, idx):

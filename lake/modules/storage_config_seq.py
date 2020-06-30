@@ -1,6 +1,5 @@
 from kratos import *
 from lake.modules.aggregator import Aggregator
-from lake.modules.addr_gen import AddrGen
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
 import kratos as kts
@@ -52,6 +51,8 @@ class StorageConfigSeq(Generator):
         self._config_wr = self.input("config_wr", 1)
         self._config_rd = self.input("config_rd", 1)
         self._config_en = self.input("config_en", self.total_sets)
+
+        self._clk_en = self.input("clk_en", 1)
 
         self._rd_data_stg = self.input("rd_data_stg", self.data_width,
                                        size=(self.banks,
@@ -184,7 +185,7 @@ class StorageConfigSeq(Generator):
             self._cnt = 0
         # Increment when reading/writing - making sure
         # that the sequencing is correct from app level!
-        elif self._config_wr | self._config_rd:
+        elif (self._config_wr | self._config_rd) & self._config_en.r_or():
             self._cnt = self._cnt + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))

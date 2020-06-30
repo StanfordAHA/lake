@@ -37,6 +37,12 @@ class SyncGroups(Generator):
                                    explicit_array=True,
                                    packed=True)
 
+        self._mem_valid_data = self.input("mem_valid_data",
+                                          self.int_out_ports)
+
+        self._mem_valid_data_out = self.output("mem_valid_data_out",
+                                               self.int_out_ports)
+
         self._valid_in = self.input("valid_in",
                                     self.int_out_ports)
         # Indicates which port belongs to which synchronization group
@@ -96,6 +102,14 @@ class SyncGroups(Generator):
                                         size=self.int_out_ports,
                                         explicit_array=True,
                                         packed=True)
+
+        self._local_gate_bus_n = self.var("local_gate_bus_n",
+                                          self.int_out_ports,
+                                          size=self.int_out_ports,
+                                          explicit_array=True,
+                                          packed=True)
+
+        self.wire(self._local_gate_bus, ~self._local_gate_bus_n)
 
         self._local_gate_bus_tpose = self.var("local_gate_bus_tpose",
                                               self.int_out_ports,
@@ -167,13 +181,16 @@ class SyncGroups(Generator):
         if ~self._rst_n:
             self._data_reg[idx] = 0
             self._valid_reg[idx] = 0
+            self._mem_valid_data_out[idx] = 0
         # Absorb input data if the whole group is valid
         elif (self._sync_valid & self._sync_group[idx]).r_or():
             self._data_reg[idx] = self._data_in[idx]
+            self._mem_valid_data_out[idx] = self._mem_valid_data[idx]
             self._valid_reg[idx] = self._valid_in[idx]
         # Also absorb input data if not currently holding a valid
         elif ~self._valid_reg[idx]:
             self._data_reg[idx] = self._data_in[idx]
+            self._mem_valid_data_out[idx] = self._mem_valid_data[idx]
             self._valid_reg[idx] = self._valid_in[idx]
 
     @always_comb
@@ -192,12 +209,12 @@ class SyncGroups(Generator):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_rd_gates(self, idx):
         if ~self._rst_n:
-            self._local_gate_bus[idx] = ~const(0, self.int_out_ports)
+            self._local_gate_bus_n[idx] = const(0, self.int_out_ports)
         elif self._group_finished[idx]:
-            self._local_gate_bus[idx] = ~const(0, self.int_out_ports)
+            self._local_gate_bus_n[idx] = const(0, self.int_out_ports)
         # Bring this down eventually
         else:
-            self._local_gate_bus[idx] = self._local_gate_bus[idx] & self._local_gate_mask[idx]
+            self._local_gate_bus_n[idx] = ~(self._local_gate_bus[idx] & self._local_gate_mask[idx])
 
     @always_comb
     def set_tpose(self):

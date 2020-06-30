@@ -19,6 +19,7 @@ class RWArbiter(Generator):
                  fetch_width=16,
                  data_width=16,
                  memory_depth=32,
+                 num_tiles=1,
                  int_in_ports=2,
                  int_out_ports=2,
                  strg_wr_ports=2,
@@ -39,7 +40,8 @@ class RWArbiter(Generator):
         self.strg_wr_ports = strg_wr_ports
         self.strg_rd_ports = strg_rd_ports
         self.memory_depth = memory_depth
-        self.mem_addr_width = clog2(self.memory_depth)
+        self.num_tiles = num_tiles
+        self.mem_addr_width = clog2(self.num_tiles * self.memory_depth)
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         self.separate_addresses = separate_addresses
@@ -71,6 +73,11 @@ class RWArbiter(Generator):
                                                self.fw_int),
                                          explicit_array=True,
                                          packed=True)
+
+        self._mem_valid_data = self.input("mem_valid_data",
+                                          self.strg_rd_ports)
+        self._out_mem_valid_data = self.output("out_mem_valid_data",
+                                               self.strg_rd_ports)
 
         self._ren_in = self.input("ren_in", self.int_out_ports)
         self._ren_en = self.input("ren_en", self.int_out_ports)
@@ -269,6 +276,7 @@ class RWArbiter(Generator):
         self._out_data = self._data_from_mem
         self._out_port = self._rd_port
         self._out_valid = self._rd_valid
+        self._out_mem_valid_data = self._mem_valid_data
 
 
 if __name__ == "__main__":

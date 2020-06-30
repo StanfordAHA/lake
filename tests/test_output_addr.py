@@ -13,13 +13,18 @@ import pytest
 
 @pytest.mark.parametrize("banks", [1, 2, 4])
 @pytest.mark.parametrize("interconnect_output_ports", [1, 2])
+@pytest.mark.parametrize("enable_chain_output", [0, 1])
 def test_output_addr_basic(banks,
                            interconnect_output_ports,
+                           enable_chain_output,
                            mem_depth=512,
+                           num_tiles=1,
                            data_width=16,
                            fetch_width=32,
                            iterator_support=4,
-                           address_width=16):
+                           address_width=16,
+                           config_width=16,
+                           chain_idx_output=0):
 
     fw_int = int(fetch_width / data_width)
 
@@ -27,10 +32,12 @@ def test_output_addr_basic(banks,
     model_oac = OutputAddrCtrlModel(interconnect_output_ports=interconnect_output_ports,
                                     mem_depth=mem_depth,
                                     banks=banks,
+                                    num_tiles=num_tiles,
                                     iterator_support=iterator_support,
                                     address_width=address_width,
                                     data_width=data_width,
-                                    fetch_width=fetch_width)
+                                    fetch_width=fetch_width,
+                                    chain_idx_output=chain_idx_output)
 
     new_config = {}
     new_config['address_gen_0_starting_addr'] = 0
@@ -57,10 +64,14 @@ def test_output_addr_basic(banks,
     # Set up dut...
     dut = OutputAddrCtrl(interconnect_output_ports=interconnect_output_ports,
                          mem_depth=mem_depth,
+                         num_tiles=num_tiles,
                          banks=banks,
                          iterator_support=iterator_support,
-                         address_width=address_width)
+                         address_width=address_width,
+                         config_width=config_width)
+
     lift_config_reg(dut.internal_generator)
+
     magma_dut = kts.util.to_magma(dut, flatten_array=True,
                                   check_multiple_driver=False,
                                   check_flip_flop_always_ff=False)
@@ -92,7 +103,11 @@ def test_output_addr_basic(banks,
             tester.circuit.valid_in[z] = valid_in[z]
         tester.circuit.step_in = step_in
 
-        (ren, addrs) = model_oac.interact(valid_in, step_in)
+        # top level config regs passed down
+        tester.circuit.enable_chain_output = enable_chain_output
+        tester.circuit.chain_idx_output = chain_idx_output
+
+        (ren, addrs) = model_oac.interact(valid_in, step_in, enable_chain_output)
 
         tester.eval()
 
@@ -117,3 +132,17 @@ def test_output_addr_basic(banks,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_output_addr_basic(banks=2,
+                           interconnect_output_ports=3,
+                           enable_chain_output=0,
+                           mem_depth=512,
+                           num_tiles=1,
+                           data_width=16,
+                           fetch_width=32,
+                           iterator_support=4,
+                           address_width=16,
+                           config_width=16,
+                           chain_idx_output=0)

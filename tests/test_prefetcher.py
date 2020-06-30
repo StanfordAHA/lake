@@ -60,25 +60,31 @@ def test_prefetcher_basic(input_latency=10,
 
     for i in range(1000):
         # Gen random data
+        print(i)
         for j in range(fw_int):
             data_in[j] = rand.randint(0, 2 ** data_width - 1)
         tba_rdy_in = rand.randint(0, 1)
         valid_read = rand.randint(0, 1)
+        mem_valid_data = rand.randint(0, 1)
 
-        (model_d, model_v, model_stp) = model_pf.interact(data_in, valid_read, tba_rdy_in)
+        (model_d, model_v, model_stp, model_mem_valid) = \
+            model_pf.interact(data_in, valid_read, tba_rdy_in, mem_valid_data)
+
         for j in range(fw_int):
             setattr(tester.circuit, f"data_in_{j}", data_in[j])
         tester.circuit.valid_read = valid_read
         tester.circuit.tba_rdy_in = tba_rdy_in
+        tester.circuit.mem_valid_data = mem_valid_data
 
         tester.eval()
 
         # Check the step
         tester.circuit.prefetch_step.expect(model_stp)
         tester.circuit.valid_out.expect(model_v)
-        if(model_v):
+        if (model_v):
             for j in range(fw_int):
                 getattr(tester.circuit, f"data_out_{j}").expect(model_d[j])
+            tester.circuit.mem_valid_data_out.expect(model_mem_valid)
 
         tester.step(2)
 
@@ -87,3 +93,7 @@ def test_prefetcher_basic(input_latency=10,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+if __name__ == "__main__":
+    test_prefetcher_basic()
