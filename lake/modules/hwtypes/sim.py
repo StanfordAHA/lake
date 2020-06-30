@@ -2,15 +2,17 @@ from peak import Peak, family_closure, Const, name_outputs, family
 from types import SimpleNamespace
 import magma as m
 from math import log2
+import hwtypes
 
 import fault
+import itertools
 
 def sram_stub(mem_depth=4,
               data_width=64,
               family=family.PyFamily()):
 
     num_bits = mem_depth * data_width
-    addr_width = log2(mem_depth)
+    addr_width = int(log2(mem_depth))
 
     @family_closure
     def modules_fc(family):
@@ -42,7 +44,26 @@ def sram_stub(mem_depth=4,
 
                 return data_out
 
+        return SRAMStub
+
     return modules_fc
 
 if __name__ == "__main__":
-    sram_stub()
+    # functional model
+    sram_py = sram_stub()
+    print(sram_py(family=family.PyFamily())(hwtypes.Bit(1), hwtypes.Bit(1), hwtypes.BitVector[log2(4)](2), hwtypes.BitVector[64*4](2)))
+
+    # magma
+    sram_magma = sram_stub(family=family.MagmaFamily())
+    tester = fault.Tester(sram_magma)
+    data = 0
+    vals = [0, 1]
+    for i in range(5):
+        tester.circuit.wen = i % 2
+        tester.circuit.cen = 1
+        tester.circuit.data_in = data
+        tester.circuit.addr = data
+        data = data + 1
+        tester.eval()
+        tester.step(2)
+    tester.compile_and_run("verilator", flags=["-Wno-fatal"])
