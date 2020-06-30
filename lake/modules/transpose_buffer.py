@@ -124,7 +124,7 @@ class TransposeBuffer(Generator):
 
         self.col_pixels = self.output("col_pixels",
                                       width=self.word_width,
-                                      size=self.max_tb_height,
+                                      size=1,
                                       packed=True,
                                       explicit_array=True)
         self.output_valid = self.output("output_valid", 1)
@@ -138,16 +138,16 @@ class TransposeBuffer(Generator):
         if self.fetch_width == 1:
             self.tb = self.var("tb",
                                width=self.word_width,
-                               size=2 * self.max_tb_height,
+                               size=2,
                                packed=True)
 
         else:
             self.tb = self.var("tb",
                                width=self.word_width,
-                               size=[2 * self.max_tb_height, self.fetch_width],
+                               size=[2, self.fetch_width],
                                packed=True)
 
-        self.tb_valid = self.var("tb_valid", 2 * self.max_tb_height)
+        self.tb_valid = self.var("tb_valid", 2)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
         self.index_outer_stride = self.var("index_outer_stride", self.max_range_bits * self.max_stride_bits)
@@ -157,7 +157,6 @@ class TransposeBuffer(Generator):
         self.out_buf_index = self.var("out_buf_index", 1)
         self.switch_out_buf = self.var("switch_out_buf", 1)
         self.switch_next_line = self.var("switch_next_line", 1)
-        self.row_index = self.var("row_index", self.max_tb_height_bits)
         self.input_index = self.var("input_index", self.max_tb_height_bits2)
 
         self.output_index_abs = self.var("output_index_abs", self.out_index_bits)
@@ -191,7 +190,6 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_index_outer)
         self.add_code(self.set_index_inner)
         self.add_code(self.set_pause_tb)
-        self.add_code(self.set_row_index)
         self.add_code(self.set_input_buf_index)
         self.add_code(self.input_to_tb)
         self.add_code(self.output_from_tb)
@@ -287,24 +285,11 @@ class TransposeBuffer(Generator):
         else:
             self.pause_output = ~self.ren
 
-    # get index of row to fill in transpose buffer with input data
-    # for one of the two buffers in double buffer
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def set_row_index(self):
-        if ~self.rst_n:
-            self.row_index = 0
-        elif self.dimensionality == 0:
-            self.row_index = 0
-        elif self.valid_data & self.row_index == self.tb_height - 1:
-            self.row_index = 0
-        elif self.valid_data:
-            self.row_index = self.row_index + 1
-
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_input_buf_index(self):
         if ~self.rst_n:
             self.input_buf_index = 0
-        elif self.valid_data & (self.row_index == self.tb_height - 1):
+        elif self.valid_data:
             self.input_buf_index = ~self.input_buf_index
 
     # for double buffer, get index of row to fill in transpose buffer
@@ -314,10 +299,9 @@ class TransposeBuffer(Generator):
         if self.dimensionality == 0:
             self.input_index = 0
         elif self.input_buf_index:
-            self.input_index = const(self.max_tb_height, self.max_tb_height_bits2) + \
-                self.row_index.extend(self.max_tb_height_bits2)
+            self.input_index = const(self.max_tb_height, self.max_tb_height_bits2)
         else:
-            self.input_index = self.row_index.extend(self.max_tb_height_bits2)
+            self.input_index = 0
 
     # input to transpose buffer
     @always_ff((posedge, "clk"))
@@ -460,9 +444,6 @@ class TransposeBuffer(Generator):
             self.rdy_to_arbiterinv = 0
         elif self.switch_out_buf:
             self.rdy_to_arbiterinv = 0
-        elif self.tb_height != 1:
-            if self.row_index != self.tb_height - 1:
-                self.rdy_to_arbiterinv = 0
         elif self.ack_in:
             self.rdy_to_arbiterinv = 1
 
