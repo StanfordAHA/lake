@@ -51,7 +51,7 @@ class TransposeBuffer(Generator):
         self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
         self.max_tb_height_bits = max(1, clog2(self.max_tb_height))
         self.tb_iterator_support_bits = max(1, clog2(self.tb_iterator_support) + 1)
-        self.max_range_stride_bits2 = max(2 * self.max_range_bits, 2 * self.max_stride_bits)
+        self.out_index_bits = max(1, max(self.fetch_width_bits, self.max_range_bits * self.max_stride_bits))
 
         ##########
         # INPUTS #
@@ -150,6 +150,7 @@ class TransposeBuffer(Generator):
         self.tb_valid = self.var("tb_valid", 2 * self.max_tb_height)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
+        self.index_outer_stride = self.var("index_outer_stride", self.max_range_bits * self.max_stride_bits)
         self.index_inner = self.var("index_inner", self.max_range_inner_bits)
 
         self.input_buf_index = self.var("input_buf_index", 1)
@@ -159,15 +160,15 @@ class TransposeBuffer(Generator):
         self.row_index = self.var("row_index", self.max_tb_height_bits)
         self.input_index = self.var("input_index", self.max_tb_height_bits2)
 
-        self.output_index_abs = self.var("output_index_abs", self.max_range_stride_bits2)
+        self.output_index_abs = self.var("output_index_abs", self.out_index_bits)
 
         if self.fetch_width != 1:
-            self.output_index_long = self.var("output_index_long", self.max_range_stride_bits2)
+            self.output_index_long = self.var("output_index_long", self.out_index_bits)
             self.output_index = self.var("output_index", self.fetch_width_bits)
 
         self.indices_index_inner = self.var("indices_index_inner",
                                             clog2(2 * self.num_tb * self.fetch_width))
-        self.curr_out_start = self.var("curr_out_start", self.max_range_stride_bits2)
+        self.curr_out_start = self.var("curr_out_start", self.out_index_bits)
 
         self.start_data = self.var("start_data", 1)
         self.old_start_data = self.var("old_start_data", 1)
@@ -225,15 +226,19 @@ class TransposeBuffer(Generator):
     def set_index_outer(self):
         if ~self.rst_n:
             self.index_outer = 0
+            self.index_outer_stride = 0
         elif self.dimensionality == 0:
             self.index_outer = 0
+            self.index_outer_stride = 0
         elif (self.dimensionality == 1) | \
                 ((self.dimensionality == 2) & (self.index_inner == self.range_inner - 1)):
             if ~self.pause_output:
                 if (self.index_outer == self.range_outer - 1):
                     self.index_outer = 0
+                    self.index_outer_stride = 0
                 else:
                     self.index_outer = self.index_outer + 1
+                    self.index_outer_stride = self.index_outer_stride + self.stride.extend(self.max_range_bits * self.max_stride_bits)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_index_inner(self):
@@ -333,15 +338,13 @@ class TransposeBuffer(Generator):
             self.output_index_abs = 0
         elif self.dimensionality == 1:
             self.indices_index_inner = 0
-            self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
-                self.stride.extend(self.max_range_stride_bits2) \
-                + self.starting_addr.extend(self.max_range_stride_bits2)
+            self.output_index_abs = self.index_outer_stride.extend(self.out_index_bits) \
+                + self.starting_addr.extend(self.out_index_bits)
         else:
             self.indices_index_inner = self.indices[self.index_inner]
-            self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
-                self.stride.extend(self.max_range_stride_bits2) \
-                + self.indices_index_inner.extend(self.max_range_stride_bits2) \
-                + self.starting_addr.extend(self.max_range_stride_bits2)
+            self.output_index_abs = self.index_outer_stride.extend(self.out_index_bits) \
+                + self.indices_index_inner.extend(self.out_index_bits) \
+                + self.starting_addr.extend(self.out_index_bits)
 
     @always_comb
     def set_output_index_long(self):
