@@ -23,8 +23,7 @@ def sram_stub(mem_depth=4,
         @family.assemble(locals(), globals())
         class SRAMStub():
             def __init__(self):
-
-                self.mem: BitVector[num_bits](0)
+                self.mem: BitVector[num_bits] = BitVector[num_bits](0)
 
             @name_outputs(data_out=WideData)
             def __call__(self, 
@@ -35,10 +34,16 @@ def sram_stub(mem_depth=4,
                 ) -> (WideData):
 
                 if cen == Bit(1) & wen == Bit(1):
-                    self.mem[addr * data_width, (addr + 1) * data_width] = data_in
+                    if addr == 0:
+                        self.mem = data_in.concat(self.mem[data_width : ])
+#                        self.mem = concat(data_in, self.mem[data_width : ])
+                    elif addr == mem_depth:
+                        self.mem = self.mem[0 : addr * data_width].concat(data_in)
+                    else:
+                        self.mem = (self.mem[0 : addr * data_width].concat(data_in)).concat(self.mem[(addr + 1) * data_width : ])
 
                 if cen == Bit(1) & wen == Bit(0):
-                    data_out = self.mem[addr * data_width, (addr + 1) * data_width]
+                    data_out = self.mem[addr * data_width : (addr + 1) * data_width]
                 else:
                     data_out = WideData(0)
 
@@ -51,7 +56,7 @@ def sram_stub(mem_depth=4,
 if __name__ == "__main__":
     # functional model
     sram_py = sram_stub()
-    print(sram_py(family=family.PyFamily())(hwtypes.Bit(1), hwtypes.Bit(1), hwtypes.BitVector[log2(4)](2), hwtypes.BitVector[64*4](2)))
+    print(sram_py(family=family.PyFamily())()(hwtypes.Bit(1), hwtypes.Bit(1), hwtypes.BitVector[log2(4)](2), hwtypes.BitVector[64*4](2)))
 
     # magma
     sram_magma = sram_stub(family=family.MagmaFamily())
