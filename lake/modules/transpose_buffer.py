@@ -176,8 +176,6 @@ class TransposeBuffer(Generator):
 
         self.on_next_line = self.var("on_next_line", 1)
 
-        self.mask_valid = self.var("mask_valid", 1)
-
         self.pause_tbinv = self.var("pause_tbinv", 1)
         self.rdy_to_arbiterinv = self.var("rdy_to_arbiterinv", 1)
         self.out_buf_indexinv = self.var("out_buf_indexinv", 1)
@@ -212,7 +210,6 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_switch_next_line)
         if self.fetch_width != 1:
             self.add_code(self.set_output_index_long)
-        self.add_code(self.set_mask_valid)
         self.add_code(self.set_invs)
 
     # get output loop iterators
@@ -364,15 +361,10 @@ class TransposeBuffer(Generator):
             self.output_valid = 0
         elif self.pause_output:
             self.output_valid = 0
+        elif (self.out_buf_index ^ self.switch_out_buf):
+            self.output_valid = self.tb_valid[0]
         else:
-            self.output_valid = self.mask_valid
-
-    @always_comb
-    def set_mask_valid(self):
-        if (self.out_buf_index ^ self.switch_out_buf):
-            self.mask_valid = self.tb_valid[0]
-        else:
-            self.mask_valid = self.tb_valid[1]
+            self.output_valid = self.tb_valid[1]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_out_buf_index(self):
