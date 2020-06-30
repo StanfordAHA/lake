@@ -412,8 +412,6 @@ class TransposeBuffer(Generator):
     def set_rdy_to_arbiter(self):
         if ~self.rst_n:
             self.rdy_to_arbiterinv = 0
-        elif self.dimensionality == 0:
-            self.rdy_to_arbiterinv = 1
         elif self.start_data & ~self.old_start_data:
             self.rdy_to_arbiterinv = 0
         elif self.switch_out_buf:
