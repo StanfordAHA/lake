@@ -104,7 +104,7 @@ class TransposeBuffer(Generator):
         # specifies inner for loop values for output column
         # addressing
         self.indices = self.input("indices",
-                                  width=clog2(2 * self.num_tb * self.fetch_width),
+                                  width=clog2(2 * self.fetch_width),
                                   # the length of indices is equal to range_inner,
                                   # so the maximum possible size for self.indices
                                   # is the maximum value of range_inner, which is
@@ -165,7 +165,7 @@ class TransposeBuffer(Generator):
             self.output_index = self.var("output_index", self.fetch_width_bits)
 
         self.indices_index_inner = self.var("indices_index_inner",
-                                            clog2(2 * self.num_tb * self.fetch_width))
+                                            clog2(2 * self.fetch_width))
         self.curr_out_start = self.var("curr_out_start", self.out_index_bits)
 
         self.start_data = self.var("start_data", 1)
