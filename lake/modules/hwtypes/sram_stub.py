@@ -35,12 +35,12 @@ def sram_stub(
 
                 print("wen: ", wen, " cen: ", cen, " data_in ", data_in, " addr: ", addr)
                 print("mem: ", self.mem)
-                if (cen == Bit(1)) and (wen == Bit(1)):
+                if (cen == Bit(1)) & (wen == Bit(1)):
                     print("setting slice")
                     self.mem = set_slice(self.mem, addr, data_width, data_in)
                     # print("mem after set slice ", self.mem)
 
-                if (cen == Bit(1)) and (wen == Bit(0)):
+                if (cen == Bit(1)) & (wen == Bit(0)):
                     print("getting slice")
                     print("get slice mem ", self.mem)
                     # data_out = self.mem[addr * data_width : (addr + 1) * data_width]
@@ -57,7 +57,7 @@ def sram_stub(
     return modules_fc
 
 if __name__ == "__main__":
-    pyt = True
+    pyt = False
     if pyt:
         mem_depth = 4
         data_width = 64
