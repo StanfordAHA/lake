@@ -77,7 +77,7 @@ def sram_stub(
     return modules_fc
 
 if __name__ == "__main__":
-    pyt = True
+    pyt = False
     if pyt:
         mem_depth = 4
         data_width = 64
@@ -103,6 +103,11 @@ if __name__ == "__main__":
             data = data + 1
             tester.eval()
             tester.step(2)
-    
-        tester.compile_and_run("verilator", flags=["-Wno-fatal"])
+   
+        with tempfile.TemporaryDirectory() as tempdir:
+            tempdir="output"
+            tester.compile_and_run(target="verilator", 
+                                   directory=tempdir,
+                                   magma_output="verilog",
+                                   flags=["-Wno-fatal"])
 
