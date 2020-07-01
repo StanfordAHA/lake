@@ -219,9 +219,6 @@ class TransposeBuffer(Generator):
         if ~self.rst_n:
             self.index_outer = 0
             self.index_outer_stride = 0
-        elif self.dimensionality == 0:
-            self.index_outer = 0
-            self.index_outer_stride = 0
         elif (self.dimensionality == 1) | \
                 ((self.dimensionality == 2) & (self.index_inner == self.range_inner - 1)):
             if ~self.pause_output:
