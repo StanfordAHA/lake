@@ -1,30 +1,10 @@
 from peak import Peak, family_closure, Const, name_outputs, family
 from math import log2
+from utils import *
 
 import magma as m
 import hwtypes
 import fault
-
-
-def get_slice(data, addr_, width):
-    addr = addr_.zext(data.size - addr_.size)
-    return (data >> addr)[:width]
-
-def set_slice(data, addr_, width, value):
-    assert value.size == width
-    #print("set_slice func")
-    #print("data ", data)
-    #print("addr ", addr_)
-    #print("width ", width)
-    #print("value ", value)
-    addr = addr_.zext(data.size - addr_.size)
-    #print("addr ", addr)
-    top_bits = (data >> (addr + width)) << (addr + width)
-    mid_bits = value.zext(data.size - width) << addr
-    #print("mid bits ", mid_bits)
-    bot_bits = (data << (addr + width)) >> (addr + width)
-    #print(top_bits | mid_bits | bot_bits)
-    return top_bits | mid_bits | bot_bits
 
 def sram_stub(
         mem_depth=4,
@@ -77,7 +57,7 @@ def sram_stub(
     return modules_fc
 
 if __name__ == "__main__":
-    pyt = False
+    pyt = True
     if pyt:
         mem_depth = 4
         data_width = 64
