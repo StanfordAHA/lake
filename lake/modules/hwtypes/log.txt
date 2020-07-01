@@ -1,70 +1,34 @@
 /nobackup/skavya/python_envs/hwtypes/lib/python3.7/site-packages/pysmt/walkers/generic.py:43: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3,and in 3.9 it will stop working
   if len(nodetypes) == 1 and isinstance(nodetypes[0], collections.Iterable):
 Traceback (most recent call last):
-  File "/nobackup/skavya/magma/magma/ast_utils.py", line 54, in compile_function_to_file
-    exec(code, defn_env)
-  File ".magma/SRAMStub_comb.py", line 1, in <module>
-    class SRAMStub_comb(m.Circuit):
-  File ".magma/SRAMStub_comb.py", line 7, in SRAMStub_comb
-    data_out_0 = get_slice(self_mem_I_0, io.addr * data_width, data_width)
-  File "sram_stub.py", line 10, in get_slice
-    return (data >> addr)[:width]
-  File "/nobackup/skavya/magma/magma/bits.py", line 408, in __rshift__
-    raise e from None
-  File "/nobackup/skavya/magma/magma/bits.py", line 406, in __rshift__
-    return self.bvlshr(other)
-  File "/nobackup/skavya/magma/magma/bits.py", line 42, in wrapped
-    other = _coerce(type(self), other)
-  File "/nobackup/skavya/magma/magma/bits.py", line 33, in _coerce
-    raise InconsistentSizeError('Inconsistent size')
-hwtypes.bit_vector_abc.InconsistentSizeError: Inconsistent size
-
-Traceback (most recent call last):
-  File "/nobackup/skavya/magma/magma/ast_utils.py", line 54, in compile_function_to_file
-    exec(code, defn_env)
-  File ".magma/SRAMStub_comb.py", line 1, in <module>
-    class SRAMStub_comb(m.Circuit):
-  File ".magma/SRAMStub_comb.py", line 7, in SRAMStub_comb
-    data_out_0 = get_slice(self_mem_I_0, io.addr * data_width, data_width)
-  File "sram_stub.py", line 10, in get_slice
-    return (data >> addr)[:width]
-  File "/nobackup/skavya/magma/magma/bits.py", line 408, in __rshift__
-    raise e from None
-  File "/nobackup/skavya/magma/magma/bits.py", line 406, in __rshift__
-    return self.bvlshr(other)
-  File "/nobackup/skavya/magma/magma/bits.py", line 42, in wrapped
-    other = _coerce(type(self), other)
-  File "/nobackup/skavya/magma/magma/bits.py", line 33, in _coerce
-    raise InconsistentSizeError('Inconsistent size')
-hwtypes.bit_vector_abc.InconsistentSizeError: Inconsistent size
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "sram_stub.py", line 69, in <module>
+  File "sram_stub.py", line 70, in <module>
     tester = fault.Tester(sram_magma(family=family.MagmaFamily())())
   File "/nobackup/skavya/python_envs/hwtypes/src/peak/peak/features.py", line 110, in __call__
     res = self.fc(family, *args, **kwargs)
-  File "sram_stub.py", line 34, in modules_fc
+  File "sram_stub.py", line 35, in modules_fc
     @family.assemble(locals(), globals())
   File "/nobackup/skavya/python_envs/hwtypes/src/peak/peak/family.py", line 223, in deco
     cls = m.circuit.sequential(cls, env=env)
   File "/nobackup/skavya/magma/magma/syntax/sequential.py", line 552, in sequential
     return wrapped_sequential(m.AsyncReset, cls, combinational)
-  File "/nobackup/skavya/python_envs/hwtypes/lib/python3.7/site-packages/ast_tools/stack.py", line 116, in wrapped_0
-    return fn(env, *args, **kwargs)
-  File "/nobackup/skavya/magma/magma/syntax/sequential.py", line 501, in _sequential
-    circuit_def = circuit_def_constructor(combinational_decorator)
-  File ".magma/make_SRAMStub.py", line 8, in make_SRAMStub
-    class SRAMStub(m0.Circuit):
-  File ".magma/make_SRAMStub.py", line 16, in SRAMStub
-    self_mem_O: BitVector[256]) ->(BitVector[256], WideData):
-  File "/nobackup/skavya/magma/magma/syntax/combinational.py", line 272, in wrapped
-    return wrapped_combinational(fn)
-  File "/nobackup/skavya/python_envs/hwtypes/lib/python3.7/site-packages/ast_tools/stack.py", line 116, in wrapped_0
-    return fn(env, *args, **kwargs)
-  File "/nobackup/skavya/magma/magma/syntax/combinational.py", line 233, in _combinational
-    defn_env)
-  File "/nobackup/skavya/magma/magma/ast_utils.py", line 59, in compile_function_to_file
-    raise Exception(f"Error occured when executing m.circuit.combinational function {func_name}, see above")
-Exception: Error occured when executing m.circuit.combinational function SRAMStub_comb, see above
+  File "/nobackup/skavya/python_envs/hwtypes/lib/python3.7/site-packages/ast_tools/stack.py", line 110, in wrapped_0
+    _st = get_symbol_table(list(itertools.chain(decorators, [wrapped_0])))
+  File "/nobackup/skavya/python_envs/hwtypes/lib/python3.7/site-packages/ast_tools/stack.py", line 61, in get_symbol_table
+    stack = inspect.stack()
+  File "/usr/lib/python3.7/inspect.py", line 1513, in stack
+    return getouterframes(sys._getframe(1), context)
+  File "/usr/lib/python3.7/inspect.py", line 1490, in getouterframes
+    frameinfo = (frame,) + getframeinfo(frame, context)
+  File "/usr/lib/python3.7/inspect.py", line 1464, in getframeinfo
+    lines, lnum = findsource(frame)
+  File "/usr/lib/python3.7/inspect.py", line 780, in findsource
+    module = getmodule(object, file)
+  File "/usr/lib/python3.7/inspect.py", line 742, in getmodule
+    os.path.realpath(f)] = module.__name__
+  File "/nobackup/skavya/python_envs/hwtypes/lib/python3.7/posixpath.py", line 395, in realpath
+    path, ok = _joinrealpath(filename[:0], filename, {})
+  File "/nobackup/skavya/python_envs/hwtypes/lib/python3.7/posixpath.py", line 429, in _joinrealpath
+    if not islink(newpath):
+  File "/nobackup/skavya/python_envs/hwtypes/lib/python3.7/posixpath.py", line 171, in islink
+    st = os.lstat(path)
+KeyboardInterrupt
