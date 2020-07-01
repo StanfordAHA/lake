@@ -11,16 +11,16 @@ import itertools
 def get_slice(data, addr, width):
     return (data >> addr)[:width]
 
-def set_slice(data, addr, width, value):
+def set_slice(data, addr_, width, value):
     print(data)
-    print(addr)
+    print(addr_)
     print(width)
     print(value)
     print(value.size)
-#    assert value.size == width
-    value = value[0:width]
+    assert value.size == width
     assert value.size == width
     print(value.size)
+    addr = addr_.zext(data.size-addr_.size)
     # Shift out bottom bits / shift in zeros
     top_bits = (data >> (addr + width)) << (addr + width)
     # zero extend then shift to addr
@@ -30,7 +30,7 @@ def set_slice(data, addr, width, value):
     return top_bits | mid_bits | bot_bits
 
 def sram_stub(mem_depth=4,
-              data_width=8,
+              data_width=64,
               family=family.PyFamily()):
 
     num_bits = mem_depth * data_width
@@ -66,7 +66,7 @@ def sram_stub(mem_depth=4,
                     #    self.mem = (self.mem[0 : addr * data_width].concat(data_in)).concat(self.mem[(addr + 1) * data_width : ])
 		
                 if cen == Bit(1) & wen == Bit(0):
-                    data_out = self.mem[addr * data_width : (addr + 1) * data_width]
+                    data_out = get_slice(self.mem, addr * data_width, data_width)
                 else:
                     data_out = WideData(0)
 
@@ -79,11 +79,11 @@ def sram_stub(mem_depth=4,
 if __name__ == "__main__":
     # functional model
     sram_py = sram_stub()
-    print(sram_py(family=family.PyFamily())()(hwtypes.Bit(1), hwtypes.Bit(1), hwtypes.BitVector[log2(4)](2), hwtypes.BitVector[64*4](2)))
+    print(sram_py(family=family.PyFamily())()(hwtypes.Bit(1), hwtypes.Bit(1), hwtypes.BitVector[log2(4)](2), hwtypes.BitVector[64](2)))
 
     # magma
     sram_magma = sram_stub(family=family.MagmaFamily())
-    tester = fault.Tester(sram_magma)
+    tester = fault.Tester(sram_magma(family=family.MagmaFamily())())
     data = 0
     vals = [0, 1]
     for i in range(5):
