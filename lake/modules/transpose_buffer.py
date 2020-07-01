@@ -286,13 +286,12 @@ class TransposeBuffer(Generator):
     # input to transpose buffer
     @always_ff((posedge, "clk"))
     def input_to_tb(self):
-        if self.valid_data:
-            if self.dimensionality == 0:
-                self.tb[self.input_buf_index] = 0
-                self.tb_valid[self.input_buf_index] = 0
-            else:
-                self.tb[self.input_buf_index] = self.input_data
-                self.tb_valid[self.input_buf_index] = self.mem_valid_data
+        if self.dimensionality == 0:
+            self.tb[self.input_buf_index] = 0
+            self.tb_valid[self.input_buf_index] = 0
+        elif self.valid_data:
+            self.tb[self.input_buf_index] = self.input_data
+            self.tb_valid[self.input_buf_index] = self.mem_valid_data
 
     # get relative output column index from absolute output column index
     @always_comb
@@ -353,9 +352,7 @@ class TransposeBuffer(Generator):
     # appropriately
     @always_comb
     def set_output_valid(self):
-        if self.dimensionality == 0:
-            self.output_valid = 0
-        elif self.pause_output:
+        if self.pause_output:
             self.output_valid = 0
         elif (self.out_buf_index ^ self.switch_out_buf):
             self.output_valid = self.tb_valid[0]
