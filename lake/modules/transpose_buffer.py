@@ -389,8 +389,6 @@ class TransposeBuffer(Generator):
     def set_curr_out_start(self):
         if ~self.rst_n:
             self.curr_out_start = 0
-        elif self.dimensionality == 0:
-            self.curr_out_start = 0
         elif self.switch_next_line:
             self.curr_out_start = 0
         elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
