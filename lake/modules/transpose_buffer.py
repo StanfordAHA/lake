@@ -49,7 +49,8 @@ class TransposeBuffer(Generator):
         self.tb_col_index_bits = 2 * max(self.fetch_width_bits, self.num_tb_bits) + 1
         self.max_tb_height_bits = max(1, clog2(self.max_tb_height))
         self.tb_iterator_support_bits = max(1, clog2(self.tb_iterator_support) + 1)
-        self.out_index_bits = max(1, max(self.fetch_width_bits, self.max_range_bits * self.max_stride_bits))
+        self.max_range_stride_bits = max(1, max(2 * self.max_range_bits, 2 * self.max_stride_bits))
+        self.out_index_bits = max(self.fetch_width_bits + 1, self.max_range_stride_bits)
 
         ##########
         # INPUTS #
@@ -148,7 +149,7 @@ class TransposeBuffer(Generator):
         self.tb_valid = self.var("tb_valid", 2)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
-        self.index_outer_stride = self.var("index_outer_stride", self.max_range_bits * self.max_stride_bits)
+        self.index_outer_stride = self.var("index_outer_stride", self.max_range_stride_bits)
         self.index_inner = self.var("index_inner", self.max_range_inner_bits)
 
         self.input_buf_index = self.var("input_buf_index", 1)
@@ -229,7 +230,7 @@ class TransposeBuffer(Generator):
                     self.index_outer_stride = 0
                 else:
                     self.index_outer = self.index_outer + 1
-                    self.index_outer_stride = self.index_outer_stride + self.stride.extend(self.max_range_bits * self.max_stride_bits)
+                    self.index_outer_stride = self.index_outer_stride + self.stride.extend(self.max_range_stride_bits)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_index_inner(self):
