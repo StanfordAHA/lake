@@ -1,6 +1,5 @@
 import kratos
 from kratos import *
-from math import log
 from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
