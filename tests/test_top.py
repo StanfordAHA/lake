@@ -215,7 +215,6 @@ def test_mult_lines_dim1(data_width=16,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -455,7 +454,6 @@ def test_mult_lines_dim2(tb0_range_outer,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -673,7 +671,6 @@ def test_chain_mult_tile(num_tiles=2,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -828,7 +825,6 @@ def test_chain_3porttile(num_tiles=2,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -1090,7 +1086,6 @@ def test_identity_stream(data_width=16,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -1339,7 +1334,6 @@ def test_top(read_delay,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -1578,7 +1572,6 @@ def test_config_storage(data_width=16,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -1829,7 +1822,6 @@ def test_ports3_stride1(read_delay=1,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
 
@@ -2095,7 +2087,6 @@ def test_2ports_idstream(data_width=16,
         tempdir = "dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
 

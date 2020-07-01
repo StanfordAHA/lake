@@ -114,7 +114,6 @@ def test_tb(start_addr,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -223,7 +222,6 @@ def test_id(dimensionality,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -327,7 +325,6 @@ def test_fw1(dimensionality,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 

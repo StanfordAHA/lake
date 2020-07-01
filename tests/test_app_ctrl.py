@@ -127,7 +127,6 @@ def test_app_ctrl(sprt_stcl_valid,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 

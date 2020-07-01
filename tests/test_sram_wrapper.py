@@ -112,7 +112,6 @@ def test_sram_wrapper(use_sram_stub=True,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 

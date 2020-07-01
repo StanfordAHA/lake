@@ -183,7 +183,6 @@ def test_rw_arbiter_basic(int_out_ports,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
