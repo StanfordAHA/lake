@@ -7,8 +7,30 @@ import hwtypes
 import fault
 import itertools
 
+
+def get_slice(data, addr, width):
+    return (data >> addr)[:width]
+
+def set_slice(data, addr, width, value):
+    print(data)
+    print(addr)
+    print(width)
+    print(value)
+    print(value.size)
+#    assert value.size == width
+    value = value[0:width]
+    assert value.size == width
+    print(value.size)
+    # Shift out bottom bits / shift in zeros
+    top_bits = (data >> (addr + width)) << (addr + width)
+    # zero extend then shift to addr
+    mid_bits = value.zext(data.size - width) << addr
+    # shift out top bits / shift in zeros
+    bot_bits = (data << (addr + width)) >> (addr + width)
+    return top_bits | mid_bits | bot_bits
+
 def sram_stub(mem_depth=4,
-              data_width=64,
+              data_width=8,
               family=family.PyFamily()):
 
     num_bits = mem_depth * data_width
@@ -34,14 +56,15 @@ def sram_stub(mem_depth=4,
                 ) -> (WideData):
 
                 if cen == Bit(1) & wen == Bit(1):
-                    if addr == 0:
-                        self.mem = data_in.concat(self.mem[data_width : ])
-#                        self.mem = concat(data_in, self.mem[data_width : ])
-                    elif addr == mem_depth:
-                        self.mem = self.mem[0 : addr * data_width].concat(data_in)
-                    else:
-                        self.mem = (self.mem[0 : addr * data_width].concat(data_in)).concat(self.mem[(addr + 1) * data_width : ])
-
+                    set_slice(self.mem, addr, data_width, data_in)
+                    #if addr == 0:
+                    #    self.mem = data_in.concat(self.mem[data_width : ])
+#                   #     self.mem = concat(data_in, self.mem[data_width : ])
+                    #elif addr == mem_depth:
+                    #    self.mem = self.mem[0 : addr * data_width].concat(data_in)
+                    #else:
+                    #    self.mem = (self.mem[0 : addr * data_width].concat(data_in)).concat(self.mem[(addr + 1) * data_width : ])
+		
                 if cen == Bit(1) & wen == Bit(0):
                     data_out = self.mem[addr * data_width : (addr + 1) * data_width]
                 else:
