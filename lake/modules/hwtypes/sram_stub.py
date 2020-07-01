@@ -77,21 +77,19 @@ if __name__ == "__main__":
         sram_magma_defn = sram_magma(family=family.MagmaFamily())
         tester = fault.Tester(sram_magma_defn, sram_magma_defn.CLK)
         data = 0
-        for i in range(1):
+        for i in range(4):
             tester.circuit.wen = i % 2
             tester.circuit.cen = 1
             tester.circuit.data_in = data
             tester.circuit.addr = data
+            # tester.circuit.O.expect(0)
             data = data + 1
             tester.eval()
             tester.step(2)
   
-        tester.compile_and_run("verilator", flags=["-Wno-fatal"])
-
-        #with tempfile.TemporaryDirectory() as tempdir:
-        #    tempdir="output"
-        #    tester.compile_and_run(target="verilator", 
-        #                           directory=tempdir,
-        #                           magma_output="verilog",
-        #                           flags=["-Wno-fatal"])
-
+        with tempfile.TemporaryDirectory() as tempdir:
+            tempdir="output"
+            tester.compile_and_run(target="verilator",
+                                   directory=tempdir,
+                                   #magma_output="verilog",
+                                   flags=["-Wno-fatal", "--trace"])
