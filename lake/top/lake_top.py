@@ -351,7 +351,10 @@ class LakeTop(Generator):
 
         # The clock to config sequencer needs to be the normal clock or
         # if the tile is off, we bring the clock back in based on config_en
+        cfg_seq_clk = self.var("cfg_seq_clk", 1)
+        self._cfg_seq_clk = kts.util.clock(cfg_seq_clk)
         # self.wire(cfg_seq_clk, kts.util.clock(self._gclk | (self._clk & self._config_en.r_or())))
+        self.wire(cfg_seq_clk, kts.util.clock(self._gclk))
 
         self.add_child(f"config_seq", stg_cfg_seq,
                        clk=self._gclk,
@@ -795,48 +798,16 @@ class LakeTop(Generator):
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    lake_dut = LakeTop(data_width=16,  # CGRA Params
-                 mem_width=64,
-                 mem_depth=512,
-                 banks=1,
-                 input_iterator_support=6,  # Addr Controllers
-                 output_iterator_support=6,
-                 input_config_width=16,
-                 output_config_width=16,
-                 interconnect_input_ports=2,  # Connection to int
-                 interconnect_output_ports=2,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
-                 use_sram_stub=1,
-                 sram_macro_info=SRAMMacroInfo("TS1N16FFCLLSBLVTC512X32M4S"),
-                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=4,
-                 max_agg_schedule=16,
-                 input_max_port_sched=16,
-                 output_max_port_sched=16,
-                 align_input=1,
-                 max_line_length=128,
-                 max_tb_height=1,
-                 tb_range_max=1024,
-                 tb_range_inner_max=64,
-                 tb_sched_max=16,
-                 max_tb_stride=15,
-                 num_tb=1,
-                 tb_iterator_support=2,
-                 multiwrite=1,
-                 max_prefetch=8,
-                 config_data_width=32,
-                 config_addr_width=8,
-                 num_tiles=2,
-                 app_ctrl_depth_width=16,
-                 remove_tb=False,
-                 fifo_mode=True,
-                 add_clk_enable=True,
-                 add_flush=True,
-                 stcl_valid_iter=4)
-
-    sram_port_pass = change_sram_port_names(use_sram_stub=1, sram_macro_info=tsmc_info)
+    use_sram_stub = False
+    fifo_mode = True
+    mem_width = 64
+    lake_dut = LakeTop(mem_width=mem_width,
+                       sram_macro_info=tsmc_info,
+                       use_sram_stub=use_sram_stub,
+                       fifo_mode=fifo_mode,
+                       add_clk_enable=True,
+                       add_flush=True)
+    sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
