@@ -119,7 +119,7 @@ def test_tb(start_addr,
 
 @pytest.mark.parametrize("dimensionality", [0, 1])
 def test_id(dimensionality,
-	    word_width=16,
+            word_width=16,
             fetch_width=4,
             num_tb=1,
             max_tb_height=1,
@@ -227,7 +227,7 @@ def test_id(dimensionality,
 
 @pytest.mark.parametrize("dimensionality", [0, 1])
 def test_fw1(dimensionality,
-	     word_width=16,
+             word_width=16,
              fetch_width=1,
              num_tb=1,
              max_tb_height=1,
