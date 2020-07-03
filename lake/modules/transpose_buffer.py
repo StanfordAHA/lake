@@ -286,10 +286,7 @@ class TransposeBuffer(Generator):
     # input to transpose buffer
     @always_ff((posedge, "clk"))
     def input_to_tb(self):
-        if self.dimensionality == 0:
-            self.tb[self.input_buf_index] = 0
-            self.tb_valid[self.input_buf_index] = 0
-        elif self.valid_data:
+        if self.valid_data:
             self.tb[self.input_buf_index] = self.input_data
             self.tb_valid[self.input_buf_index] = self.mem_valid_data
 
