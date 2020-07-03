@@ -855,14 +855,14 @@ def test_identity_stream(data_width=16,
                          align_input=1,
                          max_line_length=256,
                          max_tb_height=1,
-                         tb_range_max=128,
+                         tb_range_max=64,
                          tb_range_inner_max=5,
                          tb_sched_max=64,
                          max_tb_stride=15,
                          num_tb=1,
                          tb_iterator_support=2,
                          multiwrite=1,
-                         max_prefetch=8,
+                         max_prefetch=64,
                          config_data_width=32,
                          config_addr_width=8,
                          num_tiles=1,
@@ -873,114 +873,137 @@ def test_identity_stream(data_width=16,
                          add_flush=True,
                          stcl_valid_iter=4):
 
-    config = {}
+    new_config = {}
 
-    config["chain_idx_input"] = 0
-    config["chain_idx_output"] = 0
-    config["enable_chain_input"] = 0
-    config["enable_chain_output"] = 0
+    # Agg align
+    new_config["strg_ub_agg_align_0_line_length"] = 64
 
-    config["fifo_ctrl_fifo_depth"] = 3
+    # Agg buffer
+    new_config["strg_ub_agg_in_0_in_period"] = 1  # I don't actually know
+    new_config["strg_ub_agg_in_0_in_sched_0"] = 0
+    new_config["strg_ub_agg_in_0_out_period"] = 1
+    new_config["strg_ub_agg_in_0_out_sched_0"] = 0
 
-    config["strg_ub_agg_in_0_in_period"] = 1
-    config["strg_ub_agg_in_0_in_sched_0"] = 0
-    config["strg_ub_agg_in_0_out_period"] = 1
-    config["strg_ub_agg_in_0_out_sched_0"] = 0
+    # Input addr ctrl
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 2
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 12
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
+    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 12
 
-    config["strg_ub_app_ctrl_coarse_output_port_0"] = 1
-    config["strg_ub_app_ctrl_coarse_read_depth_0"] = int(96/4)
-    config["strg_ub_app_ctrl_coarse_read_depth_1"] = int(96/4)
-    config["strg_ub_app_ctrl_coarse_write_depth_ss_0"] = int(96/4)
-    config["strg_ub_app_ctrl_coarse_write_depth_wo_0"] = int(50/4)
-    config["strg_ub_app_ctrl_input_port_0"] = 0
-    config["strg_ub_app_ctrl_input_port_1"] = 0
-    config["strg_ub_app_ctrl_output_port_0"] = 1
-    config["strg_ub_app_ctrl_read_depth_0"] = 96
-    config["strg_ub_app_ctrl_read_depth_1"] = 96
-    config["strg_ub_app_ctrl_write_depth_ss_0"] = 96
-    config["strg_ub_app_ctrl_write_depth_wo_0"] = 50
+    # Output addr ctrl
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 1
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 3
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
+    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
 
-    config["strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 2
-    config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 31
-    config["strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
-    config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
-    config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
-    config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 0
+    # TBA
 
-    config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 2
-    config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 24
-    config["strg_ub_output_addr_ctrl_address_gen_0_ranges_1"] = 100
-    config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
-    config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
-    config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 0
+    # NOTE: both these configurations result in equivalent functionality
 
-    config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
-    config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 24
-    config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 100
-    config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 4
-    config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
-    config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 0
-    
-    config["strg_ub_pre_fetch_0_input_latency"] = 4
-    config["strg_ub_pre_fetch_1_input_latency"] = 4
-    config["strg_ub_rate_matched_0"] = 1
-    config["strg_ub_rate_matched_1"] = 1
-    config["strg_ub_sync_grp_sync_group_0"] = 1
-    config["strg_ub_sync_grp_sync_group_1"] = 1
+    # if dimensionality == 1 version
+    new_config["strg_ub_tba_0_tb_0_range_outer"] = 12
+    new_config["strg_ub_tba_0_tb_0_stride"] = 1
+    new_config["strg_ub_tba_0_tb_0_dimensionality"] = 1
 
-    config["strg_ub_tba_0_tb_0_dimensionality"] = 1
-    config["strg_ub_tba_0_tb_0_range_outer"] = 96
-    config["strg_ub_tba_0_tb_0_starting_addr"] = 0
-    config["strg_ub_tba_0_tb_0_stride"] = 1
-    config["strg_ub_tba_0_tb_0_tb_height"] = 1
+    # if dimensionality == 2 version
+    new_config["strg_ub_tba_0_tb_0_indices_0"] = 0
+    new_config["strg_ub_tba_0_tb_0_indices_1"] = 1
+    new_config["strg_ub_tba_0_tb_0_indices_2"] = 2
+    new_config["strg_ub_tba_0_tb_0_indices_3"] = 3
+    new_config["strg_ub_tba_0_tb_0_range_inner"] = 4
+    # new_config["tba_0_tb_0_range_outer"] = 3
+    # new_config["tba_0_tb_0_stride"] = 4
+    # new_config["tba_0_tb_0_tb_height"] = 1
+    # new_config["tba_0_tb_0_dimensionality"] = 2
 
-    config["strg_ub_tba_1_tb_0_dimensionality"] = 1
-    config["strg_ub_tba_1_tb_0_range_outer"] = 96
-    config["strg_ub_tba_1_tb_0_starting_addr"] = 0
-    config["strg_ub_tba_1_tb_0_stride"] = 1
-    config["strg_ub_tba_1_tb_0_tb_height"] = 1
+    # Sets multiwrite
+    new_config["strg_ub_input_addr_ctrl_offsets_cfg_0_0"] = 0
+
+    new_config["strg_ub_sync_grp_sync_group_0"] = 1
+
+    new_config["strg_ub_app_ctrl_input_port_0"] = 0
+    new_config["strg_ub_app_ctrl_input_port_1"] = 0
+    new_config["strg_ub_app_ctrl_input_port_2"] = 0
+    new_config["strg_ub_app_ctrl_read_depth_0"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_1"] = 196
+    new_config["strg_ub_app_ctrl_read_depth_2"] = 196
+    new_config["strg_ub_app_ctrl_write_depth_0"] = 196
+
+    sram_name = sram_macro_info.name
+
+    model_lt = LakeTopModel(data_width=data_width,
+                            mem_width=mem_width,
+                            mem_depth=mem_depth,
+                            banks=banks,
+                            input_iterator_support=input_iterator_support,
+                            output_iterator_support=output_iterator_support,
+                            interconnect_input_ports=interconnect_input_ports,
+                            interconnect_output_ports=interconnect_output_ports,
+                            mem_input_ports=mem_input_ports,
+                            mem_output_ports=mem_output_ports,
+                            use_sram_stub=use_sram_stub,
+                            sram_name=sram_name,
+                            agg_height=agg_height,
+                            max_agg_schedule=max_agg_schedule,
+                            input_max_port_sched=input_max_port_sched,
+                            output_max_port_sched=output_max_port_sched,
+                            align_input=align_input,
+                            max_line_length=max_line_length,
+                            tb_height=max_tb_height,
+                            tb_range_max=tb_range_max,
+                            tb_range_inner_max=tb_range_inner_max,
+                            tb_sched_max=tb_sched_max,
+                            num_tb=num_tb,
+                            multiwrite=multiwrite,
+                            max_prefetch=max_prefetch,
+                            num_tiles=num_tiles,
+                            stcl_valid_iter=stcl_valid_iter)
+
+    model_lt.set_config(new_config=new_config)
 
     ### DUT
-    lt_dut = LakeTop(data_width=16,  # CGRA Params
-                 mem_width=64,
-                 mem_depth=512,
-                 banks=1,
-                 input_iterator_support=6,  # Addr Controllers
-                 output_iterator_support=6,
-                 input_config_width=16,
-                 output_config_width=16,
-                 interconnect_input_ports=2,  # Connection to int
-                 interconnect_output_ports=2,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
-                 use_sram_stub=1,
-                 sram_macro_info=SRAMMacroInfo("TS1N16FFCLLSBLVTC512X32M4S"),
-                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=4,
-                 max_agg_schedule=16,
-                 input_max_port_sched=16,
-                 output_max_port_sched=16,
-                 align_input=1,
-                 max_line_length=128,
-                 max_tb_height=1,
-                 tb_range_max=1024,
-                 tb_range_inner_max=64,
-                 tb_sched_max=16,
-                 max_tb_stride=15,
-                 num_tb=1,
-                 tb_iterator_support=2,
-                 multiwrite=1,
-                 max_prefetch=8,
-                 config_data_width=32,
-                 config_addr_width=8,
-                 num_tiles=2,
-                 app_ctrl_depth_width=16,
-                 remove_tb=False,
-                 fifo_mode=True,
-                 add_clk_enable=True,
-                 add_flush=True,
-                 stcl_valid_iter=4)
+    lt_dut = LakeTop(data_width=data_width,
+                     mem_width=mem_width,
+                     mem_depth=mem_depth,
+                     banks=banks,
+                     input_iterator_support=input_iterator_support,
+                     output_iterator_support=output_iterator_support,
+                     input_config_width=input_config_width,
+                     output_config_width=output_config_width,
+                     interconnect_input_ports=interconnect_input_ports,
+                     interconnect_output_ports=interconnect_output_ports,
+                     mem_input_ports=mem_input_ports,
+                     mem_output_ports=mem_output_ports,
+                     use_sram_stub=use_sram_stub,
+                     sram_macro_info=sram_macro_info,
+                     read_delay=read_delay,
+                     rw_same_cycle=rw_same_cycle,
+                     agg_height=agg_height,
+                     max_agg_schedule=max_agg_schedule,
+                     input_max_port_sched=input_max_port_sched,
+                     output_max_port_sched=output_max_port_sched,
+                     align_input=align_input,
+                     max_line_length=max_line_length,
+                     max_tb_height=max_tb_height,
+                     tb_range_max=tb_range_max,
+                     tb_range_inner_max=tb_range_inner_max,
+                     tb_sched_max=tb_sched_max,
+                     max_tb_stride=max_tb_stride,
+                     num_tb=num_tb,
+                     tb_iterator_support=tb_iterator_support,
+                     multiwrite=multiwrite,
+                     max_prefetch=max_prefetch,
+                     config_data_width=config_data_width,
+                     config_addr_width=config_addr_width,
+                     num_tiles=num_tiles,
+                     remove_tb=remove_tb,
+                     app_ctrl_depth_width=app_ctrl_depth_width,
+                     fifo_mode=fifo_mode,
+                     add_clk_enable=add_clk_enable,
+                     add_flush=add_flush,
+                     stcl_valid_iter=stcl_valid_iter)
 
     # Run the config reg lift
     # lift_config_reg(lt_dut.internal_generator)
@@ -996,19 +1019,27 @@ def test_identity_stream(data_width=16,
     tester.circuit.clk_en = 1
     tester.eval()
     ###
-    for key, value in config.items():
+    for key, value in new_config.items():
         setattr(tester.circuit, key, value)
-    
+
+    tester.circuit.strg_ub_tba_0_tb_0_tb_height = 1
+    tester.circuit.strg_ub_app_ctrl_write_depth = 196
+
+    tester.circuit.enable_chain_output = 0
+    tester.circuit.chain_idx_input = 0
+    tester.circuit.chain_idx_output = 0
+
+    if interconnect_output_ports == 1:
+        tester.circuit.strg_ub_sync_grp_sync_group[0] = 1
+
     rand.seed(0)
     tester.circuit.clk = 0
-    tester.circuit.clk_en = 1
-    tester.circuit.tile_en = 1
-    tester.circuit.mode = 0
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
+    tester.step(2)
 
-    data_in = -1
+    data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     chain_data_in = [0] * interconnect_input_ports
     chain_valid_in = [0] * interconnect_input_ports
@@ -1018,25 +1049,49 @@ def test_identity_stream(data_width=16,
 
     for i in range(300):
         # Rand data
+        addr_in = rand.randint(0, 2 ** 16 - 1)
+        for j in range(interconnect_input_ports):
+            data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
+            valid_in[j] = 1  # rand.randint(0, 1)
 
-        data_in += 1
-        tester.circuit.data_in_0 = data_in
-        if i > 50:
-            tester.circuit.ren_in = 3
+        if(interconnect_input_ports == 1):
+            tester.circuit.data_in = data_in[0]
+            tester.circuit.wen = valid_in[0]
         else:
-            tester.circuit.ren_in = 0
+            for j in range(interconnect_input_ports):
+                setattr(tester.circuit, f"data_in_{j}", data_in[j])
+                tester.circuit.wen[j] = valid_in[j]
+        tester.circuit.addr_in = addr_in
 
-        tester.circuit.wen_in = 1
+        (chain_out, chain_valid_out, mod_do, mod_vo) = \
+            model_lt.interact(chain_data_in, chain_valid_in, data_in, addr_in, valid_in, ren_in)
+
+        if interconnect_output_ports == 1:
+            tester.circuit.ren_in = ren_in[0]
+        else:
+            for j in range(interconnect_output_ports):
+                tester.circuit.ren_in[j] = ren_in[j]
+
         tester.eval()
+
+        # Now check the outputs
+        if(interconnect_output_ports == 1):
+            tester.circuit.valid_out.expect(mod_vo[0])
+            if mod_vo[0]:
+                tester.circuit.data_out.expect(mod_do[0][0])
+        else:
+            for j in range(interconnect_output_ports):
+                tester.circuit.valid_out[j].expect(mod_vo[j])
+                if mod_vo[j]:
+                    getattr(tester.circuit, f"data_out_{j}").expect(mod_do[j][0])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "updated_a"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 @pytest.mark.parametrize("read_delay", [0, 1])
