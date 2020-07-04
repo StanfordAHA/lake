@@ -121,11 +121,13 @@ class TransposeBuffer(Generator):
         # OUTPUTS #
         ###########
 
-        self.col_pixels = self.output("col_pixels",
+        self.col_pixels = self.output("col_pixels", 
                                       width=self.word_width,
-                                      size=1,
-                                      packed=True,
                                       explicit_array=True)
+                                      # width=self.word_width,
+                                      # size=1,
+                                      # packed=True,
+                                      # explicit_array=True)
         self.output_valid = self.output("output_valid", 1)
         self.rdy_to_arbiter = self.output("rdy_to_arbiter", 1)
 
