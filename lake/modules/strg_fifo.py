@@ -184,7 +184,12 @@ class StrgFIFO(Generator):
 
         self._mem_valid_data_out1 = self.var("mem_valid_data_out1", 1)
 
-        self._back_parallel_out = self.var("back_parallel_out", self.data_width, size=(self.fw_int, 1), explicit_array=True, packed=True)
+        self._back_parallel_out = self.var("back_parallel_out",
+                                           width=self.data_width,
+                                           size=(self.fw_int, 1),
+                                           explicit_array=True,
+                                           packed=True)
+
         self.add_child("back_rf", self._back_rf,
                        clk=self._clk,
                        clk_en=kts.const(1, 1),
