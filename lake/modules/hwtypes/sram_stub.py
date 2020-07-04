@@ -6,12 +6,16 @@ import magma as m
 import hwtypes
 import fault
 import tempfile
+import random as rand
+
 
 def sram_stub(
         mem_depth=4,
-        data_width=64,
+        word_width=16,
+        fetch_width=4,
         family=family.PyFamily()):
 
+    data_width = word_width * fetch_width
     num_bits = mem_depth * data_width
     addr_width = int(log2(mem_depth))
 
@@ -28,8 +32,8 @@ def sram_stub(
 
             @name_outputs(data_out=WideData)
             def __call__(self,
-                    cen: Bit = Bit(0), \
                     wen: Bit = Bit(0), \
+                    cen: Bit = Bit(0), \
                     addr: BitVector[addr_width] = BitVector[addr_width](0), \
                     data_in: WideData = WideData(0)
                     ) -> (WideData):
@@ -57,39 +61,40 @@ def sram_stub(
     return modules_fc
 
 if __name__ == "__main__":
-    pyt = False
     mem_depth = 4
-    data_width = 64
-    if pyt:
-        sram_py = sram_stub(mem_depth, data_width, family.PyFamily())
-        sram_py_inst = sram_py(family=family.PyFamily())()
-        a = sram_py_inst(hwtypes.Bit(1), hwtypes.Bit(1), hwtypes.BitVector[log2(mem_depth)](0), hwtypes.BitVector[data_width](1))
-        print(a)
-        b = sram_py_inst(hwtypes.Bit(1), hwtypes.Bit(0), hwtypes.BitVector[log2(mem_depth)](0), hwtypes.BitVector[data_width](1))
-        print(b)
-        c = sram_py_inst(hwtypes.Bit(1), hwtypes.Bit(1), hwtypes.BitVector[log2(mem_depth)](1), hwtypes.BitVector[data_width](2))
-        print(c)
-        d = sram_py_inst(hwtypes.Bit(1), hwtypes.Bit(0), hwtypes.BitVector[log2(mem_depth)](1), hwtypes.BitVector[data_width](2))
-        print(d)
-    else:
-        sram_magma = sram_stub(mem_depth, data_width, family=family.MagmaFamily())
-        # tester = fault.Tester(sram_magma(family=family.MagmaFamily())())
-        sram_magma_defn = sram_magma(family=family.MagmaFamily())
-        tester = fault.Tester(sram_magma_defn, sram_magma_defn.CLK)
-        data = 0
-        for i in range(4):
-            tester.circuit.wen = i % 2
-            tester.circuit.cen = 1
-            tester.circuit.data_in = data
-            tester.circuit.addr = data
-            # tester.circuit.O.expect(0)
-            data = data + 1
-            tester.eval()
-            tester.step(2)
-  
+    data_width = 16
+    fetch_width = 4
+
+    sram_py = sram_stub(mem_depth, data_width, fetch_width, family.PyFamily())
+    sram_py_inst = sram_py(family=family.PyFamily())()
+
+    sram_magma = sram_stub(mem_depth, data_width, fetch_width, family=family.MagmaFamily())
+    sram_magma_defn = sram_magma(family=family.MagmaFamily())
+    tester = fault.Tester(sram_magma_defn, sram_magma_defn.CLK)
+
+    x = 0
+    for i in range(100):
+        wen = i % 2 #rand.randint(0, 1)
+        cen = 1 # rand.randint(0, 1)
+        addr = x #rand.randint(0, mem_depth - 1)
+        data = x #rand.randint(0, 2**(data_width * fetch_width) - 1)
+    
+        py_data_out = sram_py_inst(hwtypes.Bit(wen), hwtypes.Bit(cen), hwtypes.BitVector[log2(mem_depth)](addr), hwtypes.BitVector[data_width * fetch_width](data))
+
+        if i % 2:
+            x = x + 1
+        tester.circuit.wen = wen
+        tester.circuit.cen = cen
+        tester.circuit.addr = addr
+        tester.circuit.data_in = data
+        tester.eval()
+        if cen and (not wen):
+            tester.circuit.O.expect(py_data_out)
+        # print(py_data_out)
+        tester.step(2)
+
         with tempfile.TemporaryDirectory() as tempdir:
-            tempdir="output"
+            tempdir="output_m"
             tester.compile_and_run(target="verilator",
                                    directory=tempdir,
-                                   #magma_output="verilog",
                                    flags=["-Wno-fatal", "--trace"])
