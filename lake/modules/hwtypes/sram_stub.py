@@ -73,8 +73,8 @@ if __name__ == "__main__":
     tester = fault.Tester(sram_magma_defn, sram_magma_defn.CLK)
 
     x = 0
-    for i in range(100):
-        wen = i % 2 #rand.randint(0, 1)
+    for i in range(15):
+        wen = 1 - (i % 2) #rand.randint(0, 1)
         cen = 1 # rand.randint(0, 1)
         addr = x #rand.randint(0, mem_depth - 1)
         data = x #rand.randint(0, 2**(data_width * fetch_width) - 1)
