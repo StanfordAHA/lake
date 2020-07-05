@@ -6,7 +6,6 @@ from lake.modules.output_addr_ctrl import OutputAddrCtrl
 from lake.modules.agg_aligner import AggAligner
 from lake.modules.rw_arbiter import RWArbiter
 from lake.modules.transpose_buffer import TransposeBuffer
-# from lake.modules.transpose_buffer_aggregation import TransposeBufferAggregation
 from lake.modules.demux_reads import DemuxReads
 from lake.modules.sync_groups import SyncGroups
 from lake.modules.prefetcher import Prefetcher
@@ -706,16 +705,16 @@ class StrgUB(Generator):
 
                 for i in range(self.interconnect_output_ports):
 
-                    tba = TransposeBuffer(word_width=self.data_width,
-                                                     fetch_width=self.fw_int,
-                                                     num_tb=self.num_tb,
-                                                     max_tb_height=self.max_tb_height,
-                                                     max_range=self.tb_range_max,
-                                                     max_range_inner=self.tb_range_inner_max,
-                                                     max_stride=self.max_tb_stride,
-                                                     tb_iterator_support=self.tb_iterator_support)
+                    tb = TransposeBuffer(word_width=self.data_width,
+                                         fetch_width=self.fw_int,
+                                         num_tb=self.num_tb,
+                                         max_tb_height=self.max_tb_height,
+                                         max_range=self.tb_range_max,
+                                         max_range_inner=self.tb_range_inner_max,
+                                         max_stride=self.max_tb_stride,
+                                         tb_iterator_support=self.tb_iterator_support)
 
-                    self.add_child(f"tb_{i}", tba,
+                    self.add_child(f"tb_{i}", tb,
                                    clk=self._clk,
                                    rst_n=self._rst_n,
                                    input_data=self._data_to_tba[i],

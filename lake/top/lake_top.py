@@ -1,18 +1,18 @@
+import kratos as kts
 from kratos import *
+
 from lake.modules.passthru import *
 from lake.modules.sram_wrapper import SRAMWrapper
-
-
 from lake.modules.strg_ub import StrgUB
 from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
 from lake.modules.chain import Chain
+
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
-import kratos as kts
 
 
 class LakeTop(Generator):
