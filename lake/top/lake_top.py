@@ -357,7 +357,7 @@ class LakeTop(Generator):
         self.wire(cfg_seq_clk, kts.util.clock(self._gclk))
 
         self.add_child(f"config_seq", stg_cfg_seq,
-                       clk=self._gclk,
+                       clk=self._cfg_seq_clk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en | self._config_en.r_or(),
                        config_data_in=self._config_data_in_shrt,
