@@ -1,6 +1,7 @@
 from peak import Peak, family_closure, Const, name_outputs, family
 from math import log2
 from utils import *
+from lake.models.sram_model import SRAMModel
 
 import magma as m
 import hwtypes
@@ -42,7 +43,7 @@ def sram_stub(
                 # print("mem: ", self.mem)
                 if (cen == Bit(1)) & (wen == Bit(1)):
                     # print("setting slice")
-                    self.mem = set_slice(self.mem, addr, data_width, data_in)
+                    self.mem = set_slice(self.mem, addr * data_width, data_width, data_in)
                     # print("mem after set slice ", self.mem)
 
                 if (cen == Bit(1)) & (wen == Bit(0)):
@@ -51,7 +52,8 @@ def sram_stub(
                     data_out = get_slice(self.mem, addr * data_width, data_width)
                 else:
                     data_out = WideData(0)
-
+                
+                # print("mem: ", self.mem)
                 # print("mem: ", self.mem)
                 # print("data out: ", data_out)
                 return data_out
@@ -72,6 +74,8 @@ if __name__ == "__main__":
     sram_magma_defn = sram_magma(family=family.MagmaFamily())
     tester = fault.Tester(sram_magma_defn, sram_magma_defn.CLK)
 
+    model_sram = SRAMModel(data_width, fetch_width, mem_depth, 1)
+
     x = 0
     for i in range(15):
         wen = 1 - (i % 2) #rand.randint(0, 1)
@@ -80,6 +84,8 @@ if __name__ == "__main__":
         data = x #rand.randint(0, 2**(data_width * fetch_width) - 1)
     
         py_data_out = sram_py_inst(hwtypes.Bit(wen), hwtypes.Bit(cen), hwtypes.BitVector[log2(mem_depth)](addr), hwtypes.BitVector[data_width * fetch_width](data))
+
+        model_data_out = model_sram.interact(wen, cen, addr, [0, 0, 0, data])
 
         if i % 2:
             x = x + 1
@@ -90,6 +96,9 @@ if __name__ == "__main__":
         tester.eval()
         if cen and (not wen):
             tester.circuit.O.expect(py_data_out)
+        print(model_data_out)
+        print(py_data_out)
+        # assert model_data_out[0] == py_data_out
         # print(py_data_out)
         tester.step(2)
 
