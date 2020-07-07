@@ -65,23 +65,6 @@ def sram_stub(
     return modules_fc
 
 if __name__ == "__main__":
-    # functional model                                                                   
-    sram_py = sram_stub()                                                                
-    py_fam = family.PyFamily()                                                           
-    py_sram = sram_py(family=py_fam)()                                                   
-    mem_depth = 4                                                                        
-    data_width = 64                                                                      
-    num_bits = mem_depth * data_width                                                    
-    addr_width = int(log2(mem_depth))                                                                                                                                                                     
-    for wen in (1, 0):                                                                   
-        wen = py_fam.Bit(wen)                                                            
-        cen = py_fam.Bit(1)                                                              
-        for addr in range(4):                                                            
-            addr = py_fam.BitVector[addr_width](addr)                                    
-            data = py_fam.BitVector[data_width](rand.randrange(0, 1 << data_width))    
-            print(f'wen: {wen}, cen: {cen}, addr: {addr}, data: {data}')                 
-            print(py_sram(wen, cen, addr, data)) 
-
     mem_depth = 4
     data_width = 16
     fetch_width = 4
@@ -133,3 +116,21 @@ if __name__ == "__main__":
             tester.compile_and_run(target="verilator",
                                    directory=tempdir,
                                    flags=["-Wno-fatal", "--trace"])'''
+
+        # Caleb test
+        '''    # functional model
+    sram_py = sram_stub()
+    py_fam = family.PyFamily()
+    py_sram = sram_py(family=py_fam)()
+    mem_depth = 4
+    data_width = 64
+    num_bits = mem_depth * data_width
+    addr_width = int(log2(mem_depth))                                                                                                                                                        
+    for wen in (1, 0):
+        wen = py_fam.Bit(wen)
+        cen = py_fam.Bit(1)
+        for addr in range(4):
+            addr = py_fam.BitVector[addr_width](addr)
+            data = py_fam.BitVector[data_width](rand.randrange(0, 1 << data_width))
+            print(f'wen: {wen}, cen: {cen}, addr: {addr}, data: {data}')
+            print(py_sram(wen, cen, addr, data))'''
