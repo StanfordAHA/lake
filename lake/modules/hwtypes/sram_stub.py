@@ -39,17 +39,18 @@ def sram_stub(
                     data_in: WideData = WideData(0)
                     ) -> (WideData):
 
-                # print("wen: ", wen, " cen: ", cen, " data_in ", data_in, " addr: ", addr)
+                print("wen: ", wen, " cen: ", cen, " data_in ", data_in, " addr: ", addr)
                 # print("mem: ", self.mem)
                 if (cen == Bit(1)) & (wen == Bit(1)):
                     # print("setting slice")
-                    self.mem = set_slice(self.mem, addr * data_width, data_width, data_in)
+                    print("set slice addr ", addr)
+                    self.mem = set_slice(self.mem, addr, data_width, data_in)
                     # print("mem after set slice ", self.mem)
 
                 if (cen == Bit(1)) & (wen == Bit(0)):
                     # print("getting slice")
                     # print("get slice mem ", self.mem)
-                    data_out = get_slice(self.mem, addr * data_width, data_width)
+                    data_out = get_slice(self.mem, addr, data_width)
                 else:
                     data_out = WideData(0)
                 
@@ -77,11 +78,11 @@ if __name__ == "__main__":
     model_sram = SRAMModel(data_width, fetch_width, mem_depth, 1)
 
     x = 0
-    for i in range(15):
+    for i in range(8):
         wen = 1 - (i % 2) #rand.randint(0, 1)
         cen = 1 # rand.randint(0, 1)
         addr = x #rand.randint(0, mem_depth - 1)
-        data = x #rand.randint(0, 2**(data_width * fetch_width) - 1)
+        data = x + 1#rand.randint(0, 2**(data_width * fetch_width) - 1)
     
         py_data_out = sram_py_inst(hwtypes.Bit(wen), hwtypes.Bit(cen), hwtypes.BitVector[log2(mem_depth)](addr), hwtypes.BitVector[data_width * fetch_width](data))
 
