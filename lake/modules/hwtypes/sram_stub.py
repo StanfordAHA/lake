@@ -22,9 +22,9 @@ def sram_stub(
 
     @family_closure
     def modules_fc(family):
-        BitVector = family.Signed
+        BitVector = family.Unsigned
         Bit = family.Bit
-        WideData = family.Signed[data_width]
+        WideData = family.Unsigned[data_width]
 
         @family.assemble(locals(), globals())
         class SRAMStub():
