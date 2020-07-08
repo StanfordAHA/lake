@@ -123,7 +123,8 @@ class TransposeBuffer(Generator):
 
         self.col_pixels = self.output("col_pixels", 
                                       width=self.word_width,
-                                      explicit_array=True)
+                                      packed=True)
+#                                      explicit_array=True)
         self.output_valid = self.output("output_valid", 1)
         self.rdy_to_arbiter = self.output("rdy_to_arbiter", 1)
 
@@ -317,14 +318,14 @@ class TransposeBuffer(Generator):
     def output_from_tb(self):
         if (self.out_buf_index ^ self.switch_out_buf):
             if self.fetch_width == 1:
-                self.col_pixels[0] = self.tb[0]
+                self.col_pixels = self.tb[0]
             else:
-                self.col_pixels[0] = self.tb[0][self.output_index]
+                self.col_pixels = self.tb[0][self.output_index]
         else:
             if self.fetch_width == 1:
-                self.col_pixels[0] = self.tb[1]
+                self.col_pixels = self.tb[1]
             else:
-                self.col_pixels[0] = self.tb[1][self.output_index]
+                self.col_pixels = self.tb[1][self.output_index]
 
     @always_comb
     def set_output_index(self):
