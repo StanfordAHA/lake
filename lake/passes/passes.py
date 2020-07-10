@@ -18,6 +18,9 @@ def lift_config_reg(generator):
                 for port_name in ports_:
                     curr_port = node.get_port(port_name)
                     attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
+                    if port_name is "mode":
+                        print("Found mode...")
+                        print(attrs)
                     if len(attrs) != 1:
                         continue
 
@@ -28,6 +31,7 @@ def lift_config_reg(generator):
                     parent_gen = gen.parent_generator()
                     child_port = curr_port
                     child_gen = gen
+                    top_lvl_cfg = parent_gen is None
                     while parent_gen is not None:
                         # create a port based on the target's definition
                         new_name = child_gen.instance_name + "_" + child_port.name
@@ -38,9 +42,11 @@ def lift_config_reg(generator):
                         child_gen = parent_gen
                         parent_gen = parent_gen.parent_generator()
 
-                    child_port_cra = ConfigRegAttr()
-                    child_port_cra.set_documentation(doc)
-                    child_port.add_attribute(child_port_cra)
+                    # Only add the attribute if this is a newly created port, not a top-level cfg reg
+                    if top_lvl_cfg is False:
+                        child_port_cra = ConfigRegAttr()
+                        child_port_cra.set_documentation(doc)
+                        child_port.add_attribute(child_port_cra)
 
     v = ConfigRegLiftVisitor()
     v.visit_root(generator)
