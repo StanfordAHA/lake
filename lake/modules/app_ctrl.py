@@ -208,7 +208,7 @@ class AppCtrl(Generator):
     def set_write_cnt(self, idx):
         if ~self._rst_n:
             self._write_count[idx] = 0
-        elif self._write_done[idx] &  self._read_done[self._output_port[idx]]:
+        elif self._write_done[idx] & self._read_done[self._output_port[idx]]:
             self._write_count[idx] = 0
         elif self._wen_in[idx] & ~self._write_done_ff[idx]:
             self._write_count[idx] = self._write_count[idx] + 1

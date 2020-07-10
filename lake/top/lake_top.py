@@ -1,8 +1,6 @@
 from kratos import *
 from lake.modules.passthru import *
 from lake.modules.sram_wrapper import SRAMWrapper
-
-
 from lake.modules.strg_ub import StrgUB
 from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.modules.register_file import RegisterFile
@@ -10,6 +8,7 @@ from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
 from lake.modules.chain import Chain
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
 import kratos as kts
@@ -34,14 +33,14 @@ class LakeTop(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
-                 max_agg_schedule=32,
-                 input_max_port_sched=32,
-                 output_max_port_sched=32,
+                 max_agg_schedule=16,
+                 input_max_port_sched=16,
+                 output_max_port_sched=16,
                  align_input=1,
                  max_line_length=128,
                  max_tb_height=1,
                  tb_range_max=1024,
-                 tb_range_inner_max=64,
+                 tb_range_inner_max=32,
                  tb_sched_max=16,
                  max_tb_stride=15,
                  num_tb=1,
@@ -132,21 +131,25 @@ class LakeTop(Generator):
         # Chaining signals
         self._chain_valid_in = self.input("chain_valid_in",
                                           self.interconnect_output_ports)
+        self._chain_valid_in.add_attribute(ControlSignalAttr(True))
 
         self._chain_data_in = self.input("chain_data_in",
                                          self.data_width,
                                          size=self.interconnect_output_ports,
                                          packed=True,
                                          explicit_array=True)
+        self._chain_data_in.add_attribute(ControlSignalAttr(False))
 
         self._chain_data_out = self.output("chain_data_out",
                                            self.data_width,
                                            size=self.interconnect_output_ports,
                                            packed=True,
                                            explicit_array=True)
+        self._chain_data_out.add_attribute(ControlSignalAttr(False))
 
         self._chain_valid_out = self.output("chain_valid_out",
                                             self.interconnect_output_ports)
+        self._chain_valid_out.add_attribute(ControlSignalAttr(False))
 
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
@@ -156,17 +159,24 @@ class LakeTop(Generator):
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
+        self._data_in.add_attribute(ControlSignalAttr(False))
+
         self._addr_in = self.input("addr_in",
                                    self.data_width,
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
+        self._addr_in.add_attribute(ControlSignalAttr(False))
 
         self._wen = self.input("wen_in", self.interconnect_input_ports)
+        self._wen.add_attribute(ControlSignalAttr(True))
+
         self._ren = self.input("ren_in", self.interconnect_output_ports)
+        self._ren.add_attribute(ControlSignalAttr(True))
 
         self._config_data_in = self.input("config_data_in",
                                           self.config_data_width)
+        self._config_data_in.add_attribute(ControlSignalAttr(False))
 
         self._config_data_in_shrt = self.var("config_data_in_shrt",
                                              self.data_width)
@@ -175,6 +185,7 @@ class LakeTop(Generator):
 
         self._config_addr_in = self.input("config_addr_in",
                                           self.config_addr_width)
+        self._config_addr_in.add_attribute(ControlSignalAttr(False))
 
         self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width,
                                               size=self.total_sets,
@@ -185,6 +196,7 @@ class LakeTop(Generator):
                                             size=self.total_sets,
                                             explicit_array=True,
                                             packed=True)
+        self._config_data_out.add_attribute(ControlSignalAttr(False))
 
         self._clk_en = self.clock_en("clk_en", 1)
 
@@ -193,17 +205,24 @@ class LakeTop(Generator):
                       self._config_data_out_shrt[i].extend(self.config_data_width))
 
         self._config_read = self.input("config_read", 1)
+        self._config_read.add_attribute(ControlSignalAttr(False))
+
         self._config_write = self.input("config_write", 1)
+        self._config_write.add_attribute(ControlSignalAttr(False))
+
         self._config_en = self.input("config_en", self.total_sets)
+        self._config_en.add_attribute(ControlSignalAttr(False))
 
         self._data_out = self.output("data_out",
                                      self.data_width,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
+        self._data_out.add_attribute(ControlSignalAttr(False))
 
         self._valid_out = self.output("valid_out",
                                       self.interconnect_output_ports)
+        self._valid_out.add_attribute(ControlSignalAttr(False))
 
         self._data_out_tile = self.var("data_out_tile",
                                        self.data_width,
@@ -596,6 +615,7 @@ class LakeTop(Generator):
 
             if self.fw_int > 1:
                 self._sram_ready_out = self.output("sram_ready_out", 1)
+                self._sram_ready_out.add_attribute(ControlSignalAttr(False))
 
             strg_ram = StrgRAM(data_width=self.data_width,
                                banks=self.banks,
@@ -651,7 +671,11 @@ class LakeTop(Generator):
                            addr_out=self._fifo_addr_to_mem)
 
             self._empty = self.output("empty", 1)
+            self._empty.add_attribute(ControlSignalAttr(False))
+
             self._full = self.output("full", 1)
+            self._full.add_attribute(ControlSignalAttr(False))
+
             self.wire(self._empty, self._fifo_empty)
             self.wire(self._full, self._fifo_full)
 
@@ -787,10 +811,15 @@ class LakeTop(Generator):
         if add_clk_enable:
             # self.clock_en("clk_en")
             kts.passes.auto_insert_clock_enable(self.internal_generator)
+            # Add input attr-
+            clk_en_port = self.internal_generator.get_port("clk_en")
+            clk_en_port.add_attribute(ControlSignalAttr(False))
 
         if add_flush:
             self.add_attribute("sync-reset=flush")
             kts.passes.auto_insert_sync_reset(self.internal_generator)
+            flush_port = self.internal_generator.get_port("flush")
+            flush_port.add_attribute(ControlSignalAttr(True))
 
         # config regs
         lift_config_reg(self.internal_generator)
