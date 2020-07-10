@@ -218,6 +218,9 @@ class TransposeBuffer(Generator):
         if ~self.rst_n:
             self.index_outer = 0
             # self.index_outer_stride = 0
+        # area
+        elif self.dimensionality == 0:
+            self.index_outer = 0
         elif (self.dimensionality == 1) | \
                 ((self.dimensionality == 2) & (self.index_inner == self.range_inner - 1)):
             if ~self.pause_output:
@@ -285,6 +288,7 @@ class TransposeBuffer(Generator):
     # input to transpose buffer
     @always_ff((posedge, "clk"))
     def input_to_tb(self):
+        # dim = 0 removed
         if self.valid_data:
             self.tb[self.input_buf_index] = self.input_data
             self.tb_valid[self.input_buf_index] = self.mem_valid_data
@@ -316,7 +320,10 @@ class TransposeBuffer(Generator):
     # output column from transpose buffer
     @always_comb
     def output_from_tb(self):
-        if (self.out_buf_index ^ self.switch_out_buf):
+        # dim = 0 not needed
+        if self.dimensionality == 0:
+            self.col_pixels = 0
+        elif (self.out_buf_index ^ self.switch_out_buf):
             if self.fetch_width == 1:
                 self.col_pixels = self.tb[0]
             else:
@@ -383,6 +390,9 @@ class TransposeBuffer(Generator):
     def set_curr_out_start(self):
         if ~self.rst_n:
             self.curr_out_start = 0
+        # dim = 0 can be removed
+        elif self.dimensionality == 0:
+            self.curr_out_start = 0
         elif self.switch_next_line:
             self.curr_out_start = 0
         elif (self.output_index_abs >= self.curr_out_start + self.fetch_width):
@@ -403,6 +413,9 @@ class TransposeBuffer(Generator):
     def set_rdy_to_arbiter(self):
         if ~self.rst_n:
             self.rdy_to_arbiterinv = 0
+        # dim = 0 can be removed
+        elif self.dimensionality == 0:
+            self.rdy_to_arbiterinv = 1
         elif self.start_data & ~self.old_start_data:
             self.rdy_to_arbiterinv = 0
         elif self.switch_out_buf:
