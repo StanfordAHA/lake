@@ -133,8 +133,8 @@ class AppCtrl(Generator):
                                     packed=True)
         self._write_done = self.var("write_done", self.int_in_ports)
         self._write_done_ff = self.var("write_done_ff", self.int_in_ports)
-        self._read_done = self.var("read_done", self.int_out_ports, explicit_array=True)
-        self._read_done_ff = self.var("read_done_ff", self.int_out_ports, explicit_array=True)
+        self._read_done = self.var("read_done", self.int_out_ports, explicit_array=True, packed=True)
+        self._read_done_ff = self.var("read_done_ff", self.int_out_ports, explicit_array=True, packed=True)
 
         if self.int_in_ports == 1 and self.int_out_ports == 1:
             self._input_port = kts.const(0, 1)
