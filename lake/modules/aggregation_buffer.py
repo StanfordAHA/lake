@@ -39,6 +39,10 @@ class AggregationBuffer(Generator):
         # If agg_height is 1, then we don't need the notion of checking which one we are on...
         # As a result, the aggregation buffer simply wraps an agg
         if self.agg_height == 1:
+            self._aggs_sep = self.var(f"aggs_sep",
+                                      self.data_width,
+                                      size=self.fw_int,
+                                      packed=True)
             self.add_child(f"agg_0",
                            Aggregator(self.data_width,
                                       mem_word_width=self.fw_int),
@@ -46,10 +50,16 @@ class AggregationBuffer(Generator):
                            rst_n=self._rst_n,
                            in_pixels=self._data_in,
                            valid_in=self._valid_in,
-                           agg_out=self._data_out,
+                           agg_out=self._aggs_sep,
                            valid_out=self._valid_out,
                            # next_full=self._next_full[i],
                            align=self._align)
+            # Now concat those separate into one
+            individ_pieces = []
+            for i in range(self.fw_int):
+                individ_pieces.append(self._aggs_sep[i])
+            self.wire(self._data_out, concat(*individ_pieces))
+            return
 
         self._data_out_chop = []
         for i in range(self.fw_int):
