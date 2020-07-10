@@ -36,6 +36,21 @@ class AggregationBuffer(Generator):
         self._data_out = self.output("data_out", self.mem_width)
         self._valid_out = self.output("valid_out", 1)
 
+        # If agg_height is 1, then we don't need the notion of checking which one we are on...
+        # As a result, the aggregation buffer simply wraps an agg
+        if self.agg_height == 1:
+            self.add_child(f"agg_0",
+                           Aggregator(self.data_width,
+                                      mem_word_width=self.fw_int),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           in_pixels=self._data_in,
+                           valid_in=self._valid_in,
+                           agg_out=self._data_out,
+                           valid_out=self._valid_out,
+                           # next_full=self._next_full[i],
+                           align=self._align)
+
         self._data_out_chop = []
         for i in range(self.fw_int):
             self._data_out_chop.append(self.output(f"data_out_chop_{i}", self.data_width))
