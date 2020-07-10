@@ -45,7 +45,7 @@ class Prefetcher(Generator):
         self._input_latency.add_attribute(ConfigRegAttr(doc))
 
         self._max_lat = const(self.max_prefetch - 1,
-                              clog2(self.max_prefetch))
+                              clog2(self.max_prefetch) + 1)
 
         # Outputs
         self._data_out = self.output("data_out",

@@ -294,7 +294,7 @@ class InputAddrCtrl(Generator):
         if ~self._rst_n:
             self._counter = 0
         elif self.interconnect_input_ports == 1:
-            self.counter = 0
+            self._counter = 0
         # the data/wen from first interconnect input port is directly written, so
         # we do not have to resend that to SRAM
         elif self._counter == self.interconnect_input_ports - 2:

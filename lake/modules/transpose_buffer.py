@@ -109,6 +109,7 @@ class TransposeBuffer(Generator):
                                   # is the maximum value of range_inner, which is
                                   # self.max_range_inner
                                   size=self.max_range_inner,
+                                  explicit_array=True,
                                   packed=True)
         self.indices.add_attribute(ConfigRegAttr("Output indices for for loop pattern"))
 
