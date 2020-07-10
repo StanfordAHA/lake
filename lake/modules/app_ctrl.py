@@ -136,10 +136,11 @@ class AppCtrl(Generator):
         self._read_done = self.var("read_done", self.int_out_ports, explicit_array=True, packed=True)
         self._read_done_ff = self.var("read_done_ff", self.int_out_ports, explicit_array=True, packed=True)
 
+        self.in_port_bits = max(1, kts.clog2(self.int_in_ports))
+
         if self.int_in_ports == 1 and self.int_out_ports == 1:
             self._input_port = kts.const(0, 1)
             self._output_port = kts.const(0, 1)
-            self.in_port_bits = max(1, kts.clog2(self.int_in_ports))
         else:
             self._input_port = self.input("input_port", self.in_port_bits,
                                           size=self.int_out_ports,
