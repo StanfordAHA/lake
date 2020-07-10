@@ -133,22 +133,27 @@ class AppCtrl(Generator):
                                     packed=True)
         self._write_done = self.var("write_done", self.int_in_ports)
         self._write_done_ff = self.var("write_done_ff", self.int_in_ports)
-        self._read_done = self.var("read_done", self.int_out_ports)
-        self._read_done_ff = self.var("read_done_ff", self.int_out_ports)
+        self._read_done = self.var("read_done", self.int_out_ports, explicit_array=True)
+        self._read_done_ff = self.var("read_done_ff", self.int_out_ports, explicit_array=True)
 
-        self.in_port_bits = max(1, kts.clog2(self.int_in_ports))
-        self._input_port = self.input("input_port", self.in_port_bits,
-                                      size=self.int_out_ports,
-                                      explicit_array=True,
-                                      packed=True)
-        self._input_port.add_attribute(ConfigRegAttr("Relative input port for an output port"))
+        if self.int_in_ports == 1 and self.int_out_ports == 1:
+            self._input_port = kts.const(0, 1)
+            self._output_port = kts.const(0, 1)
+            self.in_port_bits = max(1, kts.clog2(self.int_in_ports))
+        else:
+            self._input_port = self.input("input_port", self.in_port_bits,
+                                          size=self.int_out_ports,
+                                          explicit_array=True,
+                                          packed=True)
+            self._input_port.add_attribute(ConfigRegAttr("Relative input port for an output port"))
 
-        self.out_port_bits = max(1, kts.clog2(self.int_out_ports))
-        self._output_port = self.input("output_port", self.out_port_bits,
-                                       size=self.int_in_ports,
-                                       explicit_array=True,
-                                       packed=True)
-        self._output_port.add_attribute(ConfigRegAttr("Relative output port for an input port"))
+            self.out_port_bits = max(1, kts.clog2(self.int_out_ports))
+
+            self._output_port = self.input("output_port", self.out_port_bits,
+                                           size=self.int_in_ports,
+                                           explicit_array=True,
+                                           packed=True)
+            self._output_port.add_attribute(ConfigRegAttr("Relative output port for an input port"))
 
         self._prefill = self.input("prefill", self.int_out_ports)
         self._prefill.add_attribute(ConfigRegAttr("Is the input stream prewritten?"))
@@ -286,6 +291,6 @@ class AppCtrl(Generator):
 
 if __name__ == "__main__":
     ac_dut = AppCtrl(interconnect_input_ports=1,
-                     interconnect_output_ports=3)
+                     interconnect_output_ports=1)
     verilog(ac_dut, filename="app_ctrl.sv",
             additional_passes={"lift config regs": lift_config_reg})
