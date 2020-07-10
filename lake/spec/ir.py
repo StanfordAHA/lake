@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class bound:
     def __init__(self, n, _lb, _ub):
         self.name = n
@@ -15,16 +16,17 @@ class bound:
     def inBound(self, val):
         return val >= self.lb and val <= self.ub
 
+
 class var:
-    def __init__(self, n,  _lb, _ub):
-        #self.name = n
-        #self.lb = _lb
-        #self.ub = _ub
+    def __init__(self, n, _lb, _ub):
+        # self.name = n
+        # self.lb = _lb
+        # self.ub = _ub
         self.name = n
         self.bd = bound(n + "_bd", _lb, _ub)
         self.val = self.bd.getLB()
 
-    def update(self)->bool:
+    def update(self) -> bool:
         if self.val < self.bd.getUB():
             self.val += 1
             return False
@@ -35,8 +37,9 @@ class var:
     def getVal(self):
         return self.val
 
+
 class expr:
-    def __init__(self, _var_list:list, bd_w_list: list):
+    def __init__(self, _var_list: list, bd_w_list: list):
         '''
         piecewise linear expression, weight is a dictionary
         the key save the domain of that piece, and value is
@@ -50,7 +53,7 @@ class expr:
             self.bd_list.append(bd)
         self.piece = len(bd_w_list)
 
-    def eval(self)->int:
+    def eval(self) -> int:
         var_list = [var.getVal() for var in self.var_list]
         for nd_bd, weights in zip(self.bd_list, self.weight_list):
             list_inBD = [bd.inBound(val) for bd, val in zip(nd_bd, var_list)]
@@ -62,8 +65,9 @@ class expr:
                 return val
         assert False, "variable exceeded all pieces of bounds."
 
+
 class map:
-    def __init__(self, _var_list:list, _expr_list:list):
+    def __init__(self, _var_list: list, _expr_list: list):
         '''
         map is a list of variable map to a list of expression,
         basically a [in_dim] vector of varibles map to a [out_dim]
@@ -93,6 +97,5 @@ class map:
     def update(self):
         for var in self.var_list:
             inc_next = var.update()
-            if inc_next == False:
+            if inc_next is False:
                 break
-

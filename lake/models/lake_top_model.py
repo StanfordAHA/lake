@@ -85,7 +85,7 @@ class LakeTopModel(Model):
         self.address_width = kts.clog2(self.mem_depth * num_tiles)
 
         self.config = {}
-        
+
         # top level configuration registers
 
         # chaining
@@ -93,7 +93,7 @@ class LakeTopModel(Model):
         self.config[f"enable_chain_output"] = 0
         self.config[f"chain_idx_input"] = 0
         self.config[f"chain_idx_output"] = 0
-        
+
         self.config[f"tile_en"] = 0
         self.config[f"mode"] = 0
         for i in range(self.interconnect_output_ports):
@@ -441,7 +441,6 @@ class LakeTopModel(Model):
                                                                 tb_valid=0,
                                                                 ren_update=ack_reduced)
 
-
         if self.align_input:
             valids_align = []
             aligns_align = []
@@ -503,8 +502,8 @@ class LakeTopModel(Model):
             ack_base = (ack_base | local_ack)
 
         # Final interaction with OAC
-        (oac_ren, oac_addrs) = self.oac.interact(valid_in=pref_step, 
-                                                 step_in=ack_base, 
+        (oac_ren, oac_addrs) = self.oac.interact(valid_in=pref_step,
+                                                 step_in=ack_base,
                                                  enable_chain_output=self.config[f"enable_chain_output"])
 
         # Get data from mem
@@ -538,13 +537,13 @@ class LakeTopModel(Model):
              dm,
              am,
              ack,
-             omvd) = self.rw_arbs[i].interact(iac_valid[i], 
-                                              ac_wen_en, 
-                                              iac_data[i], 
+             omvd) = self.rw_arbs[i].interact(iac_valid[i],
+                                              ac_wen_en,
+                                              iac_data[i],
                                               iac_addrs[i],
-                                              data_to_arb[i], 
-                                              gated_ren, 
-                                              ac_ren_en, 
+                                              data_to_arb[i],
+                                              gated_ren,
+                                              ac_ren_en,
                                               oac_addrs,
                                               self.mem_valid_data)
 
@@ -585,9 +584,9 @@ class LakeTopModel(Model):
 
         # Demux those reads
         (demux_dat, demux_valid, demux_mem_valid_data) = \
-            self.demux_reads.interact(rw_out_dat, 
-                                      rw_out_valid, 
-                                      rw_out_port, 
+            self.demux_reads.interact(rw_out_dat,
+                                      rw_out_valid,
+                                      rw_out_port,
                                       rw_mem_valid_data)
 
         # Requires or'd version of ren
@@ -600,10 +599,10 @@ class LakeTopModel(Model):
 
         # Sync groups now
         (sync_data, sync_valid, rd_sync_gate_x, sync_mem_valid_data) = \
-            self.sync_groups.interact(ack_base, 
-                                      demux_dat, 
-                                      demux_valid, 
-                                      ren_base, 
+            self.sync_groups.interact(ack_base,
+                                      demux_dat,
+                                      demux_valid,
+                                      ren_base,
                                       demux_mem_valid_data)
 
         # Now get the tba rdy and interact with prefetcher
@@ -615,9 +614,9 @@ class LakeTopModel(Model):
         pref_valid = []
         for i in range(self.interconnect_output_ports):
             (pd, pv, psx, prefetcher_mem_valid_data) = \
-                self.prefetchers[i].interact(sync_data[i], 
-                                             sync_valid[i], 
-                                             tba_rdys[i], 
+                self.prefetchers[i].interact(sync_data[i],
+                                             sync_valid[i],
+                                             tba_rdys[i],
                                              sync_mem_valid_data[i])
             if type(pd) == list:
                 pref_data.append(pd.copy())
@@ -629,18 +628,18 @@ class LakeTopModel(Model):
         data_out = []
         valid_out = []
         for i in range(self.interconnect_output_ports):
-            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i], 
-                                                 pref_valid[i], 
-                                                 pref_valid[i], 
-                                                 0, 
-                                                 ac_ren_out[i], 
+            (tb_d, tb_v) = self.tbas[i].tba_main(pref_data[i],
+                                                 pref_valid[i],
+                                                 pref_valid[i],
+                                                 0,
+                                                 ac_ren_out[i],
                                                  prefetcher_mem_valid_data[i])
             data_out.append(tb_d)
             valid_out.append(tb_v)
 
         self.tb_valid = valid_out
 
-        # Chaining module is completely combinational, 
+        # Chaining module is completely combinational,
         # just have it here as part of top
 
         curr_tile_data_out = data_out

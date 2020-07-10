@@ -1,10 +1,13 @@
 from ir import map, var, bound, expr
 
+
 '''
 I am trying to use this class to demonstrate what a spec is.
 It should contain all the information for generate hardware,
 mapping constraint and functional model.
 '''
+
+
 class Accessor:
     def __init__(self):
         self.map_dict = {}
@@ -31,12 +34,11 @@ class Accessor:
                 for _, ctrl in self.map_dict.items():
                     assert bd.inBound(ctrl.out_dim), "output dimension exceeded!"
             elif k == "expr_piece_dim":
-                for _,ctrl in self.map_dict.items():
+                for _, ctrl in self.map_dict.items():
                     for e in ctrl.expr_list:
                         assert bd.inBound(len(e.bd_list)), "piecewise expression pieces exceeded!"
 
-        print ("All constraints satisfied!")
-
+        print("All constraints satisfied!")
 
     '''
     This method should define all the configuration register
@@ -72,12 +74,11 @@ class Accessor:
             elif k == "var_dim":
                 var_dim = v
             elif k == "var_range_list":
-                var_range_list =v
+                var_range_list = v
             elif k == "expr_dim":
                 expr_dim = v
             elif k == "expr_config":
                 expr_config = v
-
 
         var_l = [var("cycle", 0, depth)]
         expr_l = [expr(var_l, [([bound("bd", 0, depth)], [1, 0])])]
@@ -86,7 +87,7 @@ class Accessor:
         for i in range(st_size):
             var_list = []
             for in_dim in range(var_dim[i]):
-                tmp = var("i" + "_" + str(i)+ "_" + str(in_dim), 0, var_range_list[i][in_dim])
+                tmp = var("i" + "_" + str(i) + "_" + str(in_dim), 0, var_range_list[i][in_dim])
                 var_list.append(tmp)
             expr_list = []
             for out_dim in range(expr_dim[i]):
@@ -100,7 +101,6 @@ class Accessor:
 
             self.map_dict[st_name[i]] = map(var_list, expr_list)
 
-
     '''
     The method below should define the functional model
     I feel that I am writing verilog/simulator,
@@ -113,12 +113,10 @@ class Accessor:
             if is_update:
                 self.map_dict[k].update()
 
-
     def exeComb(self):
         itr = self.cycle_cnt.eval()
-        cnt_dict = {k: m.eval() for k,  m in self.map_dict.items()}
+        cnt_dict = {k: m.eval() for k, m in self.map_dict.items()}
         self.is_update_dict = {k: cnt == itr for k, cnt in cnt_dict.items()}
-
 
     '''
     Simulator print out info, add an data interface this will drive memory port
@@ -126,4 +124,4 @@ class Accessor:
     def print_sim_info(self):
         for k, is_update in self.is_update_dict.items():
             if is_update:
-                print (k, ": ", self.map_dict[k].getDomain())
+                print(k, ": ", self.map_dict[k].getDomain())

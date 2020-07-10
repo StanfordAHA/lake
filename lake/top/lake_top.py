@@ -133,7 +133,6 @@ class LakeTop(Generator):
                                           self.interconnect_output_ports)
         self._chain_valid_in.add_attribute(ControlSignalAttr(True))
 
-
         self._chain_data_in = self.input("chain_data_in",
                                          self.data_width,
                                          size=self.interconnect_output_ports,
