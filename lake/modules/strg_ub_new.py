@@ -61,7 +61,7 @@ class StrgUB(Generator):
                  stcl_valid_iter=4):
         super().__init__("strg_ub")
 
-        fetch_width = mem_width // data_width
+        self.fetch_width = mem_width // data_width
         # generation parameters
         # inputs
         self._clk = self.clock("clk")
@@ -91,17 +91,17 @@ class StrgUB(Generator):
         self._tb_read_addr = self.var("tb_read_addr", 2)
 
         self._sram_write_data = self.var("sram_write_data", data_width,
-                                                            size=fetch_width,
+                                                            size=self.fetch_width,
                                                             packed=True)
         self._sram_read_data = self.var("sram_read_data", data_width,
-                                                          size=fetch_width,
+                                                          size=self.fetch_width,
                                                           packed=True)
 
         self._data_to_sram = self.output("data_to_strg", data_width,
-                                                            size=fetch_width,
+                                                            size=self.fetch_width,
                                                             packed=True)
         self._data_from_sram = self.input("data_from_strg", data_width,
-                                                          size=fetch_width,
+                                                          size=self.fetch_width,
                                                           packed=True)
 
         self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
@@ -123,7 +123,7 @@ class StrgUB(Generator):
 
         self._agg = self.var("agg",
                              width=data_width,
-                             size=fetch_width,
+                             size=self.fetch_width,
                              packed=True)
 
         self.add_child(f"agg_write_addr_gen",
@@ -157,7 +157,7 @@ class StrgUB(Generator):
 
         self._tb = self.var("tb",
                             width=data_width,
-                            size=fetch_width)
+                            size=self.fetch_width)
 
         self.add_child(f"tb_write_addr_gen",
                        AddrGen(2,
@@ -241,7 +241,7 @@ class StrgUB(Generator):
                        valid_output=self._read)
 
 
-        lift_config_reg(self.internal_generator)
+        # lift_config_reg(self.internal_generator)
 
         self.add_code(self.set_sram_addr)
         self.add_code(self.agg_ctrl)
@@ -267,13 +267,13 @@ class StrgUB(Generator):
 
     @always_comb
     def agg_to_sram(self):
-        for i in range(fetch_width):
+        for i in range(self.fetch_width):
             self._sram_write_data[i] = self._agg[self._agg_read_addr]
 
     @always_ff((posedge, "clk"))
     def tb_ctrl(self):
         if self._read:
-            for i in range(fetch_width):
+            for i in range(self.fetch_width):
                 self._tb[self._tb_write_addr] = self._sram_read_data[i]
 
     @always_comb
