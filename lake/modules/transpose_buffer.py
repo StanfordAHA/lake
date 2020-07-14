@@ -51,7 +51,7 @@ class TransposeBuffer(Generator):
         self.max_tb_height_bits2 = max(1, clog2(2 * self.max_tb_height))
         self.max_tb_height_bits = max(1, clog2(self.max_tb_height))
         self.tb_iterator_support_bits = max(1, clog2(self.tb_iterator_support) + 1)
-        self.max_range_fetch_width_bits = max(1, max(self.max_range_bits, self.fetch_width_bits))
+        self.max_range_stride_bits2 = max(2 * self.max_range_bits, 2 * self.max_stride_bits)
 
         ##########
         # INPUTS #
@@ -234,7 +234,7 @@ class TransposeBuffer(Generator):
                 if (self.index_outer == self.range_outer - 1):
                     self.index_outer = 0
                 else:
-                    self.index_outer = self.index_outer + self.stride
+                    self.index_outer = self.index_outer + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_index_inner(self):
@@ -334,13 +334,15 @@ class TransposeBuffer(Generator):
             self.output_index_abs = 0
         elif self.dimensionality == 1:
             self.indices_index_inner = 0
-            self.output_index_abs = self.index_outer.extend(self.max_range_fetch_width_bits) \
-                + self.starting_addr.extend(self.max_range_fetch_width_bits)
+            self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
+                self.stride.extend(self.max_range_stride_bits2) \
+                + self.starting_addr.extend(self.max_range_stride_bits2)
         else:
             self.indices_index_inner = self.indices[self.index_inner]
-            self.output_index_abs = self.index_outer.extend(self.max_range_both_fetch_width_bits) \
-                + self.indices_index_inner.extend(self.max_range_both_fetch_width_bits) \
-                + self.starting_addr.extend(self.max_range_both_fetch_width_bits)
+            self.output_index_abs = self.index_outer.extend(self.max_range_stride_bits2) * \
+                self.stride.extend(self.max_range_stride_bits2) \
+                + self.indices_index_inner.extend(self.max_range_stride_bits2) \
+                + self.starting_addr.extend(self.max_range_stride_bits2)
 
     @always_comb
     def set_output_index_long(self):
