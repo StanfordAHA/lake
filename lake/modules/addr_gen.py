@@ -52,82 +52,101 @@ class AddrGen(Generator):
         # PORT DEFS: end
 
         # LOCAL VARIABLES: begin
-        self._current_loc = self.var("current_loc", self.config_width,
-                                     size=self.iterator_support,
-                                     packed=True,
-                                     explicit_array=True)
-
-        self._write_addr = self.var("write_addr", self.config_width)
         self._dim_counter = self.var("dim_counter", self.config_width,
                                      size=self.iterator_support,
                                      packed=True,
                                      explicit_array=True)
 
-        self._update = self.var("update", self.iterator_support)
         self._strt_addr = self.var("strt_addr", self.config_width)
 
         self._counter_update = self.var("counter_update", 1)
         self._calc_addr = self.var("calc_addr", self.config_width)
 
-        # LOCAL VARIABLES: end
+        self._max_value = self.var("max_value", self.iterator_support)
 
+        # LOCAL VARIABLES: end
         # GENERATION LOGIC: begin
         self.wire(self._strt_addr, self._starting_addr)
-
         self.wire(self._addr_out, self._calc_addr)
 
-        # Set update vector
+        self._mux_sel = self.var("mux_sel", max(clog2(self.iterator_support), 1))
+        self._done = self.var("done", 1)
+        self._clear = self.var("clear", self.iterator_support)
+        self._inc = self.var("inc", self.iterator_support)
 
-        self.wire(self._update[0], const(1, 1))
-        for i in range(self.iterator_support - 1):
-            self.wire(self._update[i + 1],
-                      (self._dim_counter[i] == (self._ranges[i] - 1)) & self._update[i])
+        self._inced_cnt = self.var("inced_cnt", self._dim_counter.width)
+        self.wire(self._inced_cnt, self._dim_counter[self._mux_sel] + 1)
+        # Next_max_value
+        self._maxed_value = self.var("maxed_value", 1)
+        self.wire(self._maxed_value, (self._dim_counter[self._mux_sel] ==
+                                      self._ranges[self._mux_sel]) & self._inc[self._mux_sel])
 
-        self.add_code(self.calc_addr_comb)
-        self.add_code(self.dim_counter_update)
-        self.add_code(self.current_loc_update)
+        self._current_addr = self.var("current_addr", self.config_width)
+        # Calculate address by taking previous calculation and adding the muxed stride
+        self.wire(self._calc_addr, self._strt_addr + self._current_addr)
 
+        self.add_code(self.set_mux_sel)
+        self.add_code(self.calculate_address)
+        for i in range(self.iterator_support):
+            self.add_code(self.set_clear, idx=i)
+            self.add_code(self.set_inc, idx=i)
+            self.add_code(self.dim_counter_update, idx=i)
+            self.add_code(self.max_value_update, idx=i)
         # GENERATION LOGIC: end
 
     @always_comb
-    def calc_addr_comb(self):
-        self._calc_addr = reduce(operator.add,
-                                 [(ternary(const(i,
-                                                 self._dimensionality.width) < self._dimensionality,
-                                   self._current_loc[i], const(0, self._calc_addr.width)))
-                                  for i in range(self.iterator_support)] + [self._strt_addr])
+    # Find lowest ready
+    def set_mux_sel(self):
+        self._mux_sel = 0
+        self._done = 0
+        for i in range(self.iterator_support):
+            if ~self._done:
+                if ~self._max_value[i]:
+                    self._mux_sel = i
+                    self._done = 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def dim_counter_update(self):
+    def calculate_address(self):
         if ~self._rst_n:
-            self._dim_counter = 0
-        elif self._clk_en:
-            if self._flush:
-                for i in range(self.iterator_support):
-                    self._dim_counter[i] = 0
-            elif (self._step):
-                for i in range(self.iterator_support):
-                    if self._update[i] & (i < self._dimensionality):
-                        if self._dim_counter[i] == (self._ranges[i] - 1):
-                            self._dim_counter[i] = 0
-                        else:
-                            self._dim_counter[i] = self._dim_counter[i] + 1
+            self._current_addr = 0
+        elif self._step:
+            self._current_addr = self._current_addr + self._strides[self._mux_sel]
+
+    @always_comb
+    def set_clear(self, idx):
+        self._clear[idx] = 0
+        if (idx < self._mux_sel) & self._step:
+            self._clear[idx] = 1
+
+    @always_comb
+    def set_inc(self, idx):
+        self._inc[idx] = 0
+        # We always increment the innermost, and then have priority
+        # on clear in the flops.
+        if (const(idx, 5) == 0) & self._step:
+            self._inc[idx] = 1
+        elif (idx == self._mux_sel) & self._step:
+            self._inc[idx] = 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def current_loc_update(self):
+    def dim_counter_update(self, idx):
         if ~self._rst_n:
-            self._current_loc = 0
-        elif self._clk_en:
-            if self._flush:
-                for i in range(self.iterator_support):
-                    self._current_loc[i] = 0
-            elif self._step:
-                for i in range(self.iterator_support):
-                    if self._update[i] & (i < self._dimensionality):
-                        if self._dim_counter[i] == (self._ranges[i] - 1):
-                            self._current_loc[i] = 0
-                        else:
-                            self._current_loc[i] = self._current_loc[i] + self._strides[i]
+            self._dim_counter[idx] = 0
+        else:
+            if self._clear[idx]:
+                self._dim_counter[idx] = 0
+            elif self._inc[idx]:
+                self._dim_counter[idx] = self._inced_cnt
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def max_value_update(self, idx):
+        if ~self._rst_n:
+            self._max_value[idx] = 0
+        else:
+            if self._clear[idx]:
+                self._max_value[idx] = 0
+            elif self._inc[idx]:
+                self._max_value[idx] = self._maxed_value
 
 
 if __name__ == "__main__":
