@@ -48,7 +48,7 @@ class AggregationBuffer(Generator):
         # so...possibly the schedule is a for loop?
         # Tells us where to write successive elements...
         self._in_schedule = self.input("in_sched",
-                                       clog2(self.agg_height),
+                                       max(1, clog2(self.agg_height)),
                                        size=self.max_agg_schedule,
                                        explicit_array=True,
                                        packed=True)
@@ -63,7 +63,7 @@ class AggregationBuffer(Generator):
 
         # ...and which order to output the blocks
         self._out_schedule = self.input("out_sched",
-                                        clog2(agg_height),
+                                        max(1, clog2(agg_height)),
                                         size=self.max_agg_schedule,
                                         explicit_array=True,
                                         packed=True)
