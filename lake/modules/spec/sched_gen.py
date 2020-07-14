@@ -25,10 +25,6 @@ class SchedGen(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        # MISC
-        self._clk_en = self.input("clk_en", 1)
-        self._flush = self.input("flush", 1)
-
         # OUTPUTS
         self._valid_output = self.output("valid_output", 1)
 
@@ -40,15 +36,12 @@ class SchedGen(Generator):
         # PORT DEFS: end
 
         self.add_child(f"sched_addr_gen",
-
                        AddrGen(iterator_support=self.iterator_support,
                                config_width=self.config_width),
 
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._valid_out,
-                       clk_en=self._clk_en,
-                       flush=self._flush,
                        addr_out=self._addr_out)
 
         self.add_code(self.set_valid_out)

@@ -12,7 +12,7 @@ class AddrGen(Generator):
                  iterator_support,
                  config_width=16):
 
-        super().__init__(f"addr_gen_{iterator_support}")
+        super().__init__(f"addr_gen_{iterator_support}", debug=True)
 
         self.iterator_support = iterator_support
         self.config_width = config_width
@@ -44,10 +44,6 @@ class AddrGen(Generator):
         # OUTPUTS
         # TODO why is this config width instead of address width?
         self._addr_out = self.output("addr_out", self.config_width)
-
-        # MISC
-        self._clk_en = self.input("clk_en", 1)
-        self._flush = self.input("flush", 1)
 
         # PORT DEFS: end
 

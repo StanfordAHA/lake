@@ -59,7 +59,7 @@ class StrgUB(Generator):
                  app_ctrl_depth_width=16,
                  remove_tb=False,
                  stcl_valid_iter=4):
-        super().__init__("strg_ub")
+        super().__init__("strg_ub", debug=True)
 
         self.fetch_width = mem_width // data_width
         # generation parameters
@@ -68,7 +68,7 @@ class StrgUB(Generator):
         self._rst_n = self.reset("rst_n")
 
         self._clk_en = self.input("clk_en", 1)
-        self._flush = self.input("flush", 1)
+        self._flush = self.reset("flush", is_async=False, active_high=True)
 
         self._data_in = self.input("data_in", data_width, packed=True)
         
@@ -132,9 +132,7 @@ class StrgUB(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._agg_write,
-                       addr_out=self._agg_write_addr,
-                       clk_en=self._clk_en,
-                       flush=self._flush)
+                       addr_out=self._agg_write_addr)
 
         self.add_child(f"agg_read_addr_gen",
                        AddrGen(2,
@@ -142,17 +140,13 @@ class StrgUB(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._write,
-                       addr_out=self._agg_read_addr,
-                       clk_en=self._clk_en,
-                       flush=self._flush)
+                       addr_out=self._agg_read_addr)
 
         self.add_child(f"agg_write_sched_gen",
                        SchedGen(2,
                                 2),
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       flush=self._flush,
                        valid_output=self._agg_write)
 
         self._tb = self.var("tb",
@@ -165,9 +159,7 @@ class StrgUB(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._read,
-                       addr_out=self._tb_write_addr,
-                       clk_en=self._clk_en,
-                       flush=self._flush)
+                       addr_out=self._tb_write_addr)
 
         self.add_child(f"tb_read_addr_gen",
                        AddrGen(2,
@@ -175,30 +167,14 @@ class StrgUB(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._tb_read,
-                       addr_out=self._tb_read_addr,
-                       clk_en=self._clk_en,
-                       flush=self._flush)
+                       addr_out=self._tb_read_addr)
 
         self.add_child(f"tb_read_sched_gen",
                        SchedGen(2,
                                 2),
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       flush=self._flush,
                        valid_output=self._tb_read)
-
-        # # memory module
-        # self.add_child(f"sram",
-        #                SRAMStub(data_width,
-        #                         fetch_width,
-        #                         mem_depth),
-        #                clk=self._clk,
-        #                wen=self._write,
-        #                cen=self._write | self._read,
-        #                addr=self._addr,
-        #                data_in=self._sram_write_data,
-        #                data_out=self._sram_read_data)
 
         # addressor modules
         self.add_child(f"input_addr_gen",
@@ -207,9 +183,7 @@ class StrgUB(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._write,
-                       addr_out=self._write_addr,
-                       clk_en=self._clk_en,
-                       flush=self._flush)
+                       addr_out=self._write_addr)
 
         self.add_child(f"output_addr_gen",
                        AddrGen(output_addr_iterator_support,
@@ -217,9 +191,7 @@ class StrgUB(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._read,
-                       addr_out=self._read_addr,
-                       clk_en=self._clk_en,
-                       flush=self._flush)
+                       addr_out=self._read_addr)
 
         # scheduler modules
         self.add_child(f"input_sched_gen",
@@ -227,8 +199,6 @@ class StrgUB(Generator):
                                 config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       flush=self._flush,
                        valid_output=self._write)
 
         self.add_child(f"output_sched_gen",
@@ -236,8 +206,6 @@ class StrgUB(Generator):
                                 config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       flush=self._flush,
                        valid_output=self._read)
 
 
