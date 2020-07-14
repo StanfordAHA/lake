@@ -62,6 +62,8 @@ class StrgUB(Generator):
         super().__init__("strg_ub", debug=True)
 
         self.fetch_width = mem_width // data_width
+        self.interconnect_input_ports = interconnect_input_ports
+        self.interconnect_output_ports = interconnect_output_ports
         # generation parameters
         # inputs
         self._clk = self.clock("clk")
@@ -121,6 +123,8 @@ class StrgUB(Generator):
 
         self._agg_write_index = self.var("agg_write_index", 2, size=4)
 
+        for i in range(self.interconnect_input_ports):
+                
         self._agg = self.var("agg",
                              width=data_width,
                              size=self.fetch_width,
