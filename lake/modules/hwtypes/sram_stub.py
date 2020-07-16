@@ -33,11 +33,11 @@ def sram_stub(
 
             @name_outputs(data_out=WideData)
             def __call__(self,
-                    wen: Bit = Bit(0), \
-                    cen: Bit = Bit(0), \
-                    addr: BitVector[addr_width] = BitVector[addr_width](0), \
-                    data_in: WideData = WideData(0)
-                    ) -> (WideData):
+                         wen: Bit = Bit(0),
+                         cen: Bit = Bit(0),
+                         addr: BitVector[addr_width] = BitVector[addr_width](0),
+                         data_in: WideData = WideData(0)
+                         ) -> (WideData):
 
                 # print("wen: ", wen, " cen: ", cen, " data_in ", data_in, " addr: ", addr)
                 # print("mem: ", self.mem)
@@ -53,7 +53,7 @@ def sram_stub(
                     data_out = get_slice(self.mem, addr, data_width)
                 else:
                     data_out = WideData(0)
-                
+
                 # print("mem: ", self.mem)
                 # print("data out: ", data_out)
                 return data_out
@@ -61,6 +61,7 @@ def sram_stub(
         return SRAMStub
 
     return modules_fc
+
 
 if __name__ == "__main__":
     mem_depth = 4
@@ -82,17 +83,20 @@ if __name__ == "__main__":
 
     x = 0
     for i in range(16):
-        wen = 1 - (i % 2) # rand.randint(0, 1)
-        cen = 1 # rand.randint(0, 1)
-        addr = x # rand.randint(0, mem_depth - 1)
-        data = x + 1 # rand.randint(0, 2**(data_width * fetch_width) - 1)
-    
-        print(f'wen: {wen}, cen: {cen}, addr: {addr}, data: {data}') 
+        wen = 1 - (i % 2)  # rand.randint(0, 1)
+        cen = 1  # rand.randint(0, 1)
+        addr = x  # rand.randint(0, mem_depth - 1)
+        data = x + 1  # rand.randint(0, 2**(data_width * fetch_width) - 1)
 
-        py_data_out = sram_py_inst(py_fam.Bit(wen), py_fam.Bit(cen), py_fam.BitVector[log2(mem_depth)](addr), py_fam.BitVector[data_width * fetch_width](data))
+        print(f'wen: {wen}, cen: {cen}, addr: {addr}, data: {data}')
+
+        py_data_out = sram_py_inst(py_fam.Bit(wen),
+                                   py_fam.Bit(cen),
+                                   py_fam.BitVector[log2(mem_depth)](addr),
+                                   py_fam.BitVector[data_width * fetch_width](data))
 
         model_data_out = model_sram.interact(wen, cen, addr, [0, 0, 0, data])
-        
+
         if i % 2:
             x = x + 1
         tester.circuit.wen = wen
@@ -108,7 +112,6 @@ if __name__ == "__main__":
         tester.step(2)
 
         with tempfile.TemporaryDirectory() as tempdir:
-            tempdir="output_m"
             tester.compile_and_run(target="verilator",
                                    directory=tempdir,
-                                   flags=["-Wno-fatal", "--trace"])
+                                   flags=["-Wno-fatal"])

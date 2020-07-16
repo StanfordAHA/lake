@@ -479,8 +479,8 @@ class LakeTop(Generator):
                          max_prefetch=self.max_prefetch,
                          remove_tb=self.remove_tb,
                          config_width=self.input_config_width,
-                        #  input_config_width=self.input_config_width,
-                        #  output_config_width=self.output_config_width,
+                         #  input_config_width=self.input_config_width,
+                         #  output_config_width=self.output_config_width,
                          stcl_valid_iter=self.stcl_valid_iter)
 
         self._ub_data_to_mem = self.var("ub_data_to_mem",
@@ -536,18 +536,16 @@ class LakeTop(Generator):
                        rst_n=self._rst_n,
                        # inputs
                        data_in=self._data_in,
-                    #    wen_in=self._wen,
-                    #    ren_in=self._ren,
+                       # wen_in=self._wen,
+                       # ren_in=self._ren,
                        data_from_strg=self._mem_data_out,
-                    #    mem_valid_data=self._mem_valid_data,
+                       #    mem_valid_data=self._mem_valid_data,
                        # outputs
                        data_out=self._ub_data_out,
-                    #    valid_out=self._ub_valid_out,
+                       #    valid_out=self._ub_valid_out,
                        data_to_strg=self._ub_data_to_mem,
                        cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem)
-                    #    enable_chain_output=self._enable_chain_output,
-                    #    chain_idx_output=self._chain_idx_output)
 
         # Wire addrs
         if self.rw_same_cycle:

@@ -66,6 +66,7 @@ class SchedGen(Generator):
         else:
             self._cycle_num = self._cycle_num + 1
 
+
 if __name__ == "__main__":
     db_dut = SchedGen(iterator_support=6)
     verilog(db_dut, filename="sched_gen.sv", additional_passes={"lift config regs": lift_config_reg})

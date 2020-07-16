@@ -3,6 +3,7 @@ def get_slice(data, addr, width):
     addr = addr * width
     return (data >> addr)[:width]
 
+
 def set_slice(data, addr, width, value):
     assert value.size == width
     addr = addr.zext(data.size - addr.size)

@@ -73,11 +73,10 @@ def test_addr_gen_basic(depth=512,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "./addr_gen_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":

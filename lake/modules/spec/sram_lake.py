@@ -30,7 +30,7 @@ class LakeTestTop(Generator):
         self._flush = self.input("flush", 1)
 
         self._data_in = self.input("data_in", data_width, packed=True)
-        
+
         # outputs
         self._data_out = self.output("data_out", data_width, packed=True)
 
@@ -93,11 +93,10 @@ class LakeTestTop(Generator):
                        flush=self._flush,
                        valid_output=self._read)
 
-
         lift_config_reg(self.internal_generator)
 
         self.add_code(self.set_sram_addr)
-    
+
     @always_comb
     def set_sram_addr(self):
         if self._write:
@@ -105,7 +104,7 @@ class LakeTestTop(Generator):
         else:
             self._addr = self._read_addr[clog2(mem_depth) - 1, 0]
 
+
 if __name__ == "__main__":
     lake_dut = LakeTestTop()
-
     verilog(lake_dut, filename="lake_new.sv")

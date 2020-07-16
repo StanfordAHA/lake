@@ -32,7 +32,7 @@ class LakeTestTop(Generator):
         self._flush = self.input("flush", 1)
 
         self._data_in = self.input("data_in", data_width, packed=True)
-        
+
         # outputs
         self._data_out = self.output("data_out", data_width, packed=True)
 
@@ -53,7 +53,7 @@ class LakeTestTop(Generator):
 
         self._sram_write_data = self.var("sram_write_data", data_width, size=fetch_width, packed=True)
         self._sram_read_data = self.var("sram_read_data", data_width, size=fetch_width, packed=True)
-        
+
 #        self._aggw_start_addr = self.input("aggw_start_addr", 2)
 #        self._aggw_start_addr.add_attribute(ConfigRegAttr("agg write start addr"))
 #        self._agg_start_addr = self.input("agg_start_addr", 2)
@@ -180,7 +180,6 @@ class LakeTestTop(Generator):
                        flush=self._flush,
                        valid_output=self._read)
 
-
         lift_config_reg(self.internal_generator)
 
         self.add_code(self.set_sram_addr)
@@ -188,7 +187,7 @@ class LakeTestTop(Generator):
         self.add_code(self.tb_ctrl)
         self.add_code(self.agg_to_sram)
         self.add_code(self.tb_to_out)
-    
+
     @always_comb
     def set_sram_addr(self):
         if self._write:
@@ -196,13 +195,9 @@ class LakeTestTop(Generator):
         else:
             self._addr = self._read_addr[clog2(mem_depth) - 1, 0]
 
-    #    for i in range(fetch_width):
-    #        self._agg_write_index[i] = self._agg_write_addr + self._aggw_start_addr[i]
-
     @always_ff((posedge, "clk"))
     def agg_ctrl(self):
         if self._agg_write:
-     #       for i in range(fetch_width):
             self._agg[self._agg_write_addr] = self._data_in
 
     @always_comb
