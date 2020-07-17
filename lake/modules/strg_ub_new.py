@@ -34,8 +34,8 @@ class StrgUB(Generator):
                  output_sched_iterator_support=6,
                  config_width=16,
                  #  output_config_width=16,
-                 interconnect_input_ports=1,  # Connection to int
-                 interconnect_output_ports=1,
+                 interconnect_input_ports=2,  # Connection to int
+                 interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
@@ -80,13 +80,17 @@ class StrgUB(Generator):
                                    explicit_array=True)
 
         # outputs
-        self._data_out = self.output("data_out", data_width, packed=True)
+        self._data_out = self.output("data_out", data_width,
+                                     size=self.interconnect_output_ports,
+                                     packed=True,
+                                     explicit_array=True)
 
         # local variables
         self._write = self.var("write", 1)
         self._read = self.var("read", 1)
         self._read_d1 = self.var("read_d1", 1)
         self.add_code(self.delay_read)
+
         self._write_addr = self.var("write_addr", config_width)
         self._read_addr = self.var("read_addr", config_width)
         self._addr = self.var("addr", clog2(mem_depth))
@@ -137,8 +141,9 @@ class StrgUB(Generator):
 
         self._agg_write_index = self.var("agg_write_index", 2, size=4)
 
-        # self.aggs = []
-        self.agg_write_addrs = []
+        self._output_port_sel_addr = self.var("output_port_sel_addr",
+                                             max(1, clog2(self.interconnect_output_ports)))
+
         self.agg_write_scheds = []
         self.agg_read_addrs = []
         self._input_port_sel_addr = self.var("input_port_sel_addr",
@@ -159,7 +164,6 @@ class StrgUB(Generator):
 
             newAG = AddrGen(iterator_support=4,
                             config_width=self._agg_write_addr.width)
-            self.agg_write_addrs.append(newAG)
             self.add_child(f"agg_write_addr_gen_{i}",
                            newAG,
                            clk=self._clk,
@@ -222,42 +226,6 @@ class StrgUB(Generator):
                        rst_n=self._rst_n,
                        valid_output=self._write)
 
-        self._tb_read = self.var("tb_read", 1)
-        self._tb_write_addr = self.var("tb_write_addr", 6)
-        self._tb_read_addr = self.var("tb_read_addr", 6)
-        self.tb_height = 4
-
-        self._tb = self.var("tb",
-                            width=data_width,
-                            size=(self.tb_height,
-                                  self.fetch_width),
-                            packed=True,
-                            explicit_array=True)
-
-        self.add_child(f"tb_write_addr_gen",
-                       AddrGen(2,
-                               6),
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._read_d1,
-                    #    step=self._read,
-                       addr_out=self._tb_write_addr)
-
-        self.add_child(f"tb_read_addr_gen",
-                       AddrGen(2,
-                               6),
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._tb_read,
-                       addr_out=self._tb_read_addr)
-
-        self.add_child(f"tb_read_sched_gen",
-                       SchedGen(6,
-                                16),
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       valid_output=self._tb_read)
-
         self.add_child(f"output_addr_gen",
                        AddrGen(output_addr_iterator_support,
                                config_width),
@@ -273,6 +241,65 @@ class StrgUB(Generator):
                        rst_n=self._rst_n,
                        valid_output=self._read)
 
+        self._tb_read = self.var("tb_read", self.interconnect_output_ports)
+        self.tb_height = 4
+
+        self._tb_write_addr = self.var("tb_write_addr", 6,
+                                        size=self.interconnect_output_ports,
+                                        packed=True,
+                                        explicit_array=True)
+        self._tb_read_addr = self.var("tb_read_addr", 6,
+                                       size=self.interconnect_output_ports,
+                                       packed=True,
+                                       explicit_array=True)
+
+        self._tb = self.var("tb",
+                            width=data_width,
+                            size=(self.interconnect_output_ports,
+                                  self.tb_height,
+                                  self.fetch_width),
+                            packed=True,
+                            explicit_array=True)
+
+        for i in range(self.interconnect_output_ports):
+
+            self.add_child(f"tb_write_addr_gen_{i}",
+                           AddrGen(iterator_support=2,
+                                   config_width=6),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._read_d1 & (self._output_port_sel_addr ==
+                                                 const(i, self._output_port_sel_addr.width)),
+                           #    step=self._read,
+                           addr_out=self._tb_write_addr[i])
+
+            self.add_child(f"tb_read_addr_gen_{i}",
+                           AddrGen(iterator_support=2,
+                                   config_width=6),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._tb_read[i],
+                           addr_out=self._tb_read_addr[i])
+
+            self.add_child(f"tb_read_sched_gen_{i}",
+                           SchedGen(iterator_support=6,
+                                    config_width=16),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           valid_output=self._tb_read[i])
+
+        if self.interconnect_output_ports > 1:
+            self.add_child(f"out_port_sel_addr",
+                           AddrGen(2,
+                                   clog2(self.interconnect_output_ports)),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._read_d1,
+                           addr_out=self._output_port_sel_addr)
+            # Addr for port select should be driven on agg to sram write sched
+        else:
+            self.wire(self._output_port_sel_addr[0], const(0, self._output_port_sel_addr.width))
+
         # lift_config_reg(self.internal_generator)
 
         self.add_code(self.set_sram_addr)
@@ -281,7 +308,9 @@ class StrgUB(Generator):
 
         self.add_code(self.agg_to_sram)
         self.add_code(self.tb_ctrl)
-        self.add_code(self.tb_to_out)
+
+        for idx in range(self.interconnect_output_ports):
+            self.add_code(self.tb_to_out, idx=idx)
 
     @always_comb
     def set_sram_addr(self):
@@ -311,15 +340,15 @@ class StrgUB(Generator):
     @always_ff((posedge, "clk"))
     def tb_ctrl(self):
         if self._read_d1:
-            self._tb[self._tb_write_addr[1, 0]] = self._sram_read_data
+            self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][1,0]] = self._sram_read_data
 
     @always_comb
-    def tb_to_out(self):
-        self._data_out = self._tb[self._tb_read_addr[3, 2]][self._tb_read_addr[1, 0]]
+    def tb_to_out(self, idx):
+        self._data_out[idx] = self._tb[idx][self._tb_read_addr[idx][3, 2]][self._tb_read_addr[idx][1, 0]]
 
 
 if __name__ == "__main__":
     lake_dut = StrgUB()
-    verilog(lake_dut, filename="new_strg_ub.sv",
+    verilog(lake_dut, filename="strg_ub_new.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})
