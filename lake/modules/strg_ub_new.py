@@ -146,7 +146,7 @@ class StrgUB(Generator):
         self._agg_write_index = self.var("agg_write_index", 2, size=4)
 
         self._output_port_sel_addr = self.var("output_port_sel_addr",
-                                             max(1, clog2(self.interconnect_output_ports)))
+                                              max(1, clog2(self.interconnect_output_ports)))
 
         self.agg_write_scheds = []
         self.agg_read_addrs = []
@@ -252,13 +252,13 @@ class StrgUB(Generator):
         self.tb_height = 4
 
         self._tb_write_addr = self.var("tb_write_addr", 6,
-                                        size=self.interconnect_output_ports,
-                                        packed=True,
-                                        explicit_array=True)
-        self._tb_read_addr = self.var("tb_read_addr", 6,
                                        size=self.interconnect_output_ports,
                                        packed=True,
                                        explicit_array=True)
+        self._tb_read_addr = self.var("tb_read_addr", 6,
+                                      size=self.interconnect_output_ports,
+                                      packed=True,
+                                      explicit_array=True)
 
         self._tb = self.var("tb",
                             width=data_width,
@@ -343,12 +343,14 @@ class StrgUB(Generator):
     @always_comb
     def agg_to_sram(self):
         for i in range(self.fetch_width):
-            self._sram_write_data[i] = self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
+            self._sram_write_data[i] = \
+                self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
 
     @always_ff((posedge, "clk"))
     def tb_ctrl(self):
         if self._read_d1:
-            self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][1,0]] = self._sram_read_data
+            self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][1, 0]] = \
+                self._sram_read_data
 
     @always_comb
     def tb_to_out(self, idx):
@@ -360,6 +362,7 @@ class StrgUB(Generator):
             self._cycle_count = 0
         else:
             self._cycle_count = self._cycle_count + 1
+
 
 if __name__ == "__main__":
     lake_dut = StrgUB()
