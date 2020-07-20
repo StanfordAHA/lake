@@ -252,31 +252,31 @@ class StrgUB(Generator):
             self.wire(self._arb_ren_en, self._ren)
         else:
             self.add_child("app_ctrl", self.app_ctrl,
-                        clk=self._clk,
-                        rst_n=self._rst_n,
-                        wen_in=self._wen_in,
-                        ren_in=self._ren_in,
-                        #    ren_update=self._tb_valid_out,
-                        valid_out_data=self._valid_out,
-                        # valid_out_stencil=,
-                        wen_out=self._wen,
-                        ren_out=self._ren)
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           wen_in=self._wen_in,
+                           ren_in=self._ren_in,
+                           #    ren_update=self._tb_valid_out,
+                           valid_out_data=self._valid_out,
+                           # valid_out_stencil=,
+                           wen_out=self._wen,
+                           ren_out=self._ren)
 
             self.wire(self.app_ctrl.ports.tb_valid, self._tb_valid_out)
             self.wire(self.app_ctrl.ports.ren_update, self._tb_valid_out)
 
             self.app_ctrl_coarse = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
-                                        interconnect_output_ports=self.interconnect_output_ports,
-                                        depth_width=self.app_ctrl_depth_width)
+                                           interconnect_output_ports=self.interconnect_output_ports,
+                                           depth_width=self.app_ctrl_depth_width)
             self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
-                        clk=self._clk,
-                        rst_n=self._rst_n,
-                        wen_in=self._to_iac_valid,  # self._port_wens & self._to_iac_valid,  # Gets valid and the ack
-                        ren_in=self._ren_out_reduced,
-                        tb_valid=kts.const(0, 1),
-                        ren_update=self._ack_reduced,
-                        wen_out=self._arb_wen_en,
-                        ren_out=self._arb_ren_en)
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           wen_in=self._to_iac_valid,  # self._port_wens & self._to_iac_valid,  # Gets valid and the ack
+                           ren_in=self._ren_out_reduced,
+                           tb_valid=kts.const(0, 1),
+                           ren_update=self._ack_reduced,
+                           wen_out=self._arb_wen_en,
+                           ren_out=self._arb_ren_en)
 
         self._ren_out_reduced = self.var("ren_out_reduced",
                                          self.interconnect_output_ports)
