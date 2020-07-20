@@ -79,6 +79,10 @@ class StrgUB(Generator):
                                    packed=True,
                                    explicit_array=True)
 
+        # Create cycle counter to share...
+        self._cycle_count = self.var("cycle_count", 16)
+        self.add_code(self.increment_cycle_count)
+
         # outputs
         self._data_out = self.output("data_out", data_width,
                                      size=self.interconnect_output_ports,
@@ -178,6 +182,7 @@ class StrgUB(Generator):
                            newSG,
                            clk=self._clk,
                            rst_n=self._rst_n,
+                           cycle_count=self._cycle_count,
                            valid_output=self._agg_write[i])
 
             newAG = AddrGen(iterator_support=4,
@@ -224,6 +229,7 @@ class StrgUB(Generator):
                                 config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
+                       cycle_count=self._cycle_count,
                        valid_output=self._write)
 
         self.add_child(f"output_addr_gen",
@@ -239,6 +245,7 @@ class StrgUB(Generator):
                                 config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
+                       cycle_count=self._cycle_count,
                        valid_output=self._read)
 
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
@@ -286,6 +293,7 @@ class StrgUB(Generator):
                                     config_width=16),
                            clk=self._clk,
                            rst_n=self._rst_n,
+                           cycle_count=self._cycle_count,
                            valid_output=self._tb_read[i])
 
         if self.interconnect_output_ports > 1:
@@ -346,6 +354,12 @@ class StrgUB(Generator):
     def tb_to_out(self, idx):
         self._data_out[idx] = self._tb[idx][self._tb_read_addr[idx][3, 2]][self._tb_read_addr[idx][1, 0]]
 
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def increment_cycle_count(self):
+        if ~self._rst_n:
+            self._cycle_count = 0
+        else:
+            self._cycle_count = self._cycle_count + 1
 
 if __name__ == "__main__":
     lake_dut = StrgUB()

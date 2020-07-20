@@ -30,7 +30,7 @@ class SchedGen(Generator):
 
         # VARS
         self._valid_out = self.var("valid_out", 1)
-        self._cycle_num = self.var("cycle_num", self.config_width)
+        self._cycle_count = self.input("cycle_count", self.config_width)
         self._addr_out = self.var("addr_out", self.config_width)
 
         # PORT DEFS: end
@@ -46,11 +46,11 @@ class SchedGen(Generator):
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
-        self.add_code(self.set_cycle_num)
+        # self.add_code(self.set_cycle_num)
 
     @always_comb
     def set_valid_out(self):
-        if self._cycle_num == self._addr_out:
+        if self._cycle_count == self._addr_out:
             self._valid_out = 1
         else:
             self._valid_out = 0
@@ -59,12 +59,12 @@ class SchedGen(Generator):
     def set_valid_output(self):
         self._valid_output = self._valid_out
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def set_cycle_num(self):
-        if ~self._rst_n:
-            self._cycle_num = 0
-        else:
-            self._cycle_num = self._cycle_num + 1
+    # @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    # def set_cycle_num(self):
+    #     if ~self._rst_n:
+    #         self._cycle_num = 0
+    #     else:
+    #         self._cycle_num = self._cycle_num + 1
 
 
 if __name__ == "__main__":
