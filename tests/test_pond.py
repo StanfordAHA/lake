@@ -122,6 +122,8 @@ def test_pond(data_width=16,  # CGRA Params
 
     rand.seed(0)
     tester.circuit.clk = 0
+    tester.circuit.clk_en = 1
+    tester.circuit.tile_en = 1
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1
@@ -152,7 +154,7 @@ def test_pond(data_width=16,  # CGRA Params
         tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
         tester.circuit.ren_en = ren_en
-        tester.circuit.ren = ren
+        tester.circuit.ren_in = ren
 
         tester.eval()
 
@@ -162,11 +164,11 @@ def test_pond(data_width=16,  # CGRA Params
 
         if(interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
-            tester.circuit.wen = valid_in[0]
+            tester.circuit.wen_in = valid_in[0]
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
-                tester.circuit.wen[j] = valid_in[j]
+                tester.circuit.wen_in[j] = valid_in[j]
 
         tester.eval()
         tester.step(2)

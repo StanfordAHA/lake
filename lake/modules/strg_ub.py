@@ -160,6 +160,8 @@ class StrgUB(Generator):
                                             size=self.banks,
                                             explicit_array=True,
                                             packed=True)
+
+        # We need to signal valids out of the agg buff, only if one exists...
         if self.agg_height > 0:
             self._to_iac_valid = self.var("ab_to_mem_valid",
                                           self.interconnect_input_ports)
@@ -183,6 +185,9 @@ class StrgUB(Generator):
                                                self.fw_int),
                                          packed=True,
                                          explicit_array=True)
+
+        # If we can perform a read and a write on the same cycle,
+        # this will necessitate a separate read and write address...
         if self.rw_same_cycle:
             self._wr_addr_out = self.output("wr_addr_out",
                                             self.address_width,
@@ -236,41 +241,45 @@ class StrgUB(Generator):
                                 depth_width=self.app_ctrl_depth_width,
                                 sprt_stcl_valid=True,
                                 stcl_iter_support=self.stcl_valid_iter)
-        self.add_child("app_ctrl", self.app_ctrl,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       wen_in=self._wen_in,
-                       ren_in=self._ren_in,
-                       ren_update=self._tb_valid_out,
-                       valid_out_data=self._valid_out,
-                       # valid_out_stencil=,
-                       wen_out=self._wen,
-                       ren_out=self._ren)
 
+        # Some refactoring here for pond to get rid of app controllers...
+        # This is honestly pretty messy and should clean up nicely when we have the spec...
         if self.num_tb == 0 or self.remove_tb:
-            self.wire(self.app_ctrl.ports.tb_valid, self._valid_out_alt)
+            self.wire(self._wen, self._wen_in)
+            self.wire(self._ren, self._ren_in)
+            self.wire(self._valid_out, self._valid_out_alt)
+            self.wire(self._arb_wen_en, self._wen)
+            self.wire(self._arb_ren_en, self._ren)
         else:
+            self.add_child("app_ctrl", self.app_ctrl,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           wen_in=self._wen_in,
+                           ren_in=self._ren_in,
+                           #    ren_update=self._tb_valid_out,
+                           valid_out_data=self._valid_out,
+                           # valid_out_stencil=,
+                           wen_out=self._wen,
+                           ren_out=self._ren)
+
             self.wire(self.app_ctrl.ports.tb_valid, self._tb_valid_out)
+            self.wire(self.app_ctrl.ports.ren_update, self._tb_valid_out)
+
+            self.app_ctrl_coarse = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
+                                           interconnect_output_ports=self.interconnect_output_ports,
+                                           depth_width=self.app_ctrl_depth_width)
+            self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           wen_in=self._to_iac_valid,  # self._port_wens & self._to_iac_valid,  # Gets valid and the ack
+                           ren_in=self._ren_out_reduced,
+                           tb_valid=kts.const(0, 1),
+                           ren_update=self._ack_reduced,
+                           wen_out=self._arb_wen_en,
+                           ren_out=self._arb_ren_en)
 
         self._ren_out_reduced = self.var("ren_out_reduced",
                                          self.interconnect_output_ports)
-
-        self.app_ctrl_coarse = AppCtrl(interconnect_input_ports=self.interconnect_input_ports,
-                                       interconnect_output_ports=self.interconnect_output_ports,
-                                       depth_width=self.app_ctrl_depth_width)
-        self.add_child("app_ctrl_coarse", self.app_ctrl_coarse,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       wen_in=self._to_iac_valid,  # self._port_wens & self._to_iac_valid,  # Gets valid and the ack
-                       ren_in=self._ren_out_reduced,
-                       tb_valid=kts.const(0, 1),
-                       # ren_update=kts.concat(*([kts.const(1, 1)] * self.interconnect_output_ports)),
-                       ren_update=self._ack_reduced,
-                       # valid_out_data=self._valid_out,
-                       # valid_out_stencil=,
-                       wen_out=self._arb_wen_en,
-                       ren_out=self._arb_ren_en)
-
         ###########################
         ##### INPUT AGG SCHED #####
         ###########################
@@ -729,6 +738,8 @@ class StrgUB(Generator):
                 for i in range(self.interconnect_output_ports):
                     self.wire(self._data_out[i], self._tb_data_out[i])
                     # self.wire(self._valid_out[i], self._tb_valid_out[i])
+            else:
+                self.wire(self._valid_out, self._valid_out_alt)
 
         ####################
         ##### ADD CODE #####
