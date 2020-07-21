@@ -21,7 +21,7 @@ def test_pond(data_width=16,  # CGRA Params
               read_delay=0,  # Cycle delay in read (SRAM vs Register File)
               rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
               agg_height=0,
-              transpose_height=0, # new field 
+              transpose_height=0,  # new field
               max_agg_schedule=64,
               input_max_port_sched=64,
               output_max_port_sched=64,
@@ -29,7 +29,7 @@ def test_pond(data_width=16,  # CGRA Params
               max_line_length=2048,
               max_tb_height=1,
               tb_range_max=2048,
-              tb_range_inner_max=5, # new field
+              tb_range_inner_max=5,  # new field
               tb_sched_max=64,
               max_tb_stride=15,
               num_tb=0,
@@ -53,7 +53,7 @@ def test_pond(data_width=16,  # CGRA Params
     new_config["strg_ub_input_addr_ctrl_address_gen_1_dimensionality"] = 2
     new_config["strg_ub_input_addr_ctrl_address_gen_1_starting_addr"] = 16
     new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_0"] = 16
-    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_0"] = 1 
+    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_0"] = 1
     new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_1"] = 100
     new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_1"] = 0
 
@@ -68,28 +68,28 @@ def test_pond(data_width=16,  # CGRA Params
     new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
     new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 16
     new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1 
+    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
     new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 100
     new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 0
 
     # These ports are desynched
     # new_config["strg_ub_sync_grp_sync_group_0"] = 1  # not needed
-    # new_config["strg_ub_sync_grp_sync_group_1"] = 2  # not needed 
-    
-    new_config["strg_ub_app_ctrl_read_depth_0"]  = 16
-    new_config["strg_ub_app_ctrl_read_depth_1"]  = 16 
+    # new_config["strg_ub_sync_grp_sync_group_1"] = 2  # not needed
+
+    new_config["strg_ub_app_ctrl_read_depth_0"] = 16
+    new_config["strg_ub_app_ctrl_read_depth_1"] = 16
 
     new_config["strg_ub_app_ctrl_write_depth_0"] = 16
     new_config["strg_ub_app_ctrl_write_depth_1"] = 16
 
-    new_config["strg_ub_app_ctrl_coarse_read_depth_0"]  = 16
-    new_config["strg_ub_app_ctrl_coarse_read_depth_1"]  = 0 
+    new_config["strg_ub_app_ctrl_coarse_read_depth_0"] = 16
+    new_config["strg_ub_app_ctrl_coarse_read_depth_1"] = 0
 
     new_config["strg_ub_app_ctrl_coarse_write_depth_0"] = 16
     new_config["strg_ub_app_ctrl_coarse_write_depth_1"] = 16
 
     new_config["strg_ub_app_ctrl_write_depth_ss_0"] = 16
-    new_config["strg_ub_app_ctrl_write_depth_ss_0"] = 16 
+    new_config["strg_ub_app_ctrl_write_depth_ss_0"] = 16
 
     # Don't use the model - this is handwritten for now
 
@@ -115,7 +115,7 @@ def test_pond(data_width=16,  # CGRA Params
                      max_line_length=max_line_length,
                      max_tb_height=max_tb_height,
                      tb_range_max=tb_range_max,
-                     tb_range_inner_max=tb_range_inner_max, 
+                     tb_range_inner_max=tb_range_inner_max,
                      tb_sched_max=tb_sched_max,
                      max_tb_stride=max_tb_stride,
                      num_tb=num_tb,
@@ -147,32 +147,32 @@ def test_pond(data_width=16,  # CGRA Params
     tester.circuit.rst_n = 1
     tester.step(2)
     tester.circuit.clk_en = 1
-    
+
     data_in = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     wen_en = 0
     ren_en = 0
     addr_in = 0
     ren = 0
-    #data_in[1] = 15
+    # data_in[1] = 15
     for i in range(32):
         # Incrementing Data
         data_in[0] = data_in[0] + 1
-        #data_in[1] = data_in[1] + 1 
+        # data_in[1] = data_in[1] + 1
 
         wen_en = 3
-        wen    = 3
+        wen = 3
 
         ren_en = 0
-        ren    = 0
-        
-        if i >=16:
-            wen_en      = 0
-            wen         = 0 
-            ren_en      = 3 
-            ren         = 3 
+        ren = 0
 
-        #tester.circuit.addr_in = addr_in
+        if i >= 16:
+            wen_en = 0
+            wen = 0
+            ren_en = 3
+            ren = 3
+
+        # tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
         tester.circuit.wen_in = wen
         tester.circuit.ren_en = ren_en
@@ -182,8 +182,8 @@ def test_pond(data_width=16,  # CGRA Params
             tester.circuit.data_in = data_in[0]
         else:
             for j in range(interconnect_input_ports):
-               setattr(tester.circuit, f"data_in_{j}", data_in[j])
-        #print("data0 and data1", data_in[0], data_in[1])
+                setattr(tester.circuit, f"data_in_{j}", data_in[j])
+        # print("data0 and data1", data_in[0], data_in[1])
         tester.eval()
         tester.step(2)
 
