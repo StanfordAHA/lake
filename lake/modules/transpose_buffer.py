@@ -22,7 +22,8 @@ class TransposeBuffer(Generator):
                  max_range,
                  max_range_inner,
                  max_stride,
-                 tb_iterator_support):
+                 tb_iterator_support,
+                 num_tiles=1):
         super().__init__("transpose_buffer", debug=True)
 
         #########################
@@ -37,6 +38,7 @@ class TransposeBuffer(Generator):
         self.max_range_inner = max_range_inner
         self.max_stride = max_stride
         self.tb_iterator_support = tb_iterator_support
+        self.num_tiles = num_tiles
 
         ##################################
         # BITS FOR GENERATION PARAMETERS #
@@ -75,7 +77,8 @@ class TransposeBuffer(Generator):
         self.ack_in = self.input("ack_in", 1)
         self.ren = self.input("ren", 1)
 
-        self.mem_valid_data = self.input("mem_valid_data", 1)
+        if self.num_tiles > 1:
+            self.mem_valid_data = self.input("mem_valid_data", 1)
 
         ###########################
         # CONFIGURATION REGISTERS #
@@ -148,7 +151,8 @@ class TransposeBuffer(Generator):
                                size=[2 * self.max_tb_height, self.fetch_width],
                                packed=True)
 
-        self.tb_valid = self.var("tb_valid", 2 * self.max_tb_height)
+        if self.num_tiles > 1:
+            self.tb_valid = self.var("tb_valid", 2 * self.max_tb_height)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
         self.index_inner = self.var("index_inner", self.max_range_inner_bits)
@@ -194,6 +198,8 @@ class TransposeBuffer(Generator):
         self.add_code(self.set_row_index)
         self.add_code(self.set_input_buf_index)
         self.add_code(self.input_to_tb)
+        if self.num_tiles > 1:
+            self.add_code(self.set_tb_valid)
         self.add_code(self.output_from_tb)
         self.add_code(self.set_output_valid)
         self.add_code(self.set_out_buf_index)
@@ -321,9 +327,16 @@ class TransposeBuffer(Generator):
         if self.valid_data:
             if self.dimensionality == 0:
                 self.tb[self.input_index] = 0
-                self.tb_valid[self.input_index] = 0
             else:
                 self.tb[self.input_index] = self.input_data
+
+    # follows same structure as input_to_tb
+    @always_ff((posedge, "clk"))
+    def set_tb_valid(self):
+        if self.valid_data:
+            if self.dimensionality == 0:
+                self.tb_valid[self.input_index] = 0
+            else:
                 self.tb_valid[self.input_index] = self.mem_valid_data
 
     # get relative output column index from absolute output column index
@@ -401,10 +414,13 @@ class TransposeBuffer(Generator):
 
     @always_comb
     def set_mask_valid(self):
-        if (self.out_buf_index ^ self.switch_out_buf):
-            self.mask_valid = self.tb_valid[0]
+        if self.num_tiles > 1:
+            if (self.out_buf_index ^ self.switch_out_buf):
+                self.mask_valid = self.tb_valid[0]
+            else:
+                self.mask_valid = self.tb_valid[1]
         else:
-            self.mask_valid = self.tb_valid[1]
+            self.mask_valid = 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_out_buf_index(self):

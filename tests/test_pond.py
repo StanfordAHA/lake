@@ -174,10 +174,11 @@ def test_pond(data_width=16,  # CGRA Params
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir="pond"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":

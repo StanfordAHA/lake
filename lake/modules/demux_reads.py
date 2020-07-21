@@ -11,7 +11,8 @@ class DemuxReads(Generator):
                  data_width=16,
                  banks=1,
                  int_out_ports=2,
-                 strg_rd_ports=2):
+                 strg_rd_ports=2,
+                 num_tiles=1):
 
         assert not (fetch_width & (fetch_width - 1)), "Memory width needs to be a power of 2"
 
@@ -23,6 +24,7 @@ class DemuxReads(Generator):
         self.int_out_ports = int_out_ports
         self.banks = banks
         self.strg_rd_ports = strg_rd_ports
+        self.num_tiles = num_tiles
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -54,8 +56,9 @@ class DemuxReads(Generator):
         self._valid_out = self.output("valid_out",
                                       self.int_out_ports)
 
-        self._mem_valid_data = self.input("mem_valid_data", self.banks * self.strg_rd_ports)
-        self._mem_valid_data_out = self.output("mem_valid_data_out", self.int_out_ports)
+        if self.num_tiles > 1:
+            self._mem_valid_data = self.input("mem_valid_data", self.banks * self.strg_rd_ports)
+            self._mem_valid_data_out = self.output("mem_valid_data_out", self.int_out_ports)
 
         # Vars
         self._done = self.var("done", self.int_out_ports)
@@ -68,14 +71,19 @@ class DemuxReads(Generator):
             self._valid_out[i] = 0
             self._data_out[i] = 0
             self._done[i] = 0
-            self._mem_valid_data_out[i] = 0
+            if self.num_tiles > 1:
+                self._mem_valid_data_out[i] = 0
             for j in range(self.banks * self.strg_rd_ports):
                 if ~self._done[i]:
                     if self._valid_in[j] & self._port_in[j][i]:
                         self._valid_out[i] = 1
                         self._data_out[i] = self._data_in[j]
-                        self._mem_valid_data_out[i] = self._mem_valid_data[j]
                         self._done[i] = 1
+                        # condition is dependent on self._done set here, so this needs
+                        # to be in the same code and can't separate out into separate
+                        # always_comb block
+                        if self.num_tiles > 1:
+                            self._mem_valid_data_out[i] = self._mem_valid_data[j]
 
 
 if __name__ == "__main__":

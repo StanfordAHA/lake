@@ -14,13 +14,15 @@ class Prefetcher(Generator):
     def __init__(self,
                  fetch_width,
                  data_width,
-                 max_prefetch):
+                 max_prefetch,
+                 num_tiles=1):
         super().__init__("prefetcher")
         # Capture to the object
         self.fetch_width = fetch_width
         self.data_width = data_width
         self.fw_int = int(self.fetch_width / self.data_width)
         self.max_prefetch = max_prefetch
+        self.num_tiles = num_tiles
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -32,8 +34,10 @@ class Prefetcher(Generator):
                                    size=self.fw_int,
                                    explicit_array=True,
                                    packed=True)
-        self._mem_valid_data = self.input("mem_valid_data", 1)
-        self._mem_valid_data_out = self.output("mem_valid_data_out", 1)
+
+        if self.num_tiles > 1:
+            self._mem_valid_data = self.input("mem_valid_data", 1)
+            self._mem_valid_data_out = self.output("mem_valid_data_out", 1)
 
         self._valid_read = self.input("valid_read", 1)
         self._tba_rdy_in = self.input("tba_rdy_in", 1)
@@ -64,21 +68,35 @@ class Prefetcher(Generator):
 
         reg_fifo = RegFIFO(data_width=self.data_width,
                            width_mult=self.fw_int,
-                           depth=self.max_prefetch)
+                           depth=self.max_prefetch,
+                           num_tiles=self.num_tiles)
 
-        self.add_child("fifo", reg_fifo,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       clk_en=1,
-                       data_in=self._data_in,
-                       mem_valid_data=self._mem_valid_data,
-                       mem_valid_data_out=self._mem_valid_data_out,
-                       data_out=self._data_out,
-                       push=self._valid_read,
-                       pop=self._tba_rdy_in,
-                       empty=self._fifo_empty,
-                       full=self._fifo_full,
-                       valid=self._valid_out)
+        if self.num_tiles > 1:
+            self.add_child("fifo", reg_fifo,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           clk_en=1,
+                           data_in=self._data_in,
+                           mem_valid_data=self._mem_valid_data,
+                           mem_valid_data_out=self._mem_valid_data_out,
+                           data_out=self._data_out,
+                           push=self._valid_read,
+                           pop=self._tba_rdy_in,
+                           empty=self._fifo_empty,
+                           full=self._fifo_full,
+                           valid=self._valid_out)
+        else:
+            self.add_child("fifo", reg_fifo,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           clk_en=1,
+                           data_in=self._data_in,
+                           data_out=self._data_out,
+                           push=self._valid_read,
+                           pop=self._tba_rdy_in,
+                           empty=self._fifo_empty,
+                           full=self._fifo_full,
+                           valid=self._valid_out)
 
         # Generate
         self.add_code(self.update_cnt)
@@ -101,5 +119,6 @@ class Prefetcher(Generator):
 if __name__ == "__main__":
     align_dut = Prefetcher(fetch_width=32,
                            data_width=16,
-                           max_prefetch=64)
+                           max_prefetch=64,
+                           num_tiles=1)
     verilog(align_dut, filename="prefetcher.sv")

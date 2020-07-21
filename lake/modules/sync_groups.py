@@ -10,7 +10,8 @@ class SyncGroups(Generator):
     def __init__(self,
                  fetch_width,
                  data_width,
-                 int_out_ports):
+                 int_out_ports,
+                 num_tiles):
 
         assert not (fetch_width & (fetch_width - 1)), "Memory width needs to be a power of 2"
 
@@ -20,6 +21,7 @@ class SyncGroups(Generator):
         self.data_width = data_width
         self.fw_int = int(self.fetch_width / self.data_width)
         self.int_out_ports = int_out_ports
+        self.num_tiles = num_tiles
         self.groups = self.int_out_ports
 
         # Clock and Reset
@@ -37,11 +39,12 @@ class SyncGroups(Generator):
                                    explicit_array=True,
                                    packed=True)
 
-        self._mem_valid_data = self.input("mem_valid_data",
-                                          self.int_out_ports)
+        if self.num_tiles > 1:
+            self._mem_valid_data = self.input("mem_valid_data",
+                                              self.int_out_ports)
 
-        self._mem_valid_data_out = self.output("mem_valid_data_out",
-                                               self.int_out_ports)
+            self._mem_valid_data_out = self.output("mem_valid_data_out",
+                                                   self.int_out_ports)
 
         self._valid_in = self.input("valid_in",
                                     self.int_out_ports)
@@ -148,6 +151,9 @@ class SyncGroups(Generator):
         self.add_code(self.set_sync_valid)
         for i in range(self.int_out_ports):
             self.add_code(self.set_sync_stage, idx=i)
+        if self.num_tiles > 1:
+            for i in range(self.int_out_ports):
+                self.add_code(self.set_mem_valid_data, idx=i)
         self.add_code(self.set_out_valid)
         self.add_code(self.set_reduce_gate)
         for i in range(self.groups):
@@ -181,17 +187,24 @@ class SyncGroups(Generator):
         if ~self._rst_n:
             self._data_reg[idx] = 0
             self._valid_reg[idx] = 0
-            self._mem_valid_data_out[idx] = 0
         # Absorb input data if the whole group is valid
         elif (self._sync_valid & self._sync_group[idx]).r_or():
             self._data_reg[idx] = self._data_in[idx]
-            self._mem_valid_data_out[idx] = self._mem_valid_data[idx]
             self._valid_reg[idx] = self._valid_in[idx]
         # Also absorb input data if not currently holding a valid
         elif ~self._valid_reg[idx]:
             self._data_reg[idx] = self._data_in[idx]
-            self._mem_valid_data_out[idx] = self._mem_valid_data[idx]
             self._valid_reg[idx] = self._valid_in[idx]
+
+    # follows same structure as set_sync_stage
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def set_mem_valid_data(self, idx):
+        if ~self._rst_n:
+            self._mem_valid_data_out[idx] = 0
+        elif (self._sync_valid & self._sync_group[idx]).r_or():
+            self._mem_valid_data_out[idx] = self._mem_valid_data[idx]
+        elif ~self._valid_reg[idx]:
+            self._mem_valid_data_out[idx] = self._mem_valid_data[idx]
 
     @always_comb
     def set_out_valid(self):

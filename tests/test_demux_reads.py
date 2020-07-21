@@ -12,7 +12,8 @@ import random as rand
 def test_demux_reads_basic(fetch_width=32,
                            data_width=16,
                            banks=2,
-                           int_out_ports=2):
+                           int_out_ports=2,
+                           num_tiles=1):
 
     fw_int = int(fetch_width / data_width)
 
@@ -30,7 +31,8 @@ def test_demux_reads_basic(fetch_width=32,
     dut = DemuxReads(fetch_width=fetch_width,
                      data_width=data_width,
                      banks=banks,
-                     int_out_ports=int_out_ports)
+                     int_out_ports=int_out_ports,
+                     num_tiles=num_tiles)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_flip_flop_always_ff=False)
@@ -76,7 +78,8 @@ def test_demux_reads_basic(fetch_width=32,
 
         for i in range(banks):
             tester.circuit.valid_in[i] = valid_in[i]
-            tester.circuit.mem_valid_data[i] = mem_valid_data[i]
+            if num_tiles > 1:
+                tester.circuit.mem_valid_data[i] = mem_valid_data[i]
             setattr(tester.circuit, f"port_in_{i}", port_in_hw[i])
             for j in range(fw_int):
                 setattr(tester.circuit, f"data_in_{i}_{j}", data_in[i][j])
@@ -87,7 +90,8 @@ def test_demux_reads_basic(fetch_width=32,
             for j in range(fw_int):
                 getattr(tester.circuit, f"data_out_{i}_{j}").expect(model_dat[i][j])
             tester.circuit.valid_out[i].expect(model_val[i])
-            tester.circuit.mem_valid_data_out[i].expect(model_mem_valid_data_out[i])
+            if num_tiles > 1:
+                tester.circuit.mem_valid_data_out[i].expect(model_mem_valid_data_out[i])
 
         tester.step(2)
 
