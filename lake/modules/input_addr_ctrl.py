@@ -254,13 +254,14 @@ class InputAddrCtrl(Generator):
                     self._addresses[i][0] = self._local_addrs[0][0][self.mem_addr_width - 1, 0]
                 # Check to write data from other interconnect input ports (other than first)
                 # If this input port is active on this bank...
-                elif self._wen_reduced_saved[self._counter + 1][i]:
-                    self._done[i][0] = 1
-                    # This should only go through if the wen_en is on...
-                    self._wen[i][0] = self._wen_en_saved[self._counter + 1]
-                    self._port_out_exp[i][self._counter + 1] = 1
-                    self._data_out[i][0] = self._data_in_saved[self._counter + 1]
-                    self._addresses[i][0] = self._local_addrs_saved[self._counter + 1][0][self.mem_addr_width - 1, 0]
+                elif self.interconnect_input_ports > 1:
+                    if self._wen_reduced_saved[self._counter + 1][i]:
+                        self._done[i][0] = 1
+                        # This should only go through if the wen_en is on...
+                        self._wen[i][0] = self._wen_en_saved[self._counter + 1]
+                        self._port_out_exp[i][self._counter + 1] = 1
+                        self._data_out[i][0] = self._data_in_saved[self._counter + 1]
+                        self._addresses[i][0] = self._local_addrs_saved[self._counter + 1][0][self.mem_addr_width - 1, 0]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def save_mult_int_signals(self):
