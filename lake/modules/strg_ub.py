@@ -244,6 +244,9 @@ class StrgUB(Generator):
 
         # Some refactoring here for pond to get rid of app controllers...
         # This is honestly pretty messy and should clean up nicely when we have the spec...
+        self._ren_out_reduced = self.var("ren_out_reduced",
+                                         self.interconnect_output_ports)
+
         if self.num_tb == 0 or self.remove_tb:
             self.wire(self._wen, self._wen_in)
             self.wire(self._ren, self._ren_in)
@@ -278,8 +281,6 @@ class StrgUB(Generator):
                            wen_out=self._arb_wen_en,
                            ren_out=self._arb_ren_en)
 
-        self._ren_out_reduced = self.var("ren_out_reduced",
-                                         self.interconnect_output_ports)
         ###########################
         ##### INPUT AGG SCHED #####
         ###########################
