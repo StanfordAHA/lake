@@ -777,7 +777,8 @@ class StrgUB(Generator):
                                                      max_range=self.tb_range_max,
                                                      max_range_inner=self.tb_range_inner_max,
                                                      max_stride=self.max_tb_stride,
-                                                     tb_iterator_support=self.tb_iterator_support)
+                                                     tb_iterator_support=self.tb_iterator_support,
+                                                     num_tiles=self.num_tiles)
 
                     if self.num_tiles > 1:
                         self.add_child(f"tba_{i}", tba,

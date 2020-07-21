@@ -21,7 +21,8 @@ class StrgFIFO(Generator):
                  memory_width=64,
                  rw_same_cycle=False,
                  read_delay=1,
-                 addr_width=9):
+                 addr_width=9,
+                 num_tiles=1):
         super().__init__("strg_fifo")
 
         # Generation parameters
@@ -32,6 +33,7 @@ class StrgFIFO(Generator):
         self.read_delay = read_delay
         self.addr_width = addr_width
         self.fw_int = int(self.memory_width / self.data_width)
+        self.num_tiles = num_tiles
 
         # assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
         #     "Can't sustain throughput with this setup. Need potential bandwidth for " + \
@@ -123,7 +125,8 @@ class StrgFIFO(Generator):
                                  width_mult=1,
                                  depth=self.fw_int,
                                  parallel=True,
-                                 break_out_rd_ptr=True)
+                                 break_out_rd_ptr=True,
+                                 num_tiles=self.num_tiles)
 
         # This one breaks out the read pointer so we can properly
         # reorder the data to storage
@@ -168,7 +171,8 @@ class StrgFIFO(Generator):
                                 width_mult=1,
                                 depth=self.fw_int,
                                 parallel=True,
-                                break_out_rd_ptr=False)
+                                break_out_rd_ptr=False,
+                                num_tiles=self.num_tiles)
 
         self._fw_is_1 = self.var("fw_is_1", 1)
         self.wire(self._fw_is_1, kts.const(self.fw_int == 1, 1))

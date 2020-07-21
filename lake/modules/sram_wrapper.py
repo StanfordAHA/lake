@@ -33,18 +33,20 @@ class SRAMWrapper(Generator):
         self.bank_num = bank_num
         self.num_tiles = num_tiles
 
-        self.chain_idx_bits = max(1, clog2(num_tiles))
+        if self.num_tiles > 1:
+            self.chain_idx_bits = max(1, clog2(num_tiles))
 
         self._gclk = self.clock("clk")
 
         # Chaining related signals
-        self._enable_chain_input = self.input("enable_chain_input", 1)
-        self._enable_chain_output = self.input("enable_chain_output", 1)
+        if self.num_tiles > 1:
+            self._enable_chain_input = self.input("enable_chain_input", 1)
+            self._enable_chain_output = self.input("enable_chain_output", 1)
 
-        self._chain_idx_input = self.input("chain_idx_input", self.chain_idx_bits)
-        self._chain_idx_output = self.input("chain_idx_output", self.chain_idx_bits)
-        self._chain_idx_tile = self.var("chain_idx_tile", self.chain_idx_bits)
-        self._valid_data = self.output("valid_data", self.mem_output_ports)
+            self._chain_idx_input = self.input("chain_idx_input", self.chain_idx_bits)
+            self._chain_idx_output = self.input("chain_idx_output", self.chain_idx_bits)
+            self._chain_idx_tile = self.var("chain_idx_tile", self.chain_idx_bits)
+            self._valid_data = self.output("valid_data", self.mem_output_ports)
 
         self._clk_en = self.input("clk_en", 1)
 
@@ -182,11 +184,12 @@ class SRAMWrapper(Generator):
                                sram_wtsel=self._wtsel,
                                sram_rtsel=self._rtsel)
 
-        self.add_code(self.set_chain_idx_tile)
+        if self.num_tiles > 1:
+            self.add_code(self.set_chain_idx_tile)
+            self.add_code(self.set_valid_data)
         self.add_code(self.set_mem_addr)
         self.add_code(self.set_chain_wen)
         self.add_code(self.set_chain_cen)
-        self.add_code(self.set_valid_data)
 
     @always_comb
     def set_chain_idx_tile(self):
@@ -200,14 +203,14 @@ class SRAMWrapper(Generator):
     @always_comb
     def set_mem_addr(self):
         # these ranges are inclusive
-        if num_tiles == 1:
+        if self.num_tiles == 1:
             self._mem_addr_to_sram = self._mem_addr_in_bank
         else:
             self._mem_addr_to_sram = self._mem_addr_in_bank[self.address_width - self.chain_idx_bits - 1, 0]
 
     @always_comb
     def set_chain_wen(self):
-        if (self.num_tiles == 1):
+        if self.num_tiles == 1:
             self._mem_wen_in_bank_chain = self._mem_wen_in_bank
         elif ~self._enable_chain_input:
             self._mem_wen_in_bank_chain = self._mem_wen_in_bank

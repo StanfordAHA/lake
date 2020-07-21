@@ -349,10 +349,11 @@ class LakeTop(Generator):
                                     explicit_array=True,
                                     packed=True)
 
-        self._mem_valid_data = self.var("mem_valid_data", self.mem_output_ports,
-                                        size=self.banks,
-                                        explicit_array=True,
-                                        packed=True)
+        if self.num_tiles > 1:
+            self._mem_valid_data = self.var("mem_valid_data", self.mem_output_ports,
+                                            size=self.banks,
+                                            explicit_array=True,
+                                            packed=True)
 
         self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
                                     size=self.banks,
@@ -672,7 +673,8 @@ class LakeTop(Generator):
                             memory_width=self.mem_width,
                             rw_same_cycle=False,
                             read_delay=self.read_delay,
-                            addr_width=self.address_width)
+                            addr_width=self.address_width,
+                            num_tiles=self.num_tiles)
             self.add_child("fifo_ctrl", stfo,
                            clk=self._gclk,
                            rst_n=self._rst_n,
@@ -759,8 +761,7 @@ class LakeTop(Generator):
                                    mem_cen_in_bank=self._mem_cen_in[i],
                                    mem_wen_in_bank=self._mem_wen_in[i],
                                    wtsel=self.sram_macro_info.wtsel_value,
-                                   rtsel=self.sram_macro_info.rtsel_value,
-                                   valid_data=self._mem_valid_data[i])
+                                   rtsel=self.sram_macro_info.rtsel_value)
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)

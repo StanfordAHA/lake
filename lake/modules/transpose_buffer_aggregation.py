@@ -87,7 +87,7 @@ class TransposeBufferAggregation(Generator):
                                      packed=True)
 
         for i in range(self.num_tb):
-            if self.num_tb > 1:
+            if self.num_tiles > 1:
                 self.add_child(f"tb_{i}",
                                TransposeBuffer(self.word_width,
                                                self.fetch_width,
