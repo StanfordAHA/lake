@@ -119,10 +119,10 @@ class LakeTop(Generator):
         if self.num_tiles > 1:
             self._enable_chain_input = self.input("enable_chain_input", 1)
             self._enable_chain_input.add_attribute(ConfigRegAttr("Enable chain on input"))
-    
+
             self._enable_chain_output = self.input("enable_chain_output", 1)
             self._enable_chain_output.add_attribute(ConfigRegAttr("Enable chain on output"))
-    
+
             self._chain_idx_input = self.input("chain_idx_input",
                                                self.chain_idx_bits)
             self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
@@ -134,7 +134,7 @@ class LakeTop(Generator):
             self._chain_valid_in = self.input("chain_valid_in",
                                               self.interconnect_output_ports)
             self._chain_valid_in.add_attribute(ControlSignalAttr(True))
-    
+
             self._chain_data_in = self.input("chain_data_in",
                                              self.data_width,
                                              size=self.interconnect_output_ports,
@@ -549,7 +549,7 @@ class LakeTop(Generator):
                            enable_chain_output=self._enable_chain_output,
                            chain_idx_output=self._chain_idx_output)
         else:
-             self.add_child("strg_ub", strg_ub,
+            self.add_child("strg_ub", strg_ub,
                            # clk + rst
                            clk=self._gclk,
                            rst_n=self._rst_n,

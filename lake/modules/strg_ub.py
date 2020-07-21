@@ -586,7 +586,7 @@ class StrgUB(Generator):
                                         packed=True)
         self._arb_valid_out_f = self.var("arb_valid_out_f", self.mem_output_ports * self.banks)
         if self.num_tiles > 1:
-            self._arb_mem_valid_data_f = self.var("arb_mem_valid_data_f", 
+            self._arb_mem_valid_data_f = self.var("arb_mem_valid_data_f",
                                                   self.mem_output_ports * self.banks)
 
             self._arb_mem_valid_data_out = self.var("arb_mem_valid_data_out",
@@ -755,7 +755,6 @@ class StrgUB(Generator):
                                        data_out=self._data_to_tba[i],
                                        valid_out=self._valid_to_tba[i],
                                        prefetch_step=self._prefetch_step[i])
-
 
                     #############################
                     ##### TRANSPOSE BUFFERS #####
