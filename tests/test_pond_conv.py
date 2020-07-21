@@ -38,7 +38,8 @@ def test_pond(data_width=16,  # CGRA Params
               max_prefetch=64,
               config_data_width=16,
               config_addr_width=8,
-              remove_tb=True):
+              remove_tb=True,
+              num_tiles=1):
 
     new_config = {}
 
@@ -125,7 +126,8 @@ def test_pond(data_width=16,  # CGRA Params
                      config_data_width=config_data_width,
                      config_addr_width=config_addr_width,
                      remove_tb=remove_tb,
-                     fifo_mode=False)
+                     fifo_mode=False,
+                     num_tiles=num_tiles)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
