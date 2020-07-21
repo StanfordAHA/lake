@@ -708,7 +708,7 @@ class StrgUB(Generator):
                 if self.num_tb == 0:
                     assert self.fw_int == 1, \
                         "If no transpose buffer, data width needs match memory width"
-                    if self.num_tb > 1:
+                    if self.num_tiles > 1:
                         self.add_child(f"pre_fetch_{i}", pref,
                                        clk=self._clk,
                                        rst_n=self._rst_n,
@@ -733,7 +733,7 @@ class StrgUB(Generator):
 
                     self.wire(self._data_out[i], pref.ports.data_out[0])
                 else:
-                    if self.num_tb > 1:
+                    if self.num_tiles > 1:
                         self.add_child(f"pre_fetch_{i}", pref,
                                        clk=self._clk,
                                        rst_n=self._rst_n,
