@@ -261,7 +261,8 @@ class InputAddrCtrl(Generator):
                         self._wen[i][0] = self._wen_en_saved[self._counter + 1]
                         self._port_out_exp[i][self._counter + 1] = 1
                         self._data_out[i][0] = self._data_in_saved[self._counter + 1]
-                        self._addresses[i][0] = self._local_addrs_saved[self._counter + 1][0][self.mem_addr_width - 1, 0]
+                        self._addresses[i][0] = \
+                            self._local_addrs_saved[self._counter + 1][0][self.mem_addr_width - 1, 0]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def save_mult_int_signals(self):
