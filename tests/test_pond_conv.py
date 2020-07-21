@@ -154,11 +154,9 @@ def test_pond(data_width=16,  # CGRA Params
     ren_en = 0
     addr_in = 0
     ren = 0
-    # data_in[1] = 15
-    for i in range(32):
+    for i in range(36):
         # Incrementing Data
         data_in[0] = data_in[0] + 1
-        # data_in[1] = data_in[1] + 1
 
         wen_en = 3
         wen = 3
@@ -166,13 +164,24 @@ def test_pond(data_width=16,  # CGRA Params
         ren_en = 0
         ren = 0
 
+        if i >= 16 and i<=31:
+            wen_en = 0
+            wen = 0
+            ren_en = 3
+            ren = 3
+
+        if i>=32:
+            wen_en = 0
+            wen = 0
+            ren_en = 0
+            ren = 0   
+
         if i >= 16:
             wen_en = 0
             wen = 0
             ren_en = 3
             ren = 3
 
-        # tester.circuit.addr_in = addr_in
         tester.circuit.wen_en = wen_en
         tester.circuit.wen_in = wen
         tester.circuit.ren_en = ren_en
@@ -183,15 +192,15 @@ def test_pond(data_width=16,  # CGRA Params
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in[j])
-        # print("data0 and data1", data_in[0], data_in[1])
         tester.eval()
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        #tempdir = "pond_conv_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":
