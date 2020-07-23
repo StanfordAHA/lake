@@ -10,7 +10,9 @@ import pytest
 
 
 @pytest.mark.parametrize("width_mult", [1, 2])
+@pytest.mark.parametrize("num_tiles", [1, 2])
 def test_reg_fifo_basic(width_mult,
+                        num_tiles,
                         data_width=16,
                         depth=64):
 
@@ -25,7 +27,8 @@ def test_reg_fifo_basic(width_mult,
     # Set up dut...
     dut = RegFIFO(data_width=data_width,
                   width_mult=width_mult,
-                  depth=depth)
+                  depth=depth,
+                  num_tiles=num_tiles)
 
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_flip_flop_always_ff=False)
@@ -62,7 +65,8 @@ def test_reg_fifo_basic(width_mult,
         tester.circuit.full.expect(full)
 
         mem_valid_data = rand.randint(0, 1)
-        tester.circuit.mem_valid_data = mem_valid_data
+        if num_tiles > 1:
+            tester.circuit.mem_valid_data = mem_valid_data
 
         (model_out, model_val, model_empty, model_full, model_mem_valid) = \
             model_rf.interact(push, pop, data_in, mem_valid_data)
@@ -79,7 +83,8 @@ def test_reg_fifo_basic(width_mult,
 
         tester.circuit.valid.expect(model_val)
         if model_val:
-            tester.circuit.mem_valid_data_out.expect(model_mem_valid)
+            if num_tiles > 1:
+                tester.circuit.mem_valid_data_out.expect(model_mem_valid)
             if width_mult == 1:
                 tester.circuit.data_out.expect(model_out[0])
             else:

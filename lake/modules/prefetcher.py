@@ -71,32 +71,21 @@ class Prefetcher(Generator):
                            depth=self.max_prefetch,
                            num_tiles=self.num_tiles)
 
+        self.add_child("fifo", reg_fifo,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       clk_en=1,
+                       data_in=self._data_in,
+                       data_out=self._data_out,
+                       push=self._valid_read,
+                       pop=self._tba_rdy_in,
+                       empty=self._fifo_empty,
+                       full=self._fifo_full,
+                       valid=self._valid_out)
+
         if self.num_tiles > 1:
-            self.add_child("fifo", reg_fifo,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           clk_en=1,
-                           data_in=self._data_in,
-                           mem_valid_data=self._mem_valid_data,
-                           mem_valid_data_out=self._mem_valid_data_out,
-                           data_out=self._data_out,
-                           push=self._valid_read,
-                           pop=self._tba_rdy_in,
-                           empty=self._fifo_empty,
-                           full=self._fifo_full,
-                           valid=self._valid_out)
-        else:
-            self.add_child("fifo", reg_fifo,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           clk_en=1,
-                           data_in=self._data_in,
-                           data_out=self._data_out,
-                           push=self._valid_read,
-                           pop=self._tba_rdy_in,
-                           empty=self._fifo_empty,
-                           full=self._fifo_full,
-                           valid=self._valid_out)
+            self.wire(reg_fifo.ports.mem_valid_data, self._mem_valid_data)
+            self.wire(self._mem_valid_data_out, reg_fifo.ports.mem_valid_data_out)
 
         # Generate
         self.add_code(self.update_cnt)

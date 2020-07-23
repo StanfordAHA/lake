@@ -611,49 +611,35 @@ class StrgUB(Generator):
         # If this is end of the road...
         if self.remove_tb:
             assert self.fw_int == 1, "Make it easier on me now..."
+            self.add_child("demux_rds", dmux_rd,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           data_in=self._arb_dat_out_f,
+                           valid_in=self._arb_valid_out_f,
+                           port_in=self._arb_port_out_f,
+                           valid_out=self._valid_out_alt)
+
             if self.num_tiles > 1:
-                self.add_child("demux_rds", dmux_rd,
-                               clk=self._clk,
-                               rst_n=self._rst_n,
-                               data_in=self._arb_dat_out_f,
-                               mem_valid_data=self._arb_mem_valid_data_f,
-                               mem_valid_data_out=self._arb_mem_valid_data_out,
-                               valid_in=self._arb_valid_out_f,
-                               port_in=self._arb_port_out_f,
-                               valid_out=self._valid_out_alt)
-            else:
-                self.add_child("demux_rds", dmux_rd,
-                               clk=self._clk,
-                               rst_n=self._rst_n,
-                               data_in=self._arb_dat_out_f,
-                               valid_in=self._arb_valid_out_f,
-                               port_in=self._arb_port_out_f,
-                               valid_out=self._valid_out_alt)
+                self.wire(dmux_rd.ports.mem_valid_data, self._arb_mem_valid_data_f)
+                self.wire(self._arb_mem_valid_data_out, dmux_rd.ports.mem_valid_data_out)
 
             for i in range(self.interconnect_output_ports):
                 self.wire(self._data_out[i], dmux_rd.ports.data_out[i])
 
         else:
-            if self.num_tiles > 1:
-                self.add_child("demux_rds", dmux_rd,
-                               clk=self._clk,
-                               rst_n=self._rst_n,
-                               data_in=self._arb_dat_out_f,
-                               mem_valid_data=self._arb_mem_valid_data_f,
-                               mem_valid_data_out=self._arb_mem_valid_data_out,
-                               valid_in=self._arb_valid_out_f,
-                               port_in=self._arb_port_out_f,
-                               data_out=self._data_to_sync,
-                               valid_out=self._valid_to_sync)
-            else:
-                self.add_child("demux_rds", dmux_rd,
-                               clk=self._clk,
-                               rst_n=self._rst_n,
-                               data_in=self._arb_dat_out_f,
-                               valid_in=self._arb_valid_out_f,
-                               port_in=self._arb_port_out_f,
-                               data_out=self._data_to_sync,
-                               valid_out=self._valid_to_sync)
+            self.add_child("demux_rds", dmux_rd,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           data_in=self._arb_dat_out_f,
+                           valid_in=self._arb_valid_out_f,
+                           port_in=self._arb_port_out_f,
+                           data_out=self._data_to_sync,
+                           valid_out=self._valid_to_sync)
+
+        if self.num_tiles > 1:
+            self.wire(dmux_rd.ports.mem_valid_data, self._arb_mem_valid_data_f)
+            self.wire(self._arb_mem_valid_data_out, dmux_rd.ports.mem_valid_data_out)
+
 
             #######################
             ##### SYNC GROUPS #####
@@ -666,30 +652,20 @@ class StrgUB(Generator):
             for i in range(self.interconnect_output_ports):
                 self.wire(self._ren_out_reduced[i], self._ren_out_tpose[i].r_or())
 
+            self.add_child("sync_grp", sync_group,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           data_in=self._data_to_sync,
+                           valid_in=self._valid_to_sync,
+                           data_out=self._data_to_pref,
+                           valid_out=self._valid_to_pref,
+                           ren_in=self._ren_out_reduced,
+                           rd_sync_gate=self._rd_sync_gate,
+                           ack_in=self._ack_reduced)
+
             if self.num_tiles > 1:
-                self.add_child("sync_grp", sync_group,
-                               clk=self._clk,
-                               rst_n=self._rst_n,
-                               data_in=self._data_to_sync,
-                               mem_valid_data=self._arb_mem_valid_data_out,
-                               mem_valid_data_out=self._mem_valid_data_sync,
-                               valid_in=self._valid_to_sync,
-                               data_out=self._data_to_pref,
-                               valid_out=self._valid_to_pref,
-                               ren_in=self._ren_out_reduced,
-                               rd_sync_gate=self._rd_sync_gate,
-                               ack_in=self._ack_reduced)
-            else:
-                self.add_child("sync_grp", sync_group,
-                               clk=self._clk,
-                               rst_n=self._rst_n,
-                               data_in=self._data_to_sync,
-                               valid_in=self._valid_to_sync,
-                               data_out=self._data_to_pref,
-                               valid_out=self._valid_to_pref,
-                               ren_in=self._ren_out_reduced,
-                               rd_sync_gate=self._rd_sync_gate,
-                               ack_in=self._ack_reduced)
+                self.wire(sync_group.ports.mem_valid_data, self._arb_mem_valid_data_out)
+                self.wire(self._mem_valid_data_sync, sync_group.ports.mem_valid_data_out)
 
             # This is the end of the line if we aren't using tb
             ######################
@@ -708,53 +684,32 @@ class StrgUB(Generator):
                 if self.num_tb == 0:
                     assert self.fw_int == 1, \
                         "If no transpose buffer, data width needs match memory width"
-                    if self.num_tiles > 1:
-                        self.add_child(f"pre_fetch_{i}", pref,
-                                       clk=self._clk,
-                                       rst_n=self._rst_n,
-                                       data_in=self._data_to_pref[i],
-                                       mem_valid_data=self._mem_valid_data_sync[i],
-                                       mem_valid_data_out=self._mem_valid_data_pref[i],
-                                       valid_read=self._valid_to_pref[i],
-                                       tba_rdy_in=self._ren[i],
-                                       #    data_out=self._data_out[i],
-                                       valid_out=self._valid_out_alt[i],
-                                       prefetch_step=self._prefetch_step[i])
-                    else:
-                        self.add_child(f"pre_fetch_{i}", pref,
-                                       clk=self._clk,
-                                       rst_n=self._rst_n,
-                                       data_in=self._data_to_pref[i],
-                                       valid_read=self._valid_to_pref[i],
-                                       tba_rdy_in=self._ren[i],
-                                       #    data_out=self._data_out[i],
-                                       valid_out=self._valid_out_alt[i],
-                                       prefetch_step=self._prefetch_step[i])
+                    self.add_child(f"pre_fetch_{i}", pref,
+                                   clk=self._clk,
+                                   rst_n=self._rst_n,
+                                   data_in=self._data_to_pref[i],
+                                   valid_read=self._valid_to_pref[i],
+                                   tba_rdy_in=self._ren[i],
+                                   #    data_out=self._data_out[i],
+                                   valid_out=self._valid_out_alt[i],
+                                   prefetch_step=self._prefetch_step[i])
 
                     self.wire(self._data_out[i], pref.ports.data_out[0])
                 else:
-                    if self.num_tiles > 1:
-                        self.add_child(f"pre_fetch_{i}", pref,
-                                       clk=self._clk,
-                                       rst_n=self._rst_n,
-                                       data_in=self._data_to_pref[i],
-                                       mem_valid_data=self._mem_valid_data_sync[i],
-                                       mem_valid_data_out=self._mem_valid_data_pref[i],
-                                       valid_read=self._valid_to_pref[i],
-                                       tba_rdy_in=self._ready_tba[i],
-                                       data_out=self._data_to_tba[i],
-                                       valid_out=self._valid_to_tba[i],
-                                       prefetch_step=self._prefetch_step[i])
-                    else:
-                        self.add_child(f"pre_fetch_{i}", pref,
-                                       clk=self._clk,
-                                       rst_n=self._rst_n,
-                                       data_in=self._data_to_pref[i],
-                                       valid_read=self._valid_to_pref[i],
-                                       tba_rdy_in=self._ready_tba[i],
-                                       data_out=self._data_to_tba[i],
-                                       valid_out=self._valid_to_tba[i],
-                                       prefetch_step=self._prefetch_step[i])
+                    self.add_child(f"pre_fetch_{i}", pref,
+                                   clk=self._clk,
+                                   rst_n=self._rst_n,
+                                   data_in=self._data_to_pref[i],
+                                   valid_read=self._valid_to_pref[i],
+                                   tba_rdy_in=self._ready_tba[i],
+                                   data_out=self._data_to_tba[i],
+                                   valid_out=self._valid_to_tba[i],
+                                   prefetch_step=self._prefetch_step[i])
+
+                if self.num_tiles > 1:
+                    self.wire(pref.ports.mem_valid_data, self._mem_valid_data_sync[i])
+                    self.wire(self._mem_valid_data_pref[i], pref.ports.mem_valid_data_out)
+
 
                     #############################
                     ##### TRANSPOSE BUFFERS #####
@@ -779,31 +734,20 @@ class StrgUB(Generator):
                                                      tb_iterator_support=self.tb_iterator_support,
                                                      num_tiles=self.num_tiles)
 
+                    self.add_child(f"tba_{i}", tba,
+                                   clk=self._clk,
+                                   rst_n=self._rst_n,
+                                   SRAM_to_tb_data=self._data_to_tba[i],
+                                   valid_data=self._valid_to_tba[i],
+                                   tb_index_for_data=0,
+                                   ack_in=self._valid_to_tba[i],
+                                   tb_to_interconnect_data=self._tb_data_out[i],
+                                   tb_to_interconnect_valid=self._tb_valid_out[i],
+                                   tb_arbiter_rdy=self._ready_tba[i],
+                                   tba_ren=self._ren[i])
+
                     if self.num_tiles > 1:
-                        self.add_child(f"tba_{i}", tba,
-                                       clk=self._clk,
-                                       rst_n=self._rst_n,
-                                       SRAM_to_tb_data=self._data_to_tba[i],
-                                       valid_data=self._valid_to_tba[i],
-                                       tb_index_for_data=0,
-                                       ack_in=self._valid_to_tba[i],
-                                       mem_valid_data=self._mem_valid_data_pref[i],
-                                       tb_to_interconnect_data=self._tb_data_out[i],
-                                       tb_to_interconnect_valid=self._tb_valid_out[i],
-                                       tb_arbiter_rdy=self._ready_tba[i],
-                                       tba_ren=self._ren[i])
-                    else:
-                        self.add_child(f"tba_{i}", tba,
-                                       clk=self._clk,
-                                       rst_n=self._rst_n,
-                                       SRAM_to_tb_data=self._data_to_tba[i],
-                                       valid_data=self._valid_to_tba[i],
-                                       tb_index_for_data=0,
-                                       ack_in=self._valid_to_tba[i],
-                                       tb_to_interconnect_data=self._tb_data_out[i],
-                                       tb_to_interconnect_valid=self._tb_valid_out[i],
-                                       tb_arbiter_rdy=self._ready_tba[i],
-                                       tba_ren=self._ren[i])
+                        self.wire(tba.ports.mem_valid_data, self._mem_valid_data_pref[i])
 
                 for i in range(self.interconnect_output_ports):
                     self.wire(self._data_out[i], self._tb_data_out[i])

@@ -529,41 +529,26 @@ class LakeTop(Generator):
                                             packed=True,
                                             explicit_array=True)
 
+        self.add_child("strg_ub", strg_ub,
+                       # clk + rst
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       # inputs
+                       data_in=self._data_in,
+                       wen_in=self._wen,
+                       ren_in=self._ren,
+                       data_from_strg=self._mem_data_out,
+                       # outputs
+                       data_out=self._ub_data_out,
+                       valid_out=self._ub_valid_out,
+                       data_to_strg=self._ub_data_to_mem,
+                       cen_to_strg=self._ub_cen_to_mem,
+                       wen_to_strg=self._ub_wen_to_mem)
+        
         if self.num_tiles > 1:
-            self.add_child("strg_ub", strg_ub,
-                           # clk + rst
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           # inputs
-                           data_in=self._data_in,
-                           wen_in=self._wen,
-                           ren_in=self._ren,
-                           data_from_strg=self._mem_data_out,
-                           mem_valid_data=self._mem_valid_data,
-                           # outputs
-                           data_out=self._ub_data_out,
-                           valid_out=self._ub_valid_out,
-                           data_to_strg=self._ub_data_to_mem,
-                           cen_to_strg=self._ub_cen_to_mem,
-                           wen_to_strg=self._ub_wen_to_mem,
-                           enable_chain_output=self._enable_chain_output,
-                           chain_idx_output=self._chain_idx_output)
-        else:
-            self.add_child("strg_ub", strg_ub,
-                           # clk + rst
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           # inputs
-                           data_in=self._data_in,
-                           wen_in=self._wen,
-                           ren_in=self._ren,
-                           data_from_strg=self._mem_data_out,
-                           # outputs
-                           data_out=self._ub_data_out,
-                           valid_out=self._ub_valid_out,
-                           data_to_strg=self._ub_data_to_mem,
-                           cen_to_strg=self._ub_cen_to_mem,
-                           wen_to_strg=self._ub_wen_to_mem)
+            self.wire(strg_ub.ports.mem_valid_data, self._mem_valid_data)
+            self.wire(strg_ub.ports.enable_chain_output, self._enable_chain_output)
+            self.wire(strg_ub.ports.chain_idx_output, self._chain_idx_output)
 
         # Wire addrs
         if self.rw_same_cycle:
@@ -735,33 +720,23 @@ class LakeTop(Generator):
                                     bank_num=i,
                                     num_tiles=self.num_tiles)
 
+                self.add_child(f"mem_{i}", mbank,
+                               clk=self._gclk,
+                               clk_en=self._clk_en | self._config_en.r_or(),
+                               mem_data_in_bank=self._mem_data_in[i],
+                               mem_data_out_bank=self._mem_data_out[i],
+                               mem_addr_in_bank=self._mem_addr_in[i],
+                               mem_cen_in_bank=self._mem_cen_in[i],
+                               mem_wen_in_bank=self._mem_wen_in[i],
+                               wtsel=self.sram_macro_info.wtsel_value,
+                               rtsel=self.sram_macro_info.rtsel_value)
+
                 if self.num_tiles > 1:
-                    self.add_child(f"mem_{i}", mbank,
-                                   clk=self._gclk,
-                                   enable_chain_input=self._enable_chain_input,
-                                   enable_chain_output=self._enable_chain_output,
-                                   chain_idx_input=self._chain_idx_input,
-                                   chain_idx_output=self._chain_idx_output,
-                                   clk_en=self._clk_en | self._config_en.r_or(),
-                                   mem_data_in_bank=self._mem_data_in[i],
-                                   mem_data_out_bank=self._mem_data_out[i],
-                                   mem_addr_in_bank=self._mem_addr_in[i],
-                                   mem_cen_in_bank=self._mem_cen_in[i],
-                                   mem_wen_in_bank=self._mem_wen_in[i],
-                                   wtsel=self.sram_macro_info.wtsel_value,
-                                   rtsel=self.sram_macro_info.rtsel_value,
-                                   valid_data=self._mem_valid_data[i])
-                else:
-                    self.add_child(f"mem_{i}", mbank,
-                                   clk=self._gclk,
-                                   clk_en=self._clk_en | self._config_en.r_or(),
-                                   mem_data_in_bank=self._mem_data_in[i],
-                                   mem_data_out_bank=self._mem_data_out[i],
-                                   mem_addr_in_bank=self._mem_addr_in[i],
-                                   mem_cen_in_bank=self._mem_cen_in[i],
-                                   mem_wen_in_bank=self._mem_wen_in[i],
-                                   wtsel=self.sram_macro_info.wtsel_value,
-                                   rtsel=self.sram_macro_info.rtsel_value)
+                    self.wire(mbank.ports.enable_chain_input, self._enable_chain_input)
+                    self.wire(mbank.ports.enable_chain_output, self._enable_chain_output)
+                    self.wire(mbank.ports.chain_idx_input, self._chain_idx_input)
+                    self.wire(mbank.ports.chain_idx_output, self._chain_idx_output)
+                    self.wire(self._mem_valid_data[i], mbank.ports.valid_data)
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)

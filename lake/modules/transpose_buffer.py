@@ -79,6 +79,7 @@ class TransposeBuffer(Generator):
 
         if self.num_tiles > 1:
             self.mem_valid_data = self.input("mem_valid_data", 1)
+            self.tb_valid = self.var("tb_valid", 2 * self.max_tb_height)
 
         ###########################
         # CONFIGURATION REGISTERS #
@@ -150,9 +151,6 @@ class TransposeBuffer(Generator):
                                width=self.word_width,
                                size=[2 * self.max_tb_height, self.fetch_width],
                                packed=True)
-
-        if self.num_tiles > 1:
-            self.tb_valid = self.var("tb_valid", 2 * self.max_tb_height)
 
         self.index_outer = self.var("index_outer", self.max_range_bits)
         self.index_inner = self.var("index_inner", self.max_range_inner_bits)

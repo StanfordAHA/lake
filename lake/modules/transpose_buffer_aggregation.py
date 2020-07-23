@@ -87,47 +87,29 @@ class TransposeBufferAggregation(Generator):
                                      packed=True)
 
         for i in range(self.num_tb):
+            tb = TransposeBuffer(self.word_width,
+                                 self.fetch_width,
+                                 self.num_tb,
+                                 self.max_tb_height,
+                                 self.max_range,
+                                 self.max_range_inner,
+                                 self.max_stride,
+                                 self.tb_iterator_support,
+                                 self.num_tiles)
+
+            self.add_child(f"tb_{i}", tb,
+                           clk=self.clk,
+                           rst_n=self.rst_n,
+                           input_data=self.SRAM_to_tb_data,
+                           valid_data=self.valid_data_all[i],
+                           col_pixels=self.tb_output_data_all[i],
+                           output_valid=self.tb_output_valid_all[i],
+                           rdy_to_arbiter=self.tb_arbiter_rdy_all[i],
+                           ack_in=self._ack_in,
+                           ren=self.tba_ren)
+            
             if self.num_tiles > 1:
-                self.add_child(f"tb_{i}",
-                               TransposeBuffer(self.word_width,
-                                               self.fetch_width,
-                                               self.num_tb,
-                                               self.max_tb_height,
-                                               self.max_range,
-                                               self.max_range_inner,
-                                               self.max_stride,
-                                               self.tb_iterator_support,
-                                               self.num_tiles),
-                               clk=self.clk,
-                               rst_n=self.rst_n,
-                               input_data=self.SRAM_to_tb_data,
-                               valid_data=self.valid_data_all[i],
-                               col_pixels=self.tb_output_data_all[i],
-                               output_valid=self.tb_output_valid_all[i],
-                               rdy_to_arbiter=self.tb_arbiter_rdy_all[i],
-                               ack_in=self._ack_in,
-                               mem_valid_data=self.mem_valid_data,
-                               ren=self.tba_ren)
-            else:
-                self.add_child(f"tb_{i}",
-                               TransposeBuffer(self.word_width,
-                                               self.fetch_width,
-                                               self.num_tb,
-                                               self.max_tb_height,
-                                               self.max_range,
-                                               self.max_range_inner,
-                                               self.max_stride,
-                                               self.tb_iterator_support,
-                                               self.num_tiles),
-                               clk=self.clk,
-                               rst_n=self.rst_n,
-                               input_data=self.SRAM_to_tb_data,
-                               valid_data=self.valid_data_all[i],
-                               col_pixels=self.tb_output_data_all[i],
-                               output_valid=self.tb_output_valid_all[i],
-                               rdy_to_arbiter=self.tb_arbiter_rdy_all[i],
-                               ack_in=self._ack_in,
-                               ren=self.tba_ren)
+                self.wire(tb.ports.mem_valid_data, self.mem_valid_data)
 
         self.add_code(self.set_valid_data_all)
         self.set_output_valid()
