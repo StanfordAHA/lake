@@ -127,6 +127,12 @@ class ForLoop(Generator):
             elif self._inc[idx]:
                 self._max_value[idx] = self._maxed_value
 
+    def get_iter(self):
+        return self.iterator_support
+
+    def get_cfg_width(self):
+        return self.config_width
+
 
 if __name__ == "__main__":
     it_support = 6
