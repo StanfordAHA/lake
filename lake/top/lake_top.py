@@ -544,7 +544,7 @@ class LakeTop(Generator):
                        data_to_strg=self._ub_data_to_mem,
                        cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem)
-        
+
         if self.num_tiles > 1:
             self.wire(strg_ub.ports.mem_valid_data, self._mem_valid_data)
             self.wire(strg_ub.ports.enable_chain_output, self._enable_chain_output)

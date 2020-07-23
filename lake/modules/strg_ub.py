@@ -640,7 +640,6 @@ class StrgUB(Generator):
             self.wire(dmux_rd.ports.mem_valid_data, self._arb_mem_valid_data_f)
             self.wire(self._arb_mem_valid_data_out, dmux_rd.ports.mem_valid_data_out)
 
-
             #######################
             ##### SYNC GROUPS #####
             #######################
@@ -709,7 +708,6 @@ class StrgUB(Generator):
                 if self.num_tiles > 1:
                     self.wire(pref.ports.mem_valid_data, self._mem_valid_data_sync[i])
                     self.wire(self._mem_valid_data_pref[i], pref.ports.mem_valid_data_out)
-
 
                     #############################
                     ##### TRANSPOSE BUFFERS #####

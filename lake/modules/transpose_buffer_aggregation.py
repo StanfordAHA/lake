@@ -107,7 +107,7 @@ class TransposeBufferAggregation(Generator):
                            rdy_to_arbiter=self.tb_arbiter_rdy_all[i],
                            ack_in=self._ack_in,
                            ren=self.tba_ren)
-            
+
             if self.num_tiles > 1:
                 self.wire(tb.ports.mem_valid_data, self.mem_valid_data)
 
