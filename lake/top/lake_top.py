@@ -25,8 +25,8 @@ class LakeTop(Generator):
                  output_iterator_support=6,
                  input_config_width=16,
                  output_config_width=16,
-                 interconnect_input_ports=1,  # Connection to int
-                 interconnect_output_ports=1,
+                 interconnect_input_ports=2,  # Connection to int
+                 interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=1,

@@ -212,7 +212,7 @@ class StrgUB(Generator):
 
         # Create for loop counters that can be shared across the input port selection and SRAM write
         fl_ctr_sram_wr = ForLoop(iterator_support=6,
-                                  config_width=self._agg_write_addr.width)
+                                  config_width=16)
         loop_itr = fl_ctr_sram_wr.get_iter()
         loop_wth = fl_ctr_sram_wr.get_cfg_width()
 
@@ -262,7 +262,7 @@ class StrgUB(Generator):
 
         # -------------------------------- Delineate new group -------------------------------
         fl_ctr_sram_rd = ForLoop(iterator_support=6,
-                                  config_width=config_width)
+                                  config_width=16)
         loop_itr = fl_ctr_sram_rd.get_iter()
         loop_wth = fl_ctr_sram_rd.get_cfg_width()
 
@@ -273,8 +273,8 @@ class StrgUB(Generator):
                            step=self._read)
 
         self.add_child(f"output_addr_gen",
-                       AddrGen(output_addr_iterator_support,
-                               config_width),
+                       AddrGen(iterator_support=6,
+                               config_width=16),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._read,
@@ -282,8 +282,8 @@ class StrgUB(Generator):
                        addr_out=self._read_addr)
 
         self.add_child(f"output_sched_gen",
-                       SchedGen(output_sched_iterator_support,
-                                config_width),
+                       SchedGen(iterator_support=6,
+                                config_width=16),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
@@ -312,7 +312,7 @@ class StrgUB(Generator):
 
         for i in range(self.interconnect_output_ports):
             fl_ctr_tb_wr = ForLoop(iterator_support=2,
-                                  config_width=6)
+                                   config_width=6)
             loop_itr = fl_ctr_tb_wr.get_iter()
             loop_wth = fl_ctr_tb_wr.get_cfg_width()
 
@@ -334,7 +334,7 @@ class StrgUB(Generator):
                            addr_out=self._tb_write_addr[i])
 
             fl_ctr_tb_rd = ForLoop(iterator_support=2,
-                                  config_width=16)
+                                   config_width=16)
             loop_itr = fl_ctr_tb_rd.get_iter()
             loop_wth = fl_ctr_tb_rd.get_cfg_width()
 
