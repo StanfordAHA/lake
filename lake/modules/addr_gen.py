@@ -66,6 +66,7 @@ class AddrGen(Generator):
         elif self._step:
             self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
+
 if __name__ == "__main__":
     db_dut = AddrGen(iterator_support=6)
     verilog(db_dut, filename="addr_gen.sv")

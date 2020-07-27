@@ -113,7 +113,6 @@ class SRAMWrapper(Generator):
         # instantiante external provided sram macro and flatten input/output data
         # if fetch width is greater than 1
         else:
-
             mbank = SRAMStubGenerator(sram_name=self.sram_name,
                                       data_width=self.data_width,
                                       width_mult=self.fw_int,

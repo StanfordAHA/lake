@@ -29,7 +29,7 @@ class LakeTop(Generator):
                  interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
-                 use_sram_stub=1,
+                 use_sram_stub=True,
                  sram_macro_info=SRAMMacroInfo(),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
@@ -829,7 +829,7 @@ class LakeTop(Generator):
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = False
+    use_sram_stub = True
     fifo_mode = True
     mem_width = 64
     lake_dut = LakeTop(mem_width=mem_width,

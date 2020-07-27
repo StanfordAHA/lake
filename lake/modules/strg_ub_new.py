@@ -212,15 +212,15 @@ class StrgUB(Generator):
 
         # Create for loop counters that can be shared across the input port selection and SRAM write
         fl_ctr_sram_wr = ForLoop(iterator_support=6,
-                                  config_width=16)
+                                 config_width=16)
         loop_itr = fl_ctr_sram_wr.get_iter()
         loop_wth = fl_ctr_sram_wr.get_cfg_width()
 
         self.add_child(f"loops_in2buf_autovec_write",
-                           fl_ctr_sram_wr,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           step=self._write)
+                       fl_ctr_sram_wr,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       step=self._write)
 
         # Now we determine what data goes through to the sram...
         # If we have more than one port, we can generate a selector
@@ -262,15 +262,15 @@ class StrgUB(Generator):
 
         # -------------------------------- Delineate new group -------------------------------
         fl_ctr_sram_rd = ForLoop(iterator_support=6,
-                                  config_width=16)
+                                 config_width=16)
         loop_itr = fl_ctr_sram_rd.get_iter()
         loop_wth = fl_ctr_sram_rd.get_cfg_width()
 
         self.add_child(f"loops_buf2out_autovec_read",
-                           fl_ctr_sram_rd,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           step=self._read)
+                       fl_ctr_sram_rd,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       step=self._read)
 
         self.add_child(f"output_addr_gen",
                        AddrGen(iterator_support=6,
