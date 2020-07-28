@@ -29,25 +29,7 @@ class StrgUB(Generator):
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=4,
-                 max_agg_schedule=32,
-                 input_max_port_sched=32,
-                 output_max_port_sched=32,
-                 align_input=1,
-                 max_line_length=128,
-                 max_tb_height=1,
-                 tb_range_max=128,
-                 tb_range_inner_max=5,
-                 tb_sched_max=64,
-                 max_tb_stride=15,
-                 num_tb=1,
-                 tb_iterator_support=2,
-                 multiwrite=1,
-                 num_tiles=1,
-                 max_prefetch=8,
-                 app_ctrl_depth_width=16,
-                 remove_tb=False,
-                 stcl_valid_iter=4):
+                 agg_height=4):
         super().__init__("strg_ub", debug=True)
 
         self.fetch_width = mem_width // data_width
@@ -59,9 +41,6 @@ class StrgUB(Generator):
         # inputs
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
-
-        self._clk_en = self.input("clk_en", 1)
-        self._flush = self.reset("flush", is_async=False, active_high=True)
 
         self._data_in = self.input("data_in", data_width,
                                    size=self.interconnect_input_ports,
@@ -87,24 +66,6 @@ class StrgUB(Generator):
         self._write_addr = self.var("write_addr", config_width)
         self._read_addr = self.var("read_addr", config_width)
         self._addr = self.var("addr", clog2(mem_depth))
-
-        self._agg_write = self.var("agg_write", self.interconnect_input_ports)
-
-        # Make this based on the size
-        self._agg_write_addr = self.var("agg_write_addr", 2 + clog2(self.agg_height),
-                                        size=self.interconnect_input_ports,
-                                        packed=True,
-                                        explicit_array=True)
-        self._agg_read_addr = self.var("agg_read_addr", max(1, clog2(self.agg_height)),
-                                       size=self.interconnect_input_ports,
-                                       packed=True,
-                                       explicit_array=True)
-
-        self.agg_rd_addr_gen_width = 8
-        self._agg_read_addr_gen_out = self.var("agg_read_addr_gen_out", self.agg_rd_addr_gen_width,
-                                               size=self.interconnect_input_ports,
-                                               packed=True,
-                                               explicit_array=True)
 
         self._sram_write_data = self.var("sram_write_data", data_width,
                                          size=self.fetch_width,
