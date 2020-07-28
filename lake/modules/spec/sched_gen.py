@@ -66,13 +66,6 @@ class SchedGen(Generator):
     def set_valid_output(self):
         self._valid_output = self._valid_out
 
-    # @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    # def set_cycle_num(self):
-    #     if ~self._rst_n:
-    #         self._cycle_num = 0
-    #     else:
-    #         self._cycle_num = self._cycle_num + 1
-
 
 if __name__ == "__main__":
     db_dut = SchedGen(iterator_support=6)

@@ -2,6 +2,7 @@ from kratos import *
 from functools import reduce
 import operator
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 
 
 class ForLoop(Generator):
@@ -27,9 +28,11 @@ class ForLoop(Generator):
                                   size=self.iterator_support,
                                   packed=True, explicit_array=True)
         self._ranges.add_attribute(ConfigRegAttr("Ranges of address generator"))
+        self._ranges.add_attribute(FormalAttr(f"{self._ranges.name}", FormalSignalConstraint.SOLVE))
 
         self._dimensionality = self.input("dimensionality", 1 + clog2(self.iterator_support))
         self._dimensionality.add_attribute(ConfigRegAttr("Dimensionality of address generator"))
+        self._dimensionality.add_attribute(FormalAttr(f"{self._dimensionality.name}", FormalSignalConstraint.SOLVE))
 
         self._step = self.input("step", 1)
         # OUTPUTS

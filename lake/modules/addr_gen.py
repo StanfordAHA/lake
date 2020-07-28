@@ -2,6 +2,7 @@ from kratos import *
 from functools import reduce
 import operator
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 
 
 class AddrGen(Generator):
@@ -27,9 +28,11 @@ class AddrGen(Generator):
                                    size=self.iterator_support,
                                    packed=True, explicit_array=True)
         self._strides.add_attribute(ConfigRegAttr("Strides of address generator"))
+        self._strides.add_attribute(FormalAttr(f"{self._strides.name}", FormalSignalConstraint.SOLVE))
 
         self._starting_addr = self.input("starting_addr", self.config_width)
         self._starting_addr.add_attribute(ConfigRegAttr("Starting address of address generator"))
+        self._starting_addr.add_attribute(FormalAttr(f"{self._starting_addr.name}", FormalSignalConstraint.SOLVE))
 
         self._step = self.input("step", 1)
 
