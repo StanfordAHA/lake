@@ -2,6 +2,7 @@ from lake.models.sram_wrapper_model import SRAMWrapperModel
 from lake.modules.sram_wrapper import SRAMWrapper
 from lake.modules.spec.sram_formal import SRAMFormal
 from lake.passes.passes import lift_config_reg
+from lake.utils.util import transform_strides_and_ranges
 import magma as m
 from magma import *
 import fault
@@ -33,25 +34,64 @@ def test_sram_formal():
 
     lift_config_reg(sram_dut.internal_generator)
 
-    magma_dut = k.util.to_magma(dut, flatten_array=True, check_flip_flop_always_ff=False)
+    magma_dut = k.util.to_magma(sram_dut, flatten_array=True, check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
-    new_config = {}
-    new_config['sram_read_addr_gen_starting_addr'] = 1
-    new_config['sram_read_addr_gen_strides_0'] = 1
-    new_config['sram_read_addr_gen_strides_1'] = 1
-    new_config['sram_read_addr_gen_strides_2'] = 1
-    new_config['sram_read_loops_dimensionality'] = 1
-    new_config['sram_read_loops_ranges_0'] = 1
-    new_config['sram_read_loops_ranges_1'] = 1
-    new_config['sram_read_loops_ranges_2'] = 1
-    new_config['sram_read_sched_gen_sched_addr_gen_starting_addr'] = 1
-    new_config['sram_read_sched_gen_sched_addr_gen_strides_0'] = 1
-    new_config['sram_read_sched_gen_sched_addr_gen_strides_1'] = 1
-    new_config['sram_read_sched_gen_sched_addr_gen_strides_2'] = 1
-    new_config['sram_write_addr_gen_starting_addr'] = 1
+    in_ranges = [2, 8, 1]
+    in_addr_strides = [1, 2, 0]
+    in_addr_strt = 0
+    in_sched_strides = [4, 8, 0]
+    in_sched_strt = 4
+    dim = 3
+
+    (write_ranges, tform_in_addr) = transform_strides_and_ranges(ranges=in_ranges,
+                                                                 strides=in_addr_strides,
+                                                                 dimensionality=dim)
+    (write_ranges, tform_in_sched) = transform_strides_and_ranges(ranges=in_ranges,
+                                                                  strides=in_sched_strides,
+                                                                  dimensionality=dim)
+
+    out_ranges = [2, 8, 1]
+    out_addr_strides = [1, 2, 0]
+    out_addr_strt = 0
+    out_sched_strides = [4, 8, 0]
+    out_sched_strt = 6
+    dim = 3
+
+    (read_ranges, tform_out_addr) = transform_strides_and_ranges(ranges=out_ranges,
+                                                                 strides=out_addr_strides,
+                                                                 dimensionality=dim)
+    (read_ranges, tform_out_sched) = transform_strides_and_ranges(ranges=out_ranges,
+                                                                  strides=out_sched_strides,
+                                                                  dimensionality=dim)
+
+    config = {}
+    config['sram_read_addr_gen_starting_addr'] = out_addr_strt
+    config['sram_read_addr_gen_strides_0'] = tform_out_addr[0]
+    config['sram_read_addr_gen_strides_1'] = tform_out_addr[1]
+    config['sram_read_addr_gen_strides_2'] = tform_out_addr[2]
+    config['sram_read_loops_dimensionality'] = 3
+    config['sram_read_loops_ranges_0'] = read_ranges[0]
+    config['sram_read_loops_ranges_1'] = read_ranges[1]
+    config['sram_read_loops_ranges_2'] = read_ranges[2]
+    config['sram_read_sched_gen_sched_addr_gen_starting_addr'] = out_sched_strt
+    config['sram_read_sched_gen_sched_addr_gen_strides_0'] = tform_out_sched[0]
+    config['sram_read_sched_gen_sched_addr_gen_strides_1'] = tform_out_sched[1]
+    config['sram_read_sched_gen_sched_addr_gen_strides_2'] = tform_out_sched[2]
+    config['sram_write_addr_gen_starting_addr'] = in_addr_strt
+    config['sram_write_addr_gen_strides_0'] = tform_in_addr[0]
+    config['sram_write_addr_gen_strides_1'] = tform_in_addr[1]
+    config['sram_write_addr_gen_strides_2'] = tform_in_addr[2]
+    config['sram_write_loops_dimensionality'] = 3
+    config['sram_write_loops_ranges_0'] = write_ranges[0]
+    config['sram_write_loops_ranges_1'] = write_ranges[1]
+    config['sram_write_loops_ranges_2'] = write_ranges[2]
+    config['sram_write_sched_gen_sched_addr_gen_starting_addr'] = in_sched_strt
+    config['sram_write_sched_gen_sched_addr_gen_strides_0'] = tform_in_sched[0]
+    config['sram_write_sched_gen_sched_addr_gen_strides_1'] = tform_in_sched[1]
+    config['sram_write_sched_gen_sched_addr_gen_strides_2'] = tform_in_sched[2]
     # configuration registers passed through from top level
-    for key, value in new_config.items():
+    for key, value in config.items():
         setattr(tester.circuit, key, value)
 
     tester.circuit.clk = 0
@@ -63,48 +103,16 @@ def test_sram_formal():
 
     rand.seed(0)
 
-    input logic [3:0] [15:0] data_in,
-    output logic [3:0] [15:0] data_out,
-    input logic [15:0] sram_write_addr_gen_starting_addr,
-    input logic [5:0] [15:0] sram_write_addr_gen_strides,
-    input logic [3:0] sram_write_loops_dimensionality,
-    input logic [5:0] [15:0] sram_write_loops_ranges,
-    input logic [15:0] sram_write_sched_gen_sched_addr_gen_starting_addr,
-    input logic [5:0] [15:0] sram_write_sched_gen_sched_addr_gen_strides,
-
-    num_iters = 300
+    num_iters = 64
+    data_in = 0
     for i in range(num_iters):
-        data_in = []
-        for j in range(fw_int):
-            data_in.append(rand.randint(0, 2**data_width - 1))
 
-        for j in range(fw_int):
-            setattr(tester.circuit, f"mem_data_in_bank_{j}", data_in[j])
-
-        addr = rand.randint(0, 2**address_width - 1)
-        tester.circuit.mem_addr_in_bank = addr
-
-        cen = rand.randint(0, 1)
-        tester.circuit.mem_cen_in_bank = cen
-
-        wen = rand.randint(0, 1)
-        tester.circuit.mem_wen_in_bank = wen
-
-        wtsel = 1
-        tester.circuit.wtsel = wtsel
-
-        rtsel = 1
-        tester.circuit.rtsel = 1
-
-        model_data_out, model_valid_data = \
-            model_sram_wrapper.interact(data_in, addr, cen, wen, wtsel, rtsel)
+        for i in range(4):
+            setattr(tester.circuit, f'data_in_{i}', data_in + i)
 
         tester.eval()
 
-        tester.circuit.valid_data.expect(model_valid_data)
-        if model_valid_data:
-            for j in range(fw_int):
-                getattr(tester.circuit, f"mem_data_out_bank_0_{j}").expect(model_data_out[j])
+        data_in = data_in + 4
 
         tester.step(2)
 

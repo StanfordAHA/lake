@@ -29,10 +29,10 @@ def format_comma_bracket(string):
         if i > 0:
             try:
                 # group same number together
-                if isinstance(int(l[i-1]), int) and isinstance(int(l[i]), int):
+                if isinstance(int(l[i - 1]), int) and isinstance(int(l[i]), int):
                     new_index = i + ni - 1
                     # new_index is index for grouped together number
-                    newl[new_index] = l[i-1] + l[i]
+                    newl[new_index] = l[i - 1] + l[i]
                     # delete the digit appended to the number
                     newl.pop(new_index + 1)
                     # off from i by 1 now
@@ -41,7 +41,7 @@ def format_comma_bracket(string):
                 assert True
 
     # all digits grouped together now
-    l  = newl[:]
+    l = newl[:]
     # this is the index before a number in newl
     ni = 0
     for i in range(len(l)):

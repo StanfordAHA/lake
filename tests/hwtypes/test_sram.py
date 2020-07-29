@@ -21,10 +21,8 @@ def test_sram_basic(data_width,
                     fetch_width):
 
     # Set up model...
-#    sram_py = sram_stub(depth, data_width, width_mult, family.PyFamily())
-#    model_sram = sram_py(family=family.PyFamily())()
-    
-    ###
+    # sram_py = sram_stub(depth, data_width, width_mult, family.PyFamily())
+    # model_sram = sram_py(family=family.PyFamily())()
 
     sram_magma = sram_stub(mem_depth, data_width, fetch_width, family=family.MagmaFamily())
     sram_magma_defn = sram_magma(family=family.MagmaFamily())
@@ -41,10 +39,9 @@ def test_sram_basic(data_width,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="output"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
