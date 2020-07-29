@@ -4,6 +4,8 @@ from lake.modules.sram_wrapper import SRAMWrapper
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.utils.util import extract_formal_annotation
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 
 
 class TBFormal(Generator):
@@ -41,7 +43,9 @@ class TBFormal(Generator):
         self.output_sched_iterator_support = output_sched_iterator_support
         # inputs
         self._clk = self.clock("clk")
+        self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
         self._rst_n = self.reset("rst_n")
+        self._rst_n.add_attribute(FormalAttr(f"{self._rst_n.name}", FormalSignalConstraint.RSTN))
 
         self._cycle_count = self.var("cycle_count", 16)
         self.add_code(self.increment_cycle_count)
@@ -50,12 +54,14 @@ class TBFormal(Generator):
                                    size=self.fetch_width,
                                    packed=True,
                                    explicit_array=True)
+        self._data_in.add_attribute(FormalAttr(f"{self._data_in.name}", FormalSignalConstraint.SEQUENCE))
 
         # outputs
         self._data_out = self.output("data_out", self.data_width,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
+        self._data_out.add_attribute(FormalAttr(f"{self._data_out.name}", FormalSignalConstraint.SEQUENCE))
 
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
         self.tb_height = 4
@@ -201,7 +207,10 @@ class TBFormal(Generator):
 
 
 if __name__ == "__main__":
-    lake_dut = TBFormal()
-    verilog(lake_dut, filename="tb_formal.sv",
-            optimize_if=False,
-            additional_passes={"lift config regs": lift_config_reg})
+    tb_dut = TBFormal()
+
+    lift_config_reg(tb_dut.internal_generator)
+    extract_formal_annotation(tb_dut, 'tb_formal_annotation.txt')
+
+    verilog(tb_dut, filename="tb_formal.sv",
+            optimize_if=False)

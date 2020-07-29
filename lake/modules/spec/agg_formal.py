@@ -8,6 +8,8 @@ from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
+from lake.utils.util import extract_formal_annotation
 import kratos as kts
 
 
@@ -40,7 +42,9 @@ class AggFormal(Generator):
 
         # inputs
         self._clk = self.clock("clk")
+        self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
         self._rst_n = self.reset("rst_n")
+        self._rst_n.add_attribute(FormalAttr(f"{self._rst_n.name}", FormalSignalConstraint.RSTN))
 
         self._cycle_count = self.var("cycle_count", 16)
         self.add_code(self.increment_cycle_count)
@@ -49,14 +53,16 @@ class AggFormal(Generator):
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
+        self._data_in.add_attribute(FormalAttr(f"{self._data_in.name}", FormalSignalConstraint.SEQUENCE))
 
         self._agg_write = self.var("agg_write", self.interconnect_input_ports)
 
         self._write = self.var("write", 1)
 
-        self._sram_write_data = self.output("sram_write_data", data_width,
-                                            size=self.fetch_width,
-                                            packed=True)
+        self._data_out = self.output("data_out", data_width,
+                                     size=self.fetch_width,
+                                     packed=True)
+        self._data_out.add_attribute(FormalAttr(f"{self._data_out.name}", FormalSignalConstraint.SEQUENCE))
 
         # Make this based on the size
         self._agg_write_addr = self.var("agg_write_addr", 2 + clog2(self.agg_height),
@@ -194,7 +200,7 @@ class AggFormal(Generator):
     @always_comb
     def agg_to_sram(self):
         for i in range(self.fetch_width):
-            self._sram_write_data[i] = \
+            self._data_out[i] = \
                 self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -207,6 +213,9 @@ class AggFormal(Generator):
 
 if __name__ == "__main__":
     lake_dut = AggFormal()
+
+    lift_config_reg(lake_dut.internal_generator)
+    extract_formal_annotation(lake_dut, "agg_formal_annotation.txt")
+
     verilog(lake_dut, filename="agg_formal.sv",
-            optimize_if=False,
-            additional_passes={"lift config regs": lift_config_reg})
+            optimize_if=False)

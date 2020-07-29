@@ -58,6 +58,9 @@ def parse(csv_file_name, data_in_width, data_out_width):
 
 
 if __name__ == "__main__":
-    parse('buf_agg_SMT.csv', 1, 4)
-    parse('buf_sram_SMT.csv', 4, 4)
-    parse('buf_tb_SMT.csv', 4, 1)
+    # parse('buf_agg_SMT.csv', 1, 4)
+    # parse('buf_sram_SMT.csv', 4, 4)
+    # parse('buf_tb_SMT.csv', 4, 1)
+    parse(csv_file_name='/Users/max/Documents/POND/clockwork/lake_stream/identity_stream/buf_sram_SMT.csv',
+          data_in_width=4,
+          data_out_width=4)
