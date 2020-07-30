@@ -98,7 +98,7 @@ class AggFormal(Generator):
             loop_itr = forloop_ctr.get_iter()
             loop_wth = forloop_ctr.get_cfg_width()
 
-            self.add_child(f"loops_in2buf_{i}",
+            self.add_child(f"agg_write_loops_{i}",
                            forloop_ctr,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -129,7 +129,7 @@ class AggFormal(Generator):
             loop_itr = forloop_ctr_rd.get_iter()
             loop_wth = forloop_ctr_rd.get_cfg_width()
 
-            self.add_child(f"loops_in2buf_autovec_read_{i}",
+            self.add_child(f"agg_read_loops_{i}",
                            forloop_ctr_rd,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -154,7 +154,7 @@ class AggFormal(Generator):
         loop_itr = fl_ctr_sram_wr.get_iter()
         loop_wth = fl_ctr_sram_wr.get_cfg_width()
 
-        self.add_child(f"loops_in2buf_autovec_write",
+        self.add_child(f"agg_select_loops",
                        fl_ctr_sram_wr,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -178,7 +178,7 @@ class AggFormal(Generator):
             self.wire(self._input_port_sel_addr[0], const(0, self._input_port_sel_addr.width))
 
         # scheduler modules
-        self.add_child(f"input_sched_gen",
+        self.add_child(f"agg_read_output_sched_gen",
                        SchedGen(input_sched_iterator_support,
                                 config_width),
                        clk=self._clk,

@@ -92,7 +92,7 @@ class TBFormal(Generator):
         loop_itr = fl_ctr_sram_rd.get_iter()
         loop_wth = fl_ctr_sram_rd.get_cfg_width()
 
-        self.add_child(f"tb_write_loops",
+        self.add_child(f"output_write_loops",
                        fl_ctr_sram_rd,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -113,7 +113,7 @@ class TBFormal(Generator):
             loop_itr = fl_ctr_tb_wr.get_iter()
             loop_wth = fl_ctr_tb_wr.get_cfg_width()
 
-            self.add_child(f"loops_buf2out_autovec_write_{i}",
+            self.add_child(f"tb_write_loops_{i}",
                            fl_ctr_tb_wr,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -135,7 +135,7 @@ class TBFormal(Generator):
             loop_itr = fl_ctr_tb_rd.get_iter()
             loop_wth = fl_ctr_tb_rd.get_cfg_width()
 
-            self.add_child(f"loops_buf2out_read_{i}",
+            self.add_child(f"tb_read_loops_{i}",
                            fl_ctr_tb_rd,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -166,7 +166,7 @@ class TBFormal(Generator):
             loop_itr = fl_ctr_out_sel.get_iter()
             loop_wth = fl_ctr_out_sel.get_cfg_width()
 
-            self.add_child(f"loops_buf2out_out_sel",
+            self.add_child(f"tb_sel_loops",
                            fl_ctr_out_sel,
                            clk=self._clk,
                            rst_n=self._rst_n,
