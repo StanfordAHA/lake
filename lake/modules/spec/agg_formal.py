@@ -56,8 +56,14 @@ class AggFormal(Generator):
         self._data_in.add_attribute(FormalAttr(f"{self._data_in.name}", FormalSignalConstraint.SEQUENCE))
 
         self._agg_write = self.var("agg_write", self.interconnect_input_ports)
+        self._valid_in = self.output("valid_in", self.interconnect_input_ports)
+        self._valid_in.add_attribute(FormalAttr(f"{self._valid_in.name}", FormalSignalConstraint.SEQUENCE))
+        self.wire(self._valid_in, self._agg_write)
 
         self._write = self.var("write", 1)
+        self._valid_out = self.output("valid_out", 1)
+        self._valid_out.add_attribute(FormalAttr(f"{self._valid_out.name}", FormalSignalConstraint.SEQUENCE))
+        self.wire(self._write, self._valid_out)
 
         self._data_out = self.output("data_out", data_width,
                                      size=self.fetch_width,

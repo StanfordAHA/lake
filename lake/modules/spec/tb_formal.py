@@ -50,6 +50,10 @@ class TBFormal(Generator):
         self._cycle_count = self.var("cycle_count", 16)
         self.add_code(self.increment_cycle_count)
         self._read = self.var("read", 1)
+        self._valid_in = self.output("valid_in", 1)
+        self.wire(self._read, self._valid_in)
+        self._valid_in.add_attribute(FormalAttr(f"{self._valid_in.name}", FormalSignalConstraint.SEQUENCE))
+
         self._data_in = self.input("data_in", data_width,
                                    size=self.fetch_width,
                                    packed=True,
@@ -64,6 +68,11 @@ class TBFormal(Generator):
         self._data_out.add_attribute(FormalAttr(f"{self._data_out.name}", FormalSignalConstraint.SEQUENCE))
 
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
+        # Break out valids for formal!
+        self._valid_out = self.output("valid_out", self.interconnect_output_ports)
+        self._valid_out.add_attribute(FormalAttr(f"{self._valid_out.name}", FormalSignalConstraint.SEQUENCE))
+        self.wire(self._valid_out, self._tb_read)
+
         self.tb_height = 4
 
         self._tb_write_addr = self.var("tb_write_addr", 6,

@@ -62,7 +62,13 @@ class SRAMFormal(Generator):
         self._data_out.add_attribute(FormalAttr(f"{self._data_out.name}", FormalSignalConstraint.SEQUENCE))
 
         self._addr = self.var("addr", clog2(self.mem_depth))
+
+        # Connect up the write to valid in for sequence
         self._write = self.var("write", 1)
+        self._valid_in = self.output("valid_in", 1)
+        self._valid_in.add_attribute(FormalAttr(f"{self._valid_in.name}", FormalSignalConstraint.SEQUENCE))
+        self.wire(self._write, self._valid_in)
+
         self._read = self.var("read", 1)
         self._wen_to_sram = self.var("wen_to_strg", 1, packed=True)
         self._cen_to_sram = self.var("cen_to_strg", 1, packed=True)
