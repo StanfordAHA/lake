@@ -181,7 +181,7 @@ def parse_and_tb(csv_file_name,
           data_in_name, 
           data_out_name)
 
-    read_parsed(csv_file_name[:-4] + '_parse,csv', 
+    read_parsed(csv_file_name[:-4] + '_parse.csv', 
                 data_in_width, 
                 data_out_width, 
                 data_in_name, 
