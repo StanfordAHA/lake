@@ -12,7 +12,8 @@ class RegisterFile(Generator):
                  write_ports,
                  read_ports,
                  width_mult,
-                 depth
+                 depth,
+                 read_delay=0
                  ):
         super().__init__("register_file")
 
@@ -21,6 +22,7 @@ class RegisterFile(Generator):
         self.write_ports = write_ports
         self.read_ports = read_ports
         self.depth = depth
+        self.read_delay = read_delay
 
         ############################
         # Clock and Reset          #
@@ -88,9 +90,16 @@ class RegisterFile(Generator):
             self.add_code(self.seq_data_access)
 
         if self.read_ports == 1:
-            self.add_code(self.comb_data_out_one_r)
+            if self.read_delay == 1:
+                self._ren = self.input("ren", 1)
+                self.add_code(self.seq_data_out_one_r)
+            else:
+                self.add_code(self.comb_data_out_one_r)
         else:
-            self.add_code(self.comb_data_out)
+            if self.read_delay == 1:
+                self.add_code(self.seq_data_out)
+            else:
+                self.add_code(self.comb_data_out)
 
     ##########################
     # Access sram array      #
@@ -114,6 +123,17 @@ class RegisterFile(Generator):
     @always_comb
     def comb_data_out_one_r(self):
         self._data_out = self._data_array[self._rd_addr]
+
+    @always_ff((posedge, "clk"))
+    def seq_data_out(self):
+        for i in range(self.read_ports):
+            if self._ren:
+                self._data_out[i] = self._data_array[self._rd_addr[i]]
+
+    @always_ff((posedge, "clk"))
+    def seq_data_out_one_r(self):
+        if self._ren:
+            self._data_out = self._data_array[self._rd_addr]
 
 
 if __name__ == "__main__":
