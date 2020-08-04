@@ -188,17 +188,50 @@ def parse_and_tb(csv_file_name,
                 data_out_name)
 
 
+def generate_data_lists(csv_file_name,
+                        data_in_width,
+                        data_out_width,
+                        data_in_name,
+                        data_out_name,
+                        bit_width=16,
+                        is_wide=True):
+
+    csv_file = open(csv_file_name, "r")
+    reader = csv.reader(csv_file, delimiter=',')
+
+    # skip first row with headings
+    in_data = []
+    out_data = []
+    start = False
+    for row in reader:
+        row_in = row[0].replace('[', '').replace(']', '').split()
+        row_out = row[1].replace('[', '').replace(']', '').split()
+        # don't need the 2nd check, just there for offline testing
+        if start and row_in != []:
+            if is_wide:
+                in_data_dat = 0
+                for i in range(data_in_width):
+                    in_data_dat = in_data_dat | (int(row_in[i]) << i * bit_width)
+                    print(in_data_dat)
+                in_data.append(in_data_dat)
+
+                out_data_dat = 0
+                for j in range(data_out_width):
+                    out_data_dat = out_data_dat | (int(row_out[j]) << j * bit_width)
+                out_data.append(out_data_dat)
+        start = True
+    return {data_in_name: in_data, data_out_name: out_data}
+    
+
 if __name__ == "__main__":
-    parse_and_tb(csv_file_name='buf_agg_SMT.csv', 
+    '''parse_and_tb(csv_file_name='buf_agg_SMT.csv', 
                  data_in_width=1, 
                  data_out_width=4,
                  data_in_name="data_in",
-                 data_out_name="data_out")
+                 data_out_name="data_out")'''
 
-    parse_and_tb(csv_file_name='buf_sram_SMT.csv', 
-                 data_in_width=4, 
-                 data_out_width=4)
+    generate_data_lists('test.csv', 4, 4, "data_in", "data_out")
 
-    parse_and_tb(csv_file_name='buf_tb_SMT.csv', 
+    '''parse_and_tb(csv_file_name='buf_tb_SMT.csv', 
                  data_in_width=4, 
-                 data_out_width=1)
+                 data_out_width=1)'''
