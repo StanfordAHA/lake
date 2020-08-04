@@ -11,7 +11,7 @@ from lake.modules.spec.sched_gen import SchedGen
 import kratos as kts
 
 
-class StrgUB(Generator):
+class StrgUBVec(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_width=64,
@@ -29,28 +29,25 @@ class StrgUB(Generator):
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=4,
-                 max_line_length=128,
-                 max_tb_height=1,
-                 tb_range_inner_max=5,
-                 tb_sched_max=64,
-                 num_tiles=1):
-        super().__init__("strg_ub", debug=True)
+                 agg_height=4):
+
+        super().__init__("strg_ub_vec", debug=True)
 
         self.fetch_width = mem_width // data_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.agg_height = agg_height
         self.mem_depth = mem_depth
+        self.config_width = config_width
+        self.data_width = data_width
+        self.input_addr_iterator_support = input_addr_iterator_support
+        self.input_sched_iterator_support = input_sched_iterator_support
         # generation parameters
         # inputs
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._clk_en = self.input("clk_en", 1)
-        self._flush = self.reset("flush", is_async=False, active_high=True)
-
-        self._data_in = self.input("data_in", data_width,
+        self._data_in = self.input("data_in", self.data_width,
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
@@ -60,7 +57,7 @@ class StrgUB(Generator):
         self.add_code(self.increment_cycle_count)
 
         # outputs
-        self._data_out = self.output("data_out", data_width,
+        self._data_out = self.output("data_out", self.data_width,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
@@ -71,9 +68,9 @@ class StrgUB(Generator):
         self._read_d1 = self.var("read_d1", 1)
         self.add_code(self.delay_read)
 
-        self._write_addr = self.var("write_addr", config_width)
-        self._read_addr = self.var("read_addr", config_width)
-        self._addr = self.var("addr", clog2(mem_depth))
+        self._write_addr = self.var("write_addr", self.config_width)
+        self._read_addr = self.var("read_addr", self.config_width)
+        self._addr = self.var("addr", clog2(self.mem_depth))
 
         self._agg_write = self.var("agg_write", self.interconnect_input_ports)
 
@@ -96,22 +93,22 @@ class StrgUB(Generator):
         self._sram_write_data = self.var("sram_write_data", data_width,
                                          size=self.fetch_width,
                                          packed=True)
-        self._sram_read_data = self.var("sram_read_data", data_width,
+        self._sram_read_data = self.var("sram_read_data", self.data_width,
                                         size=self.fetch_width,
                                         packed=True,
                                         explicit_array=True)
 
-        self._data_to_sram = self.output("data_to_strg", data_width,
+        self._data_to_sram = self.output("data_to_strg", self.data_width,
                                          size=self.fetch_width,
                                          packed=True)
-        self._data_from_sram = self.input("data_from_strg", data_width,
+        self._data_from_sram = self.input("data_from_strg", self.data_width,
                                           size=self.fetch_width,
                                           packed=True)
 
         self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
         self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
 
-        self._addr_to_sram = self.output("addr_out", clog2(mem_depth), packed=True)
+        self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
 
         self.wire(self._addr_to_sram, self._addr)
         self.wire(self._data_to_sram, self._sram_write_data)
@@ -131,7 +128,7 @@ class StrgUB(Generator):
         # Create an input to agg write scheduler + addressor for each input
         # Also need an addressor for the mux in addition to the read addr
         self._agg = self.var(f"agg",
-                             width=data_width,
+                             width=self.data_width,
                              size=(self.interconnect_input_ports,
                                    self.agg_height,
                                    self.fetch_width),
@@ -229,8 +226,8 @@ class StrgUB(Generator):
         # Whatever comes through here should hopefully just pipe through seamlessly
         # addressor modules
         self.add_child(f"input_addr_gen",
-                       AddrGen(input_addr_iterator_support,
-                               config_width),
+                       AddrGen(self.input_addr_iterator_support,
+                               self.config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._write,
@@ -239,8 +236,8 @@ class StrgUB(Generator):
 
         # scheduler modules
         self.add_child(f"input_sched_gen",
-                       SchedGen(input_sched_iterator_support,
-                                config_width),
+                       SchedGen(self.input_sched_iterator_support,
+                                self.config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
@@ -290,7 +287,7 @@ class StrgUB(Generator):
                                       explicit_array=True)
 
         self._tb = self.var("tb",
-                            width=data_width,
+                            width=self.data_width,
                             size=(self.interconnect_output_ports,
                                   self.tb_height,
                                   self.fetch_width),
@@ -431,7 +428,7 @@ class StrgUB(Generator):
 
 
 if __name__ == "__main__":
-    lake_dut = StrgUB()
-    verilog(lake_dut, filename="strg_ub_new.sv",
+    lake_dut = StrgUBVec()
+    verilog(lake_dut, filename="strg_ub_vec.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})
