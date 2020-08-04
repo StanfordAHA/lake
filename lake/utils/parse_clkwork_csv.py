@@ -71,15 +71,14 @@ def format_comma_bracket(string):
     return new_string
 
 
-def parse(csv_file_name, 
-          data_in_width, 
-          data_out_width, 
-          data_in_name="data_in", 
+def parse(csv_file_name,
+          data_in_width,
+          data_out_width,
+          data_in_name="data_in",
           data_out_name="data_out"):
 
     with open(csv_file_name[:-4] + '_parse.csv', 'w') as parsefile:
         filewriter = csv.writer(parsefile, delimiter=',')
-                                # quotechar='|', quoting=csv.QUOTE_MINIMAL)
         # file headings
         # for no cycle number for now
         # filewriter.writerow(['cycle num', 'data_in', 'data_out'])
@@ -89,8 +88,8 @@ def parse(csv_file_name,
         reader = csv.reader(csv_file, delimiter=',')
 
         # zeros for input / output data when there is no write / read
-        data_in0 = zero_arr(data_in_width) # format_comma_bracket(zero_arr(data_in_width))
-        data_out0 = zero_arr(data_out_width) # format_comma_bracket(zero_arr(data_out_width))
+        data_in0 = zero_arr(data_in_width)  # format_comma_bracket(zero_arr(data_in_width))
+        data_out0 = zero_arr(data_out_width)  # format_comma_bracket(zero_arr(data_out_width))
 
         # TODO clean this up -> issues with initializing array?
         data = []
@@ -139,18 +138,18 @@ def create_tb_headings(data_width, data_name):
     return headings
 
 
-def read_parsed(csv_file_name, 
-                data_in_width, 
-                data_out_width, 
-                data_in_name, 
+def read_parsed(csv_file_name,
+                data_in_width,
+                data_out_width,
+                data_in_name,
                 data_out_name):
 
     with open(csv_file_name[:-4] + '_tb.csv', 'w') as tbfile:
         filewriter = csv.writer(tbfile, delimiter=',')
-        
-        filewriter.writerow(create_tb_headings(data_in_width, data_in_name) \
-            + create_tb_headings(data_out_width, data_out_name))
-        
+
+        filewriter.writerow(create_tb_headings(data_in_width, data_in_name) +
+                            create_tb_headings(data_out_width, data_out_name))
+
         csv_file = open(csv_file_name, "r")
         reader = csv.reader(csv_file, delimiter=',')
 
@@ -169,22 +168,22 @@ def read_parsed(csv_file_name,
             start = True
 
 
-def parse_and_tb(csv_file_name, 
-                 data_in_width, 
-                 data_out_width, 
-                 data_in_name="data_in", 
+def parse_and_tb(csv_file_name,
+                 data_in_width,
+                 data_out_width,
+                 data_in_name="data_in",
                  data_out_name="data_out"):
 
-    parse(csv_file_name, 
-          data_in_width, 
-          data_out_width, 
-          data_in_name, 
+    parse(csv_file_name,
+          data_in_width,
+          data_out_width,
+          data_in_name,
           data_out_name)
 
-    read_parsed(csv_file_name[:-4] + '_parse.csv', 
-                data_in_width, 
-                data_out_width, 
-                data_in_name, 
+    read_parsed(csv_file_name[:-4] + '_parse.csv',
+                data_in_width,
+                data_out_width,
+                data_in_name,
                 data_out_name)
 
 
@@ -224,14 +223,14 @@ def generate_data_lists(csv_file_name,
     
 
 if __name__ == "__main__":
-    '''parse_and_tb(csv_file_name='buf_agg_SMT.csv', 
-                 data_in_width=1, 
+    parse_and_tb(csv_file_name='buf_agg_SMT.csv',
+                 data_in_width=1,
                  data_out_width=4,
                  data_in_name="data_in",
-                 data_out_name="data_out")'''
+                 data_out_name="data_out")
 
     generate_data_lists('test.csv', 4, 4, "data_in", "data_out")
 
-    '''parse_and_tb(csv_file_name='buf_tb_SMT.csv', 
+    parse_and_tb(csv_file_name='buf_tb_SMT.csv', 
                  data_in_width=4, 
-                 data_out_width=1)'''
+                 data_out_width=1)

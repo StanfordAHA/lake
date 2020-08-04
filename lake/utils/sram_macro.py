@@ -33,3 +33,9 @@ class SRAMMacroInfo:
                       wen_port_name,
                       wtsel_port_name,
                       rtsel_port_name)
+
+    def __hash__(self):
+        return hash(self.ports)
+
+    def __eq__(self, other: "SRAMMacroInfo"):
+        return self.ports == other.ports
