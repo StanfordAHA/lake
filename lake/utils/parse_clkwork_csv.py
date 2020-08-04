@@ -16,6 +16,7 @@ def zero_arr(width):
 
 # example:
 # string = '[10 20 30 40]' returns '[[10], [20], [30], [40]]'
+# TODO clean up this code
 def format_comma_bracket(string):
     # makes sure numbers are grouped together
     # string splits up into digits, but we want to support more than
@@ -229,6 +230,29 @@ def generate_data_lists(csv_file_name,
     return {data_in_name: in_data, data_out_name: out_data}
 
 
+def parse_and_lists(csv_file_name,
+                    data_in_width,
+                    data_out_width,
+                    data_in_name,
+                    data_out_name,
+                    bit_width=16,
+                    is_wide=True):
+
+    parse_and_tb(csv_file_name=csv_file_name,
+                 data_in_width=data_in_width,
+                 data_out_width=data_out_width,
+                 data_in_name=data_in_name,
+                 data_out_name=data_out_name)
+
+    generate_data_lists(csv_file_name[:-4] + '_parse.csv',
+                        data_in_width,
+                        data_out_width,
+                        data_in_name,
+                        data_out_name,
+                        bit_width=bit_width,
+                        is_wide=is_wide)
+
+
 if __name__ == "__main__":
     # parse_and_tb(csv_file_name='buf_agg_SMT.csv',
     #              data_in_width=1,
@@ -236,7 +260,7 @@ if __name__ == "__main__":
     #              data_in_name="data_in",
     #              data_out_name="data_out")
 
-    generate_data_lists('buf_sram_SMT_parse.csv', 4, 4, "data_in", "data_out")
+    parse_and_lists('buf_sram_SMT.csv', 4, 4, "data_in", "data_out", 16, True)
 
     # parse_and_tb(csv_file_name='buf_tb_SMT.csv',
     #              data_in_width=4,
