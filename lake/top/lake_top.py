@@ -41,8 +41,9 @@ class LakeTop(Generator):
                  remove_tb=False,
                  fifo_mode=False,
                  add_clk_enable=True,
-                 add_flush=True):
-        super().__init__("LakeTop", debug=True)
+                 add_flush=True,
+                 name="LakeTop"):
+        super().__init__(name, debug=True)
 
         self.data_width = data_width
         self.mem_width = mem_width
