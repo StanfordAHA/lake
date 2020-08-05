@@ -16,6 +16,7 @@ def zero_arr(width):
 
 # example:
 # string = '[10 20 30 40]' returns '[[10], [20], [30], [40]]'
+# TODO clean up this code
 def format_comma_bracket(string):
     # makes sure numbers are grouped together
     # string splits up into digits, but we want to support more than
@@ -128,6 +129,9 @@ def parse(csv_file_name,
                 # filewriter.writerow([str(prev_dat), data_in0, data_out0])
 
 
+# csv file for test bench headings
+# example: data_width = 3, data_name = data_in
+#  will generate headings data_in_0, data_in_1, data_in_2
 def create_tb_headings(data_width, data_name):
     headings = []
     if data_width == 1:
@@ -138,6 +142,8 @@ def create_tb_headings(data_width, data_name):
     return headings
 
 
+# makes a csv with columns as fault test bench names
+# like data_in_0, data_in_1, data_in_2
 def read_parsed(csv_file_name,
                 data_in_width,
                 data_out_width,
@@ -168,6 +174,7 @@ def read_parsed(csv_file_name,
             start = True
 
 
+# parses file and outputs a csv with tb format names
 def parse_and_tb(csv_file_name,
                  data_in_width,
                  data_out_width,
@@ -187,17 +194,74 @@ def parse_and_tb(csv_file_name,
                 data_out_name)
 
 
+# returns lists for data_in and data_out sequences
+def generate_data_lists(csv_file_name,
+                        data_in_width,
+                        data_out_width,
+                        data_in_name,
+                        data_out_name,
+                        bit_width=16,
+                        is_wide=True):
+
+    csv_file = open(csv_file_name, "r")
+    reader = csv.reader(csv_file, delimiter=',')
+
+    # skip first row with headings
+    in_data = []
+    out_data = []
+    start = False
+    for row in reader:
+        row_in = row[0].replace('[', '').replace(']', '').split()
+        row_out = row[1].replace('[', '').replace(']', '').split()
+        # don't need the 2nd check, just there for offline testing
+        if start and row_in != []:
+            if is_wide:
+                in_data_dat = 0
+                for i in range(data_in_width):
+                    in_data_dat = in_data_dat | (int(row_in[i]) << i * bit_width)
+                in_data.append(in_data_dat)
+
+                out_data_dat = 0
+                for j in range(data_out_width):
+                    out_data_dat = out_data_dat | (int(row_out[j]) << j * bit_width)
+                out_data.append(out_data_dat)
+        start = True
+    # print({data_in_name: in_data, data_out_name: out_data})
+    return {data_in_name: in_data, data_out_name: out_data}
+
+
+def parse_and_lists(csv_file_name,
+                    data_in_width,
+                    data_out_width,
+                    data_in_name,
+                    data_out_name,
+                    bit_width=16,
+                    is_wide=True):
+
+    parse_and_tb(csv_file_name=csv_file_name,
+                 data_in_width=data_in_width,
+                 data_out_width=data_out_width,
+                 data_in_name=data_in_name,
+                 data_out_name=data_out_name)
+
+    generate_data_lists(csv_file_name[:-4] + '_parse.csv',
+                        data_in_width,
+                        data_out_width,
+                        data_in_name,
+                        data_out_name,
+                        bit_width=bit_width,
+                        is_wide=is_wide)
+
+
 if __name__ == "__main__":
-    parse_and_tb(csv_file_name='buf_agg_SMT.csv',
-                 data_in_width=1,
-                 data_out_width=4,
-                 data_in_name="data_in",
-                 data_out_name="data_out")
+    # parse_and_tb(csv_file_name='buf_agg_SMT.csv',
+    #              data_in_width=1,
+    #              data_out_width=4,
+    #              data_in_name="data_in",
+    #              data_out_name="data_out")
 
-    parse_and_tb(csv_file_name='buf_sram_SMT.csv',
-                 data_in_width=4,
-                 data_out_width=4)
+    parse_and_lists('buf_sram_SMT.csv', 4, 4, "data_in", "data_out", 16, True)
 
-    parse_and_tb(csv_file_name='buf_tb_SMT.csv',
-                 data_in_width=4,
-                 data_out_width=1)
+    # parse_and_tb(csv_file_name='buf_tb_SMT.csv',
+    #              data_in_width=4,
+    #              data_out_width=1)
