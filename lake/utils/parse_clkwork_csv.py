@@ -216,7 +216,7 @@ def generate_data_lists(csv_file_name,
                         data_in_width,
                         data_out_width,
                         data_in_name="data_in",
-                        data_out_name"data_out",
+                        data_out_name="data_out",
                         bit_width=16,
                         is_wide=True):
 
