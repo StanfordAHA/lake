@@ -2,7 +2,7 @@
     - parsing outputs from Clockwork for the
       specified input format for the SMT solver
     - parsing outputs from Clockwork for lists
-      of expected format for testbench in 
+      of expected format for testbench in
       Garnet / Lake for the memory tile
 '''
 
@@ -230,7 +230,7 @@ def generate_data_lists(csv_file_name,
     for row in reader:
         row_in = row[0].replace('[', '').replace(']', '').split()
         row_out = row[1].replace('[', '').replace(']', '').split()
-        
+
         if start:
             if is_wide:
                 append_shift(in_data, data_in_width, row_in, bit_width)
