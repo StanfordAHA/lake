@@ -1,5 +1,10 @@
-# this file parses outputs from Clockwork for the
-# specified input format for the SMT solver
+'''This file contains functions for:
+    - parsing outputs from Clockwork for the
+      specified input format for the SMT solver
+    - parsing outputs from Clockwork for lists
+      of expected format for testbench in 
+      Garnet / Lake for the memory tile
+'''
 
 import csv
 
@@ -72,6 +77,9 @@ def format_comma_bracket(string):
     return new_string
 
 
+# converts rd@/wr@ and data_in=/data_out= format to
+# consumable format for SMT
+# output is _parse.csv file
 def parse(csv_file_name,
           data_in_width,
           data_out_width,
@@ -194,13 +202,16 @@ def parse_and_tb(csv_file_name,
                 data_out_name)
 
 
+# gets wide data for the SRAM
 def append_shift(data, data_width, row, bit_width):
     dat = 0
     for i in range(data_width):
         dat = dat | (int(row[i]) << i * bit_width)
     data.append(dat)
 
+
 # returns lists for data_in and data_out sequences
+# input is a _parse.csv file
 def generate_data_lists(csv_file_name,
                         data_in_width,
                         data_out_width,
@@ -212,9 +223,9 @@ def generate_data_lists(csv_file_name,
     csv_file = open(csv_file_name, "r")
     reader = csv.reader(csv_file, delimiter=',')
 
-    # skip first row with headings
     in_data = []
     out_data = []
+    # skip first row with headings
     start = False
     for row in reader:
         row_in = row[0].replace('[', '').replace(']', '').split()
