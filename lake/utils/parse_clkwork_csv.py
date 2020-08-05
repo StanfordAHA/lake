@@ -194,6 +194,12 @@ def parse_and_tb(csv_file_name,
                 data_out_name)
 
 
+def append_shift(data, data_width, row, bit_width):
+    dat = 0
+    for i in range(data_width):
+        dat = dat | (int(row[i]) << i * bit_width)
+    data.append(dat)
+
 # returns lists for data_in and data_out sequences
 def generate_data_lists(csv_file_name,
                         data_in_width,
@@ -213,18 +219,11 @@ def generate_data_lists(csv_file_name,
     for row in reader:
         row_in = row[0].replace('[', '').replace(']', '').split()
         row_out = row[1].replace('[', '').replace(']', '').split()
-        # don't need the 2nd check, just there for offline testing
-        if start and row_in != []:
+        
+        if start:
             if is_wide:
-                in_data_dat = 0
-                for i in range(data_in_width):
-                    in_data_dat = in_data_dat | (int(row_in[i]) << i * bit_width)
-                in_data.append(in_data_dat)
-
-                out_data_dat = 0
-                for j in range(data_out_width):
-                    out_data_dat = out_data_dat | (int(row_out[j]) << j * bit_width)
-                out_data.append(out_data_dat)
+                append_shift(in_data, data_in_width, row_in, bit_width)
+                append_shift(out_data, data_out_width, row_out, bit_width)
         start = True
     # print({data_in_name: in_data, data_out_name: out_data})
     return {data_in_name: in_data, data_out_name: out_data}
