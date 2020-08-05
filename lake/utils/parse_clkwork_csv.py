@@ -215,8 +215,8 @@ def append_shift(data, data_width, row, bit_width):
 def generate_data_lists(csv_file_name,
                         data_in_width,
                         data_out_width,
-                        data_in_name,
-                        data_out_name,
+                        data_in_name="data_in",
+                        data_out_name"data_out",
                         bit_width=16,
                         is_wide=True):
 
@@ -237,7 +237,8 @@ def generate_data_lists(csv_file_name,
                 append_shift(out_data, data_out_width, row_out, bit_width)
         start = True
     # print({data_in_name: in_data, data_out_name: out_data})
-    return {data_in_name: in_data, data_out_name: out_data}
+    # return {data_in_name: in_data, data_out_name: out_data}
+    return (in_data, out_data)
 
 
 def parse_and_lists(csv_file_name,
