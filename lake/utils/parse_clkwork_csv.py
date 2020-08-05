@@ -235,6 +235,8 @@ def generate_data_lists(csv_file_name,
             if is_wide:
                 append_shift(in_data, data_in_width, row_in, bit_width)
                 append_shift(out_data, data_out_width, row_out, bit_width)
+            # else:
+                # copy code from read_parsed
         start = True
     # print({data_in_name: in_data, data_out_name: out_data})
     # return {data_in_name: in_data, data_out_name: out_data}
