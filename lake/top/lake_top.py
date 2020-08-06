@@ -42,7 +42,8 @@ class LakeTop(Generator):
                  fifo_mode=False,
                  add_clk_enable=True,
                  add_flush=True,
-                 name="LakeTop"):
+                 name="LakeTop",
+                 gen_addr=False):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -70,6 +71,7 @@ class LakeTop(Generator):
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         self.fifo_mode = fifo_mode
+        self.gen_addr = gen_addr
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -132,12 +134,26 @@ class LakeTop(Generator):
                                    explicit_array=True)
         self._data_in.add_attribute(ControlSignalAttr(False))
 
-        self._addr_in = self.input("addr_in",
-                                   self.data_width,
-                                   size=self.interconnect_input_ports,
-                                   packed=True,
-                                   explicit_array=True)
-        self._addr_in.add_attribute(ControlSignalAttr(False))
+        if self.rw_same_cycle:
+            self._wr_addr_in = self.input("wr_addr_in",
+                                          self.data_width,
+                                          size=self.interconnect_input_ports,
+                                          packed=True,
+                                          explicit_array=True)
+            self._wr_addr_in.add_attribute(ControlSignalAttr(False))
+            self._rd_addr_in = self.input("rd_addr_in",
+                                          self.data_width,
+                                          size=self.interconnect_input_ports,
+                                          packed=True,
+                                          explicit_array=True)
+            self._rd_addr_in.add_attribute(ControlSignalAttr(False))
+        else:
+            self._addr_in = self.input("addr_in",
+                                       self.data_width,
+                                       size=self.interconnect_input_ports,
+                                       packed=True,
+                                       explicit_array=True)
+            self._addr_in.add_attribute(ControlSignalAttr(False))
 
         self._wen = self.input("wen_in", self.interconnect_input_ports)
         self._wen.add_attribute(ControlSignalAttr(True))
@@ -452,7 +468,8 @@ class LakeTop(Generator):
                                  mem_input_ports=self.mem_input_ports,
                                  mem_output_ports=self.mem_output_ports,
                                  read_delay=self.read_delay,
-                                 rw_same_cycle=self.rw_same_cycle)
+                                 rw_same_cycle=self.rw_same_cycle,
+                                 gen_addr=self.gen_addr)
 
         self._ub_data_to_mem = self.var("ub_data_to_mem",
                                         self.data_width,
@@ -525,6 +542,12 @@ class LakeTop(Generator):
         # wire single addr
         else:
             self.wire(self._ub_addr_to_mem, strg_ub.ports.addr_out)
+
+        if self.gen_addr is False:
+            self.wire(strg_ub.ports.read_addr, self._rd_addr_in[0])
+            self.wire(strg_ub.ports.write_addr, self._wr_addr_in[0])
+            self.wire(strg_ub.ports.wen_in, self._wen)
+            self.wire(strg_ub.ports.ren_in, self._ren)
 
         # Wrap sram_stub
         if self.read_delay == 1 and self.rw_same_cycle is False:

@@ -27,7 +27,8 @@ class StrgUBThin(Generator):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=True):
+                 rw_same_cycle=True,
+                 gen_addr=True):
 
         super().__init__("strg_ub_thin", debug=True)
 
@@ -45,6 +46,7 @@ class StrgUBThin(Generator):
         self.output_sched_iterator_support = output_sched_iterator_support
         self.rw_same_cycle = rw_same_cycle
         self.read_delay = read_delay
+        self.gen_addr = gen_addr
         # generation parameters
         # inputs
         self._clk = self.clock("clk")
@@ -55,15 +57,42 @@ class StrgUBThin(Generator):
                                    packed=True,
                                    explicit_array=True)
 
-        # Create cycle counter to share...
-        self._cycle_count = self.var("cycle_count", 16)
-        self.add_code(self.increment_cycle_count)
-
         # outputs
         self._data_out = self.output("data_out", self.data_width,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
+
+        self._data_to_sram = self.output("data_to_strg", self.data_width,
+                                         size=self.fetch_width,
+                                         packed=True)
+        self._data_from_sram = self.input("data_from_strg", self.data_width,
+                                          size=self.fetch_width,
+                                          packed=True)
+        # Early out in case...
+        if self.gen_addr is False:
+            # Pass through write enable, addr data and
+            # read enable, addr data
+            self._read = self.input("ren_in", 1)
+            self._write = self.input("wen_in", 1)
+            self._write_addr = self.input("write_addr", self.config_width)
+            self._read_addr = self.input("read_addr", self.config_width)
+            self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
+            self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
+            self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
+            self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
+            self.wire(self._wen_to_sram, self._write)
+            self.wire(self._ren_to_sram, self._read)
+            self.wire(self._data_out, self._data_from_sram)
+            self.wire(self._data_in, self._data_to_sram)
+            self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
+            self.wire(self._rd_addr_to_sram, self._read_addr[clog2(self.mem_depth) - 1, 0])
+
+            return
+
+        # Create cycle counter to share...
+        self._cycle_count = self.var("cycle_count", 16)
+        self.add_code(self.increment_cycle_count)
 
         # local variables
         self._write = self.var("write", 1)
@@ -79,13 +108,6 @@ class StrgUBThin(Generator):
         self._write_addr = self.var("write_addr", self.config_width)
         self._read_addr = self.var("read_addr", self.config_width)
         self._addr = self.var("addr", clog2(self.mem_depth))
-
-        self._data_to_sram = self.output("data_to_strg", self.data_width,
-                                         size=self.fetch_width,
-                                         packed=True)
-        self._data_from_sram = self.input("data_from_strg", self.data_width,
-                                          size=self.fetch_width,
-                                          packed=True)
 
         # Create for loop counters that can be shared across the input port selection and SRAM write
         fl_ctr_sram_wr = ForLoop(iterator_support=6,
