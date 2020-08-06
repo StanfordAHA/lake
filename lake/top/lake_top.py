@@ -135,13 +135,13 @@ class LakeTop(Generator):
         self._data_in.add_attribute(ControlSignalAttr(False))
 
         if self.rw_same_cycle:
-            self._wr_addr_in = self.input("wr_addr_in",
+            self._wr_addr_in = self.input("waddr",
                                           self.data_width,
                                           size=self.interconnect_input_ports,
                                           packed=True,
                                           explicit_array=True)
             self._wr_addr_in.add_attribute(ControlSignalAttr(False))
-            self._rd_addr_in = self.input("rd_addr_in",
+            self._rd_addr_in = self.input("raddr",
                                           self.data_width,
                                           size=self.interconnect_input_ports,
                                           packed=True,
