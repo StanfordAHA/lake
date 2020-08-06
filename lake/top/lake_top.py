@@ -746,6 +746,7 @@ class LakeTop(Generator):
                 if self.rw_same_cycle:
                     self.add_child(f"rf_{i}", rfile,
                                    clk=self._gclk,
+                                   rst_n=self._rst_n,
                                    wen=self._mem_wen_in[i],
                                    wr_addr=self._wr_mem_addr_in[i],
                                    rd_addr=self._rd_mem_addr_in[i],
@@ -754,6 +755,7 @@ class LakeTop(Generator):
                 else:
                     self.add_child(f"rf_{i}", rfile,
                                    clk=self._gclk,
+                                   rst_n=self._rst_n,
                                    wen=self._mem_wen_in[i],
                                    wr_addr=self._mem_addr_in[i],
                                    rd_addr=self._mem_addr_in[i],
