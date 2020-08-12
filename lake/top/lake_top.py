@@ -7,7 +7,7 @@ from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
-from lake.modules.chain import Chain
+from lake.modules.chain_accessor import ChainAccessor
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
@@ -25,8 +25,8 @@ class LakeTop(Generator):
                  output_iterator_support=6,
                  input_config_width=16,
                  output_config_width=16,
-                 interconnect_input_ports=1,  # Connection to int
-                 interconnect_output_ports=1,
+                 interconnect_input_ports=2,  # Connection to int
+                 interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=True,
@@ -88,23 +88,23 @@ class LakeTop(Generator):
 
         # Chaining config regs
 
-        self._enable_chain_input = self.input("enable_chain_input", 1)
-        self._enable_chain_input.add_attribute(ConfigRegAttr("Enable chain on input"))
+        # self._enable_chain_input = self.input("enable_chain_input", 1)
+        # self._enable_chain_input.add_attribute(ConfigRegAttr("Enable chain on input"))
 
-        self._enable_chain_output = self.input("enable_chain_output", 1)
-        self._enable_chain_output.add_attribute(ConfigRegAttr("Enable chain on output"))
+        # self._enable_chain_output = self.input("enable_chain_output", 1)
+        # self._enable_chain_output.add_attribute(ConfigRegAttr("Enable chain on output"))
 
-        self._chain_idx_input = self.input("chain_idx_input",
-                                           self.chain_idx_bits)
-        self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
-        self._chain_idx_output = self.input("chain_idx_output",
-                                            self.chain_idx_bits)
-        self._chain_idx_output.add_attribute(ConfigRegAttr("Tile output index when having multiple tiles"))
+        # self._chain_idx_input = self.input("chain_idx_input",
+        #                                    self.chain_idx_bits)
+        # self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
+        # self._chain_idx_output = self.input("chain_idx_output",
+        #                                     self.chain_idx_bits)
+        # self._chain_idx_output.add_attribute(ConfigRegAttr("Tile output index when having multiple tiles"))
 
         # Chaining signals
-        self._chain_valid_in = self.input("chain_valid_in",
-                                          self.interconnect_output_ports)
-        self._chain_valid_in.add_attribute(ControlSignalAttr(True))
+        # self._chain_valid_in = self.input("chain_valid_in",
+        #                                   self.interconnect_output_ports)
+        # self._chain_valid_in.add_attribute(ControlSignalAttr(True))
 
         self._chain_data_in = self.input("chain_data_in",
                                          self.data_width,
@@ -120,9 +120,9 @@ class LakeTop(Generator):
                                            explicit_array=True)
         self._chain_data_out.add_attribute(ControlSignalAttr(False))
 
-        self._chain_valid_out = self.output("chain_valid_out",
-                                            self.interconnect_output_ports)
-        self._chain_valid_out.add_attribute(ControlSignalAttr(False))
+        # self._chain_valid_out = self.output("chain_valid_out",
+        #                                     self.interconnect_output_ports)
+        # self._chain_valid_out.add_attribute(ControlSignalAttr(False))
 
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
@@ -518,6 +518,8 @@ class LakeTop(Generator):
                                             packed=True,
                                             explicit_array=True)
 
+        self._accessor_output = self.var("accessor_output", self.interconnect_output_ports)
+
         self.add_child("strg_ub", strg_ub,
                        # clk + rst
                        clk=self._gclk,
@@ -533,7 +535,8 @@ class LakeTop(Generator):
                        #    valid_out=self._ub_valid_out,
                        data_to_strg=self._ub_data_to_mem,
                        ren_to_strg=self._ub_cen_to_mem,
-                       wen_to_strg=self._ub_wen_to_mem)
+                       wen_to_strg=self._ub_wen_to_mem,
+                       accessor_output=self._accessor_output)
 
         # Wire addrs
         if self.rw_same_cycle:
@@ -790,21 +793,14 @@ class LakeTop(Generator):
             self.wire(self._data_out_tile[i + 1], self._ub_data_out[i + 1])
             self.wire(self._valid_out_tile[i + 1], self._ub_valid_out[i + 1])
 
-        chaining = Chain(data_width=self.data_width,
-                         interconnect_output_ports=self.interconnect_output_ports,
-                         chain_idx_bits=self.chain_idx_bits)
+        chaining = ChainAccessor(data_width=self.data_width,
+                                 interconnect_output_ports=self.interconnect_output_ports)
 
         self.add_child(f"chain", chaining,
-                       enable_chain_output=self._enable_chain_output,
-                       chain_idx_output=self._chain_idx_output,
-                       curr_tile_valid_out=self._valid_out_tile,
                        curr_tile_data_out=self._data_out_tile,
-                       chain_valid_in=self._chain_valid_in,
                        chain_data_in=self._chain_data_in,
-                       chain_data_out=self._chain_data_out,
-                       chain_valid_out=self._chain_valid_out,
-                       data_out_tile=self._data_out,
-                       valid_out_tile=self._valid_out)
+                       accessor_output=self._accessor_output,
+                       data_out_tile=self._data_out)
 
         ########################
         ##### CLOCK ENABLE #####

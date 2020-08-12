@@ -275,6 +275,10 @@ class StrgUBVec(Generator):
                        valid_output=self._read)
 
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
+        self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
+
+        self.wire(self._accessor_output, self._tb_read)
+
         self.tb_height = 4
 
         self._tb_write_addr = self.var("tb_write_addr", 6,
