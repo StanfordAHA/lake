@@ -815,7 +815,7 @@ if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
     use_sram_stub = True
     fifo_mode = True
-    mem_width =64 
+    mem_width = 64
     lake_dut = LakeTop(mem_width=mem_width,
                        sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,

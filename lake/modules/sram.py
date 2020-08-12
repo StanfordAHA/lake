@@ -178,7 +178,7 @@ class SRAM(Generator):
             self._mem_addr_to_sram = self._mem_addr_in_bank
         else:
             self._mem_addr_to_sram = self._mem_addr_in_bank[self.address_width - self.chain_idx_bits - 1, 0]
-    
+
 
 if __name__ == "__main__":
     dut = SRAM(use_sram_stub=0,
