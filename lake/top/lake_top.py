@@ -1,6 +1,6 @@
 from kratos import *
 from lake.modules.passthru import *
-from lake.modules.sram_wrapper import SRAMWrapper
+from lake.modules.sram import SRAM
 from lake.modules.strg_ub_vec import StrgUBVec
 from lake.modules.strg_ub_thin import StrgUBThin
 from lake.modules.storage_config_seq import StorageConfigSeq
@@ -18,32 +18,32 @@ import kratos as kts
 class LakeTop(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
-                 mem_width=16,
+                 mem_width=64,
                  mem_depth=256,
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
                  input_config_width=16,
                  output_config_width=16,
-                 interconnect_input_ports=2,  # Connection to int
-                 interconnect_output_ports=2,
+                 interconnect_input_ports=1,  # Connection to int
+                 interconnect_output_ports=1,
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=True,
                  sram_macro_info=SRAMMacroInfo(),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
+                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
                  tb_sched_max=16,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
                  remove_tb=False,
-                 fifo_mode=False,
+                 fifo_mode=True,
                  add_clk_enable=True,
                  add_flush=True,
                  name="LakeTop",
-                 gen_addr=False):
+                 gen_addr=True):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -79,7 +79,6 @@ class LakeTop(Generator):
         self.sets_per_macro = max(1, int(self.mem_depth / self.data_words_per_set))
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
-        self.chain_idx_bits = max(1, clog2(num_tiles))
         # phases = [] TODO
 
         # CLK and RST
@@ -113,12 +112,12 @@ class LakeTop(Generator):
                                          explicit_array=True)
         self._chain_data_in.add_attribute(ControlSignalAttr(False))
 
-        self._chain_data_out = self.output("chain_data_out",
-                                           self.data_width,
-                                           size=self.interconnect_output_ports,
-                                           packed=True,
-                                           explicit_array=True)
-        self._chain_data_out.add_attribute(ControlSignalAttr(False))
+        # self._chain_data_out = self.output("chain_data_out",
+        #                                    self.data_width,
+        #                                    size=self.interconnect_output_ports,
+        #                                    packed=True,
+        #                                    explicit_array=True)
+        # self._chain_data_out.add_attribute(ControlSignalAttr(False))
 
         # self._chain_valid_out = self.output("chain_valid_out",
         #                                     self.interconnect_output_ports)
@@ -207,9 +206,9 @@ class LakeTop(Generator):
                                      explicit_array=True)
         self._data_out.add_attribute(ControlSignalAttr(False))
 
-        self._valid_out = self.output("valid_out",
-                                      self.interconnect_output_ports)
-        self._valid_out.add_attribute(ControlSignalAttr(False))
+        # self._valid_out = self.output("valid_out",
+        #                               self.interconnect_output_ports)
+        # self._valid_out.add_attribute(ControlSignalAttr(False))
 
         self._data_out_tile = self.var("data_out_tile",
                                        self.data_width,
@@ -333,11 +332,6 @@ class LakeTop(Generator):
                                     size=self.banks,
                                     explicit_array=True,
                                     packed=True)
-
-        self._mem_valid_data = self.var("mem_valid_data", self.mem_output_ports,
-                                        size=self.banks,
-                                        explicit_array=True,
-                                        packed=True)
 
         self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
                                     size=self.banks,
@@ -534,7 +528,7 @@ class LakeTop(Generator):
                        data_out=self._ub_data_out,
                        #    valid_out=self._ub_valid_out,
                        data_to_strg=self._ub_data_to_mem,
-                       ren_to_strg=self._ub_cen_to_mem,
+                       cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem,
                        accessor_output=self._accessor_output)
 
@@ -702,23 +696,19 @@ class LakeTop(Generator):
             self.wire(self._mem_addr_dp, self._all_addr_to_mem[self._mode])
 
             for i in range(self.banks):
-                mbank = SRAMWrapper(use_sram_stub=self.use_sram_stub,
-                                    sram_name=self.sram_macro_info.name,
-                                    data_width=self.data_width,
-                                    fw_int=self.fw_int,
-                                    mem_depth=self.mem_depth,
-                                    mem_input_ports=self.mem_input_ports,
-                                    mem_output_ports=self.mem_output_ports,
-                                    address_width=self.address_width,
-                                    bank_num=i,
-                                    num_tiles=self.num_tiles)
+                mbank = SRAM(use_sram_stub=self.use_sram_stub,
+                             sram_name=self.sram_macro_info.name,
+                             data_width=self.data_width,
+                             fw_int=self.fw_int,
+                             mem_depth=self.mem_depth,
+                             mem_input_ports=self.mem_input_ports,
+                             mem_output_ports=self.mem_output_ports,
+                             address_width=self.address_width,
+                             bank_num=i,
+                             num_tiles=self.num_tiles)
 
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
-                               enable_chain_input=self._enable_chain_input,
-                               enable_chain_output=self._enable_chain_output,
-                               chain_idx_input=self._chain_idx_input,
-                               chain_idx_output=self._chain_idx_output,
                                clk_en=self._clk_en | self._config_en.r_or(),
                                mem_data_in_bank=self._mem_data_in[i],
                                mem_data_out_bank=self._mem_data_out[i],
@@ -726,8 +716,7 @@ class LakeTop(Generator):
                                mem_cen_in_bank=self._mem_cen_in[i],
                                mem_wen_in_bank=self._mem_wen_in[i],
                                wtsel=self.sram_macro_info.wtsel_value,
-                               rtsel=self.sram_macro_info.rtsel_value,
-                               valid_data=self._mem_valid_data[i])
+                               rtsel=self.sram_macro_info.rtsel_value)
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)
@@ -825,8 +814,8 @@ class LakeTop(Generator):
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
     use_sram_stub = True
-    fifo_mode = False
-    mem_width = 16
+    fifo_mode = True
+    mem_width =64 
     lake_dut = LakeTop(mem_width=mem_width,
                        sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,
