@@ -218,28 +218,44 @@ def generate_data_lists(csv_file_name,
                         data_in_name="data_in",
                         data_out_name="data_out",
                         bit_width=16,
-                        is_wide=True):
+                        is_wide=False):
 
     csv_file = open(csv_file_name, "r")
     reader = csv.reader(csv_file, delimiter=',')
 
-    in_data = []
-    out_data = []
+    if is_wide:
+        in_data, out_data = [], []
+    else:
+        in_data = [[] for _ in range(data_in_width)]
+        out_data = [[] for _ in range(data_out_width)]
     # skip first row with headings
     start = False
     for row in reader:
         row_in = row[0].replace('[', '').replace(']', '').split()
         row_out = row[1].replace('[', '').replace(']', '').split()
-
         if start:
             if is_wide:
-                append_shift(in_data, data_in_width, row_in, bit_width)
-                append_shift(out_data, data_out_width, row_out, bit_width)
+                append_shift(in_data[0], data_in_width, row_in, bit_width)
+                append_shift(out_data[0], data_out_width, row_out, bit_width)
+            else:
+                for i in range(data_in_width):
+                    try:
+                        in_data[i].append(int(row_in[i]))
+                    except:
+                        assert True
+                for j in range(data_out_width):
+                    try:
+                        out_data[j].append(int(row_out[j]))
+                    except:
+                        assert True
+
             # else:
                 # copy code from read_parsed
         start = True
-    # print({data_in_name: in_data, data_out_name: out_data})
+    print({data_in_name: in_data, data_out_name: out_data})
     # return {data_in_name: in_data, data_out_name: out_data}
+    if is_wide:
+        return (in_data[0], out_data[0])
     return (in_data, out_data)
 
 
@@ -273,8 +289,8 @@ if __name__ == "__main__":
     #              data_in_name="data_in",
     #              data_out_name="data_out")
 
-    parse_and_lists('buf_sram_SMT.csv', 4, 4, "data_in", "data_out", 16, True)
-
+    # parse_and_lists('buf_sram_SMT.csv', 4, 4, "data_in", "data_out", 16, True)
+    generate_data_lists('test.csv', 2, 2)
     # parse_and_tb(csv_file_name='buf_tb_SMT.csv',
     #              data_in_width=4,
     #              data_out_width=1)
