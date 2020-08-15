@@ -30,6 +30,11 @@ def search_for_config(cfg_file, key):
     lines = cfg_file
     matches = [l for l in lines if key in l]
     print(matches)
+    if len(matches) > 1:
+        addrs = []
+        for i in range(len(matches)):
+            addrs.append(matches[i].split(',')[1])
+        matches[0] = matches[addrs.index(min(addrs))]
     if len(matches) > 0:
         return int(matches[0].split(',')[1])
 
