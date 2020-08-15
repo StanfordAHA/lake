@@ -120,13 +120,13 @@ def get_static_bitstream(config_path):
 
     # Set configuration...
     config_simple = [
-        ("strg_ub_input_addr_gen_starting_addr", agg2sram.data_strt),
+        ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
         ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
 
-        ("strg_ub_output_addr_gen_starting_addr", sram2tb.data_strt),
+        ("strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt),
         ("strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
 
-        ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.data_strt),
+        ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg_out.data_strt),
         ("strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt),
 
         # ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.
