@@ -40,6 +40,7 @@ def test_lake(config_path,
     in_data, out_data = generate_data_lists(stream_path, in_ports, out_ports)
 
     configs = get_static_bitstream(config_path)
+    # print(configs)
 
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
