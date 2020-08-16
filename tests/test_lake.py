@@ -137,25 +137,40 @@ def get_static_bitstream(config_path):
     in2agg = map_controller(extract_controller(config_path + '/input_in2agg_0.csv'), "in2agg")
     agg2sram = map_controller(extract_controller(config_path + '/input_agg2sram.csv'), "agg2sram")
     sram2tb = map_controller(extract_controller(config_path + '/output_2_sram2tb.csv'), "sram2tb")
-    tb2out_0 = map_controller(extract_controller(config_path + '/output_2_tb2out_0.csv'), "tb2out0")
-    tb2out_1 = map_controller(extract_controller(config_path + '/output_2_tb2out_1.csv'), "tb2out1")
+    tb2out0 = map_controller(extract_controller(config_path + '/output_2_tb2out_0.csv'), "tb2out0")
+    tb2out1 = map_controller(extract_controller(config_path + '/output_2_tb2out_1.csv'), "tb2out1")
 
     # Set configuration...
     config_simple = [
         ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
         ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
         ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
+        ("strg_ub_loops_in2buf_autovec_read_0_dimensionality", agg2sram.dim),
+        ("strg_ub_loops_in2buf_autovec_write_dimensionality", agg2sram.dim),
 
         ("strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt),
         ("strg_ub_tb_write_addr_gen_0_starting_addr", sram2tb.in_data_strt),
         ("strg_ub_tb_write_addr_gen_1_starting_addr", sram2tb.in_data_strt),
+        ("strg_ub_out_port_sel_addr_starting_addr", sram2tb.mux_data_strt),
         ("strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
+        ("loops_buf2out_autovec_read_dimensionality", sram2tb.dim),
+
+        ("strg_ub_loops_buf2out_out_sel_dimensionality", sram2tb.dim),
 
         ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt),
         ("strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt),
+        ("strg_ub_loops_in2buf_0_dimensionality", in2agg.dim),
 
+        ("strg_ub_tb_read_addr_gen_0_starting_addr", tb2out0.out_data_strt),
+        ("strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
+        ("strg_ub_loops_buf2out_read_0_dimensionality", tb2out0.dim),
+        ("strg_ub_loops_buf2out_autovec_write_0_dimensionality", tb2out0.dim),
 
-        # ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.
+        ("strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
+        ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
+        ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
+        ("strg_ub_loops_buf2out_autovec_write_1_dimensionality", tb2out1.dim),
+
         # Chaining
         ("chain_idx_input", 0),  # 1
         ("chain_idx_output", 0),  # 1
@@ -177,8 +192,10 @@ def get_static_bitstream(config_path):
         ("tile_en", 1),  # 1
     ]
 
-    #for elem in [in2agg, agg2sram, sram2tb, tb2out_0, tb2out_1]:
-    #    for i in range(in2agg.dim):
+    # ranges
+
+    for elem in [in2agg, agg2sram, sram2tb, tb2out_0, tb2out_1]:
+        for i in range(in2agg.dim):
 
     return config_simple
 

@@ -12,6 +12,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
+from lake.utils.util import extract_formal_annotation
 import kratos as kts
 
 
@@ -824,6 +825,8 @@ class LakeTop(Generator):
 
         # config regs
         lift_config_reg(self.internal_generator)
+
+        extract_formal_annotation(self.internal_generator, "test.txt")
 
 
 if __name__ == "__main__":
