@@ -104,15 +104,15 @@ def map_controller(controller, name):
     # Now transforms ranges and strides
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
     tform_in_data_strides = None
-    if ctrl_in_data_strt:
+    if ctrl_in_data_strt is not None:
         (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
-
+    
     tform_out_data_strides = None
-    if ctrl_out_data_strt:
+    if ctrl_out_data_strt is not None:
         (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
 
     tform_mux_data_strides = None
-    if ctrl_mux_data_strt:
+    if ctrl_mux_data_strt is not None:
         (tform_extent, tform_mux_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_mux_data_strides, ctrl_dim)
 
     # Basically give a starting margin for everything...
@@ -141,7 +141,7 @@ def get_static_bitstream(config_path):
     tb2out1 = map_controller(extract_controller(config_path + '/output_2_tb2out_1.csv'), "tb2out1")
 
     # Set configuration...
-    config_simple = [
+    config = [
         ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
         ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
         ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
@@ -192,12 +192,13 @@ def get_static_bitstream(config_path):
         ("tile_en", 1),  # 1
     ]
 
-    # ranges
+    for i in range(in2agg.dim):
+        config.append((f"strg_ub_loops_in2buf_0_ranges_{i}", in2agg.extent[i]))
+        config.append((f"strg_ub_agg_write_addr_gen_0_strides_{i}", in2agg.in_data_stride[i]))
+        config.append((f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides", in2agg.cyc_stride[i]))
 
-    for elem in [in2agg, agg2sram, sram2tb, tb2out_0, tb2out_1]:
-        for i in range(in2agg.dim):
 
-    return config_simple
+    return config
 
 
 def test_lake(config_path, 
