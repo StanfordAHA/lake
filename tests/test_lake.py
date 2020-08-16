@@ -44,16 +44,16 @@ def test_lake(config_path,
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
 
-    for i in range(len(in_data[0])):
+    for i in range(64):
         for j in range(len(in_data)):
             if i < len(in_data[j]):
                 setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
 
         tester.eval()
 
-#        for j in range(len(out_data)):
-#            if i < len(out_data[j]):
-#                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
+        for j in range(len(out_data)):
+            if i < len(out_data[j]):
+                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
 
         tester.step(2)
 

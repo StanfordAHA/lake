@@ -98,7 +98,10 @@ class StrgUBThin(Generator):
 
         # local variables
         self._write = self.var("write", 1)
-        self._read = self.var("read", 1)
+        self._read = self.var("read", self.interconnect_output_ports)
+        self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
+        self.wire(self._accessor_output, self._read)
+
         self._valid_out = self.output("valid_out", 1)
         if self.read_delay == 1:
             self._read_d1 = self.var("read_d1", 1)
