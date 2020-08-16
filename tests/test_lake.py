@@ -195,8 +195,34 @@ def get_static_bitstream(config_path):
     for i in range(in2agg.dim):
         config.append((f"strg_ub_loops_in2buf_0_ranges_{i}", in2agg.extent[i]))
         config.append((f"strg_ub_agg_write_addr_gen_0_strides_{i}", in2agg.in_data_stride[i]))
-        config.append((f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides", in2agg.cyc_stride[i]))
+        config.append((f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
 
+    for i in range(agg2sram.dim):
+        config.append((f"strg_ub_loops_in2buf_autovec_read_0_ranges_{i}", agg2sram.extent[i]))
+        config.append((f"strg_ub_agg_read_addr_gen_0_strides_{i}", agg2sram.out_data_stride[i]))
+        config.append((f"strg_ub_loops_in2buf_autovec_write_ranges_{i}", agg2sram.extent[i]))
+        config.append((f"strg_ub_input_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
+        config.append((f"strg_ub_input_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
+
+    tbs = [tb2out0, tb2out1]
+
+    for i in range(sram2tb.dim):
+        config.append((f"strg_ub_loops_buf2out_autovec_read_ranges_{i}", sram2tb.extent[i]))
+        config.append((f"strg_ub_output_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
+        config.append((f"strg_ub_output_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
+        config.append((f"strg_ub_loops_buf2out_out_sel_ranges_{i}", sram2tb.extent[i]))
+        config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
+        for tb in range(len(tbs)):
+            config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
+
+    tbs = [tb2out0, tb2out1]
+    for tb in range(len(tbs)):
+        elem = tbs[tb]
+        for i in range(elem.dim):
+            config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", elem.extent[i]))
+            config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
+            config.append((f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
+            config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
 
     return config
 
