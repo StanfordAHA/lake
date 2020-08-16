@@ -10,7 +10,7 @@ from lake.utils.sram_macro import SRAMMacroInfo
 from lake.utils.parse_clkwork_csv import generate_data_lists
 
 ControllerInfo = collections.namedtuple('ControllerInfo',
-                                        'dim extent cyc_stride in_data_stride cyc_strt in_data_strt out_data_stride out_data_strt')
+                                        'dim extent cyc_stride in_data_stride cyc_strt in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt')
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
     assert len(ranges) == len(strides), "Strides and ranges should be same length..."
@@ -29,12 +29,14 @@ def transform_strides_and_ranges(ranges, strides, dimensionality):
 def search_for_config(cfg_file, key):
     lines = cfg_file
     matches = [l for l in lines if key in l]
-    print(matches)
+    # to account for multiple aggs, tbs, take lowest starting addr
+    # for blocks of memories
     if len(matches) > 1:
         addrs = []
         for i in range(len(matches)):
             addrs.append(matches[i].split(',')[1])
         matches[0] = matches[addrs.index(min(addrs))]
+    # return nothing if no matches (in / out do not always exist)
     if len(matches) > 0:
         return int(matches[0].split(',')[1])
 
@@ -42,19 +44,26 @@ def extract_controller(file_path):
     file_lines = None
     with open(file_path) as ctrl_f:
         file_lines = ctrl_f.readlines()
+    
     dim = search_for_config(file_lines, 'dimensionality')
     cyc_strt = search_for_config(file_lines, 'cycle_starting_addr')
-    in_data_strt = search_for_config(file_lines, 'in_data_starting_addr')
-    out_data_strt = search_for_config(file_lines, 'out_data_starting_addr')
+    in_data_strt = search_for_config(file_lines, 'write_data_starting_addr')
+    out_data_strt = search_for_config(file_lines, 'read_data_starting_addr')
+    mux_data_strt = search_for_config(file_lines, 'mux_write_data_starting_addr')
+
     ranges = []
     cyc_strides = []
     in_data_strides = []
     out_data_strides = []
+    mux_data_strides = []
+
     for i in range(dim):
         ranges.append(search_for_config(file_lines, f"extent_{i}"))
         cyc_strides.append(search_for_config(file_lines, f"cycle_stride_{i}"))
-        in_data_strides.append(search_for_config(file_lines, f"in_data_stride_{i}"))
-        out_data_strides.append(search_for_config(file_lines, f"out_data_stride_{i}"))
+        in_data_strides.append(search_for_config(file_lines, f"write_data_stride_{i}"))
+        out_data_strides.append(search_for_config(file_lines, f"read_data_stride_{i}"))
+        mux_data_strides.append(search_for_config(file_lines, f"mux_write_data_stride_{i}"))
+
     ctrl_info = ControllerInfo(dim=dim,
                                cyc_strt=cyc_strt,
                                in_data_strt=in_data_strt,
@@ -62,7 +71,9 @@ def extract_controller(file_path):
                                cyc_stride=cyc_strides,
                                in_data_stride=in_data_strides,
                                out_data_strt=out_data_strt,
-                               out_data_stride=out_data_strides)
+                               out_data_stride=out_data_strides,
+                               mux_data_stride=mux_data_strides,
+                               mux_data_strt=mux_data_strt)
     return ctrl_info
 
 def map_controller(controller, name):
@@ -74,6 +85,8 @@ def map_controller(controller, name):
     ctrl_in_data_strt = controller.in_data_strt
     ctrl_out_data_strides = controller.out_data_stride
     ctrl_out_data_strt = controller.out_data_strt
+    ctrl_mux_data_strides = controller.mux_data_stride
+    ctrl_mux_data_strt = controller.mux_data_strt
 
     print(f"extracted controller for: {name}")
     print(f"dim: {ctrl_dim}")
@@ -84,6 +97,9 @@ def map_controller(controller, name):
     print(f"in data start: {ctrl_in_data_strt}")
     print(f"out data stride: {ctrl_out_data_strides}")
     print(f"out data start: {ctrl_out_data_strt}")
+    print(f"mux data start: {ctrl_mux_data_strt}")
+    print(f"mux data stride: {ctrl_mux_data_strides}")
+    print()
 
     # Now transforms ranges and strides
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
@@ -95,6 +111,10 @@ def map_controller(controller, name):
     if ctrl_out_data_strt:
         (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
 
+    tform_mux_data_strides = None
+    if ctrl_mux_data_strt:
+        (tform_extent, tform_mux_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_mux_data_strides, ctrl_dim)
+
     # Basically give a starting margin for everything...
     garnet_delay = 0
 
@@ -105,7 +125,9 @@ def map_controller(controller, name):
                                  cyc_stride=tform_cyc_strides,
                                  in_data_stride=tform_in_data_strides,
                                  out_data_strt=ctrl_out_data_strt,
-                                 out_data_stride=tform_out_data_strides)
+                                 out_data_stride=tform_out_data_strides,
+                                 mux_data_strt=ctrl_mux_data_strt,
+                                 mux_data_stride=tform_mux_data_strides)
 
     return mapped_ctrl
 
@@ -114,20 +136,24 @@ def get_static_bitstream(config_path):
 
     in2agg = map_controller(extract_controller(config_path + '/input_in2agg_0.csv'), "in2agg")
     agg2sram = map_controller(extract_controller(config_path + '/input_agg2sram.csv'), "agg2sram")
-#    sram2tb = map_controller(extract_controller(config_path + '/output_2_sram2tb.csv'), "sram2tb")
-#    tb2out_0 = map_controller(extract_controller(config_path + '/output_2_tb2out_0.csv'), "tb2out0")
-#    tb2out_1 = map_controller(extract_controller(config_path + '/output_2_tb2out_1.csv'), "tb2out1")
+    sram2tb = map_controller(extract_controller(config_path + '/output_2_sram2tb.csv'), "sram2tb")
+    tb2out_0 = map_controller(extract_controller(config_path + '/output_2_tb2out_0.csv'), "tb2out0")
+    tb2out_1 = map_controller(extract_controller(config_path + '/output_2_tb2out_1.csv'), "tb2out1")
 
     # Set configuration...
     config_simple = [
+        ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
         ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
         ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
 
         ("strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt),
+        ("strg_ub_tb_write_addr_gen_0_starting_addr", sram2tb.in_data_strt),
+        ("strg_ub_tb_write_addr_gen_1_starting_addr", sram2tb.in_data_strt),
         ("strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
 
-        ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg_out.data_strt),
+        ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt),
         ("strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt),
+
 
         # ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.
         # Chaining
