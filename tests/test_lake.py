@@ -259,8 +259,8 @@ def test_lake(config_path,
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
 
-    for i in range(len(out_data)):
-        tester.circuit.data_in = in_data[i]
+    for i in range(len(in_data[0])):
+        tester.circuit.data_in_0 = in_data[0][i]
         tester.eval()
         tester.step(2)
 
