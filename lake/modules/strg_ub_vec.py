@@ -29,7 +29,8 @@ class StrgUBVec(Generator):
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=4):
+                 agg_height=4,
+                 tb_height=4):
 
         super().__init__("strg_ub_vec", debug=True)
 
@@ -37,6 +38,7 @@ class StrgUBVec(Generator):
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.agg_height = agg_height
+        self.tb_height = tb_height
         self.mem_depth = mem_depth
         self.config_width = config_width
         self.data_width = data_width
@@ -275,13 +277,12 @@ class StrgUBVec(Generator):
                        valid_output=self._read)
 
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
-        self.tb_height = 4
 
-        self._tb_write_addr = self.var("tb_write_addr", 6,
+        self._tb_write_addr = self.var("tb_write_addr", 6, #max(1, clog2(self.tb_height)),
                                        size=self.interconnect_output_ports,
                                        packed=True,
                                        explicit_array=True)
-        self._tb_read_addr = self.var("tb_read_addr", 6,
+        self._tb_read_addr = self.var("tb_read_addr", 6, #max(1, clog2(self.tb_height)),
                                       size=self.interconnect_output_ports,
                                       packed=True,
                                       explicit_array=True)
@@ -411,7 +412,8 @@ class StrgUBVec(Generator):
             self._sram_write_data[i] = \
                 self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
 
-    @always_ff((posedge, "clk"))
+    # @always_ff((posedge, "clk"))
+    @always_comb
     def tb_ctrl(self):
         if self._read_d1:
             self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][1, 0]] = \
@@ -419,7 +421,7 @@ class StrgUBVec(Generator):
 
     @always_comb
     def tb_to_out(self, idx):
-        self._data_out[idx] = self._tb[idx][self._tb_read_addr[idx][3, 2]][self._tb_read_addr[idx][1, 0]]
+        self._data_out[idx] = self._tb[idx][self._tb_read_addr[idx][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]][self._tb_read_addr[idx][clog2(self.fetch_width) - 1, 0]]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def increment_cycle_count(self):
