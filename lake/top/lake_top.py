@@ -826,7 +826,7 @@ class LakeTop(Generator):
         # config regs
         lift_config_reg(self.internal_generator)
 
-        # extract_formal_annotation(self.internal_generator, "test.txt")
+        extract_formal_annotation(self.internal_generator, "test.txt")
 
 
 if __name__ == "__main__":
