@@ -251,7 +251,7 @@ def generate_data_lists(csv_file_name,
             # else:
                 # copy code from read_parsed
         start = True
-    print({data_in_name: in_data, data_out_name: out_data})
+    # print({data_in_name: in_data, data_out_name: out_data})
     # return {data_in_name: in_data, data_out_name: out_data}
     if is_wide:
         return (in_data[0], out_data[0])

@@ -3,11 +3,12 @@ import kratos as kts
 import fault
 import pytest
 import tempfile
-import collections
 
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
+# input and output data
 from lake.utils.parse_clkwork_csv import generate_data_lists
+# configurations
 from lake.utils.parse_clkwork_config import *
 
 
