@@ -44,7 +44,7 @@ def format_comma_bracket(string):
                     # off from i by 1 now
                     ni -= 1
             except ValueError:
-                assert True
+                pass
 
     # all digits grouped together now
     l = newl[:]
@@ -68,7 +68,7 @@ def format_comma_bracket(string):
                     newl.insert(ni + 2, '],')
                     ni += 2
         except ValueError:
-            assert True
+            pass
         ni += 1
     new_string = ""
     # put the string back together
@@ -242,13 +242,12 @@ def generate_data_lists(csv_file_name,
                     try:
                         in_data[i].append(int(row_in[i]))
                     except:
-                        assert True
+                        pass
                 for j in range(data_out_width):
                     try:
                         out_data[j].append(int(row_out[j]))
                     except:
-                        assert True
-
+                        pass
             # else:
                 # copy code from read_parsed
         start = True
