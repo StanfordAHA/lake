@@ -276,7 +276,6 @@ def test_lake(config_path,
         tempdir="dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
 if __name__ == "__main__":
