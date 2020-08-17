@@ -4080,14 +4080,14 @@ always_comb begin
   mem_addr_to_sram = mem_addr_in_bank;
 end
 sram_stub mem_0 (
-  .addr(mem_addr_to_sram),
-  .cen(mem_cen_in_bank),
-  .clk(clk),
-  .clk_en(clk_en),
-  .data_in(mem_data_in_bank),
-  .data_out(mem_data_out_bank),
-  .flush(flush),
-  .wen(mem_wen_in_bank)
+  .A(mem_addr_to_sram),
+  .CEB(mem_cen_in_bank),
+  .CLK(clk),
+  .D(mem_data_in_bank),
+  .Q(mem_data_out_bank),
+  .WEB(mem_wen_in_bank),
+  .WTSEL(2'h0),
+  .RTSEL(2'h0)
 );
 
 endmodule   // tsmc_name_generator
