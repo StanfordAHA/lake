@@ -55,17 +55,25 @@ def get_configs_dict(configs):
     return configs_dict
 
 
-def set_configs_sv(filepath, configs_dict):
+def set_configs_sv(generator, filepath, configs_dict):
+    int_gen = generator.internal_generator
+    ports = int_gen.get_port_names()
+
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
-            binstr = str(bin(configs_dict[name]))
-            binsplit = binstr.split("b")
-            value = binsplit[-1]
+            binstr = str(hex(configs_dict[name]))
+            binsplit = binstr.split("x")
+            value = binsplit[-1].upper()
+            port_name = name
             if ("strides" in name) or ("ranges" in name):
                 splitstr = name.split("_")
                 index = -1 * len(splitstr[-1]) - 1
-                name = name[:index] + f"[{splitstr[-1]}]"
-            fi.write("assign " + name + " = 'b" + value + ";\n")
+                port_name = name[:index]
+                name = port_name + f"[{splitstr[-1]}]"
+            port = int_gen.get_port(port_name)
+            if port is not None:
+                port_width = port.width
+                fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
 
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):

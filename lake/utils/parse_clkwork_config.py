@@ -144,7 +144,7 @@ def get_static_bitstream(config_path):
         ("strg_ub_tb_write_addr_gen_1_starting_addr", sram2tb.in_data_strt),
         ("strg_ub_out_port_sel_addr_starting_addr", sram2tb.mux_data_strt),
         ("strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
-        ("loops_buf2out_autovec_read_dimensionality", sram2tb.dim),
+        ("strg_ub_loops_buf2out_autovec_read_dimensionality", sram2tb.dim),
 
         ("strg_ub_loops_buf2out_out_sel_dimensionality", sram2tb.dim),
 
@@ -162,13 +162,7 @@ def get_static_bitstream(config_path):
         ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
         ("strg_ub_loops_buf2out_autovec_write_1_dimensionality", tb2out1.dim),
 
-        # Chaining
-        ("chain_idx_input", 0),  # 1
-        ("chain_idx_output", 0),  # 1
-        ("enable_chain_input", 0),  # 1
-        ("enable_chain_output", 0),  # 1
         ("chain_valid_in_reg_sel", 1),  # 1
-        ("chain_valid_in_reg_value", 0),  # 1
 
         # Control Signals...
         ("flush_reg_sel", 1),  # 1

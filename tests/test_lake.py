@@ -10,7 +10,7 @@ from lake.utils.sram_macro import SRAMMacroInfo
 from lake.utils.parse_clkwork_csv import generate_data_lists
 # configurations
 from lake.utils.parse_clkwork_config import *
-from lake.utils.util import get_configs_dict, set_configs_sv
+from lake.utils.util import get_configs_dict, set_configs_sv, extract_formal_annotation
 
 
 def test_lake(config_path, 
@@ -20,6 +20,9 @@ def test_lake(config_path,
 
     lt_dut = LakeTop(interconnect_input_ports=in_ports,
                      interconnect_output_ports=out_ports)
+
+    configs = get_static_bitstream(config_path)
+    set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -40,13 +43,10 @@ def test_lake(config_path,
     # args are input ports, output ports
     in_data, out_data = generate_data_lists(stream_path, in_ports, out_ports)
 
-    configs = get_static_bitstream(config_path)
-    set_configs_sv("configs.sv", get_configs_dict(configs))
-
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
 
-    for i in range(64):
+    for i in range(len(out_data[0])):
         for j in range(len(in_data)):
             if i < len(in_data[j]):
                 setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
@@ -60,7 +60,7 @@ def test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="dump"
+        tempdir="du"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])
