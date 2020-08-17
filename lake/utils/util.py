@@ -48,6 +48,24 @@ def extract_formal_annotation(generator, filepath):
             # fi.write(form_attr.get_annotation() + "\n")
 
 
+def get_configs_dict(configs):
+    configs_dict = {}
+    for (f1, f2) in configs:
+        configs_dict[f1] = f2
+    return configs_dict
+
+
+def set_configs_sv(filepath, configs_dict):
+    with open(filepath, "w+") as fi:
+        for name in configs_dict.keys():
+            value = str(configs_dict[name])
+            if ("strides" in name) or ("ranges" in name):
+                splitstr = name.split("_")
+                index = -1 * len(splitstr[-1]) - 1
+                name = name[:index] + f"[{splitstr[-1]}]"
+            fi.write("assign " + name + " = " + value + ";\n")
+
+
 def transform_strides_and_ranges(ranges, strides, dimensionality):
     assert len(ranges) == len(strides), "Strides and ranges should be same length..."
     tform_ranges = [range_item - 2 for range_item in ranges[0:dimensionality]]
