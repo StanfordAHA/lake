@@ -282,11 +282,11 @@ class StrgUBVec(Generator):
 
         self.wire(self._accessor_output, self._tb_read)
 
-        self._tb_write_addr = self.var("tb_write_addr", 6, #max(1, clog2(self.tb_height)),
+        self._tb_write_addr = self.var("tb_write_addr", 16, #max(1, clog2(self.tb_height)),
                                        size=self.interconnect_output_ports,
                                        packed=True,
                                        explicit_array=True)
-        self._tb_read_addr = self.var("tb_read_addr", 6, #max(1, clog2(self.tb_height)),
+        self._tb_read_addr = self.var("tb_read_addr", 16, #max(1, clog2(self.tb_height)),
                                       size=self.interconnect_output_ports,
                                       packed=True,
                                       explicit_array=True)
@@ -301,7 +301,7 @@ class StrgUBVec(Generator):
 
         for i in range(self.interconnect_output_ports):
             fl_ctr_tb_wr = ForLoop(iterator_support=2,
-                                   config_width=6)
+                                   config_width=16)
             loop_itr = fl_ctr_tb_wr.get_iter()
             loop_wth = fl_ctr_tb_wr.get_cfg_width()
 
@@ -335,7 +335,7 @@ class StrgUBVec(Generator):
 
             self.add_child(f"tb_read_addr_gen_{i}",
                            AddrGen(iterator_support=loop_itr,
-                                   config_width=6),
+                                   config_width=16),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._tb_read[i],
@@ -416,15 +416,15 @@ class StrgUBVec(Generator):
             self._sram_write_data[i] = \
                 self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
 
-    # @always_ff((posedge, "clk"))
-    @always_comb
+    @always_ff((posedge, "clk"))
     def tb_ctrl(self):
         if self._read_d1:
-            self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][1, 0]] = \
+            self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][0]] = \
                 self._sram_read_data
 
     @always_comb
     def tb_to_out(self, idx):
+        # self._data_out[idx] = self._tb[idx][self._tb_read_addr[idx][3, 2]][self._tb_read_addr[idx][1, 0]]
         self._data_out[idx] = self._tb[idx][self._tb_read_addr[idx][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]][self._tb_read_addr[idx][clog2(self.fetch_width) - 1, 0]]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
