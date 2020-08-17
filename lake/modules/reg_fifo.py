@@ -30,9 +30,6 @@ class RegFIFO(Generator):
         self._rst_n = self.reset("rst_n")
         self._clk_en = self.input("clk_en", 1)
 
-        self._mem_valid_data = self.input("mem_valid_data", 1)
-        self._mem_valid_data_out = self.output("mem_valid_data_out", 1)
-
         # INPUTS
         self._data_in = self.input("data_in",
                                    self.data_width,
@@ -84,7 +81,6 @@ class RegFIFO(Generator):
                                    packed=True,
                                    explicit_array=True)
 
-        self._mvd_array = self.var("mvd_array", self.depth)
 
         self._passthru = self.var("passthru", 1)
         self._empty = self.output("empty", 1)
@@ -168,35 +164,27 @@ class RegFIFO(Generator):
     def reg_array_ff(self):
         if ~self._rst_n:
             self._reg_array = 0
-            self._mvd_array = 0
         elif self._write:
             self._reg_array[self._wr_ptr] = self._data_in
-            self._mvd_array[self._wr_ptr] = self._mem_valid_data
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_array_ff_parallel(self):
         if ~self._rst_n:
             self._reg_array = 0
-            self._mvd_array = 0
         elif self._parallel_load:
             self._reg_array = self._parallel_in
-            self._mvd_array = 0
         elif self._write:
             if self._parallel_read:
                 self._reg_array[0] = self._data_in
-                self._mvd_array[0] = self._mem_valid_data
             else:
                 self._reg_array[self._wr_ptr] = self._data_in
-                self._mvd_array[self._wr_ptr] = self._mem_valid_data
 
     @always_comb
     def data_out_ff(self):
         if(self._passthru):
             self._data_out = self._data_in
-            self._mem_valid_data_out = self._mem_valid_data
         else:
             self._data_out = self._reg_array[self._rd_ptr]
-            self._mem_valid_data_out = self._mvd_array[self._rd_ptr]
 
     @always_comb
     def valid_ff(self):

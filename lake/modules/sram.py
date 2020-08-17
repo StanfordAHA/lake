@@ -181,7 +181,7 @@ class SRAM(Generator):
 
 
 if __name__ == "__main__":
-    dut = SRAM(use_sram_stub=0,
+    dut = SRAM(use_sram_stub=False,
                sram_name="TSMC",
                data_width=16,
                fw_int=4,
