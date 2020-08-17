@@ -58,12 +58,14 @@ def get_configs_dict(configs):
 def set_configs_sv(filepath, configs_dict):
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
-            value = str(bin(configs_dict[name]))[1:]
+            binstr = str(bin(configs_dict[name]))
+            binsplit = binstr.split("b")
+            value = binsplit[-1]
             if ("strides" in name) or ("ranges" in name):
                 splitstr = name.split("_")
                 index = -1 * len(splitstr[-1]) - 1
                 name = name[:index] + f"[{splitstr[-1]}]"
-            fi.write("assign " + name + " = '" + value + ";\n")
+            fi.write("assign " + name + " = 'b" + value + ";\n")
 
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
