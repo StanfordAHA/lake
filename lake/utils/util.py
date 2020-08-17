@@ -65,8 +65,12 @@ def set_configs_sv(generator, filepath, configs_dict):
         attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
         if len(attrs) != 1:
             continue
-        for i in range(6):
-            remain.append(attrs[0].get_port_name()+f"_{i}")
+        port = attrs[0].get_port_name()
+        if ("dimensionality" in port) or ("starting_addr" in port):
+            remain.append(port)
+        else:
+            for i in range(6):
+                remain.append(port+f"_{i}")
 
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
@@ -84,18 +88,21 @@ def set_configs_sv(generator, filepath, configs_dict):
                 port_width = port.width
                 if name in remain:
                     remain.remove(name)
-                fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
+                #fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
+                fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
 
         # set all unused config regs to 0 since we remove them
         # from tile interface and they need to be set
         for remaining in remain:
             port_split = remaining.split("_")
-            port_name = "_".join(port_split[:-1])
+            if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
+                port_name = "_".join(port_split[:-1])
             port = int_gen.get_port(port_name)
             if port is None:
                 print(port_name)
             if port is not None:
-                fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
+                fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = " + str(port_width) + "'h0;\n")
+                # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
 
 
 
