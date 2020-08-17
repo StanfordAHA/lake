@@ -86,6 +86,8 @@ def set_configs_sv(generator, filepath, configs_dict):
                     remain.remove(name)
                 fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
 
+        # set all unused config regs to 0 since we remove them
+        # from tile interface and they need to be set
         for remaining in remain:
             port_split = remaining.split("_")
             port_name = "_".join(port_split[:-1])
