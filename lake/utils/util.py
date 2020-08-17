@@ -59,6 +59,15 @@ def set_configs_sv(generator, filepath, configs_dict):
     int_gen = generator.internal_generator
     ports = int_gen.get_port_names()
 
+    remain = []
+    for port_name in ports:
+        curr_port = int_gen.get_port(port_name)
+        attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
+        if len(attrs) != 1:
+            continue
+        for i in range(6):
+            remain.append(attrs[0].get_port_name()+f"_{i}")
+
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
             binstr = str(hex(configs_dict[name]))
@@ -69,11 +78,24 @@ def set_configs_sv(generator, filepath, configs_dict):
                 splitstr = name.split("_")
                 index = -1 * len(splitstr[-1]) - 1
                 port_name = name[:index]
-                name = port_name + f"[{splitstr[-1]}]"
+                # name = port_name + f"[{splitstr[-1]}]"
             port = int_gen.get_port(port_name)
             if port is not None:
                 port_width = port.width
+                if name in remain:
+                    remain.remove(name)
                 fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
+
+        for remaining in remain:
+            port_split = remaining.split("_")
+            port_name = "_".join(port_split[:-1])
+            port = int_gen.get_port(port_name)
+            if port is None:
+                print(port_name)
+            if port is not None:
+                fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
+
+
 
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
