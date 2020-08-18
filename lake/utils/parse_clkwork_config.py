@@ -22,6 +22,11 @@ def search_for_config(cfg_file, key):
     matches = [l for l in lines if key in l]
     # to account for multiple aggs, tbs, take lowest starting addr
     # for blocks of memories
+    if key[0:5] == "write":
+        mux_matches = [l for l in lines if "mux_" + key in l]
+
+        for mux in mux_matches:
+            matches.remove(mux)
     if len(matches) > 1:
         addrs = []
         for i in range(len(matches)):
@@ -38,9 +43,9 @@ def extract_controller(file_path):
     
     dim = search_for_config(file_lines, 'dimensionality')
     cyc_strt = search_for_config(file_lines, 'cycle_starting_addr')
+    mux_data_strt = search_for_config(file_lines, 'mux_write_data_starting_addr')
     in_data_strt = search_for_config(file_lines, 'write_data_starting_addr')
     out_data_strt = search_for_config(file_lines, 'read_data_starting_addr')
-    mux_data_strt = search_for_config(file_lines, 'mux_write_data_starting_addr')
 
     ranges = []
     cyc_strides = []
@@ -79,7 +84,7 @@ def map_controller(controller, name):
     ctrl_mux_data_strides = controller.mux_data_stride
     ctrl_mux_data_strt = controller.mux_data_strt
 
-    ''' print(f"extracted controller for: {name}")
+    print(f"extracted controller for: {name}")
     print(f"dim: {ctrl_dim}")
     print(f"range: {ctrl_ranges}")
     print(f"sched stride: {ctrl_cyc_strides}")
@@ -90,7 +95,7 @@ def map_controller(controller, name):
     print(f"out data start: {ctrl_out_data_strt}")
     print(f"mux data start: {ctrl_mux_data_strt}")
     print(f"mux data stride: {ctrl_mux_data_strides}")
-    print()'''
+    print()
 
     # Now transforms ranges and strides
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
@@ -155,12 +160,12 @@ def get_static_bitstream(config_path):
         ("strg_ub_tb_read_addr_gen_0_starting_addr", tb2out0.out_data_strt),
         ("strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
         ("strg_ub_loops_buf2out_read_0_dimensionality", tb2out0.dim),
-        ("strg_ub_loops_buf2out_autovec_write_0_dimensionality", tb2out0.dim),
+        ("strg_ub_loops_buf2out_autovec_write_0_dimensionality", sram2tb.dim),
 
         ("strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
         ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
         ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
-        ("strg_ub_loops_buf2out_autovec_write_1_dimensionality", tb2out1.dim),
+        ("strg_ub_loops_buf2out_autovec_write_1_dimensionality", sram2tb.dim),
 
         ("chain_valid_in_reg_sel", 1),  # 1
 
@@ -198,13 +203,14 @@ def get_static_bitstream(config_path):
         config.append((f"strg_ub_loops_buf2out_out_sel_ranges_{i}", sram2tb.extent[i]))
         config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
         for tb in range(len(tbs)):
+            print(f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i])
             config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
-
+            config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", sram2tb.extent[i]))
     tbs = [tb2out0, tb2out1]
     for tb in range(len(tbs)):
         elem = tbs[tb]
         for i in range(elem.dim):
-            config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", elem.extent[i]))
+#            config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", elem.extent[i]))
             config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
             config.append((f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
             config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))

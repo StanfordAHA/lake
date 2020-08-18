@@ -30,7 +30,7 @@ class StrgUBVec(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
-                 tb_height=4):
+                 tb_height=2):
 
         super().__init__("strg_ub_vec", debug=True)
 
@@ -419,7 +419,7 @@ class StrgUBVec(Generator):
     @always_ff((posedge, "clk"))
     def tb_ctrl(self):
         if self._read_d1:
-            self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][1, 0]] = \
+            self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][0]] = \
                 self._sram_read_data
 
     @always_comb
