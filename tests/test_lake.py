@@ -54,8 +54,6 @@ def test_lake(config_path,
         tester.eval()
 
 # this is including the 1 cycle delay compared to Clockwork
-        if i > 0 and i < len(out_data[0]):
-            getattr(tester.circuit, f"data_out_0").expect(out_data[0][i-1])
 #        for j in range(len(out_data)):
 #            if i < len(out_data[j]) and i > 0:
 #                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i-1])
