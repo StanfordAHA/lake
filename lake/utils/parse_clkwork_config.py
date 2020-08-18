@@ -60,8 +60,8 @@ def extract_controller(file_path):
         in_data_strides.append(search_for_config(file_lines, f"write_data_stride_{i}"))
         out_data_strides.append(search_for_config(file_lines, f"read_data_stride_{i}"))
 
-    if "sram2tb" in file_path:
-        in_data_strides = [1, 0, 0, 0]
+#    if "sram2tb" in file_path:
+#        in_data_strides = [1, 0, 0, 0]
 
     ctrl_info = ControllerInfo(dim=dim,
                                cyc_strt=cyc_strt,

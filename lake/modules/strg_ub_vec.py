@@ -309,16 +309,16 @@ class StrgUBVec(Generator):
                            fl_ctr_tb_wr,
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           step=self._read_d1 & (self._output_port_sel_addr ==
-                                                 const(i, self._output_port_sel_addr.width)))
+                           step=self._read_d1)# & (self._output_port_sel_addr ==
+                                              #   const(i, self._output_port_sel_addr.width)))
 
             self.add_child(f"tb_write_addr_gen_{i}",
                            AddrGen(iterator_support=6,#loop_itr,
                                    config_width=16),#loop_wth),
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           step=self._read_d1 & (self._output_port_sel_addr ==
-                                                 const(i, self._output_port_sel_addr.width)),
+                           step=self._read_d1,# & (self._output_port_sel_addr ==
+                                              #   const(i, self._output_port_sel_addr.width)),
                            mux_sel=fl_ctr_tb_wr.ports.mux_sel_out,
                            addr_out=self._tb_write_addr[i])
 
@@ -353,7 +353,7 @@ class StrgUBVec(Generator):
 
         if self.interconnect_output_ports > 1:
 
-            fl_ctr_out_sel = ForLoop(iterator_support=6,#2,
+            fl_ctr_out_sel = ForLoop(iterator_support=2,
                                      config_width=clog2(self.interconnect_output_ports))
             loop_itr = fl_ctr_out_sel.get_iter()
             loop_wth = fl_ctr_out_sel.get_cfg_width()
