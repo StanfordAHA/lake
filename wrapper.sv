@@ -4,10 +4,10 @@ module ReverseFlatten (
 );
 
 always_comb begin
-  output_array[0] = input_array[15:0];
-  output_array[1] = input_array[31:16];
-  output_array[2] = input_array[47:32];
-  output_array[3] = input_array[63:48];
+  output_array[0][0] = input_array[15:0];
+  output_array[0][1] = input_array[31:16];
+  output_array[0][2] = input_array[47:32];
+  output_array[0][3] = input_array[63:48];
 end
 endmodule   // ReverseFlatten
 
@@ -52,7 +52,7 @@ TSMC mem_inst_0 (
   .CEB(mem_inst_0_sram_cen),
   .CLK(clk),
   .D(sram_mem_data_in_bank),
-  .RTSEL(2'h0),
+  .RTSEL(2'h1),
   .WEB(mem_inst_0_sram_wen),
   .WTSEL(2'h0),
   .Q(sram_mem_data_out_bank)
@@ -71,10 +71,10 @@ module flattenND (
 );
 
 always_comb begin
-  output_array[15:0] = input_array[0];
-  output_array[31:16] = input_array[1];
-  output_array[47:32] = input_array[2];
-  output_array[63:48] = input_array[3];
+  output_array[15:0] = input_array[0][0];
+  output_array[31:16] = input_array[0][1];
+  output_array[47:32] = input_array[0][2];
+  output_array[63:48] = input_array[0][3];
 end
 endmodule   // flattenND
 
