@@ -1,6 +1,6 @@
 module ReverseFlatten (
   input logic [63:0] input_array,
-  output logic [3:0][0:0] [15:0] output_array
+  output logic [0:0][3:0] [15:0] output_array
 );
 
 always_comb begin
@@ -66,7 +66,7 @@ ReverseFlatten flatten_data_out_0 (
 endmodule   // TSMC_generator
 
 module flattenND (
-  input logic [3:0][0:0] [15:0] input_array,
+  input logic [0:0][3:0] [15:0] input_array,
   output logic [63:0] output_array
 );
 
