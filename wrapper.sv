@@ -50,14 +50,14 @@ flattenND flatten_data_in_0 (
 );
 
 TSMC mem_inst_0 (
-  .sram_addr(mem_addr_to_sram),
-  .sram_cen(mem_inst_0_sram_cen),
-  .sram_clk(clk),
-  .sram_data_in(sram_mem_data_in_bank),
-  .sram_rtsel(rtsel),
-  .sram_wen(mem_inst_0_sram_wen),
-  .sram_wtsel(wtsel),
-  .sram_data_out(sram_mem_data_out_bank)
+  .A(mem_addr_to_sram),
+  .CEB(mem_inst_0_sram_cen),
+  .CLK(clk),
+  .D(sram_mem_data_in_bank),
+  .RTSEL(2'h0),
+  .WEB(mem_inst_0_sram_wen),
+  .WTSEL(2'h0),
+  .Q(sram_mem_data_out_bank)
 );
 
 ReverseFlatten flatten_data_out_0 (
