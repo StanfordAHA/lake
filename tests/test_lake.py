@@ -15,13 +15,15 @@ from lake.utils.util import get_configs_dict, set_configs_sv, extract_formal_ann
 
 def test_lake(config_path, 
               stream_path,
+              in_file_name="input",
+              out_file_name="output",
               in_ports=2,
               out_ports=2):
 
     lt_dut = LakeTop(interconnect_input_ports=in_ports,
                      interconnect_output_ports=out_ports)
 
-    configs = get_static_bitstream(config_path)
+    configs = get_static_bitstream(config_path, in_file_name, out_file_name)
     set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 
     magma_dut = kts.util.to_magma(lt_dut,
@@ -68,11 +70,13 @@ def test_lake(config_path,
 
 if __name__ == "__main__":
     # conv33
-    # config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/conv_3_3_new"
-    # stream_path = "/nobackupkiwi/skavya/lake/lake/utils/test.csv"
+    #config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/conv_3_3_new"
+    #stream_path = "/nobackupkiwi/skavya/lake/lake/utils/test.csv"
 
+    #test_lake(config_path, stream_path)
     # cascade
     stream_path = "/nobackupkiwi/skavya/lake/cascade.csv"
     config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade"
+    file_name = "conv"
 
-    test_lake(config_path, stream_path)
+    test_lake(config_path, stream_path, file_name, file_name)

@@ -131,13 +131,13 @@ def map_controller(controller, name):
     return mapped_ctrl
 
 
-def get_static_bitstream(config_path):
+def get_static_bitstream(config_path, in_file_name, out_file_name):
 
-    in2agg = map_controller(extract_controller(config_path + '/conv_in2agg_0.csv'), "in2agg")
-    agg2sram = map_controller(extract_controller(config_path + '/conv_agg2sram.csv'), "agg2sram")
-    sram2tb = map_controller(extract_controller(config_path + '/conv_2_sram2tb.csv'), "sram2tb")
-    tb2out0 = map_controller(extract_controller(config_path + '/conv_2_tb2out_0.csv'), "tb2out0")
-    tb2out1 = map_controller(extract_controller(config_path + '/conv_2_tb2out_1.csv'), "tb2out1")
+    in2agg = map_controller(extract_controller(config_path + '/' + in_file_name + '_in2agg_0.csv'), "in2agg")
+    agg2sram = map_controller(extract_controller(config_path + '/' + in_file_name + '_agg2sram.csv'), "agg2sram")
+    sram2tb = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb")
+    tb2out0 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0")
+    tb2out1 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1")
 
     # Set configuration...
     config = [
