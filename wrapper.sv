@@ -21,7 +21,7 @@ module tsmc_name_generator (
   input logic mem_wen_in_bank,
   input logic [1:0] rtsel,
   input logic [1:0] wtsel,
-  output logic [0:0][3:0] [15:0] mem_data_out_bank,
+  output logic [0:0][3:0] [15:0] mem_data_out_bank
 );
 
 logic [7:0] mem_addr_to_sram;
@@ -33,9 +33,6 @@ logic [63:0] sram_mem_data_in_bank;
 logic [63:0] sram_mem_data_out_bank;
 assign mem_inst_0_sram_cen = ~mem_cen_in_bank_chain;
 assign mem_inst_0_sram_wen = ~mem_wen_in_bank_chain;
-always_comb begin
-  chain_idx_tile = 1'h0;
-end
 always_comb begin
   mem_addr_to_sram = mem_addr_in_bank;
 end
