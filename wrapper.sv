@@ -11,7 +11,7 @@ always_comb begin
 end
 endmodule   // ReverseFlatten
 
-module TSMC_generator (
+module tsmc_name_generator (
   input logic clk,
   input logic clk_en,
   input logic [7:0] mem_addr_in_bank,
