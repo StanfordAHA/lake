@@ -118,7 +118,7 @@ class SRAMWrapper(Generator):
                                       width_mult=self.fw_int,
                                       depth=self.mem_depth)
 
-            compose_wide = True
+            compose_wide = False
 
             if self.fw_int > 1:
                 flatten_data_in = FlattenND(self.data_width,
@@ -267,10 +267,10 @@ if __name__ == "__main__":
                       sram_name="TSMC",
                       data_width=16,
                       fw_int=4,
-                      mem_depth=128,
+                      mem_depth=256,
                       mem_input_ports=1,
                       mem_output_ports=1,
-                      address_width=7,
-                      bank_num=4,
+                      address_width=8,
+                      bank_num=0,
                       num_tiles=1)
     verilog(dut, filename="wrapper.sv")

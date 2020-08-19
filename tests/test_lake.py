@@ -54,9 +54,9 @@ def test_lake(config_path,
         tester.eval()
 
 # this is including the 1 cycle delay compared to Clockwork
-        for j in range(len(out_data)):
-            if i < len(out_data[j]) and i > 0:
-                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i-1])
+#        for j in range(len(out_data)):
+#            if i < len(out_data[j]) and i > 0:
+#                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i-1])
 
         tester.step(2)
 
@@ -67,7 +67,12 @@ def test_lake(config_path,
                                flags=["-Wno-fatal", "--trace"])
 
 if __name__ == "__main__":
-    config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/conv_3_3_new"
-    stream_path = "/nobackupkiwi/skavya/lake/lake/utils/test.csv"
+    # conv33
+    # config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/conv_3_3_new"
+    # stream_path = "/nobackupkiwi/skavya/lake/lake/utils/test.csv"
+
+    # cascade
+    stream_path = "/nobackupkiwi/skavya/lake/cascade.csv"
+    config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade"
 
     test_lake(config_path, stream_path)

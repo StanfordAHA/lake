@@ -14,6 +14,7 @@ endmodule   // ReverseFlatten
 module tsmc_name_generator (
   input logic clk,
   input logic clk_en,
+  input logic flush,
   input logic [7:0] mem_addr_in_bank,
   input logic mem_cen_in_bank,
   input logic [3:0] [15:0] mem_data_in_bank,
