@@ -40,64 +40,64 @@ module LakeTop (
   input logic [1:0] ren_in,
   input logic rst_n,
   output logic sram_ready_out,
-  input logic [7:0] strg_ub_agg_read_addr_gen_0_starting_addr,
-  input logic [3:0] [7:0] strg_ub_agg_read_addr_gen_0_strides,
-  input logic [7:0] strg_ub_agg_read_addr_gen_1_starting_addr,
-  input logic [3:0] [7:0] strg_ub_agg_read_addr_gen_1_strides,
-  input logic [3:0] strg_ub_agg_write_addr_gen_0_starting_addr,
-  input logic [3:0] [3:0] strg_ub_agg_write_addr_gen_0_strides,
-  input logic [3:0] strg_ub_agg_write_addr_gen_1_starting_addr,
-  input logic [3:0] [3:0] strg_ub_agg_write_addr_gen_1_strides,
-  input logic [3:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr,
-  input logic [3:0] [3:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides,
-  input logic [3:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr,
-  input logic [3:0] [3:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides,
+  input logic [15:0] strg_ub_agg_read_addr_gen_0_starting_addr,
+  input logic [5:0] [15:0] strg_ub_agg_read_addr_gen_0_strides,
+  input logic [15:0] strg_ub_agg_read_addr_gen_1_starting_addr,
+  input logic [5:0] [15:0] strg_ub_agg_read_addr_gen_1_strides,
+  input logic [15:0] strg_ub_agg_write_addr_gen_0_starting_addr,
+  input logic [5:0] [15:0] strg_ub_agg_write_addr_gen_0_strides,
+  input logic [15:0] strg_ub_agg_write_addr_gen_1_starting_addr,
+  input logic [5:0] [15:0] strg_ub_agg_write_addr_gen_1_strides,
+  input logic [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr,
+  input logic [5:0] [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides,
+  input logic [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr,
+  input logic [5:0] [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides,
   input logic [15:0] strg_ub_input_addr_gen_starting_addr,
   input logic [5:0] [15:0] strg_ub_input_addr_gen_strides,
   input logic [15:0] strg_ub_input_sched_gen_sched_addr_gen_starting_addr,
   input logic [5:0] [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides,
   input logic [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality,
   input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_read_ranges,
-  input logic [1:0] strg_ub_loops_buf2out_autovec_write_0_dimensionality,
-  input logic [1:0] [5:0] strg_ub_loops_buf2out_autovec_write_0_ranges,
-  input logic [1:0] strg_ub_loops_buf2out_autovec_write_1_dimensionality,
-  input logic [1:0] [5:0] strg_ub_loops_buf2out_autovec_write_1_ranges,
-  input logic [1:0] strg_ub_loops_buf2out_out_sel_dimensionality,
-  input logic [1:0] strg_ub_loops_buf2out_out_sel_ranges,
-  input logic [1:0] strg_ub_loops_buf2out_read_0_dimensionality,
-  input logic [1:0] [15:0] strg_ub_loops_buf2out_read_0_ranges,
-  input logic [1:0] strg_ub_loops_buf2out_read_1_dimensionality,
-  input logic [1:0] [15:0] strg_ub_loops_buf2out_read_1_ranges,
-  input logic [2:0] strg_ub_loops_in2buf_0_dimensionality,
-  input logic [3:0] [3:0] strg_ub_loops_in2buf_0_ranges,
-  input logic [2:0] strg_ub_loops_in2buf_1_dimensionality,
-  input logic [3:0] [3:0] strg_ub_loops_in2buf_1_ranges,
-  input logic [2:0] strg_ub_loops_in2buf_autovec_read_0_dimensionality,
-  input logic [3:0] [7:0] strg_ub_loops_in2buf_autovec_read_0_ranges,
-  input logic [2:0] strg_ub_loops_in2buf_autovec_read_1_dimensionality,
-  input logic [3:0] [7:0] strg_ub_loops_in2buf_autovec_read_1_ranges,
+  input logic [3:0] strg_ub_loops_buf2out_autovec_write_0_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges,
+  input logic [3:0] strg_ub_loops_buf2out_autovec_write_1_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges,
+  input logic [3:0] strg_ub_loops_buf2out_out_sel_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_buf2out_out_sel_ranges,
+  input logic [3:0] strg_ub_loops_buf2out_read_0_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_buf2out_read_0_ranges,
+  input logic [3:0] strg_ub_loops_buf2out_read_1_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_buf2out_read_1_ranges,
+  input logic [3:0] strg_ub_loops_in2buf_0_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_in2buf_0_ranges,
+  input logic [3:0] strg_ub_loops_in2buf_1_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_in2buf_1_ranges,
+  input logic [3:0] strg_ub_loops_in2buf_autovec_read_0_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges,
+  input logic [3:0] strg_ub_loops_in2buf_autovec_read_1_dimensionality,
+  input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges,
   input logic [3:0] strg_ub_loops_in2buf_autovec_write_dimensionality,
   input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_write_ranges,
-  input logic strg_ub_out_port_sel_addr_starting_addr,
-  input logic [1:0] strg_ub_out_port_sel_addr_strides,
+  input logic [15:0] strg_ub_out_port_sel_addr_starting_addr,
+  input logic [5:0] [15:0] strg_ub_out_port_sel_addr_strides,
   input logic [15:0] strg_ub_output_addr_gen_starting_addr,
   input logic [5:0] [15:0] strg_ub_output_addr_gen_strides,
   input logic [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr,
   input logic [5:0] [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides,
-  input logic strg_ub_port_sel_addr_starting_addr,
-  input logic [5:0] strg_ub_port_sel_addr_strides,
-  input logic [5:0] strg_ub_tb_read_addr_gen_0_starting_addr,
-  input logic [1:0] [5:0] strg_ub_tb_read_addr_gen_0_strides,
-  input logic [5:0] strg_ub_tb_read_addr_gen_1_starting_addr,
-  input logic [1:0] [5:0] strg_ub_tb_read_addr_gen_1_strides,
+  input logic [15:0] strg_ub_port_sel_addr_starting_addr,
+  input logic [5:0] [15:0] strg_ub_port_sel_addr_strides,
+  input logic [15:0] strg_ub_tb_read_addr_gen_0_starting_addr,
+  input logic [5:0] [15:0] strg_ub_tb_read_addr_gen_0_strides,
+  input logic [15:0] strg_ub_tb_read_addr_gen_1_starting_addr,
+  input logic [5:0] [15:0] strg_ub_tb_read_addr_gen_1_strides,
   input logic [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr,
-  input logic [1:0] [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides,
+  input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides,
   input logic [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr,
-  input logic [1:0] [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides,
-  input logic [5:0] strg_ub_tb_write_addr_gen_0_starting_addr,
-  input logic [1:0] [5:0] strg_ub_tb_write_addr_gen_0_strides,
-  input logic [5:0] strg_ub_tb_write_addr_gen_1_starting_addr,
-  input logic [1:0] [5:0] strg_ub_tb_write_addr_gen_1_strides,
+  input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides,
+  input logic [15:0] strg_ub_tb_write_addr_gen_0_starting_addr,
+  input logic [5:0] [15:0] strg_ub_tb_write_addr_gen_0_strides,
+  input logic [15:0] strg_ub_tb_write_addr_gen_1_starting_addr,
+  input logic [5:0] [15:0] strg_ub_tb_write_addr_gen_1_strides,
   input logic tile_en,
   input logic [1:0] wen_in
 );
@@ -381,211 +381,7 @@ Chain chain (
 
 endmodule   // LakeTop
 
-module addr_gen_2 (
-  output logic [5:0] addr_out,
-  input logic clk,
-  input logic clk_en,
-  input logic flush,
-  input logic mux_sel,
-  input logic rst_n,
-  input logic [5:0] starting_addr,
-  input logic step,
-  input logic [1:0] [5:0] strides
-);
-
-logic [5:0] calc_addr;
-logic [5:0] current_addr;
-logic [5:0] strt_addr;
-assign strt_addr = starting_addr;
-assign addr_out = calc_addr;
-assign calc_addr = strt_addr + current_addr;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    current_addr <= 6'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      current_addr <= 6'h0;
-    end
-    else if (step) begin
-      current_addr <= current_addr + strides[mux_sel];
-    end
-  end
-end
-endmodule   // addr_gen_2
-
-module addr_gen_2_unq0 (
-  output logic [15:0] addr_out,
-  input logic clk,
-  input logic clk_en,
-  input logic flush,
-  input logic mux_sel,
-  input logic rst_n,
-  input logic [15:0] starting_addr,
-  input logic step,
-  input logic [1:0] [15:0] strides
-);
-
-logic [15:0] calc_addr;
-logic [15:0] current_addr;
-logic [15:0] strt_addr;
-assign strt_addr = starting_addr;
-assign addr_out = calc_addr;
-assign calc_addr = strt_addr + current_addr;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    current_addr <= 16'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      current_addr <= 16'h0;
-    end
-    else if (step) begin
-      current_addr <= current_addr + strides[mux_sel];
-    end
-  end
-end
-endmodule   // addr_gen_2_unq0
-
-module addr_gen_2_unq1 (
-  output logic addr_out,
-  input logic clk,
-  input logic clk_en,
-  input logic flush,
-  input logic mux_sel,
-  input logic rst_n,
-  input logic starting_addr,
-  input logic step,
-  input logic [1:0] strides
-);
-
-logic calc_addr;
-logic current_addr;
-logic strt_addr;
-assign strt_addr = starting_addr;
-assign addr_out = calc_addr;
-assign calc_addr = strt_addr + current_addr;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    current_addr <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      current_addr <= 1'h0;
-    end
-    else if (step) begin
-      current_addr <= current_addr + strides[mux_sel];
-    end
-  end
-end
-endmodule   // addr_gen_2_unq1
-
-module addr_gen_4 (
-  output logic [3:0] addr_out,
-  input logic clk,
-  input logic clk_en,
-  input logic flush,
-  input logic [1:0] mux_sel,
-  input logic rst_n,
-  input logic [3:0] starting_addr,
-  input logic step,
-  input logic [3:0] [3:0] strides
-);
-
-logic [3:0] calc_addr;
-logic [3:0] current_addr;
-logic [3:0] strt_addr;
-assign strt_addr = starting_addr;
-assign addr_out = calc_addr;
-assign calc_addr = strt_addr + current_addr;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    current_addr <= 4'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      current_addr <= 4'h0;
-    end
-    else if (step) begin
-      current_addr <= current_addr + strides[mux_sel];
-    end
-  end
-end
-endmodule   // addr_gen_4
-
-module addr_gen_4_unq0 (
-  output logic [7:0] addr_out,
-  input logic clk,
-  input logic clk_en,
-  input logic flush,
-  input logic [1:0] mux_sel,
-  input logic rst_n,
-  input logic [7:0] starting_addr,
-  input logic step,
-  input logic [3:0] [7:0] strides
-);
-
-logic [7:0] calc_addr;
-logic [7:0] current_addr;
-logic [7:0] strt_addr;
-assign strt_addr = starting_addr;
-assign addr_out = calc_addr;
-assign calc_addr = strt_addr + current_addr;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    current_addr <= 8'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      current_addr <= 8'h0;
-    end
-    else if (step) begin
-      current_addr <= current_addr + strides[mux_sel];
-    end
-  end
-end
-endmodule   // addr_gen_4_unq0
-
 module addr_gen_6 (
-  output logic addr_out,
-  input logic clk,
-  input logic clk_en,
-  input logic flush,
-  input logic [2:0] mux_sel,
-  input logic rst_n,
-  input logic starting_addr,
-  input logic step,
-  input logic [5:0] strides
-);
-
-logic calc_addr;
-logic current_addr;
-logic strt_addr;
-assign strt_addr = starting_addr;
-assign addr_out = calc_addr;
-assign calc_addr = strt_addr + current_addr;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    current_addr <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      current_addr <= 1'h0;
-    end
-    else if (step) begin
-      current_addr <= current_addr + strides[mux_sel];
-    end
-  end
-end
-endmodule   // addr_gen_6
-
-module addr_gen_6_unq0 (
   output logic [15:0] addr_out,
   input logic clk,
   input logic clk_en,
@@ -617,917 +413,7 @@ always_ff @(posedge clk, negedge rst_n) begin
     end
   end
 end
-endmodule   // addr_gen_6_unq0
-
-module for_loop_2 (
-  input logic clk,
-  input logic clk_en,
-  input logic [1:0] dimensionality,
-  input logic flush,
-  output logic mux_sel_out,
-  input logic [1:0] [5:0] ranges,
-  input logic rst_n,
-  input logic step
-);
-
-logic [1:0] clear;
-logic [1:0][5:0] dim_counter;
-logic done;
-logic [1:0] inc;
-logic [5:0] inced_cnt;
-logic [1:0] max_value;
-logic maxed_value;
-logic mux_sel;
-assign mux_sel_out = mux_sel;
-assign inced_cnt = dim_counter[mux_sel] + 6'h1;
-assign maxed_value = (dim_counter[mux_sel] == ranges[mux_sel]) & inc[mux_sel];
-always_comb begin
-  mux_sel = 1'h0;
-  done = 1'h0;
-  if (~done) begin
-    if (~max_value[0]) begin
-      mux_sel = 1'h0;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[1]) begin
-      mux_sel = 1'h1;
-      done = 1'h1;
-    end
-  end
-end
-always_comb begin
-  clear[0] = 1'h0;
-  if ((mux_sel > 1'h0) & step) begin
-    clear[0] = 1'h1;
-  end
-end
-always_comb begin
-  inc[0] = 1'h0;
-  if ((5'h0 == 5'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-  else if ((mux_sel == 1'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[0] <= 6'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[0] <= 6'h0;
-    end
-    else if (clear[0]) begin
-      dim_counter[0] <= 6'h0;
-    end
-    else if (inc[0]) begin
-      dim_counter[0] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[0] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (clear[0]) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (inc[0]) begin
-      max_value[0] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[1] = 1'h0;
-  if ((mux_sel > 1'h1) & step) begin
-    clear[1] = 1'h1;
-  end
-end
-always_comb begin
-  inc[1] = 1'h0;
-  if ((5'h1 == 5'h0) & step) begin
-    inc[1] = 1'h1;
-  end
-  else if ((mux_sel == 1'h1) & step) begin
-    inc[1] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[1] <= 6'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[1] <= 6'h0;
-    end
-    else if (clear[1]) begin
-      dim_counter[1] <= 6'h0;
-    end
-    else if (inc[1]) begin
-      dim_counter[1] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[1] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (clear[1]) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (inc[1]) begin
-      max_value[1] <= maxed_value;
-    end
-  end
-end
-endmodule   // for_loop_2
-
-module for_loop_2_unq0 (
-  input logic clk,
-  input logic clk_en,
-  input logic [1:0] dimensionality,
-  input logic flush,
-  output logic mux_sel_out,
-  input logic [1:0] [15:0] ranges,
-  input logic rst_n,
-  input logic step
-);
-
-logic [1:0] clear;
-logic [1:0][15:0] dim_counter;
-logic done;
-logic [1:0] inc;
-logic [15:0] inced_cnt;
-logic [1:0] max_value;
-logic maxed_value;
-logic mux_sel;
-assign mux_sel_out = mux_sel;
-assign inced_cnt = dim_counter[mux_sel] + 16'h1;
-assign maxed_value = (dim_counter[mux_sel] == ranges[mux_sel]) & inc[mux_sel];
-always_comb begin
-  mux_sel = 1'h0;
-  done = 1'h0;
-  if (~done) begin
-    if (~max_value[0]) begin
-      mux_sel = 1'h0;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[1]) begin
-      mux_sel = 1'h1;
-      done = 1'h1;
-    end
-  end
-end
-always_comb begin
-  clear[0] = 1'h0;
-  if ((mux_sel > 1'h0) & step) begin
-    clear[0] = 1'h1;
-  end
-end
-always_comb begin
-  inc[0] = 1'h0;
-  if ((5'h0 == 5'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-  else if ((mux_sel == 1'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[0] <= 16'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[0] <= 16'h0;
-    end
-    else if (clear[0]) begin
-      dim_counter[0] <= 16'h0;
-    end
-    else if (inc[0]) begin
-      dim_counter[0] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[0] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (clear[0]) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (inc[0]) begin
-      max_value[0] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[1] = 1'h0;
-  if ((mux_sel > 1'h1) & step) begin
-    clear[1] = 1'h1;
-  end
-end
-always_comb begin
-  inc[1] = 1'h0;
-  if ((5'h1 == 5'h0) & step) begin
-    inc[1] = 1'h1;
-  end
-  else if ((mux_sel == 1'h1) & step) begin
-    inc[1] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[1] <= 16'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[1] <= 16'h0;
-    end
-    else if (clear[1]) begin
-      dim_counter[1] <= 16'h0;
-    end
-    else if (inc[1]) begin
-      dim_counter[1] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[1] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (clear[1]) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (inc[1]) begin
-      max_value[1] <= maxed_value;
-    end
-  end
-end
-endmodule   // for_loop_2_unq0
-
-module for_loop_2_unq1 (
-  input logic clk,
-  input logic clk_en,
-  input logic [1:0] dimensionality,
-  input logic flush,
-  output logic mux_sel_out,
-  input logic [1:0] ranges,
-  input logic rst_n,
-  input logic step
-);
-
-logic [1:0] clear;
-logic [1:0] dim_counter;
-logic done;
-logic [1:0] inc;
-logic inced_cnt;
-logic [1:0] max_value;
-logic maxed_value;
-logic mux_sel;
-assign mux_sel_out = mux_sel;
-assign inced_cnt = dim_counter[mux_sel] + 1'h1;
-assign maxed_value = (dim_counter[mux_sel] == ranges[mux_sel]) & inc[mux_sel];
-always_comb begin
-  mux_sel = 1'h0;
-  done = 1'h0;
-  if (~done) begin
-    if (~max_value[0]) begin
-      mux_sel = 1'h0;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[1]) begin
-      mux_sel = 1'h1;
-      done = 1'h1;
-    end
-  end
-end
-always_comb begin
-  clear[0] = 1'h0;
-  if ((mux_sel > 1'h0) & step) begin
-    clear[0] = 1'h1;
-  end
-end
-always_comb begin
-  inc[0] = 1'h0;
-  if ((5'h0 == 5'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-  else if ((mux_sel == 1'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[0] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[0] <= 1'h0;
-    end
-    else if (clear[0]) begin
-      dim_counter[0] <= 1'h0;
-    end
-    else if (inc[0]) begin
-      dim_counter[0] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[0] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (clear[0]) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (inc[0]) begin
-      max_value[0] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[1] = 1'h0;
-  if ((mux_sel > 1'h1) & step) begin
-    clear[1] = 1'h1;
-  end
-end
-always_comb begin
-  inc[1] = 1'h0;
-  if ((5'h1 == 5'h0) & step) begin
-    inc[1] = 1'h1;
-  end
-  else if ((mux_sel == 1'h1) & step) begin
-    inc[1] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[1] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[1] <= 1'h0;
-    end
-    else if (clear[1]) begin
-      dim_counter[1] <= 1'h0;
-    end
-    else if (inc[1]) begin
-      dim_counter[1] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[1] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (clear[1]) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (inc[1]) begin
-      max_value[1] <= maxed_value;
-    end
-  end
-end
-endmodule   // for_loop_2_unq1
-
-module for_loop_4 (
-  input logic clk,
-  input logic clk_en,
-  input logic [2:0] dimensionality,
-  input logic flush,
-  output logic [1:0] mux_sel_out,
-  input logic [3:0] [3:0] ranges,
-  input logic rst_n,
-  input logic step
-);
-
-logic [3:0] clear;
-logic [3:0][3:0] dim_counter;
-logic done;
-logic [3:0] inc;
-logic [3:0] inced_cnt;
-logic [3:0] max_value;
-logic maxed_value;
-logic [1:0] mux_sel;
-assign mux_sel_out = mux_sel;
-assign inced_cnt = dim_counter[mux_sel] + 4'h1;
-assign maxed_value = (dim_counter[mux_sel] == ranges[mux_sel]) & inc[mux_sel];
-always_comb begin
-  mux_sel = 2'h0;
-  done = 1'h0;
-  if (~done) begin
-    if (~max_value[0]) begin
-      mux_sel = 2'h0;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[1]) begin
-      mux_sel = 2'h1;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[2]) begin
-      mux_sel = 2'h2;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[3]) begin
-      mux_sel = 2'h3;
-      done = 1'h1;
-    end
-  end
-end
-always_comb begin
-  clear[0] = 1'h0;
-  if ((mux_sel > 2'h0) & step) begin
-    clear[0] = 1'h1;
-  end
-end
-always_comb begin
-  inc[0] = 1'h0;
-  if ((5'h0 == 5'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-  else if ((mux_sel == 2'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[0] <= 4'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[0] <= 4'h0;
-    end
-    else if (clear[0]) begin
-      dim_counter[0] <= 4'h0;
-    end
-    else if (inc[0]) begin
-      dim_counter[0] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[0] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (clear[0]) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (inc[0]) begin
-      max_value[0] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[1] = 1'h0;
-  if ((mux_sel > 2'h1) & step) begin
-    clear[1] = 1'h1;
-  end
-end
-always_comb begin
-  inc[1] = 1'h0;
-  if ((5'h1 == 5'h0) & step) begin
-    inc[1] = 1'h1;
-  end
-  else if ((mux_sel == 2'h1) & step) begin
-    inc[1] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[1] <= 4'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[1] <= 4'h0;
-    end
-    else if (clear[1]) begin
-      dim_counter[1] <= 4'h0;
-    end
-    else if (inc[1]) begin
-      dim_counter[1] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[1] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (clear[1]) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (inc[1]) begin
-      max_value[1] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[2] = 1'h0;
-  if ((mux_sel > 2'h2) & step) begin
-    clear[2] = 1'h1;
-  end
-end
-always_comb begin
-  inc[2] = 1'h0;
-  if ((5'h2 == 5'h0) & step) begin
-    inc[2] = 1'h1;
-  end
-  else if ((mux_sel == 2'h2) & step) begin
-    inc[2] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[2] <= 4'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[2] <= 4'h0;
-    end
-    else if (clear[2]) begin
-      dim_counter[2] <= 4'h0;
-    end
-    else if (inc[2]) begin
-      dim_counter[2] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[2] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[2] <= 1'h0;
-    end
-    else if (clear[2]) begin
-      max_value[2] <= 1'h0;
-    end
-    else if (inc[2]) begin
-      max_value[2] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[3] = 1'h0;
-  if ((mux_sel > 2'h3) & step) begin
-    clear[3] = 1'h1;
-  end
-end
-always_comb begin
-  inc[3] = 1'h0;
-  if ((5'h3 == 5'h0) & step) begin
-    inc[3] = 1'h1;
-  end
-  else if ((mux_sel == 2'h3) & step) begin
-    inc[3] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[3] <= 4'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[3] <= 4'h0;
-    end
-    else if (clear[3]) begin
-      dim_counter[3] <= 4'h0;
-    end
-    else if (inc[3]) begin
-      dim_counter[3] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[3] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[3] <= 1'h0;
-    end
-    else if (clear[3]) begin
-      max_value[3] <= 1'h0;
-    end
-    else if (inc[3]) begin
-      max_value[3] <= maxed_value;
-    end
-  end
-end
-endmodule   // for_loop_4
-
-module for_loop_4_unq0 (
-  input logic clk,
-  input logic clk_en,
-  input logic [2:0] dimensionality,
-  input logic flush,
-  output logic [1:0] mux_sel_out,
-  input logic [3:0] [7:0] ranges,
-  input logic rst_n,
-  input logic step
-);
-
-logic [3:0] clear;
-logic [3:0][7:0] dim_counter;
-logic done;
-logic [3:0] inc;
-logic [7:0] inced_cnt;
-logic [3:0] max_value;
-logic maxed_value;
-logic [1:0] mux_sel;
-assign mux_sel_out = mux_sel;
-assign inced_cnt = dim_counter[mux_sel] + 8'h1;
-assign maxed_value = (dim_counter[mux_sel] == ranges[mux_sel]) & inc[mux_sel];
-always_comb begin
-  mux_sel = 2'h0;
-  done = 1'h0;
-  if (~done) begin
-    if (~max_value[0]) begin
-      mux_sel = 2'h0;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[1]) begin
-      mux_sel = 2'h1;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[2]) begin
-      mux_sel = 2'h2;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[3]) begin
-      mux_sel = 2'h3;
-      done = 1'h1;
-    end
-  end
-end
-always_comb begin
-  clear[0] = 1'h0;
-  if ((mux_sel > 2'h0) & step) begin
-    clear[0] = 1'h1;
-  end
-end
-always_comb begin
-  inc[0] = 1'h0;
-  if ((5'h0 == 5'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-  else if ((mux_sel == 2'h0) & step) begin
-    inc[0] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[0] <= 8'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[0] <= 8'h0;
-    end
-    else if (clear[0]) begin
-      dim_counter[0] <= 8'h0;
-    end
-    else if (inc[0]) begin
-      dim_counter[0] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[0] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (clear[0]) begin
-      max_value[0] <= 1'h0;
-    end
-    else if (inc[0]) begin
-      max_value[0] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[1] = 1'h0;
-  if ((mux_sel > 2'h1) & step) begin
-    clear[1] = 1'h1;
-  end
-end
-always_comb begin
-  inc[1] = 1'h0;
-  if ((5'h1 == 5'h0) & step) begin
-    inc[1] = 1'h1;
-  end
-  else if ((mux_sel == 2'h1) & step) begin
-    inc[1] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[1] <= 8'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[1] <= 8'h0;
-    end
-    else if (clear[1]) begin
-      dim_counter[1] <= 8'h0;
-    end
-    else if (inc[1]) begin
-      dim_counter[1] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[1] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (clear[1]) begin
-      max_value[1] <= 1'h0;
-    end
-    else if (inc[1]) begin
-      max_value[1] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[2] = 1'h0;
-  if ((mux_sel > 2'h2) & step) begin
-    clear[2] = 1'h1;
-  end
-end
-always_comb begin
-  inc[2] = 1'h0;
-  if ((5'h2 == 5'h0) & step) begin
-    inc[2] = 1'h1;
-  end
-  else if ((mux_sel == 2'h2) & step) begin
-    inc[2] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[2] <= 8'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[2] <= 8'h0;
-    end
-    else if (clear[2]) begin
-      dim_counter[2] <= 8'h0;
-    end
-    else if (inc[2]) begin
-      dim_counter[2] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[2] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[2] <= 1'h0;
-    end
-    else if (clear[2]) begin
-      max_value[2] <= 1'h0;
-    end
-    else if (inc[2]) begin
-      max_value[2] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[3] = 1'h0;
-  if ((mux_sel > 2'h3) & step) begin
-    clear[3] = 1'h1;
-  end
-end
-always_comb begin
-  inc[3] = 1'h0;
-  if ((5'h3 == 5'h0) & step) begin
-    inc[3] = 1'h1;
-  end
-  else if ((mux_sel == 2'h3) & step) begin
-    inc[3] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[3] <= 8'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[3] <= 8'h0;
-    end
-    else if (clear[3]) begin
-      dim_counter[3] <= 8'h0;
-    end
-    else if (inc[3]) begin
-      dim_counter[3] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[3] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[3] <= 1'h0;
-    end
-    else if (clear[3]) begin
-      max_value[3] <= 1'h0;
-    end
-    else if (inc[3]) begin
-      max_value[3] <= maxed_value;
-    end
-  end
-end
-endmodule   // for_loop_4_unq0
+endmodule   // addr_gen_6
 
 module for_loop_6 (
   input logic clk,
@@ -1896,8 +782,139 @@ module reg_fifo_d4_w1 #(parameter data_width = 16'h10)
   output logic empty,
   input logic flush,
   output logic full,
-  input logic mem_valid_data,
-  output logic mem_valid_data_out,
+  input logic [2:0] num_load,
+  input logic [3:0][0:0] [data_width-1:0] parallel_in,
+  input logic parallel_load,
+  output logic [3:0][0:0] [data_width-1:0] parallel_out,
+  input logic parallel_read,
+  input logic pop,
+  input logic push,
+  input logic rst_n,
+  output logic valid
+);
+
+logic [2:0] num_items;
+logic passthru;
+logic [1:0] rd_ptr;
+logic read;
+logic [3:0][0:0][data_width-1:0] reg_array;
+logic [1:0] wr_ptr;
+logic write;
+assign full = num_items == 3'h4;
+assign empty = num_items == 3'h0;
+assign read = pop & (~passthru) & (~empty);
+assign passthru = pop & push & empty;
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    num_items <= 3'h0;
+  end
+  else if (flush) begin
+    num_items <= 3'h0;
+  end
+  else if (clk_en) begin
+    if (parallel_load) begin
+      if (num_load == 3'h0) begin
+        num_items <= 3'(push);
+      end
+      else num_items <= num_load;
+    end
+    else if (parallel_read) begin
+      if (push) begin
+        num_items <= 3'h1;
+      end
+      else num_items <= 3'h0;
+    end
+    else if (write & (~read)) begin
+      num_items <= num_items + 3'h1;
+    end
+    else if ((~write) & read) begin
+      num_items <= num_items - 3'h1;
+    end
+  end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    reg_array <= 64'h0;
+  end
+  else if (flush) begin
+    reg_array <= 64'h0;
+  end
+  else if (clk_en) begin
+    if (parallel_load) begin
+      reg_array <= parallel_in;
+    end
+    else if (write) begin
+      if (parallel_read) begin
+        reg_array[0] <= data_in;
+      end
+      else reg_array[wr_ptr] <= data_in;
+    end
+  end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    wr_ptr <= 2'h0;
+  end
+  else if (flush) begin
+    wr_ptr <= 2'h0;
+  end
+  else if (clk_en) begin
+    if (parallel_load) begin
+      wr_ptr <= num_load[1:0];
+    end
+    else if (parallel_read) begin
+      if (push) begin
+        wr_ptr <= 2'h1;
+      end
+      else wr_ptr <= 2'h0;
+    end
+    else if (write) begin
+      wr_ptr <= wr_ptr + 2'h1;
+    end
+  end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    rd_ptr <= 2'h0;
+  end
+  else if (flush) begin
+    rd_ptr <= 2'h0;
+  end
+  else if (clk_en) begin
+    if (parallel_load | parallel_read) begin
+      rd_ptr <= 2'h0;
+    end
+    else if (read) begin
+      rd_ptr <= rd_ptr + 2'h1;
+    end
+  end
+end
+assign parallel_out = reg_array;
+assign write = push & (~passthru) & ((~full) | pop | parallel_read);
+always_comb begin
+  if (passthru) begin
+    data_out = data_in;
+  end
+  else data_out = reg_array[rd_ptr];
+end
+always_comb begin
+  valid = pop & ((~empty) | passthru);
+end
+endmodule   // reg_fifo_d4_w1
+
+module reg_fifo_d4_w1_unq0 #(parameter data_width = 16'h10)
+(
+  input logic clk,
+  input logic clk_en,
+  input logic [0:0] [data_width-1:0] data_in,
+  output logic [0:0] [data_width-1:0] data_out,
+  output logic empty,
+  input logic flush,
+  output logic full,
   input logic [2:0] num_load,
   input logic [3:0][0:0] [data_width-1:0] parallel_in,
   input logic parallel_load,
@@ -1910,7 +927,6 @@ module reg_fifo_d4_w1 #(parameter data_width = 16'h10)
   output logic valid
 );
 
-logic [3:0] mvd_array;
 logic [2:0] num_items;
 logic passthru;
 logic [1:0] rd_ptr;
@@ -1956,26 +972,19 @@ end
 always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
     reg_array <= 64'h0;
-    mvd_array <= 4'h0;
   end
   else if (flush) begin
     reg_array <= 64'h0;
-    mvd_array <= 4'h0;
   end
   else if (clk_en) begin
     if (parallel_load) begin
       reg_array <= parallel_in;
-      mvd_array <= 4'h0;
     end
     else if (write) begin
       if (parallel_read) begin
         reg_array[0] <= data_in;
-        mvd_array[0] <= mem_valid_data;
       end
-      else begin
-        reg_array[wr_ptr] <= data_in;
-        mvd_array[wr_ptr] <= mem_valid_data;
-      end
+      else reg_array[wr_ptr] <= data_in;
     end
   end
 end
@@ -2024,238 +1033,13 @@ assign write = push & (~passthru) & ((~full) | pop | parallel_read);
 always_comb begin
   if (passthru) begin
     data_out = data_in;
-    mem_valid_data_out = mem_valid_data;
   end
-  else begin
-    data_out = reg_array[rd_ptr];
-    mem_valid_data_out = mvd_array[rd_ptr];
-  end
-end
-always_comb begin
-  valid = pop & ((~empty) | passthru);
-end
-endmodule   // reg_fifo_d4_w1
-
-module reg_fifo_d4_w1_unq0 #(parameter data_width = 16'h10)
-(
-  input logic clk,
-  input logic clk_en,
-  input logic [0:0] [data_width-1:0] data_in,
-  output logic [0:0] [data_width-1:0] data_out,
-  output logic empty,
-  input logic flush,
-  output logic full,
-  input logic mem_valid_data,
-  output logic mem_valid_data_out,
-  input logic [2:0] num_load,
-  input logic [3:0][0:0] [data_width-1:0] parallel_in,
-  input logic parallel_load,
-  output logic [3:0][0:0] [data_width-1:0] parallel_out,
-  input logic parallel_read,
-  input logic pop,
-  input logic push,
-  input logic rst_n,
-  output logic valid
-);
-
-logic [3:0] mvd_array;
-logic [2:0] num_items;
-logic passthru;
-logic [1:0] rd_ptr;
-logic read;
-logic [3:0][0:0][data_width-1:0] reg_array;
-logic [1:0] wr_ptr;
-logic write;
-assign full = num_items == 3'h4;
-assign empty = num_items == 3'h0;
-assign read = pop & (~passthru) & (~empty);
-assign passthru = pop & push & empty;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    num_items <= 3'h0;
-  end
-  else if (flush) begin
-    num_items <= 3'h0;
-  end
-  else if (clk_en) begin
-    if (parallel_load) begin
-      if (num_load == 3'h0) begin
-        num_items <= 3'(push);
-      end
-      else num_items <= num_load;
-    end
-    else if (parallel_read) begin
-      if (push) begin
-        num_items <= 3'h1;
-      end
-      else num_items <= 3'h0;
-    end
-    else if (write & (~read)) begin
-      num_items <= num_items + 3'h1;
-    end
-    else if ((~write) & read) begin
-      num_items <= num_items - 3'h1;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    reg_array <= 64'h0;
-    mvd_array <= 4'h0;
-  end
-  else if (flush) begin
-    reg_array <= 64'h0;
-    mvd_array <= 4'h0;
-  end
-  else if (clk_en) begin
-    if (parallel_load) begin
-      reg_array <= parallel_in;
-      mvd_array <= 4'h0;
-    end
-    else if (write) begin
-      if (parallel_read) begin
-        reg_array[0] <= data_in;
-        mvd_array[0] <= mem_valid_data;
-      end
-      else begin
-        reg_array[wr_ptr] <= data_in;
-        mvd_array[wr_ptr] <= mem_valid_data;
-      end
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    wr_ptr <= 2'h0;
-  end
-  else if (flush) begin
-    wr_ptr <= 2'h0;
-  end
-  else if (clk_en) begin
-    if (parallel_load) begin
-      wr_ptr <= num_load[1:0];
-    end
-    else if (parallel_read) begin
-      if (push) begin
-        wr_ptr <= 2'h1;
-      end
-      else wr_ptr <= 2'h0;
-    end
-    else if (write) begin
-      wr_ptr <= wr_ptr + 2'h1;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    rd_ptr <= 2'h0;
-  end
-  else if (flush) begin
-    rd_ptr <= 2'h0;
-  end
-  else if (clk_en) begin
-    if (parallel_load | parallel_read) begin
-      rd_ptr <= 2'h0;
-    end
-    else if (read) begin
-      rd_ptr <= rd_ptr + 2'h1;
-    end
-  end
-end
-assign parallel_out = reg_array;
-assign write = push & (~passthru) & ((~full) | pop | parallel_read);
-always_comb begin
-  if (passthru) begin
-    data_out = data_in;
-    mem_valid_data_out = mem_valid_data;
-  end
-  else begin
-    data_out = reg_array[rd_ptr];
-    mem_valid_data_out = mvd_array[rd_ptr];
-  end
+  else data_out = reg_array[rd_ptr];
 end
 always_comb begin
   valid = pop & ((~empty) | passthru);
 end
 endmodule   // reg_fifo_d4_w1_unq0
-
-module sched_gen_2 (
-  input logic clk,
-  input logic clk_en,
-  input logic [15:0] cycle_count,
-  input logic flush,
-  input logic mux_sel,
-  input logic rst_n,
-  input logic [15:0] sched_addr_gen_starting_addr,
-  input logic [1:0] [15:0] sched_addr_gen_strides,
-  output logic valid_output
-);
-
-logic [15:0] addr_out;
-logic valid_out;
-always_comb begin
-  if (cycle_count[15:0] == addr_out[15:0]) begin
-    valid_out = 1'h1;
-  end
-  else valid_out = 1'h0;
-end
-always_comb begin
-  valid_output = valid_out;
-end
-addr_gen_2_unq0 sched_addr_gen (
-  .addr_out(addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(mux_sel),
-  .rst_n(rst_n),
-  .starting_addr(sched_addr_gen_starting_addr),
-  .step(valid_out),
-  .strides(sched_addr_gen_strides)
-);
-
-endmodule   // sched_gen_2
-
-module sched_gen_4 (
-  input logic clk,
-  input logic clk_en,
-  input logic [15:0] cycle_count,
-  input logic flush,
-  input logic [1:0] mux_sel,
-  input logic rst_n,
-  input logic [3:0] sched_addr_gen_starting_addr,
-  input logic [3:0] [3:0] sched_addr_gen_strides,
-  output logic valid_output
-);
-
-logic [3:0] addr_out;
-logic valid_out;
-always_comb begin
-  if (cycle_count[3:0] == addr_out[3:0]) begin
-    valid_out = 1'h1;
-  end
-  else valid_out = 1'h0;
-end
-always_comb begin
-  valid_output = valid_out;
-end
-addr_gen_4 sched_addr_gen (
-  .addr_out(addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(mux_sel),
-  .rst_n(rst_n),
-  .starting_addr(sched_addr_gen_starting_addr),
-  .step(valid_out),
-  .strides(sched_addr_gen_strides)
-);
-
-endmodule   // sched_gen_4
 
 module sched_gen_6 (
   input logic clk,
@@ -2280,7 +1064,7 @@ end
 always_comb begin
   valid_output = valid_out;
 end
-addr_gen_6_unq0 sched_addr_gen (
+addr_gen_6 sched_addr_gen (
   .addr_out(addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -2644,7 +1428,7 @@ always_comb begin
 end
 assign empty = num_items == 16'h0;
 assign full = fifo_depth == num_items;
-reg_fifo_d4_w1 #(
+reg_fifo_d4_w1_unq0 #(
   .data_width(16'h10)) front_rf (
   .clk(clk),
   .clk_en(clk_en),
@@ -2653,7 +1437,6 @@ reg_fifo_d4_w1 #(
   .empty(front_empty),
   .flush(flush),
   .full(front_full),
-  .mem_valid_data(1'h1),
   .num_load(3'h0),
   .parallel_in(64'h0),
   .parallel_load(1'h0),
@@ -2666,7 +1449,7 @@ reg_fifo_d4_w1 #(
   .valid(front_valid)
 );
 
-reg_fifo_d4_w1_unq0 #(
+reg_fifo_d4_w1 #(
   .data_width(16'h10)) back_rf (
   .clk(clk),
   .clk_en(clk_en),
@@ -2675,7 +1458,6 @@ reg_fifo_d4_w1_unq0 #(
   .empty(back_empty),
   .flush(flush),
   .full(back_full),
-  .mem_valid_data(1'h1),
   .num_load(back_num_load),
   .parallel_in(back_par_in),
   .parallel_load(back_rf_parallel_load),
@@ -2863,18 +1645,18 @@ endmodule   // strg_ram
 module strg_ub_vec (
   output logic [1:0] accessor_output,
   output logic [7:0] addr_out,
-  input logic [7:0] agg_read_addr_gen_0_starting_addr,
-  input logic [3:0] [7:0] agg_read_addr_gen_0_strides,
-  input logic [7:0] agg_read_addr_gen_1_starting_addr,
-  input logic [3:0] [7:0] agg_read_addr_gen_1_strides,
-  input logic [3:0] agg_write_addr_gen_0_starting_addr,
-  input logic [3:0] [3:0] agg_write_addr_gen_0_strides,
-  input logic [3:0] agg_write_addr_gen_1_starting_addr,
-  input logic [3:0] [3:0] agg_write_addr_gen_1_strides,
-  input logic [3:0] agg_write_sched_gen_0_sched_addr_gen_starting_addr,
-  input logic [3:0] [3:0] agg_write_sched_gen_0_sched_addr_gen_strides,
-  input logic [3:0] agg_write_sched_gen_1_sched_addr_gen_starting_addr,
-  input logic [3:0] [3:0] agg_write_sched_gen_1_sched_addr_gen_strides,
+  input logic [15:0] agg_read_addr_gen_0_starting_addr,
+  input logic [5:0] [15:0] agg_read_addr_gen_0_strides,
+  input logic [15:0] agg_read_addr_gen_1_starting_addr,
+  input logic [5:0] [15:0] agg_read_addr_gen_1_strides,
+  input logic [15:0] agg_write_addr_gen_0_starting_addr,
+  input logic [5:0] [15:0] agg_write_addr_gen_0_strides,
+  input logic [15:0] agg_write_addr_gen_1_starting_addr,
+  input logic [5:0] [15:0] agg_write_addr_gen_1_strides,
+  input logic [15:0] agg_write_sched_gen_0_sched_addr_gen_starting_addr,
+  input logic [5:0] [15:0] agg_write_sched_gen_0_sched_addr_gen_strides,
+  input logic [15:0] agg_write_sched_gen_1_sched_addr_gen_starting_addr,
+  input logic [5:0] [15:0] agg_write_sched_gen_1_sched_addr_gen_strides,
   output logic cen_to_strg,
   input logic clk,
   input logic clk_en,
@@ -2889,107 +1671,105 @@ module strg_ub_vec (
   input logic [5:0] [15:0] input_sched_gen_sched_addr_gen_strides,
   input logic [3:0] loops_buf2out_autovec_read_dimensionality,
   input logic [5:0] [15:0] loops_buf2out_autovec_read_ranges,
-  input logic [1:0] loops_buf2out_autovec_write_0_dimensionality,
-  input logic [1:0] [5:0] loops_buf2out_autovec_write_0_ranges,
-  input logic [1:0] loops_buf2out_autovec_write_1_dimensionality,
-  input logic [1:0] [5:0] loops_buf2out_autovec_write_1_ranges,
-  input logic [1:0] loops_buf2out_out_sel_dimensionality,
-  input logic [1:0] loops_buf2out_out_sel_ranges,
-  input logic [1:0] loops_buf2out_read_0_dimensionality,
-  input logic [1:0] [15:0] loops_buf2out_read_0_ranges,
-  input logic [1:0] loops_buf2out_read_1_dimensionality,
-  input logic [1:0] [15:0] loops_buf2out_read_1_ranges,
-  input logic [2:0] loops_in2buf_0_dimensionality,
-  input logic [3:0] [3:0] loops_in2buf_0_ranges,
-  input logic [2:0] loops_in2buf_1_dimensionality,
-  input logic [3:0] [3:0] loops_in2buf_1_ranges,
-  input logic [2:0] loops_in2buf_autovec_read_0_dimensionality,
-  input logic [3:0] [7:0] loops_in2buf_autovec_read_0_ranges,
-  input logic [2:0] loops_in2buf_autovec_read_1_dimensionality,
-  input logic [3:0] [7:0] loops_in2buf_autovec_read_1_ranges,
+  input logic [3:0] loops_buf2out_autovec_write_0_dimensionality,
+  input logic [5:0] [15:0] loops_buf2out_autovec_write_0_ranges,
+  input logic [3:0] loops_buf2out_autovec_write_1_dimensionality,
+  input logic [5:0] [15:0] loops_buf2out_autovec_write_1_ranges,
+  input logic [3:0] loops_buf2out_out_sel_dimensionality,
+  input logic [5:0] [15:0] loops_buf2out_out_sel_ranges,
+  input logic [3:0] loops_buf2out_read_0_dimensionality,
+  input logic [5:0] [15:0] loops_buf2out_read_0_ranges,
+  input logic [3:0] loops_buf2out_read_1_dimensionality,
+  input logic [5:0] [15:0] loops_buf2out_read_1_ranges,
+  input logic [3:0] loops_in2buf_0_dimensionality,
+  input logic [5:0] [15:0] loops_in2buf_0_ranges,
+  input logic [3:0] loops_in2buf_1_dimensionality,
+  input logic [5:0] [15:0] loops_in2buf_1_ranges,
+  input logic [3:0] loops_in2buf_autovec_read_0_dimensionality,
+  input logic [5:0] [15:0] loops_in2buf_autovec_read_0_ranges,
+  input logic [3:0] loops_in2buf_autovec_read_1_dimensionality,
+  input logic [5:0] [15:0] loops_in2buf_autovec_read_1_ranges,
   input logic [3:0] loops_in2buf_autovec_write_dimensionality,
   input logic [5:0] [15:0] loops_in2buf_autovec_write_ranges,
-  input logic out_port_sel_addr_starting_addr,
-  input logic [1:0] out_port_sel_addr_strides,
+  input logic [15:0] out_port_sel_addr_starting_addr,
+  input logic [5:0] [15:0] out_port_sel_addr_strides,
   input logic [15:0] output_addr_gen_starting_addr,
   input logic [5:0] [15:0] output_addr_gen_strides,
   input logic [15:0] output_sched_gen_sched_addr_gen_starting_addr,
   input logic [5:0] [15:0] output_sched_gen_sched_addr_gen_strides,
-  input logic port_sel_addr_starting_addr,
-  input logic [5:0] port_sel_addr_strides,
+  input logic [15:0] port_sel_addr_starting_addr,
+  input logic [5:0] [15:0] port_sel_addr_strides,
   input logic rst_n,
-  input logic [5:0] tb_read_addr_gen_0_starting_addr,
-  input logic [1:0] [5:0] tb_read_addr_gen_0_strides,
-  input logic [5:0] tb_read_addr_gen_1_starting_addr,
-  input logic [1:0] [5:0] tb_read_addr_gen_1_strides,
+  input logic [15:0] tb_read_addr_gen_0_starting_addr,
+  input logic [5:0] [15:0] tb_read_addr_gen_0_strides,
+  input logic [15:0] tb_read_addr_gen_1_starting_addr,
+  input logic [5:0] [15:0] tb_read_addr_gen_1_strides,
   input logic [15:0] tb_read_sched_gen_0_sched_addr_gen_starting_addr,
-  input logic [1:0] [15:0] tb_read_sched_gen_0_sched_addr_gen_strides,
+  input logic [5:0] [15:0] tb_read_sched_gen_0_sched_addr_gen_strides,
   input logic [15:0] tb_read_sched_gen_1_sched_addr_gen_starting_addr,
-  input logic [1:0] [15:0] tb_read_sched_gen_1_sched_addr_gen_strides,
-  input logic [5:0] tb_write_addr_gen_0_starting_addr,
-  input logic [1:0] [5:0] tb_write_addr_gen_0_strides,
-  input logic [5:0] tb_write_addr_gen_1_starting_addr,
-  input logic [1:0] [5:0] tb_write_addr_gen_1_strides,
+  input logic [5:0] [15:0] tb_read_sched_gen_1_sched_addr_gen_strides,
+  input logic [15:0] tb_write_addr_gen_0_starting_addr,
+  input logic [5:0] [15:0] tb_write_addr_gen_0_strides,
+  input logic [15:0] tb_write_addr_gen_1_starting_addr,
+  input logic [5:0] [15:0] tb_write_addr_gen_1_strides,
   output logic wen_to_strg
 );
 
 logic [7:0] addr;
 logic [1:0][3:0][3:0][15:0] agg;
 logic [1:0][1:0] agg_read_addr;
-logic [7:0] agg_read_addr_gen_0_addr_out;
+logic [15:0] agg_read_addr_gen_0_addr_out;
 logic agg_read_addr_gen_0_step;
-logic [7:0] agg_read_addr_gen_1_addr_out;
+logic [15:0] agg_read_addr_gen_1_addr_out;
 logic agg_read_addr_gen_1_step;
 logic [1:0][7:0] agg_read_addr_gen_out;
 logic [1:0] agg_write;
 logic [1:0][3:0] agg_write_addr;
-logic [3:0] agg_write_addr_gen_0_addr_out;
+logic [15:0] agg_write_addr_gen_0_addr_out;
 logic agg_write_addr_gen_0_step;
-logic [3:0] agg_write_addr_gen_1_addr_out;
+logic [15:0] agg_write_addr_gen_1_addr_out;
 logic agg_write_addr_gen_1_step;
 logic agg_write_sched_gen_0_valid_output;
 logic agg_write_sched_gen_1_valid_output;
 logic [15:0] cycle_count;
 logic input_port_sel_addr;
 logic [2:0] loops_buf2out_autovec_read_mux_sel_out;
-logic loops_buf2out_autovec_write_0_mux_sel_out;
-logic loops_buf2out_autovec_write_0_step;
-logic loops_buf2out_autovec_write_1_mux_sel_out;
-logic loops_buf2out_autovec_write_1_step;
-logic loops_buf2out_out_sel_mux_sel_out;
-logic loops_buf2out_read_0_mux_sel_out;
+logic [2:0] loops_buf2out_autovec_write_0_mux_sel_out;
+logic [2:0] loops_buf2out_autovec_write_1_mux_sel_out;
+logic [2:0] loops_buf2out_out_sel_mux_sel_out;
+logic [2:0] loops_buf2out_read_0_mux_sel_out;
 logic loops_buf2out_read_0_step;
-logic loops_buf2out_read_1_mux_sel_out;
+logic [2:0] loops_buf2out_read_1_mux_sel_out;
 logic loops_buf2out_read_1_step;
-logic [1:0] loops_in2buf_0_mux_sel_out;
+logic [2:0] loops_in2buf_0_mux_sel_out;
 logic loops_in2buf_0_step;
-logic [1:0] loops_in2buf_1_mux_sel_out;
+logic [2:0] loops_in2buf_1_mux_sel_out;
 logic loops_in2buf_1_step;
-logic [1:0] loops_in2buf_autovec_read_0_mux_sel_out;
+logic [2:0] loops_in2buf_autovec_read_0_mux_sel_out;
 logic loops_in2buf_autovec_read_0_step;
-logic [1:0] loops_in2buf_autovec_read_1_mux_sel_out;
+logic [2:0] loops_in2buf_autovec_read_1_mux_sel_out;
 logic loops_in2buf_autovec_read_1_step;
 logic [2:0] loops_in2buf_autovec_write_mux_sel_out;
+logic [15:0] out_port_sel_addr_addr_out;
 logic output_port_sel_addr;
+logic [15:0] port_sel_addr_addr_out;
 logic read;
 logic [15:0] read_addr;
 logic read_d1;
 logic [3:0][15:0] sram_read_data;
 logic [3:0][15:0] sram_write_data;
-logic [1:0][3:0][3:0][15:0] tb;
+logic [1:0][1:0][3:0][15:0] tb;
 logic [1:0] tb_read;
-logic [1:0][5:0] tb_read_addr;
-logic [5:0] tb_read_addr_gen_0_addr_out;
+logic [1:0][15:0] tb_read_addr;
+logic [15:0] tb_read_addr_gen_0_addr_out;
 logic tb_read_addr_gen_0_step;
-logic [5:0] tb_read_addr_gen_1_addr_out;
+logic [15:0] tb_read_addr_gen_1_addr_out;
 logic tb_read_addr_gen_1_step;
 logic tb_read_sched_gen_0_valid_output;
 logic tb_read_sched_gen_1_valid_output;
-logic [1:0][5:0] tb_write_addr;
-logic [5:0] tb_write_addr_gen_0_addr_out;
-logic tb_write_addr_gen_0_step;
-logic [5:0] tb_write_addr_gen_1_addr_out;
-logic tb_write_addr_gen_1_step;
+logic [1:0][15:0] tb_write_addr;
+logic [15:0] tb_write_addr_gen_0_addr_out;
+logic [15:0] tb_write_addr_gen_1_addr_out;
 logic write;
 logic [15:0] write_addr;
 
@@ -3023,35 +1803,33 @@ assign wen_to_strg = write;
 assign cen_to_strg = write | read;
 assign loops_in2buf_0_step = agg_write[0];
 assign agg_write_addr_gen_0_step = agg_write[0];
-assign agg_write_addr[0] = agg_write_addr_gen_0_addr_out;
+assign agg_write_addr[0] = agg_write_addr_gen_0_addr_out[3:0];
 assign agg_write[0] = agg_write_sched_gen_0_valid_output;
 assign loops_in2buf_autovec_read_0_step = write & (1'h0 == input_port_sel_addr);
 assign agg_read_addr_gen_0_step = write & (1'h0 == input_port_sel_addr);
-assign agg_read_addr_gen_out[0] = agg_read_addr_gen_0_addr_out;
+assign agg_read_addr_gen_out[0] = agg_read_addr_gen_0_addr_out[7:0];
 assign agg_read_addr[0] = agg_read_addr_gen_out[0][1:0];
 assign loops_in2buf_1_step = agg_write[1];
 assign agg_write_addr_gen_1_step = agg_write[1];
-assign agg_write_addr[1] = agg_write_addr_gen_1_addr_out;
+assign agg_write_addr[1] = agg_write_addr_gen_1_addr_out[3:0];
 assign agg_write[1] = agg_write_sched_gen_1_valid_output;
 assign loops_in2buf_autovec_read_1_step = write & (1'h1 == input_port_sel_addr);
 assign agg_read_addr_gen_1_step = write & (1'h1 == input_port_sel_addr);
-assign agg_read_addr_gen_out[1] = agg_read_addr_gen_1_addr_out;
+assign agg_read_addr_gen_out[1] = agg_read_addr_gen_1_addr_out[7:0];
 assign agg_read_addr[1] = agg_read_addr_gen_out[1][1:0];
+assign input_port_sel_addr = port_sel_addr_addr_out[0];
 assign accessor_output = tb_read;
-assign loops_buf2out_autovec_write_0_step = read_d1 & (1'h0 == output_port_sel_addr);
-assign tb_write_addr_gen_0_step = read_d1 & (1'h0 == output_port_sel_addr);
 assign tb_write_addr[0] = tb_write_addr_gen_0_addr_out;
 assign loops_buf2out_read_0_step = tb_read[0];
 assign tb_read_addr_gen_0_step = tb_read[0];
 assign tb_read_addr[0] = tb_read_addr_gen_0_addr_out;
 assign tb_read[0] = tb_read_sched_gen_0_valid_output;
-assign loops_buf2out_autovec_write_1_step = read_d1 & (1'h1 == output_port_sel_addr);
-assign tb_write_addr_gen_1_step = read_d1 & (1'h1 == output_port_sel_addr);
 assign tb_write_addr[1] = tb_write_addr_gen_1_addr_out;
 assign loops_buf2out_read_1_step = tb_read[1];
 assign tb_read_addr_gen_1_step = tb_read[1];
 assign tb_read_addr[1] = tb_read_addr_gen_1_addr_out;
 assign tb_read[1] = tb_read_sched_gen_1_valid_output;
+assign output_port_sel_addr = out_port_sel_addr_addr_out[0];
 always_comb begin
   if (write) begin
     addr = write_addr[7:0];
@@ -3080,18 +1858,21 @@ always_comb begin
   sram_write_data[2] = agg[input_port_sel_addr][agg_read_addr[input_port_sel_addr]][2];
   sram_write_data[3] = agg[input_port_sel_addr][agg_read_addr[input_port_sel_addr]][3];
 end
-always_comb begin
-  if (read_d1) begin
-    tb[output_port_sel_addr][tb_write_addr[output_port_sel_addr][1:0]] = sram_read_data;
+
+always_ff @(posedge clk) begin
+  if (clk_en) begin
+    if (read_d1) begin
+      tb[output_port_sel_addr][tb_write_addr[output_port_sel_addr][0]] <= sram_read_data;
+    end
   end
 end
 always_comb begin
-  data_out[0] = tb[0][tb_read_addr[0][3:2]][tb_read_addr[0][1:0]];
+  data_out[0] = tb[0][tb_read_addr[0][2]][tb_read_addr[0][1:0]];
 end
 always_comb begin
-  data_out[1] = tb[1][tb_read_addr[1][3:2]][tb_read_addr[1][1:0]];
+  data_out[1] = tb[1][tb_read_addr[1][2]][tb_read_addr[1][1:0]];
 end
-for_loop_4 loops_in2buf_0 (
+for_loop_6 loops_in2buf_0 (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_in2buf_0_dimensionality),
@@ -3102,7 +1883,7 @@ for_loop_4 loops_in2buf_0 (
   .step(loops_in2buf_0_step)
 );
 
-addr_gen_4 agg_write_addr_gen_0 (
+addr_gen_6 agg_write_addr_gen_0 (
   .addr_out(agg_write_addr_gen_0_addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -3114,7 +1895,7 @@ addr_gen_4 agg_write_addr_gen_0 (
   .strides(agg_write_addr_gen_0_strides)
 );
 
-sched_gen_4 agg_write_sched_gen_0 (
+sched_gen_6 agg_write_sched_gen_0 (
   .clk(clk),
   .clk_en(clk_en),
   .cycle_count(cycle_count),
@@ -3126,7 +1907,7 @@ sched_gen_4 agg_write_sched_gen_0 (
   .valid_output(agg_write_sched_gen_0_valid_output)
 );
 
-for_loop_4_unq0 loops_in2buf_autovec_read_0 (
+for_loop_6 loops_in2buf_autovec_read_0 (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_in2buf_autovec_read_0_dimensionality),
@@ -3137,7 +1918,7 @@ for_loop_4_unq0 loops_in2buf_autovec_read_0 (
   .step(loops_in2buf_autovec_read_0_step)
 );
 
-addr_gen_4_unq0 agg_read_addr_gen_0 (
+addr_gen_6 agg_read_addr_gen_0 (
   .addr_out(agg_read_addr_gen_0_addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -3149,7 +1930,7 @@ addr_gen_4_unq0 agg_read_addr_gen_0 (
   .strides(agg_read_addr_gen_0_strides)
 );
 
-for_loop_4 loops_in2buf_1 (
+for_loop_6 loops_in2buf_1 (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_in2buf_1_dimensionality),
@@ -3160,7 +1941,7 @@ for_loop_4 loops_in2buf_1 (
   .step(loops_in2buf_1_step)
 );
 
-addr_gen_4 agg_write_addr_gen_1 (
+addr_gen_6 agg_write_addr_gen_1 (
   .addr_out(agg_write_addr_gen_1_addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -3172,7 +1953,7 @@ addr_gen_4 agg_write_addr_gen_1 (
   .strides(agg_write_addr_gen_1_strides)
 );
 
-sched_gen_4 agg_write_sched_gen_1 (
+sched_gen_6 agg_write_sched_gen_1 (
   .clk(clk),
   .clk_en(clk_en),
   .cycle_count(cycle_count),
@@ -3184,7 +1965,7 @@ sched_gen_4 agg_write_sched_gen_1 (
   .valid_output(agg_write_sched_gen_1_valid_output)
 );
 
-for_loop_4_unq0 loops_in2buf_autovec_read_1 (
+for_loop_6 loops_in2buf_autovec_read_1 (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_in2buf_autovec_read_1_dimensionality),
@@ -3195,7 +1976,7 @@ for_loop_4_unq0 loops_in2buf_autovec_read_1 (
   .step(loops_in2buf_autovec_read_1_step)
 );
 
-addr_gen_4_unq0 agg_read_addr_gen_1 (
+addr_gen_6 agg_read_addr_gen_1 (
   .addr_out(agg_read_addr_gen_1_addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -3219,7 +2000,7 @@ for_loop_6 loops_in2buf_autovec_write (
 );
 
 addr_gen_6 port_sel_addr (
-  .addr_out(input_port_sel_addr),
+  .addr_out(port_sel_addr_addr_out),
   .clk(clk),
   .clk_en(clk_en),
   .flush(flush),
@@ -3230,7 +2011,7 @@ addr_gen_6 port_sel_addr (
   .strides(port_sel_addr_strides)
 );
 
-addr_gen_6_unq0 input_addr_gen (
+addr_gen_6 input_addr_gen (
   .addr_out(write_addr),
   .clk(clk),
   .clk_en(clk_en),
@@ -3265,7 +2046,7 @@ for_loop_6 loops_buf2out_autovec_read (
   .step(read)
 );
 
-addr_gen_6_unq0 output_addr_gen (
+addr_gen_6 output_addr_gen (
   .addr_out(read_addr),
   .clk(clk),
   .clk_en(clk_en),
@@ -3289,7 +2070,7 @@ sched_gen_6 output_sched_gen (
   .valid_output(read)
 );
 
-for_loop_2 loops_buf2out_autovec_write_0 (
+for_loop_6 loops_buf2out_autovec_write_0 (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_buf2out_autovec_write_0_dimensionality),
@@ -3297,10 +2078,10 @@ for_loop_2 loops_buf2out_autovec_write_0 (
   .mux_sel_out(loops_buf2out_autovec_write_0_mux_sel_out),
   .ranges(loops_buf2out_autovec_write_0_ranges),
   .rst_n(rst_n),
-  .step(loops_buf2out_autovec_write_0_step)
+  .step(read_d1)
 );
 
-addr_gen_2 tb_write_addr_gen_0 (
+addr_gen_6 tb_write_addr_gen_0 (
   .addr_out(tb_write_addr_gen_0_addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -3308,11 +2089,11 @@ addr_gen_2 tb_write_addr_gen_0 (
   .mux_sel(loops_buf2out_autovec_write_0_mux_sel_out),
   .rst_n(rst_n),
   .starting_addr(tb_write_addr_gen_0_starting_addr),
-  .step(tb_write_addr_gen_0_step),
+  .step(read_d1),
   .strides(tb_write_addr_gen_0_strides)
 );
 
-for_loop_2_unq0 loops_buf2out_read_0 (
+for_loop_6 loops_buf2out_read_0 (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_buf2out_read_0_dimensionality),
@@ -3323,7 +2104,7 @@ for_loop_2_unq0 loops_buf2out_read_0 (
   .step(loops_buf2out_read_0_step)
 );
 
-addr_gen_2 tb_read_addr_gen_0 (
+addr_gen_6 tb_read_addr_gen_0 (
   .addr_out(tb_read_addr_gen_0_addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -3335,7 +2116,7 @@ addr_gen_2 tb_read_addr_gen_0 (
   .strides(tb_read_addr_gen_0_strides)
 );
 
-sched_gen_2 tb_read_sched_gen_0 (
+sched_gen_6 tb_read_sched_gen_0 (
   .clk(clk),
   .clk_en(clk_en),
   .cycle_count(cycle_count),
@@ -3347,7 +2128,7 @@ sched_gen_2 tb_read_sched_gen_0 (
   .valid_output(tb_read_sched_gen_0_valid_output)
 );
 
-for_loop_2 loops_buf2out_autovec_write_1 (
+for_loop_6 loops_buf2out_autovec_write_1 (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_buf2out_autovec_write_1_dimensionality),
@@ -3355,10 +2136,10 @@ for_loop_2 loops_buf2out_autovec_write_1 (
   .mux_sel_out(loops_buf2out_autovec_write_1_mux_sel_out),
   .ranges(loops_buf2out_autovec_write_1_ranges),
   .rst_n(rst_n),
-  .step(loops_buf2out_autovec_write_1_step)
+  .step(read_d1)
 );
 
-addr_gen_2 tb_write_addr_gen_1 (
+addr_gen_6 tb_write_addr_gen_1 (
   .addr_out(tb_write_addr_gen_1_addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -3366,11 +2147,11 @@ addr_gen_2 tb_write_addr_gen_1 (
   .mux_sel(loops_buf2out_autovec_write_1_mux_sel_out),
   .rst_n(rst_n),
   .starting_addr(tb_write_addr_gen_1_starting_addr),
-  .step(tb_write_addr_gen_1_step),
+  .step(read_d1),
   .strides(tb_write_addr_gen_1_strides)
 );
 
-for_loop_2_unq0 loops_buf2out_read_1 (
+for_loop_6 loops_buf2out_read_1 (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_buf2out_read_1_dimensionality),
@@ -3381,7 +2162,7 @@ for_loop_2_unq0 loops_buf2out_read_1 (
   .step(loops_buf2out_read_1_step)
 );
 
-addr_gen_2 tb_read_addr_gen_1 (
+addr_gen_6 tb_read_addr_gen_1 (
   .addr_out(tb_read_addr_gen_1_addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -3393,7 +2174,7 @@ addr_gen_2 tb_read_addr_gen_1 (
   .strides(tb_read_addr_gen_1_strides)
 );
 
-sched_gen_2 tb_read_sched_gen_1 (
+sched_gen_6 tb_read_sched_gen_1 (
   .clk(clk),
   .clk_en(clk_en),
   .cycle_count(cycle_count),
@@ -3405,7 +2186,7 @@ sched_gen_2 tb_read_sched_gen_1 (
   .valid_output(tb_read_sched_gen_1_valid_output)
 );
 
-for_loop_2_unq1 loops_buf2out_out_sel (
+for_loop_6 loops_buf2out_out_sel (
   .clk(clk),
   .clk_en(clk_en),
   .dimensionality(loops_buf2out_out_sel_dimensionality),
@@ -3416,8 +2197,8 @@ for_loop_2_unq1 loops_buf2out_out_sel (
   .step(read_d1)
 );
 
-addr_gen_2_unq1 out_port_sel_addr (
-  .addr_out(output_port_sel_addr),
+addr_gen_6 out_port_sel_addr (
+  .addr_out(out_port_sel_addr_addr_out),
   .clk(clk),
   .clk_en(clk_en),
   .flush(flush),

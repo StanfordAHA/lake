@@ -81,7 +81,6 @@ class RegFIFO(Generator):
                                    packed=True,
                                    explicit_array=True)
 
-
         self._passthru = self.var("passthru", 1)
         self._empty = self.output("empty", 1)
         self._full = self.output("full", 1)

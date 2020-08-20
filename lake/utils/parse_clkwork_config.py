@@ -1,7 +1,9 @@
 import collections
 
 ControllerInfo = collections.namedtuple('ControllerInfo',
-                                        'dim extent cyc_stride in_data_stride cyc_strt in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt')
+                                        'dim extent cyc_stride in_data_stride cyc_strt \
+                                            in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt')
+
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
     assert len(ranges) == len(strides), "Strides and ranges should be same length..."
@@ -16,6 +18,7 @@ def transform_strides_and_ranges(ranges, strides, dimensionality):
         tform_strides.append(0)
         tform_ranges.append(0)
     return (tform_ranges, tform_strides)
+
 
 def search_for_config(cfg_file, key):
     lines = cfg_file
@@ -36,11 +39,12 @@ def search_for_config(cfg_file, key):
     if len(matches) > 0:
         return int(matches[0].split(',')[1])
 
+
 def extract_controller(file_path):
     file_lines = None
     with open(file_path) as ctrl_f:
         file_lines = ctrl_f.readlines()
-    
+
     dim = search_for_config(file_lines, 'dimensionality')
     cyc_strt = search_for_config(file_lines, 'cycle_starting_addr')
     mux_data_strt = search_for_config(file_lines, 'mux_write_data_starting_addr')
@@ -75,6 +79,7 @@ def extract_controller(file_path):
                                mux_data_strt=mux_data_strt)
     return ctrl_info
 
+
 def map_controller(controller, name):
     ctrl_dim = controller.dim
     ctrl_ranges = controller.extent
@@ -105,7 +110,7 @@ def map_controller(controller, name):
     tform_in_data_strides = None
     if ctrl_in_data_strt is not None:
         (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
-    
+
     tform_out_data_strides = None
     if ctrl_out_data_strt is not None:
         (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
@@ -213,10 +218,9 @@ def get_static_bitstream(config_path, in_file_name, out_file_name):
     for tb in range(len(tbs)):
         elem = tbs[tb]
         for i in range(elem.dim):
-#            config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", elem.extent[i]))
+            # config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", elem.extent[i]))
             config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
             config.append((f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
             config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
 
     return config
-

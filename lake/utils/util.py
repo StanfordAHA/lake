@@ -70,7 +70,7 @@ def set_configs_sv(generator, filepath, configs_dict):
             remain.append(port)
         else:
             for i in range(6):
-                remain.append(port+f"_{i}")
+                remain.append(port + f"_{i}")
 
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
@@ -88,7 +88,7 @@ def set_configs_sv(generator, filepath, configs_dict):
                 port_width = port.width
                 if name in remain:
                     remain.remove(name)
-                #fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
+                # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
 
         # set all unused config regs to 0 since we remove them
@@ -105,8 +105,6 @@ def set_configs_sv(generator, filepath, configs_dict):
                 # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
 
 
-
-
 def transform_strides_and_ranges(ranges, strides, dimensionality):
     assert len(ranges) == len(strides), "Strides and ranges should be same length..."
     tform_ranges = [range_item - 2 for range_item in ranges[0:dimensionality]]
@@ -120,3 +118,19 @@ def transform_strides_and_ranges(ranges, strides, dimensionality):
         tform_strides.append(0)
         tform_ranges.append(0)
     return (tform_ranges, tform_strides)
+
+
+def safe_wire(gen, w1, w2):
+    '''
+    Wire together two signals of (potentially) mismatched width to
+    avoid the exception that Kratos throws.
+    '''
+    # Only works in one dimension...
+    if w1.width != w2.width:
+        print(f"SAFEWIRE: WIDTH MISMATCH: {w1.name} width {w1.width} <-> {w2.name} width {w2.width}")
+    if w1.width > w2.width:
+        w3 = w1
+        w1 = w2
+        w2 = w3
+    # w1 containts smaller width...
+    gen.wire(w1, w2[w1.width - 1, 0])
