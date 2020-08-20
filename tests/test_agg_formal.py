@@ -36,45 +36,45 @@ def test_agg_formal():
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
     config = {}
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_0"] = 4
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_1"] = 4
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_2"] = 65535
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_3"] = 65535
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_4"] = 65535
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_5"] = 4
+    config["agg_write_loops_0_dimensionality"] = 0
     config["agg_write_sched_gen_0_sched_addr_gen_strides_0"] = 1
     config["agg_write_sched_gen_0_sched_addr_gen_strides_1"] = 1
     config["agg_write_sched_gen_0_sched_addr_gen_strides_2"] = 1
-    config["agg_write_sched_gen_0_sched_addr_gen_strides_3"] = 1
-    config["agg_write_addr_gen_0_starting_addr"] = 4
-    config["loops_in2buf_0_ranges_0"] = 2
-    config["loops_in2buf_0_ranges_1"] = 1
-    config["loops_in2buf_0_ranges_2"] = 0
-    config["loops_in2buf_0_ranges_3"] = 8
-    config["loops_in2buf_autovec_write_dimensionality"] = 0
-    config["loops_in2buf_autovec_read_0_dimensionality"] = 0
-    config["loops_in2buf_0_dimensionality"] = 0
-    config["agg_write_addr_gen_0_strides_0"] = 1
-    config["agg_write_addr_gen_0_strides_1"] = 13
-    config["agg_write_addr_gen_0_strides_2"] = 5
-    config["agg_write_addr_gen_0_strides_3"] = 13
-    config["agg_read_addr_gen_0_strides_0"] = 253
-    config["agg_read_addr_gen_0_strides_1"] = 2
-    config["agg_read_addr_gen_0_strides_2"] = 252
+    config["agg_write_sched_gen_0_sched_addr_gen_strides_3"] = 9
+    config["agg_read_addr_gen_0_strides_0"] = 255
+    config["agg_read_addr_gen_0_strides_1"] = 3
+    config["agg_read_addr_gen_0_strides_2"] = 255
     config["agg_read_addr_gen_0_strides_3"] = 2
+    config["agg_write_addr_gen_0_strides_0"] = 1
+    config["agg_write_addr_gen_0_strides_1"] = 9
+    config["agg_write_addr_gen_0_strides_2"] = 9
+    config["agg_write_addr_gen_0_strides_3"] = 12
+    config["agg_read_loops_0_dimensionality"] = 0
+    config["agg_select_loops_dimensionality"] = 0
+    config["agg_read_loops_0_ranges_0"] = 0
+    config["agg_read_loops_0_ranges_1"] = 0
+    config["agg_read_loops_0_ranges_2"] = 255
+    config["agg_read_loops_0_ranges_3"] = 254
+    config["agg_write_loops_0_ranges_0"] = 2
+    config["agg_write_loops_0_ranges_1"] = 7
+    config["agg_write_loops_0_ranges_2"] = 14
+    config["agg_write_loops_0_ranges_3"] = 0
     config["agg_write_sched_gen_0_sched_addr_gen_starting_addr"] = 0
-    config["input_sched_gen_sched_addr_gen_starting_addr"] = 3
-    config["input_sched_gen_sched_addr_gen_strides_0"] = 1
-    config["input_sched_gen_sched_addr_gen_strides_1"] = 2
-    config["input_sched_gen_sched_addr_gen_strides_2"] = 2
-    config["input_sched_gen_sched_addr_gen_strides_3"] = 2
-    config["input_sched_gen_sched_addr_gen_strides_4"] = 2
-    config["input_sched_gen_sched_addr_gen_strides_5"] = 1
-    config["loops_in2buf_autovec_write_ranges_0"] = 1
-    config["loops_in2buf_autovec_write_ranges_1"] = 0
-    config["loops_in2buf_autovec_write_ranges_2"] = 1
-    config["loops_in2buf_autovec_write_ranges_3"] = 0
-    config["loops_in2buf_autovec_write_ranges_4"] = 1
-    config["loops_in2buf_autovec_write_ranges_5"] = 0
-    config["loops_in2buf_autovec_read_0_ranges_0"] = 1
-    config["loops_in2buf_autovec_read_0_ranges_1"] = 1
-    config["loops_in2buf_autovec_read_0_ranges_2"] = 0
-    config["loops_in2buf_autovec_read_0_ranges_3"] = 1
-    config["agg_read_addr_gen_0_starting_addr"] = 128
+    config["agg_write_addr_gen_0_starting_addr"] = 4
+    config["agg_read_output_sched_gen_sched_addr_gen_starting_addr"] = 4
+    config["agg_read_addr_gen_0_starting_addr"] = 1
+    config["agg_select_loops_ranges_0"] = 3898
+    config["agg_select_loops_ranges_1"] = 65535
+    config["agg_select_loops_ranges_2"] = 65535
+    config["agg_select_loops_ranges_3"] = 65535
+    config["agg_select_loops_ranges_4"] = 65535
+    config["agg_select_loops_ranges_5"] = 65535
     # configuration registers passed through from top level
     for key, value in config.items():
         setattr(tester.circuit, key, value)
@@ -101,10 +101,11 @@ def test_agg_formal():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "dump_nestan"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":
