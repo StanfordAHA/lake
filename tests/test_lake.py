@@ -62,7 +62,7 @@ def test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="dumpcc"
+        tempdir="dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])
@@ -70,15 +70,14 @@ def test_lake(config_path,
 if __name__ == "__main__":
     # conv33
     config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/conv_3_3_new"
-    stream_path = "/nobackupkiwi/skavya/lake/lake/utils/test.csv"
+    stream_path = "/nobackupkiwi/skavya/lake/buf.csv"
     test_lake(config_path, stream_path)
     
     # cascade
-    #stream_path = "/nobackupkiwi/skavya/lake/buf1.csv"
-    #config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade/buf1_input_10_to_buf1_conv_15_ubuf"
+#    stream_path = "/nobackupkiwi/skavya/lake/buf1.csv"
+#    config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade/buf1_input_10_to_buf1_conv_15_ubuf"
+#    test_lake(config_path, stream_path, out_file_name= "conv")
 
-    #test_lake(config_path, stream_path, out_file_name= "conv")
-
-    # stream_path = "/nobackupkiwi/skavya/lake/buf2.csv"
-    # config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade/buf2_conv_12_to_buf2_output_3_ubuf"
-    # test_lake(config_path, stream_path, "conv")
+    #stream_path = "/nobackupkiwi/skavya/lake/buf2.csv"
+    #config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade/buf2_conv_12_to_buf2_output_3_ubuf"
+    #test_lake(config_path, stream_path, "conv")
