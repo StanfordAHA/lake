@@ -57,8 +57,8 @@ def test_lake(config_path,
 
 # this is including the 1 cycle delay compared to Clockwork
 #        for j in range(len(out_data)):
-#            if i < len(out_data[j]) and i > 0:
-#                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i-1])
+#            if i < len(out_data[j]):
+#                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
 
         tester.step(2)
 
@@ -72,11 +72,10 @@ if __name__ == "__main__":
     # conv33
     #config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/conv_3_3_new"
     #stream_path = "/nobackupkiwi/skavya/lake/lake/utils/test.csv"
-
     #test_lake(config_path, stream_path)
+    
     # cascade
-    stream_path = "/nobackupkiwi/skavya/lake/cascade.csv"
-    config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade"
-    file_name = "conv"
+    stream_path = "/nobackupkiwi/skavya/lake/buf1.csv"
+    config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade/buf1_input_10_to_buf1_conv_15_ubuf"
 
-    test_lake(config_path, stream_path, file_name, file_name)
+    test_lake(config_path, stream_path, out_file_name= "conv")
