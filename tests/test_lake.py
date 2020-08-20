@@ -55,15 +55,14 @@ def test_lake(config_path,
 
         tester.eval()
 
-# this is including the 1 cycle delay compared to Clockwork
-#        for j in range(len(out_data)):
-#            if i < len(out_data[j]):
-#                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
+        for j in range(len(out_data)):
+            if i < len(out_data[j]):
+                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="dump"
+        tempdir="dumpcc"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])
@@ -75,7 +74,11 @@ if __name__ == "__main__":
     #test_lake(config_path, stream_path)
     
     # cascade
-    stream_path = "/nobackupkiwi/skavya/lake/buf1.csv"
-    config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade/buf1_input_10_to_buf1_conv_15_ubuf"
+    #stream_path = "/nobackupkiwi/skavya/lake/buf1.csv"
+    #config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade/buf1_input_10_to_buf1_conv_15_ubuf"
 
-    test_lake(config_path, stream_path, out_file_name= "conv")
+    #test_lake(config_path, stream_path, out_file_name= "conv")
+
+    stream_path = "/nobackupkiwi/skavya/lake/buf2.csv"
+    config_path = "/nobackupkiwi/skavya/clockwork/lake_controllers/cascade/buf2_conv_12_to_buf2_output_3_ubuf"
+    test_lake(config_path, stream_path, "conv")
