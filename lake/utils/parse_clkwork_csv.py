@@ -223,6 +223,7 @@ def generate_data_lists(csv_file_name,
     csv_file = open(csv_file_name, "r")
     reader = csv.reader(csv_file, delimiter=',')
 
+    valids = []
     if is_wide:
         in_data, out_data = [], []
     else:
@@ -233,7 +234,11 @@ def generate_data_lists(csv_file_name,
     for row in reader:
         row_in = row[0].replace('[', '').replace(']', '').split()
         row_out = row[1].replace('[', '').replace(']', '').split()
+        
         if start:
+            if len(row) == 3:
+                row_valid = row[2]
+                valids.append(int(row_valid))
             if is_wide:
                 append_shift(in_data[0], data_in_width, row_in, bit_width)
                 append_shift(out_data[0], data_out_width, row_out, bit_width)
@@ -255,7 +260,7 @@ def generate_data_lists(csv_file_name,
     # return {data_in_name: in_data, data_out_name: out_data}
     if is_wide:
         return (in_data[0], out_data[0])
-    return (in_data, out_data)
+    return (in_data, out_data, valids)
 
 
 def parse_and_lists(csv_file_name,

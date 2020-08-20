@@ -74,9 +74,10 @@ def set_configs_sv(generator, filepath, configs_dict):
 
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
-            binstr = str(hex(configs_dict[name]))
-            binsplit = binstr.split("x")
-            value = binsplit[-1].upper()
+            # binstr = str(hex(configs_dict[name]))
+            # binsplit = binstr.split("x")
+            # value = binsplit[-1].upper()
+            value = str(configs_dict[name])
             port_name = name
             if ("strides" in name) or ("ranges" in name):
                 splitstr = name.split("_")
@@ -88,8 +89,10 @@ def set_configs_sv(generator, filepath, configs_dict):
                 port_width = port.width
                 if name in remain:
                     remain.remove(name)
+                print("port name ", port_name, " value ", value)
                 # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
-                fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
+                # fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
+                fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + value + ";\n")
 
         # set all unused config regs to 0 since we remove them
         # from tile interface and they need to be set
@@ -101,7 +104,8 @@ def set_configs_sv(generator, filepath, configs_dict):
             if port is None:
                 print(port_name)
             if port is not None:
-                fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = " + str(port_width) + "'h0;\n")
+                fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
+                # fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = " + str(port_width) + "'h0;\n")
                 # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
 
 
