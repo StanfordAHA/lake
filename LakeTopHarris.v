@@ -1,3 +1,2147 @@
+module cwlib_ub__confignull__input_num1__output_num2__width16 ub_lyy_stencil_op_hcompute_lyy_stencil_2_to_lyy_stencil_op_hcompute_lgyy_stencil_1_12 (
+  input logic [15:0] addr_in_0,
+  input logic [15:0] addr_in_1,
+  input logic [15:0] chain_data_in_0,
+  input logic [15:0] chain_data_in_1,
+  input logic clk,
+  input logic clk_en,
+  input logic [7:0] config_addr_in,
+  input logic [31:0] config_data_in,
+  input logic [1:0] config_en,
+  input logic config_read,
+  input logic config_write,
+  input logic [15:0] data_in_0,
+  input logic [15:0] data_in_1,
+  input logic [15:0] fifo_ctrl_fifo_depth,
+  input logic flush,
+  input logic [1:0] ren_in,
+  input logic rst_n,
+  input logic [1:0] wen_in,
+  output logic [31:0] config_data_out_0,
+  output logic [31:0] config_data_out_1,
+  output logic [15:0] data_out_0,
+  output logic [15:0] data_out_1,
+  output logic empty,
+  output logic full,
+  output logic sram_ready_out
+);
+
+logic [1:0][15:0] LakeTop_addr_in;
+logic [1:0][15:0] LakeTop_chain_data_in;
+logic [1:0][31:0] LakeTop_config_data_out;
+logic [1:0][15:0] LakeTop_data_in;
+logic [1:0][15:0] LakeTop_data_out;
+logic [5:0][15:0] LakeTop_strg_ub_agg_read_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_read_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_input_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_read_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_out_sel_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_read_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_read_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_write_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_out_port_sel_addr_strides;
+logic [5:0][15:0] LakeTop_strg_ub_output_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_port_sel_addr_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_write_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_write_addr_gen_1_strides;
+wire [15:0] strg_ub_agg_read_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_input_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_starting_addr = 131;
+wire [3:0] strg_ub_loops_in2buf_autovec_read_0_dimensionality = 3;
+wire [3:0] strg_ub_loops_in2buf_autovec_write_dimensionality = 3;
+wire [15:0] strg_ub_output_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_out_port_sel_addr_starting_addr = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr = 256;
+wire [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_out_sel_dimensionality = 4;
+wire [15:0] strg_ub_agg_write_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr = 128;
+wire [3:0] strg_ub_loops_in2buf_0_dimensionality = 4;
+wire [15:0] strg_ub_tb_read_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr = 258;
+wire [3:0] strg_ub_loops_buf2out_read_0_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_autovec_write_0_dimensionality = 4;
+wire [15:0] strg_ub_tb_read_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr = 258;
+wire [3:0] strg_ub_loops_buf2out_read_1_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_autovec_write_1_dimensionality = 4;
+wire [1:0] mode = 0;
+wire [0:0] tile_en = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_0 = 2;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_0 = 1;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_1 = 14;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_1 = -3;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_2 = 60;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_2 = -1;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_3 = -1;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_3 = -125;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_3 = -3967;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_0 = 14;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_0 = 14;
+wire [15:0] strg_ub_input_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_0 = 4;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_1 = 60;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_1 = 60;
+wire [15:0] strg_ub_input_addr_gen_strides_1 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_1 = 4;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_2 = -1;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_2 = -1;
+wire [15:0] strg_ub_input_addr_gen_strides_2 = -930;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_2 = -3964;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_0 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_0 = 16;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_0 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_0 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_0 = 1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_0 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_1 = 14;
+wire [15:0] strg_ub_output_addr_gen_strides_1 = -15;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_1 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_1 = 14;
+wire [15:0] strg_ub_out_port_sel_addr_strides_1 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_1 = 14;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_1 = 14;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_2 = 58;
+wire [15:0] strg_ub_output_addr_gen_strides_2 = -15;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_2 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_2 = 58;
+wire [15:0] strg_ub_out_port_sel_addr_strides_2 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_2 = 58;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_2 = 58;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_3 = -1;
+wire [15:0] strg_ub_output_addr_gen_strides_3 = -975;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_3 = -3838;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_3 = -1;
+wire [15:0] strg_ub_out_port_sel_addr_strides_3 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_3 = -959;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_3 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_3 = -959;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_3 = -1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_0 = 2;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_0 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_1 = 14;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_1 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_2 = 58;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_2 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_3 = -1;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_3 = -3839;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3 = -3839;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_0 = 2;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_0 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_1 = 14;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_1 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_2 = 58;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_2 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_3 = -1;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_3 = -3839;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3 = -3839;
+wire [15:0] strg_ub_agg_write_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_port_sel_addr_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_5 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_dimensionality = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_4 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_3 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_0 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_1 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_2 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_1 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_2 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_3 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_5 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_5 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_0 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_1 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_2 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_3 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_4 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_5 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_1 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_2 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_3 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_5 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_dimensionality = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_5 = 0;
+assign LakeTop_addr_in[0] = addr_in_0;
+assign LakeTop_addr_in[1] = addr_in_1;
+assign LakeTop_chain_data_in[0] = chain_data_in_0;
+assign LakeTop_chain_data_in[1] = chain_data_in_1;
+assign config_data_out_0 = LakeTop_config_data_out[0];
+assign config_data_out_1 = LakeTop_config_data_out[1];
+assign LakeTop_data_in[0] = data_in_0;
+assign LakeTop_data_in[1] = data_in_1;
+assign data_out_0 = LakeTop_data_out[0];
+assign data_out_1 = LakeTop_data_out[1];
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[0] = strg_ub_agg_read_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[1] = strg_ub_agg_read_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[2] = strg_ub_agg_read_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[3] = strg_ub_agg_read_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[4] = strg_ub_agg_read_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[5] = strg_ub_agg_read_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[0] = strg_ub_agg_read_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[1] = strg_ub_agg_read_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[2] = strg_ub_agg_read_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[3] = strg_ub_agg_read_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[4] = strg_ub_agg_read_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[5] = strg_ub_agg_read_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[0] = strg_ub_agg_write_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[1] = strg_ub_agg_write_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[2] = strg_ub_agg_write_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[3] = strg_ub_agg_write_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[4] = strg_ub_agg_write_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[5] = strg_ub_agg_write_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[0] = strg_ub_agg_write_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[1] = strg_ub_agg_write_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[2] = strg_ub_agg_write_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[3] = strg_ub_agg_write_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[4] = strg_ub_agg_write_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[5] = strg_ub_agg_write_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[0] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[1] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[2] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[3] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[4] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[5] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[0] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[1] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[2] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[3] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[4] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[5] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_input_addr_gen_strides[0] = strg_ub_input_addr_gen_strides_0;
+assign LakeTop_strg_ub_input_addr_gen_strides[1] = strg_ub_input_addr_gen_strides_1;
+assign LakeTop_strg_ub_input_addr_gen_strides[2] = strg_ub_input_addr_gen_strides_2;
+assign LakeTop_strg_ub_input_addr_gen_strides[3] = strg_ub_input_addr_gen_strides_3;
+assign LakeTop_strg_ub_input_addr_gen_strides[4] = strg_ub_input_addr_gen_strides_4;
+assign LakeTop_strg_ub_input_addr_gen_strides[5] = strg_ub_input_addr_gen_strides_5;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[0] = strg_ub_input_sched_gen_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[1] = strg_ub_input_sched_gen_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[2] = strg_ub_input_sched_gen_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[3] = strg_ub_input_sched_gen_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[4] = strg_ub_input_sched_gen_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[5] = strg_ub_input_sched_gen_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[0] = strg_ub_loops_buf2out_autovec_read_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[1] = strg_ub_loops_buf2out_autovec_read_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[2] = strg_ub_loops_buf2out_autovec_read_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[3] = strg_ub_loops_buf2out_autovec_read_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[4] = strg_ub_loops_buf2out_autovec_read_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[5] = strg_ub_loops_buf2out_autovec_read_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[0] = strg_ub_loops_buf2out_autovec_write_0_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[1] = strg_ub_loops_buf2out_autovec_write_0_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[2] = strg_ub_loops_buf2out_autovec_write_0_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[3] = strg_ub_loops_buf2out_autovec_write_0_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[4] = strg_ub_loops_buf2out_autovec_write_0_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[5] = strg_ub_loops_buf2out_autovec_write_0_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[0] = strg_ub_loops_buf2out_autovec_write_1_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[1] = strg_ub_loops_buf2out_autovec_write_1_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[2] = strg_ub_loops_buf2out_autovec_write_1_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[3] = strg_ub_loops_buf2out_autovec_write_1_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[4] = strg_ub_loops_buf2out_autovec_write_1_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[5] = strg_ub_loops_buf2out_autovec_write_1_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[0] = strg_ub_loops_buf2out_out_sel_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[1] = strg_ub_loops_buf2out_out_sel_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[2] = strg_ub_loops_buf2out_out_sel_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[3] = strg_ub_loops_buf2out_out_sel_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[4] = strg_ub_loops_buf2out_out_sel_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[5] = strg_ub_loops_buf2out_out_sel_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[0] = strg_ub_loops_buf2out_read_0_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[1] = strg_ub_loops_buf2out_read_0_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[2] = strg_ub_loops_buf2out_read_0_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[3] = strg_ub_loops_buf2out_read_0_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[4] = strg_ub_loops_buf2out_read_0_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[5] = strg_ub_loops_buf2out_read_0_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[0] = strg_ub_loops_buf2out_read_1_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[1] = strg_ub_loops_buf2out_read_1_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[2] = strg_ub_loops_buf2out_read_1_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[3] = strg_ub_loops_buf2out_read_1_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[4] = strg_ub_loops_buf2out_read_1_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[5] = strg_ub_loops_buf2out_read_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[0] = strg_ub_loops_in2buf_0_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[1] = strg_ub_loops_in2buf_0_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[2] = strg_ub_loops_in2buf_0_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[3] = strg_ub_loops_in2buf_0_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[4] = strg_ub_loops_in2buf_0_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[5] = strg_ub_loops_in2buf_0_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[0] = strg_ub_loops_in2buf_1_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[1] = strg_ub_loops_in2buf_1_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[2] = strg_ub_loops_in2buf_1_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[3] = strg_ub_loops_in2buf_1_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[4] = strg_ub_loops_in2buf_1_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[5] = strg_ub_loops_in2buf_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[0] = strg_ub_loops_in2buf_autovec_read_0_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[1] = strg_ub_loops_in2buf_autovec_read_0_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[2] = strg_ub_loops_in2buf_autovec_read_0_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[3] = strg_ub_loops_in2buf_autovec_read_0_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[4] = strg_ub_loops_in2buf_autovec_read_0_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[5] = strg_ub_loops_in2buf_autovec_read_0_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[0] = strg_ub_loops_in2buf_autovec_read_1_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[1] = strg_ub_loops_in2buf_autovec_read_1_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[2] = strg_ub_loops_in2buf_autovec_read_1_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[3] = strg_ub_loops_in2buf_autovec_read_1_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[4] = strg_ub_loops_in2buf_autovec_read_1_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[5] = strg_ub_loops_in2buf_autovec_read_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[0] = strg_ub_loops_in2buf_autovec_write_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[1] = strg_ub_loops_in2buf_autovec_write_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[2] = strg_ub_loops_in2buf_autovec_write_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[3] = strg_ub_loops_in2buf_autovec_write_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[4] = strg_ub_loops_in2buf_autovec_write_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[5] = strg_ub_loops_in2buf_autovec_write_ranges_5;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[0] = strg_ub_out_port_sel_addr_strides_0;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[1] = strg_ub_out_port_sel_addr_strides_1;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[2] = strg_ub_out_port_sel_addr_strides_2;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[3] = strg_ub_out_port_sel_addr_strides_3;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[4] = strg_ub_out_port_sel_addr_strides_4;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[5] = strg_ub_out_port_sel_addr_strides_5;
+assign LakeTop_strg_ub_output_addr_gen_strides[0] = strg_ub_output_addr_gen_strides_0;
+assign LakeTop_strg_ub_output_addr_gen_strides[1] = strg_ub_output_addr_gen_strides_1;
+assign LakeTop_strg_ub_output_addr_gen_strides[2] = strg_ub_output_addr_gen_strides_2;
+assign LakeTop_strg_ub_output_addr_gen_strides[3] = strg_ub_output_addr_gen_strides_3;
+assign LakeTop_strg_ub_output_addr_gen_strides[4] = strg_ub_output_addr_gen_strides_4;
+assign LakeTop_strg_ub_output_addr_gen_strides[5] = strg_ub_output_addr_gen_strides_5;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[0] = strg_ub_output_sched_gen_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[1] = strg_ub_output_sched_gen_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[2] = strg_ub_output_sched_gen_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[3] = strg_ub_output_sched_gen_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[4] = strg_ub_output_sched_gen_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[5] = strg_ub_output_sched_gen_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_port_sel_addr_strides[0] = strg_ub_port_sel_addr_strides_0;
+assign LakeTop_strg_ub_port_sel_addr_strides[1] = strg_ub_port_sel_addr_strides_1;
+assign LakeTop_strg_ub_port_sel_addr_strides[2] = strg_ub_port_sel_addr_strides_2;
+assign LakeTop_strg_ub_port_sel_addr_strides[3] = strg_ub_port_sel_addr_strides_3;
+assign LakeTop_strg_ub_port_sel_addr_strides[4] = strg_ub_port_sel_addr_strides_4;
+assign LakeTop_strg_ub_port_sel_addr_strides[5] = strg_ub_port_sel_addr_strides_5;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[0] = strg_ub_tb_read_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[1] = strg_ub_tb_read_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[2] = strg_ub_tb_read_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[3] = strg_ub_tb_read_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[4] = strg_ub_tb_read_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[5] = strg_ub_tb_read_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[0] = strg_ub_tb_read_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[1] = strg_ub_tb_read_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[2] = strg_ub_tb_read_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[3] = strg_ub_tb_read_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[4] = strg_ub_tb_read_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[5] = strg_ub_tb_read_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[0] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[1] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[2] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[3] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[4] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[5] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[0] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[1] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[2] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[3] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[4] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[5] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[0] = strg_ub_tb_write_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[1] = strg_ub_tb_write_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[2] = strg_ub_tb_write_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[3] = strg_ub_tb_write_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[4] = strg_ub_tb_write_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[5] = strg_ub_tb_write_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[0] = strg_ub_tb_write_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[1] = strg_ub_tb_write_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[2] = strg_ub_tb_write_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[3] = strg_ub_tb_write_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[4] = strg_ub_tb_write_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[5] = strg_ub_tb_write_addr_gen_1_strides_5;
+LakeTop LakeTop (
+  .addr_in(LakeTop_addr_in),
+  .chain_data_in(LakeTop_chain_data_in),
+  .clk(clk),
+  .clk_en(clk_en),
+  .config_addr_in(config_addr_in),
+  .config_data_in(config_data_in),
+  .config_en(config_en),
+  .config_read(config_read),
+  .config_write(config_write),
+  .data_in(LakeTop_data_in),
+  .fifo_ctrl_fifo_depth(fifo_ctrl_fifo_depth),
+  .flush(flush),
+  .mode(mode),
+  .ren_in(ren_in),
+  .rst_n(rst_n),
+  .strg_ub_agg_read_addr_gen_0_starting_addr(strg_ub_agg_read_addr_gen_0_starting_addr),
+  .strg_ub_agg_read_addr_gen_0_strides(LakeTop_strg_ub_agg_read_addr_gen_0_strides),
+  .strg_ub_agg_read_addr_gen_1_starting_addr(strg_ub_agg_read_addr_gen_1_starting_addr),
+  .strg_ub_agg_read_addr_gen_1_strides(LakeTop_strg_ub_agg_read_addr_gen_1_strides),
+  .strg_ub_agg_write_addr_gen_0_starting_addr(strg_ub_agg_write_addr_gen_0_starting_addr),
+  .strg_ub_agg_write_addr_gen_0_strides(LakeTop_strg_ub_agg_write_addr_gen_0_strides),
+  .strg_ub_agg_write_addr_gen_1_starting_addr(strg_ub_agg_write_addr_gen_1_starting_addr),
+  .strg_ub_agg_write_addr_gen_1_strides(LakeTop_strg_ub_agg_write_addr_gen_1_strides),
+  .strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr(strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr),
+  .strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides(LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides),
+  .strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr(strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr),
+  .strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides(LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides),
+  .strg_ub_input_addr_gen_starting_addr(strg_ub_input_addr_gen_starting_addr),
+  .strg_ub_input_addr_gen_strides(LakeTop_strg_ub_input_addr_gen_strides),
+  .strg_ub_input_sched_gen_sched_addr_gen_starting_addr(strg_ub_input_sched_gen_sched_addr_gen_starting_addr),
+  .strg_ub_input_sched_gen_sched_addr_gen_strides(LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides),
+  .strg_ub_loops_buf2out_autovec_read_dimensionality(strg_ub_loops_buf2out_autovec_read_dimensionality),
+  .strg_ub_loops_buf2out_autovec_read_ranges(LakeTop_strg_ub_loops_buf2out_autovec_read_ranges),
+  .strg_ub_loops_buf2out_autovec_write_0_dimensionality(strg_ub_loops_buf2out_autovec_write_0_dimensionality),
+  .strg_ub_loops_buf2out_autovec_write_0_ranges(LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges),
+  .strg_ub_loops_buf2out_autovec_write_1_dimensionality(strg_ub_loops_buf2out_autovec_write_1_dimensionality),
+  .strg_ub_loops_buf2out_autovec_write_1_ranges(LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges),
+  .strg_ub_loops_buf2out_out_sel_dimensionality(strg_ub_loops_buf2out_out_sel_dimensionality),
+  .strg_ub_loops_buf2out_out_sel_ranges(LakeTop_strg_ub_loops_buf2out_out_sel_ranges),
+  .strg_ub_loops_buf2out_read_0_dimensionality(strg_ub_loops_buf2out_read_0_dimensionality),
+  .strg_ub_loops_buf2out_read_0_ranges(LakeTop_strg_ub_loops_buf2out_read_0_ranges),
+  .strg_ub_loops_buf2out_read_1_dimensionality(strg_ub_loops_buf2out_read_1_dimensionality),
+  .strg_ub_loops_buf2out_read_1_ranges(LakeTop_strg_ub_loops_buf2out_read_1_ranges),
+  .strg_ub_loops_in2buf_0_dimensionality(strg_ub_loops_in2buf_0_dimensionality),
+  .strg_ub_loops_in2buf_0_ranges(LakeTop_strg_ub_loops_in2buf_0_ranges),
+  .strg_ub_loops_in2buf_1_dimensionality(strg_ub_loops_in2buf_1_dimensionality),
+  .strg_ub_loops_in2buf_1_ranges(LakeTop_strg_ub_loops_in2buf_1_ranges),
+  .strg_ub_loops_in2buf_autovec_read_0_dimensionality(strg_ub_loops_in2buf_autovec_read_0_dimensionality),
+  .strg_ub_loops_in2buf_autovec_read_0_ranges(LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges),
+  .strg_ub_loops_in2buf_autovec_read_1_dimensionality(strg_ub_loops_in2buf_autovec_read_1_dimensionality),
+  .strg_ub_loops_in2buf_autovec_read_1_ranges(LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges),
+  .strg_ub_loops_in2buf_autovec_write_dimensionality(strg_ub_loops_in2buf_autovec_write_dimensionality),
+  .strg_ub_loops_in2buf_autovec_write_ranges(LakeTop_strg_ub_loops_in2buf_autovec_write_ranges),
+  .strg_ub_out_port_sel_addr_starting_addr(strg_ub_out_port_sel_addr_starting_addr),
+  .strg_ub_out_port_sel_addr_strides(LakeTop_strg_ub_out_port_sel_addr_strides),
+  .strg_ub_output_addr_gen_starting_addr(strg_ub_output_addr_gen_starting_addr),
+  .strg_ub_output_addr_gen_strides(LakeTop_strg_ub_output_addr_gen_strides),
+  .strg_ub_output_sched_gen_sched_addr_gen_starting_addr(strg_ub_output_sched_gen_sched_addr_gen_starting_addr),
+  .strg_ub_output_sched_gen_sched_addr_gen_strides(LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides),
+  .strg_ub_port_sel_addr_starting_addr(strg_ub_port_sel_addr_starting_addr),
+  .strg_ub_port_sel_addr_strides(LakeTop_strg_ub_port_sel_addr_strides),
+  .strg_ub_tb_read_addr_gen_0_starting_addr(strg_ub_tb_read_addr_gen_0_starting_addr),
+  .strg_ub_tb_read_addr_gen_0_strides(LakeTop_strg_ub_tb_read_addr_gen_0_strides),
+  .strg_ub_tb_read_addr_gen_1_starting_addr(strg_ub_tb_read_addr_gen_1_starting_addr),
+  .strg_ub_tb_read_addr_gen_1_strides(LakeTop_strg_ub_tb_read_addr_gen_1_strides),
+  .strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr(strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr),
+  .strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides(LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides),
+  .strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr(strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr),
+  .strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides(LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides),
+  .strg_ub_tb_write_addr_gen_0_starting_addr(strg_ub_tb_write_addr_gen_0_starting_addr),
+  .strg_ub_tb_write_addr_gen_0_strides(LakeTop_strg_ub_tb_write_addr_gen_0_strides),
+  .strg_ub_tb_write_addr_gen_1_starting_addr(strg_ub_tb_write_addr_gen_1_starting_addr),
+  .strg_ub_tb_write_addr_gen_1_strides(LakeTop_strg_ub_tb_write_addr_gen_1_strides),
+  .tile_en(tile_en),
+  .wen_in(wen_in),
+  .config_data_out(LakeTop_config_data_out),
+  .data_out(LakeTop_data_out),
+  .empty(empty),
+  .full(full),
+  .sram_ready_out(sram_ready_out)
+);
+
+endmodule   // LakeTop_W
+
+module cwlib_ub__confignull__input_num1__output_num2__width16 ub_lxy_stencil_op_hcompute_lxy_stencil_4_to_lxy_stencil_op_hcompute_lgxy_stencil_1_22 (
+  input logic [15:0] addr_in_0,
+  input logic [15:0] addr_in_1,
+  input logic [15:0] chain_data_in_0,
+  input logic [15:0] chain_data_in_1,
+  input logic clk,
+  input logic clk_en,
+  input logic [7:0] config_addr_in,
+  input logic [31:0] config_data_in,
+  input logic [1:0] config_en,
+  input logic config_read,
+  input logic config_write,
+  input logic [15:0] data_in_0,
+  input logic [15:0] data_in_1,
+  input logic [15:0] fifo_ctrl_fifo_depth,
+  input logic flush,
+  input logic [1:0] ren_in,
+  input logic rst_n,
+  input logic [1:0] wen_in,
+  output logic [31:0] config_data_out_0,
+  output logic [31:0] config_data_out_1,
+  output logic [15:0] data_out_0,
+  output logic [15:0] data_out_1,
+  output logic empty,
+  output logic full,
+  output logic sram_ready_out
+);
+
+logic [1:0][15:0] LakeTop_addr_in;
+logic [1:0][15:0] LakeTop_chain_data_in;
+logic [1:0][31:0] LakeTop_config_data_out;
+logic [1:0][15:0] LakeTop_data_in;
+logic [1:0][15:0] LakeTop_data_out;
+logic [5:0][15:0] LakeTop_strg_ub_agg_read_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_read_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_input_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_read_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_out_sel_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_read_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_read_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_write_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_out_port_sel_addr_strides;
+logic [5:0][15:0] LakeTop_strg_ub_output_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_port_sel_addr_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_write_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_write_addr_gen_1_strides;
+wire [15:0] strg_ub_agg_read_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_input_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_starting_addr = 135;
+wire [3:0] strg_ub_loops_in2buf_autovec_read_0_dimensionality = 3;
+wire [3:0] strg_ub_loops_in2buf_autovec_write_dimensionality = 3;
+wire [15:0] strg_ub_output_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_out_port_sel_addr_starting_addr = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr = 258;
+wire [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_out_sel_dimensionality = 4;
+wire [15:0] strg_ub_agg_write_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr = 132;
+wire [3:0] strg_ub_loops_in2buf_0_dimensionality = 4;
+wire [15:0] strg_ub_tb_read_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr = 260;
+wire [3:0] strg_ub_loops_buf2out_read_0_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_autovec_write_0_dimensionality = 4;
+wire [15:0] strg_ub_tb_read_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr = 260;
+wire [3:0] strg_ub_loops_buf2out_read_1_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_autovec_write_1_dimensionality = 4;
+wire [1:0] mode = 0;
+wire [0:0] tile_en = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_0 = 2;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_0 = 1;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_1 = 14;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_1 = -3;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_2 = 60;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_2 = -1;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_3 = -1;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_3 = -125;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_3 = -3967;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_0 = 14;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_0 = 14;
+wire [15:0] strg_ub_input_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_0 = 4;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_1 = 60;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_1 = 60;
+wire [15:0] strg_ub_input_addr_gen_strides_1 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_1 = 4;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_2 = -1;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_2 = -1;
+wire [15:0] strg_ub_input_addr_gen_strides_2 = -930;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_2 = -3964;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_0 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_0 = 16;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_0 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_0 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_0 = 1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_0 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_1 = 14;
+wire [15:0] strg_ub_output_addr_gen_strides_1 = -15;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_1 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_1 = 14;
+wire [15:0] strg_ub_out_port_sel_addr_strides_1 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_1 = 14;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_1 = 14;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_2 = 58;
+wire [15:0] strg_ub_output_addr_gen_strides_2 = -15;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_2 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_2 = 58;
+wire [15:0] strg_ub_out_port_sel_addr_strides_2 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_2 = 58;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_2 = 58;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_3 = -1;
+wire [15:0] strg_ub_output_addr_gen_strides_3 = -975;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_3 = -3838;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_3 = -1;
+wire [15:0] strg_ub_out_port_sel_addr_strides_3 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_3 = -959;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_3 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_3 = -959;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_3 = -1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_0 = 2;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_0 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_1 = 14;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_1 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_2 = 58;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_2 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_3 = -1;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_3 = -3839;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3 = -3839;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_0 = 2;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_0 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_1 = 14;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_1 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_2 = 58;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_2 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_3 = -1;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_3 = -3839;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3 = -3839;
+wire [15:0] strg_ub_output_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_dimensionality = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_5 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_0 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_1 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_2 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_4 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_5 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_port_sel_addr_starting_addr = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_3 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_1 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_2 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_3 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_0 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_1 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_2 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_3 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_4 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_1 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_2 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_3 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_dimensionality = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_5 = 0;
+assign LakeTop_addr_in[0] = addr_in_0;
+assign LakeTop_addr_in[1] = addr_in_1;
+assign LakeTop_chain_data_in[0] = chain_data_in_0;
+assign LakeTop_chain_data_in[1] = chain_data_in_1;
+assign config_data_out_0 = LakeTop_config_data_out[0];
+assign config_data_out_1 = LakeTop_config_data_out[1];
+assign LakeTop_data_in[0] = data_in_0;
+assign LakeTop_data_in[1] = data_in_1;
+assign data_out_0 = LakeTop_data_out[0];
+assign data_out_1 = LakeTop_data_out[1];
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[0] = strg_ub_agg_read_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[1] = strg_ub_agg_read_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[2] = strg_ub_agg_read_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[3] = strg_ub_agg_read_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[4] = strg_ub_agg_read_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[5] = strg_ub_agg_read_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[0] = strg_ub_agg_read_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[1] = strg_ub_agg_read_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[2] = strg_ub_agg_read_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[3] = strg_ub_agg_read_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[4] = strg_ub_agg_read_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[5] = strg_ub_agg_read_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[0] = strg_ub_agg_write_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[1] = strg_ub_agg_write_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[2] = strg_ub_agg_write_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[3] = strg_ub_agg_write_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[4] = strg_ub_agg_write_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[5] = strg_ub_agg_write_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[0] = strg_ub_agg_write_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[1] = strg_ub_agg_write_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[2] = strg_ub_agg_write_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[3] = strg_ub_agg_write_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[4] = strg_ub_agg_write_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[5] = strg_ub_agg_write_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[0] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[1] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[2] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[3] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[4] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[5] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[0] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[1] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[2] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[3] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[4] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[5] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_input_addr_gen_strides[0] = strg_ub_input_addr_gen_strides_0;
+assign LakeTop_strg_ub_input_addr_gen_strides[1] = strg_ub_input_addr_gen_strides_1;
+assign LakeTop_strg_ub_input_addr_gen_strides[2] = strg_ub_input_addr_gen_strides_2;
+assign LakeTop_strg_ub_input_addr_gen_strides[3] = strg_ub_input_addr_gen_strides_3;
+assign LakeTop_strg_ub_input_addr_gen_strides[4] = strg_ub_input_addr_gen_strides_4;
+assign LakeTop_strg_ub_input_addr_gen_strides[5] = strg_ub_input_addr_gen_strides_5;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[0] = strg_ub_input_sched_gen_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[1] = strg_ub_input_sched_gen_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[2] = strg_ub_input_sched_gen_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[3] = strg_ub_input_sched_gen_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[4] = strg_ub_input_sched_gen_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[5] = strg_ub_input_sched_gen_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[0] = strg_ub_loops_buf2out_autovec_read_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[1] = strg_ub_loops_buf2out_autovec_read_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[2] = strg_ub_loops_buf2out_autovec_read_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[3] = strg_ub_loops_buf2out_autovec_read_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[4] = strg_ub_loops_buf2out_autovec_read_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[5] = strg_ub_loops_buf2out_autovec_read_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[0] = strg_ub_loops_buf2out_autovec_write_0_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[1] = strg_ub_loops_buf2out_autovec_write_0_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[2] = strg_ub_loops_buf2out_autovec_write_0_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[3] = strg_ub_loops_buf2out_autovec_write_0_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[4] = strg_ub_loops_buf2out_autovec_write_0_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[5] = strg_ub_loops_buf2out_autovec_write_0_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[0] = strg_ub_loops_buf2out_autovec_write_1_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[1] = strg_ub_loops_buf2out_autovec_write_1_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[2] = strg_ub_loops_buf2out_autovec_write_1_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[3] = strg_ub_loops_buf2out_autovec_write_1_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[4] = strg_ub_loops_buf2out_autovec_write_1_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[5] = strg_ub_loops_buf2out_autovec_write_1_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[0] = strg_ub_loops_buf2out_out_sel_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[1] = strg_ub_loops_buf2out_out_sel_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[2] = strg_ub_loops_buf2out_out_sel_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[3] = strg_ub_loops_buf2out_out_sel_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[4] = strg_ub_loops_buf2out_out_sel_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[5] = strg_ub_loops_buf2out_out_sel_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[0] = strg_ub_loops_buf2out_read_0_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[1] = strg_ub_loops_buf2out_read_0_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[2] = strg_ub_loops_buf2out_read_0_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[3] = strg_ub_loops_buf2out_read_0_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[4] = strg_ub_loops_buf2out_read_0_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[5] = strg_ub_loops_buf2out_read_0_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[0] = strg_ub_loops_buf2out_read_1_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[1] = strg_ub_loops_buf2out_read_1_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[2] = strg_ub_loops_buf2out_read_1_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[3] = strg_ub_loops_buf2out_read_1_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[4] = strg_ub_loops_buf2out_read_1_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[5] = strg_ub_loops_buf2out_read_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[0] = strg_ub_loops_in2buf_0_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[1] = strg_ub_loops_in2buf_0_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[2] = strg_ub_loops_in2buf_0_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[3] = strg_ub_loops_in2buf_0_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[4] = strg_ub_loops_in2buf_0_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[5] = strg_ub_loops_in2buf_0_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[0] = strg_ub_loops_in2buf_1_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[1] = strg_ub_loops_in2buf_1_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[2] = strg_ub_loops_in2buf_1_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[3] = strg_ub_loops_in2buf_1_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[4] = strg_ub_loops_in2buf_1_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[5] = strg_ub_loops_in2buf_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[0] = strg_ub_loops_in2buf_autovec_read_0_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[1] = strg_ub_loops_in2buf_autovec_read_0_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[2] = strg_ub_loops_in2buf_autovec_read_0_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[3] = strg_ub_loops_in2buf_autovec_read_0_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[4] = strg_ub_loops_in2buf_autovec_read_0_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[5] = strg_ub_loops_in2buf_autovec_read_0_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[0] = strg_ub_loops_in2buf_autovec_read_1_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[1] = strg_ub_loops_in2buf_autovec_read_1_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[2] = strg_ub_loops_in2buf_autovec_read_1_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[3] = strg_ub_loops_in2buf_autovec_read_1_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[4] = strg_ub_loops_in2buf_autovec_read_1_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[5] = strg_ub_loops_in2buf_autovec_read_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[0] = strg_ub_loops_in2buf_autovec_write_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[1] = strg_ub_loops_in2buf_autovec_write_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[2] = strg_ub_loops_in2buf_autovec_write_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[3] = strg_ub_loops_in2buf_autovec_write_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[4] = strg_ub_loops_in2buf_autovec_write_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[5] = strg_ub_loops_in2buf_autovec_write_ranges_5;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[0] = strg_ub_out_port_sel_addr_strides_0;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[1] = strg_ub_out_port_sel_addr_strides_1;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[2] = strg_ub_out_port_sel_addr_strides_2;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[3] = strg_ub_out_port_sel_addr_strides_3;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[4] = strg_ub_out_port_sel_addr_strides_4;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[5] = strg_ub_out_port_sel_addr_strides_5;
+assign LakeTop_strg_ub_output_addr_gen_strides[0] = strg_ub_output_addr_gen_strides_0;
+assign LakeTop_strg_ub_output_addr_gen_strides[1] = strg_ub_output_addr_gen_strides_1;
+assign LakeTop_strg_ub_output_addr_gen_strides[2] = strg_ub_output_addr_gen_strides_2;
+assign LakeTop_strg_ub_output_addr_gen_strides[3] = strg_ub_output_addr_gen_strides_3;
+assign LakeTop_strg_ub_output_addr_gen_strides[4] = strg_ub_output_addr_gen_strides_4;
+assign LakeTop_strg_ub_output_addr_gen_strides[5] = strg_ub_output_addr_gen_strides_5;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[0] = strg_ub_output_sched_gen_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[1] = strg_ub_output_sched_gen_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[2] = strg_ub_output_sched_gen_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[3] = strg_ub_output_sched_gen_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[4] = strg_ub_output_sched_gen_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[5] = strg_ub_output_sched_gen_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_port_sel_addr_strides[0] = strg_ub_port_sel_addr_strides_0;
+assign LakeTop_strg_ub_port_sel_addr_strides[1] = strg_ub_port_sel_addr_strides_1;
+assign LakeTop_strg_ub_port_sel_addr_strides[2] = strg_ub_port_sel_addr_strides_2;
+assign LakeTop_strg_ub_port_sel_addr_strides[3] = strg_ub_port_sel_addr_strides_3;
+assign LakeTop_strg_ub_port_sel_addr_strides[4] = strg_ub_port_sel_addr_strides_4;
+assign LakeTop_strg_ub_port_sel_addr_strides[5] = strg_ub_port_sel_addr_strides_5;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[0] = strg_ub_tb_read_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[1] = strg_ub_tb_read_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[2] = strg_ub_tb_read_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[3] = strg_ub_tb_read_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[4] = strg_ub_tb_read_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[5] = strg_ub_tb_read_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[0] = strg_ub_tb_read_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[1] = strg_ub_tb_read_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[2] = strg_ub_tb_read_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[3] = strg_ub_tb_read_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[4] = strg_ub_tb_read_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[5] = strg_ub_tb_read_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[0] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[1] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[2] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[3] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[4] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[5] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[0] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[1] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[2] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[3] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[4] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[5] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[0] = strg_ub_tb_write_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[1] = strg_ub_tb_write_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[2] = strg_ub_tb_write_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[3] = strg_ub_tb_write_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[4] = strg_ub_tb_write_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[5] = strg_ub_tb_write_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[0] = strg_ub_tb_write_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[1] = strg_ub_tb_write_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[2] = strg_ub_tb_write_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[3] = strg_ub_tb_write_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[4] = strg_ub_tb_write_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[5] = strg_ub_tb_write_addr_gen_1_strides_5;
+LakeTop LakeTop (
+  .addr_in(LakeTop_addr_in),
+  .chain_data_in(LakeTop_chain_data_in),
+  .clk(clk),
+  .clk_en(clk_en),
+  .config_addr_in(config_addr_in),
+  .config_data_in(config_data_in),
+  .config_en(config_en),
+  .config_read(config_read),
+  .config_write(config_write),
+  .data_in(LakeTop_data_in),
+  .fifo_ctrl_fifo_depth(fifo_ctrl_fifo_depth),
+  .flush(flush),
+  .mode(mode),
+  .ren_in(ren_in),
+  .rst_n(rst_n),
+  .strg_ub_agg_read_addr_gen_0_starting_addr(strg_ub_agg_read_addr_gen_0_starting_addr),
+  .strg_ub_agg_read_addr_gen_0_strides(LakeTop_strg_ub_agg_read_addr_gen_0_strides),
+  .strg_ub_agg_read_addr_gen_1_starting_addr(strg_ub_agg_read_addr_gen_1_starting_addr),
+  .strg_ub_agg_read_addr_gen_1_strides(LakeTop_strg_ub_agg_read_addr_gen_1_strides),
+  .strg_ub_agg_write_addr_gen_0_starting_addr(strg_ub_agg_write_addr_gen_0_starting_addr),
+  .strg_ub_agg_write_addr_gen_0_strides(LakeTop_strg_ub_agg_write_addr_gen_0_strides),
+  .strg_ub_agg_write_addr_gen_1_starting_addr(strg_ub_agg_write_addr_gen_1_starting_addr),
+  .strg_ub_agg_write_addr_gen_1_strides(LakeTop_strg_ub_agg_write_addr_gen_1_strides),
+  .strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr(strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr),
+  .strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides(LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides),
+  .strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr(strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr),
+  .strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides(LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides),
+  .strg_ub_input_addr_gen_starting_addr(strg_ub_input_addr_gen_starting_addr),
+  .strg_ub_input_addr_gen_strides(LakeTop_strg_ub_input_addr_gen_strides),
+  .strg_ub_input_sched_gen_sched_addr_gen_starting_addr(strg_ub_input_sched_gen_sched_addr_gen_starting_addr),
+  .strg_ub_input_sched_gen_sched_addr_gen_strides(LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides),
+  .strg_ub_loops_buf2out_autovec_read_dimensionality(strg_ub_loops_buf2out_autovec_read_dimensionality),
+  .strg_ub_loops_buf2out_autovec_read_ranges(LakeTop_strg_ub_loops_buf2out_autovec_read_ranges),
+  .strg_ub_loops_buf2out_autovec_write_0_dimensionality(strg_ub_loops_buf2out_autovec_write_0_dimensionality),
+  .strg_ub_loops_buf2out_autovec_write_0_ranges(LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges),
+  .strg_ub_loops_buf2out_autovec_write_1_dimensionality(strg_ub_loops_buf2out_autovec_write_1_dimensionality),
+  .strg_ub_loops_buf2out_autovec_write_1_ranges(LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges),
+  .strg_ub_loops_buf2out_out_sel_dimensionality(strg_ub_loops_buf2out_out_sel_dimensionality),
+  .strg_ub_loops_buf2out_out_sel_ranges(LakeTop_strg_ub_loops_buf2out_out_sel_ranges),
+  .strg_ub_loops_buf2out_read_0_dimensionality(strg_ub_loops_buf2out_read_0_dimensionality),
+  .strg_ub_loops_buf2out_read_0_ranges(LakeTop_strg_ub_loops_buf2out_read_0_ranges),
+  .strg_ub_loops_buf2out_read_1_dimensionality(strg_ub_loops_buf2out_read_1_dimensionality),
+  .strg_ub_loops_buf2out_read_1_ranges(LakeTop_strg_ub_loops_buf2out_read_1_ranges),
+  .strg_ub_loops_in2buf_0_dimensionality(strg_ub_loops_in2buf_0_dimensionality),
+  .strg_ub_loops_in2buf_0_ranges(LakeTop_strg_ub_loops_in2buf_0_ranges),
+  .strg_ub_loops_in2buf_1_dimensionality(strg_ub_loops_in2buf_1_dimensionality),
+  .strg_ub_loops_in2buf_1_ranges(LakeTop_strg_ub_loops_in2buf_1_ranges),
+  .strg_ub_loops_in2buf_autovec_read_0_dimensionality(strg_ub_loops_in2buf_autovec_read_0_dimensionality),
+  .strg_ub_loops_in2buf_autovec_read_0_ranges(LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges),
+  .strg_ub_loops_in2buf_autovec_read_1_dimensionality(strg_ub_loops_in2buf_autovec_read_1_dimensionality),
+  .strg_ub_loops_in2buf_autovec_read_1_ranges(LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges),
+  .strg_ub_loops_in2buf_autovec_write_dimensionality(strg_ub_loops_in2buf_autovec_write_dimensionality),
+  .strg_ub_loops_in2buf_autovec_write_ranges(LakeTop_strg_ub_loops_in2buf_autovec_write_ranges),
+  .strg_ub_out_port_sel_addr_starting_addr(strg_ub_out_port_sel_addr_starting_addr),
+  .strg_ub_out_port_sel_addr_strides(LakeTop_strg_ub_out_port_sel_addr_strides),
+  .strg_ub_output_addr_gen_starting_addr(strg_ub_output_addr_gen_starting_addr),
+  .strg_ub_output_addr_gen_strides(LakeTop_strg_ub_output_addr_gen_strides),
+  .strg_ub_output_sched_gen_sched_addr_gen_starting_addr(strg_ub_output_sched_gen_sched_addr_gen_starting_addr),
+  .strg_ub_output_sched_gen_sched_addr_gen_strides(LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides),
+  .strg_ub_port_sel_addr_starting_addr(strg_ub_port_sel_addr_starting_addr),
+  .strg_ub_port_sel_addr_strides(LakeTop_strg_ub_port_sel_addr_strides),
+  .strg_ub_tb_read_addr_gen_0_starting_addr(strg_ub_tb_read_addr_gen_0_starting_addr),
+  .strg_ub_tb_read_addr_gen_0_strides(LakeTop_strg_ub_tb_read_addr_gen_0_strides),
+  .strg_ub_tb_read_addr_gen_1_starting_addr(strg_ub_tb_read_addr_gen_1_starting_addr),
+  .strg_ub_tb_read_addr_gen_1_strides(LakeTop_strg_ub_tb_read_addr_gen_1_strides),
+  .strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr(strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr),
+  .strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides(LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides),
+  .strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr(strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr),
+  .strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides(LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides),
+  .strg_ub_tb_write_addr_gen_0_starting_addr(strg_ub_tb_write_addr_gen_0_starting_addr),
+  .strg_ub_tb_write_addr_gen_0_strides(LakeTop_strg_ub_tb_write_addr_gen_0_strides),
+  .strg_ub_tb_write_addr_gen_1_starting_addr(strg_ub_tb_write_addr_gen_1_starting_addr),
+  .strg_ub_tb_write_addr_gen_1_strides(LakeTop_strg_ub_tb_write_addr_gen_1_strides),
+  .tile_en(tile_en),
+  .wen_in(wen_in),
+  .config_data_out(LakeTop_config_data_out),
+  .data_out(LakeTop_data_out),
+  .empty(empty),
+  .full(full),
+  .sram_ready_out(sram_ready_out)
+);
+
+endmodule   // LakeTop_W
+
+module cwlib_ub__confignull__input_num1__output_num2__width16 ub_lxx_stencil_op_hcompute_lxx_stencil_7_to_lxx_stencil_op_hcompute_lgxx_stencil_1_32 (
+  input logic [15:0] addr_in_0,
+  input logic [15:0] addr_in_1,
+  input logic [15:0] chain_data_in_0,
+  input logic [15:0] chain_data_in_1,
+  input logic clk,
+  input logic clk_en,
+  input logic [7:0] config_addr_in,
+  input logic [31:0] config_data_in,
+  input logic [1:0] config_en,
+  input logic config_read,
+  input logic config_write,
+  input logic [15:0] data_in_0,
+  input logic [15:0] data_in_1,
+  input logic [15:0] fifo_ctrl_fifo_depth,
+  input logic flush,
+  input logic [1:0] ren_in,
+  input logic rst_n,
+  input logic [1:0] wen_in,
+  output logic [31:0] config_data_out_0,
+  output logic [31:0] config_data_out_1,
+  output logic [15:0] data_out_0,
+  output logic [15:0] data_out_1,
+  output logic empty,
+  output logic full,
+  output logic sram_ready_out
+);
+
+logic [1:0][15:0] LakeTop_addr_in;
+logic [1:0][15:0] LakeTop_chain_data_in;
+logic [1:0][31:0] LakeTop_config_data_out;
+logic [1:0][15:0] LakeTop_data_in;
+logic [1:0][15:0] LakeTop_data_out;
+logic [5:0][15:0] LakeTop_strg_ub_agg_read_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_read_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_input_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_read_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_out_sel_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_read_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_read_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_write_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_out_port_sel_addr_strides;
+logic [5:0][15:0] LakeTop_strg_ub_output_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_port_sel_addr_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_write_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_write_addr_gen_1_strides;
+wire [15:0] strg_ub_agg_read_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_input_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_starting_addr = 135;
+wire [3:0] strg_ub_loops_in2buf_autovec_read_0_dimensionality = 3;
+wire [3:0] strg_ub_loops_in2buf_autovec_write_dimensionality = 3;
+wire [15:0] strg_ub_output_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_out_port_sel_addr_starting_addr = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr = 258;
+wire [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_out_sel_dimensionality = 4;
+wire [15:0] strg_ub_agg_write_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr = 132;
+wire [3:0] strg_ub_loops_in2buf_0_dimensionality = 4;
+wire [15:0] strg_ub_tb_read_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr = 260;
+wire [3:0] strg_ub_loops_buf2out_read_0_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_autovec_write_0_dimensionality = 4;
+wire [15:0] strg_ub_tb_read_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr = 260;
+wire [3:0] strg_ub_loops_buf2out_read_1_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_autovec_write_1_dimensionality = 4;
+wire [1:0] mode = 0;
+wire [0:0] tile_en = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_0 = 2;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_0 = 1;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_1 = 14;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_1 = -3;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_2 = 60;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_2 = -1;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_3 = -1;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_3 = -125;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_3 = -3967;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_0 = 14;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_0 = 14;
+wire [15:0] strg_ub_input_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_0 = 4;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_1 = 60;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_1 = 60;
+wire [15:0] strg_ub_input_addr_gen_strides_1 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_1 = 4;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_2 = -1;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_2 = -1;
+wire [15:0] strg_ub_input_addr_gen_strides_2 = -930;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_2 = -3964;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_0 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_0 = 16;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_0 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_0 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_0 = 1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_0 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_1 = 14;
+wire [15:0] strg_ub_output_addr_gen_strides_1 = -15;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_1 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_1 = 14;
+wire [15:0] strg_ub_out_port_sel_addr_strides_1 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_1 = 14;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_1 = 14;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_2 = 58;
+wire [15:0] strg_ub_output_addr_gen_strides_2 = -15;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_2 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_2 = 58;
+wire [15:0] strg_ub_out_port_sel_addr_strides_2 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_2 = 58;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_2 = 58;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_3 = -1;
+wire [15:0] strg_ub_output_addr_gen_strides_3 = -975;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_3 = -3838;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_3 = -1;
+wire [15:0] strg_ub_out_port_sel_addr_strides_3 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_3 = -959;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_3 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_3 = -959;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_3 = -1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_0 = 2;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_0 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_1 = 14;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_1 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_2 = 58;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_2 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_3 = -1;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_3 = -3839;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3 = -3839;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_0 = 2;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_0 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_1 = 14;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_1 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_2 = 58;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_2 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_3 = -1;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_3 = -3839;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3 = -3839;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_5 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_1 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_2 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_3 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_port_sel_addr_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_4 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_5 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_0 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_1 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_2 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_5 = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_1 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_2 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_3 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_dimensionality = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_3 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_5 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_dimensionality = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_5 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_5 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_0 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_1 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_2 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_3 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_4 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_5 = 0;
+assign LakeTop_addr_in[0] = addr_in_0;
+assign LakeTop_addr_in[1] = addr_in_1;
+assign LakeTop_chain_data_in[0] = chain_data_in_0;
+assign LakeTop_chain_data_in[1] = chain_data_in_1;
+assign config_data_out_0 = LakeTop_config_data_out[0];
+assign config_data_out_1 = LakeTop_config_data_out[1];
+assign LakeTop_data_in[0] = data_in_0;
+assign LakeTop_data_in[1] = data_in_1;
+assign data_out_0 = LakeTop_data_out[0];
+assign data_out_1 = LakeTop_data_out[1];
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[0] = strg_ub_agg_read_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[1] = strg_ub_agg_read_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[2] = strg_ub_agg_read_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[3] = strg_ub_agg_read_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[4] = strg_ub_agg_read_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[5] = strg_ub_agg_read_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[0] = strg_ub_agg_read_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[1] = strg_ub_agg_read_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[2] = strg_ub_agg_read_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[3] = strg_ub_agg_read_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[4] = strg_ub_agg_read_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[5] = strg_ub_agg_read_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[0] = strg_ub_agg_write_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[1] = strg_ub_agg_write_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[2] = strg_ub_agg_write_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[3] = strg_ub_agg_write_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[4] = strg_ub_agg_write_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[5] = strg_ub_agg_write_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[0] = strg_ub_agg_write_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[1] = strg_ub_agg_write_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[2] = strg_ub_agg_write_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[3] = strg_ub_agg_write_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[4] = strg_ub_agg_write_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[5] = strg_ub_agg_write_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[0] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[1] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[2] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[3] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[4] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[5] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[0] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[1] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[2] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[3] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[4] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[5] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_input_addr_gen_strides[0] = strg_ub_input_addr_gen_strides_0;
+assign LakeTop_strg_ub_input_addr_gen_strides[1] = strg_ub_input_addr_gen_strides_1;
+assign LakeTop_strg_ub_input_addr_gen_strides[2] = strg_ub_input_addr_gen_strides_2;
+assign LakeTop_strg_ub_input_addr_gen_strides[3] = strg_ub_input_addr_gen_strides_3;
+assign LakeTop_strg_ub_input_addr_gen_strides[4] = strg_ub_input_addr_gen_strides_4;
+assign LakeTop_strg_ub_input_addr_gen_strides[5] = strg_ub_input_addr_gen_strides_5;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[0] = strg_ub_input_sched_gen_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[1] = strg_ub_input_sched_gen_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[2] = strg_ub_input_sched_gen_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[3] = strg_ub_input_sched_gen_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[4] = strg_ub_input_sched_gen_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[5] = strg_ub_input_sched_gen_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[0] = strg_ub_loops_buf2out_autovec_read_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[1] = strg_ub_loops_buf2out_autovec_read_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[2] = strg_ub_loops_buf2out_autovec_read_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[3] = strg_ub_loops_buf2out_autovec_read_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[4] = strg_ub_loops_buf2out_autovec_read_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[5] = strg_ub_loops_buf2out_autovec_read_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[0] = strg_ub_loops_buf2out_autovec_write_0_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[1] = strg_ub_loops_buf2out_autovec_write_0_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[2] = strg_ub_loops_buf2out_autovec_write_0_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[3] = strg_ub_loops_buf2out_autovec_write_0_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[4] = strg_ub_loops_buf2out_autovec_write_0_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[5] = strg_ub_loops_buf2out_autovec_write_0_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[0] = strg_ub_loops_buf2out_autovec_write_1_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[1] = strg_ub_loops_buf2out_autovec_write_1_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[2] = strg_ub_loops_buf2out_autovec_write_1_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[3] = strg_ub_loops_buf2out_autovec_write_1_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[4] = strg_ub_loops_buf2out_autovec_write_1_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[5] = strg_ub_loops_buf2out_autovec_write_1_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[0] = strg_ub_loops_buf2out_out_sel_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[1] = strg_ub_loops_buf2out_out_sel_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[2] = strg_ub_loops_buf2out_out_sel_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[3] = strg_ub_loops_buf2out_out_sel_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[4] = strg_ub_loops_buf2out_out_sel_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[5] = strg_ub_loops_buf2out_out_sel_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[0] = strg_ub_loops_buf2out_read_0_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[1] = strg_ub_loops_buf2out_read_0_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[2] = strg_ub_loops_buf2out_read_0_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[3] = strg_ub_loops_buf2out_read_0_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[4] = strg_ub_loops_buf2out_read_0_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[5] = strg_ub_loops_buf2out_read_0_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[0] = strg_ub_loops_buf2out_read_1_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[1] = strg_ub_loops_buf2out_read_1_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[2] = strg_ub_loops_buf2out_read_1_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[3] = strg_ub_loops_buf2out_read_1_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[4] = strg_ub_loops_buf2out_read_1_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[5] = strg_ub_loops_buf2out_read_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[0] = strg_ub_loops_in2buf_0_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[1] = strg_ub_loops_in2buf_0_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[2] = strg_ub_loops_in2buf_0_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[3] = strg_ub_loops_in2buf_0_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[4] = strg_ub_loops_in2buf_0_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[5] = strg_ub_loops_in2buf_0_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[0] = strg_ub_loops_in2buf_1_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[1] = strg_ub_loops_in2buf_1_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[2] = strg_ub_loops_in2buf_1_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[3] = strg_ub_loops_in2buf_1_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[4] = strg_ub_loops_in2buf_1_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[5] = strg_ub_loops_in2buf_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[0] = strg_ub_loops_in2buf_autovec_read_0_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[1] = strg_ub_loops_in2buf_autovec_read_0_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[2] = strg_ub_loops_in2buf_autovec_read_0_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[3] = strg_ub_loops_in2buf_autovec_read_0_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[4] = strg_ub_loops_in2buf_autovec_read_0_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[5] = strg_ub_loops_in2buf_autovec_read_0_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[0] = strg_ub_loops_in2buf_autovec_read_1_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[1] = strg_ub_loops_in2buf_autovec_read_1_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[2] = strg_ub_loops_in2buf_autovec_read_1_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[3] = strg_ub_loops_in2buf_autovec_read_1_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[4] = strg_ub_loops_in2buf_autovec_read_1_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[5] = strg_ub_loops_in2buf_autovec_read_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[0] = strg_ub_loops_in2buf_autovec_write_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[1] = strg_ub_loops_in2buf_autovec_write_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[2] = strg_ub_loops_in2buf_autovec_write_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[3] = strg_ub_loops_in2buf_autovec_write_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[4] = strg_ub_loops_in2buf_autovec_write_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[5] = strg_ub_loops_in2buf_autovec_write_ranges_5;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[0] = strg_ub_out_port_sel_addr_strides_0;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[1] = strg_ub_out_port_sel_addr_strides_1;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[2] = strg_ub_out_port_sel_addr_strides_2;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[3] = strg_ub_out_port_sel_addr_strides_3;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[4] = strg_ub_out_port_sel_addr_strides_4;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[5] = strg_ub_out_port_sel_addr_strides_5;
+assign LakeTop_strg_ub_output_addr_gen_strides[0] = strg_ub_output_addr_gen_strides_0;
+assign LakeTop_strg_ub_output_addr_gen_strides[1] = strg_ub_output_addr_gen_strides_1;
+assign LakeTop_strg_ub_output_addr_gen_strides[2] = strg_ub_output_addr_gen_strides_2;
+assign LakeTop_strg_ub_output_addr_gen_strides[3] = strg_ub_output_addr_gen_strides_3;
+assign LakeTop_strg_ub_output_addr_gen_strides[4] = strg_ub_output_addr_gen_strides_4;
+assign LakeTop_strg_ub_output_addr_gen_strides[5] = strg_ub_output_addr_gen_strides_5;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[0] = strg_ub_output_sched_gen_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[1] = strg_ub_output_sched_gen_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[2] = strg_ub_output_sched_gen_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[3] = strg_ub_output_sched_gen_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[4] = strg_ub_output_sched_gen_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[5] = strg_ub_output_sched_gen_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_port_sel_addr_strides[0] = strg_ub_port_sel_addr_strides_0;
+assign LakeTop_strg_ub_port_sel_addr_strides[1] = strg_ub_port_sel_addr_strides_1;
+assign LakeTop_strg_ub_port_sel_addr_strides[2] = strg_ub_port_sel_addr_strides_2;
+assign LakeTop_strg_ub_port_sel_addr_strides[3] = strg_ub_port_sel_addr_strides_3;
+assign LakeTop_strg_ub_port_sel_addr_strides[4] = strg_ub_port_sel_addr_strides_4;
+assign LakeTop_strg_ub_port_sel_addr_strides[5] = strg_ub_port_sel_addr_strides_5;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[0] = strg_ub_tb_read_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[1] = strg_ub_tb_read_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[2] = strg_ub_tb_read_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[3] = strg_ub_tb_read_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[4] = strg_ub_tb_read_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[5] = strg_ub_tb_read_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[0] = strg_ub_tb_read_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[1] = strg_ub_tb_read_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[2] = strg_ub_tb_read_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[3] = strg_ub_tb_read_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[4] = strg_ub_tb_read_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[5] = strg_ub_tb_read_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[0] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[1] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[2] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[3] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[4] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[5] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[0] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[1] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[2] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[3] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[4] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[5] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[0] = strg_ub_tb_write_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[1] = strg_ub_tb_write_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[2] = strg_ub_tb_write_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[3] = strg_ub_tb_write_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[4] = strg_ub_tb_write_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[5] = strg_ub_tb_write_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[0] = strg_ub_tb_write_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[1] = strg_ub_tb_write_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[2] = strg_ub_tb_write_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[3] = strg_ub_tb_write_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[4] = strg_ub_tb_write_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[5] = strg_ub_tb_write_addr_gen_1_strides_5;
+LakeTop LakeTop (
+  .addr_in(LakeTop_addr_in),
+  .chain_data_in(LakeTop_chain_data_in),
+  .clk(clk),
+  .clk_en(clk_en),
+  .config_addr_in(config_addr_in),
+  .config_data_in(config_data_in),
+  .config_en(config_en),
+  .config_read(config_read),
+  .config_write(config_write),
+  .data_in(LakeTop_data_in),
+  .fifo_ctrl_fifo_depth(fifo_ctrl_fifo_depth),
+  .flush(flush),
+  .mode(mode),
+  .ren_in(ren_in),
+  .rst_n(rst_n),
+  .strg_ub_agg_read_addr_gen_0_starting_addr(strg_ub_agg_read_addr_gen_0_starting_addr),
+  .strg_ub_agg_read_addr_gen_0_strides(LakeTop_strg_ub_agg_read_addr_gen_0_strides),
+  .strg_ub_agg_read_addr_gen_1_starting_addr(strg_ub_agg_read_addr_gen_1_starting_addr),
+  .strg_ub_agg_read_addr_gen_1_strides(LakeTop_strg_ub_agg_read_addr_gen_1_strides),
+  .strg_ub_agg_write_addr_gen_0_starting_addr(strg_ub_agg_write_addr_gen_0_starting_addr),
+  .strg_ub_agg_write_addr_gen_0_strides(LakeTop_strg_ub_agg_write_addr_gen_0_strides),
+  .strg_ub_agg_write_addr_gen_1_starting_addr(strg_ub_agg_write_addr_gen_1_starting_addr),
+  .strg_ub_agg_write_addr_gen_1_strides(LakeTop_strg_ub_agg_write_addr_gen_1_strides),
+  .strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr(strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr),
+  .strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides(LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides),
+  .strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr(strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr),
+  .strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides(LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides),
+  .strg_ub_input_addr_gen_starting_addr(strg_ub_input_addr_gen_starting_addr),
+  .strg_ub_input_addr_gen_strides(LakeTop_strg_ub_input_addr_gen_strides),
+  .strg_ub_input_sched_gen_sched_addr_gen_starting_addr(strg_ub_input_sched_gen_sched_addr_gen_starting_addr),
+  .strg_ub_input_sched_gen_sched_addr_gen_strides(LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides),
+  .strg_ub_loops_buf2out_autovec_read_dimensionality(strg_ub_loops_buf2out_autovec_read_dimensionality),
+  .strg_ub_loops_buf2out_autovec_read_ranges(LakeTop_strg_ub_loops_buf2out_autovec_read_ranges),
+  .strg_ub_loops_buf2out_autovec_write_0_dimensionality(strg_ub_loops_buf2out_autovec_write_0_dimensionality),
+  .strg_ub_loops_buf2out_autovec_write_0_ranges(LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges),
+  .strg_ub_loops_buf2out_autovec_write_1_dimensionality(strg_ub_loops_buf2out_autovec_write_1_dimensionality),
+  .strg_ub_loops_buf2out_autovec_write_1_ranges(LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges),
+  .strg_ub_loops_buf2out_out_sel_dimensionality(strg_ub_loops_buf2out_out_sel_dimensionality),
+  .strg_ub_loops_buf2out_out_sel_ranges(LakeTop_strg_ub_loops_buf2out_out_sel_ranges),
+  .strg_ub_loops_buf2out_read_0_dimensionality(strg_ub_loops_buf2out_read_0_dimensionality),
+  .strg_ub_loops_buf2out_read_0_ranges(LakeTop_strg_ub_loops_buf2out_read_0_ranges),
+  .strg_ub_loops_buf2out_read_1_dimensionality(strg_ub_loops_buf2out_read_1_dimensionality),
+  .strg_ub_loops_buf2out_read_1_ranges(LakeTop_strg_ub_loops_buf2out_read_1_ranges),
+  .strg_ub_loops_in2buf_0_dimensionality(strg_ub_loops_in2buf_0_dimensionality),
+  .strg_ub_loops_in2buf_0_ranges(LakeTop_strg_ub_loops_in2buf_0_ranges),
+  .strg_ub_loops_in2buf_1_dimensionality(strg_ub_loops_in2buf_1_dimensionality),
+  .strg_ub_loops_in2buf_1_ranges(LakeTop_strg_ub_loops_in2buf_1_ranges),
+  .strg_ub_loops_in2buf_autovec_read_0_dimensionality(strg_ub_loops_in2buf_autovec_read_0_dimensionality),
+  .strg_ub_loops_in2buf_autovec_read_0_ranges(LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges),
+  .strg_ub_loops_in2buf_autovec_read_1_dimensionality(strg_ub_loops_in2buf_autovec_read_1_dimensionality),
+  .strg_ub_loops_in2buf_autovec_read_1_ranges(LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges),
+  .strg_ub_loops_in2buf_autovec_write_dimensionality(strg_ub_loops_in2buf_autovec_write_dimensionality),
+  .strg_ub_loops_in2buf_autovec_write_ranges(LakeTop_strg_ub_loops_in2buf_autovec_write_ranges),
+  .strg_ub_out_port_sel_addr_starting_addr(strg_ub_out_port_sel_addr_starting_addr),
+  .strg_ub_out_port_sel_addr_strides(LakeTop_strg_ub_out_port_sel_addr_strides),
+  .strg_ub_output_addr_gen_starting_addr(strg_ub_output_addr_gen_starting_addr),
+  .strg_ub_output_addr_gen_strides(LakeTop_strg_ub_output_addr_gen_strides),
+  .strg_ub_output_sched_gen_sched_addr_gen_starting_addr(strg_ub_output_sched_gen_sched_addr_gen_starting_addr),
+  .strg_ub_output_sched_gen_sched_addr_gen_strides(LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides),
+  .strg_ub_port_sel_addr_starting_addr(strg_ub_port_sel_addr_starting_addr),
+  .strg_ub_port_sel_addr_strides(LakeTop_strg_ub_port_sel_addr_strides),
+  .strg_ub_tb_read_addr_gen_0_starting_addr(strg_ub_tb_read_addr_gen_0_starting_addr),
+  .strg_ub_tb_read_addr_gen_0_strides(LakeTop_strg_ub_tb_read_addr_gen_0_strides),
+  .strg_ub_tb_read_addr_gen_1_starting_addr(strg_ub_tb_read_addr_gen_1_starting_addr),
+  .strg_ub_tb_read_addr_gen_1_strides(LakeTop_strg_ub_tb_read_addr_gen_1_strides),
+  .strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr(strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr),
+  .strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides(LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides),
+  .strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr(strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr),
+  .strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides(LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides),
+  .strg_ub_tb_write_addr_gen_0_starting_addr(strg_ub_tb_write_addr_gen_0_starting_addr),
+  .strg_ub_tb_write_addr_gen_0_strides(LakeTop_strg_ub_tb_write_addr_gen_0_strides),
+  .strg_ub_tb_write_addr_gen_1_starting_addr(strg_ub_tb_write_addr_gen_1_starting_addr),
+  .strg_ub_tb_write_addr_gen_1_strides(LakeTop_strg_ub_tb_write_addr_gen_1_strides),
+  .tile_en(tile_en),
+  .wen_in(wen_in),
+  .config_data_out(LakeTop_config_data_out),
+  .data_out(LakeTop_data_out),
+  .empty(empty),
+  .full(full),
+  .sram_ready_out(sram_ready_out)
+);
+
+endmodule   // LakeTop_W
+
+module cwlib_ub__confignull__input_num1__output_num2__width16 ub_cim_stencil_op_hcompute_cim_stencil_55_to_cim_stencil_op_hcompute_cim_output_stencil_63 (
+  input logic [15:0] addr_in_0,
+  input logic [15:0] addr_in_1,
+  input logic [15:0] chain_data_in_0,
+  input logic [15:0] chain_data_in_1,
+  input logic clk,
+  input logic clk_en,
+  input logic [7:0] config_addr_in,
+  input logic [31:0] config_data_in,
+  input logic [1:0] config_en,
+  input logic config_read,
+  input logic config_write,
+  input logic [15:0] data_in_0,
+  input logic [15:0] data_in_1,
+  input logic [15:0] fifo_ctrl_fifo_depth,
+  input logic flush,
+  input logic [1:0] ren_in,
+  input logic rst_n,
+  input logic [1:0] wen_in,
+  output logic [31:0] config_data_out_0,
+  output logic [31:0] config_data_out_1,
+  output logic [15:0] data_out_0,
+  output logic [15:0] data_out_1,
+  output logic empty,
+  output logic full,
+  output logic sram_ready_out
+);
+
+logic [1:0][15:0] LakeTop_addr_in;
+logic [1:0][15:0] LakeTop_chain_data_in;
+logic [1:0][31:0] LakeTop_config_data_out;
+logic [1:0][15:0] LakeTop_data_in;
+logic [1:0][15:0] LakeTop_data_out;
+logic [5:0][15:0] LakeTop_strg_ub_agg_read_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_read_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_input_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_read_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_out_sel_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_read_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_buf2out_read_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_loops_in2buf_autovec_write_ranges;
+logic [5:0][15:0] LakeTop_strg_ub_out_port_sel_addr_strides;
+logic [5:0][15:0] LakeTop_strg_ub_output_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_port_sel_addr_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_addr_gen_1_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_write_addr_gen_0_strides;
+logic [5:0][15:0] LakeTop_strg_ub_tb_write_addr_gen_1_strides;
+wire [15:0] strg_ub_agg_read_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_input_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_starting_addr = 265;
+wire [3:0] strg_ub_loops_in2buf_autovec_read_0_dimensionality = 3;
+wire [3:0] strg_ub_loops_in2buf_autovec_write_dimensionality = 3;
+wire [15:0] strg_ub_output_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_out_port_sel_addr_starting_addr = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr = 388;
+wire [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_out_sel_dimensionality = 4;
+wire [15:0] strg_ub_agg_write_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr = 262;
+wire [3:0] strg_ub_loops_in2buf_0_dimensionality = 4;
+wire [15:0] strg_ub_tb_read_addr_gen_0_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr = 390;
+wire [3:0] strg_ub_loops_buf2out_read_0_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_autovec_write_0_dimensionality = 4;
+wire [15:0] strg_ub_tb_read_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr = 390;
+wire [3:0] strg_ub_loops_buf2out_read_1_dimensionality = 4;
+wire [3:0] strg_ub_loops_buf2out_autovec_write_1_dimensionality = 4;
+wire [1:0] mode = 0;
+wire [0:0] tile_en = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_0 = 2;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_0 = 1;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_1 = 13;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_1 = -3;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_2 = 58;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_2 = -3;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_2 = 5;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_3 = -1;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_3 = -3;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_3 = -3835;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_0 = 13;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_0 = 13;
+wire [15:0] strg_ub_input_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_0 = 4;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_1 = 58;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_1 = 58;
+wire [15:0] strg_ub_input_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_1 = 8;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_2 = -1;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_2 = -1;
+wire [15:0] strg_ub_input_addr_gen_strides_2 = -899;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_2 = -3832;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_0 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_0 = 15;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_0 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_0 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_0 = 1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_0 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_1 = 13;
+wire [15:0] strg_ub_output_addr_gen_strides_1 = -14;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_1 = 2;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_1 = 13;
+wire [15:0] strg_ub_out_port_sel_addr_strides_1 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_1 = 13;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_1 = 13;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_2 = 56;
+wire [15:0] strg_ub_output_addr_gen_strides_2 = -14;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_2 = 6;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_2 = 56;
+wire [15:0] strg_ub_out_port_sel_addr_strides_2 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_2 = 56;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_2 = 1;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_2 = 56;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_3 = -1;
+wire [15:0] strg_ub_output_addr_gen_strides_3 = -884;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_3 = -3706;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_3 = -1;
+wire [15:0] strg_ub_out_port_sel_addr_strides_3 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_3 = -869;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_3 = -1;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_3 = -869;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_3 = -1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_0 = 2;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_0 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_1 = 13;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_1 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_2 = 56;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_2 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2 = 5;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_3 = -1;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_3 = -3479;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3 = -3707;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_0 = 2;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_0 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_1 = 13;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_1 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1 = 1;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_2 = 56;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_2 = 1;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2 = 5;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_3 = -1;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_3 = -3479;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3 = -3707;
+wire [15:0] strg_ub_port_sel_addr_starting_addr = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_1_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_out_sel_ranges_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_dimensionality = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr = 0;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_read_0_ranges_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_dimensionality = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_0 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_1 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_2 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_write_ranges_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_starting_addr = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_4 = 0;
+wire [15:0] strg_ub_out_port_sel_addr_strides_5 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_1 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_2 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_3 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_tb_write_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_input_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges_5 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_3 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_read_ranges_5 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_3 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_1_ranges_5 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_0 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_1 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_2 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_3 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_4 = 0;
+wire [15:0] strg_ub_port_sel_addr_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_0_ranges_5 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_0 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_1 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_2 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_3 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_4 = 0;
+wire [15:0] strg_ub_agg_read_addr_gen_1_strides_5 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_tb_read_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_4 = 0;
+wire [15:0] strg_ub_agg_write_addr_gen_0_strides_5 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_4 = 0;
+wire [15:0] strg_ub_output_addr_gen_strides_5 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_0 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_1 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_2 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_3 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges_5 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_4 = 0;
+wire [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges_5 = 0;
+assign LakeTop_addr_in[0] = addr_in_0;
+assign LakeTop_addr_in[1] = addr_in_1;
+assign LakeTop_chain_data_in[0] = chain_data_in_0;
+assign LakeTop_chain_data_in[1] = chain_data_in_1;
+assign config_data_out_0 = LakeTop_config_data_out[0];
+assign config_data_out_1 = LakeTop_config_data_out[1];
+assign LakeTop_data_in[0] = data_in_0;
+assign LakeTop_data_in[1] = data_in_1;
+assign data_out_0 = LakeTop_data_out[0];
+assign data_out_1 = LakeTop_data_out[1];
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[0] = strg_ub_agg_read_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[1] = strg_ub_agg_read_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[2] = strg_ub_agg_read_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[3] = strg_ub_agg_read_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[4] = strg_ub_agg_read_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_agg_read_addr_gen_0_strides[5] = strg_ub_agg_read_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[0] = strg_ub_agg_read_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[1] = strg_ub_agg_read_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[2] = strg_ub_agg_read_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[3] = strg_ub_agg_read_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[4] = strg_ub_agg_read_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_agg_read_addr_gen_1_strides[5] = strg_ub_agg_read_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[0] = strg_ub_agg_write_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[1] = strg_ub_agg_write_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[2] = strg_ub_agg_write_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[3] = strg_ub_agg_write_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[4] = strg_ub_agg_write_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_agg_write_addr_gen_0_strides[5] = strg_ub_agg_write_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[0] = strg_ub_agg_write_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[1] = strg_ub_agg_write_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[2] = strg_ub_agg_write_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[3] = strg_ub_agg_write_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[4] = strg_ub_agg_write_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_agg_write_addr_gen_1_strides[5] = strg_ub_agg_write_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[0] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[1] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[2] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[3] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[4] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides[5] = strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[0] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[1] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[2] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[3] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[4] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides[5] = strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_input_addr_gen_strides[0] = strg_ub_input_addr_gen_strides_0;
+assign LakeTop_strg_ub_input_addr_gen_strides[1] = strg_ub_input_addr_gen_strides_1;
+assign LakeTop_strg_ub_input_addr_gen_strides[2] = strg_ub_input_addr_gen_strides_2;
+assign LakeTop_strg_ub_input_addr_gen_strides[3] = strg_ub_input_addr_gen_strides_3;
+assign LakeTop_strg_ub_input_addr_gen_strides[4] = strg_ub_input_addr_gen_strides_4;
+assign LakeTop_strg_ub_input_addr_gen_strides[5] = strg_ub_input_addr_gen_strides_5;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[0] = strg_ub_input_sched_gen_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[1] = strg_ub_input_sched_gen_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[2] = strg_ub_input_sched_gen_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[3] = strg_ub_input_sched_gen_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[4] = strg_ub_input_sched_gen_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides[5] = strg_ub_input_sched_gen_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[0] = strg_ub_loops_buf2out_autovec_read_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[1] = strg_ub_loops_buf2out_autovec_read_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[2] = strg_ub_loops_buf2out_autovec_read_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[3] = strg_ub_loops_buf2out_autovec_read_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[4] = strg_ub_loops_buf2out_autovec_read_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_read_ranges[5] = strg_ub_loops_buf2out_autovec_read_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[0] = strg_ub_loops_buf2out_autovec_write_0_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[1] = strg_ub_loops_buf2out_autovec_write_0_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[2] = strg_ub_loops_buf2out_autovec_write_0_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[3] = strg_ub_loops_buf2out_autovec_write_0_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[4] = strg_ub_loops_buf2out_autovec_write_0_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges[5] = strg_ub_loops_buf2out_autovec_write_0_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[0] = strg_ub_loops_buf2out_autovec_write_1_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[1] = strg_ub_loops_buf2out_autovec_write_1_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[2] = strg_ub_loops_buf2out_autovec_write_1_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[3] = strg_ub_loops_buf2out_autovec_write_1_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[4] = strg_ub_loops_buf2out_autovec_write_1_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges[5] = strg_ub_loops_buf2out_autovec_write_1_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[0] = strg_ub_loops_buf2out_out_sel_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[1] = strg_ub_loops_buf2out_out_sel_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[2] = strg_ub_loops_buf2out_out_sel_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[3] = strg_ub_loops_buf2out_out_sel_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[4] = strg_ub_loops_buf2out_out_sel_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_out_sel_ranges[5] = strg_ub_loops_buf2out_out_sel_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[0] = strg_ub_loops_buf2out_read_0_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[1] = strg_ub_loops_buf2out_read_0_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[2] = strg_ub_loops_buf2out_read_0_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[3] = strg_ub_loops_buf2out_read_0_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[4] = strg_ub_loops_buf2out_read_0_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_read_0_ranges[5] = strg_ub_loops_buf2out_read_0_ranges_5;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[0] = strg_ub_loops_buf2out_read_1_ranges_0;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[1] = strg_ub_loops_buf2out_read_1_ranges_1;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[2] = strg_ub_loops_buf2out_read_1_ranges_2;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[3] = strg_ub_loops_buf2out_read_1_ranges_3;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[4] = strg_ub_loops_buf2out_read_1_ranges_4;
+assign LakeTop_strg_ub_loops_buf2out_read_1_ranges[5] = strg_ub_loops_buf2out_read_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[0] = strg_ub_loops_in2buf_0_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[1] = strg_ub_loops_in2buf_0_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[2] = strg_ub_loops_in2buf_0_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[3] = strg_ub_loops_in2buf_0_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[4] = strg_ub_loops_in2buf_0_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_0_ranges[5] = strg_ub_loops_in2buf_0_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[0] = strg_ub_loops_in2buf_1_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[1] = strg_ub_loops_in2buf_1_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[2] = strg_ub_loops_in2buf_1_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[3] = strg_ub_loops_in2buf_1_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[4] = strg_ub_loops_in2buf_1_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_1_ranges[5] = strg_ub_loops_in2buf_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[0] = strg_ub_loops_in2buf_autovec_read_0_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[1] = strg_ub_loops_in2buf_autovec_read_0_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[2] = strg_ub_loops_in2buf_autovec_read_0_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[3] = strg_ub_loops_in2buf_autovec_read_0_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[4] = strg_ub_loops_in2buf_autovec_read_0_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges[5] = strg_ub_loops_in2buf_autovec_read_0_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[0] = strg_ub_loops_in2buf_autovec_read_1_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[1] = strg_ub_loops_in2buf_autovec_read_1_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[2] = strg_ub_loops_in2buf_autovec_read_1_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[3] = strg_ub_loops_in2buf_autovec_read_1_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[4] = strg_ub_loops_in2buf_autovec_read_1_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges[5] = strg_ub_loops_in2buf_autovec_read_1_ranges_5;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[0] = strg_ub_loops_in2buf_autovec_write_ranges_0;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[1] = strg_ub_loops_in2buf_autovec_write_ranges_1;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[2] = strg_ub_loops_in2buf_autovec_write_ranges_2;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[3] = strg_ub_loops_in2buf_autovec_write_ranges_3;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[4] = strg_ub_loops_in2buf_autovec_write_ranges_4;
+assign LakeTop_strg_ub_loops_in2buf_autovec_write_ranges[5] = strg_ub_loops_in2buf_autovec_write_ranges_5;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[0] = strg_ub_out_port_sel_addr_strides_0;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[1] = strg_ub_out_port_sel_addr_strides_1;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[2] = strg_ub_out_port_sel_addr_strides_2;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[3] = strg_ub_out_port_sel_addr_strides_3;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[4] = strg_ub_out_port_sel_addr_strides_4;
+assign LakeTop_strg_ub_out_port_sel_addr_strides[5] = strg_ub_out_port_sel_addr_strides_5;
+assign LakeTop_strg_ub_output_addr_gen_strides[0] = strg_ub_output_addr_gen_strides_0;
+assign LakeTop_strg_ub_output_addr_gen_strides[1] = strg_ub_output_addr_gen_strides_1;
+assign LakeTop_strg_ub_output_addr_gen_strides[2] = strg_ub_output_addr_gen_strides_2;
+assign LakeTop_strg_ub_output_addr_gen_strides[3] = strg_ub_output_addr_gen_strides_3;
+assign LakeTop_strg_ub_output_addr_gen_strides[4] = strg_ub_output_addr_gen_strides_4;
+assign LakeTop_strg_ub_output_addr_gen_strides[5] = strg_ub_output_addr_gen_strides_5;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[0] = strg_ub_output_sched_gen_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[1] = strg_ub_output_sched_gen_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[2] = strg_ub_output_sched_gen_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[3] = strg_ub_output_sched_gen_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[4] = strg_ub_output_sched_gen_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides[5] = strg_ub_output_sched_gen_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_port_sel_addr_strides[0] = strg_ub_port_sel_addr_strides_0;
+assign LakeTop_strg_ub_port_sel_addr_strides[1] = strg_ub_port_sel_addr_strides_1;
+assign LakeTop_strg_ub_port_sel_addr_strides[2] = strg_ub_port_sel_addr_strides_2;
+assign LakeTop_strg_ub_port_sel_addr_strides[3] = strg_ub_port_sel_addr_strides_3;
+assign LakeTop_strg_ub_port_sel_addr_strides[4] = strg_ub_port_sel_addr_strides_4;
+assign LakeTop_strg_ub_port_sel_addr_strides[5] = strg_ub_port_sel_addr_strides_5;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[0] = strg_ub_tb_read_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[1] = strg_ub_tb_read_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[2] = strg_ub_tb_read_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[3] = strg_ub_tb_read_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[4] = strg_ub_tb_read_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_tb_read_addr_gen_0_strides[5] = strg_ub_tb_read_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[0] = strg_ub_tb_read_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[1] = strg_ub_tb_read_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[2] = strg_ub_tb_read_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[3] = strg_ub_tb_read_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[4] = strg_ub_tb_read_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_tb_read_addr_gen_1_strides[5] = strg_ub_tb_read_addr_gen_1_strides_5;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[0] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[1] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[2] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[3] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[4] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides[5] = strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[0] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[1] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[2] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[3] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[4] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4;
+assign LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides[5] = strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[0] = strg_ub_tb_write_addr_gen_0_strides_0;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[1] = strg_ub_tb_write_addr_gen_0_strides_1;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[2] = strg_ub_tb_write_addr_gen_0_strides_2;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[3] = strg_ub_tb_write_addr_gen_0_strides_3;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[4] = strg_ub_tb_write_addr_gen_0_strides_4;
+assign LakeTop_strg_ub_tb_write_addr_gen_0_strides[5] = strg_ub_tb_write_addr_gen_0_strides_5;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[0] = strg_ub_tb_write_addr_gen_1_strides_0;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[1] = strg_ub_tb_write_addr_gen_1_strides_1;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[2] = strg_ub_tb_write_addr_gen_1_strides_2;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[3] = strg_ub_tb_write_addr_gen_1_strides_3;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[4] = strg_ub_tb_write_addr_gen_1_strides_4;
+assign LakeTop_strg_ub_tb_write_addr_gen_1_strides[5] = strg_ub_tb_write_addr_gen_1_strides_5;
+LakeTop LakeTop (
+  .addr_in(LakeTop_addr_in),
+  .chain_data_in(LakeTop_chain_data_in),
+  .clk(clk),
+  .clk_en(clk_en),
+  .config_addr_in(config_addr_in),
+  .config_data_in(config_data_in),
+  .config_en(config_en),
+  .config_read(config_read),
+  .config_write(config_write),
+  .data_in(LakeTop_data_in),
+  .fifo_ctrl_fifo_depth(fifo_ctrl_fifo_depth),
+  .flush(flush),
+  .mode(mode),
+  .ren_in(ren_in),
+  .rst_n(rst_n),
+  .strg_ub_agg_read_addr_gen_0_starting_addr(strg_ub_agg_read_addr_gen_0_starting_addr),
+  .strg_ub_agg_read_addr_gen_0_strides(LakeTop_strg_ub_agg_read_addr_gen_0_strides),
+  .strg_ub_agg_read_addr_gen_1_starting_addr(strg_ub_agg_read_addr_gen_1_starting_addr),
+  .strg_ub_agg_read_addr_gen_1_strides(LakeTop_strg_ub_agg_read_addr_gen_1_strides),
+  .strg_ub_agg_write_addr_gen_0_starting_addr(strg_ub_agg_write_addr_gen_0_starting_addr),
+  .strg_ub_agg_write_addr_gen_0_strides(LakeTop_strg_ub_agg_write_addr_gen_0_strides),
+  .strg_ub_agg_write_addr_gen_1_starting_addr(strg_ub_agg_write_addr_gen_1_starting_addr),
+  .strg_ub_agg_write_addr_gen_1_strides(LakeTop_strg_ub_agg_write_addr_gen_1_strides),
+  .strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr(strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr),
+  .strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides(LakeTop_strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides),
+  .strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr(strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr),
+  .strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides(LakeTop_strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides),
+  .strg_ub_input_addr_gen_starting_addr(strg_ub_input_addr_gen_starting_addr),
+  .strg_ub_input_addr_gen_strides(LakeTop_strg_ub_input_addr_gen_strides),
+  .strg_ub_input_sched_gen_sched_addr_gen_starting_addr(strg_ub_input_sched_gen_sched_addr_gen_starting_addr),
+  .strg_ub_input_sched_gen_sched_addr_gen_strides(LakeTop_strg_ub_input_sched_gen_sched_addr_gen_strides),
+  .strg_ub_loops_buf2out_autovec_read_dimensionality(strg_ub_loops_buf2out_autovec_read_dimensionality),
+  .strg_ub_loops_buf2out_autovec_read_ranges(LakeTop_strg_ub_loops_buf2out_autovec_read_ranges),
+  .strg_ub_loops_buf2out_autovec_write_0_dimensionality(strg_ub_loops_buf2out_autovec_write_0_dimensionality),
+  .strg_ub_loops_buf2out_autovec_write_0_ranges(LakeTop_strg_ub_loops_buf2out_autovec_write_0_ranges),
+  .strg_ub_loops_buf2out_autovec_write_1_dimensionality(strg_ub_loops_buf2out_autovec_write_1_dimensionality),
+  .strg_ub_loops_buf2out_autovec_write_1_ranges(LakeTop_strg_ub_loops_buf2out_autovec_write_1_ranges),
+  .strg_ub_loops_buf2out_out_sel_dimensionality(strg_ub_loops_buf2out_out_sel_dimensionality),
+  .strg_ub_loops_buf2out_out_sel_ranges(LakeTop_strg_ub_loops_buf2out_out_sel_ranges),
+  .strg_ub_loops_buf2out_read_0_dimensionality(strg_ub_loops_buf2out_read_0_dimensionality),
+  .strg_ub_loops_buf2out_read_0_ranges(LakeTop_strg_ub_loops_buf2out_read_0_ranges),
+  .strg_ub_loops_buf2out_read_1_dimensionality(strg_ub_loops_buf2out_read_1_dimensionality),
+  .strg_ub_loops_buf2out_read_1_ranges(LakeTop_strg_ub_loops_buf2out_read_1_ranges),
+  .strg_ub_loops_in2buf_0_dimensionality(strg_ub_loops_in2buf_0_dimensionality),
+  .strg_ub_loops_in2buf_0_ranges(LakeTop_strg_ub_loops_in2buf_0_ranges),
+  .strg_ub_loops_in2buf_1_dimensionality(strg_ub_loops_in2buf_1_dimensionality),
+  .strg_ub_loops_in2buf_1_ranges(LakeTop_strg_ub_loops_in2buf_1_ranges),
+  .strg_ub_loops_in2buf_autovec_read_0_dimensionality(strg_ub_loops_in2buf_autovec_read_0_dimensionality),
+  .strg_ub_loops_in2buf_autovec_read_0_ranges(LakeTop_strg_ub_loops_in2buf_autovec_read_0_ranges),
+  .strg_ub_loops_in2buf_autovec_read_1_dimensionality(strg_ub_loops_in2buf_autovec_read_1_dimensionality),
+  .strg_ub_loops_in2buf_autovec_read_1_ranges(LakeTop_strg_ub_loops_in2buf_autovec_read_1_ranges),
+  .strg_ub_loops_in2buf_autovec_write_dimensionality(strg_ub_loops_in2buf_autovec_write_dimensionality),
+  .strg_ub_loops_in2buf_autovec_write_ranges(LakeTop_strg_ub_loops_in2buf_autovec_write_ranges),
+  .strg_ub_out_port_sel_addr_starting_addr(strg_ub_out_port_sel_addr_starting_addr),
+  .strg_ub_out_port_sel_addr_strides(LakeTop_strg_ub_out_port_sel_addr_strides),
+  .strg_ub_output_addr_gen_starting_addr(strg_ub_output_addr_gen_starting_addr),
+  .strg_ub_output_addr_gen_strides(LakeTop_strg_ub_output_addr_gen_strides),
+  .strg_ub_output_sched_gen_sched_addr_gen_starting_addr(strg_ub_output_sched_gen_sched_addr_gen_starting_addr),
+  .strg_ub_output_sched_gen_sched_addr_gen_strides(LakeTop_strg_ub_output_sched_gen_sched_addr_gen_strides),
+  .strg_ub_port_sel_addr_starting_addr(strg_ub_port_sel_addr_starting_addr),
+  .strg_ub_port_sel_addr_strides(LakeTop_strg_ub_port_sel_addr_strides),
+  .strg_ub_tb_read_addr_gen_0_starting_addr(strg_ub_tb_read_addr_gen_0_starting_addr),
+  .strg_ub_tb_read_addr_gen_0_strides(LakeTop_strg_ub_tb_read_addr_gen_0_strides),
+  .strg_ub_tb_read_addr_gen_1_starting_addr(strg_ub_tb_read_addr_gen_1_starting_addr),
+  .strg_ub_tb_read_addr_gen_1_strides(LakeTop_strg_ub_tb_read_addr_gen_1_strides),
+  .strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr(strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr),
+  .strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides(LakeTop_strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides),
+  .strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr(strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr),
+  .strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides(LakeTop_strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides),
+  .strg_ub_tb_write_addr_gen_0_starting_addr(strg_ub_tb_write_addr_gen_0_starting_addr),
+  .strg_ub_tb_write_addr_gen_0_strides(LakeTop_strg_ub_tb_write_addr_gen_0_strides),
+  .strg_ub_tb_write_addr_gen_1_starting_addr(strg_ub_tb_write_addr_gen_1_starting_addr),
+  .strg_ub_tb_write_addr_gen_1_strides(LakeTop_strg_ub_tb_write_addr_gen_1_strides),
+  .tile_en(tile_en),
+  .wen_in(wen_in),
+  .config_data_out(LakeTop_config_data_out),
+  .data_out(LakeTop_data_out),
+  .empty(empty),
+  .full(full),
+  .sram_ready_out(sram_ready_out)
+);
+
+endmodule   // LakeTop_W
+
 module Chain (
   input logic [1:0] accessor_output,
   input logic [1:0] [15:0] chain_data_in,
@@ -2765,6 +4909,19 @@ addr_gen_6 out_port_sel_addr (
 
 endmodule   // strg_ub_vec
 
+everseFlatten (
+  input logic [63:0] input_array,
+  output logic [0:0][3:0] [15:0] output_array
+);
+
+always_comb begin
+  output_array[0][0] = input_array[15:0];
+  output_array[0][1] = input_array[31:16];
+  output_array[0][2] = input_array[47:32];
+  output_array[0][3] = input_array[63:48];
+end
+endmodule   // ReverseFlatten
+
 module tsmc_name_generator (
   input logic clk,
   input logic clk_en,
@@ -2779,20 +4936,56 @@ module tsmc_name_generator (
 );
 
 logic [8:0] mem_addr_to_sram;
+logic mem_cen_in_bank_chain;
+logic mem_inst_0_sram_cen;
+logic mem_inst_0_sram_wen;
+logic mem_wen_in_bank_chain;
+logic [63:0] sram_mem_data_in_bank;
+logic [63:0] sram_mem_data_out_bank;
+assign mem_inst_0_sram_cen = ~mem_cen_in_bank_chain;
+assign mem_inst_0_sram_wen = ~mem_wen_in_bank_chain;
 always_comb begin
   mem_addr_to_sram = mem_addr_in_bank;
 end
-sram_stub mem_0 (
-  .addr(mem_addr_to_sram),
-  .cen(mem_cen_in_bank),
-  .clk(clk),
-  .clk_en(clk_en),
-  .data_in(mem_data_in_bank),
-  .flush(flush),
-  .wen(mem_wen_in_bank),
-  .data_out(mem_data_out_bank)
+always_comb begin
+  mem_wen_in_bank_chain = mem_wen_in_bank;
+end
+always_comb begin
+  mem_cen_in_bank_chain = mem_cen_in_bank;
+end
+
+flattenND flatten_data_in_0 (
+  .input_array(mem_data_in_bank),
+  .output_array(sram_mem_data_in_bank)
 );
 
-endmodule   // tsmc_name_generator
+TSMC mem_inst_0 (
+  .A(mem_addr_to_sram),
+  .CEB(mem_inst_0_sram_cen),
+  .CLK(clk),
+  .D(sram_mem_data_in_bank),
+  .RTSEL(2'h1),
+  .WEB(mem_inst_0_sram_wen),
+  .WTSEL(2'h0),
+  .Q(sram_mem_data_out_bank)
+);
 
+ReverseFlatten flatten_data_out_0 (
+  .input_array(sram_mem_data_out_bank),
+  .output_array(mem_data_out_bank)
+);
 
+endmodule   // TSMC_generator
+
+module flattenND (
+  input logic [0:0][3:0] [15:0] input_array,
+  output logic [63:0] output_array
+);
+
+always_comb begin
+  output_array[15:0] = input_array[0][0];
+  output_array[31:16] = input_array[0][1];
+  output_array[47:32] = input_array[0][2];
+  output_array[63:48] = input_array[0][3];
+end
+endmodule   // flattenND
