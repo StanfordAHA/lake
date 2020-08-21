@@ -45,7 +45,7 @@ def test_lake(config_path,
 
     # args are input ports, output ports
     in_data, out_data, valids = generate_data_lists(stream_path, in_ports, out_ports)
-    print(valids)
+
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
 
@@ -58,14 +58,18 @@ def test_lake(config_path,
 
         tester.eval()
 
-#        for j in range(len(out_data)):
-#            if i < len(out_data[j]) and valids[i] == 1:
-#                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
+        for j in range(len(out_data)):
+            if i < len(out_data[j]):
+                if len(valids) != 0 and valids[i] == 1:
+                    getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
+
+                if len(valids) == 0:
+                    getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "dump"
+        tempdir = "dumpc2"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])
@@ -80,14 +84,14 @@ if __name__ == "__main__":
         f"Please check env vars:\nLAKE_CONTROLLERS: {lake_controller_path}\nLAKE_STREAM: {lake_stream_path}"
 
     # conv_3_3
-    # config_path = lake_controller_path + "conv_3_3_new"
-    # stream_path = lake_stream_path + "buf.csv"
-    # test_lake(config_path, stream_path)
+    config_path = lake_controller_path + "conv_3_3_new"
+    stream_path = lake_stream_path + "buf.csv"
+    test_lake(config_path, stream_path)
 
     # cascade_1
-    config_path = lake_controller_path + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"
-    stream_path = lake_stream_path + "buf1.csv"
-    test_lake(config_path, stream_path, out_file_name="conv")
+    # config_path = lake_controller_path + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"
+    # stream_path = lake_stream_path + "buf1.csv"
+    # test_lake(config_path, stream_path, out_file_name="conv")
 
     # cascade_2
     # config_path = lake_controller_path + "cascade/buf2_conv_12_to_buf2_output_3_ubuf"
