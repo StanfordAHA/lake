@@ -84,9 +84,17 @@ if __name__ == "__main__":
         f"Please check env vars:\nLAKE_CONTROLLERS: {lake_controller_path}\nLAKE_STREAM: {lake_stream_path}"
 
     # conv_3_3
-    config_path = lake_controller_path + "conv_3_3_new"
-    stream_path = lake_stream_path + "buf.csv"
-    test_lake(config_path, stream_path)
+    # config_path = lake_controller_path + "conv_3_3_new"
+    # stream_path = lake_stream_path + "buf.csv"
+    # test_lake(config_path, stream_path)
+
+    # gaussian
+    # config_path = lake_controller_path + "gaussian/hw_input_stencil_op_hcompute_hw_input_stencil_2_to_hw_input_stencil_op_hcompute_blur_unnormalized_stencil_1_11_ubuf"
+    # stream_path = lake_stream_path + "buf.csv"
+    # test_lake(config_path, 
+    #           stream_path, 
+    #           in_file_name="op_hcompute_hw_input_stencil", 
+    #           out_file_name="op_hcompute_blur_unnormalized_stencil_1")
 
     # cascade_1
     # config_path = lake_controller_path + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"
