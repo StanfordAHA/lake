@@ -267,10 +267,10 @@ if __name__ == "__main__":
                       sram_name="TSMC",
                       data_width=16,
                       fw_int=4,
-                      mem_depth=256,
+                      mem_depth=512,
                       mem_input_ports=1,
                       mem_output_ports=1,
-                      address_width=8,
+                      address_width=9,
                       bank_num=0,
                       num_tiles=1)
-    verilog(dut, filename="wrapper.sv")
+    verilog(dut, filename="wrapper512.sv")
