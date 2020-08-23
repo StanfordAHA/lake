@@ -45,7 +45,7 @@ def test_lake(config_path,
 
     # args are input ports, output ports
     in_data, out_data, valids = generate_data_lists(stream_path, in_ports, out_ports)
-    print(valids)
+
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
 
@@ -57,9 +57,12 @@ def test_lake(config_path,
 
         tester.eval()
 
-    for j in range(len(out_data)):
-        if i < len(out_data[j]) and valids[i] == 1:
-            getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
+        for j in range(len(out_data)):
+            if i < len(out_data[j]):
+                if len(valids) != 0 and valids[i] == 1:
+                    getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
+                if len(valids) == 0:
+                    getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
 
         tester.step(2)
 
@@ -81,6 +84,14 @@ if __name__ == "__main__":
     # config_path = lake_controller_path + "conv_3_3_new"
     # stream_path = lake_stream_path + "buf.csv"
     # test_lake(config_path, stream_path)
+
+    # gaussian
+    # config_path = lake_controller_path + "gaussian/hw_input_stencil_op_hcompute_hw_input_stencil_2_to_hw_input_stencil_op_hcompute_blur_unnormalized_stencil_1_11_ubuf"
+    # stream_path = lake_stream_path + "buf.csv"
+    # test_lake(config_path, 
+    #           stream_path, 
+    #           in_file_name="op_hcompute_hw_input_stencil", 
+    #           out_file_name="op_hcompute_blur_unnormalized_stencil_1")
 
     # cascade_1
     # config_path = lake_controller_path + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"
