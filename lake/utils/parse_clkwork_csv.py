@@ -234,7 +234,7 @@ def generate_data_lists(csv_file_name,
     for row in reader:
         row_in = row[0].replace('[', '').replace(']', '').split()
         row_out = row[1].replace('[', '').replace(']', '').split()
-        
+
         if start:
             if len(row) == 3:
                 row_valid = row[2]

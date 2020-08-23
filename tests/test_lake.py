@@ -50,7 +50,6 @@ def test_lake(config_path,
         setattr(tester.circuit, f1, f2)
 
     for i in range(len(out_data[0])):
-    # for i in range(1000):
         for j in range(len(in_data)):
             if i < len(in_data[j]):
                 setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
@@ -58,17 +57,16 @@ def test_lake(config_path,
 
         tester.eval()
 
-#        for j in range(len(out_data)):
-#            if i < len(out_data[j]) and valids[i] == 1:
-#                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
+    for j in range(len(out_data)):
+        if i < len(out_data[j]) and valids[i] == 1:
+            getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
@@ -85,14 +83,14 @@ if __name__ == "__main__":
     # test_lake(config_path, stream_path)
 
     # cascade_1
-    config_path = lake_controller_path + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"
-    stream_path = lake_stream_path + "buf1.csv"
-    test_lake(config_path, stream_path, out_file_name="conv")
+    # config_path = lake_controller_path + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"
+    # stream_path = lake_stream_path + "buf1.csv"
+    # test_lake(config_path, stream_path, out_file_name="conv")
 
     # cascade_2
-    # config_path = lake_controller_path + "cascade/buf2_conv_12_to_buf2_output_3_ubuf"
-    # stream_path = lake_stream_path + "buf2.csv"
-    # test_lake(config_path, stream_path, in_file_name="conv")
+    config_path = lake_controller_path + "cascade/buf2_conv_12_to_buf2_output_3_ubuf"
+    stream_path = lake_stream_path + "buf2.csv"
+    test_lake(config_path, stream_path, in_file_name="conv")
 
     # harris_1
     # config_path = lake_controller_path + "harris/padded16_global_wrapper_stencil_op_hcompute_padded16_global_wrapper_stencil_0_to_padded16_global_wrapper_stencil_op_hcompute_grad_x_stencil_49_ubuf"
