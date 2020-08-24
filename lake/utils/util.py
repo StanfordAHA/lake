@@ -33,8 +33,8 @@ def list_to_int(list_d, width):
 
 def extract_formal_annotation(generator, filepath):
     # Get the port list and emit the annotation for each...
-    # int_gen = generator.internal_generator
-    int_gen = generator
+    int_gen = generator.internal_generator
+    # int_gen = generator
 
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
