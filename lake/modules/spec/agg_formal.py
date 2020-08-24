@@ -120,8 +120,8 @@ class AggFormal(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._agg_write[i],
+                           # addr_out=self._agg_write_addr[i])
                            mux_sel=forloop_ctr.ports.mux_sel_out)
-                        #    addr_out=self._agg_write_addr[i])
             safe_wire(self, self._agg_write_addr[i], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=self.default_iterator_support,
@@ -154,8 +154,8 @@ class AggFormal(Generator):
                            rst_n=self._rst_n,
                            step=(self._write &
                                  (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))),
+                           # addr_out=self._agg_read_addr_gen_out[i])
                            mux_sel=forloop_ctr_rd.ports.mux_sel_out)
-                        #    addr_out=self._agg_read_addr_gen_out[i])
 
             safe_wire(self, self._agg_read_addr_gen_out[i], newAG.ports.addr_out)
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])
@@ -179,7 +179,7 @@ class AggFormal(Generator):
         if self.interconnect_input_ports > 1:
             self.add_child(f"port_sel_addr",
                            AddrGen(iterator_support=self.default_iterator_support,
-                                #    config_width=clog2(self.interconnect_input_ports)),
+                                   # config_width=clog2(self.interconnect_input_ports)),
                                    config_width=self.default_config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,

@@ -529,7 +529,7 @@ class LakeTop(Generator):
                        data_out=self._ub_data_out,
                        #    valid_out=self._ub_valid_out,
                        data_to_strg=self._ub_data_to_mem,
-                    #    ren_to_strg=self._ub_cen_to_mem,
+                       #  ren_to_strg=self._ub_cen_to_mem,
                        cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem,
                        accessor_output=self._accessor_output)
@@ -539,7 +539,6 @@ class LakeTop(Generator):
             self.wire(strg_ub.ports.ren_to_strg, self._ub_cen_to_mem)
         else:
             self.wire(strg_ub.ports.cen_to_strg, self._ub_cen_to_mem)
-            
 
         # Wire addrs
         if self.rw_same_cycle:

@@ -88,9 +88,9 @@ if __name__ == "__main__":
     # gaussian
     # config_path = lake_controller_path + "gaussian/hw_input_stencil_op_hcompute_hw_input_stencil_2_to_hw_input_stencil_op_hcompute_blur_unnormalized_stencil_1_11_ubuf"
     # stream_path = lake_stream_path + "buf.csv"
-    # test_lake(config_path, 
-    #           stream_path, 
-    #           in_file_name="op_hcompute_hw_input_stencil", 
+    # test_lake(config_path,
+    #           stream_path,
+    #           in_file_name="op_hcompute_hw_input_stencil",
     #           out_file_name="op_hcompute_blur_unnormalized_stencil_1")
 
     # cascade_1

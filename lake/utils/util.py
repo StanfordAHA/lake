@@ -31,6 +31,18 @@ def list_to_int(list_d, width):
     return to_ret
 
 
+def get_size_str(port):
+    dim_1 = ""
+    dim_2 = ""
+    if port.size[0] > 1:
+        print(f"dim2: {port.size[0]}")
+        dim_2 = f"[{port.size[0] - 1}:0]"
+    if port.width > 1:
+        print(f"dim1: {port.width}")
+        dim_1 = f"[{port.width - 1}:0]"
+    return dim_2 + dim_1
+
+
 def extract_formal_annotation(generator, filepath):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
@@ -44,8 +56,13 @@ def extract_formal_annotation(generator, filepath):
             if len(attrs) != 1:
                 continue
             form_attr = attrs[0]
-            fi.write(str(curr_port.width) + " " + form_attr.get_port_name() + "\n")
-            # fi.write(form_attr.get_annotation() + "\n")
+            # fi.write(str(curr_port.width) + " " + form_attr.get_port_name() + "\n")
+            pdir = "input"
+            size_str = get_size_str(curr_port)
+            if str(curr_port.port_direction) == "PortDirection.Out":
+                pdir = "output"
+
+            fi.write(f"{pdir} logic {size_str} " + form_attr.get_annotation() + "\n")
 
 
 def get_configs_dict(configs):

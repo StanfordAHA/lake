@@ -175,7 +175,7 @@ class TBFormal(Generator):
         if self.interconnect_output_ports > 1:
 
             fl_ctr_out_sel = ForLoop(iterator_support=self.default_iterator_support,
-                                    #  config_width=clog2(self.interconnect_output_ports))
+                                     # config_width=clog2(self.interconnect_output_ports))
                                      config_width=self.default_config_width)
             loop_itr = fl_ctr_out_sel.get_iter()
             loop_wth = fl_ctr_out_sel.get_cfg_width()
