@@ -41,6 +41,9 @@ class SRAMFormal(Generator):
         self.output_addr_iterator_support = output_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
         self.output_sched_iterator_support = output_sched_iterator_support
+
+        self.default_iterator_support = 6
+        self.default_config_width = 16
         # inputs
         self._clk = self.clock("clk")
         self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
@@ -84,8 +87,8 @@ class SRAMFormal(Generator):
         self._write_addr = self.var("write_addr", self.config_width)
         self._read_addr = self.var("read_addr", self.config_width)
 
-        fl_ctr_sram_wr = ForLoop(iterator_support=6,
-                                 config_width=16)
+        fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,
+                                 config_width=self.default_config_width)
         loop_itr = fl_ctr_sram_wr.get_iter()
         loop_wth = fl_ctr_sram_wr.get_cfg_width()
 
@@ -97,8 +100,8 @@ class SRAMFormal(Generator):
         # Whatever comes through here should hopefully just pipe through seamlessly
         # addressor modules
         self.add_child(f"sram_write_addr_gen",
-                       AddrGen(iterator_support=self.input_addr_iterator_support,
-                               config_width=self.config_width),
+                       AddrGen(iterator_support=self.default_iterator_support,
+                               config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._write,
@@ -107,8 +110,8 @@ class SRAMFormal(Generator):
 
         # scheduler modules
         self.add_child(f"sram_write_sched_gen",
-                       SchedGen(iterator_support=self.input_sched_iterator_support,
-                                config_width=self.config_width),
+                       SchedGen(iterator_support=self.default_iterator_support,
+                                config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
@@ -116,8 +119,8 @@ class SRAMFormal(Generator):
                        valid_output=self._write)
 
         # -------------------------------- Delineate new group -------------------------------
-        fl_ctr_sram_rd = ForLoop(iterator_support=6,
-                                 config_width=16)
+        fl_ctr_sram_rd = ForLoop(iterator_support=self.default_iterator_support,
+                                 config_width=self.default_config_width)
         loop_itr = fl_ctr_sram_rd.get_iter()
         loop_wth = fl_ctr_sram_rd.get_cfg_width()
 
@@ -157,8 +160,8 @@ class SRAMFormal(Generator):
                            rtsel=0)
 
         self.add_child(f"sram_read_addr_gen",
-                       AddrGen(iterator_support=6,
-                               config_width=16),
+                       AddrGen(iterator_support=self.default_iterator_support,
+                               config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._read,
@@ -166,8 +169,8 @@ class SRAMFormal(Generator):
                        addr_out=self._read_addr)
 
         self.add_child(f"sram_read_sched_gen",
-                       SchedGen(iterator_support=6,
-                                config_width=16),
+                       SchedGen(iterator_support=self.default_iterator_support,
+                                config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,

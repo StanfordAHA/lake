@@ -34,6 +34,7 @@ def list_to_int(list_d, width):
 def extract_formal_annotation(generator, filepath):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
+    # int_gen = generator
 
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
@@ -43,7 +44,69 @@ def extract_formal_annotation(generator, filepath):
             if len(attrs) != 1:
                 continue
             form_attr = attrs[0]
-            fi.write(form_attr.get_annotation() + "\n")
+            fi.write(str(curr_port.width) + " " + form_attr.get_port_name() + "\n")
+            # fi.write(form_attr.get_annotation() + "\n")
+
+
+def get_configs_dict(configs):
+    configs_dict = {}
+    for (f1, f2) in configs:
+        configs_dict[f1] = f2
+    return configs_dict
+
+
+def set_configs_sv(generator, filepath, configs_dict):
+    int_gen = generator.internal_generator
+    ports = int_gen.get_port_names()
+
+    remain = []
+    for port_name in ports:
+        curr_port = int_gen.get_port(port_name)
+        attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
+        if len(attrs) != 1:
+            continue
+        port = attrs[0].get_port_name()
+        if ("dimensionality" in port) or ("starting_addr" in port):
+            remain.append(port)
+        else:
+            for i in range(6):
+                remain.append(port + f"_{i}")
+
+    with open(filepath, "w+") as fi:
+        for name in configs_dict.keys():
+            # binstr = str(hex(configs_dict[name]))
+            # binsplit = binstr.split("x")
+            # value = binsplit[-1].upper()
+            value = str(configs_dict[name])
+            port_name = name
+            if ("strides" in name) or ("ranges" in name):
+                splitstr = name.split("_")
+                index = -1 * len(splitstr[-1]) - 1
+                port_name = name[:index]
+                # name = port_name + f"[{splitstr[-1]}]"
+            port = int_gen.get_port(port_name)
+            if port is not None:
+                port_width = port.width
+                if name in remain:
+                    remain.remove(name)
+                print("port name ", port_name, " value ", value)
+                # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
+                # fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
+                fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + value + ";\n")
+
+        # set all unused config regs to 0 since we remove them
+        # from tile interface and they need to be set
+        for remaining in remain:
+            port_split = remaining.split("_")
+            if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
+                port_name = "_".join(port_split[:-1])
+            port = int_gen.get_port(port_name)
+            if port is None:
+                print(port_name)
+            if port is not None:
+                fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
+                # fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = " + str(port_width) + "'h0;\n")
+                # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
 
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
@@ -59,3 +122,19 @@ def transform_strides_and_ranges(ranges, strides, dimensionality):
         tform_strides.append(0)
         tform_ranges.append(0)
     return (tform_ranges, tform_strides)
+
+
+def safe_wire(gen, w1, w2):
+    '''
+    Wire together two signals of (potentially) mismatched width to
+    avoid the exception that Kratos throws.
+    '''
+    # Only works in one dimension...
+    if w1.width != w2.width:
+        print(f"SAFEWIRE: WIDTH MISMATCH: {w1.name} width {w1.width} <-> {w2.name} width {w2.width}")
+    if w1.width > w2.width:
+        w3 = w1
+        w1 = w2
+        w2 = w3
+    # w1 containts smaller width...
+    gen.wire(w1, w2[w1.width - 1, 0])

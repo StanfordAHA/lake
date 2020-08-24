@@ -47,6 +47,8 @@ class StrgUBThin(Generator):
         self.rw_same_cycle = rw_same_cycle
         self.read_delay = read_delay
         self.gen_addr = gen_addr
+        self.default_iterator_support = 6
+        self.default_config_width = 16
         # generation parameters
         # inputs
         self._clk = self.clock("clk")
@@ -82,6 +84,8 @@ class StrgUBThin(Generator):
             self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
             self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
+            self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
+            self.wire(self._accessor_output, self._read)
             self.wire(self._cen_to_sram, self._write | self._read)
             self.wire(self._wen_to_sram, self._write)
             self.wire(self._ren_to_sram, self._read)
@@ -98,7 +102,10 @@ class StrgUBThin(Generator):
 
         # local variables
         self._write = self.var("write", 1)
-        self._read = self.var("read", 1)
+        self._read = self.var("read", self.interconnect_output_ports)
+        self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
+        self.wire(self._accessor_output, self._read)
+
         self._valid_out = self.output("valid_out", 1)
         if self.read_delay == 1:
             self._read_d1 = self.var("read_d1", 1)
@@ -112,8 +119,8 @@ class StrgUBThin(Generator):
         self._addr = self.var("addr", clog2(self.mem_depth))
 
         # Create for loop counters that can be shared across the input port selection and SRAM write
-        fl_ctr_sram_wr = ForLoop(iterator_support=6,
-                                 config_width=16)
+        fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,
+                                 config_width=self.default_config_width)
         loop_itr = fl_ctr_sram_wr.get_iter()
         loop_wth = fl_ctr_sram_wr.get_cfg_width()
 
@@ -126,8 +133,8 @@ class StrgUBThin(Generator):
         # Whatever comes through here should hopefully just pipe through seamlessly
         # addressor modules
         self.add_child(f"sram_write_addr_gen",
-                       AddrGen(iterator_support=self.input_addr_iterator_support,
-                               config_width=self.config_width),
+                       AddrGen(iterator_support=self.default_iterator_support,
+                               config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._write,
@@ -136,8 +143,8 @@ class StrgUBThin(Generator):
 
         # scheduler modules
         self.add_child(f"sram_write_sched_gen",
-                       SchedGen(iterator_support=self.input_sched_iterator_support,
-                                config_width=self.config_width),
+                       SchedGen(iterator_support=self.default_iterator_support,
+                                config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
@@ -145,8 +152,8 @@ class StrgUBThin(Generator):
                        valid_output=self._write)
 
         # -------------------------------- Delineate new group -------------------------------
-        fl_ctr_sram_rd = ForLoop(iterator_support=6,
-                                 config_width=16)
+        fl_ctr_sram_rd = ForLoop(iterator_support=self.default_iterator_support,
+                                 config_width=self.default_config_width)
         loop_itr = fl_ctr_sram_rd.get_iter()
         loop_wth = fl_ctr_sram_rd.get_cfg_width()
 
@@ -157,8 +164,8 @@ class StrgUBThin(Generator):
                        step=self._read)
 
         self.add_child(f"sram_read_addr_gen",
-                       AddrGen(iterator_support=self.output_addr_iterator_support,
-                               config_width=self.config_width),
+                       AddrGen(iterator_support=self.default_iterator_support,
+                               config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._read,
@@ -166,8 +173,8 @@ class StrgUBThin(Generator):
                        addr_out=self._read_addr)
 
         self.add_child(f"sram_read_sched_gen",
-                       SchedGen(iterator_support=self.output_sched_iterator_support,
-                                config_width=16),
+                       SchedGen(iterator_support=self.default_iterator_support,
+                                config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,

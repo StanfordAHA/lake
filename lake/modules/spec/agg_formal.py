@@ -9,7 +9,7 @@ from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
-from lake.utils.util import extract_formal_annotation
+from lake.utils.util import extract_formal_annotation, safe_wire
 import kratos as kts
 
 
@@ -39,6 +39,9 @@ class AggFormal(Generator):
         self.interconnect_output_ports = interconnect_output_ports
         self.agg_height = agg_height
         self.mem_depth = mem_depth
+
+        self.default_iterator_support = 6
+        self.default_config_width = 16
 
         # inputs
         self._clk = self.clock("clk")
@@ -99,8 +102,8 @@ class AggFormal(Generator):
 
         for i in range(self.interconnect_input_ports):
 
-            forloop_ctr = ForLoop(iterator_support=4,
-                                  config_width=self._agg_write_addr.width)
+            forloop_ctr = ForLoop(iterator_support=self.default_iterator_support,
+                                  config_width=self.default_config_width)
             loop_itr = forloop_ctr.get_iter()
             loop_wth = forloop_ctr.get_cfg_width()
 
@@ -110,18 +113,19 @@ class AggFormal(Generator):
                            rst_n=self._rst_n,
                            step=self._agg_write[i])
 
-            newAG = AddrGen(iterator_support=loop_itr,
-                            config_width=loop_wth)
+            newAG = AddrGen(iterator_support=self.default_iterator_support,
+                            config_width=self.default_config_width)
             self.add_child(f"agg_write_addr_gen_{i}",
                            newAG,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._agg_write[i],
-                           mux_sel=forloop_ctr.ports.mux_sel_out,
-                           addr_out=self._agg_write_addr[i])
+                           mux_sel=forloop_ctr.ports.mux_sel_out)
+                        #    addr_out=self._agg_write_addr[i])
+            safe_wire(self, self._agg_write_addr[i], newAG.ports.addr_out)
 
-            newSG = SchedGen(iterator_support=loop_itr,
-                             config_width=loop_wth)
+            newSG = SchedGen(iterator_support=self.default_iterator_support,
+                             config_width=self.default_config_width)
             self.add_child(f"agg_write_sched_gen_{i}",
                            newSG,
                            clk=self._clk,
@@ -130,8 +134,8 @@ class AggFormal(Generator):
                            cycle_count=self._cycle_count,
                            valid_output=self._agg_write[i])
 
-            forloop_ctr_rd = ForLoop(iterator_support=4,
-                                     config_width=self.agg_rd_addr_gen_width)
+            forloop_ctr_rd = ForLoop(iterator_support=self.default_iterator_support,
+                                     config_width=self.default_config_width)
             loop_itr = forloop_ctr_rd.get_iter()
             loop_wth = forloop_ctr_rd.get_cfg_width()
 
@@ -142,21 +146,23 @@ class AggFormal(Generator):
                            step=(self._write &
                                  (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))))
 
-            newAG = AddrGen(iterator_support=loop_itr,
-                            config_width=loop_wth)
+            newAG = AddrGen(iterator_support=self.default_iterator_support,
+                            config_width=self.default_config_width)
             self.add_child(f"agg_read_addr_gen_{i}",
                            newAG,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=(self._write &
                                  (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))),
-                           mux_sel=forloop_ctr_rd.ports.mux_sel_out,
-                           addr_out=self._agg_read_addr_gen_out[i])
+                           mux_sel=forloop_ctr_rd.ports.mux_sel_out)
+                        #    addr_out=self._agg_read_addr_gen_out[i])
+
+            safe_wire(self, self._agg_read_addr_gen_out[i], newAG.ports.addr_out)
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])
 
         # Create for loop counters that can be shared across the input port selection and SRAM write
-        fl_ctr_sram_wr = ForLoop(iterator_support=6,
-                                 config_width=16)
+        fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,
+                                 config_width=self.default_config_width)
         loop_itr = fl_ctr_sram_wr.get_iter()
         loop_wth = fl_ctr_sram_wr.get_cfg_width()
 
@@ -172,8 +178,9 @@ class AggFormal(Generator):
         # the step signal to the appropriate input port
         if self.interconnect_input_ports > 1:
             self.add_child(f"port_sel_addr",
-                           AddrGen(iterator_support=loop_itr,
-                                   config_width=clog2(self.interconnect_input_ports)),
+                           AddrGen(iterator_support=self.default_iterator_support,
+                                #    config_width=clog2(self.interconnect_input_ports)),
+                                   config_width=self.default_config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._write,
@@ -185,8 +192,8 @@ class AggFormal(Generator):
 
         # scheduler modules
         self.add_child(f"agg_read_output_sched_gen",
-                       SchedGen(input_sched_iterator_support,
-                                config_width),
+                       SchedGen(iterator_support=self.default_iterator_support,
+                                config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
