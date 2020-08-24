@@ -533,6 +533,7 @@ class LakeTop(Generator):
                        #    valid_out=self._ub_valid_out,
                        data_to_strg=self._ub_data_to_mem,
                     #    ren_to_strg=self._ub_cen_to_mem,
+                       cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem)
 
         # Handle different names - sorry

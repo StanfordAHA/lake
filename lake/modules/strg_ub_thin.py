@@ -77,10 +77,12 @@ class StrgUBThin(Generator):
             self._write = self.input("wen_in", 1)
             self._write_addr = self.input("write_addr", self.config_width)
             self._read_addr = self.input("read_addr", self.config_width)
+            self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
             self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
             self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
             self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
+            self.wire(self._cen_to_sram, self._write | self._read)
             self.wire(self._wen_to_sram, self._write)
             self.wire(self._ren_to_sram, self._read)
             self.wire(self._data_out, self._data_from_sram)
@@ -173,8 +175,10 @@ class StrgUBThin(Generator):
                        valid_output=self._read)
 
         # Now deal with dual_port/single_port madness...
+        self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
         self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
         self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
+        self.wire(self._cen_to_sram, self._write | self._read)
         self.wire(self._wen_to_sram, self._write)
         self.wire(self._ren_to_sram, self._read)
         self.wire(self._data_out, self._data_from_sram)
