@@ -4,7 +4,7 @@ from lake.modules.sram_wrapper import SRAMWrapper
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
-from lake.utils.util import extract_formal_annotation
+from lake.utils.util import extract_formal_annotation, safe_wire
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 
 
@@ -133,15 +133,19 @@ class TBFormal(Generator):
                            step=self._read & (self._output_port_sel_addr ==
                                               const(i, self._output_port_sel_addr.width)))
 
+            newAG = AddrGen(iterator_support=self.default_iterator_support,
+                            config_width=self.default_config_width)
+
             self.add_child(f"tb_write_addr_gen_{i}",
-                           AddrGen(iterator_support=self.default_iterator_support,
-                                   config_width=self.default_config_width),
+                           newAG,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._read & (self._output_port_sel_addr ==
                                               const(i, self._output_port_sel_addr.width)),
-                           mux_sel=fl_ctr_tb_wr.ports.mux_sel_out,
-                           addr_out=self._tb_write_addr[i])
+                           # addr_out=self._tb_write_addr[i])
+                           mux_sel=fl_ctr_tb_wr.ports.mux_sel_out)
+
+            safe_wire(self, self._tb_write_addr[i], newAG.ports.addr_out)
 
             fl_ctr_tb_rd = ForLoop(iterator_support=self.default_iterator_support,
                                    config_width=self.default_config_width)
@@ -154,14 +158,18 @@ class TBFormal(Generator):
                            rst_n=self._rst_n,
                            step=self._tb_read[i])
 
+            newAG = AddrGen(iterator_support=self.default_iterator_support,
+                            config_width=self.default_config_width)
+
             self.add_child(f"tb_read_addr_gen_{i}",
-                           AddrGen(iterator_support=self.default_iterator_support,
-                                   config_width=self.default_config_width),
+                           newAG,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._tb_read[i],
-                           mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
-                           addr_out=self._tb_read_addr[i])
+                           # addr_out=self._tb_read_addr[i])
+                           mux_sel=fl_ctr_tb_rd.ports.mux_sel_out)
+
+            safe_wire(self, self._tb_read_addr[i], newAG.ports.addr_out)
 
             self.add_child(f"tb_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.default_iterator_support,
