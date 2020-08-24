@@ -41,6 +41,10 @@ class TBFormal(Generator):
         self.output_addr_iterator_support = output_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
         self.output_sched_iterator_support = output_sched_iterator_support
+
+        self.default_iterator_support = 6
+        self.default_config_width = 16
+
         # inputs
         self._clk = self.clock("clk")
         self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
@@ -96,8 +100,8 @@ class TBFormal(Generator):
                                               max(1, clog2(self.interconnect_output_ports)))
 
         # -------------------------------- Delineate new group -------------------------------
-        fl_ctr_sram_rd = ForLoop(iterator_support=6,
-                                 config_width=16)
+        fl_ctr_sram_rd = ForLoop(iterator_support=self.default_iterator_support,
+                                 config_width=self.default_config_width)
         loop_itr = fl_ctr_sram_rd.get_iter()
         loop_wth = fl_ctr_sram_rd.get_cfg_width()
 
@@ -108,8 +112,8 @@ class TBFormal(Generator):
                        step=self._read)
 
         self.add_child(f"tb_write_sched_gen",
-                       SchedGen(iterator_support=6,
-                                config_width=16),
+                       SchedGen(iterator_support=self.default_iterator_support,
+                                config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
@@ -117,8 +121,8 @@ class TBFormal(Generator):
                        valid_output=self._read)
 
         for i in range(self.interconnect_output_ports):
-            fl_ctr_tb_wr = ForLoop(iterator_support=2,
-                                   config_width=6)
+            fl_ctr_tb_wr = ForLoop(iterator_support=self.default_iterator_support,
+                                   config_width=self.default_config_width)
             loop_itr = fl_ctr_tb_wr.get_iter()
             loop_wth = fl_ctr_tb_wr.get_cfg_width()
 
@@ -130,8 +134,8 @@ class TBFormal(Generator):
                                               const(i, self._output_port_sel_addr.width)))
 
             self.add_child(f"tb_write_addr_gen_{i}",
-                           AddrGen(iterator_support=loop_itr,
-                                   config_width=loop_wth),
+                           AddrGen(iterator_support=self.default_iterator_support,
+                                   config_width=self.default_config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._read & (self._output_port_sel_addr ==
@@ -139,8 +143,8 @@ class TBFormal(Generator):
                            mux_sel=fl_ctr_tb_wr.ports.mux_sel_out,
                            addr_out=self._tb_write_addr[i])
 
-            fl_ctr_tb_rd = ForLoop(iterator_support=2,
-                                   config_width=16)
+            fl_ctr_tb_rd = ForLoop(iterator_support=self.default_iterator_support,
+                                   config_width=self.default_config_width)
             loop_itr = fl_ctr_tb_rd.get_iter()
             loop_wth = fl_ctr_tb_rd.get_cfg_width()
 
@@ -151,8 +155,8 @@ class TBFormal(Generator):
                            step=self._tb_read[i])
 
             self.add_child(f"tb_read_addr_gen_{i}",
-                           AddrGen(iterator_support=loop_itr,
-                                   config_width=6),
+                           AddrGen(iterator_support=self.default_iterator_support,
+                                   config_width=self.default_config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._tb_read[i],
@@ -160,8 +164,8 @@ class TBFormal(Generator):
                            addr_out=self._tb_read_addr[i])
 
             self.add_child(f"tb_read_sched_gen_{i}",
-                           SchedGen(iterator_support=loop_itr,
-                                    config_width=16),
+                           SchedGen(iterator_support=self.default_iterator_support,
+                                    config_width=self.default_config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,
@@ -170,8 +174,9 @@ class TBFormal(Generator):
 
         if self.interconnect_output_ports > 1:
 
-            fl_ctr_out_sel = ForLoop(iterator_support=2,
-                                     config_width=clog2(self.interconnect_output_ports))
+            fl_ctr_out_sel = ForLoop(iterator_support=self.default_iterator_support,
+                                    #  config_width=clog2(self.interconnect_output_ports))
+                                     config_width=self.default_config_width)
             loop_itr = fl_ctr_out_sel.get_iter()
             loop_wth = fl_ctr_out_sel.get_cfg_width()
 
@@ -182,8 +187,8 @@ class TBFormal(Generator):
                            step=self._read)
 
             self.add_child(f"out_port_sel_addr",
-                           AddrGen(iterator_support=loop_itr,
-                                   config_width=loop_wth),
+                           AddrGen(iterator_support=self.default_iterator_support,
+                                   config_width=self.default_config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._read,
