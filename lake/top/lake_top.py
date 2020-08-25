@@ -217,8 +217,9 @@ class LakeTop(Generator):
                                        packed=True,
                                        explicit_array=True)
 
-        self._valid_out_tile = self.var("valid_out_tile",
-                                        self.interconnect_output_ports)
+        self._valid_out_tile = self.output("valid_out",
+                                           self.interconnect_output_ports)
+        self._valid_out_tile.add_attribute(ControlSignalAttr(False))
 
         self.address_width = clog2(self.num_tiles * self.mem_depth)
 
@@ -818,7 +819,7 @@ class LakeTop(Generator):
         # config regs
         lift_config_reg(self.internal_generator)
 
-        #extract_formal_annotation(self.internal_generator, "test.txt")
+        # extract_formal_annotation(self.internal_generator, "test.txt")
 
 
 if __name__ == "__main__":

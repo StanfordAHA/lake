@@ -113,5 +113,5 @@ def create_vectorized_sram():
 
 if __name__ == "__main__":
     # create_bare_dual_port()
-    create_dual_port_w_ctrl()
-    # create_vectorized_sram()
+    # create_dual_port_w_ctrl()
+    create_vectorized_sram()
