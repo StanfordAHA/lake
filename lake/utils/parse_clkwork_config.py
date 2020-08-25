@@ -136,7 +136,11 @@ def map_controller(controller, name):
     return mapped_ctrl
 
 
-def get_static_bitstream(config_path, in_file_name, out_file_name):
+def get_static_bitstream(config_path,
+                         in_file_name,
+                         out_file_name,
+                         input_ports=1,
+                         output_ports=1):
 
     in2agg = map_controller(extract_controller(config_path + '/' + in_file_name + '_in2agg_0.csv'), "in2agg")
     agg2sram = map_controller(extract_controller(config_path + '/' + in_file_name + '_agg2sram.csv'), "agg2sram")
@@ -175,20 +179,29 @@ def get_static_bitstream(config_path, in_file_name, out_file_name):
         ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
         ("strg_ub_loops_buf2out_autovec_write_1_dimensionality", sram2tb.dim),
 
-        ("chain_valid_in_reg_sel", 1),  # 1
+        # ("chain_valid_in_reg_sel", 1),  # 1
 
         # Control Signals...
         ("flush_reg_sel", 1),  # 1
         ("flush_reg_value", 0),  # 1
-        ("ren_in_reg_sel", 1),  # 1
-        ("ren_in_reg_value", 0),  # 1
-        ("wen_in_reg_sel", 1),  # 1
-        ("wen_in_reg_value", 0),  # 1
+        # ("ren_in_reg_sel", 1),  # 1
+        # ("ren_in_reg_value", 0),  # 1
+        # ("wen_in_reg_sel", 1),  # 1
+        # ("wen_in_reg_value", 0),  # 1
 
         # Set the mode and activate the tile...
         ("mode", 0),  # 2
         ("tile_en", 1),  # 1
     ]
+
+    # TODO: Maybe need to check if size 1?
+    for i in range(input_ports):
+        config.append((f"ren_in_{i}_reg_sel", 1))
+        config.append((f"ren_in_{i}_reg_value", 0))
+
+    for i in range(output_ports):
+        config.append((f"wen_in_{i}_reg_sel", 1))
+        config.append((f"wen_in_{i}_reg_value", 0))
 
     for i in range(in2agg.dim):
         config.append((f"strg_ub_loops_in2buf_0_ranges_{i}", in2agg.extent[i]))
