@@ -797,7 +797,7 @@ class LakeTop(Generator):
         self.add_child(f"chain", chaining,
                        curr_tile_data_out=self._data_out_tile,
                        chain_data_in=self._chain_data_in,
-                       accessor_output=self._accessor_output,
+                       accessor_output=self._accessor_output | (self._mode != 0),
                        data_out_tile=self._data_out)
 
         ########################
