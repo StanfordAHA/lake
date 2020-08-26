@@ -66,61 +66,63 @@ def test_sram_formal():
                                                                   dimensionality=dim)
 
     config = {}
-    config["sram_write_addr_gen_strides_0"] = 55835
-    config["sram_write_addr_gen_strides_1"] = 65535
-    config["sram_write_addr_gen_strides_2"] = 65535
-    config["sram_write_addr_gen_strides_3"] = 65535
-    config["sram_write_addr_gen_strides_4"] = 65535
-    config["sram_write_addr_gen_strides_5"] = 65535
-    config["sram_read_addr_gen_strides_0"] = 27
+    config["sram_write_loops_ranges_0"] = 485
+    config["sram_write_loops_ranges_1"] = 0
+    config["sram_write_loops_ranges_2"] = 0
+    config["sram_write_loops_ranges_3"] = 0
+    config["sram_write_loops_ranges_4"] = 0
+    config["sram_write_loops_ranges_5"] = 0
+    # config["sram_read_sched_gen_sched_addr_gen_starting_addr"] = 5
+    # config["sram_read_sched_gen_sched_addr_gen_strides_0"] = 3
+    # config["sram_read_sched_gen_sched_addr_gen_strides_1"] = 1
+    # config["sram_read_sched_gen_sched_addr_gen_strides_2"] = 65535
+    # config["sram_read_sched_gen_sched_addr_gen_strides_3"] = 65535
+    # config["sram_read_sched_gen_sched_addr_gen_strides_4"] = 65535
+    # config["sram_read_sched_gen_sched_addr_gen_strides_5"] = 65535
+    config["sram_write_addr_gen_strides_0"] = 65534
+    config["sram_write_addr_gen_strides_1"] = 0
+    config["sram_write_addr_gen_strides_2"] = 0
+    config["sram_write_addr_gen_strides_3"] = 0
+    config["sram_write_addr_gen_strides_4"] = 0
+    config["sram_write_addr_gen_strides_5"] = 0
+    config["sram_write_addr_gen_starting_addr"] = 33791
+    config["sram_write_sched_gen_sched_addr_gen_starting_addr"] = 4
+    config["sram_read_addr_gen_strides_0"] = 65535
     config["sram_read_addr_gen_strides_1"] = 65535
     config["sram_read_addr_gen_strides_2"] = 65535
     config["sram_read_addr_gen_strides_3"] = 65535
     config["sram_read_addr_gen_strides_4"] = 65535
     config["sram_read_addr_gen_strides_5"] = 65535
-    config["sram_read_sched_gen_sched_addr_gen_starting_addr"] = 5
-    # config["sram_write_sched_gen_sched_addr_gen_strides_0"] = 4
-    # config["sram_write_sched_gen_sched_addr_gen_strides_1"] = 34295
-    # config["sram_write_sched_gen_sched_addr_gen_strides_2"] = 26316
-    # config["sram_write_sched_gen_sched_addr_gen_strides_3"] = 33474
-    # config["sram_write_sched_gen_sched_addr_gen_strides_4"] = 61916
-    # config["sram_write_sched_gen_sched_addr_gen_strides_5"] = 32966
-    config["sram_read_loops_ranges_0"] = 65535
-    config["sram_read_loops_ranges_1"] = 65535
-    config["sram_read_loops_ranges_2"] = 65535
-    config["sram_read_loops_ranges_3"] = 65535
-    config["sram_read_loops_ranges_4"] = 65535
-    config["sram_read_loops_ranges_5"] = 65535
+    config["sram_write_loops_dimensionality"] = 0
+    # config["sram_read_loops_dimensionality"] = 0
+    # config["sram_read_loops_ranges_0"] = 0
+    # config["sram_read_loops_ranges_1"] = 65535
+    # config["sram_read_loops_ranges_2"] = 65535
+    # config["sram_read_loops_ranges_3"] = 65535
+    # config["sram_read_loops_ranges_4"] = 65535
+    # config["sram_read_loops_ranges_5"] = 65535
+    config["sram_read_addr_gen_starting_addr"] = 511
+    config["sram_write_sched_gen_sched_addr_gen_strides_0"] = 4
+    config["sram_write_sched_gen_sched_addr_gen_strides_1"] = 0
+    config["sram_write_sched_gen_sched_addr_gen_strides_2"] = 0
+    config["sram_write_sched_gen_sched_addr_gen_strides_3"] = 0
+    config["sram_write_sched_gen_sched_addr_gen_strides_4"] = 0
+    config["sram_write_sched_gen_sched_addr_gen_strides_5"] = 0
+
+    config["sram_read_loops_dimensionality"] = 0
     config["sram_read_sched_gen_sched_addr_gen_strides_0"] = 4
     config["sram_read_sched_gen_sched_addr_gen_strides_1"] = 65535
     config["sram_read_sched_gen_sched_addr_gen_strides_2"] = 65535
     config["sram_read_sched_gen_sched_addr_gen_strides_3"] = 65535
     config["sram_read_sched_gen_sched_addr_gen_strides_4"] = 65535
     config["sram_read_sched_gen_sched_addr_gen_strides_5"] = 65535
-    config["sram_write_addr_gen_starting_addr"] = 56598
-    # config["sram_write_loops_dimensionality"] = 0
-    # config["sram_write_sched_gen_sched_addr_gen_starting_addr"] = 4
-    # config["sram_write_loops_ranges_0"] = 247
-    # config["sram_write_loops_ranges_1"] = 152
-    # config["sram_write_loops_ranges_2"] = 0
-    # config["sram_write_loops_ranges_3"] = 0
-    # config["sram_write_loops_ranges_4"] = 65535
-    # config["sram_write_loops_ranges_5"] = 65535
-    config["sram_read_addr_gen_starting_addr"] = 60182
-    config["sram_read_loops_dimensionality"] = 0
-
-    config["sram_write_loops_ranges[0]"] = 0
-    config["sram_write_loops_ranges[1]"] = 0
-    config["sram_write_loops_ranges[2]"] = 255
-    config["sram_write_loops_ranges[3]"] = 254
-    config["sram_write_loops_dimensionality"] = 0
-    config["sram_write_sched_gen_sched_addr_gen_strides[0]"] = 4
-    config["sram_write_sched_gen_sched_addr_gen_strides[1]"] = 4
-    config["sram_write_sched_gen_sched_addr_gen_strides[2]"] = 65535
-    config["sram_write_sched_gen_sched_addr_gen_strides[3]"] = 65535
-    config["sram_write_sched_gen_sched_addr_gen_strides[4]"] = 65535
-    config["sram_write_sched_gen_sched_addr_gen_strides[5]"] = 4
-    config["sram_write_sched_gen_sched_addr_gen_starting_addr"] = 4
+    config["sram_read_sched_gen_sched_addr_gen_starting_addr"] = 5
+    config["sram_read_loops_ranges_0"] = 398
+    config["sram_read_loops_ranges_1"] = 65535
+    config["sram_read_loops_ranges_2"] = 65535
+    config["sram_read_loops_ranges_3"] = 65535
+    config["sram_read_loops_ranges_4"] = 65535
+    config["sram_read_loops_ranges_5"] = 65535
     # configuration registers passed through from top level
     for key, value in config.items():
         setattr(tester.circuit, key, value)
@@ -134,7 +136,7 @@ def test_sram_formal():
 
     rand.seed(0)
 
-    num_iters = 64
+    num_iters = 365
     data_in = 0
     for i in range(num_iters):
 
@@ -148,10 +150,11 @@ def test_sram_formal():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "sram_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":

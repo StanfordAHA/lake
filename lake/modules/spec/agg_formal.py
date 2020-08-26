@@ -100,6 +100,8 @@ class AggFormal(Generator):
                              packed=True,
                              explicit_array=True)
 
+        output_loops = None
+
         for i in range(self.interconnect_input_ports):
 
             forloop_ctr = ForLoop(iterator_support=self.default_iterator_support,
@@ -139,57 +141,67 @@ class AggFormal(Generator):
             loop_itr = forloop_ctr_rd.get_iter()
             loop_wth = forloop_ctr_rd.get_cfg_width()
 
+            # Add loops for the output of each agg...
             self.add_child(f"agg_read_loops_{i}",
                            forloop_ctr_rd,
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           step=(self._write &
-                                 (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))))
+                           # (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))))
+                           step=self._write)
 
+            output_loops = forloop_ctr_rd
+
+            # And an associated read address...
             newAG = AddrGen(iterator_support=self.default_iterator_support,
                             config_width=self.default_config_width)
             self.add_child(f"agg_read_addr_gen_{i}",
                            newAG,
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           step=(self._write &
-                                 (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))),
+                           step=self._write,
+                           #  (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))),
                            # addr_out=self._agg_read_addr_gen_out[i])
                            mux_sel=forloop_ctr_rd.ports.mux_sel_out)
 
             safe_wire(self, self._agg_read_addr_gen_out[i], newAG.ports.addr_out)
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])
 
-        # Create for loop counters that can be shared across the input port selection and SRAM write
-        fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,
-                                 config_width=self.default_config_width)
-        loop_itr = fl_ctr_sram_wr.get_iter()
-        loop_wth = fl_ctr_sram_wr.get_cfg_width()
-
-        self.add_child(f"agg_select_loops",
-                       fl_ctr_sram_wr,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._write)
-
         # Now we determine what data goes through to the sram...
         # If we have more than one port, we can generate a selector
         # to pick which input port should go through - then we send
         # the step signal to the appropriate input port
         if self.interconnect_input_ports > 1:
+
+            # Create for loop counters that can be shared across the input port selection and SRAM write
+            fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,
+                                     config_width=self.default_config_width)
+            loop_itr = fl_ctr_sram_wr.get_iter()
+            loop_wth = fl_ctr_sram_wr.get_cfg_width()
+
+            output_loops = fl_ctr_sram_wr
+
+            self.add_child(f"agg_select_loops",
+                           fl_ctr_sram_wr,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._write)
+
+            tmp_AG = AddrGen(iterator_support=self.default_iterator_support,
+                             # config_width=clog2(self.interconnect_input_ports)),
+                             config_width=self.default_config_width)
             self.add_child(f"port_sel_addr",
-                           AddrGen(iterator_support=self.default_iterator_support,
-                                   # config_width=clog2(self.interconnect_input_ports)),
-                                   config_width=self.default_config_width),
+                           tmp_AG,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._write,
-                           mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
-                           addr_out=self._input_port_sel_addr)
-            # Addr for port select should be driven on agg to sram write sched
+                           # addr_out=self._input_port_sel_addr)
+                           mux_sel=fl_ctr_sram_wr.ports.mux_sel_out)
+            safe_wire(self, self._input_port_sel_addr, tmp_AG.ports.addr_out)
+
         else:
             self.wire(self._input_port_sel_addr[0], const(0, self._input_port_sel_addr.width))
 
+        # Addr for port select should be driven on agg to sram write sched
         # scheduler modules
         self.add_child(f"agg_read_output_sched_gen",
                        SchedGen(iterator_support=self.default_iterator_support,
@@ -197,7 +209,7 @@ class AggFormal(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
-                       mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
+                       mux_sel=output_loops.ports.mux_sel_out,
                        valid_output=self._write)
 
         for idx in range(self.interconnect_input_ports):

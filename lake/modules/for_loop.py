@@ -68,20 +68,12 @@ class ForLoop(Generator):
                                       self._ranges[self._mux_sel]) & self._inc[self._mux_sel])
 
         self.add_code(self.set_mux_sel)
-        # self.add_code(self.calculate_address)
         for i in range(self.iterator_support):
             self.add_code(self.set_clear, idx=i)
             self.add_code(self.set_inc, idx=i)
             self.add_code(self.dim_counter_update, idx=i)
             self.add_code(self.max_value_update, idx=i)
         # GENERATION LOGIC: end
-
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def calculate_address(self):
-        if ~self._rst_n:
-            self._current_addr = 0
-        elif self._step:
-            self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
     @always_comb
     # Find lowest ready
@@ -139,5 +131,7 @@ class ForLoop(Generator):
 
 if __name__ == "__main__":
     it_support = 6
-    db_dut = ForLoop(iterator_support=it_support)
+    cf_width = 16
+    db_dut = ForLoop(iterator_support=it_support,
+                     config_width=cf_width)
     verilog(db_dut, filename=f"for_loop_{it_support}.sv")
