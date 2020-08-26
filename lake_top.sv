@@ -26,8 +26,8 @@ module LakeTop (
   input logic clk_en,
   input logic [7:0] config_addr_in,
   input logic [31:0] config_data_in,
-  output logic [0:0] [31:0] config_data_out,
-  input logic config_en,
+  output logic [1:0] [31:0] config_data_out,
+  input logic [1:0] config_en,
   input logic config_read,
   input logic config_write,
   input logic [1:0] [15:0] data_in,
@@ -41,81 +41,83 @@ module LakeTop (
   input logic rst_n,
   output logic sram_ready_out,
   input logic [15:0] strg_ub_agg_read_addr_gen_0_starting_addr,
-  input logic [5:0] [15:0] strg_ub_agg_read_addr_gen_0_strides,
+  input logic [2:0] [15:0] strg_ub_agg_read_addr_gen_0_strides,
   input logic [15:0] strg_ub_agg_read_addr_gen_1_starting_addr,
-  input logic [5:0] [15:0] strg_ub_agg_read_addr_gen_1_strides,
+  input logic [2:0] [15:0] strg_ub_agg_read_addr_gen_1_strides,
   input logic [15:0] strg_ub_agg_write_addr_gen_0_starting_addr,
-  input logic [5:0] [15:0] strg_ub_agg_write_addr_gen_0_strides,
+  input logic [2:0] [15:0] strg_ub_agg_write_addr_gen_0_strides,
   input logic [15:0] strg_ub_agg_write_addr_gen_1_starting_addr,
-  input logic [5:0] [15:0] strg_ub_agg_write_addr_gen_1_strides,
+  input logic [2:0] [15:0] strg_ub_agg_write_addr_gen_1_strides,
   input logic [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides,
+  input logic [2:0] [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides,
   input logic [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides,
+  input logic [2:0] [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides,
   input logic [15:0] strg_ub_input_addr_gen_starting_addr,
-  input logic [5:0] [15:0] strg_ub_input_addr_gen_strides,
+  input logic [2:0] [15:0] strg_ub_input_addr_gen_strides,
   input logic [15:0] strg_ub_input_sched_gen_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides,
-  input logic [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_read_ranges,
-  input logic [3:0] strg_ub_loops_buf2out_autovec_write_0_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges,
-  input logic [3:0] strg_ub_loops_buf2out_autovec_write_1_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges,
-  input logic [3:0] strg_ub_loops_buf2out_out_sel_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_buf2out_out_sel_ranges,
-  input logic [3:0] strg_ub_loops_buf2out_read_0_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_buf2out_read_0_ranges,
-  input logic [3:0] strg_ub_loops_buf2out_read_1_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_buf2out_read_1_ranges,
-  input logic [3:0] strg_ub_loops_in2buf_0_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_in2buf_0_ranges,
-  input logic [3:0] strg_ub_loops_in2buf_1_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_in2buf_1_ranges,
-  input logic [3:0] strg_ub_loops_in2buf_autovec_read_0_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges,
-  input logic [3:0] strg_ub_loops_in2buf_autovec_read_1_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges,
-  input logic [3:0] strg_ub_loops_in2buf_autovec_write_dimensionality,
-  input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_write_ranges,
+  input logic [2:0] [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides,
+  input logic [2:0] strg_ub_loops_buf2out_autovec_read_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_buf2out_autovec_read_ranges,
+  input logic [2:0] strg_ub_loops_buf2out_autovec_write_0_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_buf2out_autovec_write_0_ranges,
+  input logic [2:0] strg_ub_loops_buf2out_autovec_write_1_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_buf2out_autovec_write_1_ranges,
+  input logic [2:0] strg_ub_loops_buf2out_out_sel_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_buf2out_out_sel_ranges,
+  input logic [2:0] strg_ub_loops_buf2out_read_0_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_buf2out_read_0_ranges,
+  input logic [2:0] strg_ub_loops_buf2out_read_1_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_buf2out_read_1_ranges,
+  input logic [2:0] strg_ub_loops_in2buf_0_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_in2buf_0_ranges,
+  input logic [2:0] strg_ub_loops_in2buf_1_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_in2buf_1_ranges,
+  input logic [2:0] strg_ub_loops_in2buf_autovec_read_0_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_in2buf_autovec_read_0_ranges,
+  input logic [2:0] strg_ub_loops_in2buf_autovec_read_1_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_in2buf_autovec_read_1_ranges,
+  input logic [2:0] strg_ub_loops_in2buf_autovec_write_dimensionality,
+  input logic [2:0] [15:0] strg_ub_loops_in2buf_autovec_write_ranges,
   input logic [15:0] strg_ub_out_port_sel_addr_starting_addr,
-  input logic [5:0] [15:0] strg_ub_out_port_sel_addr_strides,
+  input logic [2:0] [15:0] strg_ub_out_port_sel_addr_strides,
   input logic [15:0] strg_ub_output_addr_gen_starting_addr,
-  input logic [5:0] [15:0] strg_ub_output_addr_gen_strides,
+  input logic [2:0] [15:0] strg_ub_output_addr_gen_strides,
   input logic [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides,
+  input logic [2:0] [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides,
   input logic [15:0] strg_ub_port_sel_addr_starting_addr,
-  input logic [5:0] [15:0] strg_ub_port_sel_addr_strides,
+  input logic [2:0] [15:0] strg_ub_port_sel_addr_strides,
   input logic [15:0] strg_ub_tb_read_addr_gen_0_starting_addr,
-  input logic [5:0] [15:0] strg_ub_tb_read_addr_gen_0_strides,
+  input logic [2:0] [15:0] strg_ub_tb_read_addr_gen_0_strides,
   input logic [15:0] strg_ub_tb_read_addr_gen_1_starting_addr,
-  input logic [5:0] [15:0] strg_ub_tb_read_addr_gen_1_strides,
+  input logic [2:0] [15:0] strg_ub_tb_read_addr_gen_1_strides,
   input logic [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides,
+  input logic [2:0] [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides,
   input logic [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides,
+  input logic [2:0] [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides,
   input logic [15:0] strg_ub_tb_write_addr_gen_0_starting_addr,
-  input logic [5:0] [15:0] strg_ub_tb_write_addr_gen_0_strides,
+  input logic [2:0] [15:0] strg_ub_tb_write_addr_gen_0_strides,
   input logic [15:0] strg_ub_tb_write_addr_gen_1_starting_addr,
-  input logic [5:0] [15:0] strg_ub_tb_write_addr_gen_1_strides,
+  input logic [2:0] [15:0] strg_ub_tb_write_addr_gen_1_strides,
   input logic tile_en,
+  output logic [1:0] valid_out,
   input logic [1:0] wen_in
 );
 
 logic [1:0] accessor_output;
-logic [2:0][0:0][7:0] all_addr_to_mem;
+logic [2:0][0:0][8:0] all_addr_to_mem;
 logic [2:0][15:0] all_data_out;
 logic [2:0][0:0][3:0][15:0] all_data_to_mem;
 logic [2:0][0:0] all_ren_to_mem;
 logic [2:0] all_valid_out;
 logic [2:0][0:0] all_wen_to_mem;
 logic cfg_seq_clk;
+logic [1:0] chain_accessor_output;
 logic [15:0] config_data_in_shrt;
-logic [0:0][15:0] config_data_out_shrt;
+logic [1:0][15:0] config_data_out_shrt;
 logic config_seq_clk;
 logic config_seq_clk_en;
 logic [1:0][15:0] data_out_tile;
-logic [0:0][7:0] fifo_addr_to_mem;
+logic [0:0][8:0] fifo_addr_to_mem;
 logic fifo_ctrl_clk;
 logic [15:0] fifo_ctrl_data_in;
 logic fifo_ctrl_pop;
@@ -130,14 +132,14 @@ logic fifo_wen_to_mem;
 logic gclk;
 logic mem_0_clk;
 logic mem_0_clk_en;
-logic [7:0] mem_0_mem_addr_in_bank;
+logic [8:0] mem_0_mem_addr_in_bank;
 logic mem_0_mem_cen_in_bank;
 logic [3:0][15:0] mem_0_mem_data_in_bank;
 logic [0:0][3:0][15:0] mem_0_mem_data_out_bank;
 logic mem_0_mem_wen_in_bank;
-logic [7:0] mem_addr_cfg;
-logic [0:0][0:0][7:0] mem_addr_dp;
-logic [0:0][0:0][7:0] mem_addr_in;
+logic [8:0] mem_addr_cfg;
+logic [0:0][0:0][8:0] mem_addr_dp;
+logic [0:0][0:0][8:0] mem_addr_in;
 logic [0:0] mem_cen_dp;
 logic [0:0] mem_cen_in;
 logic [3:0][15:0] mem_data_cfg;
@@ -149,7 +151,7 @@ logic mem_ren_cfg;
 logic mem_wen_cfg;
 logic [0:0] mem_wen_dp;
 logic [0:0] mem_wen_in;
-logic [0:0][7:0] sram_addr_to_mem;
+logic [0:0][8:0] sram_addr_to_mem;
 logic sram_ctrl_clk;
 logic [15:0] sram_ctrl_data_in;
 logic [15:0] sram_ctrl_rd_addr_in;
@@ -162,15 +164,15 @@ logic sram_ren_to_mem;
 logic sram_valid_out;
 logic sram_wen_to_mem;
 logic strg_ub_clk;
-logic [0:0][0:0][7:0] ub_addr_to_mem;
+logic [0:0][0:0][8:0] ub_addr_to_mem;
 logic [0:0] ub_cen_to_mem;
 logic [1:0][15:0] ub_data_out;
 logic [0:0][0:0][3:0][15:0] ub_data_to_mem;
 logic [1:0] ub_valid_out;
 logic [0:0] ub_wen_to_mem;
-logic [1:0] valid_out_tile;
 assign config_data_in_shrt = config_data_in[15:0];
 assign config_data_out[0] = 32'(config_data_out_shrt[0]);
+assign config_data_out[1] = 32'(config_data_out_shrt[1]);
 assign gclk = clk & tile_en;
 assign mem_data_low_pt[0] = mem_data_out[0][0];
 assign cfg_seq_clk = gclk;
@@ -223,9 +225,10 @@ assign all_valid_out[1] = fifo_valid_out;
 assign all_data_out[2] = sram_data_out;
 assign all_valid_out[2] = sram_valid_out;
 assign data_out_tile[0] = all_data_out[mode];
-assign valid_out_tile[0] = all_valid_out[mode];
+assign valid_out[0] = all_valid_out[mode];
 assign data_out_tile[1] = ub_data_out[1];
-assign valid_out_tile[1] = ub_valid_out[1];
+assign valid_out[1] = ub_valid_out[1];
+assign chain_accessor_output = accessor_output | (mode != 2'h0);
 storage_config_seq config_seq (
   .addr_out(mem_addr_cfg),
   .clk(config_seq_clk),
@@ -371,7 +374,7 @@ tsmc_name_generator mem_0 (
 );
 
 Chain chain (
-  .accessor_output(accessor_output),
+  .accessor_output(chain_accessor_output),
   .chain_data_in(chain_data_in),
   .clk_en(clk_en),
   .curr_tile_data_out(data_out_tile),
@@ -381,16 +384,31 @@ Chain chain (
 
 endmodule   // LakeTop
 
-module addr_gen_6 (
+module ReverseFlatten (
+  input logic clk_en,
+  input logic flush,
+  input logic [63:0] input_array,
+  output logic [3:0][0:0] [15:0] output_array
+);
+
+always_comb begin
+  output_array[0] = input_array[15:0];
+  output_array[1] = input_array[31:16];
+  output_array[2] = input_array[47:32];
+  output_array[3] = input_array[63:48];
+end
+endmodule   // ReverseFlatten
+
+module addr_gen_3 (
   output logic [15:0] addr_out,
   input logic clk,
   input logic clk_en,
   input logic flush,
-  input logic [2:0] mux_sel,
+  input logic [1:0] mux_sel,
   input logic rst_n,
   input logic [15:0] starting_addr,
   input logic step,
-  input logic [5:0] [15:0] strides
+  input logic [2:0] [15:0] strides
 );
 
 logic [15:0] calc_addr;
@@ -413,73 +431,70 @@ always_ff @(posedge clk, negedge rst_n) begin
     end
   end
 end
-endmodule   // addr_gen_6
+endmodule   // addr_gen_3
 
-module for_loop_6 (
+module flattenND (
+  input logic clk_en,
+  input logic flush,
+  input logic [3:0][0:0] [15:0] input_array,
+  output logic [63:0] output_array
+);
+
+always_comb begin
+  output_array[15:0] = input_array[0];
+  output_array[31:16] = input_array[1];
+  output_array[47:32] = input_array[2];
+  output_array[63:48] = input_array[3];
+end
+endmodule   // flattenND
+
+module for_loop_3 (
   input logic clk,
   input logic clk_en,
-  input logic [3:0] dimensionality,
+  input logic [2:0] dimensionality,
   input logic flush,
-  output logic [2:0] mux_sel_out,
-  input logic [5:0] [15:0] ranges,
+  output logic [1:0] mux_sel_out,
+  input logic [2:0] [15:0] ranges,
   input logic rst_n,
   input logic step
 );
 
-logic [5:0] clear;
-logic [5:0][15:0] dim_counter;
+logic [2:0] clear;
+logic [2:0][15:0] dim_counter;
 logic done;
-logic [5:0] inc;
+logic [2:0] inc;
 logic [15:0] inced_cnt;
-logic [5:0] max_value;
+logic [2:0] max_value;
 logic maxed_value;
-logic [2:0] mux_sel;
+logic [1:0] mux_sel;
 assign mux_sel_out = mux_sel;
 assign inced_cnt = dim_counter[mux_sel] + 16'h1;
 assign maxed_value = (dim_counter[mux_sel] == ranges[mux_sel]) & inc[mux_sel];
 always_comb begin
-  mux_sel = 3'h0;
+  mux_sel = 2'h0;
   done = 1'h0;
   if (~done) begin
     if (~max_value[0]) begin
-      mux_sel = 3'h0;
+      mux_sel = 2'h0;
       done = 1'h1;
     end
   end
   if (~done) begin
     if (~max_value[1]) begin
-      mux_sel = 3'h1;
+      mux_sel = 2'h1;
       done = 1'h1;
     end
   end
   if (~done) begin
     if (~max_value[2]) begin
-      mux_sel = 3'h2;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[3]) begin
-      mux_sel = 3'h3;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[4]) begin
-      mux_sel = 3'h4;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if (~max_value[5]) begin
-      mux_sel = 3'h5;
+      mux_sel = 2'h2;
       done = 1'h1;
     end
   end
 end
 always_comb begin
   clear[0] = 1'h0;
-  if ((mux_sel > 3'h0) & step) begin
+  if ((mux_sel > 2'h0) & step) begin
     clear[0] = 1'h1;
   end
 end
@@ -488,7 +503,7 @@ always_comb begin
   if ((5'h0 == 5'h0) & step) begin
     inc[0] = 1'h1;
   end
-  else if ((mux_sel == 3'h0) & step) begin
+  else if ((mux_sel == 2'h0) & step) begin
     inc[0] = 1'h1;
   end
 end
@@ -528,7 +543,7 @@ always_ff @(posedge clk, negedge rst_n) begin
 end
 always_comb begin
   clear[1] = 1'h0;
-  if ((mux_sel > 3'h1) & step) begin
+  if ((mux_sel > 2'h1) & step) begin
     clear[1] = 1'h1;
   end
 end
@@ -537,7 +552,7 @@ always_comb begin
   if ((5'h1 == 5'h0) & step) begin
     inc[1] = 1'h1;
   end
-  else if ((mux_sel == 3'h1) & step) begin
+  else if ((mux_sel == 2'h1) & step) begin
     inc[1] = 1'h1;
   end
 end
@@ -577,7 +592,7 @@ always_ff @(posedge clk, negedge rst_n) begin
 end
 always_comb begin
   clear[2] = 1'h0;
-  if ((mux_sel > 3'h2) & step) begin
+  if ((mux_sel > 2'h2) & step) begin
     clear[2] = 1'h1;
   end
 end
@@ -586,7 +601,7 @@ always_comb begin
   if ((5'h2 == 5'h0) & step) begin
     inc[2] = 1'h1;
   end
-  else if ((mux_sel == 3'h2) & step) begin
+  else if ((mux_sel == 2'h2) & step) begin
     inc[2] = 1'h1;
   end
 end
@@ -624,289 +639,9 @@ always_ff @(posedge clk, negedge rst_n) begin
     end
   end
 end
-always_comb begin
-  clear[3] = 1'h0;
-  if ((mux_sel > 3'h3) & step) begin
-    clear[3] = 1'h1;
-  end
-end
-always_comb begin
-  inc[3] = 1'h0;
-  if ((5'h3 == 5'h0) & step) begin
-    inc[3] = 1'h1;
-  end
-  else if ((mux_sel == 3'h3) & step) begin
-    inc[3] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[3] <= 16'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[3] <= 16'h0;
-    end
-    else if (clear[3]) begin
-      dim_counter[3] <= 16'h0;
-    end
-    else if (inc[3]) begin
-      dim_counter[3] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[3] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[3] <= 1'h0;
-    end
-    else if (clear[3]) begin
-      max_value[3] <= 1'h0;
-    end
-    else if (inc[3]) begin
-      max_value[3] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[4] = 1'h0;
-  if ((mux_sel > 3'h4) & step) begin
-    clear[4] = 1'h1;
-  end
-end
-always_comb begin
-  inc[4] = 1'h0;
-  if ((5'h4 == 5'h0) & step) begin
-    inc[4] = 1'h1;
-  end
-  else if ((mux_sel == 3'h4) & step) begin
-    inc[4] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[4] <= 16'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[4] <= 16'h0;
-    end
-    else if (clear[4]) begin
-      dim_counter[4] <= 16'h0;
-    end
-    else if (inc[4]) begin
-      dim_counter[4] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[4] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[4] <= 1'h0;
-    end
-    else if (clear[4]) begin
-      max_value[4] <= 1'h0;
-    end
-    else if (inc[4]) begin
-      max_value[4] <= maxed_value;
-    end
-  end
-end
-always_comb begin
-  clear[5] = 1'h0;
-  if ((mux_sel > 3'h5) & step) begin
-    clear[5] = 1'h1;
-  end
-end
-always_comb begin
-  inc[5] = 1'h0;
-  if ((5'h5 == 5'h0) & step) begin
-    inc[5] = 1'h1;
-  end
-  else if ((mux_sel == 3'h5) & step) begin
-    inc[5] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[5] <= 16'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      dim_counter[5] <= 16'h0;
-    end
-    else if (clear[5]) begin
-      dim_counter[5] <= 16'h0;
-    end
-    else if (inc[5]) begin
-      dim_counter[5] <= inced_cnt;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[5] <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      max_value[5] <= 1'h0;
-    end
-    else if (clear[5]) begin
-      max_value[5] <= 1'h0;
-    end
-    else if (inc[5]) begin
-      max_value[5] <= maxed_value;
-    end
-  end
-end
-endmodule   // for_loop_6
+endmodule   // for_loop_3
 
 module reg_fifo_d4_w1 #(parameter data_width = 16'h10)
-(
-  input logic clk,
-  input logic clk_en,
-  input logic [0:0] [data_width-1:0] data_in,
-  output logic [0:0] [data_width-1:0] data_out,
-  output logic empty,
-  input logic flush,
-  output logic full,
-  input logic [2:0] num_load,
-  input logic [3:0][0:0] [data_width-1:0] parallel_in,
-  input logic parallel_load,
-  output logic [3:0][0:0] [data_width-1:0] parallel_out,
-  input logic parallel_read,
-  input logic pop,
-  input logic push,
-  input logic rst_n,
-  output logic valid
-);
-
-logic [2:0] num_items;
-logic passthru;
-logic [1:0] rd_ptr;
-logic read;
-logic [3:0][0:0][data_width-1:0] reg_array;
-logic [1:0] wr_ptr;
-logic write;
-assign full = num_items == 3'h4;
-assign empty = num_items == 3'h0;
-assign read = pop & (~passthru) & (~empty);
-assign passthru = pop & push & empty;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    num_items <= 3'h0;
-  end
-  else if (flush) begin
-    num_items <= 3'h0;
-  end
-  else if (clk_en) begin
-    if (parallel_load) begin
-      if (num_load == 3'h0) begin
-        num_items <= 3'(push);
-      end
-      else num_items <= num_load;
-    end
-    else if (parallel_read) begin
-      if (push) begin
-        num_items <= 3'h1;
-      end
-      else num_items <= 3'h0;
-    end
-    else if (write & (~read)) begin
-      num_items <= num_items + 3'h1;
-    end
-    else if ((~write) & read) begin
-      num_items <= num_items - 3'h1;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    reg_array <= 64'h0;
-  end
-  else if (flush) begin
-    reg_array <= 64'h0;
-  end
-  else if (clk_en) begin
-    if (parallel_load) begin
-      reg_array <= parallel_in;
-    end
-    else if (write) begin
-      if (parallel_read) begin
-        reg_array[0] <= data_in;
-      end
-      else reg_array[wr_ptr] <= data_in;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    wr_ptr <= 2'h0;
-  end
-  else if (flush) begin
-    wr_ptr <= 2'h0;
-  end
-  else if (clk_en) begin
-    if (parallel_load) begin
-      wr_ptr <= num_load[1:0];
-    end
-    else if (parallel_read) begin
-      if (push) begin
-        wr_ptr <= 2'h1;
-      end
-      else wr_ptr <= 2'h0;
-    end
-    else if (write) begin
-      wr_ptr <= wr_ptr + 2'h1;
-    end
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    rd_ptr <= 2'h0;
-  end
-  else if (flush) begin
-    rd_ptr <= 2'h0;
-  end
-  else if (clk_en) begin
-    if (parallel_load | parallel_read) begin
-      rd_ptr <= 2'h0;
-    end
-    else if (read) begin
-      rd_ptr <= rd_ptr + 2'h1;
-    end
-  end
-end
-assign parallel_out = reg_array;
-assign write = push & (~passthru) & ((~full) | pop | parallel_read);
-always_comb begin
-  if (passthru) begin
-    data_out = data_in;
-  end
-  else data_out = reg_array[rd_ptr];
-end
-always_comb begin
-  valid = pop & ((~empty) | passthru);
-end
-endmodule   // reg_fifo_d4_w1
-
-module reg_fifo_d4_w1_unq0 #(parameter data_width = 16'h10)
 (
   input logic clk,
   input logic clk_en,
@@ -1039,17 +774,150 @@ end
 always_comb begin
   valid = pop & ((~empty) | passthru);
 end
+endmodule   // reg_fifo_d4_w1
+
+module reg_fifo_d4_w1_unq0 #(parameter data_width = 16'h10)
+(
+  input logic clk,
+  input logic clk_en,
+  input logic [0:0] [data_width-1:0] data_in,
+  output logic [0:0] [data_width-1:0] data_out,
+  output logic empty,
+  input logic flush,
+  output logic full,
+  input logic [2:0] num_load,
+  input logic [3:0][0:0] [data_width-1:0] parallel_in,
+  input logic parallel_load,
+  output logic [3:0][0:0] [data_width-1:0] parallel_out,
+  input logic parallel_read,
+  input logic pop,
+  input logic push,
+  input logic rst_n,
+  output logic valid
+);
+
+logic [2:0] num_items;
+logic passthru;
+logic [1:0] rd_ptr;
+logic read;
+logic [3:0][0:0][data_width-1:0] reg_array;
+logic [1:0] wr_ptr;
+logic write;
+assign full = num_items == 3'h4;
+assign empty = num_items == 3'h0;
+assign read = pop & (~passthru) & (~empty);
+assign passthru = pop & push & empty;
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    num_items <= 3'h0;
+  end
+  else if (flush) begin
+    num_items <= 3'h0;
+  end
+  else if (clk_en) begin
+    if (parallel_load) begin
+      if (num_load == 3'h0) begin
+        num_items <= 3'(push);
+      end
+      else num_items <= num_load;
+    end
+    else if (parallel_read) begin
+      if (push) begin
+        num_items <= 3'h1;
+      end
+      else num_items <= 3'h0;
+    end
+    else if (write & (~read)) begin
+      num_items <= num_items + 3'h1;
+    end
+    else if ((~write) & read) begin
+      num_items <= num_items - 3'h1;
+    end
+  end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    reg_array <= 64'h0;
+  end
+  else if (flush) begin
+    reg_array <= 64'h0;
+  end
+  else if (clk_en) begin
+    if (parallel_load) begin
+      reg_array <= parallel_in;
+    end
+    else if (write) begin
+      if (parallel_read) begin
+        reg_array[0] <= data_in;
+      end
+      else reg_array[wr_ptr] <= data_in;
+    end
+  end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    wr_ptr <= 2'h0;
+  end
+  else if (flush) begin
+    wr_ptr <= 2'h0;
+  end
+  else if (clk_en) begin
+    if (parallel_load) begin
+      wr_ptr <= num_load[1:0];
+    end
+    else if (parallel_read) begin
+      if (push) begin
+        wr_ptr <= 2'h1;
+      end
+      else wr_ptr <= 2'h0;
+    end
+    else if (write) begin
+      wr_ptr <= wr_ptr + 2'h1;
+    end
+  end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    rd_ptr <= 2'h0;
+  end
+  else if (flush) begin
+    rd_ptr <= 2'h0;
+  end
+  else if (clk_en) begin
+    if (parallel_load | parallel_read) begin
+      rd_ptr <= 2'h0;
+    end
+    else if (read) begin
+      rd_ptr <= rd_ptr + 2'h1;
+    end
+  end
+end
+assign parallel_out = reg_array;
+assign write = push & (~passthru) & ((~full) | pop | parallel_read);
+always_comb begin
+  if (passthru) begin
+    data_out = data_in;
+  end
+  else data_out = reg_array[rd_ptr];
+end
+always_comb begin
+  valid = pop & ((~empty) | passthru);
+end
 endmodule   // reg_fifo_d4_w1_unq0
 
-module sched_gen_6 (
+module sched_gen_3 (
   input logic clk,
   input logic clk_en,
   input logic [15:0] cycle_count,
   input logic flush,
-  input logic [2:0] mux_sel,
+  input logic [1:0] mux_sel,
   input logic rst_n,
   input logic [15:0] sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] sched_addr_gen_strides,
+  input logic [2:0] [15:0] sched_addr_gen_strides,
   output logic valid_output
 );
 
@@ -1064,7 +932,7 @@ end
 always_comb begin
   valid_output = valid_out;
 end
-addr_gen_6 sched_addr_gen (
+addr_gen_3 sched_addr_gen (
   .addr_out(addr_out),
   .clk(clk),
   .clk_en(clk_en),
@@ -1076,49 +944,19 @@ addr_gen_6 sched_addr_gen (
   .strides(sched_addr_gen_strides)
 );
 
-endmodule   // sched_gen_6
-
-module sram_stub (
-  input logic [7:0] addr,
-  input logic cen,
-  input logic clk,
-  input logic clk_en,
-  input logic [3:0] [15:0] data_in,
-  output logic [3:0] [15:0] data_out,
-  input logic flush,
-  input logic wen
-);
-
-logic [255:0][3:0][15:0] data_array;
-
-always_ff @(posedge clk) begin
-  if (clk_en) begin
-    if (cen & wen) begin
-      data_array[addr] <= data_in;
-    end
-  end
-end
-
-always_ff @(posedge clk) begin
-  if (clk_en) begin
-    if (cen & (~wen)) begin
-      data_out <= data_array[addr];
-    end
-  end
-end
-endmodule   // sram_stub
+endmodule   // sched_gen_3
 
 module storage_config_seq (
-  output logic [7:0] addr_out,
+  output logic [8:0] addr_out,
   input logic clk,
   input logic clk_en,
   input logic [7:0] config_addr_in,
   input logic [15:0] config_data_in,
-  input logic config_en,
+  input logic [1:0] config_en,
   input logic config_rd,
   input logic config_wr,
   input logic flush,
-  output logic [0:0] [15:0] rd_data_out,
+  output logic [1:0] [15:0] rd_data_out,
   input logic [0:0][3:0] [15:0] rd_data_stg,
   output logic ren_out,
   input logic rst_n,
@@ -1129,7 +967,19 @@ module storage_config_seq (
 logic [1:0] cnt;
 logic [2:0][15:0] data_wr_reg;
 logic [1:0] rd_cnt;
-assign addr_out = config_addr_in[7:0];
+logic [1:0] reduce_en;
+logic set_to_addr;
+assign reduce_en[0] = |config_en[0];
+assign reduce_en[1] = |config_en[1];
+always_comb begin
+  set_to_addr = 1'h0;
+  for (int unsigned i = 0; i < 2; i += 1) begin
+      if (reduce_en[1'(i)]) begin
+        set_to_addr = 1'(i);
+      end
+    end
+end
+assign addr_out = {set_to_addr, config_addr_in};
 
 always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
@@ -1157,6 +1007,7 @@ always_ff @(posedge clk, negedge rst_n) begin
   end
 end
 assign rd_data_out[0] = rd_data_stg[0][rd_cnt];
+assign rd_data_out[1] = rd_data_stg[0][rd_cnt];
 
 always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
@@ -1180,7 +1031,7 @@ assign ren_out = config_rd;
 endmodule   // storage_config_seq
 
 module strg_fifo (
-  output logic [0:0] [7:0] addr_out,
+  output logic [0:0] [8:0] addr_out,
   input logic clk,
   input logic clk_en,
   input logic [0:0][3:0] [15:0] data_from_strg,
@@ -1233,9 +1084,9 @@ logic [15:0] num_items;
 logic [15:0] num_words_mem;
 logic prev_bank_rd;
 logic queued_write;
-logic [0:0][7:0] ren_addr;
+logic [0:0][8:0] ren_addr;
 logic ren_delay;
-logic [0:0][7:0] wen_addr;
+logic [0:0][8:0] wen_addr;
 logic [0:0][3:0][15:0] write_queue;
 assign curr_bank_wr = 1'h0;
 assign curr_bank_rd = 1'h0;
@@ -1397,28 +1248,28 @@ assign valid_out = back_pl ? pop: back_valid;
 
 always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
-    wen_addr[0] <= 8'h0;
+    wen_addr[0] <= 9'h0;
   end
   else if (clk_en) begin
     if (flush) begin
-      wen_addr[0] <= 8'h0;
+      wen_addr[0] <= 9'h0;
     end
     else if (wen_to_strg) begin
-      wen_addr[0] <= wen_addr[0] + 8'h1;
+      wen_addr[0] <= wen_addr[0] + 9'h1;
     end
   end
 end
 
 always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
-    ren_addr[0] <= 8'h0;
+    ren_addr[0] <= 9'h0;
   end
   else if (clk_en) begin
     if (flush) begin
-      ren_addr[0] <= 8'h0;
+      ren_addr[0] <= 9'h0;
     end
     else if (ren_to_strg) begin
-      ren_addr[0] <= ren_addr[0] + 8'h1;
+      ren_addr[0] <= ren_addr[0] + 9'h1;
     end
   end
 end
@@ -1428,7 +1279,7 @@ always_comb begin
 end
 assign empty = num_items == 16'h0;
 assign full = fifo_depth == num_items;
-reg_fifo_d4_w1_unq0 #(
+reg_fifo_d4_w1 #(
   .data_width(16'h10)) front_rf (
   .clk(clk),
   .clk_en(clk_en),
@@ -1449,7 +1300,7 @@ reg_fifo_d4_w1_unq0 #(
   .valid(front_valid)
 );
 
-reg_fifo_d4_w1 #(
+reg_fifo_d4_w1_unq0 #(
   .data_width(16'h10)) back_rf (
   .clk(clk),
   .clk_en(clk_en),
@@ -1471,7 +1322,7 @@ reg_fifo_d4_w1 #(
 endmodule   // strg_fifo
 
 module strg_ram (
-  output logic [0:0] [7:0] addr_out,
+  output logic [0:0] [8:0] addr_out,
   input logic clk,
   input logic clk_en,
   input logic [0:0][3:0] [15:0] data_from_strg,
@@ -1549,12 +1400,12 @@ assign data_to_strg[0] = data_combined;
 assign ren_to_strg = (wen | ren) & read_gate;
 assign wen_to_strg = write_gate;
 always_comb begin
-  addr_out[0] = rd_addr[9:2];
+  addr_out[0] = rd_addr[10:2];
   if (wen & (~write_gate)) begin
-    addr_out[0] = wr_addr[9:2];
+    addr_out[0] = wr_addr[10:2];
   end
   else if (write_gate) begin
-    addr_out[0] = addr_to_write[9:2];
+    addr_out[0] = addr_to_write[10:2];
   end
 end
 always_comb begin
@@ -1642,580 +1493,11 @@ always_comb begin
 end
 endmodule   // strg_ram
 
-module strg_ub_vec (
-  output logic [1:0] accessor_output,
-  output logic [7:0] addr_out,
-  input logic [15:0] agg_read_addr_gen_0_starting_addr,
-  input logic [5:0] [15:0] agg_read_addr_gen_0_strides,
-  input logic [15:0] agg_read_addr_gen_1_starting_addr,
-  input logic [5:0] [15:0] agg_read_addr_gen_1_strides,
-  input logic [15:0] agg_write_addr_gen_0_starting_addr,
-  input logic [5:0] [15:0] agg_write_addr_gen_0_strides,
-  input logic [15:0] agg_write_addr_gen_1_starting_addr,
-  input logic [5:0] [15:0] agg_write_addr_gen_1_strides,
-  input logic [15:0] agg_write_sched_gen_0_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] agg_write_sched_gen_0_sched_addr_gen_strides,
-  input logic [15:0] agg_write_sched_gen_1_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] agg_write_sched_gen_1_sched_addr_gen_strides,
-  output logic cen_to_strg,
-  input logic clk,
-  input logic clk_en,
-  input logic [3:0] [15:0] data_from_strg,
-  input logic [1:0] [15:0] data_in,
-  output logic [1:0] [15:0] data_out,
-  output logic [3:0] [15:0] data_to_strg,
-  input logic flush,
-  input logic [15:0] input_addr_gen_starting_addr,
-  input logic [5:0] [15:0] input_addr_gen_strides,
-  input logic [15:0] input_sched_gen_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] input_sched_gen_sched_addr_gen_strides,
-  input logic [3:0] loops_buf2out_autovec_read_dimensionality,
-  input logic [5:0] [15:0] loops_buf2out_autovec_read_ranges,
-  input logic [3:0] loops_buf2out_autovec_write_0_dimensionality,
-  input logic [5:0] [15:0] loops_buf2out_autovec_write_0_ranges,
-  input logic [3:0] loops_buf2out_autovec_write_1_dimensionality,
-  input logic [5:0] [15:0] loops_buf2out_autovec_write_1_ranges,
-  input logic [3:0] loops_buf2out_out_sel_dimensionality,
-  input logic [5:0] [15:0] loops_buf2out_out_sel_ranges,
-  input logic [3:0] loops_buf2out_read_0_dimensionality,
-  input logic [5:0] [15:0] loops_buf2out_read_0_ranges,
-  input logic [3:0] loops_buf2out_read_1_dimensionality,
-  input logic [5:0] [15:0] loops_buf2out_read_1_ranges,
-  input logic [3:0] loops_in2buf_0_dimensionality,
-  input logic [5:0] [15:0] loops_in2buf_0_ranges,
-  input logic [3:0] loops_in2buf_1_dimensionality,
-  input logic [5:0] [15:0] loops_in2buf_1_ranges,
-  input logic [3:0] loops_in2buf_autovec_read_0_dimensionality,
-  input logic [5:0] [15:0] loops_in2buf_autovec_read_0_ranges,
-  input logic [3:0] loops_in2buf_autovec_read_1_dimensionality,
-  input logic [5:0] [15:0] loops_in2buf_autovec_read_1_ranges,
-  input logic [3:0] loops_in2buf_autovec_write_dimensionality,
-  input logic [5:0] [15:0] loops_in2buf_autovec_write_ranges,
-  input logic [15:0] out_port_sel_addr_starting_addr,
-  input logic [5:0] [15:0] out_port_sel_addr_strides,
-  input logic [15:0] output_addr_gen_starting_addr,
-  input logic [5:0] [15:0] output_addr_gen_strides,
-  input logic [15:0] output_sched_gen_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] output_sched_gen_sched_addr_gen_strides,
-  input logic [15:0] port_sel_addr_starting_addr,
-  input logic [5:0] [15:0] port_sel_addr_strides,
-  input logic rst_n,
-  input logic [15:0] tb_read_addr_gen_0_starting_addr,
-  input logic [5:0] [15:0] tb_read_addr_gen_0_strides,
-  input logic [15:0] tb_read_addr_gen_1_starting_addr,
-  input logic [5:0] [15:0] tb_read_addr_gen_1_strides,
-  input logic [15:0] tb_read_sched_gen_0_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] tb_read_sched_gen_0_sched_addr_gen_strides,
-  input logic [15:0] tb_read_sched_gen_1_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] tb_read_sched_gen_1_sched_addr_gen_strides,
-  input logic [15:0] tb_write_addr_gen_0_starting_addr,
-  input logic [5:0] [15:0] tb_write_addr_gen_0_strides,
-  input logic [15:0] tb_write_addr_gen_1_starting_addr,
-  input logic [5:0] [15:0] tb_write_addr_gen_1_strides,
-  output logic wen_to_strg
-);
-
-logic [7:0] addr;
-logic [1:0][3:0][3:0][15:0] agg;
-logic [1:0][1:0] agg_read_addr;
-logic [15:0] agg_read_addr_gen_0_addr_out;
-logic agg_read_addr_gen_0_step;
-logic [15:0] agg_read_addr_gen_1_addr_out;
-logic agg_read_addr_gen_1_step;
-logic [1:0][7:0] agg_read_addr_gen_out;
-logic [1:0] agg_write;
-logic [1:0][3:0] agg_write_addr;
-logic [15:0] agg_write_addr_gen_0_addr_out;
-logic agg_write_addr_gen_0_step;
-logic [15:0] agg_write_addr_gen_1_addr_out;
-logic agg_write_addr_gen_1_step;
-logic agg_write_sched_gen_0_valid_output;
-logic agg_write_sched_gen_1_valid_output;
-logic [15:0] cycle_count;
-logic input_port_sel_addr;
-logic [2:0] loops_buf2out_autovec_read_mux_sel_out;
-logic [2:0] loops_buf2out_autovec_write_0_mux_sel_out;
-logic [2:0] loops_buf2out_autovec_write_1_mux_sel_out;
-logic [2:0] loops_buf2out_out_sel_mux_sel_out;
-logic [2:0] loops_buf2out_read_0_mux_sel_out;
-logic loops_buf2out_read_0_step;
-logic [2:0] loops_buf2out_read_1_mux_sel_out;
-logic loops_buf2out_read_1_step;
-logic [2:0] loops_in2buf_0_mux_sel_out;
-logic loops_in2buf_0_step;
-logic [2:0] loops_in2buf_1_mux_sel_out;
-logic loops_in2buf_1_step;
-logic [2:0] loops_in2buf_autovec_read_0_mux_sel_out;
-logic loops_in2buf_autovec_read_0_step;
-logic [2:0] loops_in2buf_autovec_read_1_mux_sel_out;
-logic loops_in2buf_autovec_read_1_step;
-logic [2:0] loops_in2buf_autovec_write_mux_sel_out;
-logic [15:0] out_port_sel_addr_addr_out;
-logic output_port_sel_addr;
-logic [15:0] port_sel_addr_addr_out;
-logic read;
-logic [15:0] read_addr;
-logic read_d1;
-logic [3:0][15:0] sram_read_data;
-logic [3:0][15:0] sram_write_data;
-logic [1:0][1:0][3:0][15:0] tb;
-logic [1:0] tb_read;
-logic [1:0][15:0] tb_read_addr;
-logic [15:0] tb_read_addr_gen_0_addr_out;
-logic tb_read_addr_gen_0_step;
-logic [15:0] tb_read_addr_gen_1_addr_out;
-logic tb_read_addr_gen_1_step;
-logic tb_read_sched_gen_0_valid_output;
-logic tb_read_sched_gen_1_valid_output;
-logic [1:0][15:0] tb_write_addr;
-logic [15:0] tb_write_addr_gen_0_addr_out;
-logic [15:0] tb_write_addr_gen_1_addr_out;
-logic write;
-logic [15:0] write_addr;
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    cycle_count <= 16'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      cycle_count <= 16'h0;
-    end
-    else cycle_count <= cycle_count + 16'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    read_d1 <= 1'h0;
-  end
-  else if (clk_en) begin
-    if (flush) begin
-      read_d1 <= 1'h0;
-    end
-    else read_d1 <= read;
-  end
-end
-assign addr_out = addr;
-assign data_to_strg = sram_write_data;
-assign sram_read_data = data_from_strg;
-assign wen_to_strg = write;
-assign cen_to_strg = write | read;
-assign loops_in2buf_0_step = agg_write[0];
-assign agg_write_addr_gen_0_step = agg_write[0];
-assign agg_write_addr[0] = agg_write_addr_gen_0_addr_out[3:0];
-assign agg_write[0] = agg_write_sched_gen_0_valid_output;
-assign loops_in2buf_autovec_read_0_step = write & (1'h0 == input_port_sel_addr);
-assign agg_read_addr_gen_0_step = write & (1'h0 == input_port_sel_addr);
-assign agg_read_addr_gen_out[0] = agg_read_addr_gen_0_addr_out[7:0];
-assign agg_read_addr[0] = agg_read_addr_gen_out[0][1:0];
-assign loops_in2buf_1_step = agg_write[1];
-assign agg_write_addr_gen_1_step = agg_write[1];
-assign agg_write_addr[1] = agg_write_addr_gen_1_addr_out[3:0];
-assign agg_write[1] = agg_write_sched_gen_1_valid_output;
-assign loops_in2buf_autovec_read_1_step = write & (1'h1 == input_port_sel_addr);
-assign agg_read_addr_gen_1_step = write & (1'h1 == input_port_sel_addr);
-assign agg_read_addr_gen_out[1] = agg_read_addr_gen_1_addr_out[7:0];
-assign agg_read_addr[1] = agg_read_addr_gen_out[1][1:0];
-assign input_port_sel_addr = port_sel_addr_addr_out[0];
-assign accessor_output = tb_read;
-assign tb_write_addr[0] = tb_write_addr_gen_0_addr_out;
-assign loops_buf2out_read_0_step = tb_read[0];
-assign tb_read_addr_gen_0_step = tb_read[0];
-assign tb_read_addr[0] = tb_read_addr_gen_0_addr_out;
-assign tb_read[0] = tb_read_sched_gen_0_valid_output;
-assign tb_write_addr[1] = tb_write_addr_gen_1_addr_out;
-assign loops_buf2out_read_1_step = tb_read[1];
-assign tb_read_addr_gen_1_step = tb_read[1];
-assign tb_read_addr[1] = tb_read_addr_gen_1_addr_out;
-assign tb_read[1] = tb_read_sched_gen_1_valid_output;
-assign output_port_sel_addr = out_port_sel_addr_addr_out[0];
-always_comb begin
-  if (write) begin
-    addr = write_addr[7:0];
-  end
-  else addr = read_addr[7:0];
-end
-
-always_ff @(posedge clk) begin
-  if (clk_en) begin
-    if (agg_write[0]) begin
-      agg[0][agg_write_addr[0][3:2]][agg_write_addr[0][1:0]] <= data_in[0];
-    end
-  end
-end
-
-always_ff @(posedge clk) begin
-  if (clk_en) begin
-    if (agg_write[1]) begin
-      agg[1][agg_write_addr[1][3:2]][agg_write_addr[1][1:0]] <= data_in[1];
-    end
-  end
-end
-always_comb begin
-  sram_write_data[0] = agg[input_port_sel_addr][agg_read_addr[input_port_sel_addr]][0];
-  sram_write_data[1] = agg[input_port_sel_addr][agg_read_addr[input_port_sel_addr]][1];
-  sram_write_data[2] = agg[input_port_sel_addr][agg_read_addr[input_port_sel_addr]][2];
-  sram_write_data[3] = agg[input_port_sel_addr][agg_read_addr[input_port_sel_addr]][3];
-end
-
-always_ff @(posedge clk) begin
-  if (clk_en) begin
-    if (read_d1) begin
-      tb[output_port_sel_addr][tb_write_addr[output_port_sel_addr][0]] <= sram_read_data;
-    end
-  end
-end
-always_comb begin
-  data_out[0] = tb[0][tb_read_addr[0][2]][tb_read_addr[0][1:0]];
-end
-always_comb begin
-  data_out[1] = tb[1][tb_read_addr[1][2]][tb_read_addr[1][1:0]];
-end
-for_loop_6 loops_in2buf_0 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_in2buf_0_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_in2buf_0_mux_sel_out),
-  .ranges(loops_in2buf_0_ranges),
-  .rst_n(rst_n),
-  .step(loops_in2buf_0_step)
-);
-
-addr_gen_6 agg_write_addr_gen_0 (
-  .addr_out(agg_write_addr_gen_0_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_in2buf_0_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(agg_write_addr_gen_0_starting_addr),
-  .step(agg_write_addr_gen_0_step),
-  .strides(agg_write_addr_gen_0_strides)
-);
-
-sched_gen_6 agg_write_sched_gen_0 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .cycle_count(cycle_count),
-  .flush(flush),
-  .mux_sel(loops_in2buf_0_mux_sel_out),
-  .rst_n(rst_n),
-  .sched_addr_gen_starting_addr(agg_write_sched_gen_0_sched_addr_gen_starting_addr),
-  .sched_addr_gen_strides(agg_write_sched_gen_0_sched_addr_gen_strides),
-  .valid_output(agg_write_sched_gen_0_valid_output)
-);
-
-for_loop_6 loops_in2buf_autovec_read_0 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_in2buf_autovec_read_0_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_in2buf_autovec_read_0_mux_sel_out),
-  .ranges(loops_in2buf_autovec_read_0_ranges),
-  .rst_n(rst_n),
-  .step(loops_in2buf_autovec_read_0_step)
-);
-
-addr_gen_6 agg_read_addr_gen_0 (
-  .addr_out(agg_read_addr_gen_0_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_in2buf_autovec_read_0_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(agg_read_addr_gen_0_starting_addr),
-  .step(agg_read_addr_gen_0_step),
-  .strides(agg_read_addr_gen_0_strides)
-);
-
-for_loop_6 loops_in2buf_1 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_in2buf_1_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_in2buf_1_mux_sel_out),
-  .ranges(loops_in2buf_1_ranges),
-  .rst_n(rst_n),
-  .step(loops_in2buf_1_step)
-);
-
-addr_gen_6 agg_write_addr_gen_1 (
-  .addr_out(agg_write_addr_gen_1_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_in2buf_1_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(agg_write_addr_gen_1_starting_addr),
-  .step(agg_write_addr_gen_1_step),
-  .strides(agg_write_addr_gen_1_strides)
-);
-
-sched_gen_6 agg_write_sched_gen_1 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .cycle_count(cycle_count),
-  .flush(flush),
-  .mux_sel(loops_in2buf_1_mux_sel_out),
-  .rst_n(rst_n),
-  .sched_addr_gen_starting_addr(agg_write_sched_gen_1_sched_addr_gen_starting_addr),
-  .sched_addr_gen_strides(agg_write_sched_gen_1_sched_addr_gen_strides),
-  .valid_output(agg_write_sched_gen_1_valid_output)
-);
-
-for_loop_6 loops_in2buf_autovec_read_1 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_in2buf_autovec_read_1_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_in2buf_autovec_read_1_mux_sel_out),
-  .ranges(loops_in2buf_autovec_read_1_ranges),
-  .rst_n(rst_n),
-  .step(loops_in2buf_autovec_read_1_step)
-);
-
-addr_gen_6 agg_read_addr_gen_1 (
-  .addr_out(agg_read_addr_gen_1_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_in2buf_autovec_read_1_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(agg_read_addr_gen_1_starting_addr),
-  .step(agg_read_addr_gen_1_step),
-  .strides(agg_read_addr_gen_1_strides)
-);
-
-for_loop_6 loops_in2buf_autovec_write (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_in2buf_autovec_write_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_in2buf_autovec_write_mux_sel_out),
-  .ranges(loops_in2buf_autovec_write_ranges),
-  .rst_n(rst_n),
-  .step(write)
-);
-
-addr_gen_6 port_sel_addr (
-  .addr_out(port_sel_addr_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_in2buf_autovec_write_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(port_sel_addr_starting_addr),
-  .step(write),
-  .strides(port_sel_addr_strides)
-);
-
-addr_gen_6 input_addr_gen (
-  .addr_out(write_addr),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_in2buf_autovec_write_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(input_addr_gen_starting_addr),
-  .step(write),
-  .strides(input_addr_gen_strides)
-);
-
-sched_gen_6 input_sched_gen (
-  .clk(clk),
-  .clk_en(clk_en),
-  .cycle_count(cycle_count),
-  .flush(flush),
-  .mux_sel(loops_in2buf_autovec_write_mux_sel_out),
-  .rst_n(rst_n),
-  .sched_addr_gen_starting_addr(input_sched_gen_sched_addr_gen_starting_addr),
-  .sched_addr_gen_strides(input_sched_gen_sched_addr_gen_strides),
-  .valid_output(write)
-);
-
-for_loop_6 loops_buf2out_autovec_read (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_buf2out_autovec_read_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_buf2out_autovec_read_mux_sel_out),
-  .ranges(loops_buf2out_autovec_read_ranges),
-  .rst_n(rst_n),
-  .step(read)
-);
-
-addr_gen_6 output_addr_gen (
-  .addr_out(read_addr),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_buf2out_autovec_read_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(output_addr_gen_starting_addr),
-  .step(read),
-  .strides(output_addr_gen_strides)
-);
-
-sched_gen_6 output_sched_gen (
-  .clk(clk),
-  .clk_en(clk_en),
-  .cycle_count(cycle_count),
-  .flush(flush),
-  .mux_sel(loops_buf2out_autovec_read_mux_sel_out),
-  .rst_n(rst_n),
-  .sched_addr_gen_starting_addr(output_sched_gen_sched_addr_gen_starting_addr),
-  .sched_addr_gen_strides(output_sched_gen_sched_addr_gen_strides),
-  .valid_output(read)
-);
-
-for_loop_6 loops_buf2out_autovec_write_0 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_buf2out_autovec_write_0_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_buf2out_autovec_write_0_mux_sel_out),
-  .ranges(loops_buf2out_autovec_write_0_ranges),
-  .rst_n(rst_n),
-  .step(read_d1)
-);
-
-addr_gen_6 tb_write_addr_gen_0 (
-  .addr_out(tb_write_addr_gen_0_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_buf2out_autovec_write_0_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(tb_write_addr_gen_0_starting_addr),
-  .step(read_d1),
-  .strides(tb_write_addr_gen_0_strides)
-);
-
-for_loop_6 loops_buf2out_read_0 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_buf2out_read_0_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_buf2out_read_0_mux_sel_out),
-  .ranges(loops_buf2out_read_0_ranges),
-  .rst_n(rst_n),
-  .step(loops_buf2out_read_0_step)
-);
-
-addr_gen_6 tb_read_addr_gen_0 (
-  .addr_out(tb_read_addr_gen_0_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_buf2out_read_0_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(tb_read_addr_gen_0_starting_addr),
-  .step(tb_read_addr_gen_0_step),
-  .strides(tb_read_addr_gen_0_strides)
-);
-
-sched_gen_6 tb_read_sched_gen_0 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .cycle_count(cycle_count),
-  .flush(flush),
-  .mux_sel(loops_buf2out_read_0_mux_sel_out),
-  .rst_n(rst_n),
-  .sched_addr_gen_starting_addr(tb_read_sched_gen_0_sched_addr_gen_starting_addr),
-  .sched_addr_gen_strides(tb_read_sched_gen_0_sched_addr_gen_strides),
-  .valid_output(tb_read_sched_gen_0_valid_output)
-);
-
-for_loop_6 loops_buf2out_autovec_write_1 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_buf2out_autovec_write_1_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_buf2out_autovec_write_1_mux_sel_out),
-  .ranges(loops_buf2out_autovec_write_1_ranges),
-  .rst_n(rst_n),
-  .step(read_d1)
-);
-
-addr_gen_6 tb_write_addr_gen_1 (
-  .addr_out(tb_write_addr_gen_1_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_buf2out_autovec_write_1_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(tb_write_addr_gen_1_starting_addr),
-  .step(read_d1),
-  .strides(tb_write_addr_gen_1_strides)
-);
-
-for_loop_6 loops_buf2out_read_1 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_buf2out_read_1_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_buf2out_read_1_mux_sel_out),
-  .ranges(loops_buf2out_read_1_ranges),
-  .rst_n(rst_n),
-  .step(loops_buf2out_read_1_step)
-);
-
-addr_gen_6 tb_read_addr_gen_1 (
-  .addr_out(tb_read_addr_gen_1_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_buf2out_read_1_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(tb_read_addr_gen_1_starting_addr),
-  .step(tb_read_addr_gen_1_step),
-  .strides(tb_read_addr_gen_1_strides)
-);
-
-sched_gen_6 tb_read_sched_gen_1 (
-  .clk(clk),
-  .clk_en(clk_en),
-  .cycle_count(cycle_count),
-  .flush(flush),
-  .mux_sel(loops_buf2out_read_1_mux_sel_out),
-  .rst_n(rst_n),
-  .sched_addr_gen_starting_addr(tb_read_sched_gen_1_sched_addr_gen_starting_addr),
-  .sched_addr_gen_strides(tb_read_sched_gen_1_sched_addr_gen_strides),
-  .valid_output(tb_read_sched_gen_1_valid_output)
-);
-
-for_loop_6 loops_buf2out_out_sel (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_buf2out_out_sel_dimensionality),
-  .flush(flush),
-  .mux_sel_out(loops_buf2out_out_sel_mux_sel_out),
-  .ranges(loops_buf2out_out_sel_ranges),
-  .rst_n(rst_n),
-  .step(read_d1)
-);
-
-addr_gen_6 out_port_sel_addr (
-  .addr_out(out_port_sel_addr_addr_out),
-  .clk(clk),
-  .clk_en(clk_en),
-  .flush(flush),
-  .mux_sel(loops_buf2out_out_sel_mux_sel_out),
-  .rst_n(rst_n),
-  .starting_addr(out_port_sel_addr_starting_addr),
-  .step(read_d1),
-  .strides(out_port_sel_addr_strides)
-);
-
-endmodule   // strg_ub_vec
-
 module tsmc_name_generator (
   input logic clk,
   input logic clk_en,
   input logic flush,
-  input logic [7:0] mem_addr_in_bank,
+  input logic [8:0] mem_addr_in_bank,
   input logic mem_cen_in_bank,
   input logic [3:0] [15:0] mem_data_in_bank,
   output logic [0:0][3:0] [15:0] mem_data_out_bank,
@@ -2224,19 +1506,62 @@ module tsmc_name_generator (
   input logic [1:0] wtsel
 );
 
-logic [7:0] mem_addr_to_sram;
+logic [8:0] mem_addr_to_sram;
+logic mem_inst_0_pt_0_sram_cen;
+logic [31:0] mem_inst_0_pt_0_sram_data_in;
+logic [31:0] mem_inst_0_pt_0_sram_data_out;
+logic mem_inst_0_pt_0_sram_wen;
+logic mem_inst_0_pt_1_sram_cen;
+logic [31:0] mem_inst_0_pt_1_sram_data_in;
+logic [31:0] mem_inst_0_pt_1_sram_data_out;
+logic mem_inst_0_pt_1_sram_wen;
+logic [63:0] sram_mem_data_in_bank;
+logic [63:0] sram_mem_data_out_bank;
+assign mem_inst_0_pt_0_sram_cen = ~mem_cen_in_bank;
+assign mem_inst_0_pt_0_sram_data_in = sram_mem_data_in_bank[31:0];
+assign sram_mem_data_out_bank[31:0] = mem_inst_0_pt_0_sram_data_out;
+assign mem_inst_0_pt_0_sram_wen = ~mem_wen_in_bank;
+assign mem_inst_0_pt_1_sram_cen = ~mem_cen_in_bank;
+assign mem_inst_0_pt_1_sram_data_in = sram_mem_data_in_bank[63:32];
+assign sram_mem_data_out_bank[63:32] = mem_inst_0_pt_1_sram_data_out;
+assign mem_inst_0_pt_1_sram_wen = ~mem_wen_in_bank;
 always_comb begin
   mem_addr_to_sram = mem_addr_in_bank;
 end
-sram_stub mem_0 (
-  .addr(mem_addr_to_sram),
-  .cen(mem_cen_in_bank),
-  .clk(clk),
+flattenND flatten_data_in_0 (
   .clk_en(clk_en),
-  .data_in(mem_data_in_bank),
-  .data_out(mem_data_out_bank),
   .flush(flush),
-  .wen(mem_wen_in_bank)
+  .input_array(mem_data_in_bank),
+  .output_array(sram_mem_data_in_bank)
+);
+
+tsmc_name mem_inst_0_pt_0 (
+  .A(mem_addr_to_sram),
+  .CEB(mem_inst_0_pt_0_sram_cen),
+  .CLK(clk),
+  .D(mem_inst_0_pt_0_sram_data_in),
+  .Q(mem_inst_0_pt_0_sram_data_out),
+  .RTSEL(rtsel),
+  .WEB(mem_inst_0_pt_0_sram_wen),
+  .WTSEL(wtsel)
+);
+
+tsmc_name mem_inst_0_pt_1 (
+  .A(mem_addr_to_sram),
+  .CEB(mem_inst_0_pt_1_sram_cen),
+  .CLK(clk),
+  .D(mem_inst_0_pt_1_sram_data_in),
+  .Q(mem_inst_0_pt_1_sram_data_out),
+  .RTSEL(rtsel),
+  .WEB(mem_inst_0_pt_1_sram_wen),
+  .WTSEL(wtsel)
+);
+
+ReverseFlatten flatten_data_out_0 (
+  .clk_en(clk_en),
+  .flush(flush),
+  .input_array(sram_mem_data_out_bank),
+  .output_array(mem_data_out_bank)
 );
 
 endmodule   // tsmc_name_generator

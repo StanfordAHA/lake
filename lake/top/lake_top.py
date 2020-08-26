@@ -531,7 +531,7 @@ class LakeTop(Generator):
                        #    valid_out=self._ub_valid_out,
                        data_to_strg=self._ub_data_to_mem,
                        #  ren_to_strg=self._ub_cen_to_mem,
-                       cen_to_strg=self._ub_cen_to_mem,
+                    #    cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem,
                        accessor_output=self._accessor_output)
 
@@ -824,7 +824,7 @@ class LakeTop(Generator):
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = True
+    use_sram_stub = False
     fifo_mode = True
     mem_width = 64
     lake_dut = LakeTop(mem_width=mem_width,
