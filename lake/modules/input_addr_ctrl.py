@@ -181,7 +181,6 @@ class InputAddrCtrl(Generator):
         # (1 per input port) to send to the sram banks
         for i in range(self.interconnect_input_ports):
             self.add_child(f"address_gen_{i}", AddrGen(iterator_support=self.iterator_support,
-                                                       address_width=self.address_width,
                                                        config_width=self.config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,

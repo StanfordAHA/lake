@@ -1,16 +1,18 @@
 from kratos import *
 from lake.modules.passthru import *
-from lake.modules.sram_wrapper import SRAMWrapper
-from lake.modules.strg_ub import StrgUB
+from lake.modules.sram import SRAM
+from lake.modules.strg_ub_vec import StrgUBVec
+from lake.modules.strg_ub_thin import StrgUBThin
 from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
-from lake.modules.chain import Chain
+from lake.modules.chain_accessor import ChainAccessor
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
+from lake.utils.util import extract_formal_annotation
 import kratos as kts
 
 
@@ -28,35 +30,21 @@ class LakeTop(Generator):
                  interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
-                 use_sram_stub=1,
-                 sram_macro_info=SRAMMacroInfo(),
+                 use_sram_stub=True,
+                 sram_macro_info=SRAMMacroInfo("tsmc_name"),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
-                 max_agg_schedule=16,
-                 input_max_port_sched=16,
-                 output_max_port_sched=16,
-                 align_input=1,
-                 max_line_length=128,
-                 max_tb_height=1,
-                 tb_range_max=1024,
-                 tb_range_inner_max=32,
                  tb_sched_max=16,
-                 max_tb_stride=15,
-                 num_tb=1,
-                 tb_iterator_support=2,
-                 multiwrite=1,
-                 max_prefetch=8,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
                  remove_tb=False,
-                 app_ctrl_depth_width=16,
                  fifo_mode=True,
                  add_clk_enable=True,
                  add_flush=True,
-                 stcl_valid_iter=4,
-                 name="LakeTop"):
+                 name="LakeTop",
+                 gen_addr=True):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -74,32 +62,17 @@ class LakeTop(Generator):
         self.use_sram_stub = use_sram_stub
         self.sram_macro_info = sram_macro_info
         self.agg_height = agg_height
-        self.max_agg_schedule = max_agg_schedule
-        self.input_max_port_sched = input_max_port_sched
-        self.output_max_port_sched = output_max_port_sched
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
-        self.align_input = align_input
-        self.max_line_length = max_line_length
         assert self.mem_width >= self.data_width, "Data width needs to be smaller than mem"
         self.fw_int = int(self.mem_width / self.data_width)
-        self.num_tb = num_tb
-        self.max_tb_height = max_tb_height
-        self.tb_range_max = tb_range_max
-        self.tb_range_inner_max = tb_range_inner_max
-        self.max_tb_stride = max_tb_stride
-        self.tb_sched_max = tb_sched_max
-        self.tb_iterator_support = tb_iterator_support
-        self.multiwrite = multiwrite
-        self.max_prefetch = max_prefetch
         self.config_data_width = config_data_width
         self.config_addr_width = config_addr_width
         self.num_tiles = num_tiles
-        self.app_ctrl_depth_width = app_ctrl_depth_width
         self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         self.fifo_mode = fifo_mode
-        self.stcl_valid_iter = stcl_valid_iter
+        self.gen_addr = gen_addr
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -107,7 +80,6 @@ class LakeTop(Generator):
         self.sets_per_macro = max(1, int(self.mem_depth / self.data_words_per_set))
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
-        self.chain_idx_bits = max(1, clog2(num_tiles))
         # phases = [] TODO
 
         # CLK and RST
@@ -116,23 +88,23 @@ class LakeTop(Generator):
 
         # Chaining config regs
 
-        self._enable_chain_input = self.input("enable_chain_input", 1)
-        self._enable_chain_input.add_attribute(ConfigRegAttr("Enable chain on input"))
+        # self._enable_chain_input = self.input("enable_chain_input", 1)
+        # self._enable_chain_input.add_attribute(ConfigRegAttr("Enable chain on input"))
 
-        self._enable_chain_output = self.input("enable_chain_output", 1)
-        self._enable_chain_output.add_attribute(ConfigRegAttr("Enable chain on output"))
+        # self._enable_chain_output = self.input("enable_chain_output", 1)
+        # self._enable_chain_output.add_attribute(ConfigRegAttr("Enable chain on output"))
 
-        self._chain_idx_input = self.input("chain_idx_input",
-                                           self.chain_idx_bits)
-        self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
-        self._chain_idx_output = self.input("chain_idx_output",
-                                            self.chain_idx_bits)
-        self._chain_idx_output.add_attribute(ConfigRegAttr("Tile output index when having multiple tiles"))
+        # self._chain_idx_input = self.input("chain_idx_input",
+        #                                    self.chain_idx_bits)
+        # self._chain_idx_input.add_attribute(ConfigRegAttr("Tile input index when having multiple tiles"))
+        # self._chain_idx_output = self.input("chain_idx_output",
+        #                                     self.chain_idx_bits)
+        # self._chain_idx_output.add_attribute(ConfigRegAttr("Tile output index when having multiple tiles"))
 
         # Chaining signals
-        self._chain_valid_in = self.input("chain_valid_in",
-                                          self.interconnect_output_ports)
-        self._chain_valid_in.add_attribute(ControlSignalAttr(True))
+        # self._chain_valid_in = self.input("chain_valid_in",
+        #                                   self.interconnect_output_ports)
+        # self._chain_valid_in.add_attribute(ControlSignalAttr(True))
 
         self._chain_data_in = self.input("chain_data_in",
                                          self.data_width,
@@ -141,16 +113,16 @@ class LakeTop(Generator):
                                          explicit_array=True)
         self._chain_data_in.add_attribute(ControlSignalAttr(False))
 
-        self._chain_data_out = self.output("chain_data_out",
-                                           self.data_width,
-                                           size=self.interconnect_output_ports,
-                                           packed=True,
-                                           explicit_array=True)
-        self._chain_data_out.add_attribute(ControlSignalAttr(False))
+        # self._chain_data_out = self.output("chain_data_out",
+        #                                    self.data_width,
+        #                                    size=self.interconnect_output_ports,
+        #                                    packed=True,
+        #                                    explicit_array=True)
+        # self._chain_data_out.add_attribute(ControlSignalAttr(False))
 
-        self._chain_valid_out = self.output("chain_valid_out",
-                                            self.interconnect_output_ports)
-        self._chain_valid_out.add_attribute(ControlSignalAttr(False))
+        # self._chain_valid_out = self.output("chain_valid_out",
+        #                                     self.interconnect_output_ports)
+        # self._chain_valid_out.add_attribute(ControlSignalAttr(False))
 
         # Want to accept DATA_IN, CONFIG_DATA, ADDR_IN, CONFIG_ADDR, and take in the OUT
         # MAIN Inputs
@@ -162,12 +134,26 @@ class LakeTop(Generator):
                                    explicit_array=True)
         self._data_in.add_attribute(ControlSignalAttr(False))
 
-        self._addr_in = self.input("addr_in",
-                                   self.data_width,
-                                   size=self.interconnect_input_ports,
-                                   packed=True,
-                                   explicit_array=True)
-        self._addr_in.add_attribute(ControlSignalAttr(False))
+        if self.rw_same_cycle:
+            self._wr_addr_in = self.input("waddr",
+                                          self.data_width,
+                                          size=self.interconnect_input_ports,
+                                          packed=True,
+                                          explicit_array=True)
+            self._wr_addr_in.add_attribute(ControlSignalAttr(False))
+            self._rd_addr_in = self.input("raddr",
+                                          self.data_width,
+                                          size=self.interconnect_input_ports,
+                                          packed=True,
+                                          explicit_array=True)
+            self._rd_addr_in.add_attribute(ControlSignalAttr(False))
+        else:
+            self._addr_in = self.input("addr_in",
+                                       self.data_width,
+                                       size=self.interconnect_input_ports,
+                                       packed=True,
+                                       explicit_array=True)
+            self._addr_in.add_attribute(ControlSignalAttr(False))
 
         self._wen = self.input("wen_in", self.interconnect_input_ports)
         self._wen.add_attribute(ControlSignalAttr(True))
@@ -221,9 +207,9 @@ class LakeTop(Generator):
                                      explicit_array=True)
         self._data_out.add_attribute(ControlSignalAttr(False))
 
-        self._valid_out = self.output("valid_out",
-                                      self.interconnect_output_ports)
-        self._valid_out.add_attribute(ControlSignalAttr(False))
+        # self._valid_out = self.output("valid_out",
+        #                               self.interconnect_output_ports)
+        # self._valid_out.add_attribute(ControlSignalAttr(False))
 
         self._data_out_tile = self.var("data_out_tile",
                                        self.data_width,
@@ -231,8 +217,9 @@ class LakeTop(Generator):
                                        packed=True,
                                        explicit_array=True)
 
-        self._valid_out_tile = self.var("valid_out_tile",
-                                        self.interconnect_output_ports)
+        self._valid_out_tile = self.output("valid_out",
+                                           self.interconnect_output_ports)
+        self._valid_out_tile.add_attribute(ControlSignalAttr(False))
 
         self.address_width = clog2(self.num_tiles * self.mem_depth)
 
@@ -348,11 +335,6 @@ class LakeTop(Generator):
                                     explicit_array=True,
                                     packed=True)
 
-        self._mem_valid_data = self.var("mem_valid_data", self.mem_output_ports,
-                                        size=self.banks,
-                                        explicit_array=True,
-                                        packed=True)
-
         self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
                                     size=self.banks,
                                     explicit_array=True,
@@ -447,38 +429,43 @@ class LakeTop(Generator):
                                      packed=True,
                                      explicit_array=True)
 
-        strg_ub = StrgUB(data_width=self.data_width,
-                         mem_width=self.mem_width,
-                         mem_depth=self.mem_depth,
-                         num_tiles=self.num_tiles,
-                         banks=self.banks,
-                         input_iterator_support=self.input_iterator_support,
-                         output_iterator_support=self.output_iterator_support,
-                         interconnect_input_ports=self.interconnect_input_ports,
-                         interconnect_output_ports=self.interconnect_output_ports,
-                         mem_input_ports=self.mem_input_ports,
-                         mem_output_ports=self.mem_output_ports,
-                         read_delay=self.read_delay,
-                         rw_same_cycle=self.rw_same_cycle,
-                         agg_height=self.agg_height,
-                         max_agg_schedule=self.max_agg_schedule,
-                         input_max_port_sched=self.input_max_port_sched,
-                         output_max_port_sched=self.output_max_port_sched,
-                         align_input=self.align_input,
-                         max_line_length=self.max_line_length,
-                         max_tb_height=self.max_tb_height,
-                         tb_range_max=self.tb_range_max,
-                         tb_range_inner_max=self.tb_range_inner_max,
-                         tb_sched_max=self.tb_sched_max,
-                         max_tb_stride=self.max_tb_stride,
-                         num_tb=self.num_tb,
-                         tb_iterator_support=self.tb_iterator_support,
-                         multiwrite=self.multiwrite,
-                         max_prefetch=self.max_prefetch,
-                         remove_tb=self.remove_tb,
-                         input_config_width=self.input_config_width,
-                         output_config_width=self.output_config_width,
-                         stcl_valid_iter=self.stcl_valid_iter)
+        if self.fw_int > 1:
+
+            strg_ub = StrgUBVec(data_width=self.data_width,
+                                mem_width=self.mem_width,
+                                mem_depth=self.mem_depth,
+                                banks=self.banks,
+                                input_addr_iterator_support=self.input_iterator_support,
+                                output_addr_iterator_support=self.output_iterator_support,
+                                input_sched_iterator_support=self.input_iterator_support,
+                                output_sched_iterator_support=self.output_iterator_support,
+                                interconnect_input_ports=self.interconnect_input_ports,
+                                interconnect_output_ports=self.interconnect_output_ports,
+                                mem_input_ports=self.mem_input_ports,
+                                mem_output_ports=self.mem_output_ports,
+                                read_delay=self.read_delay,
+                                rw_same_cycle=self.rw_same_cycle,
+                                agg_height=self.agg_height,
+                                config_width=self.input_config_width)
+
+        else:
+
+            strg_ub = StrgUBThin(data_width=self.data_width,
+                                 mem_width=self.mem_width,
+                                 mem_depth=self.mem_depth,
+                                 banks=self.banks,
+                                 input_addr_iterator_support=self.input_iterator_support,
+                                 input_sched_iterator_support=self.input_iterator_support,
+                                 output_addr_iterator_support=self.output_iterator_support,
+                                 output_sched_iterator_support=self.output_iterator_support,
+                                 interconnect_input_ports=self.interconnect_input_ports,
+                                 interconnect_output_ports=self.interconnect_output_ports,
+                                 config_width=self.input_config_width,
+                                 mem_input_ports=self.mem_input_ports,
+                                 mem_output_ports=self.mem_output_ports,
+                                 read_delay=self.read_delay,
+                                 rw_same_cycle=self.rw_same_cycle,
+                                 gen_addr=self.gen_addr)
 
         self._ub_data_to_mem = self.var("ub_data_to_mem",
                                         self.data_width,
@@ -527,24 +514,32 @@ class LakeTop(Generator):
                                             packed=True,
                                             explicit_array=True)
 
+        self._accessor_output = self.var("accessor_output", self.interconnect_output_ports)
+
         self.add_child("strg_ub", strg_ub,
                        # clk + rst
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        # inputs
                        data_in=self._data_in,
-                       wen_in=self._wen,
-                       ren_in=self._ren,
+                       # wen_in=self._wen,
+                       # ren_in=self._ren,
                        data_from_strg=self._mem_data_out,
-                       mem_valid_data=self._mem_valid_data,
+                       #    mem_valid_data=self._mem_valid_data,
                        # outputs
                        data_out=self._ub_data_out,
-                       valid_out=self._ub_valid_out,
+                       #    valid_out=self._ub_valid_out,
                        data_to_strg=self._ub_data_to_mem,
+                       #  ren_to_strg=self._ub_cen_to_mem,
                        cen_to_strg=self._ub_cen_to_mem,
                        wen_to_strg=self._ub_wen_to_mem,
-                       enable_chain_output=self._enable_chain_output,
-                       chain_idx_output=self._chain_idx_output)
+                       accessor_output=self._accessor_output)
+
+        # Handle different names - sorry
+        if self.rw_same_cycle:
+            self.wire(strg_ub.ports.ren_to_strg, self._ub_cen_to_mem)
+        else:
+            self.wire(strg_ub.ports.cen_to_strg, self._ub_cen_to_mem)
 
         # Wire addrs
         if self.rw_same_cycle:
@@ -554,8 +549,14 @@ class LakeTop(Generator):
         else:
             self.wire(self._ub_addr_to_mem, strg_ub.ports.addr_out)
 
+        if self.gen_addr is False:
+            self.wire(strg_ub.ports.read_addr, self._rd_addr_in[0])
+            self.wire(strg_ub.ports.write_addr, self._wr_addr_in[0])
+            self.wire(strg_ub.ports.wen_in, self._wen)
+            self.wire(strg_ub.ports.ren_in, self._ren)
+
         # Wrap sram_stub
-        if self.read_delay == 1:
+        if self.read_delay == 1 and self.rw_same_cycle is False:
 
             self._all_data_to_mem = self.var("all_data_to_mem", self.data_width,
                                              size=(self.num_modes,
@@ -704,23 +705,19 @@ class LakeTop(Generator):
             self.wire(self._mem_addr_dp, self._all_addr_to_mem[self._mode])
 
             for i in range(self.banks):
-                mbank = SRAMWrapper(use_sram_stub=self.use_sram_stub,
-                                    sram_name=self.sram_macro_info.name,
-                                    data_width=self.data_width,
-                                    fw_int=self.fw_int,
-                                    mem_depth=self.mem_depth,
-                                    mem_input_ports=self.mem_input_ports,
-                                    mem_output_ports=self.mem_output_ports,
-                                    address_width=self.address_width,
-                                    bank_num=i,
-                                    num_tiles=self.num_tiles)
+                mbank = SRAM(use_sram_stub=self.use_sram_stub,
+                             sram_name=self.sram_macro_info.name,
+                             data_width=self.data_width,
+                             fw_int=self.fw_int,
+                             mem_depth=self.mem_depth,
+                             mem_input_ports=self.mem_input_ports,
+                             mem_output_ports=self.mem_output_ports,
+                             address_width=self.address_width,
+                             bank_num=i,
+                             num_tiles=self.num_tiles)
 
                 self.add_child(f"mem_{i}", mbank,
                                clk=self._gclk,
-                               enable_chain_input=self._enable_chain_input,
-                               enable_chain_output=self._enable_chain_output,
-                               chain_idx_input=self._chain_idx_input,
-                               chain_idx_output=self._chain_idx_output,
                                clk_en=self._clk_en | self._config_en.r_or(),
                                mem_data_in_bank=self._mem_data_in[i],
                                mem_data_out_bank=self._mem_data_out[i],
@@ -728,8 +725,7 @@ class LakeTop(Generator):
                                mem_cen_in_bank=self._mem_cen_in[i],
                                mem_wen_in_bank=self._mem_wen_in[i],
                                wtsel=self.sram_macro_info.wtsel_value,
-                               rtsel=self.sram_macro_info.rtsel_value,
-                               valid_data=self._mem_valid_data[i])
+                               rtsel=self.sram_macro_info.rtsel_value)
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)
@@ -746,10 +742,12 @@ class LakeTop(Generator):
                                      write_ports=self.mem_input_ports,
                                      read_ports=self.mem_output_ports,
                                      width_mult=self.fw_int,
-                                     depth=self.mem_depth)
+                                     depth=self.mem_depth,
+                                     read_delay=self.read_delay)
                 if self.rw_same_cycle:
                     self.add_child(f"rf_{i}", rfile,
                                    clk=self._gclk,
+                                   rst_n=self._rst_n,
                                    wen=self._mem_wen_in[i],
                                    wr_addr=self._wr_mem_addr_in[i],
                                    rd_addr=self._rd_mem_addr_in[i],
@@ -758,11 +756,14 @@ class LakeTop(Generator):
                 else:
                     self.add_child(f"rf_{i}", rfile,
                                    clk=self._gclk,
+                                   rst_n=self._rst_n,
                                    wen=self._mem_wen_in[i],
                                    wr_addr=self._mem_addr_in[i],
                                    rd_addr=self._mem_addr_in[i],
                                    data_in=self._mem_data_in[i],
                                    data_out=self._mem_data_out[i])
+                if self.read_delay == 1:
+                    self.wire(rfile.ports.ren, self._mem_cen_dp[0])
 
         if self.fifo_mode:
             self._all_data_out = self.var("all_data_out", self.data_width,
@@ -790,21 +791,14 @@ class LakeTop(Generator):
             self.wire(self._data_out_tile[i + 1], self._ub_data_out[i + 1])
             self.wire(self._valid_out_tile[i + 1], self._ub_valid_out[i + 1])
 
-        chaining = Chain(data_width=self.data_width,
-                         interconnect_output_ports=self.interconnect_output_ports,
-                         chain_idx_bits=self.chain_idx_bits)
+        chaining = ChainAccessor(data_width=self.data_width,
+                                 interconnect_output_ports=self.interconnect_output_ports)
 
         self.add_child(f"chain", chaining,
-                       enable_chain_output=self._enable_chain_output,
-                       chain_idx_output=self._chain_idx_output,
-                       curr_tile_valid_out=self._valid_out_tile,
                        curr_tile_data_out=self._data_out_tile,
-                       chain_valid_in=self._chain_valid_in,
                        chain_data_in=self._chain_data_in,
-                       chain_data_out=self._chain_data_out,
-                       chain_valid_out=self._chain_valid_out,
-                       data_out_tile=self._data_out,
-                       valid_out_tile=self._valid_out)
+                       accessor_output=self._accessor_output | (self._mode != 0),
+                       data_out_tile=self._data_out)
 
         ########################
         ##### CLOCK ENABLE #####
@@ -825,10 +819,12 @@ class LakeTop(Generator):
         # config regs
         lift_config_reg(self.internal_generator)
 
+        # extract_formal_annotation(self.internal_generator, "test.txt")
+
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = False
+    use_sram_stub = True
     fifo_mode = True
     mem_width = 64
     lake_dut = LakeTop(mem_width=mem_width,
