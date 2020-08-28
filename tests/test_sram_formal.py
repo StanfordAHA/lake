@@ -66,26 +66,84 @@ def test_sram_formal():
                                                                   dimensionality=dim)
 
     config = {}
-    config["sram_write_loops_ranges_0"] = 485
-    config["sram_write_loops_ranges_1"] = 0
-    config["sram_write_loops_ranges_2"] = 0
-    config["sram_write_loops_ranges_3"] = 0
-    config["sram_write_loops_ranges_4"] = 0
-    config["sram_write_loops_ranges_5"] = 0
-    # config["sram_read_sched_gen_sched_addr_gen_starting_addr"] = 5
-    # config["sram_read_sched_gen_sched_addr_gen_strides_0"] = 3
-    # config["sram_read_sched_gen_sched_addr_gen_strides_1"] = 1
+    # config["sram_write_loops_ranges_0"] = 485
+    # config["sram_write_loops_ranges_1"] = 0
+    # config["sram_write_loops_ranges_2"] = 0
+    # config["sram_write_loops_ranges_3"] = 0
+    # config["sram_write_loops_ranges_4"] = 0
+    # config["sram_write_loops_ranges_5"] = 0
+    # # config["sram_read_sched_gen_sched_addr_gen_starting_addr"] = 5
+    # # config["sram_read_sched_gen_sched_addr_gen_strides_0"] = 3
+    # # config["sram_read_sched_gen_sched_addr_gen_strides_1"] = 1
+    # # config["sram_read_sched_gen_sched_addr_gen_strides_2"] = 65535
+    # # config["sram_read_sched_gen_sched_addr_gen_strides_3"] = 65535
+    # # config["sram_read_sched_gen_sched_addr_gen_strides_4"] = 65535
+    # # config["sram_read_sched_gen_sched_addr_gen_strides_5"] = 65535
+    # config["sram_write_addr_gen_strides_0"] = 65534
+    # config["sram_write_addr_gen_strides_1"] = 0
+    # config["sram_write_addr_gen_strides_2"] = 0
+    # config["sram_write_addr_gen_strides_3"] = 0
+    # config["sram_write_addr_gen_strides_4"] = 0
+    # config["sram_write_addr_gen_strides_5"] = 0
+    # config["sram_write_addr_gen_starting_addr"] = 33791
+    # config["sram_write_sched_gen_sched_addr_gen_starting_addr"] = 4
+    # config["sram_read_addr_gen_strides_0"] = 65535
+    # config["sram_read_addr_gen_strides_1"] = 65535
+    # config["sram_read_addr_gen_strides_2"] = 65535
+    # config["sram_read_addr_gen_strides_3"] = 65535
+    # config["sram_read_addr_gen_strides_4"] = 65535
+    # config["sram_read_addr_gen_strides_5"] = 65535
+    # config["sram_write_loops_dimensionality"] = 0
+    # # config["sram_read_loops_dimensionality"] = 0
+    # # config["sram_read_loops_ranges_0"] = 0
+    # # config["sram_read_loops_ranges_1"] = 65535
+    # # config["sram_read_loops_ranges_2"] = 65535
+    # # config["sram_read_loops_ranges_3"] = 65535
+    # # config["sram_read_loops_ranges_4"] = 65535
+    # # config["sram_read_loops_ranges_5"] = 65535
+    # config["sram_read_addr_gen_starting_addr"] = 511
+    # config["sram_write_sched_gen_sched_addr_gen_strides_0"] = 4
+    # config["sram_write_sched_gen_sched_addr_gen_strides_1"] = 0
+    # config["sram_write_sched_gen_sched_addr_gen_strides_2"] = 0
+    # config["sram_write_sched_gen_sched_addr_gen_strides_3"] = 0
+    # config["sram_write_sched_gen_sched_addr_gen_strides_4"] = 0
+    # config["sram_write_sched_gen_sched_addr_gen_strides_5"] = 0
+
+    # config["sram_read_loops_dimensionality"] = 0
+    # config["sram_read_sched_gen_sched_addr_gen_strides_0"] = 4
+    # config["sram_read_sched_gen_sched_addr_gen_strides_1"] = 65535
     # config["sram_read_sched_gen_sched_addr_gen_strides_2"] = 65535
     # config["sram_read_sched_gen_sched_addr_gen_strides_3"] = 65535
     # config["sram_read_sched_gen_sched_addr_gen_strides_4"] = 65535
     # config["sram_read_sched_gen_sched_addr_gen_strides_5"] = 65535
-    config["sram_write_addr_gen_strides_0"] = 65534
-    config["sram_write_addr_gen_strides_1"] = 0
-    config["sram_write_addr_gen_strides_2"] = 0
-    config["sram_write_addr_gen_strides_3"] = 0
-    config["sram_write_addr_gen_strides_4"] = 0
-    config["sram_write_addr_gen_strides_5"] = 0
-    config["sram_write_addr_gen_starting_addr"] = 33791
+    # config["sram_read_sched_gen_sched_addr_gen_starting_addr"] = 5
+    # config["sram_read_loops_ranges_0"] = 398
+    # config["sram_read_loops_ranges_1"] = 65535
+    # config["sram_read_loops_ranges_2"] = 65535
+    # config["sram_read_loops_ranges_3"] = 65535
+    # config["sram_read_loops_ranges_4"] = 65535
+    # config["sram_read_loops_ranges_5"] = 65535
+
+    config["sram_read_sched_gen_sched_addr_gen_starting_addr"] = 5
+    config["sram_write_loops_ranges_0"] = 65535
+    config["sram_write_loops_ranges_1"] = 65535
+    config["sram_write_loops_ranges_2"] = 65535
+    config["sram_write_loops_ranges_3"] = 65535
+    config["sram_write_loops_ranges_4"] = 65535
+    config["sram_write_loops_ranges_5"] = 65535
+    config["sram_read_sched_gen_sched_addr_gen_strides_0"] = 4
+    config["sram_read_sched_gen_sched_addr_gen_strides_1"] = 65535
+    config["sram_read_sched_gen_sched_addr_gen_strides_2"] = 65535
+    config["sram_read_sched_gen_sched_addr_gen_strides_3"] = 65535
+    config["sram_read_sched_gen_sched_addr_gen_strides_4"] = 65535
+    config["sram_read_sched_gen_sched_addr_gen_strides_5"] = 65535
+    config["sram_write_addr_gen_strides_0"] = 65535
+    config["sram_write_addr_gen_strides_1"] = 65535
+    config["sram_write_addr_gen_strides_2"] = 65535
+    config["sram_write_addr_gen_strides_3"] = 65535
+    config["sram_write_addr_gen_strides_4"] = 65535
+    config["sram_write_addr_gen_strides_5"] = 65535
+    config["sram_write_addr_gen_starting_addr"] = 65535
     config["sram_write_sched_gen_sched_addr_gen_starting_addr"] = 4
     config["sram_read_addr_gen_strides_0"] = 65535
     config["sram_read_addr_gen_strides_1"] = 65535
@@ -94,35 +152,21 @@ def test_sram_formal():
     config["sram_read_addr_gen_strides_4"] = 65535
     config["sram_read_addr_gen_strides_5"] = 65535
     config["sram_write_loops_dimensionality"] = 0
-    # config["sram_read_loops_dimensionality"] = 0
-    # config["sram_read_loops_ranges_0"] = 0
-    # config["sram_read_loops_ranges_1"] = 65535
-    # config["sram_read_loops_ranges_2"] = 65535
-    # config["sram_read_loops_ranges_3"] = 65535
-    # config["sram_read_loops_ranges_4"] = 65535
-    # config["sram_read_loops_ranges_5"] = 65535
-    config["sram_read_addr_gen_starting_addr"] = 511
-    config["sram_write_sched_gen_sched_addr_gen_strides_0"] = 4
-    config["sram_write_sched_gen_sched_addr_gen_strides_1"] = 0
-    config["sram_write_sched_gen_sched_addr_gen_strides_2"] = 0
-    config["sram_write_sched_gen_sched_addr_gen_strides_3"] = 0
-    config["sram_write_sched_gen_sched_addr_gen_strides_4"] = 0
-    config["sram_write_sched_gen_sched_addr_gen_strides_5"] = 0
-
     config["sram_read_loops_dimensionality"] = 0
-    config["sram_read_sched_gen_sched_addr_gen_strides_0"] = 4
-    config["sram_read_sched_gen_sched_addr_gen_strides_1"] = 65535
-    config["sram_read_sched_gen_sched_addr_gen_strides_2"] = 65535
-    config["sram_read_sched_gen_sched_addr_gen_strides_3"] = 65535
-    config["sram_read_sched_gen_sched_addr_gen_strides_4"] = 65535
-    config["sram_read_sched_gen_sched_addr_gen_strides_5"] = 65535
-    config["sram_read_sched_gen_sched_addr_gen_starting_addr"] = 5
     config["sram_read_loops_ranges_0"] = 398
     config["sram_read_loops_ranges_1"] = 65535
     config["sram_read_loops_ranges_2"] = 65535
     config["sram_read_loops_ranges_3"] = 65535
     config["sram_read_loops_ranges_4"] = 65535
     config["sram_read_loops_ranges_5"] = 65535
+    config["sram_read_addr_gen_starting_addr"] = 65535
+    config["sram_write_sched_gen_sched_addr_gen_strides_0"] = 4
+    config["sram_write_sched_gen_sched_addr_gen_strides_1"] = 65535
+    config["sram_write_sched_gen_sched_addr_gen_strides_2"] = 65535
+    config["sram_write_sched_gen_sched_addr_gen_strides_3"] = 65535
+    config["sram_write_sched_gen_sched_addr_gen_strides_4"] = 65535
+    config["sram_write_sched_gen_sched_addr_gen_strides_5"] = 65535
+
     # configuration registers passed through from top level
     for key, value in config.items():
         setattr(tester.circuit, key, value)
@@ -136,7 +180,8 @@ def test_sram_formal():
 
     rand.seed(0)
 
-    num_iters = 365
+    im_size = 40
+    num_iters = im_size * im_size
     data_in = 0
     for i in range(num_iters):
 
