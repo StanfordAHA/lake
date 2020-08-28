@@ -13,7 +13,7 @@ class AddrGen(Generator):
                  iterator_support,
                  config_width=16):
 
-        super().__init__(f"addr_gen_{iterator_support}", debug=True)
+        super().__init__(f"addr_gen_d_{iterator_support}_w_{config_width}", debug=True)
 
         self.iterator_support = iterator_support
         self.config_width = config_width

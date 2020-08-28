@@ -15,7 +15,7 @@ class SchedGen(Generator):
                  config_width=16,
                  glbl_cyc_width=16):
 
-        super().__init__(f"sched_gen_{iterator_support}")
+        super().__init__(f"sched_gen_d_{iterator_support}_w_{config_width}")
 
         self.iterator_support = iterator_support
         self.config_width = config_width

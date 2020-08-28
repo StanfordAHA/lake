@@ -12,8 +12,7 @@ class ForLoop(Generator):
     def __init__(self,
                  iterator_support,
                  config_width=16):
-
-        super().__init__(f"for_loop_{iterator_support}", debug=True)
+        super().__init__(f"for_loop_d_{iterator_support}_w_{config_width}", debug=True)
 
         self.iterator_support = iterator_support
         self.config_width = config_width
