@@ -73,7 +73,6 @@ class StrgUBVec(Generator):
         self._write = self.var("write", 1)
         self._read = self.var("read", 1)
         self._read_d1 = self.var("read_d1", 1)
-        self.add_code(self.delay_read)
 
         self._write_addr = self.var("write_addr", self.config_width)
         self._read_addr = self.var("read_addr", self.config_width)
@@ -153,6 +152,20 @@ class StrgUBVec(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._write)
+
+        self.loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
+                                     config_width=self.default_config_width)
+        loop_itr = self.loops_sram2tb.get_iter()
+        loop_wth = self.loops_sram2tb.get_cfg_width()
+
+        self.add_child(f"loops_buf2out_autovec_read",
+                       self.loops_sram2tb,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       step=self._read)
+
+        self._mux_sel_d1 = self.var("mux_sel_d1", kts.clog2(self.default_iterator_support))
+        self.add_code(self.delay_read)
 
         for i in range(self.interconnect_input_ports):
 
@@ -252,16 +265,6 @@ class StrgUBVec(Generator):
                        valid_output=self._write)
 
         # -------------------------------- Delineate new group -------------------------------
-        fl_ctr_sram_rd = ForLoop(iterator_support=self.default_iterator_support,
-                                 config_width=self.default_config_width)
-        loop_itr = fl_ctr_sram_rd.get_iter()
-        loop_wth = fl_ctr_sram_rd.get_cfg_width()
-
-        self.add_child(f"loops_buf2out_autovec_read",
-                       fl_ctr_sram_rd,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._read)
 
         _AG = AddrGen(iterator_support=self.default_iterator_support,
                       config_width=self.mem_addr_width)
@@ -270,7 +273,7 @@ class StrgUBVec(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._read,
-                       mux_sel=fl_ctr_sram_rd.ports.mux_sel_out)
+                       mux_sel=self.loops_sram2tb.ports.mux_sel_out)
         safe_wire(gen=self, w_to=self._read_addr, w_from=_AG.ports.addr_out)
 
         self.add_child(f"output_sched_gen",
@@ -279,7 +282,7 @@ class StrgUBVec(Generator):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
-                       mux_sel=fl_ctr_sram_rd.ports.mux_sel_out,
+                       mux_sel=self.loops_sram2tb.ports.mux_sel_out,
                        valid_output=self._read)
 
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
@@ -306,17 +309,18 @@ class StrgUBVec(Generator):
                             explicit_array=True)
 
         for i in range(self.interconnect_output_ports):
-            fl_ctr_tb_wr = ForLoop(iterator_support=self.default_iterator_support,
-                                   config_width=self.default_config_width)
-            loop_itr = fl_ctr_tb_wr.get_iter()
-            loop_wth = fl_ctr_tb_wr.get_cfg_width()
 
-            self.add_child(f"loops_buf2out_autovec_write_{i}",
-                           fl_ctr_tb_wr,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           step=self._read_d1)  # & (self._output_port_sel_addr ==
-            # const(i, self._output_port_sel_addr.width)))
+            # fl_ctr_tb_wr = ForLoop(iterator_support=self.default_iterator_support,
+            #                        config_width=self.default_config_width)
+            # loop_itr = fl_ctr_tb_wr.get_iter()
+            # loop_wth = fl_ctr_tb_wr.get_cfg_width()
+
+            # self.add_child(f"loops_buf2out_autovec_write_{i}",
+            #                fl_ctr_tb_wr,
+            #                clk=self._clk,
+            #                rst_n=self._rst_n,
+            #                step=self._read_d1)  # & (self._output_port_sel_addr ==
+            # # const(i, self._output_port_sel_addr.width)))
 
             self.add_child(f"tb_write_addr_gen_{i}",
                            AddrGen(iterator_support=self.default_iterator_support,
@@ -325,7 +329,7 @@ class StrgUBVec(Generator):
                            rst_n=self._rst_n,
                            step=self._read_d1,  # & (self._output_port_sel_addr ==
                            # const(i, self._output_port_sel_addr.width)),
-                           mux_sel=fl_ctr_tb_wr.ports.mux_sel_out,
+                           mux_sel=self._mux_sel_d1,
                            addr_out=self._tb_write_addr[i])
 
             fl_ctr_tb_rd = ForLoop(iterator_support=self.default_iterator_support,
@@ -359,17 +363,18 @@ class StrgUBVec(Generator):
 
         if self.interconnect_output_ports > 1:
 
-            fl_ctr_out_sel = ForLoop(iterator_support=self.default_iterator_support,
-                                     # config_width=clog2(self.interconnect_output_ports))
-                                     config_width=self.default_config_width)
-            loop_itr = fl_ctr_out_sel.get_iter()
-            loop_wth = fl_ctr_out_sel.get_cfg_width()
+            # fl_ctr_out_sel = ForLoop(iterator_support=self.default_iterator_support,
+            #                          # config_width=clog2(self.interconnect_output_ports))
+            #                          config_width=self.default_config_width)
+            # loop_itr = fl_ctr_out_sel.get_iter()
+            # loop_wth = fl_ctr_out_sel.get_cfg_width()
 
-            self.add_child(f"loops_buf2out_out_sel",
-                           fl_ctr_out_sel,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           step=self._read_d1)
+            # self.add_child(f"loops_buf2out_out_sel",
+            #                fl_ctr_out_sel,
+            #                clk=self._clk,
+            #                rst_n=self._rst_n,
+            #                step=self._read_d1)
+
             newAG = AddrGen(iterator_support=self.default_iterator_support,
                             config_width=self.default_config_width)
             self.add_child(f"out_port_sel_addr",
@@ -377,7 +382,7 @@ class StrgUBVec(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._read_d1,
-                           mux_sel=fl_ctr_out_sel.ports.mux_sel_out)
+                           mux_sel=self._mux_sel_d1)
             safe_wire(gen=self, w_to=self._output_port_sel_addr, w_from=newAG.ports.addr_out)
             # Addr for port select should be driven on agg to sram write sched
         else:
@@ -414,8 +419,10 @@ class StrgUBVec(Generator):
     def delay_read(self):
         if ~self._rst_n:
             self._read_d1 = 0
+            self._mux_sel_d1 = 0
         else:
             self._read_d1 = self._read
+            self._mux_sel_d1 = self.loops_sram2tb.ports.mux_sel_out
 
     @always_comb
     def agg_to_sram(self):

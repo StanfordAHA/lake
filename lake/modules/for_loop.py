@@ -96,9 +96,9 @@ class ForLoop(Generator):
         self._inc[idx] = 0
         # We always increment the innermost, and then have priority
         # on clear in the flops.
-        if (const(idx, 5) == 0) & self._step:
+        if (const(idx, 5) == 0) & self._step & (idx <= self._dimensionality):
             self._inc[idx] = 1
-        elif (idx == self._mux_sel) & self._step:
+        elif (idx == self._mux_sel) & self._step & (idx <= self._dimensionality):
             self._inc[idx] = 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))

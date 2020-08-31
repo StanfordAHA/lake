@@ -81,9 +81,9 @@ if __name__ == "__main__":
         f"Please check env vars:\nLAKE_CONTROLLERS: {lake_controller_path}\nLAKE_STREAM: {lake_stream_path}"
 
     # conv_3_3
-    # config_path = lake_controller_path + "conv_3_3_new"
-    # stream_path = lake_stream_path + "buf.csv"
-    # test_lake(config_path, stream_path)
+    config_path = lake_controller_path + "conv_3_3_new"
+    stream_path = lake_stream_path + "buf.csv"
+    test_lake(config_path, stream_path)
 
     # gaussian
     # config_path = lake_controller_path + "gaussian/hw_input_stencil_op_hcompute_hw_input_stencil_2_to_hw_input_stencil_op_hcompute_blur_unnormalized_stencil_1_11_ubuf"
@@ -99,9 +99,9 @@ if __name__ == "__main__":
     # test_lake(config_path, stream_path, out_file_name="conv")
 
     # cascade_2
-    config_path = lake_controller_path + "cascade/buf2_conv_12_to_buf2_output_3_ubuf"
-    stream_path = lake_stream_path + "buf2.csv"
-    test_lake(config_path, stream_path, in_file_name="conv")
+    # config_path = lake_controller_path + "cascade/buf2_conv_12_to_buf2_output_3_ubuf"
+    # stream_path = lake_stream_path + "buf2.csv"
+    # test_lake(config_path, stream_path, in_file_name="conv")
 
     # harris_1
     # config_path = lake_controller_path + "harris/padded16_global_wrapper_stencil_op_hcompute_padded16_global_wrapper_stencil_0_to_padded16_global_wrapper_stencil_op_hcompute_grad_x_stencil_49_ubuf"
