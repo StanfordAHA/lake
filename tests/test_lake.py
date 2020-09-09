@@ -92,6 +92,7 @@ def test_gaussian():
                   out_file_name="op_hcompute_blur_unnormalized_stencil_1")
 
 
+@pytest.mark.skip
 def test_cascade_1():
     lc, ls = check_env()
     config_path = lc + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"

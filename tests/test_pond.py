@@ -7,6 +7,8 @@ import tempfile
 from lake.models.lake_top_model import LakeTopModel
 
 
+# Deprecated on old pond...
+@pytest.mark.skip
 def test_pond(data_width=16,  # CGRA Params
               mem_width=16,
               mem_depth=32,

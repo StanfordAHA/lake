@@ -74,7 +74,6 @@ def test_prefetcher_basic(input_latency=10,
             setattr(tester.circuit, f"data_in_{j}", data_in[j])
         tester.circuit.valid_read = valid_read
         tester.circuit.tba_rdy_in = tba_rdy_in
-        tester.circuit.mem_valid_data = mem_valid_data
 
         tester.eval()
 
@@ -84,7 +83,6 @@ def test_prefetcher_basic(input_latency=10,
         if (model_v):
             for j in range(fw_int):
                 getattr(tester.circuit, f"data_out_{j}").expect(model_d[j])
-            tester.circuit.mem_valid_data_out.expect(model_mem_valid)
 
         tester.step(2)
 
