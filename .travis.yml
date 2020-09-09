@@ -5,12 +5,14 @@ install:
   - docker exec -i lake bash -c 'apt update && apt install -y libgmp-dev libmpfr-dev libmpc-dev python3-dev'
   - docker exec -i lake bash -c 'python3 -m pip install setuptools wheel'
   - docker exec -i lake bash -c 'python3 -m pip install pytest fault pytest-codestyle pycodestyle'
-  - docker exec -i lake bash -c 'export PYTEST_ADDOPTS="--color=yes" && cd lake && python3 -m pip install -e .'
+  - docker exec -i lake bash -c 'cd lake && python3 -m pip install -e .'
 
 script:
   - docker exec -i lake bash -c 'cd lake && python3 -m pycodestyle lake/'
   - docker exec -i lake bash -c 'cd lake && python3 -m pycodestyle tests/'
-  - docker exec -i lake bash -c 'cd lake && pytest -v tests/'
+  - docker exec -i lake bash -c 'export PYTEST_ADDOPTS="--color=yes" && cd lake && pytest -v tests/test_agg_formal.py'
+  - docker exec -i lake bash -c 'export PYTEST_ADDOPTS="--color=yes" && cd lake && pytest -v tests/test_reg_fifo.py'
+  # - docker exec -i lake bash -c 'export PYTEST_ADDOPTS="--color=yes" && cd lake && pytest -v tests/'
 
 notifications:
   email:
