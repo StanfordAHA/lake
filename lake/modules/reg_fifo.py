@@ -14,7 +14,8 @@ class RegFIFO(Generator):
                  depth,
                  parallel=False,
                  break_out_rd_ptr=False):
-        super().__init__(f"reg_fifo_d{depth}_w{width_mult}")
+
+        super().__init__(f"reg_fifo_d_{depth}_w_{width_mult}", debug=True)
 
         self.data_width = self.parameter("data_width", 16)
         self.data_width.value = data_width
