@@ -21,8 +21,8 @@ class SchedGen(Generator):
         self.config_width = config_width
         self.glbl_cyc_width = glbl_cyc_width
         # Create params for instancing this module...
-        self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, default_value=self.iterator_support)
-        self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, default_value=self.config_width)
+        self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, value=self.iterator_support)
+        self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, value=self.config_width)
         # PORT DEFS: begin
 
         # INPUTS

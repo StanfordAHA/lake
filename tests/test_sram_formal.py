@@ -150,11 +150,10 @@ def test_sram_formal():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "sram_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":

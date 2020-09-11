@@ -35,11 +35,9 @@ class LakeTop(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
-                 tb_sched_max=16,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
-                 remove_tb=False,
                  fifo_mode=True,
                  add_clk_enable=True,
                  add_flush=True,
@@ -68,7 +66,6 @@ class LakeTop(Generator):
         self.config_data_width = config_data_width
         self.config_addr_width = config_addr_width
         self.num_tiles = num_tiles
-        self.remove_tb = remove_tb
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         self.fifo_mode = fifo_mode
@@ -430,7 +427,6 @@ class LakeTop(Generator):
                                      explicit_array=True)
 
         if self.fw_int > 1:
-
             strg_ub = StrgUBVec(data_width=self.data_width,
                                 mem_width=self.mem_width,
                                 mem_depth=self.mem_depth,
@@ -788,10 +784,15 @@ class LakeTop(Generator):
         chaining = ChainAccessor(data_width=self.data_width,
                                  interconnect_output_ports=self.interconnect_output_ports)
 
+        self._mode_mask = self.var("mode_mask", self._accessor_output.width)
+        self.wire(self._mode_mask[0], self._mode.r_or())
+        for i in range(self._accessor_output.width - 1):
+            self.wire(self._mode_mask[i + 1], kts.const(0, 1))
+
         self.add_child(f"chain", chaining,
                        curr_tile_data_out=self._data_out_tile,
                        chain_data_in=self._chain_data_in,
-                       accessor_output=self._accessor_output | (self._mode != 0),
+                       accessor_output=(self._accessor_output | self._mode_mask),
                        data_out_tile=self._data_out)
 
         ########################

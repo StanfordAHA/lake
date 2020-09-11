@@ -9,6 +9,7 @@ import kratos as k
 import pytest
 
 
+@pytest.mark.skip
 def test_addr_gen_basic(depth=512,
                         addr_width=16,
                         iterator_support=6):

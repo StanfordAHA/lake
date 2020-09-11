@@ -1,6 +1,6 @@
 from peak import Peak, family_closure, Const, name_outputs, family
 from math import log2
-from utils import *
+from lake.utils import *
 from lake.models.sram_model import SRAMModel
 
 import magma as m
