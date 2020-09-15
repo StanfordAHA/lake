@@ -1,6 +1,17 @@
 import kratos as kts
+import os as os
 from enum import Enum
 from lake.attributes.formal_attr import FormalAttr
+
+
+def check_env():
+    lake_controller_path = os.getenv("LAKE_CONTROLLERS")
+    lake_stream_path = os.getenv("LAKE_STREAM")
+
+    assert lake_controller_path is not None and lake_stream_path is not None,\
+        f"Please check env vars:\nLAKE_CONTROLLERS: {lake_controller_path}\nLAKE_STREAM: {lake_stream_path}"
+
+    return (lake_controller_path + "/", lake_stream_path + "/")
 
 
 def increment(var, value):

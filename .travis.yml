@@ -10,7 +10,7 @@ install:
 script:
   - docker exec -i lake bash -c 'cd lake && python3 -m pycodestyle lake/'
   - docker exec -i lake bash -c 'cd lake && python3 -m pycodestyle tests/'
-  - docker exec -i lake bash -c 'cd lake && pytest --pycodestyle -v tests/'
+  - docker exec -i lake bash -c 'export PYTEST_ADDOPTS="--color=yes" && cd lake && pytest -v tests/'
 
 notifications:
   email:
