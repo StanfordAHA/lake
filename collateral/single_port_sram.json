@@ -1,0 +1,24 @@
+{
+	"mem0" : {
+		"capacity" : 512,
+		"num_read_ports" : 4,
+		"num_write_ports" : 4,
+		"num_read_write_ports" : 0,
+		"num_banks" : 1,
+		"chaining" : 1,
+		"read_info_0" : {
+			"latency" : 1,
+			"consecutive_latency" : 0,
+			"addr_gen_dim" : 6,
+			"addr_gen_max_range" : 65536,
+			"addr_gen_max_stride" : 65536
+		},
+		"write_info_0" : {
+			"latency" : 1,
+			"consecutive_latency" : 0,
+			"addr_gen_dim" : 6,
+			"addr_gen_max_range" : 65536,
+			"addr_gen_max_stride" : 65536
+		}
+	}
+}
