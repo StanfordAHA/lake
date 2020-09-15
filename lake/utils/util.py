@@ -148,17 +148,20 @@ def transform_strides_and_ranges(ranges, strides, dimensionality):
     return (tform_ranges, tform_strides)
 
 
-def safe_wire(gen, w1, w2):
+def safe_wire(gen, w_to, w_from):
     '''
     Wire together two signals of (potentially) mismatched width to
     avoid the exception that Kratos throws.
     '''
     # Only works in one dimension...
-    if w1.width != w2.width:
-        print(f"SAFEWIRE: WIDTH MISMATCH: {w1.name} width {w1.width} <-> {w2.name} width {w2.width}")
-    if w1.width > w2.width:
-        w3 = w1
-        w1 = w2
-        w2 = w3
-    # w1 containts smaller width...
-    gen.wire(w1, w2[w1.width - 1, 0])
+    if w_to.width != w_from.width:
+        print(f"SAFEWIRE: WIDTH MISMATCH: {w_to.name} width {w_to.width} <-> {w_from.name} width {w_from.width}")
+        # w1 contains smaller width...
+        if w_to.width < w_from.width:
+            gen.wire(w_to, w_from[w_to.width - 1, 0])
+        else:
+            gen.wire(w_to[w_from.width - 1, 0], w_from)
+            zero_overlap = w_to.width - w_from.width
+            gen.wire(w_to[w_to.width - 1, w_from.width], kts.const(0, zero_overlap))
+    else:
+        gen.wire(w_to, w_from)
