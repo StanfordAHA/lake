@@ -334,8 +334,8 @@ class StrgUBVec(Generator):
                            rst_n=self._rst_n,
                            step=self._read_d1,  # & (self._output_port_sel_addr ==
                            # const(i, self._output_port_sel_addr.width)),
+                           # addr_out=self._tb_write_addr[i])
                            mux_sel=self._mux_sel_d1)
-                        #    addr_out=self._tb_write_addr[i])
             safe_wire(gen=self, w_to=self._tb_write_addr[i], w_from=_AG.ports.addr_out)
 
             fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
@@ -356,8 +356,8 @@ class StrgUBVec(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._tb_read[i],
+                           # addr_out=self._tb_read_addr[i])
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out)
-                        #    addr_out=self._tb_read_addr[i])
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
 
             self.add_child(f"tb_read_sched_gen_{i}",
