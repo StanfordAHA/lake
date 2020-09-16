@@ -33,7 +33,7 @@ class Memory(Generator):
 
         self.data_in = self.input("data_in",
                                   width=word_width,
-                                  size=(num_banks, write_width),
+                                  size=(num_ports, write_width),
                                   explicit_array=True,
                                   packed=True)
         
@@ -48,7 +48,7 @@ class Memory(Generator):
 
         self.data_out = self.output("data_out",
                                     width=word_width,
-                                    size=(num_banks, read_width),
+                                    size=(num_ports, read_width),
                                     explicit_array=True,
                                     packed=True)
 
