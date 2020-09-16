@@ -153,7 +153,7 @@ def get_static_bitstream(config_path,
         ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
         ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
         ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
-        ("strg_ub_loops_in2buf_autovec_read_0_dimensionality", agg2sram.dim),
+        # ("strg_ub_loops_in2buf_autovec_read_0_dimensionality", agg2sram.dim),
         ("strg_ub_loops_in2buf_autovec_write_dimensionality", agg2sram.dim),
 
         ("strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt),
@@ -209,7 +209,7 @@ def get_static_bitstream(config_path,
         config.append((f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
 
     for i in range(agg2sram.dim):
-        config.append((f"strg_ub_loops_in2buf_autovec_read_0_ranges_{i}", agg2sram.extent[i]))
+        # config.append((f"strg_ub_loops_in2buf_autovec_read_0_ranges_{i}", agg2sram.extent[i]))
         config.append((f"strg_ub_agg_read_addr_gen_0_strides_{i}", agg2sram.out_data_stride[i]))
         config.append((f"strg_ub_loops_in2buf_autovec_write_ranges_{i}", agg2sram.extent[i]))
         config.append((f"strg_ub_input_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
