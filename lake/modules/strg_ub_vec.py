@@ -196,7 +196,8 @@ class StrgUBVec(Generator):
             safe_wire(gen=self, w_to=self._agg_write_addr[i], w_from=newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=self.agg_iter_support,
-                             config_width=self.agg_addr_width)
+                             # config_width=self.agg_addr_width)
+                             config_width=16)
             self.agg_write_scheds.append(newSG)
             self.add_child(f"agg_write_sched_gen_{i}",
                            newSG,
@@ -257,7 +258,8 @@ class StrgUBVec(Generator):
         # scheduler modules
         self.add_child(f"input_sched_gen",
                        SchedGen(iterator_support=self.default_iterator_support,
-                                config_width=self.mem_addr_width),
+                                # config_width=self.mem_addr_width),
+                                config_width=16),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
@@ -278,7 +280,8 @@ class StrgUBVec(Generator):
 
         self.add_child(f"output_sched_gen",
                        SchedGen(iterator_support=self.default_iterator_support,
-                                config_width=self.default_config_width),
+                                # config_width=self.default_config_width),
+                                config_width=16),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
@@ -362,7 +365,8 @@ class StrgUBVec(Generator):
 
             self.add_child(f"tb_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.tb_iter_support,
-                                    config_width=self.tb_addr_width),
+                                    # config_width=self.tb_addr_width),
+                                    config_width=16),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,
