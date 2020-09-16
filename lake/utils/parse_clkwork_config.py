@@ -172,12 +172,12 @@ def get_static_bitstream(config_path,
         ("strg_ub_tb_read_addr_gen_0_starting_addr", tb2out0.out_data_strt),
         ("strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
         ("strg_ub_loops_buf2out_read_0_dimensionality", tb2out0.dim),
-        ("strg_ub_loops_buf2out_autovec_write_0_dimensionality", sram2tb.dim),
+        # ("strg_ub_loops_buf2out_autovec_write_0_dimensionality", sram2tb.dim),
 
         ("strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
         ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
         ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
-        ("strg_ub_loops_buf2out_autovec_write_1_dimensionality", sram2tb.dim),
+        # ("strg_ub_loops_buf2out_autovec_write_1_dimensionality", sram2tb.dim),
 
         # ("chain_valid_in_reg_sel", 1),  # 1
 
@@ -226,7 +226,7 @@ def get_static_bitstream(config_path,
         for tb in range(len(tbs)):
             print(f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i])
             config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
-            config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", sram2tb.extent[i]))
+            # config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", sram2tb.extent[i]))
     tbs = [tb2out0, tb2out1]
     for tb in range(len(tbs)):
         elem = tbs[tb]
