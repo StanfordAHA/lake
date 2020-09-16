@@ -150,7 +150,7 @@ def get_static_bitstream(config_path,
 
     # Set configuration...
     config = [
-        ("strg_ub_agg_rd_addr_0_starting_addr", agg2sram.out_data_strt),
+        ("strg_ub_agg_read_addr_0_starting_addr", agg2sram.out_data_strt),
         ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
         ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
         ("strg_ub_loops_in2buf_autovec_read_0_dimensionality", agg2sram.dim),
