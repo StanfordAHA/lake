@@ -163,7 +163,7 @@ def get_static_bitstream(config_path,
         ("strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
         ("strg_ub_loops_buf2out_autovec_read_dimensionality", sram2tb.dim),
 
-        ("strg_ub_loops_buf2out_out_sel_dimensionality", sram2tb.dim),
+        # ("strg_ub_loops_buf2out_out_sel_dimensionality", sram2tb.dim),
 
         ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt),
         ("strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt),
@@ -221,7 +221,7 @@ def get_static_bitstream(config_path,
         config.append((f"strg_ub_loops_buf2out_autovec_read_ranges_{i}", sram2tb.extent[i]))
         config.append((f"strg_ub_output_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
         config.append((f"strg_ub_output_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
-        config.append((f"strg_ub_loops_buf2out_out_sel_ranges_{i}", sram2tb.extent[i]))
+        # config.append((f"strg_ub_loops_buf2out_out_sel_ranges_{i}", sram2tb.extent[i]))
         config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
         for tb in range(len(tbs)):
             print(f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i])
