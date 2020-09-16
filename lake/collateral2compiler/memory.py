@@ -1,6 +1,6 @@
 from kratos import *
 from math import log
-from collateral2compiler.port import Port
+from lake.collateral2compiler.mem_port import MemPort
 
 
 class Memory(Generator):
@@ -132,15 +132,18 @@ class Memory(Generator):
 
 if __name__ == "__main__":
 
-    write_port = Port(1, 0)
-    read_port = Port(0, 0)
-    Memory(capacity=4,
-           word_width=16,
-           num_read_ports=1,
-           read_port_width=4,
-           num_write_ports=1,
-           write_port_width=1,
-           num_banks=1,
-           chaining=0,
-           write_info=write_port.port_info,
-           read_info=read_port.port_info)
+    write_port = MemPort(1, 0)
+    read_port = MemPort(0, 0)
+    dut = \
+        Memory(capacity=4,
+               word_width=16,
+               num_read_ports=1,
+               read_port_width=4,
+               num_write_ports=1,
+               write_port_width=1,
+               num_banks=1,
+               chaining=0,
+               write_info=write_port.port_info,
+               read_info=read_port.port_info)
+
+    verilog(dut, filename="mem.sv")

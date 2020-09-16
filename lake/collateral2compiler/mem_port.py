@@ -1,4 +1,4 @@
-class Port():
+class MemPort():
     def __init__(self,
                  latency,
                  consecutive_latency,

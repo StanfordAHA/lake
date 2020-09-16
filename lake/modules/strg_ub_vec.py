@@ -9,6 +9,8 @@ from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.utils.util import safe_wire
+from lake.collateral2compiler.mem_port import MemPort
+from lake.collateral2compiler.memory import Memory
 import kratos as kts
 
 
@@ -82,7 +84,7 @@ class StrgUBVec(Generator):
         self._agg_write = self.var("agg_write", self.interconnect_input_ports)
 
         # Make this based on the size
-        self._agg_write_addr = self.var("agg_write_addr", 2 + clog2(self.agg_height),
+        self._agg_write_addr = self.var("agg_write_addr", clog2(self.agg_height),
                                         size=self.interconnect_input_ports,
                                         packed=True,
                                         explicit_array=True)
@@ -99,6 +101,9 @@ class StrgUBVec(Generator):
 
         self._sram_write_data = self.var("sram_write_data", data_width,
                                          size=self.fetch_width,
+                                         packed=True)
+        self._sram_write_data_test = self.var("sram_write_data_test", data_width,
+                                         size=(self.interconnect_input_ports, self.fetch_width),
                                          packed=True)
         self._sram_read_data = self.var("sram_read_data", self.data_width,
                                         size=self.fetch_width,
@@ -144,6 +149,21 @@ class StrgUBVec(Generator):
 
         for i in range(self.interconnect_input_ports):
 
+            agg_write_port = MemPort(1, 0)
+            agg_read_port = MemPort(0, 0)
+            agg = Memory(4, 16, 1, 4, 1, 1, 1, 0, agg_write_port.port_info, agg_read_port.port_info)
+
+            self.add_child(f"agg_{i}",
+                           agg,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           #data_in=self._data_in[i],
+                           data_out=self._sram_write_data_test[i],
+                           write_addr=self._agg_write_addr[i],
+                           write=self._agg_write[i],
+                           read_addr=self._agg_read_addr[i])
+
+            safe_wire(self, agg.ports.data_in[0], self._data_in[i])
             forloop_ctr = ForLoop(iterator_support=self.default_iterator_support,
                                   # config_width=self._agg_write_addr.width)
                                   config_width=self.default_config_width)
@@ -395,8 +415,8 @@ class StrgUBVec(Generator):
         # lift_config_reg(self.internal_generator)
 
         self.add_code(self.set_sram_addr)
-        for idx in range(self.interconnect_input_ports):
-            self.add_code(self.agg_ctrl, idx=idx)
+        # for idx in range(self.interconnect_input_ports):
+        #    self.add_code(self.agg_ctrl, idx=idx)
 
         self.add_code(self.agg_to_sram)
         self.add_code(self.tb_ctrl)
@@ -428,9 +448,10 @@ class StrgUBVec(Generator):
 
     @always_comb
     def agg_to_sram(self):
-        for i in range(self.fetch_width):
-            self._sram_write_data[i] = \
-                self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
+        #for i in range(self.fetch_width):
+        #    self._sram_write_data[i] = \
+        #        self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
+            self._sram_write_data = self._sram_write_data_test[self._input_port_sel_addr]
 
     @always_ff((posedge, "clk"))
     def tb_ctrl(self):
