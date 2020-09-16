@@ -182,7 +182,7 @@ def get_static_bitstream(config_path,
         # ("chain_valid_in_reg_sel", 1),  # 1
 
         # Control Signals...
-        ("flush_reg_sel", 1),  # 1
+        ("flush_reg_sel", 0),  # 1
         ("flush_reg_value", 0),  # 1
         # ("ren_in_reg_sel", 1),  # 1
         # ("ren_in_reg_value", 0),  # 1
