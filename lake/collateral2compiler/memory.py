@@ -102,9 +102,11 @@ class Memory(Generator):
                     self.memory[bank][port] = 0
 
         elif self.write:
-            self.memory[0][self.write_addr] = self.data_in
-            #for w in range(write_port_width):
-            #    self.memory[self.write_addr_bank][self.write_addr_port + w] = self.data_in[w]
+            if write_port_width == 1:
+                self.memory[0][self.write_addr] = self.data_in
+            else:
+                for w in range(write_port_width):
+                    self.memory[self.write_addr_bank][self.write_addr_port + w] = self.data_in[w]
 
     #@always_comb
     #def write_data_latency_0(self):
@@ -121,19 +123,18 @@ class Memory(Generator):
     @always_comb
     def read_data_latency_0(self):
         for port in range(read_port_width):
-            if num_banks == 1:
-                self.data_out[port] = self.memory[0][self.read_addr + port]
-            else:
-                self.data_out[port] = self.memory[self.read_addr_bank][self.read_addr_port + port]
+            self.data_out[port] = self.memory[self.read_addr_bank][self.read_addr_port + port]
 
     @always_comb
     def split_addr(self):
-        self.write_addr_bank = self.write_addr[self.write_addr.width - 1, write_width_bits]
-        self.write_addr_port = self.write_addr[write_width_bits - 1, 0]
         if num_banks == 1:
+            self.write_addr_bank = 0
+    #        self.write_addr_port = self.write_addr
             self.read_addr_bank = 0
             self.read_addr_port = self.read_addr
         else:
+            self.write_addr_bank = self.write_addr[self.write_addr.width - 1, write_width_bits]
+            self.write_addr_port = self.write_addr[write_width_bits - 1, 0]
             self.read_addr_bank = self.read_addr[num_banks_bits + read_width_bits - 1, read_width_bits]
             self.read_addr_port = self.read_addr[read_width_bits - 1, 0]
 
