@@ -4,6 +4,7 @@ import operator
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.modules.addr_gen import AddrGen
 from lake.passes.passes import lift_config_reg
+from lake.utils.util import zext
 
 
 class SchedGen(Generator):
@@ -59,7 +60,8 @@ class SchedGen(Generator):
 
     @always_comb
     def set_valid_out(self):
-        if self._cycle_count[self.c_a_cmp - 1, 0] == self._addr_out[self.c_a_cmp - 1, 0]:
+        # if self._cycle_count[self.c_a_cmp - 1, 0] == self._addr_out[self.c_a_cmp - 1, 0]:
+        if self._cycle_count == zext(self, self._addr_out, self._cycle_count.width):
             self._valid_out = 1
         else:
             self._valid_out = 0

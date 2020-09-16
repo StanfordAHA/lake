@@ -165,3 +165,12 @@ def safe_wire(gen, w_to, w_from):
             gen.wire(w_to[w_to.width - 1, w_from.width], kts.const(0, zero_overlap))
     else:
         gen.wire(w_to, w_from)
+
+def zext(gen, wire, size):
+    if wire.width >= size:
+        return wire
+    else:
+        zext_signal = gen.var(f"{wire.name}_zext", size)
+        gen.wire(zext_signal, kts.concat(kts.const(0, size - wire.width), wire))
+        return zext_signal
+
