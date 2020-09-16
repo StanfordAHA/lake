@@ -13,6 +13,8 @@ from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
 from lake.utils.util import extract_formal_annotation
+from lake.modules.for_loop import ForLoop
+from lake.modules.spec.sched_gen import SchedGen
 import kratos as kts
 
 
@@ -42,7 +44,8 @@ class LakeTop(Generator):
                  add_clk_enable=True,
                  add_flush=True,
                  name="LakeTop",
-                 gen_addr=True):
+                 gen_addr=True,
+                 stencil_valid=True):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -70,6 +73,7 @@ class LakeTop(Generator):
         self.rw_same_cycle = rw_same_cycle
         self.fifo_mode = fifo_mode
         self.gen_addr = gen_addr
+        self.stencil_valid = stencil_valid
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -166,6 +170,33 @@ class LakeTop(Generator):
                                              self.data_width)
 
         self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
+
+        self._cycle_count = self.var("cycle_count", 16)
+        self.add_code(self.cycle_count_inc)
+
+        if self.stencil_valid:
+            self._stencil_valid = self.output("stencil_valid", 1)
+            self._stencil_valid.add_attribute(ControlSignalAttr(False))
+            self._loops_stencil_valid = ForLoop(iterator_support=6,
+                                                config_width=16)
+            self._stencil_valid_int = self.var("stencil_valid_internal", 1)
+            # Loop Iterators for stencil valid...
+            self.add_child(f"loops_stencil_valid",
+                           self._loops_stencil_valid,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._stencil_valid_int)
+            # Schedule Generator for stencil valid...
+            self.add_child(f"stencil_valid_sched_gen",
+                           SchedGen(iterator_support=6,
+                                    config_width=16),
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           cycle_count=self._cycle_count,
+                           mux_sel=self._loops_stencil_valid.ports.mux_sel_out,
+                           valid_output=self._stencil_valid_int)
+            # Wire out internal wire
+            self.wire(self._stencil_valid, self._stencil_valid_int)
 
         self._config_addr_in = self.input("config_addr_in",
                                           self.config_addr_width)
@@ -816,6 +847,20 @@ class LakeTop(Generator):
 
         # extract_formal_annotation(self.internal_generator, "test.txt")
 
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def cycle_count_inc(self):
+        if ~self._rst_n:
+            self._cycle_count = 0
+        else:
+            self._cycle_count = self._cycle_count + 1
+
+    def supports(self, prop):
+        attr = getattr(self, prop)
+        if attr:
+            return attr
+        else:
+            return False
+
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
@@ -828,6 +873,7 @@ if __name__ == "__main__":
                        fifo_mode=fifo_mode,
                        add_clk_enable=True,
                        add_flush=True)
+    print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,

@@ -194,6 +194,14 @@ def get_static_bitstream(config_path,
         ("tile_en", 1),  # 1
     ]
 
+    # TODO: Check actual stencil_valid property for hardware
+    stcl_valid = map_controller(extract_controller(config_path + '/' + 'stencil_valid.csv'), "stcl_vld")
+    config.append((f"loops_stencil_valid_dimensionality", stcl_valid.dim))
+    config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stcl_valid.cyc_start))
+    for i in range(stcl_valid.dim):
+        config.append((f"loops_stencil_valid_ranges_{i}", stcl_valid.extent[i]))
+        config.append((f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stcl_valid.cyc_stride[i]))
+
     # TODO: Maybe need to check if size 1?
     for i in range(input_ports):
         config.append((f"ren_in_{i}_reg_sel", 1))
