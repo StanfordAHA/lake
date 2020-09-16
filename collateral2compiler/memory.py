@@ -11,18 +11,18 @@ class Memory(Generator):
                  read_port_width,
                  num_write_ports,
                  write_port_width,
-                 num_read_write_ports,
-                 read_write_port_width,
+                 # num_read_write_ports,
+                 # read_write_port_width,
                  num_banks,
                  chaining,
-                 read_write_info,
+                 # read_write_info,
                  write_info,
                  read_info):
 
         super().__init__("mem", debug=True)
 
-        write_width = max(write_port_width, read_write_port_width)
-        read_width = max(read_port_width, read_write_port_width)
+        write_width = write_port_width #max(write_port_width, read_write_port_width)
+        read_width = read_port_width #max(read_port_width, read_write_port_width)
 
         mem_width = max(write_width, read_width)
 
@@ -33,22 +33,16 @@ class Memory(Generator):
 
         self.data_in = self.input("data_in",
                                   width=word_width,
-                                  size=(num_ports, write_width),
+                                  size=(num_write_ports, write_width),
                                   explicit_array=True,
                                   packed=True)
         
-        self.write = self.input("write", 
-                                width=1) 
-
-        self.read = self.input("read",
-                               width=1)
-
-        if read_write_info is not None:
-            self.read_write_addr = self.input("read_write_addr", clog2(mem_width))
+        #if read_write_info is not None:
+        #    self.read_write_addr = self.input("read_write_addr", clog2(mem_width))
 
         self.data_out = self.output("data_out",
                                     width=word_width,
-                                    size=(num_ports, read_width),
+                                    size=(num_read_ports, read_width),
                                     explicit_array=True,
                                     packed=True)
 
@@ -58,29 +52,42 @@ class Memory(Generator):
                                explicit_array=True,
                                packed=True)
 
-        if read_write_info is not None:
-            if read_write_info["latency"] == 1:
+        #if read_write_info is not None:
+        #    if read_write_info["latency"] == 1:
 
         split_addr_signals = False
         if write_info is not None:
-            self.write_addr = self.input("write_addr", clog2(mem_width))
+            self.write_addr = self.input("write_addr", 
+                                         size=clog2(mem_width),
+                                         width=num_write_ports)
+
             if write_info["latency"] == 1:
                 self.write_addr_bank = self.var("write_addr_bank",
-                                                self.write_addr.width - clog2(write_port_width))
-                self.write_addr_port = self.var("write_addr_port", clog2(write_port_width))
+                                                width=self.write_addr.width - clog2(write_port_width),
+                                                size=num_write_ports)
+                self.write_addr_port = self.var("write_addr_port",
+                                                width=clog2(write_port_width),
+                                                size=num_write_ports)
+                self.write = self.input("write", 1)
                 self.add_code(write_data_latency_1)
                 split_addr_signals = True
             else:
                 self.add_code(write_data_latency_0)
 
         if read_info is not None:
-            self.read_addr = self.input("read_addr", clog2(mem_width)) 
+            self.read_addr = self.input("read_addr",
+                                        size=clog2(mem_width),
+                                        width=num_read_ports)
+
             if read_info["latency"] == 1:
                 self.add_code(read_data_latency_1)
             else:
                 self.read_addr_bank = self.var("read_addr_bank",
-                                               clog2(num_banks) + clog2(read_port_width) - clog2(read_port_width))
-                self.read_addr_port = self.var("read_addr_port", clog2(read_port_width))
+                                               width=clog2(num_banks) + clog2(read_port_width) - clog2(read_port_width),
+                                               size=num_read_ports)
+                self.read_addr_port = self.var("read_addr_port",
+                                               width=clog2(read_port_width),
+                                               size=num_read_ports)
                 self.add_code(read_data_latency_0)
                 split_addr_signals = True
 
@@ -94,10 +101,11 @@ class Memory(Generator):
         if ~rst_n:
             for bank in range(num_banks):
                 for port in range(mem_width):
-                    self.memory = 0
+                    self.memory[bank][port] = 0
 
         elif self.write:
-            self.memory[self.write_addr_bank][self.write_addr_port] = self.data_in
+            for w in range(self.write_ports):
+                self.memory[self.write_addr_bank][self.write_addr_port + w] = self.data_in[w]
 
     @always_comb
     def write_data_latency_0(self):
@@ -132,10 +140,7 @@ if __name__ == "__main__":
            read_port_width,
            num_write_ports,
            write_port_width,
-           num_read_write_ports,
-           read_write_port_width,
            num_banks,
            chaining,
-           read_write_info,
            write_info,
            read_info):
