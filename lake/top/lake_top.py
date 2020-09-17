@@ -882,7 +882,7 @@ class LakeTop(Generator):
         # handling arrays in the interface.
         # To alleviate this, we create the flattened wrapper so we can query widths of config
         # registers and trim values to their bitwidths...
-        inst = create_wrapper_flatten(self.internal_generator,
+        inst = create_wrapper_flatten(self.internal_generator.clone(),
                                       self.name + "_W")
         # # inst = Generator(self.name,
         # #                  internal_generator=inst)
