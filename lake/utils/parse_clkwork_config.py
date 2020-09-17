@@ -45,7 +45,6 @@ def extract_controller(file_path):
     with open(file_path) as ctrl_f:
         file_lines = ctrl_f.readlines()
 
-    #print(file_lines)
     dim = search_for_config(file_lines, 'dimensionality')
     print("made")
     cyc_strt = search_for_config(file_lines, 'cycle_starting_addr')
