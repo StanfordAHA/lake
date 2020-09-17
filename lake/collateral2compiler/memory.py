@@ -61,7 +61,7 @@ class Memory(Generator):
         #if read_write_info is not None:
         #    if read_write_info["latency"] == 1:
 
-        split_addr_signals = False
+        split_write_addr_signals = False
         if write_info is not None:
             self.write_addr = self.input("write_addr", 
                                          width=mem_width_bits)
@@ -73,10 +73,11 @@ class Memory(Generator):
                                                 width=write_width_bits)
                 self.write = self.input("write", 1)
                 self.add_code(self.write_data_latency_1)
-                split_addr_signals = True
+                split_write_addr_signals = True
             else:
                 self.add_code(self.write_data_latency_0)
 
+        split_read_addr_signals = False
         if read_info is not None:
             self.read_addr = self.input("read_addr",
                                         width=mem_width_bits)
@@ -89,10 +90,13 @@ class Memory(Generator):
                 self.read_addr_port = self.var("read_addr_port",
                                                width=read_width_bits)
                 self.add_code(self.read_data_latency_0)
-                split_addr_signals = True
+                split_read_addr_signals = True
 
-        if split_addr_signals:
-            self.add_code(self.split_addr)
+        if split_write_addr_signals:
+            self.add_code(self.split_write_addr)
+
+        if split_read_addr_signals:
+            self.add_code(self.split_read_addr)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def write_data_latency_1(self):
@@ -126,18 +130,22 @@ class Memory(Generator):
             self.data_out[port] = self.memory[self.read_addr_bank][self.read_addr_port + port]
 
     @always_comb
-    def split_addr(self):
+    def split_write_addr(self):
         if num_banks == 1:
             self.write_addr_bank = 0
     #        self.write_addr_port = self.write_addr
+        else:
+            self.write_addr_bank = self.write_addr[num_bank_bits + write_width_bits - 1, write_width_bits]
+            self.write_addr_port = self.write_addr[write_width_bits - 1, 0]
+
+    @always_comb
+    def split_read_addr(self):
+        if num_banks == 1:
             self.read_addr_bank = 0
             self.read_addr_port = self.read_addr
         else:
-            self.write_addr_bank = self.write_addr[self.write_addr.width - 1, write_width_bits]
-            self.write_addr_port = self.write_addr[write_width_bits - 1, 0]
             self.read_addr_bank = self.read_addr[num_banks_bits + read_width_bits - 1, read_width_bits]
             self.read_addr_port = self.read_addr[read_width_bits - 1, 0]
-
 
 if __name__ == "__main__":
 

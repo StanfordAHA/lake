@@ -92,7 +92,7 @@ def map_controller(controller, name):
     ctrl_mux_data_strides = controller.mux_data_stride
     ctrl_mux_data_strt = controller.mux_data_strt
 
-    print(f"extracted controller for: {name}")
+    '''print(f"extracted controller for: {name}")
     print(f"dim: {ctrl_dim}")
     print(f"range: {ctrl_ranges}")
     print(f"sched stride: {ctrl_cyc_strides}")
@@ -103,7 +103,7 @@ def map_controller(controller, name):
     print(f"out data start: {ctrl_out_data_strt}")
     print(f"mux data start: {ctrl_mux_data_strt}")
     print(f"mux data stride: {ctrl_mux_data_strides}")
-    print()
+    print()'''
 
     # Now transforms ranges and strides
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
@@ -224,7 +224,7 @@ def get_static_bitstream(config_path,
         config.append((f"strg_ub_loops_buf2out_out_sel_ranges_{i}", sram2tb.extent[i]))
         config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
         for tb in range(len(tbs)):
-            print(f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i])
+            # print(f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i])
             config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
             config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", sram2tb.extent[i]))
     tbs = [tb2out0, tb2out1]

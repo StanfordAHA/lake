@@ -113,7 +113,7 @@ def set_configs_sv(generator, filepath, configs_dict):
                 port_width = port.width
                 if name in remain:
                     remain.remove(name)
-                print("port name ", port_name, " value ", value)
+                # print("port name ", port_name, " value ", value)
                 # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + value + ";\n")
@@ -154,8 +154,8 @@ def safe_wire(gen, w1, w2):
     avoid the exception that Kratos throws.
     '''
     # Only works in one dimension...
-    if w1.width != w2.width:
-        print(f"SAFEWIRE: WIDTH MISMATCH: {w1.name} width {w1.width} <-> {w2.name} width {w2.width}")
+    # if w1.width != w2.width:
+        # print(f"SAFEWIRE: WIDTH MISMATCH: {w1.name} width {w1.width} <-> {w2.name} width {w2.width}")
     if w1.width > w2.width:
         w3 = w1
         w1 = w2
