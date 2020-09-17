@@ -1,3 +1,4 @@
+import os
 from kratos import *
 from lake.modules.passthru import *
 from lake.modules.sram import SRAM
@@ -13,6 +14,7 @@ from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
 from lake.utils.util import extract_formal_annotation
+from lake.utils.parse_clkwork_config import map_controller, extract_controller
 from lake.modules.for_loop import ForLoop
 from lake.modules.spec.sched_gen import SchedGen
 import kratos as kts
@@ -860,6 +862,117 @@ class LakeTop(Generator):
             return attr
         else:
             return False
+
+    def get_static_bitstream(self,
+                             config_path,
+                             in_file_name,
+                             out_file_name):
+
+        input_ports = 1
+        output_ports = 1
+
+        in2agg = map_controller(extract_controller(config_path + '/' + in_file_name + '_in2agg_0.csv'), "in2agg")
+        agg2sram = map_controller(extract_controller(config_path + '/' + in_file_name + '_agg2sram.csv'), "agg2sram")
+        sram2tb = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb")
+        tb2out0 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0")
+        tb2out1 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1")
+
+        # Set configuration...
+        config = [
+            ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
+            ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
+            ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
+            ("strg_ub_loops_in2buf_autovec_write_dimensionality", agg2sram.dim),
+
+            ("strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt),
+            ("strg_ub_tb_write_addr_gen_0_starting_addr", sram2tb.in_data_strt),
+            ("strg_ub_tb_write_addr_gen_1_starting_addr", sram2tb.in_data_strt),
+            ("strg_ub_out_port_sel_addr_starting_addr", sram2tb.mux_data_strt),
+            ("strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
+            ("strg_ub_loops_buf2out_autovec_read_dimensionality", sram2tb.dim),
+
+            ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt),
+            ("strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt),
+            ("strg_ub_loops_in2buf_0_dimensionality", in2agg.dim),
+
+            ("strg_ub_tb_read_addr_gen_0_starting_addr", tb2out0.out_data_strt),
+            ("strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
+            ("strg_ub_loops_buf2out_read_0_dimensionality", tb2out0.dim),
+
+            ("strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
+            ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
+            ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
+
+            # ("chain_valid_in_reg_sel", 1),  # 1
+
+            # Control Signals...
+            ("flush_reg_sel", 0),  # 1
+            ("flush_reg_value", 0),  # 1
+            # ("ren_in_reg_sel", 1),  # 1
+            # ("ren_in_reg_value", 0),  # 1
+            # ("wen_in_reg_sel", 1),  # 1
+            # ("wen_in_reg_value", 0),  # 1
+
+            # Set the mode and activate the tile...
+            ("mode", 0),  # 2
+            ("tile_en", 1),  # 1
+        ]
+
+        # TODO: Check actual stencil_valid property for hardware
+        if self.stencil_valid:
+            cfg_path = config_path + '/' + 'stencil_valid.csv'
+            # Check if the stencil valid file exists...if it doesn't we just won't program it
+            if os.path.exists(cfg_path):
+                stcl_valid = map_controller(extract_controller(cfg_path), "stencil_valid")
+                config.append((f"loops_stencil_valid_dimensionality", stcl_valid.dim))
+                config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stcl_valid.cyc_strt))
+                for i in range(stcl_valid.dim):
+                    config.append((f"loops_stencil_valid_ranges_{i}", stcl_valid.extent[i]))
+                    config.append((f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stcl_valid.cyc_stride[i]))
+            else:
+                print("No configuration file provided for stencil valid...are you expecting one to exist?")
+                print(f"Bogus stencil valid path: {cfg_path}")
+
+        # TODO: Maybe need to check if size 1?
+        for i in range(input_ports):
+            config.append((f"ren_in_{i}_reg_sel", 1))
+            config.append((f"ren_in_{i}_reg_value", 0))
+
+        for i in range(output_ports):
+            config.append((f"wen_in_{i}_reg_sel", 1))
+            config.append((f"wen_in_{i}_reg_value", 0))
+
+        for i in range(in2agg.dim):
+            config.append((f"strg_ub_loops_in2buf_0_ranges_{i}", in2agg.extent[i]))
+            config.append((f"strg_ub_agg_write_addr_gen_0_strides_{i}", in2agg.in_data_stride[i]))
+            config.append((f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
+
+        for i in range(agg2sram.dim):
+            # config.append((f"strg_ub_loops_in2buf_autovec_read_0_ranges_{i}", agg2sram.extent[i]))
+            config.append((f"strg_ub_agg_read_addr_gen_0_strides_{i}", agg2sram.out_data_stride[i]))
+            config.append((f"strg_ub_loops_in2buf_autovec_write_ranges_{i}", agg2sram.extent[i]))
+            config.append((f"strg_ub_input_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
+            config.append((f"strg_ub_input_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
+
+        tbs = [tb2out0, tb2out1]
+
+        for i in range(sram2tb.dim):
+            config.append((f"strg_ub_loops_buf2out_autovec_read_ranges_{i}", sram2tb.extent[i]))
+            config.append((f"strg_ub_output_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
+            config.append((f"strg_ub_output_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
+            config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
+            for tb in range(len(tbs)):
+                print(f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i])
+                config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
+        tbs = [tb2out0, tb2out1]
+        for tb in range(len(tbs)):
+            elem = tbs[tb]
+            for i in range(elem.dim):
+                config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
+                config.append((f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
+                config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+
+        return config
 
 
 if __name__ == "__main__":

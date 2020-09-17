@@ -23,9 +23,10 @@ def gen_test_lake(config_path,
                   out_ports=2):
 
     lt_dut = LakeTop(interconnect_input_ports=in_ports,
-                     interconnect_output_ports=out_ports)
+                     interconnect_output_ports=out_ports,
+                     stencil_valid=False)
 
-    configs = get_static_bitstream(config_path, in_file_name, out_file_name)
+    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
     set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 
     magma_dut = kts.util.to_magma(lt_dut,
@@ -74,7 +75,6 @@ def gen_test_lake(config_path,
 
 
 # Need to add the paths and clockwork to CI
-@pytest.mark.skip
 def test_conv_3_3():
     lc, ls = check_env()
     config_path = lc + "conv_3_3_new"
