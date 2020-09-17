@@ -13,7 +13,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
-from lake.utils.util import extract_formal_annotation
+from lake.utils.util import extract_formal_annotation, trim_config
 from lake.utils.parse_clkwork_config import map_controller, extract_controller
 from lake.modules.for_loop import ForLoop
 from lake.modules.spec.sched_gen import SchedGen
@@ -882,53 +882,48 @@ class LakeTop(Generator):
         # handling arrays in the interface.
         # To alleviate this, we create the flattened wrapper so we can query widths of config
         # registers and trim values to their bitwidths...
-        inst = create_wrapper_flatten(self.internal_generator.clone(),
-                                      self.name + "_W")
-        # # inst = Generator(self.name,
-        # #                  internal_generator=inst)
-        intf = inst.get_port_names()
-        print(intf)
-        print("MADE IT PAST THE INTERFACE?")
+        flattened = create_wrapper_flatten(self.internal_generator.clone(),
+                                           self.name + "_W")
 
         # Set configuration...
         config = [
-            ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
-            ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
-            ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
-            ("strg_ub_loops_in2buf_autovec_write_dimensionality", agg2sram.dim),
+            trim_config(flattened, "strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
+            trim_config(flattened, "strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
+            trim_config(flattened, "strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
+            trim_config(flattened, "strg_ub_loops_in2buf_autovec_write_dimensionality", agg2sram.dim),
 
-            ("strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt),
-            ("strg_ub_tb_write_addr_gen_0_starting_addr", sram2tb.in_data_strt),
-            ("strg_ub_tb_write_addr_gen_1_starting_addr", sram2tb.in_data_strt),
-            ("strg_ub_out_port_sel_addr_starting_addr", sram2tb.mux_data_strt),
-            ("strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
-            ("strg_ub_loops_buf2out_autovec_read_dimensionality", sram2tb.dim),
+            trim_config(flattened, "strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt),
+            trim_config(flattened, "strg_ub_tb_write_addr_gen_0_starting_addr", sram2tb.in_data_strt),
+            trim_config(flattened, "strg_ub_tb_write_addr_gen_1_starting_addr", sram2tb.in_data_strt),
+            trim_config(flattened, "strg_ub_out_port_sel_addr_starting_addr", sram2tb.mux_data_strt),
+            trim_config(flattened, "strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
+            trim_config(flattened, "strg_ub_loops_buf2out_autovec_read_dimensionality", sram2tb.dim),
 
-            ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt),
-            ("strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt),
-            ("strg_ub_loops_in2buf_0_dimensionality", in2agg.dim),
+            trim_config(flattened, "strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt),
+            trim_config(flattened, "strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt),
+            trim_config(flattened, "strg_ub_loops_in2buf_0_dimensionality", in2agg.dim),
 
-            ("strg_ub_tb_read_addr_gen_0_starting_addr", tb2out0.out_data_strt),
-            ("strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
-            ("strg_ub_loops_buf2out_read_0_dimensionality", tb2out0.dim),
+            trim_config(flattened, "strg_ub_tb_read_addr_gen_0_starting_addr", tb2out0.out_data_strt),
+            trim_config(flattened, "strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
+            trim_config(flattened, "strg_ub_loops_buf2out_read_0_dimensionality", tb2out0.dim),
 
-            ("strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
-            ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
-            ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
+            trim_config(flattened, "strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
+            trim_config(flattened, "strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
+            trim_config(flattened, "strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
 
             # ("chain_valid_in_reg_sel", 1),  # 1
 
             # Control Signals...
-            ("flush_reg_sel", 0),  # 1
-            ("flush_reg_value", 0),  # 1
+            trim_config(flattened, "flush_reg_sel", 0),  # 1
+            trim_config(flattened, "flush_reg_value", 0),  # 1
             # ("ren_in_reg_sel", 1),  # 1
             # ("ren_in_reg_value", 0),  # 1
             # ("wen_in_reg_sel", 1),  # 1
             # ("wen_in_reg_value", 0),  # 1
 
             # Set the mode and activate the tile...
-            ("mode", 0),  # 2
-            ("tile_en", 1),  # 1
+            trim_config(flattened, "mode", 0),  # 2
+            trim_config(flattened, "tile_en", 1),  # 1
         ]
 
         # TODO: Check actual stencil_valid property for hardware
@@ -937,53 +932,52 @@ class LakeTop(Generator):
             # Check if the stencil valid file exists...if it doesn't we just won't program it
             if os.path.exists(cfg_path):
                 stcl_valid = map_controller(extract_controller(cfg_path), "stencil_valid")
-                config.append((f"loops_stencil_valid_dimensionality", stcl_valid.dim))
-                config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stcl_valid.cyc_strt))
+                config.append(trim_config(flattened, f"loops_stencil_valid_dimensionality", stcl_valid.dim))
+                config.append(trim_config(flattened, f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stcl_valid.cyc_strt))
                 for i in range(stcl_valid.dim):
-                    config.append((f"loops_stencil_valid_ranges_{i}", stcl_valid.extent[i]))
-                    config.append((f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stcl_valid.cyc_stride[i]))
+                    config.append(trim_config(flattened, f"loops_stencil_valid_ranges_{i}", stcl_valid.extent[i]))
+                    config.append(trim_config(flattened, f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stcl_valid.cyc_stride[i]))
             else:
                 print("No configuration file provided for stencil valid...are you expecting one to exist?")
                 print(f"Bogus stencil valid path: {cfg_path}")
 
         # TODO: Maybe need to check if size 1?
         for i in range(input_ports):
-            config.append((f"ren_in_{i}_reg_sel", 1))
-            config.append((f"ren_in_{i}_reg_value", 0))
+            config.append(trim_config(flattened, f"ren_in_{i}_reg_sel", 1))
+            config.append(trim_config(flattened, f"ren_in_{i}_reg_value", 0))
 
         for i in range(output_ports):
-            config.append((f"wen_in_{i}_reg_sel", 1))
-            config.append((f"wen_in_{i}_reg_value", 0))
+            config.append(trim_config(flattened, "wen_in_{i}_reg_sel", 1))
+            config.append(trim_config(flattened, "wen_in_{i}_reg_value", 0))
 
         for i in range(in2agg.dim):
-            config.append((f"strg_ub_loops_in2buf_0_ranges_{i}", in2agg.extent[i]))
-            config.append((f"strg_ub_agg_write_addr_gen_0_strides_{i}", in2agg.in_data_stride[i]))
-            config.append((f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
+            config.append(trim_config(flattened, f"strg_ub_loops_in2buf_0_ranges_{i}", in2agg.extent[i]))
+            config.append(trim_config(flattened, f"strg_ub_agg_write_addr_gen_0_strides_{i}", in2agg.in_data_stride[i]))
+            config.append(trim_config(flattened, f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
 
         for i in range(agg2sram.dim):
             # config.append((f"strg_ub_loops_in2buf_autovec_read_0_ranges_{i}", agg2sram.extent[i]))
-            config.append((f"strg_ub_agg_read_addr_gen_0_strides_{i}", agg2sram.out_data_stride[i]))
-            config.append((f"strg_ub_loops_in2buf_autovec_write_ranges_{i}", agg2sram.extent[i]))
-            config.append((f"strg_ub_input_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
-            config.append((f"strg_ub_input_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
+            config.append(trim_config(flattened, f"strg_ub_agg_read_addr_gen_0_strides_{i}", agg2sram.out_data_stride[i]))
+            config.append(trim_config(flattened, f"strg_ub_loops_in2buf_autovec_write_ranges_{i}", agg2sram.extent[i]))
+            config.append(trim_config(flattened, f"strg_ub_input_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
+            config.append(trim_config(flattened, f"strg_ub_input_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
 
         tbs = [tb2out0, tb2out1]
 
         for i in range(sram2tb.dim):
-            config.append((f"strg_ub_loops_buf2out_autovec_read_ranges_{i}", sram2tb.extent[i]))
-            config.append((f"strg_ub_output_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
-            config.append((f"strg_ub_output_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
-            config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
+            config.append(trim_config(flattened, f"strg_ub_loops_buf2out_autovec_read_ranges_{i}", sram2tb.extent[i]))
+            config.append(trim_config(flattened, f"strg_ub_output_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
+            config.append(trim_config(flattened, f"strg_ub_output_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
+            config.append(trim_config(flattened, f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
             for tb in range(len(tbs)):
-                print(f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i])
-                config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
+                config.append(trim_config(flattened, f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
         tbs = [tb2out0, tb2out1]
         for tb in range(len(tbs)):
             elem = tbs[tb]
             for i in range(elem.dim):
-                config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
-                config.append((f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
-                config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+                config.append(trim_config(flattened, f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
+                config.append(trim_config(flattened, f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
+                config.append(trim_config(flattened, f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
 
         return config
 

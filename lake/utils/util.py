@@ -1,4 +1,5 @@
 import kratos as kts
+import math
 import os as os
 from enum import Enum
 from lake.attributes.formal_attr import FormalAttr
@@ -174,3 +175,13 @@ def zext(gen, wire, size):
         zext_signal = gen.var(f"{wire.name}_zext", size)
         gen.wire(zext_signal, kts.concat(kts.const(0, size - wire.width), wire))
         return zext_signal
+
+
+def trim_config(flat_gen, cfg_reg_name, value):
+    cfg_port = flat_gen.get_port(cfg_reg_name)
+    if cfg_port is None:
+        print(f"No config reg: {cfg_reg_name}...is that expected?")
+        return (cfg_reg_name, 0)
+    bmask = int(math.pow(2, cfg_port.width)) - 1
+    print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
+    return (cfg_reg_name, value & bmask)
