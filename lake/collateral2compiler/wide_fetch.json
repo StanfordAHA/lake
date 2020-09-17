@@ -1,4 +1,12 @@
 {
+	"lake" : {
+		"connections" : [
+			["lake_input", "mem1.write_0"],
+			["mem1.read_0", "mem0.read_write_0"],
+			["mem0.read_write_0", "mem2.write_0"],
+			["mem2.read_0", "lake.output"]
+		]
+	},
 	"mem0" : {
 		"capacity" : 512,
 		"word_width" : 16,
