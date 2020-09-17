@@ -7,7 +7,7 @@ export LAKE_CONTROLLERS="/clockwork/lake_controllers/"
 # force color
 export PYTEST_ADDOPTS="--color=yes"
 
-cd lake
+cd /lake
 python3 -m pycodestyle lake/
 python3 -m pycodestyle tests/
 pytest -v tests/
