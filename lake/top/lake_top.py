@@ -18,6 +18,7 @@ from lake.utils.parse_clkwork_config import map_controller, extract_controller
 from lake.modules.for_loop import ForLoop
 from lake.modules.spec.sched_gen import SchedGen
 import kratos as kts
+from _kratos import create_wrapper_flatten
 
 
 class LakeTop(Generator):
@@ -876,6 +877,18 @@ class LakeTop(Generator):
         sram2tb = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb")
         tb2out0 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0")
         tb2out1 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1")
+
+        # Getting bitstreams is a little unweildy due to fault (or its underlying implementation) not
+        # handling arrays in the interface.
+        # To alleviate this, we create the flattened wrapper so we can query widths of config
+        # registers and trim values to their bitwidths...
+        # inst = create_wrapper_flatten(self.internal_generator,
+        #                               self.name + "_W")
+        # # inst = Generator(self.name,
+        # #                  internal_generator=inst)
+        # intf = inst.get_port_names()
+        # print(intf)
+        print("MADE IT PAST THE INTERFACE?")
 
         # Set configuration...
         config = [

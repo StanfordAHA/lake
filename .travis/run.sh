@@ -10,6 +10,6 @@ export PYTEST_ADDOPTS="--color=yes"
 cd lake
 python3 -m pycodestyle lake/
 python3 -m pycodestyle tests/
-pytest -vs tests/
+pytest -v tests/
 
 set -x
