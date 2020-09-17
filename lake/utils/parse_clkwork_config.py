@@ -46,7 +46,6 @@ def extract_controller(file_path):
         file_lines = ctrl_f.readlines()
 
     dim = search_for_config(file_lines, 'dimensionality')
-    print("made")
     cyc_strt = search_for_config(file_lines, 'cycle_starting_addr')
     mux_data_strt = search_for_config(file_lines, 'mux_write_data_starting_addr')
     in_data_strt = search_for_config(file_lines, 'write_data_starting_addr')
