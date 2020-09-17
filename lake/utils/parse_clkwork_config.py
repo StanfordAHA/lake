@@ -45,7 +45,9 @@ def extract_controller(file_path):
     with open(file_path) as ctrl_f:
         file_lines = ctrl_f.readlines()
 
+    #print(file_lines)
     dim = search_for_config(file_lines, 'dimensionality')
+    print("made")
     cyc_strt = search_for_config(file_lines, 'cycle_starting_addr')
     mux_data_strt = search_for_config(file_lines, 'mux_write_data_starting_addr')
     in_data_strt = search_for_config(file_lines, 'write_data_starting_addr')
@@ -195,9 +197,10 @@ def get_static_bitstream(config_path,
     ]
 
     # TODO: Check actual stencil_valid property for hardware
-    stcl_valid = map_controller(extract_controller(config_path + '/' + 'stencil_valid.csv'), "stcl_vld")
+    cfg_path = config_path + '/' + 'stencil_valid.csv'
+    stcl_valid = map_controller(extract_controller(cfg_path), "stencil_valid")
     config.append((f"loops_stencil_valid_dimensionality", stcl_valid.dim))
-    config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stcl_valid.cyc_start))
+    config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stcl_valid.cyc_strt))
     for i in range(stcl_valid.dim):
         config.append((f"loops_stencil_valid_ranges_{i}", stcl_valid.extent[i]))
         config.append((f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stcl_valid.cyc_stride[i]))
