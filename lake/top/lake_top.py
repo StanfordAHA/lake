@@ -882,6 +882,7 @@ class LakeTop(Generator):
         # handling arrays in the interface.
         # To alleviate this, we create the flattened wrapper so we can query widths of config
         # registers and trim values to their bitwidths...
+        print(f"Current_name: {self.name}")
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
 
@@ -947,8 +948,8 @@ class LakeTop(Generator):
             config.append(trim_config(flattened, f"ren_in_{i}_reg_value", 0))
 
         for i in range(output_ports):
-            config.append(trim_config(flattened, "wen_in_{i}_reg_sel", 1))
-            config.append(trim_config(flattened, "wen_in_{i}_reg_value", 0))
+            config.append(trim_config(flattened, f"wen_in_{i}_reg_sel", 1))
+            config.append(trim_config(flattened, f"wen_in_{i}_reg_value", 0))
 
         for i in range(in2agg.dim):
             config.append(trim_config(flattened, f"strg_ub_loops_in2buf_0_ranges_{i}", in2agg.extent[i]))
