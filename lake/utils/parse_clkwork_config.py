@@ -39,18 +39,23 @@ def search_for_config(cfg_file, key):
     if len(matches) > 0:
         return int(matches[0].split(',')[1])
 
+def get_property(node, prop):
+    if prop in node:
+        return node[prop]
+    else:
+        return None
 
 def extract_controller_json(control_node):
-    dim = control_node['dimensionality']
-    cyc_strt = control_node["cycle_starting_addr"]
-    mux_data_strt = control_node['mux_write_data_starting_addr']
-    in_data_strt = control_node['write_data_starting_addr']
-    out_data_strt = control_node['read_data_starting_addr']
-    ranges = control_node['extent']
-    cyc_strides = control_node['cycle_stride']
-    in_data_strides = control_node['write_data_stride']
-    out_data_strides = control_node['read_data_stride']
-    mux_data_strides = control_node['mux_write_data_stride']
+    dim = get_property(control_node, 'dimensionality')
+    cyc_strt = get_property(control_node, "cycle_starting_addr")
+    mux_data_strt = get_property(control_node, 'mux_write_data_starting_addr')
+    in_data_strt = get_property(control_node, 'write_data_starting_addr')
+    out_data_strt = get_property(control_node, 'read_data_starting_addr')
+    ranges = get_property(control_node, 'extent')
+    cyc_strides = get_property(control_node, 'cycle_stride')
+    in_data_strides = get_property(control_node, 'write_data_stride')
+    out_data_strides = get_property(control_node, 'read_data_stride')
+    mux_data_strides = get_property(control_node, 'mux_write_data_stride')
 
     ctrl_info = ControllerInfo(dim=dim,
                                cyc_strt=cyc_strt,
