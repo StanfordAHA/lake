@@ -114,7 +114,6 @@ def set_configs_sv(generator, filepath, configs_dict):
                 port_width = port.width
                 if name in remain:
                     remain.remove(name)
-                print("port name ", port_name, " value ", value)
                 # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + value + ";\n")
