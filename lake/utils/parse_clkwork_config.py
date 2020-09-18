@@ -46,7 +46,7 @@ def get_property(node, prop):
         return None
 
 def extract_controller_json(control_node):
-    dim = get_property(control_node, 'dimensionality')[0]
+    dim = get_property(control_node, 'dimensionality')
     cyc_strt = get_property(control_node, "cycle_starting_addr")[0]
     mux_data_strt = get_property(control_node, 'mux_write_data_starting_addr')[0]
     in_data_strt = get_property(control_node, 'write_data_starting_addr')[0]
