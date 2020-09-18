@@ -1,27 +1,27 @@
 {
 	"lake" : {
-		"conn0": {
+		"edge0": {
 			"from_signal": "lake.input",
 			"to_signal": "mem1.write_0",
 			"addr_gen_dim": 6,
 			"addr_gen_max_range": 65536,
 			"addr_gen_max_stride": 65536
 		},
-		"conn1": {
+		"edge1": {
 			"from_signal": "mem1.read_0",
 			"to_signal": "mem0.read_write_0",
 			"addr_gen_dim": 6,
 			"addr_gen_max_range": 65536,
 			"addr_gen_max_stride": 65536
 		},
-		"conn2": {
+		"edge2": {
 			"from_signal": "mem0.read_write_0",
 			"to_signal": "mem2.write_0",
 			"addr_gen_dim": 6,
 			"addr_gen_max_range": 65536,
 			"addr_gen_max_stride": 65536
 		},
-		"conn3": {
+		"edge3": {
 			"from_signal": "mem2.read_0",
 			"to_signal": "lake.output",
 			"addr_gen_dim": 6,
