@@ -878,7 +878,7 @@ class LakeTop(Generator):
         # Store all configurations here
         config = []
 
-        if root_node["in2agg_0"]:
+        if "in2agg_0" in root_node:
             in2agg = map_controller(extract_controller_json(root_node["in2agg_0"]), "in2agg_0")
             config.append(trim_config(flattened, "strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt))
             config.append(trim_config(flattened, "strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt))
@@ -888,7 +888,7 @@ class LakeTop(Generator):
                 config.append(trim_config(flattened, f"strg_ub_agg_write_addr_gen_0_strides_{i}", in2agg.in_data_stride[i]))
                 config.append(trim_config(flattened, f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
 
-        if root_node["agg2sram"]:
+        if "agg2sram" in root_node:
             agg2sram = map_controller(extract_controller_json(root_node["agg2sram"]), "agg2sram")
             config.append(trim_config(flattened, "strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt))
             config.append(trim_config(flattened, "strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt))
@@ -899,9 +899,10 @@ class LakeTop(Generator):
                 config.append(trim_config(flattened, f"strg_ub_loops_in2buf_autovec_write_ranges_{i}", agg2sram.extent[i]))
                 config.append(trim_config(flattened, f"strg_ub_input_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
                 config.append(trim_config(flattened, f"strg_ub_input_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
-
+        # Count tbs
         num_tbs = 0
-        if root_node["tb2out_0"]:
+
+        if "tb2out_0" in root_node:
             num_tbs += 1
             tb2out_0 = map_controller(extract_controller_json(root_node["tb2out_0"]), "tb2out_0")
             config.append(trim_config(flattened, "strg_ub_tb_read_addr_gen_0_starting_addr", tb2out_0.out_data_strt))
@@ -912,7 +913,7 @@ class LakeTop(Generator):
                 config.append(trim_config(flattened, f"strg_ub_tb_read_addr_gen_0_strides_{i}", tb2out_0.out_data_stride[i]))
                 config.append(trim_config(flattened, f"strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_{i}", tb2out_0.cyc_stride[i]))
 
-        if root_node["tb2out_1"]:
+        if "tb2out_1" in root_node:
             num_tbs += 1
             tb2out_1 = map_controller(extract_controller_json(root_node["tb2out_1"]), "tb2out_1")
             config.append(trim_config(flattened, "strg_ub_tb_read_addr_gen_1_starting_addr", tb2out_1.out_data_strt))
@@ -923,7 +924,7 @@ class LakeTop(Generator):
                 config.append(trim_config(flattened, f"strg_ub_tb_read_addr_gen_1_strides_{i}", tb2out_1.out_data_stride[i]))
                 config.append(trim_config(flattened, f"strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_{i}", tb2out_1.cyc_stride[i]))
 
-        if root_node["sram2tb"]:
+        if "sram2tb" in root_node:
             sram2tb = map_controller(extract_controller_json(root_node["sram2tb"]), "sram2tb")
             config.append(trim_config(flattened, "strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt))
             config.append(trim_config(flattened, "strg_ub_tb_write_addr_gen_0_starting_addr", sram2tb.in_data_strt))
@@ -939,7 +940,7 @@ class LakeTop(Generator):
                 for tb in range(num_tbs):
                     config.append(trim_config(flattened, f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
 
-        if root_node["stencil_valid"]:
+        if "stencil_valid" in root_node:
             stencil_valid = map_controller(extract_controller_json(root_node["stencil_valid"]), "stencil_valid")
             # Check actual stencil valid property of hardware before programming
             if self.stencil_valid:
