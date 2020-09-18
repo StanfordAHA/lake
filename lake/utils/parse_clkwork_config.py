@@ -40,6 +40,31 @@ def search_for_config(cfg_file, key):
         return int(matches[0].split(',')[1])
 
 
+def extract_controller_json(control_node):
+    dim = control_node['dimensionality']
+    cyc_strt = control_node["cycle_starting_addr"]
+    mux_data_strt = control_node['mux_write_data_starting_addr']
+    in_data_strt = control_node['write_data_starting_addr']
+    out_data_strt = control_node['read_data_starting_addr']
+    ranges = control_node['extent']
+    cyc_strides = control_node['cycle_stride']
+    in_data_strides = control_node['write_data_stride']
+    out_data_strides = control_node['read_data_stride']
+    mux_data_strides = control_node['mux_write_data_stride']
+
+    ctrl_info = ControllerInfo(dim=dim,
+                               cyc_strt=cyc_strt,
+                               in_data_strt=in_data_strt,
+                               extent=ranges,
+                               cyc_stride=cyc_strides,
+                               in_data_stride=in_data_strides,
+                               out_data_strt=out_data_strt,
+                               out_data_stride=out_data_strides,
+                               mux_data_stride=mux_data_strides,
+                               mux_data_strt=mux_data_strt)
+    return ctrl_info
+
+
 def extract_controller(file_path):
     file_lines = None
     with open(file_path) as ctrl_f:
