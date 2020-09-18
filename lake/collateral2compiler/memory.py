@@ -94,8 +94,6 @@ class Memory(Generator):
         if self.write:
             for i in range(self.write_width):
                 self.memory[self.write_addr + i] = self.data_in[i]
-            #for port in range(self.write_width):
-            #    self.memory[self.write_addr + port] = self.data_in[port]
 
     @always_comb
     def read_data_latency_0(self):
@@ -107,7 +105,7 @@ if __name__ == "__main__":
 
     write_port = MemPort(1, 0)
     read_port = MemPort(0, 0)
-    '''agg = \
+    agg = \
         Memory(capacity=4,
                word_width=16,
                num_read_ports=1,
@@ -116,15 +114,15 @@ if __name__ == "__main__":
                write_port_width=1,
                chaining=0,
                write_info=write_port.port_info,
-               read_info=read_port.port_info)'''
+               read_info=read_port.port_info)
 
-    #verilog(agg, filename="mem.sv")
+    verilog(agg, filename="mem.sv")
 
 
     write_port = MemPort(1, 0)
     read_port = MemPort(0, 0)
     tb = \
-        Memory(capacity=4,
+        Memory(capacity=8,
                word_width=16,
                num_read_ports=1,
                read_port_width=1,
@@ -134,4 +132,4 @@ if __name__ == "__main__":
                write_info=write_port.port_info,
                read_info=read_port.port_info)
 
-    # verilog(tb, filename="mem_tb.sv")
+    verilog(tb, filename="mem_tb.sv")
