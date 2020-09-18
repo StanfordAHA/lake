@@ -75,6 +75,8 @@ class StrgUBVec(Generator):
         self._write = self.var("write", 1)
         self._read = self.var("read", 1)
         self._read_d1 = self.var("read_d1", 1)
+        self._tb_write = self.var("tb_write", 1, size=self.interconnect_output_ports)
+
         self.add_code(self.delay_read)
 
         self._write_addr = self.var("write_addr", self.config_width)
@@ -151,7 +153,7 @@ class StrgUBVec(Generator):
 
             agg_write_port = MemPort(1, 0)
             agg_read_port = MemPort(0, 0)
-            agg = Memory(4, 16, 1, 4, 1, 1, 1, 0, agg_write_port.port_info, agg_read_port.port_info)
+            agg = Memory(4, 16, 1, 4, 1, 1, 0, agg_write_port.port_info, agg_read_port.port_info)
 
             self.add_child(f"agg_{i}",
                            agg,
@@ -164,6 +166,7 @@ class StrgUBVec(Generator):
                            read_addr=self._agg_read_addr[i])
 
             safe_wire(self, agg.ports.data_in[0], self._data_in[i])
+
             forloop_ctr = ForLoop(iterator_support=self.default_iterator_support,
                                   # config_width=self._agg_write_addr.width)
                                   config_width=self.default_config_width)
@@ -334,6 +337,24 @@ class StrgUBVec(Generator):
                             explicit_array=True)
 
         for i in range(self.interconnect_output_ports):
+            tb_write_port = MemPort(1, 0)
+            tb_read_port = MemPort(0, 0)
+            tb = Memory(8, 16, 1, 1, 1, 4, 0, tb_write_port.port_info, tb_read_port.port_info)
+
+            self.add_child(f"tb_{i}",
+                           tb,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           data_in=self._sram_read_data,
+                           # data_out=self._data_out[i],
+                           # write_addr=self._tb_write_addr[i],
+                           write=self._tb_write[i])
+                           # read_addr=self._tb_read_addr[i])
+
+            safe_wire(self, tb.ports.data_out[0], self._data_out[i])
+            safe_wire(self, tb.ports.write_addr, self._tb_write_addr[self._output_port_sel_addr])
+            safe_wire(self, tb.ports.read_addr, self._tb_read_addr[i])
+
             fl_ctr_tb_wr = ForLoop(iterator_support=self.default_iterator_support,
                                    config_width=self.default_config_width)
             loop_itr = fl_ctr_tb_wr.get_iter()
@@ -420,9 +441,10 @@ class StrgUBVec(Generator):
 
         self.add_code(self.agg_to_sram)
         self.add_code(self.tb_ctrl)
+        self.add_code(self.tb_new_ctrl)
 
-        for idx in range(self.interconnect_output_ports):
-            self.add_code(self.tb_to_out, idx=idx)
+        #for idx in range(self.interconnect_output_ports):
+        #    self.add_code(self.tb_to_out, idx=idx)
 
     @always_comb
     def set_sram_addr(self):
@@ -453,7 +475,22 @@ class StrgUBVec(Generator):
         #        self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
             self._sram_write_data = self._sram_write_data_test[self._input_port_sel_addr]
 
-    @always_ff((posedge, "clk"))
+    @always_comb
+    def tb_new_ctrl(self):
+        if ~self._rst_n:
+            for i in range(self.interconnect_output_ports):
+                self._tb_write[i] = 0
+
+        elif self._read_d1:
+            for i in range(self.interconnect_output_ports):
+                if (self._output_port_sel_addr == i):
+                    self._tb_write[i] = 1
+                else:
+                    self._tb_write[i] = 0
+        else:
+            self._tb_write[i] = 0
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def tb_ctrl(self):
         if self._read_d1:
             self._tb[self._output_port_sel_addr][self._tb_write_addr[self._output_port_sel_addr][0]] = \
@@ -461,7 +498,6 @@ class StrgUBVec(Generator):
 
     @always_comb
     def tb_to_out(self, idx):
-        # self._data_out[idx] = self._tb[idx][self._tb_read_addr[idx][3, 2]][self._tb_read_addr[idx][1, 0]]
         self._data_out[idx] = self._tb[idx][self._tb_read_addr[idx][clog2(self.tb_height) +
                                                                     clog2(self.fetch_width) - 1,
                                                                     clog2(self.fetch_width)]][self._tb_read_addr[idx][clog2(self.fetch_width) - 1, 0]]

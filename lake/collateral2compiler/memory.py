@@ -1,7 +1,7 @@
 from kratos import *
 from math import log
 from lake.collateral2compiler.mem_port import MemPort
-
+from lake.utils.util import safe_wire
 
 class Memory(Generator):
     def __init__(self,
@@ -24,20 +24,23 @@ class Memory(Generator):
         self.word_width = word_width
         self.num_read_ports = num_read_ports
 
-        write_width = write_port_width #max(write_port_width, read_write_port_width)
-        read_width = read_port_width #max(read_port_width, read_write_port_width)
+        self.write_width = write_port_width #max(write_port_width, read_write_port_width)
+        self.read_width = read_port_width #max(read_port_width, read_write_port_width)
 
-        assert capacity % write_width == 0
-        assert capacity % read_width == 0
+        assert self.capacity % self.write_width == 0
+        assert self.capacity % self.read_width == 0
 
-        write_width_bits = max(1, clog2(write_width))
-        read_width_bits = max(1, clog2(read_width))
+        self.write_width_bits = max(1, clog2(self.write_width))
+        self.read_width_bits = max(1, clog2(self.read_width))
 
-        mem_width = max(write_width, read_width)
+        self.mem_width = max(self.write_width, self.read_width)
 
-        mem_width_bits = max(1, clog2(mem_width))
+        self.mem_width_bits = max(1, clog2(self.mem_width))
 
-        addr_width = max(1, clog2(capacity))
+        self.addr_width = max(1, clog2(self.capacity))
+
+        self.write_bits = clog2((self.capacity/self.write_width))
+        self.read_bits = clog2((self.capacity / self.read_width))
 
         # inputs
         self.clk = self.clock("clk")
@@ -45,8 +48,8 @@ class Memory(Generator):
         self.rst_n = self.reset("rst_n", 1)
 
         self.data_in = self.input("data_in",
-                                  width=word_width,
-                                  size=write_width,
+                                  width=self.word_width,
+                                  size=self.write_width,
                                   explicit_array=True,
                                   packed=True)
         
@@ -54,14 +57,14 @@ class Memory(Generator):
         #    self.read_write_addr = self.input("read_write_addr", clog2(mem_width))
 
         self.data_out = self.output("data_out",
-                                    width=word_width,
-                                    size=read_width,
+                                    width=self.word_width,
+                                    size=self.read_width,
                                     explicit_array=True,
                                     packed=True)
 
         self.memory = self.var("memory",
-                               width=word_width,
-                               size=capacity,
+                               width=self.word_width,
+                               size=self.capacity,
                                explicit_array=True,
                                packed=True)
 
@@ -70,8 +73,7 @@ class Memory(Generator):
 
         if write_info is not None:
             self.write_addr = self.input("write_addr", 
-                                         width=addr_width)
-
+                                         width=self.addr_width)
             if write_info["latency"] == 1:
                 self.write = self.input("write", 1)
                 self.add_code(self.write_data_latency_1)
@@ -80,41 +82,24 @@ class Memory(Generator):
 
         if read_info is not None:
             self.read_addr = self.input("read_addr",
-                                        width=addr_width)
-
+                                        width=self.addr_width)
             if read_info["latency"] == 1:
                 self.add_code(self.read_data_latency_1)
             else:
                 self.add_code(self.read_data_latency_0)
 
+    
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def write_data_latency_1(self):
-        if ~self.rst_n:
-            for addr in range(self.capacity):
-                self.memory[addr] = 0
-
-        elif self.write:
-            #if write_port_width == 1:
-            #    self.memory[0][self.write_addr] = self.data_in[0]
-            #else:
-            for w in range(write_port_width):
-                self.memory[self.write_addr + w] = self.data_in[w]
-
-    #@always_comb
-    #def write_data_latency_0(self):
-    #    self.memory = 0
-    #    for bank in range(num_banks):
-    #        for port in range(write_port_width):
-    #            self.memory[bank][port] = self.data_in[bank][port]
-
-    
-    #@always_ff((posedge, "clk"), (negedge, "rst_n"))
-    #def read_data_latency_1(self):
-    #    self.memory
+        if self.write:
+            for i in range(self.write_width):
+                self.memory[self.write_addr + i] = self.data_in[i]
+            #for port in range(self.write_width):
+            #    self.memory[self.write_addr + port] = self.data_in[port]
 
     @always_comb
     def read_data_latency_0(self):
-        for port in range(read_port_width):
+        for port in range(self.read_width):
             self.data_out[port] = self.memory[self.read_addr + port]
 
 
@@ -122,7 +107,7 @@ if __name__ == "__main__":
 
     write_port = MemPort(1, 0)
     read_port = MemPort(0, 0)
-    agg = \
+    '''agg = \
         Memory(capacity=4,
                word_width=16,
                num_read_ports=1,
@@ -131,15 +116,15 @@ if __name__ == "__main__":
                write_port_width=1,
                chaining=0,
                write_info=write_port.port_info,
-               read_info=read_port.port_info)
+               read_info=read_port.port_info)'''
 
-    verilog(agg, filename="mem.sv")
+    #verilog(agg, filename="mem.sv")
 
 
     write_port = MemPort(1, 0)
     read_port = MemPort(0, 0)
     tb = \
-        Memory(capacity=8,
+        Memory(capacity=4,
                word_width=16,
                num_read_ports=1,
                read_port_width=1,
@@ -149,4 +134,4 @@ if __name__ == "__main__":
                write_info=write_port.port_info,
                read_info=read_port.port_info)
 
-    # verilog(tb, filename="mem.sv")
+    # verilog(tb, filename="mem_tb.sv")
