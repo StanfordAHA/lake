@@ -52,7 +52,9 @@ def extract_controller_json(control_node):
     if mux_data_strt:
         mux_data_strt = mux_data_strt[0]
     in_data_strt = get_property(control_node, 'write_data_starting_addr')[0]
-    out_data_strt = get_property(control_node, 'read_data_starting_addr')[0]
+    out_data_strt = get_property(control_node, 'read_data_starting_addr')
+    if out_data_strt:
+        out_data_strt = out_data_strt[0]
     ranges = get_property(control_node, 'extent')
     cyc_strides = get_property(control_node, 'cycle_stride')
     in_data_strides = get_property(control_node, 'write_data_stride')
