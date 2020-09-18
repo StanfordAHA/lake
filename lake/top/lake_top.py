@@ -882,7 +882,7 @@ class LakeTop(Generator):
         all_cont = {}
         for controller in controllers:
             json_controller = root_node[controller]
-            all_cont[controller] = extract_controller_json(json_controller)
+            all_cont[controller] = map_controller(extract_controller_json(json_controller), controller)
 
         print(f"Current_name: {self.name}")
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
