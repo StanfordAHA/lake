@@ -10,7 +10,8 @@ from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.utils.util import safe_wire
 from lake.collateral2compiler.mem_port import MemPort
-from lake.collateral2compiler.memory import Memory
+from lake.collateral2compiler.memory import mem_inst #, Memory
+from lake.collateral2compiler.helper import get_json
 import kratos as kts
 
 
@@ -50,6 +51,9 @@ class StrgUBVec(Generator):
 
         self.default_iterator_support = 6
         self.default_config_width = 16
+
+        # top level Lake class parameter
+        self.mem_collateral = {}
 
         # generation parameters
         # inputs
@@ -153,7 +157,19 @@ class StrgUBVec(Generator):
 
             agg_write_port = MemPort(1, 0)
             agg_read_port = MemPort(0, 0)
-            agg = Memory(4, 16, 1, 4, 1, 1, 0, agg_write_port.port_info, agg_read_port.port_info)
+            # agg = Memory(4, 16, 1, 4, 1, 1, 0, agg_write_port.port_info, agg_read_port.port_info)
+
+            agg_params = {"capacity": 4,
+                          "word_width": 16,
+                          "num_read_ports": 1,
+                          "read_port_width": 4,
+                          "num_write_ports": 1,
+                          "write_port_width": 1,
+                          "chaining": 0,
+                          "write_info": agg_write_port.port_info,
+                          "read_info": agg_read_port.port_info}
+
+            agg = mem_inst(agg_params, self.mem_collateral)
 
             self.add_child(f"agg_{i}",
                            agg,
@@ -339,7 +355,19 @@ class StrgUBVec(Generator):
         for i in range(self.interconnect_output_ports):
             tb_write_port = MemPort(1, 0)
             tb_read_port = MemPort(0, 0)
-            tb = Memory(8, 16, 1, 1, 1, 4, 0, tb_write_port.port_info, tb_read_port.port_info)
+            # tb = Memory(8, 16, 1, 1, 1, 4, 0, tb_write_port.port_info, tb_read_port.port_info)
+
+            tb_params = {"capacity": 8,
+                         "word_width": 16,
+                         "num_read_ports": 1,
+                         "read_port_width": 1,
+                         "num_write_ports": 1,
+                         "write_port_width": 4,
+                         "chaining": 0,
+                         "write_info": tb_write_port.port_info,
+                         "read_info": tb_read_port.port_info}
+
+            tb = mem_inst(tb_params, self.mem_collateral)
 
             self.add_child(f"tb_{i}",
                            tb,
@@ -443,6 +471,8 @@ class StrgUBVec(Generator):
         self.add_code(self.tb_ctrl)
         self.add_code(self.tb_new_ctrl)
 
+        # this should also go in top level Lake object
+        get_json(self.mem_collateral)
         #for idx in range(self.interconnect_output_ports):
         #    self.add_code(self.tb_to_out, idx=idx)
 
