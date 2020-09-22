@@ -13,4 +13,3 @@ class MemPort():
 
     def set_addr_domain(self, addr_domain):
         self.port_info["addr_domain"] = addr_domain
-

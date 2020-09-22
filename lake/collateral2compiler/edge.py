@@ -19,11 +19,11 @@ class Edge(Generator):
         # data_in
         self.to_signal = to_signal
 
-        #self.edges.append
+        # self.edges.append
         forloop = ForLoop(iterator_support=addr_gen_dim,
                           config_width=clog2(addr_gen_max_range))
 
-        self._write(f"write_{to_signal}", 
+        self._write(f"write_{to_signal}",
                     width=1)
 
         # get memory params from top Lake or make a wrapper func for user
@@ -48,5 +48,4 @@ class Edge(Generator):
 
         safe_wire(self, AG_write.ports.addr_out, self._write_addr)
 
-
-        #self.add_child
+        # self.add_child
