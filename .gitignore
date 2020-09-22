@@ -2,6 +2,10 @@
 # SWAP #
 ########
 *.swp
+.magma/
+*.txt
+*.csv
+*.json
 
 ###############
 # Build Files #

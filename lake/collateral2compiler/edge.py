@@ -1,5 +1,7 @@
 from kratos import *
 from lake.modules.for_loop import ForLoop
+from lake.utils.util import safe_wire
+from lake.modules.addr_gen import AddrGen
 
 
 class Edge(Generator):
@@ -40,7 +42,7 @@ class Edge(Generator):
         self.add_child(f"AG_write_{from_signal}_{to_signal}",
                        AG_write,
                        clk=self._clk,
-                       rst_self._rst_n,
+                       rst_n=self._rst_n,
                        step=self._write,
                        mux_sel=forloop.ports.mux_sel_out)
 

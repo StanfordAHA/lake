@@ -205,7 +205,7 @@ class StrgUBVec(Generator):
                            # addr_out=self._agg_write_addr[i])
                            mux_sel=forloop_ctr.ports.mux_sel_out)
 
-            safe_wire(self, newAG.ports.addr_out, self._agg_write_addr[i])
+            safe_wire(self, self._agg_write_addr[i], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=self.default_iterator_support,
                              config_width=self.default_config_width)
@@ -242,7 +242,7 @@ class StrgUBVec(Generator):
                                  (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))),
                            # addr_out=self._agg_read_addr_gen_out[i])
                            mux_sel=forloop_ctr_rd.ports.mux_sel_out)
-            safe_wire(self, newAG.ports.addr_out, self._agg_read_addr_gen_out[i])
+            safe_wire(self, self._agg_read_addr_gen_out[i], newAG.ports.addr_out)
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])
 
         # Create for loop counters that can be shared across the input port selection and SRAM write
@@ -273,7 +273,7 @@ class StrgUBVec(Generator):
                            # addr_out=self._input_port_sel_addr)
                            mux_sel=fl_ctr_sram_wr.ports.mux_sel_out)
 
-            safe_wire(self, newAG.ports.addr_out, self._input_port_sel_addr)
+            safe_wire(self, self._input_port_sel_addr, newAG.ports.addr_out)
             # Addr for port select should be driven on agg to sram write sched
         else:
             self.wire(self._input_port_sel_addr[0], const(0, self._input_port_sel_addr.width))
@@ -456,7 +456,7 @@ class StrgUBVec(Generator):
                            step=self._read_d1,
                            # addr_out=self._output_port_sel_addr)
                            mux_sel=fl_ctr_out_sel.ports.mux_sel_out)
-            safe_wire(self, newAG.ports.addr_out, self._output_port_sel_addr)
+            safe_wire(self, self._output_port_sel_addr, newAG.ports.addr_out)
             # Addr for port select should be driven on agg to sram write sched
         else:
             self.wire(self._output_port_sel_addr[0], const(0, self._output_port_sel_addr.width))
@@ -510,7 +510,6 @@ class StrgUBVec(Generator):
         if ~self._rst_n:
             for i in range(self.interconnect_output_ports):
                 self._tb_write[i] = 0
-
         elif self._read_d1:
             for i in range(self.interconnect_output_ports):
                 if (self._output_port_sel_addr == i):
@@ -518,7 +517,8 @@ class StrgUBVec(Generator):
                 else:
                     self._tb_write[i] = 0
         else:
-            self._tb_write[i] = 0
+            for i in range(self.interconnect_output_ports):
+                self._tb_write[i] = 0
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def tb_ctrl(self):

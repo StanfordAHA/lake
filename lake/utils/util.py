@@ -1,4 +1,5 @@
 import kratos as kts
+import math
 import os as os
 from enum import Enum
 from lake.attributes.formal_attr import FormalAttr
@@ -97,6 +98,7 @@ def set_configs_sv(generator, filepath, configs_dict):
                 remain.append(port + f"_{i}")
 
     with open(filepath, "w+") as fi:
+        port_width = None
         for name in configs_dict.keys():
             # binstr = str(hex(configs_dict[name]))
             # binsplit = binstr.split("x")
@@ -113,7 +115,6 @@ def set_configs_sv(generator, filepath, configs_dict):
                 port_width = port.width
                 if name in remain:
                     remain.remove(name)
-                # print("port name ", port_name, " value ", value)
                 # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + value + ";\n")
@@ -121,6 +122,7 @@ def set_configs_sv(generator, filepath, configs_dict):
         # set all unused config regs to 0 since we remove them
         # from tile interface and they need to be set
         for remaining in remain:
+            port_name = None
             port_split = remaining.split("_")
             if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
                 port_name = "_".join(port_split[:-1])
@@ -148,17 +150,39 @@ def transform_strides_and_ranges(ranges, strides, dimensionality):
     return (tform_ranges, tform_strides)
 
 
-def safe_wire(gen, w1, w2):
+def safe_wire(gen, w_to, w_from):
     '''
     Wire together two signals of (potentially) mismatched width to
     avoid the exception that Kratos throws.
     '''
     # Only works in one dimension...
-    if w1.width != w2.width:
-        print(f"SAFEWIRE: WIDTH MISMATCH: {w1.name} width {w1.width} <-> {w2.name} width {w2.width}")
-    if w1.width > w2.width:
-        w3 = w1
-        w1 = w2
-        w2 = w3
-    # w1 containts smaller width...
-    gen.wire(w1, w2[w1.width - 1, 0])
+    if w_to.width != w_from.width:
+        print(f"SAFEWIRE: WIDTH MISMATCH: {w_to.name} width {w_to.width} <-> {w_from.name} width {w_from.width}")
+        # w1 contains smaller width...
+        if w_to.width < w_from.width:
+            gen.wire(w_to, w_from[w_to.width - 1, 0])
+        else:
+            gen.wire(w_to[w_from.width - 1, 0], w_from)
+            zero_overlap = w_to.width - w_from.width
+            gen.wire(w_to[w_to.width - 1, w_from.width], kts.const(0, zero_overlap))
+    else:
+        gen.wire(w_to, w_from)
+
+
+def zext(gen, wire, size):
+    if wire.width >= size:
+        return wire
+    else:
+        zext_signal = gen.var(f"{wire.name}_zext", size)
+        gen.wire(zext_signal, kts.concat(kts.const(0, size - wire.width), wire))
+        return zext_signal
+
+
+def trim_config(flat_gen, cfg_reg_name, value):
+    cfg_port = flat_gen.get_port(cfg_reg_name)
+    if cfg_port is None:
+        print(f"No config reg: {cfg_reg_name}...is that expected?")
+        return (cfg_reg_name, 0)
+    bmask = int(math.pow(2, cfg_port.width)) - 1
+    print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
+    return (cfg_reg_name, value & bmask)
