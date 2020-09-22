@@ -97,8 +97,6 @@ def test_agg_formal():
         data_in = data_in + 1
 
         tester.step(2)
-        
-        tester.print(f"data out is %d\n", tester.circuit.data_out_0)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir = "dump_agg_formal"
