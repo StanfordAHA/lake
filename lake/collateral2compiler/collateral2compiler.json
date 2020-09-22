@@ -8,11 +8,11 @@
             "read_width": 4,
             "write_info": {
                 "latency": 1,
-                "consecutive_latency": 0
+                "initiation_interval": 0
             },
             "read_info": {
                 "latency": 0,
-                "consecutive_latency": 0
+                "initiation_interval": 0
             },
             "write_width_bits": 1,
             "read_width_bits": 2,
@@ -30,11 +30,11 @@
             "read_width": 4,
             "write_info": {
                 "latency": 1,
-                "consecutive_latency": 0
+                "initiation_interval": 0
             },
             "read_info": {
                 "latency": 0,
-                "consecutive_latency": 0
+                "initiation_interval": 0
             },
             "write_width_bits": 1,
             "read_width_bits": 2,
@@ -52,11 +52,11 @@
             "read_width": 1,
             "write_info": {
                 "latency": 1,
-                "consecutive_latency": 0
+                "initiation_interval": 0
             },
             "read_info": {
                 "latency": 0,
-                "consecutive_latency": 0
+                "initiation_interval": 0
             },
             "write_width_bits": 2,
             "read_width_bits": 1,
@@ -74,11 +74,11 @@
             "read_width": 1,
             "write_info": {
                 "latency": 1,
-                "consecutive_latency": 0
+                "initiation_interval": 0
             },
             "read_info": {
                 "latency": 0,
-                "consecutive_latency": 0
+                "initiation_interval": 0
             },
             "write_width_bits": 2,
             "read_width_bits": 1,

@@ -1,9 +1,9 @@
 class MemPort():
     def __init__(self,
                  latency,
-                 consecutive_latency):
+                 II):
 
-        self.port_info = {"latency": latency, "consecutive_latency": consecutive_latency}
+        self.port_info = {"latency": latency, "initiation_interval": II}
 
 
 class Edge():
