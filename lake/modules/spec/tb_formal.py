@@ -143,7 +143,8 @@ class TBFormal(Generator):
                            step=self._read & (self._output_port_sel_addr ==
                                               const(i, self._output_port_sel_addr.width)),
                            # addr_out=self._tb_write_addr[i])
-                           mux_sel=fl_ctr_tb_wr.ports.mux_sel_out)
+                           mux_sel=fl_ctr_tb_wr.ports.mux_sel_out,
+                           restart=fl_ctr_tb_wr.ports.restart)
 
             safe_wire(self, self._tb_write_addr[i], newAG.ports.addr_out)
 
@@ -167,7 +168,8 @@ class TBFormal(Generator):
                            rst_n=self._rst_n,
                            step=self._tb_read[i],
                            # addr_out=self._tb_read_addr[i])
-                           mux_sel=fl_ctr_tb_rd.ports.mux_sel_out)
+                           mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
+                           restart=fl_ctr_tb_rd.ports.restart)
 
             safe_wire(self, self._tb_read_addr[i], newAG.ports.addr_out)
 
