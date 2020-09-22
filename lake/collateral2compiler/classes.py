@@ -5,6 +5,7 @@ class MemPort():
 
         self.port_info = {"latency": latency, "consecutive_latency": consecutive_latency}
 
+
 class Edge():
     def __init__(self,
                  from_signal,

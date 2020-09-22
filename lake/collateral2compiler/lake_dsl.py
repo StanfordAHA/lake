@@ -31,5 +31,5 @@ agg_params = {"capacity": 4,
               "chaining": 0)
 
 agg = mem_inst(params=agg_params,
-               write_ports=[agg_write_port], 
+               write_ports=[agg_write_port],
                read_ports=[agg_read_port])
