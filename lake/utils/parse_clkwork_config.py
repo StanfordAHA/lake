@@ -40,6 +40,44 @@ def search_for_config(cfg_file, key):
         return int(matches[0].split(',')[1])
 
 
+def get_property(node, prop):
+    if prop in node:
+        return node[prop]
+    else:
+        return None
+
+
+def extract_controller_json(control_node):
+    dim = get_property(control_node, 'dimensionality')
+    cyc_strt = get_property(control_node, "cycle_starting_addr")[0]
+    mux_data_strt = get_property(control_node, 'mux_write_data_starting_addr')
+    if mux_data_strt:
+        mux_data_strt = mux_data_strt[0]
+    in_data_strt = get_property(control_node, 'write_data_starting_addr')
+    if in_data_strt:
+        in_data_strt = in_data_strt[0]
+    out_data_strt = get_property(control_node, 'read_data_starting_addr')
+    if out_data_strt:
+        out_data_strt = out_data_strt[0]
+    ranges = get_property(control_node, 'extent')
+    cyc_strides = get_property(control_node, 'cycle_stride')
+    in_data_strides = get_property(control_node, 'write_data_stride')
+    out_data_strides = get_property(control_node, 'read_data_stride')
+    mux_data_strides = get_property(control_node, 'mux_write_data_stride')
+
+    ctrl_info = ControllerInfo(dim=dim,
+                               cyc_strt=cyc_strt,
+                               in_data_strt=in_data_strt,
+                               extent=ranges,
+                               cyc_stride=cyc_strides,
+                               in_data_stride=in_data_strides,
+                               out_data_strt=out_data_strt,
+                               out_data_stride=out_data_strides,
+                               mux_data_stride=mux_data_strides,
+                               mux_data_strt=mux_data_strt)
+    return ctrl_info
+
+
 def extract_controller(file_path):
     file_lines = None
     with open(file_path) as ctrl_f:
@@ -63,9 +101,6 @@ def extract_controller(file_path):
         mux_data_strides.append(search_for_config(file_lines, f"mux_write_data_stride_{i}"))
         in_data_strides.append(search_for_config(file_lines, f"write_data_stride_{i}"))
         out_data_strides.append(search_for_config(file_lines, f"read_data_stride_{i}"))
-
-#    if "sram2tb" in file_path:
-#        in_data_strides = [1, 0, 0, 0]
 
     ctrl_info = ControllerInfo(dim=dim,
                                cyc_strt=cyc_strt,
@@ -134,106 +169,3 @@ def map_controller(controller, name):
                                  mux_data_stride=tform_mux_data_strides)
 
     return mapped_ctrl
-
-
-def get_static_bitstream(config_path,
-                         in_file_name,
-                         out_file_name,
-                         input_ports=1,
-                         output_ports=1):
-
-    in2agg = map_controller(extract_controller(config_path + '/' + in_file_name + '_in2agg_0.csv'), "in2agg")
-    agg2sram = map_controller(extract_controller(config_path + '/' + in_file_name + '_agg2sram.csv'), "agg2sram")
-    sram2tb = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb")
-    tb2out0 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0")
-    tb2out1 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1")
-
-    # Set configuration...
-    config = [
-        ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
-        ("strg_ub_input_addr_gen_starting_addr", agg2sram.in_data_strt),
-        ("strg_ub_input_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
-        ("strg_ub_loops_in2buf_autovec_read_0_dimensionality", agg2sram.dim),
-        ("strg_ub_loops_in2buf_autovec_write_dimensionality", agg2sram.dim),
-
-        ("strg_ub_output_addr_gen_starting_addr", sram2tb.out_data_strt),
-        ("strg_ub_tb_write_addr_gen_0_starting_addr", sram2tb.in_data_strt),
-        ("strg_ub_tb_write_addr_gen_1_starting_addr", sram2tb.in_data_strt),
-        ("strg_ub_out_port_sel_addr_starting_addr", sram2tb.mux_data_strt),
-        ("strg_ub_output_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
-        ("strg_ub_loops_buf2out_autovec_read_dimensionality", sram2tb.dim),
-
-        ("strg_ub_loops_buf2out_out_sel_dimensionality", sram2tb.dim),
-
-        ("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt),
-        ("strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg.cyc_strt),
-        ("strg_ub_loops_in2buf_0_dimensionality", in2agg.dim),
-
-        ("strg_ub_tb_read_addr_gen_0_starting_addr", tb2out0.out_data_strt),
-        ("strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
-        ("strg_ub_loops_buf2out_read_0_dimensionality", tb2out0.dim),
-        ("strg_ub_loops_buf2out_autovec_write_0_dimensionality", sram2tb.dim),
-
-        ("strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
-        ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
-        ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim),
-        ("strg_ub_loops_buf2out_autovec_write_1_dimensionality", sram2tb.dim),
-
-        # ("chain_valid_in_reg_sel", 1),  # 1
-
-        # Control Signals...
-        ("flush_reg_sel", 1),  # 1
-        ("flush_reg_value", 0),  # 1
-        # ("ren_in_reg_sel", 1),  # 1
-        # ("ren_in_reg_value", 0),  # 1
-        # ("wen_in_reg_sel", 1),  # 1
-        # ("wen_in_reg_value", 0),  # 1
-
-        # Set the mode and activate the tile...
-        ("mode", 0),  # 2
-        ("tile_en", 1),  # 1
-    ]
-
-    # TODO: Maybe need to check if size 1?
-    for i in range(input_ports):
-        config.append((f"ren_in_{i}_reg_sel", 1))
-        config.append((f"ren_in_{i}_reg_value", 0))
-
-    for i in range(output_ports):
-        config.append((f"wen_in_{i}_reg_sel", 1))
-        config.append((f"wen_in_{i}_reg_value", 0))
-
-    for i in range(in2agg.dim):
-        config.append((f"strg_ub_loops_in2buf_0_ranges_{i}", in2agg.extent[i]))
-        config.append((f"strg_ub_agg_write_addr_gen_0_strides_{i}", in2agg.in_data_stride[i]))
-        config.append((f"strg_ub_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
-
-    for i in range(agg2sram.dim):
-        config.append((f"strg_ub_loops_in2buf_autovec_read_0_ranges_{i}", agg2sram.extent[i]))
-        config.append((f"strg_ub_agg_read_addr_gen_0_strides_{i}", agg2sram.out_data_stride[i]))
-        config.append((f"strg_ub_loops_in2buf_autovec_write_ranges_{i}", agg2sram.extent[i]))
-        config.append((f"strg_ub_input_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
-        config.append((f"strg_ub_input_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
-
-    tbs = [tb2out0, tb2out1]
-
-    for i in range(sram2tb.dim):
-        config.append((f"strg_ub_loops_buf2out_autovec_read_ranges_{i}", sram2tb.extent[i]))
-        config.append((f"strg_ub_output_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
-        config.append((f"strg_ub_output_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
-        config.append((f"strg_ub_loops_buf2out_out_sel_ranges_{i}", sram2tb.extent[i]))
-        config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
-        for tb in range(len(tbs)):
-            print(f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i])
-            config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
-            config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", sram2tb.extent[i]))
-    tbs = [tb2out0, tb2out1]
-    for tb in range(len(tbs)):
-        elem = tbs[tb]
-        for i in range(elem.dim):
-            # config.append((f"strg_ub_loops_buf2out_autovec_write_{tb}_ranges_{i}", elem.extent[i]))
-            config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
-            config.append((f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
-            config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
-
-    return config

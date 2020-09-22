@@ -37,6 +37,7 @@ class SchedGen(Generator):
         self._cycle_count = self.input("cycle_count", self.glbl_cyc_width)
         self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
         self._addr_out = self.var("addr_out", self.config_width)
+        self._zext_addr_out = self._addr_out.extend(self._cycle_count.width)
 
         # Compare based on minimum of addr + global cycle...
         self.c_a_cmp = min(self._cycle_count.width, self._addr_out.width)
@@ -59,7 +60,7 @@ class SchedGen(Generator):
 
     @always_comb
     def set_valid_out(self):
-        if self._cycle_count[self.c_a_cmp - 1, 0] == self._addr_out[self.c_a_cmp - 1, 0]:
+        if self._cycle_count == self._zext_addr_out:
             self._valid_out = 1
         else:
             self._valid_out = 0
