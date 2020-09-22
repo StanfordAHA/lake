@@ -17,9 +17,9 @@ def get_memory_params(memory, mem_collateral):
     mem_collateral[f"mem_{mem_idx}"] = mem_dict
 
 
-def get_json(mem_collateral):  # will also include edge collateral to form Lake object
+def get_json(mem_collateral, filename="collateral2compiler.json"):  # will also include edge collateral to form Lake object
     all_collateral = {}
     all_collateral["memories"] = mem_collateral
 
-    with open ('collateral2compiler.json', 'w') as outfile:
+    with open (filename, 'w') as outfile:
         json.dump(all_collateral, outfile, indent=4)

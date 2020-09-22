@@ -1,10 +1,16 @@
 from kratos import *
-from lake.modules.for_loop import ForLoop
 
 
 class MemPort():
     def __init__(self,
                  latency,
-                 II):
+                 II,
+                 addr_domain={-1, -1}):
 
-        self.port_info = {"latency": latency, "initiation_interval": II}
+        self.port_info = {"latency": latency,
+                          "initiation_interval": II,
+                          "addr_domain": addr_domain}
+
+    def set_addr_domain(self, addr_domain):
+        self.port_info["addr_domain"] = addr_domain
+
