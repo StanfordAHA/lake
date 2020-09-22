@@ -42,10 +42,7 @@
 		"chaining" : 1,
 		"read_write_info_0" : {
 			"latency" : 1,
-			"consecutive_latency" : 0,
-			"addr_gen_dim" : 6,
-			"addr_gen_max_range" : 65536,
-			"addr_gen_max_stride" : 65536
+			"consecutive_latency" : 0
 		}
 	},
 	"mem1" : {
@@ -61,10 +58,7 @@
                 "chaining" : 0,
                 "read_info_0" : {
                         "latency" : 0,
-                        "consecutive_latency" : 0,
-                        "addr_gen_dim" : 4,
-                        "addr_gen_max_range" : 65536,
-                        "addr_gen_max_stride" : 65536
+                        "consecutive_latency" : 0
                 },
 		"write_info_0" : {
                         "latency" : 1,
@@ -88,17 +82,11 @@
                 "chaining" : 0,
                 "read_info_0" : {
                         "latency" : 0,
-                        "consecutive_latency" : 0,
-                        "addr_gen_dim" : 4,
-                        "addr_gen_max_range" : 65536,
-                        "addr_gen_max_stride" : 65536
+                        "consecutive_latency" : 0
                 },
                 "write_info_0" : {
                         "latency" : 1,
-                        "consecutive_latency" : 0,
-                        "addr_gen_dim" : 4,
-                        "addr_gen_max_range" : 65536,
-                        "addr_gen_max_stride" : 65536
+                        "consecutive_latency" : 0
                 }
 
         }
