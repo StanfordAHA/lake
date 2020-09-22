@@ -18,6 +18,8 @@ def get_memory_params(memory, mem_collateral):
 
 
 def get_json(mem_collateral):  # will also include edge collateral to form Lake object
+    all_collateral = {}
+    all_collateral["memories"] = mem_collateral
 
     with open ('collateral2compiler.json', 'w') as outfile:
-        json.dump(mem_collateral, outfile, indent=4)
+        json.dump(all_collateral, outfile, indent=4)
