@@ -3,6 +3,9 @@
 # mem_collateral is part of Lake, not exposed to user
 # could consumer ports and parameters and then set port_info appropriately (see second example)
 
+# LAKE OBJECT MUST BE FIRST INSTANTIATED
+# IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
+# MEMORIES MUST BE INSTANTIATED BEFORE PORTS
 agg_write_port = MemPort(1, 0)
 agg_read_port = MemPort(0, 0)
 

@@ -35,12 +35,15 @@ class Memory(Generator):
 
         self.word_width = mem_params["word_width"]
         self.num_read_ports = mem_params["num_read_ports"]
+        self.num_write_ports = mem_params["num_write_ports"]
 
         self.write_width = mem_params["write_port_width"]  # max(write_port_width, read_write_port_width)
         self.read_width = mem_params["read_port_width"]  # max(read_port_width, read_write_port_width)
 
         self.write_info = mem_params["write_info"]
         self.read_info = mem_params["read_info"]
+
+        self.chaining = mem_params["chaining"]
 
         assert self.capacity % self.write_width == 0
         assert self.capacity % self.read_width == 0

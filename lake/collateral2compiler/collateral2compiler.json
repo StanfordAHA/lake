@@ -4,6 +4,7 @@
             "capacity": 4,
             "word_width": 16,
             "num_read_ports": 1,
+            "num_write_ports": 1,
             "write_width": 1,
             "read_width": 4,
             "write_info": {
@@ -14,6 +15,7 @@
                 "latency": 0,
                 "initiation_interval": 0
             },
+            "chaining": 0,
             "write_width_bits": 1,
             "read_width_bits": 2,
             "mem_width": 4,
@@ -26,6 +28,7 @@
             "capacity": 4,
             "word_width": 16,
             "num_read_ports": 1,
+            "num_write_ports": 1,
             "write_width": 1,
             "read_width": 4,
             "write_info": {
@@ -36,6 +39,7 @@
                 "latency": 0,
                 "initiation_interval": 0
             },
+            "chaining": 0,
             "write_width_bits": 1,
             "read_width_bits": 2,
             "mem_width": 4,
@@ -48,6 +52,7 @@
             "capacity": 8,
             "word_width": 16,
             "num_read_ports": 1,
+            "num_write_ports": 1,
             "write_width": 4,
             "read_width": 1,
             "write_info": {
@@ -58,6 +63,7 @@
                 "latency": 0,
                 "initiation_interval": 0
             },
+            "chaining": 0,
             "write_width_bits": 2,
             "read_width_bits": 1,
             "mem_width": 4,
@@ -70,6 +76,7 @@
             "capacity": 8,
             "word_width": 16,
             "num_read_ports": 1,
+            "num_write_ports": 1,
             "write_width": 4,
             "read_width": 1,
             "write_info": {
@@ -80,6 +87,7 @@
                 "latency": 0,
                 "initiation_interval": 0
             },
+            "chaining": 0,
             "write_width_bits": 2,
             "read_width_bits": 1,
             "mem_width": 4,
