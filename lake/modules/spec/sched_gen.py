@@ -4,7 +4,6 @@ import operator
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.modules.addr_gen import AddrGen
 from lake.passes.passes import lift_config_reg
-from lake.utils.util import zext
 
 
 class SchedGen(Generator):
