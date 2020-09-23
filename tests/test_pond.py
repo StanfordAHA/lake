@@ -4,7 +4,9 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.models.lake_top_model import LakeTopModel
+from lake.top.pond import Pond
+from lake.passes.passes import lift_config_reg
+from lake.utils.util import extract_formal_annotation
 
 
 # Deprecated on old pond...
@@ -180,6 +182,19 @@ def test_pond(data_width=16,  # CGRA Params
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
+
+@pytest.mark.parametrize("in_ports", [1, 2])
+@pytest.mark.parametrize("out_ports", [1, 2])
+def test_build_pond(in_ports,
+                    out_ports):
+    pond_dut = Pond(interconnect_input_ports=in_ports,
+                    interconnect_output_ports=out_ports)
+    lift_config_reg(pond_dut.internal_generator)
+    extract_formal_annotation(pond_dut, "pond.txt")
+
+    kts.verilog(pond_dut, filename=f"pond_{in_ports}_{out_ports}.sv",
+                optimize_if=False)
 
 
 if __name__ == "__main__":
