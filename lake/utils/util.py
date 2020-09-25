@@ -1,4 +1,5 @@
 import kratos as kts
+from kratos import *
 import math
 import os as os
 from enum import Enum
@@ -184,3 +185,18 @@ def trim_config(flat_gen, cfg_reg_name, value):
     bmask = int(math.pow(2, cfg_port.width)) - 1
     print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
     return (cfg_reg_name, value & bmask)
+
+
+# Add a simple counter to a design and return the signal
+def add_counter(generator, name, bitwidth):
+    ctr = generator.var(name, bitwidth)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def ctr_inc_code():
+        if ~generator._rst_n:
+            ctr = 0
+        else:
+            ctr = ctr + 1
+
+    generator.add_code(ctr_inc_code)
+    return ctr
