@@ -1,7 +1,7 @@
 from lake.collateral2compiler.memory import mem_inst
 
 
-class Lake():
+class TopLake():
     def __init__(self):
         self.mem_collateral = {}
 
@@ -13,11 +13,11 @@ class Lake():
         self.muxes = []
 
     # default for ports is no ports
-    def add_memory(mem_params, write_ports=[], read_ports=[], read_write_ports=[]):
+    def add_memory(self, mem_params, write_ports=[], read_ports=[], read_write_ports=[]):
 
         mem_name = mem_params["name"]
 
-        get_addl_mem_params(mem_params)
+        self.get_addl_mem_params(mem_params, write_ports, read_ports, read_write_ports)
 
         # mem = mem_inst(mem_params, self.mem_collateral)
 
@@ -28,22 +28,22 @@ class Lake():
         self.compiler_memories.append(mem)
 
 
-    def get_addl_mem_params(mem_params):
+    def get_addl_mem_params(self, mem_params, write_ports, read_ports, read_write_ports):
         mem_params["num_write_ports"] = len(write_ports)
         mem_params["num_read_ports"] = len(read_ports)
-        # mem_params["num_read_write_ports"] = len(read_write_ports)
+        mem_params["num_read_write_ports"] = len(read_write_ports)
 
         # mem_params["write_info"] = [port.port_info for port in write_ports]
         # mem_params["read_info"] = [port.port_info for port in read_ports]
         # mem_params["read_write_info"] = [port.port_info for port in read_write_ports]
 
 
-    def add_edge(edge_params):
+    def add_edge(self, edge_params):
         self.edges.append(edge_params)
 
 
     # after all edges are added
-    def banking():
+    def banking(self):
         from_signal = edge_params["from_signal"]
         to_signal = edge_params["to_signal"]
 
@@ -95,13 +95,13 @@ class Lake():
         self.edges.append(e)
 
 
-    def get_compiler_json(filename="collateral2compiler.json"):
+    def get_compiler_json(self, filename="collateral2compiler.json"):
         for mem in self.memories:
             get_memory_params(mem, self.mem_collateral)
 
         get_json(self.mem_collateral, filename)
 
     
-    def construct_lake():
+    def construct_lake(self):
         self.banking()
         self.get_compiler_json()
