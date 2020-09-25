@@ -171,7 +171,7 @@ class StrgUBVec(Generator):
 
             self.agg_iter_support = 4
             self.agg_addr_width = 4
-            self.agg_range_width = 8
+            self.agg_range_width = 16
 
             forloop_ctr = ForLoop(iterator_support=self.agg_iter_support,
                                   # config_width=self.default_config_width)
