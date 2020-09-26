@@ -231,14 +231,27 @@ def generate_data_lists(csv_file_name,
         out_data = [[] for _ in range(data_out_width)]
     # skip first row with headings
     start = False
+    in_index = 0
+    out_index = 1
     for row in reader:
-        row_in = row[0].replace('[', '').replace(']', '').split()
-        row_out = row[1].replace('[', '').replace(']', '').split()
+        if not start:
+            for i in range(len(row)):
+                col = row[i]
+                col = col.replace(' ', '')
+                if col == "data_in":
+                    in_index = i
+                elif col == "data_out":
+                    out_index = i
+
+        row_in = row[in_index].replace('[', '').replace(']', '').split()
+        row_out = row[out_index].replace('[', '').replace(']', '').split()
 
         if start:
+            # what is this used for?
             if len(row) == 3:
                 row_valid = row[2]
                 valids.append(int(row_valid))
+
             if is_wide:
                 append_shift(in_data[0], data_in_width, row_in, bit_width)
                 append_shift(out_data[0], data_out_width, row_out, bit_width)
@@ -260,6 +273,7 @@ def generate_data_lists(csv_file_name,
     # return {data_in_name: in_data, data_out_name: out_data}
     if is_wide:
         return (in_data[0], out_data[0])
+
     return (in_data, out_data, valids)
 
 
