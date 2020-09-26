@@ -74,7 +74,8 @@ def gen_test_lake(config_path,
                                flags=["-Wno-fatal"])
 
 
-# Need to add the paths and clockwork to CI
+# this is the old conv_3_3 that did not use clockwork/lake_stream
+@pytest.mark.skip
 def test_conv_3_3():
     lc, ls = check_env()
     config_path = lc + "conv_3_3_new"
