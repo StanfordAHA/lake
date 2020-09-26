@@ -233,6 +233,8 @@ def generate_data_lists(csv_file_name,
     start = False
     in_index = 0
     out_index = 1
+    has_valid = False
+    valid_index = None
     for row in reader:
         if not start:
             for i in range(len(row)):
@@ -242,14 +244,16 @@ def generate_data_lists(csv_file_name,
                     in_index = i
                 elif col == "data_out":
                     out_index = i
+                elif col == "valid_out":
+                    valid_index = i
+                    has_valid = True
 
         row_in = row[in_index].replace('[', '').replace(']', '').split()
         row_out = row[out_index].replace('[', '').replace(']', '').split()
 
         if start:
-            # what is this used for?
-            if len(row) == 3:
-                row_valid = row[2]
+            if has_valid:
+                row_valid = row[valid_index]
                 valids.append(int(row_valid))
 
             if is_wide:
