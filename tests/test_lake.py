@@ -184,7 +184,7 @@ if __name__ == "__main__":
     # test_conv_3_3()
 
     # heuristic conv_3_3
-    # test_heuristic_conv_3_3()
+    test_heuristic_conv_3_3()
 
     # gaussian
     # test_gaussian()
