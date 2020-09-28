@@ -190,7 +190,6 @@ def test_build_pond(in_ports,
                     out_ports):
     pond_dut = Pond(interconnect_input_ports=in_ports,
                     interconnect_output_ports=out_ports)
-    lift_config_reg(pond_dut.internal_generator)
     extract_formal_annotation(pond_dut, "pond.txt")
 
     kts.verilog(pond_dut, filename=f"pond_{in_ports}_{out_ports}.sv",

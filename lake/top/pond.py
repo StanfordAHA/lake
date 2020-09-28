@@ -327,19 +327,22 @@ class Pond(Generator):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
+        # Finally, lift the config regs...
+        lift_config_reg(self.internal_generator)
+
 
 if __name__ == "__main__":
     pond_dut = Pond(data_width=16,  # CGRA Params
-                    mem_depth=65536,
-                    default_iterator_support=16,
-                    interconnect_input_ports=48,  # Connection to int
-                    interconnect_output_ports=48,
-                    cycle_count_width=32,
+                    mem_depth=32,
+                    default_iterator_support=2,
+                    interconnect_input_ports=1,  # Connection to int
+                    interconnect_output_ports=1,
+                    cycle_count_width=16,
                     add_clk_enable=True,
                     add_flush=True)
 
     # Lift config regs and generate annotation
-    lift_config_reg(pond_dut.internal_generator)
+    # lift_config_reg(pond_dut.internal_generator)
     extract_formal_annotation(pond_dut, "pond.txt")
 
     verilog(pond_dut, filename="pond.sv",

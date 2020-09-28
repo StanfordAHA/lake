@@ -9,13 +9,13 @@ from lake.models.lake_top_model import LakeTopModel
 from lake.utils.util import transform_strides_and_ranges
 
 
-ctrl_dim = 2
-ctrl_ranges = [16, 1]
-ctrl_strides = [1, 1]
-(tform_ranges, tform_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_strides, ctrl_dim)
-print(tform_ranges, tform_strides)
-# Deprecated on old pond...
-#@pytest.mark.skip
+# ctrl_dim = 2
+# ctrl_ranges = [16, 1]
+# ctrl_strides = [1, 1]
+# (tform_ranges, tform_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_strides, ctrl_dim)
+# print(tform_ranges, tform_strides)
+# # Deprecated on old pond...
+# #@pytest.mark.skip
 def test_pond(data_width=16,  # CGRA Params
               mem_depth=32,
               default_iterator_support=2,
@@ -24,48 +24,20 @@ def test_pond(data_width=16,  # CGRA Params
               cycle_count_width=16,
               add_clk_enable=True,
               add_flush=True,
-              #mem_depth=32,
-              #banks=1,
-              #input_iterator_support=2,  # Addr Controllers
-              #output_iterator_support=2,
               interconnect_input_ports=1,  # Connection to int
               interconnect_output_ports=1):
-              #mem_input_ports=1,
-              #mem_output_ports=1,
-              #use_sram_stub=1,
-              #read_delay=0,  # Cycle delay in read (SRAM vs Register File)
-              #rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
-              #agg_height=0,
-              #transpose_height=0,  # new field
-              #max_agg_schedule=64,
-              #input_max_port_sched=64,
-              #output_max_port_sched=64,
-              #align_input=0,
-              #max_line_length=2048,
-              #max_tb_height=1,
-              #tb_range_max=2048,
-              #tb_range_inner_max=5,  # new field
-              #tb_sched_max=64,
-              #max_tb_stride=15,
-              #num_tb=0,
-              #tb_iterator_support=2,
-              #multiwrite=1,
-              #max_prefetch=64,
-              ##config_data_width=16,
-              ##config_addr_width=8,
-              #remove_tb=True):
 
     new_config = {}
 
     # Input addr ctrl
     new_config["rf_read_iter_0_dimensionality"] = 2
-    #new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
-    #new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 16
-    #new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
-    #new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
-    #new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 0
+    # new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
+    # new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 16
+    # new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
+    # new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
+    # new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 0
 
-    new_config["rf_write_iter_0_dimensionality_0"] = 2 
+    new_config["rf_write_iter_0_dimensionality_0"] = 2
     new_config["rf_read_addr_0_starting_addr"] = 2
     new_config["rf_read_addr_0_strides"] = 1
     new_config["rf_read_iter_0_dimensionality"] = 2
@@ -79,46 +51,46 @@ def test_pond(data_width=16,  # CGRA Params
     new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = 0
     new_config["rf_write_sched_0_sched_addr_gen_strides"] = 1
 
-    #new_config["strg_ub_input_addr_ctrl_address_gen_1_dimensionality"] = 2
-    #new_config["strg_ub_input_addr_ctrl_address_gen_1_starting_addr"] = 16
-    #new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_0"] = 16
-    #new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_0"] = 1
-    #new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_1"] = 100
-    #new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_1"] = 0
+    # new_config["strg_ub_input_addr_ctrl_address_gen_1_dimensionality"] = 2
+    # new_config["strg_ub_input_addr_ctrl_address_gen_1_starting_addr"] = 16
+    # new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_0"] = 16
+    # new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_0"] = 1
+    # new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_1"] = 100
+    # new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_1"] = 0
 
     # Output addr ctrl
-    #new_config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 2
-    #new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
-    #new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 16
-    #new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
-    #new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_1"] = 100
-    #new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 0
+    # new_config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 2
+    # new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
+    # new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 16
+    # new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
+    # new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_1"] = 100
+    # new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 0
 
-    #new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
-    #new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 16
-    #new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 16
-    #new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
-    #new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 100
-    #new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 0
+    # new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
+    # new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 16
+    # new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 16
+    # new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 1
+    # new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 100
+    # new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 0
 
     # These ports are desynched
     # new_config["strg_ub_sync_grp_sync_group_0"] = 1  # not needed
     # new_config["strg_ub_sync_grp_sync_group_1"] = 2  # not needed
 
-    #new_config["strg_ub_app_ctrl_read_depth_0"] = 16
-    #new_config["strg_ub_app_ctrl_read_depth_1"] = 16
+    # new_config["strg_ub_app_ctrl_read_depth_0"] = 16
+    # new_config["strg_ub_app_ctrl_read_depth_1"] = 16
 
-    #new_config["strg_ub_app_ctrl_write_depth_0"] = 16
-    #new_config["strg_ub_app_ctrl_write_depth_1"] = 16
+    # new_config["strg_ub_app_ctrl_write_depth_0"] = 16
+    # new_config["strg_ub_app_ctrl_write_depth_1"] = 16
 
-    #new_config["strg_ub_app_ctrl_coarse_read_depth_0"] = 16
-    #new_config["strg_ub_app_ctrl_coarse_read_depth_1"] = 0
+    # new_config["strg_ub_app_ctrl_coarse_read_depth_0"] = 16
+    # new_config["strg_ub_app_ctrl_coarse_read_depth_1"] = 0
 
-    #new_config["strg_ub_app_ctrl_coarse_write_depth_0"] = 16
-    #new_config["strg_ub_app_ctrl_coarse_write_depth_1"] = 16
+    # new_config["strg_ub_app_ctrl_coarse_write_depth_0"] = 16
+    # new_config["strg_ub_app_ctrl_coarse_write_depth_1"] = 16
 
-    #new_config["strg_ub_app_ctrl_write_depth_ss_0"] = 16
-    #new_config["strg_ub_app_ctrl_write_depth_ss_0"] = 16
+    # new_config["strg_ub_app_ctrl_write_depth_ss_0"] = 16
+    # new_config["strg_ub_app_ctrl_write_depth_ss_0"] = 16
 
     # Don't use the model - this is handwritten for now
 

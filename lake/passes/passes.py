@@ -9,6 +9,12 @@ import _kratos
 
 # this is a pass
 def lift_config_reg(generator):
+    # if not hasattr(generator, "lifted"):
+    #     setattr(generator, "lifted", False)
+    # if generator.lifted:
+    #     print("WARNING: LAKE PASSES: LIFT_CONFIG_REGS: Configuration registers have already been lifted...")
+    #     print("WARNING: LAKE PASSES: LIFT_CONFIG_REGS: Exiting pass early...")
+    #     return
     class ConfigRegLiftVisitor(IRVisitor):
         def __init__(self):
             IRVisitor.__init__(self)
@@ -55,6 +61,8 @@ def lift_config_reg(generator):
 
     v = ConfigRegLiftVisitor()
     v.visit_root(generator)
+    # Make sure we don't lift twice
+    # generator.lifted = True
 
 
 # Inputs:
