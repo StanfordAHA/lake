@@ -24,7 +24,7 @@ agg_params = {"name": "agg",
 
 tile.add_memory(agg_params, [agg_write_port], [agg_read_port])
 
-tb_write_port = MemPort(1, 0)
+'''tb_write_port = MemPort(1, 0)
 tb_read_port = MemPort(0, 0)
 
 tb_params = {"name": "tb",

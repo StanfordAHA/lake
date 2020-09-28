@@ -126,11 +126,12 @@ def set_configs_sv(generator, filepath, configs_dict):
             port_split = remaining.split("_")
             if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
                 port_name = "_".join(port_split[:-1])
-            port = int_gen.get_port(port_name)
-            if port is None:
-                print(port_name)
-            if port is not None:
-                fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
+            if port_name is not None:
+                port = int_gen.get_port(port_name)
+                if port is None:
+                    print(port_name)
+                if port is not None:
+                    fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = " + str(port_width) + "'h0;\n")
                 # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
 
@@ -184,5 +185,5 @@ def trim_config(flat_gen, cfg_reg_name, value):
         print(f"No config reg: {cfg_reg_name}...is that expected?")
         return (cfg_reg_name, 0)
     bmask = int(math.pow(2, cfg_port.width)) - 1
-    print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
+    # print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
     return (cfg_reg_name, value & bmask)

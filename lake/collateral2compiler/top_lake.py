@@ -7,9 +7,10 @@ class TopLake():
 
         self.memories = []
         self.edges = []
-
+        self.edges_params = []
         self.compiler_memories = []
 
+        self.merged_mems = []
         self.muxes = []
 
     # default for ports is no ports
@@ -38,6 +39,10 @@ class TopLake():
 
     def add_edge(self, edge_params):
         self.edges.append(edge_params)
+        self.edges_merged.append([False, False])
+
+    def merge_mems(self):
+        
 
     # after all edges are added
     def banking(self):
@@ -47,7 +52,8 @@ class TopLake():
         # infer mux
         share_from = []
         share_to = []
-        for edge in edges:
+        for i in range(len(edges)):
+            edge = self.edges[i]
             if edge["from_signal"] == from_signal:
                 share_from.append(edge["to_signal"])
                 # share_from.append(edge["to_signal"].split(".")[0])
@@ -87,8 +93,8 @@ class TopLake():
         if len(share_to) > 0:
             to_mem_params = [self.memories[mem] for mem in share_to]
 
-        e = Edge(edge_params)
-        self.edges.append(e)
+        # e = Edge(edge_params)
+        # self.edges.append(e)
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
         for mem in self.memories:
@@ -97,5 +103,6 @@ class TopLake():
         get_json(self.mem_collateral, filename)
 
     def construct_lake(self):
-        self.banking()
+        for i in range(len(self.edges)):
+            self.banking(i)
         self.get_compiler_json()
