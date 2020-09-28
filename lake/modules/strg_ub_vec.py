@@ -10,7 +10,7 @@ from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.utils.util import safe_wire
 from lake.collateral2compiler.mem_port import MemPort
-from lake.collateral2compiler.memory import mem_inst #, Memory
+from lake.collateral2compiler.memory import mem_inst
 from lake.collateral2compiler.helper import get_json
 import kratos as kts
 
@@ -109,8 +109,8 @@ class StrgUBVec(Generator):
                                          size=self.fetch_width,
                                          packed=True)
         self._sram_write_data_test = self.var("sram_write_data_test", data_width,
-                                         size=(self.interconnect_input_ports, self.fetch_width),
-                                         packed=True)
+                                              size=(self.interconnect_input_ports, self.fetch_width),
+                                              packed=True)
         self._sram_read_data = self.var("sram_read_data", self.data_width,
                                         size=self.fetch_width,
                                         packed=True,
@@ -175,7 +175,7 @@ class StrgUBVec(Generator):
                            agg,
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           #data_in=self._data_in[i],
+                           # data_in=self._data_in[i],
                            data_out=self._sram_write_data_test[i],
                            write_addr=self._agg_write_addr[i],
                            write=self._agg_write[i],
@@ -376,8 +376,8 @@ class StrgUBVec(Generator):
                            data_in=self._sram_read_data,
                            # data_out=self._data_out[i],
                            # write_addr=self._tb_write_addr[i],
-                           write=self._tb_write[i])
                            # read_addr=self._tb_read_addr[i])
+                           write=self._tb_write[i])
 
             safe_wire(self, tb.ports.data_out[0], self._data_out[i])
             safe_wire(self, tb.ports.write_addr, self._tb_write_addr[self._output_port_sel_addr])
@@ -473,7 +473,7 @@ class StrgUBVec(Generator):
 
         # this should also go in top level Lake object
         get_json(self.mem_collateral)
-        #for idx in range(self.interconnect_output_ports):
+        # for idx in range(self.interconnect_output_ports):
         #    self.add_code(self.tb_to_out, idx=idx)
 
     @always_comb
@@ -500,10 +500,10 @@ class StrgUBVec(Generator):
 
     @always_comb
     def agg_to_sram(self):
-        #for i in range(self.fetch_width):
+        self._sram_write_data = self._sram_write_data_test[self._input_port_sel_addr]
+        # for i in range(self.fetch_width):
         #    self._sram_write_data[i] = \
         #        self._agg[self._input_port_sel_addr][self._agg_read_addr[self._input_port_sel_addr]][i]
-            self._sram_write_data = self._sram_write_data_test[self._input_port_sel_addr]
 
     @always_comb
     def tb_new_ctrl(self):

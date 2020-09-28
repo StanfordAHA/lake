@@ -69,7 +69,7 @@ def gen_test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="dump"
+        tempdir = "dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])

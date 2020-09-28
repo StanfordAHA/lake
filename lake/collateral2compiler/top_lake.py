@@ -27,7 +27,6 @@ class TopLake():
         self.memories.append(mem)
         self.compiler_memories.append(mem)
 
-
     def get_addl_mem_params(self, mem_params, write_ports, read_ports, read_write_ports):
         mem_params["num_write_ports"] = len(write_ports)
         mem_params["num_read_ports"] = len(read_ports)
@@ -37,10 +36,8 @@ class TopLake():
         # mem_params["read_info"] = [port.port_info for port in read_ports]
         # mem_params["read_write_info"] = [port.port_info for port in read_write_ports]
 
-
     def add_edge(self, edge_params):
         self.edges.append(edge_params)
-
 
     # after all edges are added
     def banking(self):
@@ -83,17 +80,15 @@ class TopLake():
                 read_ports += mem["read_ports"]
                 merged_cap += mem["capacity"]
 
-            
             get_addl_mem_params(mem_params)
 
             merged_mem["capacity"] = merged_cap
 
         if len(share_to) > 0:
             to_mem_params = [self.memories[mem] for mem in share_to]
-                
+
         e = Edge(edge_params)
         self.edges.append(e)
-
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
         for mem in self.memories:
@@ -101,7 +96,6 @@ class TopLake():
 
         get_json(self.mem_collateral, filename)
 
-    
     def construct_lake(self):
         self.banking()
         self.get_compiler_json()
