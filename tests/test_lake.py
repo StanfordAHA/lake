@@ -74,17 +74,7 @@ def gen_test_lake(config_path,
                                flags=["-Wno-fatal"])
 
 
-# this is the old conv_3_3 that did not use clockwork/lake_stream
-@pytest.mark.skip
 def test_conv_3_3():
-    lc, ls = check_env()
-    config_path = lc + "conv_3_3_new"
-    stream_path = ls + "buf.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path)
-
-
-def test_heuristic_conv_3_3():
     lc, ls = check_env()
     config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
@@ -181,10 +171,7 @@ def test_harris_5():
 if __name__ == "__main__":
 
     # conv_3_3
-    # test_conv_3_3()
-
-    # heuristic conv_3_3
-    test_heuristic_conv_3_3()
+    test_conv_3_3()
 
     # gaussian
     # test_gaussian()
