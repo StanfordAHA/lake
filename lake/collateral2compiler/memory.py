@@ -7,6 +7,13 @@ from lake.collateral2compiler.helper import *
 
 def mem_inst(mem_params, mem_collateral):
 
+    # default port addr domain is full capacity of memory
+    for p in mem_params["write_info"] + mem_params["read_info"]:
+        p.set_addr_domain([0, mem_params["capacity"]-1])
+
+    for s in ["write_info", "read_info"]:
+        mem_params[s] = [p.port_info for p in mem_params[s]]
+    
     mem = Memory(mem_params)
     get_memory_params(mem, mem_collateral)
 
@@ -40,8 +47,8 @@ class Memory(Generator):
         self.write_width = mem_params["write_port_width"]  # max(write_port_width, read_write_port_width)
         self.read_width = mem_params["read_port_width"]  # max(read_port_width, read_write_port_width)
 
-        self.write_info = mem_params["write_info"]
-        self.read_info = mem_params["read_info"]
+        self.write_info = mem_params["write_info"][0]
+        self.read_info = mem_params["read_info"][0]
 
         self.chaining = mem_params["chaining"]
 

@@ -11,16 +11,16 @@
                 "latency": 1,
                 "initiation_interval": 0,
                 "addr_domain": {
-                    "min": -1,
-                    "max": -1
+                    "min": 0,
+                    "max": 3
                 }
             },
             "read_info": {
                 "latency": 0,
                 "initiation_interval": 0,
                 "addr_domain": {
-                    "min": -1,
-                    "max": -1
+                    "min": 0,
+                    "max": 3
                 }
             },
             "chaining": 0,
@@ -43,16 +43,16 @@
                 "latency": 1,
                 "initiation_interval": 0,
                 "addr_domain": {
-                    "min": -1,
-                    "max": -1
+                    "min": 0,
+                    "max": 3
                 }
             },
             "read_info": {
                 "latency": 0,
                 "initiation_interval": 0,
                 "addr_domain": {
-                    "min": -1,
-                    "max": -1
+                    "min": 0,
+                    "max": 3
                 }
             },
             "chaining": 0,
@@ -75,16 +75,16 @@
                 "latency": 1,
                 "initiation_interval": 0,
                 "addr_domain": {
-                    "min": -1,
-                    "max": -1
+                    "min": 0,
+                    "max": 7
                 }
             },
             "read_info": {
                 "latency": 0,
                 "initiation_interval": 0,
                 "addr_domain": {
-                    "min": -1,
-                    "max": -1
+                    "min": 0,
+                    "max": 7
                 }
             },
             "chaining": 0,
@@ -107,16 +107,16 @@
                 "latency": 1,
                 "initiation_interval": 0,
                 "addr_domain": {
-                    "min": -1,
-                    "max": -1
+                    "min": 0,
+                    "max": 7
                 }
             },
             "read_info": {
                 "latency": 0,
                 "initiation_interval": 0,
                 "addr_domain": {
-                    "min": -1,
-                    "max": -1
+                    "min": 0,
+                    "max": 7
                 }
             },
             "chaining": 0,

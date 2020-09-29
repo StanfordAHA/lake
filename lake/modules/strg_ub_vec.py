@@ -166,8 +166,8 @@ class StrgUBVec(Generator):
                           "num_write_ports": 1,
                           "write_port_width": 1,
                           "chaining": 0,
-                          "write_info": agg_write_port.port_info,
-                          "read_info": agg_read_port.port_info}
+                          "write_info": [agg_write_port],
+                          "read_info": [agg_read_port]}
 
             agg = mem_inst(agg_params, self.mem_collateral)
 
@@ -364,8 +364,8 @@ class StrgUBVec(Generator):
                          "num_write_ports": 1,
                          "write_port_width": 4,
                          "chaining": 0,
-                         "write_info": tb_write_port.port_info,
-                         "read_info": tb_read_port.port_info}
+                         "write_info": [tb_write_port],
+                         "read_info": [tb_read_port]}
 
             tb = mem_inst(tb_params, self.mem_collateral)
 
