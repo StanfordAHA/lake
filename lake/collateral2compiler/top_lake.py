@@ -10,10 +10,10 @@ class TopLake():
         self.mem_insts = []
 
         self.edges = []
-        self.edges_params = []
+        self.merged_edges = []
         self.compiler_memories = {}
 
-        self.merged_mems = []
+        self.merged_mems = {}
         self.muxes = []
 
     # default for ports is no ports
@@ -53,6 +53,7 @@ class TopLake():
         for mem in self.memories.keys():
             memories_from[mem] = []
             memories_to[mem] = []
+            self.merged_mems[mem] = self.memories[mem]
 
         for mem in self.memories.keys():
             for edge in self.edges:
@@ -69,12 +70,14 @@ class TopLake():
             if len(memories_from[mem_from]) > 1:
                 merged_mem = self.memories[memories_from[mem_from][0]]
  
-                name = ""
+                name = "merged_"
                 write_ports = []               
                 read_ports = []
                 merged_cap = 0
                 for m in memories_from[mem_from]:
                     mem = self.memories[m]
+                    del self.merged_mems[m]
+
                     name += mem["name"] + "_"
 
                     rport = mem["read_ports"].copy()
@@ -95,14 +98,17 @@ class TopLake():
                 self.get_addl_mem_params(merged_mem, write_ports, read_ports, []) 
 
                 print(merged_mem)
+                self.merged_mems[name] = merged_mem
 
         # e = Edge(edge_params)
         # self.edges.append(e)
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
         for mem in self.memories:
-            m = mem_inst(mem, self.mem_collateral)
-            self.mem_insts.append(m)
+            self.memories[mem]["read_info"] = [x.port_info for x in self.memories[mem]["read_ports"]]
+            self.memories[mem]["write_info"] = [x.port_info for x in self.memories[mem]["write_ports"]]
+            m = mem_inst(self.memories[mem], self.mem_collateral)
+    #        self.mem_insts.append(m)
 
         get_json(self.mem_collateral, filename)
 

@@ -31,6 +31,7 @@ class Memory(Generator):
 
         super().__init__("mem", debug=True)
 
+        print(mem_params)
         self.capacity = mem_params["capacity"]
 
         self.word_width = mem_params["word_width"]
@@ -40,8 +41,8 @@ class Memory(Generator):
         self.write_width = mem_params["write_port_width"]  # max(write_port_width, read_write_port_width)
         self.read_width = mem_params["read_port_width"]  # max(read_port_width, read_write_port_width)
 
-        self.write_info = mem_params["write_info"]
-        self.read_info = mem_params["read_info"]
+        self.write_info = mem_params["write_info"][0]
+        self.read_info = mem_params["read_info"][0]
 
         self.chaining = mem_params["chaining"]
 
