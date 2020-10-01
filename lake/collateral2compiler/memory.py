@@ -9,13 +9,13 @@ def mem_inst(mem_params, mem_collateral):
 
     # default port addr domain is full capacity of memory
     for p in mem_params["write_ports"] + mem_params["read_ports"]:
-        print(p.port_info["addr_domain"])
+        # print(p.port_info["addr_domain"])
         if p.port_info["addr_domain"]["min"] == -1 and p.port_info["addr_domain"]["max"] == -1:
-            p.set_addr_domain([0, mem_params["capacity"]-1])
+            p.set_addr_domain([0, mem_params["capacity"] - 1])
 
     for s in ["write_info", "read_info"]:
-        mem_params[s] = [p.port_info for p in mem_params[s[:-4]+"ports"]]
-    
+        mem_params[s] = [p.port_info for p in mem_params[s[:-4] + "ports"]]
+
     mem = Memory(mem_params)
     get_memory_params(mem, mem_collateral)
 
@@ -126,7 +126,6 @@ class Memory(Generator):
             else:
                 self.add_code(self.read_data_latency_0)
 
-
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def write_data_latency_1(self):
         for p in range(self.num_write_ports):
@@ -165,4 +164,3 @@ if __name__ == "__main__":
     colat = {}
     agg = mem_inst(agg_params, colat)
     verilog(agg, filename="mem.sv")
-

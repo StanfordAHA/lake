@@ -43,9 +43,6 @@ class TopLake():
     def add_edge(self, edge_params):
         self.edges.append(edge_params)
 
-    # def merge_mems(self):
-        
-
     # after all edges are added
     def banking(self):
         memories_from = {}
@@ -62,16 +59,16 @@ class TopLake():
                 if edge["to_signal"] == mem:
                     memories_from[mem].append(edge["from_signal"])
 
-        print("MEMORIES FROM ", memories_from)
-        print()
-        print("MEMORIES TO ", memories_to)
+        # print("MEMORIES FROM ", memories_from)
+        # print()
+        # print("MEMORIES TO ", memories_to)
 
         for mem_from in memories_from.keys():
             if len(memories_from[mem_from]) > 1:
                 merged_mem = self.memories[memories_from[mem_from][0]]
- 
+
                 name = "merged_"
-                write_ports = []               
+                write_ports = []
                 read_ports = []
                 merged_cap = 0
                 for m in memories_from[mem_from]:
@@ -89,15 +86,15 @@ class TopLake():
                         w.set_addr_domain([merged_cap, merged_cap + mem["capacity"]])
                     write_ports += wport
                     merged_cap += mem["capacity"]
-                    
+
                 merged_mem["name"] = name[:-1]
                 merged_mem["capacity"] = merged_cap
                 merged_mem["read_ports"] = read_ports
                 merged_mem["write_ports"] = write_ports
 
-                self.get_addl_mem_params(merged_mem, write_ports, read_ports, []) 
+                self.get_addl_mem_params(merged_mem, write_ports, read_ports, [])
 
-                print(merged_mem)
+                # print(merged_mem)
                 self.merged_mems[name] = merged_mem
 
         # e = Edge(edge_params)
