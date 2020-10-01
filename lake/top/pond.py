@@ -64,6 +64,8 @@ class Pond(Generator):
                                     size=self.interconnect_input_ports,
                                     explicit_array=True,
                                     packed=True)
+        
+        # Add "_pond" suffix to avoid error during garnet RTL generation 
         self._data_in = self.input("data_in_pond", self.data_width,
                                    size=self.interconnect_input_ports,
                                    explicit_array=True,
