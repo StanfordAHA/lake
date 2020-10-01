@@ -38,6 +38,7 @@ class Memory(Generator):
 
         super().__init__("mem", debug=True)
 
+        print(mem_params)
         self.capacity = mem_params["capacity"]
 
         self.word_width = mem_params["word_width"]
