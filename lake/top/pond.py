@@ -64,7 +64,7 @@ class Pond(Generator):
                                     size=self.interconnect_input_ports,
                                     explicit_array=True,
                                     packed=True)
-        self._data_in = self.input("data_in", self.data_width,
+        self._data_in = self.input("data_in_pond", self.data_width,
                                    size=self.interconnect_input_ports,
                                    explicit_array=True,
                                    packed=True)
@@ -79,14 +79,14 @@ class Pond(Generator):
                                    size=self.interconnect_output_ports,
                                    explicit_array=True,
                                    packed=True)
-        self._data_out = self.output("data_out", self.data_width,
+        self._data_out = self.output("data_out_pond", self.data_width,
                                      size=self.interconnect_output_ports,
                                      explicit_array=True,
                                      packed=True)
         self._data_out.add_attribute(FormalAttr(f"{self._data_out.name}", FormalSignalConstraint.SEQUENCE))
         self._data_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._valid_out = self.output("valid_out", self.interconnect_output_ports)
+        self._valid_out = self.output("valid_out_pond", self.interconnect_output_ports)
         self._valid_out.add_attribute(FormalAttr(f"{self._valid_out.name}", FormalSignalConstraint.SEQUENCE))
         self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
