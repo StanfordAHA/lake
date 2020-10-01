@@ -170,7 +170,7 @@ class StrgUBVec(Generator):
 
             self.agg_iter_support = 4
             self.agg_addr_width = 4
-            self.agg_range_width = 8
+            self.agg_range_width = 16
 
             forloop_ctr = ForLoop(iterator_support=self.agg_iter_support,
                                   # config_width=self.default_config_width)
@@ -312,18 +312,7 @@ class StrgUBVec(Generator):
 
         for i in range(self.interconnect_output_ports):
 
-            # fl_ctr_tb_wr = ForLoop(iterator_support=self.default_iterator_support,
-            #                        config_width=self.default_config_width)
-            # loop_itr = fl_ctr_tb_wr.get_iter()
-            # loop_wth = fl_ctr_tb_wr.get_cfg_width()
-
-            # self.add_child(f"loops_buf2out_autovec_write_{i}",
-            #                fl_ctr_tb_wr,
-            #                clk=self._clk,
-            #                rst_n=self._rst_n,
-            #                step=self._read_d1)  # & (self._output_port_sel_addr ==
-            # # const(i, self._output_port_sel_addr.width)))
-            self.tb_iter_support = 4
+            self.tb_iter_support = 6
             self.tb_addr_width = 4
             self.tb_range_width = 8
 
@@ -334,9 +323,7 @@ class StrgUBVec(Generator):
                            _AG,
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           step=self._read_d1,  # & (self._output_port_sel_addr ==
-                           # const(i, self._output_port_sel_addr.width)),
-                           # addr_out=self._tb_write_addr[i])
+                           step=self._read_d1,
                            mux_sel=self._mux_sel_d1)
             safe_wire(gen=self, w_to=self._tb_write_addr[i], w_from=_AG.ports.addr_out)
 
@@ -373,18 +360,6 @@ class StrgUBVec(Generator):
                            valid_output=self._tb_read[i])
 
         if self.interconnect_output_ports > 1:
-
-            # fl_ctr_out_sel = ForLoop(iterator_support=self.default_iterator_support,
-            #                          # config_width=clog2(self.interconnect_output_ports))
-            #                          config_width=self.default_config_width)
-            # loop_itr = fl_ctr_out_sel.get_iter()
-            # loop_wth = fl_ctr_out_sel.get_cfg_width()
-
-            # self.add_child(f"loops_buf2out_out_sel",
-            #                fl_ctr_out_sel,
-            #                clk=self._clk,
-            #                rst_n=self._rst_n,
-            #                step=self._read_d1)
 
             newAG = AddrGen(iterator_support=self.default_iterator_support,
                             config_width=4)
