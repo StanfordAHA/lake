@@ -8,11 +8,11 @@ from lake.collateral2compiler.helper import *
 def mem_inst(mem_params, mem_collateral):
 
     # default port addr domain is full capacity of memory
-    for p in mem_params["write_info"] + mem_params["read_info"]:
+    for p in mem_params["write_ports"] + mem_params["read_ports"]:
         p.set_addr_domain([0, mem_params["capacity"]-1])
 
     for s in ["write_info", "read_info"]:
-        mem_params[s] = [p.port_info for p in mem_params[s]]
+        mem_params[s] = [p.port_info for p in mem_params[s[:-4]+"ports"]]
     
     mem = Memory(mem_params)
     get_memory_params(mem, mem_collateral)

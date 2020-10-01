@@ -104,10 +104,8 @@ class TopLake():
         # self.edges.append(e)
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
-        for mem in self.memories:
-            self.memories[mem]["read_info"] = [x.port_info for x in self.memories[mem]["read_ports"]]
-            self.memories[mem]["write_info"] = [x.port_info for x in self.memories[mem]["write_ports"]]
-            m = mem_inst(self.memories[mem], self.mem_collateral)
+        for mem in self.merged_mems:
+            m = mem_inst(self.merged_mems[mem], self.mem_collateral)
     #        self.mem_insts.append(m)
 
         get_json(self.mem_collateral, filename)
