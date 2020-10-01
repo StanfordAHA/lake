@@ -1,14 +1,17 @@
 from lake.collateral2compiler.memory import mem_inst
+from lake.collateral2compiler.helper import *
 
 
 class TopLake():
     def __init__(self):
         self.mem_collateral = {}
 
-        self.memories = []
+        self.memories = {}
+        self.mem_insts = []
+
         self.edges = []
         self.edges_params = []
-        self.compiler_memories = []
+        self.compiler_memories = {}
 
         self.merged_mems = []
         self.muxes = []
@@ -24,9 +27,9 @@ class TopLake():
 
         mem_params["read_ports"] = read_ports
         mem_params["write_ports"] = write_ports
-        mem = {mem_name: mem_params}
-        self.memories.append(mem)
-        self.compiler_memories.append(mem)
+        # mem = {mem_name: mem_params}
+        self.memories[mem_name] = mem_params
+        self.compiler_memories[mem_name] = mem_params
 
     def get_addl_mem_params(self, mem_params, write_ports, read_ports, read_write_ports):
         mem_params["num_write_ports"] = len(write_ports)
@@ -39,70 +42,70 @@ class TopLake():
 
     def add_edge(self, edge_params):
         self.edges.append(edge_params)
-        self.edges_merged.append([False, False])
 
-    def merge_mems(self):
+    # def merge_mems(self):
         
 
     # after all edges are added
     def banking(self):
-        from_signal = edge_params["from_signal"]
-        to_signal = edge_params["to_signal"]
+        memories_from = {}
+        memories_to = {}
+        for mem in self.memories.keys():
+            memories_from[mem] = []
+            memories_to[mem] = []
 
-        # infer mux
-        share_from = []
-        share_to = []
-        for i in range(len(edges)):
-            edge = self.edges[i]
-            if edge["from_signal"] == from_signal:
-                share_from.append(edge["to_signal"])
-                # share_from.append(edge["to_signal"].split(".")[0])
-            if edge["to_signal"] == to_signal:
-                share_to.append(edge["from_signal"])
-                # share_to.append(edge["from_signal"].split(".")[0])
+        for mem in self.memories.keys():
+            for edge in self.edges:
+                if edge["from_signal"] == mem:
+                    memories_to[mem].append(edge["to_signal"])
+                if edge["to_signal"] == mem:
+                    memories_from[mem].append(edge["from_signal"])
 
-        if len(share_from) > 0:
-            from_mem_params = [self.memories[mem] for mem in share_from]
-            # for now assuming read_width is the same - is this assumption okay
-            merged_mem = from_mem_params[0]
-            merged_cap = 0
+        print("MEMORIES FROM ", memories_from)
+        print()
+        print("MEMORIES TO ", memories_to)
 
-            for params in from_mem_params:
-                assert params["num_write_ports"] == from_mem_params[0]["num_write_ports"]
-                assert params["write_port_width"] == from_mem_params[0]["write_port_width"]
-                # assert params["write_info"] == from_mem_params[0]["write_info"]
+        for mem_from in memories_from.keys():
+            if len(memories_from[mem_from]) > 1:
+                merged_mem = self.memories[memories_from[mem_from][0]]
+ 
+                name = ""
+                write_ports = []               
+                read_ports = []
+                merged_cap = 0
+                for m in memories_from[mem_from]:
+                    mem = self.memories[m]
+                    name += mem["name"] + "_"
 
-            read_ports = []
-            for i in range(len(share_from)):
-                mem = share_from[i]
+                    rport = mem["read_ports"].copy()
+                    for r in rport:
+                        r.set_addr_domain([merged_cap, merged_cap + mem["capacity"]])
+                    read_ports += rport
+                    wport = mem["write_ports"].copy()
+                    for w in wport:
+                        w.set_addr_domain([merged_cap, merged_cap + mem["capacity"]])
+                    write_ports += wport
+                    merged_cap += mem["capacity"]
+                    
+                merged_mem["name"] = name[:-1]
+                merged_mem["capacity"] = merged_cap
+                merged_mem["read_ports"] = read_ports
+                merged_mem["write_ports"] = write_ports
 
-                # delete individual memories for compiler (no mux)
-                assert mem in self.compiler_memories
-                del self.compiler_memories[mem]
+                self.get_addl_mem_params(merged_mem, write_ports, read_ports, []) 
 
-                for read_port in mem["read_ports"]:
-                    read_port.set_addr_domain({merged_cap, mem["capacity"] - 1})
-
-                read_ports += mem["read_ports"]
-                merged_cap += mem["capacity"]
-
-            get_addl_mem_params(mem_params)
-
-            merged_mem["capacity"] = merged_cap
-
-        if len(share_to) > 0:
-            to_mem_params = [self.memories[mem] for mem in share_to]
+                print(merged_mem)
 
         # e = Edge(edge_params)
         # self.edges.append(e)
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
         for mem in self.memories:
-            get_memory_params(mem, self.mem_collateral)
+            m = mem_inst(mem, self.mem_collateral)
+            self.mem_insts.append(m)
 
         get_json(self.mem_collateral, filename)
 
     def construct_lake(self):
-        for i in range(len(self.edges)):
-            self.banking(i)
+        self.banking()
         self.get_compiler_json()
