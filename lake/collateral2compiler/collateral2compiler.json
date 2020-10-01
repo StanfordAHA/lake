@@ -7,22 +7,26 @@
             "num_write_ports": 1,
             "write_width": 4,
             "read_width": 4,
-            "write_info": {
-                "latency": 1,
-                "initiation_interval": 0,
-                "addr_domain": {
-                    "min": 0,
-                    "max": 511
+            "write_info": [
+                {
+                    "latency": 1,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 0,
+                        "max": 511
+                    }
                 }
-            },
-            "read_info": {
-                "latency": 0,
-                "initiation_interval": 0,
-                "addr_domain": {
-                    "min": 0,
-                    "max": 511
+            ],
+            "read_info": [
+                {
+                    "latency": 1,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 0,
+                        "max": 511
+                    }
                 }
-            },
+            ],
             "chaining": 1,
             "write_width_bits": 2,
             "read_width_bits": 2,
@@ -39,22 +43,42 @@
             "num_write_ports": 2,
             "write_width": 1,
             "read_width": 4,
-            "write_info": {
-                "latency": 1,
-                "initiation_interval": 0,
-                "addr_domain": {
-                    "min": 0,
-                    "max": 7
+            "write_info": [
+                {
+                    "latency": 1,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 0,
+                        "max": 4
+                    }
+                },
+                {
+                    "latency": 1,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 4,
+                        "max": 8
+                    }
                 }
-            },
-            "read_info": {
-                "latency": 0,
-                "initiation_interval": 0,
-                "addr_domain": {
-                    "min": 0,
-                    "max": 7
+            ],
+            "read_info": [
+                {
+                    "latency": 0,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 0,
+                        "max": 4
+                    }
+                },
+                {
+                    "latency": 0,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 4,
+                        "max": 8
+                    }
                 }
-            },
+            ],
             "chaining": 0,
             "write_width_bits": 1,
             "read_width_bits": 2,

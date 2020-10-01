@@ -9,7 +9,9 @@ def mem_inst(mem_params, mem_collateral):
 
     # default port addr domain is full capacity of memory
     for p in mem_params["write_ports"] + mem_params["read_ports"]:
-        p.set_addr_domain([0, mem_params["capacity"]-1])
+        print(p.port_info["addr_domain"])
+        if p.port_info["addr_domain"]["min"] == -1 and p.port_info["addr_domain"]["max"] == -1:
+            p.set_addr_domain([0, mem_params["capacity"]-1])
 
     for s in ["write_info", "read_info"]:
         mem_params[s] = [p.port_info for p in mem_params[s[:-4]+"ports"]]
@@ -38,7 +40,6 @@ class Memory(Generator):
 
         super().__init__("mem", debug=True)
 
-        print(mem_params)
         self.capacity = mem_params["capacity"]
 
         self.word_width = mem_params["word_width"]
@@ -48,8 +49,8 @@ class Memory(Generator):
         self.write_width = mem_params["write_port_width"]  # max(write_port_width, read_write_port_width)
         self.read_width = mem_params["read_port_width"]  # max(read_port_width, read_write_port_width)
 
-        self.write_info = mem_params["write_info"][0]
-        self.read_info = mem_params["read_info"][0]
+        self.write_info = mem_params["write_info"]
+        self.read_info = mem_params["read_info"]
 
         self.chaining = mem_params["chaining"]
 
@@ -75,7 +76,7 @@ class Memory(Generator):
 
         self.data_in = self.input("data_in",
                                   width=self.word_width,
-                                  size=self.write_width,
+                                  size=(self.num_write_ports, self.write_width),
                                   explicit_array=True,
                                   packed=True)
 
@@ -84,7 +85,7 @@ class Memory(Generator):
 
         self.data_out = self.output("data_out",
                                     width=self.word_width,
-                                    size=self.read_width,
+                                    size=(self.num_read_ports, self.read_width),
                                     explicit_array=True,
                                     packed=True)
 
@@ -99,61 +100,69 @@ class Memory(Generator):
 
         if self.write_info is not None:
             self.write_addr = self.input("write_addr",
-                                         width=self.addr_width)
-            if self.write_info["latency"] == 1:
-                self.write = self.input("write", 1)
-                self.add_code(self.write_data_latency_1)
-            else:
-                self.add_code(self.write_data_latency_0)
+                                         width=self.addr_width,
+                                         size=self.num_write_ports,
+                                         explicit_array=True,
+                                         packed=True)
+            # assert self.write_info["latency"] == 1, \
+            #         "Write port latency 0 not supported."
+            self.write = self.input("write",
+                                    width=1,
+                                    size=self.num_write_ports,
+                                    explicit_array=True,
+                                    packed=True)
+            self.add_code(self.write_data_latency_1)
 
         if self.read_info is not None:
             self.read_addr = self.input("read_addr",
-                                        width=self.addr_width)
-            if self.read_info["latency"] == 1:
+                                        width=self.addr_width,
+                                        size=self.num_read_ports,
+                                        explicit_array=True,
+                                        packed=True)
+            # for now assuming all read ports have same latency
+            # also should add support for other latencies
+            if self.read_info[0]["latency"] == 1:
                 self.add_code(self.read_data_latency_1)
             else:
                 self.add_code(self.read_data_latency_0)
 
+
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def write_data_latency_1(self):
-        if self.write:
-            for i in range(self.write_width):
-                self.memory[self.write_addr + i] = self.data_in[i]
+        for p in range(self.num_write_ports):
+            if self.write[p]:
+                for i in range(self.write_width):
+                    self.memory[self.write_addr[p] + i] = self.data_in[p][i]
 
     @always_comb
     def read_data_latency_0(self):
-        for port in range(self.read_width):
-            self.data_out[port] = self.memory[self.read_addr + port]
+        for p in range(self.num_read_ports):
+            for port in range(self.read_width):
+                self.data_out[p][port] = self.memory[self.read_addr[p] + port]
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def read_data_latency_1(self):
+        for p in range(self.num_read_ports):
+            for port in range(self.read_width):
+                self.data_out[p][port] = self.memory[self.read_addr[p] + port]
 
 
 if __name__ == "__main__":
 
-    write_port = MemPort(1, 0)
-    read_port = MemPort(0, 0)
-    agg = \
-        Memory(capacity=4,
-               word_width=16,
-               num_read_ports=1,
-               read_port_width=4,
-               num_write_ports=1,
-               write_port_width=1,
-               chaining=0,
-               write_info=write_port.port_info,
-               read_info=read_port.port_info)
+    agg_write_port = MemPort(1, 0)
+    agg_read_port = MemPort(0, 0)
 
+    agg_params = {"capacity": 4,
+                  "word_width": 16,
+                  "num_read_ports": 1,
+                  "read_port_width": 4,
+                  "num_write_ports": 1,
+                  "write_port_width": 1,
+                  "chaining": 0,
+                  "write_ports": [agg_write_port],
+                  "read_ports": [agg_read_port]}
+
+    colat = {}
+    agg = mem_inst(agg_params, colat)
     verilog(agg, filename="mem.sv")
 
-    write_port = MemPort(1, 0)
-    read_port = MemPort(0, 0)
-    tb = \
-        Memory(capacity=8,
-               word_width=16,
-               num_read_ports=1,
-               read_port_width=1,
-               num_write_ports=1,
-               write_port_width=4,
-               chaining=0,
-               write_info=write_port.port_info,
-               read_info=read_port.port_info)
-
-    verilog(tb, filename="mem_tb.sv")

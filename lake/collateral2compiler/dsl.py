@@ -37,7 +37,7 @@ agg_params = {"name": "agg1",
 tile.add_memory(agg_params, [agg1_write_port], [agg1_read_port])
 
 sram_write_port = MemPort(1, 0)
-sram_read_port = MemPort(0, 0)
+sram_read_port = MemPort(1, 0)
 
 sram_params = {"name": "sram",
                "capacity": 512,
