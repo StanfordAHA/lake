@@ -27,6 +27,7 @@ class TopLake():
 
         mem_params["read_ports"] = read_ports
         mem_params["write_ports"] = write_ports
+        mem_params["read_write_ports"] = read_write_ports
         # mem = {mem_name: mem_params}
         self.memories[mem_name] = mem_params
         self.compiler_memories[mem_name] = mem_params
@@ -76,6 +77,7 @@ class TopLake():
                 name = "merged_"
                 write_ports = []
                 read_ports = []
+                rw_ports = []
                 merged_cap = 0
                 for m in mems_to_merge[mem]:
                     mem = self.memories[m]
@@ -90,6 +92,9 @@ class TopLake():
                     wport = mem["write_ports"].copy()
                     for w in wport:
                         w.set_addr_domain([merged_cap, merged_cap + mem["capacity"]])
+                    rwport = mem["read_write_ports"].copy()
+                    for rw in rwport:
+                        rw.set_addr_domain([merged_cap, merged_cap + mem["capacity"]])
                     write_ports += wport
                     merged_cap += mem["capacity"]
 
@@ -97,6 +102,7 @@ class TopLake():
                 merged_mem["capacity"] = merged_cap
                 merged_mem["read_ports"] = read_ports
                 merged_mem["write_ports"] = write_ports
+                merged_mem["read_write_ports"] = rw_ports
 
                 self.get_addl_mem_params(merged_mem, write_ports, read_ports, [])
 

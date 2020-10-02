@@ -9,7 +9,16 @@
             "num_read_write_ports": 1,
             "write_info": [],
             "read_info": [],
-            "read_write_info": [],
+            "read_write_info": [
+                {
+                    "latency": 1,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 0,
+                        "max": 511
+                    }
+                }
+            ],
             "write_width": 4,
             "read_width": 4,
             "chaining": 1,
