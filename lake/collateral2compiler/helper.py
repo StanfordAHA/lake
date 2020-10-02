@@ -8,13 +8,16 @@ def get_memory_params(memory, mem_collateral):
 
     mem_dict = dict((key, value) for key, value in memory.__dict__.items()
                     if not callable(value) and not key.startswith('__'))
+
     for key in vars(orig_gen):
         if key in mem_dict:
             del mem_dict[key]
 
-    mem_idx = len(mem_collateral)
-
-    mem_collateral[f"mem_{mem_idx}"] = mem_dict
+    if "mem_name" not in mem_dict:
+        mem_idx = len(mem_collateral)
+        mem_collateral[f"mem_{mem_idx}"] = mem_dict
+    else:
+        mem_collateral[mem_dict["mem_name"]] = mem_dict
 
 
 def get_json(mem_collateral, filename="collateral2compiler.json"):  # will also include edge collateral to form Lake object

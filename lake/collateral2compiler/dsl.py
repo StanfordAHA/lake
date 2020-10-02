@@ -35,17 +35,15 @@ agg1_params = {"name": "agg1",
 
 tile.add_memory(agg1_params, [agg1_write_port], [agg1_read_port])
 
-sram_write_port = MemPort(1, 0)
-sram_read_port = MemPort(1, 0)
+sram_write_read_port = MemPort(1, 0)
 
 sram_params = {"name": "sram",
                "capacity": 512,
                "word_width": 16,
-               "read_port_width": 4,
-               "write_port_width": 4,
+               "read_write_port_width": 4,
                "chaining": 1}
 
-tile.add_memory(sram_params, [sram_write_port], [sram_read_port])
+tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
 
 tile.add_edge({"from_signal": "agg",
                "to_signal": "sram"})
@@ -77,13 +75,13 @@ tb1_params = {"name": "tb1",
 
 tile.add_memory(tb1_params, [tb1_write_port], [tb1_read_port])
 
+tile.add_edge({"from_signal": "sram",
+               "to_signal": "tb"})
+
+tile.add_edge({"from_signal": "sram",
+               "to_signal": "tb1"})
+
 tile.construct_lake()
-
-tile.add_edge({"from_signal": "sram",
-               "to_signal": "tb"})
-
-tile.add_edge({"from_signal": "sram",
-               "to_signal": "tb"})
 
 '''tile.add_edge(from_signal="agg",
              to_signal="tb",
