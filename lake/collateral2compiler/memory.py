@@ -177,8 +177,13 @@ class Memory(Generator):
             self.add_code(self.read_data_latency_1)
             self.add_code(self.write_data_latency_1)
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    # @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"))
     def write_data_latency_1(self):
+        #if ~self.rst_n:
+        #    for i in range(self.capacity):
+        #        self.memory[i] = 0
+        #else:
         for p in range(self.num_write_ports):
             if self.write[p]:
                 for i in range(self.write_width):
@@ -202,7 +207,8 @@ if __name__ == "__main__":
     agg_write_port = MemPort(1, 0)
     agg_read_port = MemPort(0, 0)
 
-    agg_params = {"capacity": 4,
+    agg_params = {"name": "agg",
+                  "capacity": 4,
                   "word_width": 16,
                   "num_read_ports": 1,
                   "read_port_width": 4,
@@ -218,7 +224,8 @@ if __name__ == "__main__":
 
     sram_read_write_port = MemPort(1, 0)
 
-    sram_params = {"capacity": 512,
+    sram_params = {"name": "sram",
+                   "capacity": 512,
                    "word_width": 16,
                    "num_read_write_ports": 1,
                    "read_write_port_width": 4,
