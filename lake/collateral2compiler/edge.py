@@ -34,7 +34,7 @@ class Edge(Generator):
 
         self._write(f"write_{self.to_signal}",
                     width=1)
-        
+
         forloop = ForLoop(iterator_support=self.dim,
                           config_width=clog2(self.max_range))
 
@@ -59,4 +59,3 @@ class Edge(Generator):
                        mux_sel=forloop.ports.mux_sel_out)
 
         safe_wire(self, AG_write.ports.addr_out, self._write_addr)
-

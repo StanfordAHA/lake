@@ -180,10 +180,10 @@ class Memory(Generator):
     # @always_ff((posedge, "clk"), (negedge, "rst_n"))
     @always_ff((posedge, "clk"))
     def write_data_latency_1(self):
-        #if ~self.rst_n:
-        #    for i in range(self.capacity):
-        #        self.memory[i] = 0
-        #else:
+        # if ~self.rst_n:
+        #     for i in range(self.capacity):
+        #         self.memory[i] = 0
+        # else:
         for p in range(self.num_write_ports):
             if self.write[p]:
                 for i in range(self.write_width):
