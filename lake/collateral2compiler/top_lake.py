@@ -1,7 +1,7 @@
 from lake.collateral2compiler.memory import mem_inst
 from lake.collateral2compiler.edge import edge_inst
 from lake.collateral2compiler.helper import *
-# from lake.collateral2compiler.edge 
+# from lake.collateral2compiler.edge
 
 
 class TopLake():
@@ -10,13 +10,12 @@ class TopLake():
         self.edge_collateral = {}
 
         self.memories = {}
-        self.mem_insts = []
+        self.merged_mems = {}
+        self.mem_insts = {}
 
         self.edges = []
-        self.merged_edges = []
         self.compiler_memories = {}
 
-        self.merged_mems = {}
         self.muxes = []
 
     # default for ports is no ports
@@ -115,10 +114,15 @@ class TopLake():
     def get_compiler_json(self, filename="collateral2compiler.json"):
         for mem in self.merged_mems:
             m = mem_inst(self.merged_mems[mem], self.mem_collateral)
-    #        self.mem_insts.append(m)
+            self.mem_insts[mem] = m
 
         for edge in self.edges:
-            e = edge_inst(edge, self.edge_collateral)
+            e = edge_inst(edge,
+                          self.memories[edge["from_signal"]],
+                          self.memories[edge["to_signal"]],
+                          self.mem_insts[edge["from_signal"]],
+                          self.mem_insts[edge["to_signal"]],
+                          self.edge_collateral)
         get_json(self.mem_collateral, self.edge_collateral, filename)
 
     def construct_lake(self):

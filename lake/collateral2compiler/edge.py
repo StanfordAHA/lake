@@ -5,9 +5,9 @@ from lake.modules.addr_gen import AddrGen
 from lake.collateral2compiler.helper import *
 
 
-def edge_inst(edge_params, edge_collateral):
+def edge_inst(edge_params, from_mem, to_mem, from_inst, to_inst, edge_collateral):
 
-    edge = Edge(edge_params)
+    edge = Edge(edge_params, from_mem, to_mem, from_inst, to_inst)
     get_params(edge, edge_collateral, "edge")
 
     return edge
@@ -15,7 +15,11 @@ def edge_inst(edge_params, edge_collateral):
 
 class Edge(Generator):
     def __init__(self,
-                 edge_params):
+                 edge_params,
+                 from_mem,
+                 to_mem,
+                 from_inst,
+                 to_inst):
 
         super().__init__(f"lake_edge", debug=True)
 
@@ -29,17 +33,17 @@ class Edge(Generator):
         self.max_stride = edge_params["max_stride"] if "max_stride" in edge_params else 65536
 
         # self.edges.append
-        '''forloop = ForLoop(iterator_support=addr_gen_dim,
-                          config_width=clog2(addr_gen_max_range))
+        forloop = ForLoop(iterator_support=self.dim,
+                          config_width=clog2(self.max_range))
 
-        self._write(f"write_{to_signal}",
+        self._write(f"write_{self.to_signal}",
                     width=1)
 
         # get memory params from top Lake or make a wrapper func for user
         # with just these params and then pass in mem for this signal
         # self._write_addr(f"write_addr_{to_signal}")
 
-        self.add_child(f"loops_{from_signal}_{to_signal}",
+        self.add_child(f"loops_{self.from_signal}_{self.to_signal}",
                        forloop,
                        clk=self._clk,
                        rst_n=self._rst_n,
@@ -55,6 +59,6 @@ class Edge(Generator):
                        step=self._write,
                        mux_sel=forloop.ports.mux_sel_out)
 
-        safe_wire(self, AG_write.ports.addr_out, self._write_addr)'''
+        safe_wire(self, AG_write.ports.addr_out, self._write_addr)
 
         # self.add_child

@@ -74,7 +74,7 @@ class Memory(Generator):
         self.write_info = mem_params["write_info"]
         self.read_info = mem_params["read_info"]
         self.read_write_info = mem_params["read_write_info"]
-        
+
         if self.num_read_write_ports == 0:
             self.write_width = mem_params["write_port_width"]  # max(write_port_width, read_write_port_width)
             self.read_width = mem_params["read_port_width"]  # max(read_port_width, read_write_port_width)
@@ -115,7 +115,6 @@ class Memory(Generator):
                                size=self.capacity,
                                explicit_array=True,
                                packed=True)
-
 
         # clean up
         if self.num_write_ports != 0 and self.num_read_ports != 0:
@@ -165,16 +164,16 @@ class Memory(Generator):
                                       size=self.num_read_write_ports,
                                       explicit_array=True,
                                       packed=True)
-            
+
             self.wire(self.write_addr, self.read_write_addr)
             self.wire(self.read_addr, self.read_write_addr)
-            
+
             self.write = self.input("write",
                                     width=1,
                                     size=self.num_write_ports,
                                     explicit_array=True,
                                     packed=True)
-            
+
             self.add_code(self.read_data_latency_1)
             self.add_code(self.write_data_latency_1)
 
@@ -216,15 +215,15 @@ if __name__ == "__main__":
     colat = {}
     agg = mem_inst(agg_params, colat)
     verilog(agg, filename="agg_mem.sv")
-    
+
     sram_read_write_port = MemPort(1, 0)
 
     sram_params = {"capacity": 512,
-                  "word_width": 16,
-                  "num_read_write_ports": 1,
-                  "read_write_port_width": 4,
-                  "chaining": 1,
-                  "read_write_ports": [sram_read_write_port]}
+                   "word_width": 16,
+                   "num_read_write_ports": 1,
+                   "read_write_port_width": 4,
+                   "chaining": 1,
+                   "read_write_ports": [sram_read_write_port]}
 
     colat = {}
     sram = mem_inst(sram_params, colat)
