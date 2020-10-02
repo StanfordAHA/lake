@@ -63,15 +63,21 @@ class TopLake():
         # print()
         # print("MEMORIES TO ", memories_to)
 
-        for mem_from in memories_from.keys():
-            if len(memories_from[mem_from]) > 1:
-                merged_mem = self.memories[memories_from[mem_from][0]]
+        self.merge_mems(memories_from)
+        self.merge_mems(memories_to)
+        # e = Edge(edge_params)
+        # self.edges.append(e)
+
+    def merge_mems(self, mems_to_merge):
+        for mem in mems_to_merge.keys():
+            if len(mems_to_merge[mem]) > 1:
+                merged_mem = self.memories[mems_to_merge[mem][0]]
 
                 name = "merged_"
                 write_ports = []
                 read_ports = []
                 merged_cap = 0
-                for m in memories_from[mem_from]:
+                for m in mems_to_merge[mem]:
                     mem = self.memories[m]
                     del self.merged_mems[m]
 
@@ -96,9 +102,6 @@ class TopLake():
 
                 # print(merged_mem)
                 self.merged_mems[name] = merged_mem
-
-        # e = Edge(edge_params)
-        # self.edges.append(e)
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
         for mem in self.merged_mems:

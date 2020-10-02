@@ -19,80 +19,6 @@
             "read_bits": 7,
             "addr_width": 9
         },
-        "tb": {
-            "mem_name": "tb",
-            "capacity": 8,
-            "word_width": 16,
-            "num_read_ports": 1,
-            "num_write_ports": 1,
-            "num_read_write_ports": 0,
-            "write_info": [
-                {
-                    "latency": 1,
-                    "initiation_interval": 0,
-                    "addr_domain": {
-                        "min": 0,
-                        "max": 7
-                    }
-                }
-            ],
-            "read_info": [
-                {
-                    "latency": 0,
-                    "initiation_interval": 0,
-                    "addr_domain": {
-                        "min": 0,
-                        "max": 7
-                    }
-                }
-            ],
-            "read_write_info": [],
-            "write_width": 1,
-            "read_width": 1,
-            "chaining": 0,
-            "write_width_bits": 1,
-            "read_width_bits": 1,
-            "write_bits": 3,
-            "read_bits": 3,
-            "addr_width": 3
-        },
-        "tb1": {
-            "mem_name": "tb1",
-            "capacity": 8,
-            "word_width": 16,
-            "num_read_ports": 1,
-            "num_write_ports": 1,
-            "num_read_write_ports": 0,
-            "write_info": [
-                {
-                    "latency": 1,
-                    "initiation_interval": 0,
-                    "addr_domain": {
-                        "min": 0,
-                        "max": 7
-                    }
-                }
-            ],
-            "read_info": [
-                {
-                    "latency": 0,
-                    "initiation_interval": 0,
-                    "addr_domain": {
-                        "min": 0,
-                        "max": 7
-                    }
-                }
-            ],
-            "read_write_info": [],
-            "write_width": 1,
-            "read_width": 1,
-            "chaining": 0,
-            "write_width_bits": 1,
-            "read_width_bits": 1,
-            "write_bits": 3,
-            "read_bits": 3,
-            "addr_width": 3
-        },
         "merged_agg_agg1": {
             "mem_name": "merged_agg_agg1",
             "capacity": 8,
@@ -145,6 +71,59 @@
             "write_bits": 3,
             "read_bits": 1,
             "addr_width": 3
+        },
+        "merged_tb_tb1": {
+            "mem_name": "merged_tb_tb1",
+            "capacity": 16,
+            "word_width": 16,
+            "num_read_ports": 2,
+            "num_write_ports": 2,
+            "num_read_write_ports": 0,
+            "write_info": [
+                {
+                    "latency": 1,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 0,
+                        "max": 8
+                    }
+                },
+                {
+                    "latency": 1,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 8,
+                        "max": 16
+                    }
+                }
+            ],
+            "read_info": [
+                {
+                    "latency": 0,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 0,
+                        "max": 8
+                    }
+                },
+                {
+                    "latency": 0,
+                    "initiation_interval": 0,
+                    "addr_domain": {
+                        "min": 8,
+                        "max": 16
+                    }
+                }
+            ],
+            "read_write_info": [],
+            "write_width": 1,
+            "read_width": 1,
+            "chaining": 0,
+            "write_width_bits": 1,
+            "read_width_bits": 1,
+            "write_bits": 4,
+            "read_bits": 4,
+            "addr_width": 4
         }
     }
 }

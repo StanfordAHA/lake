@@ -6,7 +6,7 @@ from lake.collateral2compiler.helper import *
 
 
 def mem_inst(mem_params, mem_collateral):
-    print(mem_params)
+    # print(mem_params)
 
     port_types = ["write", "read", "read_write"]
     for s_ in port_types:
@@ -27,7 +27,6 @@ def mem_inst(mem_params, mem_collateral):
     for s_ in port_types:
         s = s_ + "_info"
         mem_params[s] = [p.port_info for p in mem_params[s[:-4] + "ports"]]
-
     mem = Memory(mem_params)
     get_memory_params(mem, mem_collateral)
 
