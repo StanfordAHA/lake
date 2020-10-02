@@ -1,10 +1,13 @@
 from lake.collateral2compiler.memory import mem_inst
+from lake.collateral2compiler.edge import edge_inst
 from lake.collateral2compiler.helper import *
+# from lake.collateral2compiler.edge 
 
 
 class TopLake():
     def __init__(self):
         self.mem_collateral = {}
+        self.edge_collateral = {}
 
         self.memories = {}
         self.mem_insts = []
@@ -114,7 +117,9 @@ class TopLake():
             m = mem_inst(self.merged_mems[mem], self.mem_collateral)
     #        self.mem_insts.append(m)
 
-        get_json(self.mem_collateral, filename)
+        for edge in self.edges:
+            e = edge_inst(edge, self.edge_collateral)
+        get_json(self.mem_collateral, self.edge_collateral, filename)
 
     def construct_lake(self):
         self.banking()

@@ -28,7 +28,7 @@ def mem_inst(mem_params, mem_collateral):
         s = s_ + "_info"
         mem_params[s] = [p.port_info for p in mem_params[s[:-4] + "ports"]]
     mem = Memory(mem_params)
-    get_memory_params(mem, mem_collateral)
+    get_params(mem, mem_collateral, "mem")
 
     return mem
 
@@ -49,7 +49,7 @@ class Memory(Generator):
         # write_info,
         # read_info):
 
-        super().__init__("mem", debug=True)
+        super().__init__("lake_mem", debug=True)
 
         self.mem_name = mem_params["name"]
         self.capacity = mem_params["capacity"]

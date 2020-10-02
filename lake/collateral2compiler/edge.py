@@ -2,25 +2,34 @@ from kratos import *
 from lake.modules.for_loop import ForLoop
 from lake.utils.util import safe_wire
 from lake.modules.addr_gen import AddrGen
+from lake.collateral2compiler.helper import *
+
+
+def edge_inst(edge_params, edge_collateral):
+
+    edge = Edge(edge_params)
+    get_params(edge, edge_collateral, "edge")
+
+    return edge
 
 
 class Edge(Generator):
     def __init__(self,
-                 from_signal,
-                 to_signal,
-                 addr_gen_dim,
-                 addr_gen_max_range,
-                 addr_gen_max_stride):
+                 edge_params):
 
-        super().__init__(f"edge_{from_signal}_{to_signal}", debug=True)
+        super().__init__(f"lake_edge", debug=True)
 
+        # PARAMETERS
         # data_out
-        self.from_signal = from_signal
+        self.from_signal = edge_params["from_signal"]
         # data_in
-        self.to_signal = to_signal
+        self.to_signal = edge_params["to_signal"]
+        self.dim = edge_params["dim"] if "dim" in edge_params else 6
+        self.max_range = edge_params["max_range"] if "max_range" in edge_params else 65536
+        self.max_stride = edge_params["max_stride"] if "max_stride" in edge_params else 65536
 
         # self.edges.append
-        forloop = ForLoop(iterator_support=addr_gen_dim,
+        '''forloop = ForLoop(iterator_support=addr_gen_dim,
                           config_width=clog2(addr_gen_max_range))
 
         self._write(f"write_{to_signal}",
@@ -46,6 +55,6 @@ class Edge(Generator):
                        step=self._write,
                        mux_sel=forloop.ports.mux_sel_out)
 
-        safe_wire(self, AG_write.ports.addr_out, self._write_addr)
+        safe_wire(self, AG_write.ports.addr_out, self._write_addr)'''
 
         # self.add_child

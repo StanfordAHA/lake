@@ -134,5 +134,35 @@
             "read_bits": 4,
             "addr_width": 4
         }
+    },
+    "edges": {
+        "edge_0": {
+            "from_signal": "agg",
+            "to_signal": "sram",
+            "dim": 6,
+            "max_range": 65536,
+            "max_stride": 65536
+        },
+        "edge_1": {
+            "from_signal": "agg1",
+            "to_signal": "sram",
+            "dim": 6,
+            "max_range": 65536,
+            "max_stride": 65536
+        },
+        "edge_2": {
+            "from_signal": "sram",
+            "to_signal": "tb",
+            "dim": 6,
+            "max_range": 65536,
+            "max_stride": 65536
+        },
+        "edge_3": {
+            "from_signal": "sram",
+            "to_signal": "tb1",
+            "dim": 6,
+            "max_range": 65536,
+            "max_stride": 65536
+        }
     }
 }
