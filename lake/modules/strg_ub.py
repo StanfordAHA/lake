@@ -6,7 +6,6 @@ from lake.modules.output_addr_ctrl import OutputAddrCtrl
 from lake.modules.agg_aligner import AggAligner
 from lake.modules.rw_arbiter import RWArbiter
 from lake.modules.transpose_buffer import TransposeBuffer
-from lake.modules.transpose_buffer_aggregation import TransposeBufferAggregation
 from lake.modules.demux_reads import DemuxReads
 from lake.modules.sync_groups import SyncGroups
 from lake.modules.prefetcher import Prefetcher
@@ -155,13 +154,12 @@ class StrgUB(Generator):
                                           explicit_array=True,
                                           packed=True)
 
-        self._out_mem_valid_data = self.var("out_mem_valid_data",
-                                            self.mem_output_ports,
-                                            size=self.banks,
-                                            explicit_array=True,
-                                            packed=True)
+        # self._out_mem_valid_data = self.var("out_mem_valid_data",
+        #                                     self.mem_output_ports,
+        #                                     size=self.banks,
+        #                                     explicit_array=True,
+        #                                     packed=True)
 
-        # We need to signal valids out of the agg buff, only if one exists...
         if self.agg_height > 0:
             self._to_iac_valid = self.var("ab_to_mem_valid",
                                           self.interconnect_input_ports)
@@ -516,8 +514,8 @@ class StrgUB(Generator):
                            w_data=self._data_to_arb[i],
                            w_addr=self._addr_to_arb[i],
                            data_from_mem=self._data_from_strg[i],
-                           mem_valid_data=self._mem_valid_data[i],
-                           out_mem_valid_data=self._out_mem_valid_data[i],
+                           # mem_valid_data=self._mem_valid_data[i],
+                           # out_mem_valid_data=self._out_mem_valid_data[i],
                            ren_en=self._arb_ren_en,
                            rd_addr=self._oac_addr_out,
                            out_data=self._arb_dat_out[i],
@@ -607,7 +605,8 @@ class StrgUB(Generator):
                 self.wire(self._arb_dat_out_f[tmp_cnt], self._arb_dat_out[i][j])
                 self.wire(self._arb_port_out_f[tmp_cnt], self._arb_port_out[i][j])
                 self.wire(self._arb_valid_out_f[tmp_cnt], self._arb_valid_out[i][j])
-                self.wire(self._arb_mem_valid_data_f[tmp_cnt], self._out_mem_valid_data[i][j])
+                # self.wire(self._arb_mem_valid_data_f[tmp_cnt], self._out_mem_valid_data[i][j])
+                self.wire(self._arb_mem_valid_data_f[tmp_cnt], self._mem_valid_data[i][j])
                 tmp_cnt = tmp_cnt + 1
 
         # If this is end of the road...
@@ -714,27 +713,26 @@ class StrgUB(Generator):
 
                 for i in range(self.interconnect_output_ports):
 
-                    tba = TransposeBufferAggregation(word_width=self.data_width,
-                                                     fetch_width=self.fw_int,
-                                                     num_tb=self.num_tb,
-                                                     max_tb_height=self.max_tb_height,
-                                                     max_range=self.tb_range_max,
-                                                     max_range_inner=self.tb_range_inner_max,
-                                                     max_stride=self.max_tb_stride,
-                                                     tb_iterator_support=self.tb_iterator_support)
+                    tb = TransposeBuffer(word_width=self.data_width,
+                                         fetch_width=self.fw_int,
+                                         num_tb=self.num_tb,
+                                         max_tb_height=self.max_tb_height,
+                                         max_range=self.tb_range_max,
+                                         max_range_inner=self.tb_range_inner_max,
+                                         max_stride=self.max_tb_stride,
+                                         tb_iterator_support=self.tb_iterator_support)
 
-                    self.add_child(f"tba_{i}", tba,
+                    self.add_child(f"tb_{i}", tb,
                                    clk=self._clk,
                                    rst_n=self._rst_n,
-                                   SRAM_to_tb_data=self._data_to_tba[i],
+                                   input_data=self._data_to_tba[i],
                                    valid_data=self._valid_to_tba[i],
-                                   tb_index_for_data=0,
                                    ack_in=self._valid_to_tba[i],
                                    mem_valid_data=self._mem_valid_data_pref[i],
-                                   tb_to_interconnect_data=self._tb_data_out[i],
-                                   tb_to_interconnect_valid=self._tb_valid_out[i],
-                                   tb_arbiter_rdy=self._ready_tba[i],
-                                   tba_ren=self._ren[i])
+                                   col_pixels=self._tb_data_out[i],
+                                   output_valid=self._tb_valid_out[i],
+                                   rdy_to_arbiter=self._ready_tba[i],
+                                   ren=self._ren[i])
 
                 for i in range(self.interconnect_output_ports):
                     self.wire(self._data_out[i], self._tb_data_out[i])

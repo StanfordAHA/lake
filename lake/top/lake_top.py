@@ -1,5 +1,6 @@
 import os
 from kratos import *
+
 from lake.modules.passthru import *
 from lake.modules.sram import SRAM
 from lake.modules.strg_ub_vec import StrgUBVec
@@ -9,9 +10,11 @@ from lake.modules.register_file import RegisterFile
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
 from lake.modules.chain_accessor import ChainAccessor
+
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
+
 from lake.utils.sram_macro import SRAMMacroInfo
 from lake.utils.util import extract_formal_annotation, trim_config
 from lake.utils.parse_clkwork_config import map_controller, extract_controller
@@ -1093,12 +1096,12 @@ class LakeTop(Generator):
 
 
 if __name__ == "__main__":
-    tsmc_info = SRAMMacroInfo("tsmc_name")
+    tsmc_info = SRAMMacroInfo("default_name")
     use_sram_stub = True
     fifo_mode = True
     mem_width = 64
     lake_dut = LakeTop(mem_width=mem_width,
-                       sram_macro_info=tsmc_info,
+                       # sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,
                        fifo_mode=fifo_mode,
                        add_clk_enable=True,

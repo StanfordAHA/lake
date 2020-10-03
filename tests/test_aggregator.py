@@ -60,7 +60,6 @@ def test_aggregator_basic(word_width=16, mem_word_width=4):
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 

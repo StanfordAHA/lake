@@ -170,20 +170,11 @@ def test_rw_arbiter_basic(int_out_ports,
         tester.circuit.addr_to_mem.expect(model_mem_addr)
         tester.circuit.out_ack.expect(model_ack)
 
-        print(mem_valid_data)
-        print(model_out_mem_valid_data)
-        if strg_rd_ports == 1:
-            tester.circuit.out_mem_valid_data.expect(model_out_mem_valid_data[0])
-        else:
-            for j in range(strg_rd_ports):
-                tester.circuit.out_mem_valid_data[j].expect(model_out_mem_valid_data[j])
-
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 

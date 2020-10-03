@@ -114,11 +114,12 @@ def test_tb(start_addr,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
-def test_id(word_width=16,
+@pytest.mark.parametrize("dimensionality", [0, 1])
+def test_id(dimensionality,
+            word_width=16,
             fetch_width=4,
             num_tb=1,
             max_tb_height=1,
@@ -140,7 +141,7 @@ def test_id(word_width=16,
     new_config["stride"] = 1
     new_config["indices"] = [0, 1, 2]
     new_config["tb_height"] = 1
-    new_config["dimensionality"] = 1
+    new_config["dimensionality"] = dimensionality
     new_config["starting_addr"] = 0
 
     model_tb.set_config(new_config=new_config)
@@ -175,7 +176,7 @@ def test_id(word_width=16,
     tester.circuit.range_inner = 3
     tester.circuit.stride = 1
     tester.circuit.tb_height = 1
-    tester.circuit.dimensionality = 1
+    tester.circuit.dimensionality = dimensionality
     tester.circuit.starting_addr = 0
 
     rand.seed(0)
@@ -221,11 +222,12 @@ def test_id(word_width=16,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
-def test_fw1(word_width=16,
+@pytest.mark.parametrize("dimensionality", [0, 1])
+def test_fw1(dimensionality,
+             word_width=16,
              fetch_width=1,
              num_tb=1,
              max_tb_height=1,
@@ -247,7 +249,7 @@ def test_fw1(word_width=16,
     new_config["stride"] = 1
     new_config["indices"] = [0, 1, 2]
     new_config["tb_height"] = 1
-    new_config["dimensionality"] = 1
+    new_config["dimensionality"] = dimensionality
     new_config["starting_addr"] = 0
 
     model_tb.set_config(new_config=new_config)
@@ -280,7 +282,7 @@ def test_fw1(word_width=16,
     tester.circuit.range_inner = 3
     tester.circuit.stride = 1
     tester.circuit.tb_height = 1
-    tester.circuit.dimensionality = 1
+    tester.circuit.dimensionality = dimensionality
     tester.circuit.starting_addr = 0
 
     rand.seed(0)
@@ -323,7 +325,6 @@ def test_fw1(word_width=16,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               magma_output="verilog",
                                flags=["-Wno-fatal"])
 
 
@@ -331,3 +332,4 @@ if __name__ == "__main__":
     test_tb()
     # test_id()
     # test_fw1()
+    # test_dim0()
