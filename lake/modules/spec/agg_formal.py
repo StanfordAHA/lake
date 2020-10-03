@@ -223,8 +223,10 @@ class AggFormal(Generator):
                 self._agg[idx][0][self._agg_write_addr[idx][clog2(self.fetch_width) - 1, 0]]\
                     = self._data_in[idx]
             else:
-                self._agg[idx][self._agg_write_addr[idx][self._agg_write_addr[0].width - 1, 2]]\
-                              [self._agg_write_addr[idx][clog2(self.fetch_width) - 1, 0]] = self._data_in[idx]
+                self._agg[idx][self._agg_write_addr[idx]
+                               [self._agg_write_addr[0].width - 1, clog2(self.fetch_width)]]\
+                    [self._agg_write_addr[idx][clog2(self.fetch_width) - 1, 0]]\
+                    = self._data_in[idx]
 
     @always_comb
     def agg_to_sram(self):
