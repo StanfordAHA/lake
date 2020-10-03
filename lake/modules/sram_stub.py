@@ -12,7 +12,6 @@ class SRAMStub(Generator):
                  width_mult,
                  depth):
         super().__init__("sram_stub")
-
         self.data_width = data_width
         self.width_mult = width_mult
         self.depth = depth

@@ -12,6 +12,8 @@ import random as rand
 import pytest
 
 
+# This module doesn't really exist as anything useful anymore...
+@pytest.mark.skip
 @pytest.mark.parametrize("banks", [1, 2, 4])
 @pytest.mark.parametrize("interconnect_input_ports", [1, 2])
 def test_input_addr_basic(banks,

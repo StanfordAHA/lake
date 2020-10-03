@@ -113,13 +113,12 @@ class SRAMWrapper(Generator):
         # instantiante external provided sram macro and flatten input/output data
         # if fetch width is greater than 1
         else:
-
             mbank = SRAMStubGenerator(sram_name=self.sram_name,
                                       data_width=self.data_width,
                                       width_mult=self.fw_int,
                                       depth=self.mem_depth)
 
-            compose_wide = True
+            compose_wide = False
 
             if self.fw_int > 1:
                 flatten_data_in = FlattenND(self.data_width,
@@ -268,10 +267,10 @@ if __name__ == "__main__":
                       sram_name="TSMC",
                       data_width=16,
                       fw_int=4,
-                      mem_depth=128,
+                      mem_depth=512,
                       mem_input_ports=1,
                       mem_output_ports=1,
-                      address_width=7,
-                      bank_num=4,
+                      address_width=9,
+                      bank_num=0,
                       num_tiles=1)
-    verilog(dut, filename="wrapper.sv")
+    verilog(dut, filename="wrapper512.sv")

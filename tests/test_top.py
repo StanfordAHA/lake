@@ -10,6 +10,8 @@ from lake.utils.sram_macro import SRAMMacroInfo
 # from lake.top.lake_chain import LakeChain
 
 
+# These configurations are deprecated
+@pytest.mark.skip
 def test_mult_lines_dim1(data_width=16,
                          mem_width=64,
                          mem_depth=512,
@@ -218,6 +220,8 @@ def test_mult_lines_dim1(data_width=16,
                                flags=["-Wno-fatal"])
 
 
+# These configurations are deprecated
+@pytest.mark.skip
 @pytest.mark.parametrize("tb0_range_outer", [3, 4])
 @pytest.mark.parametrize("tb0_stride", [2, 3])
 def test_mult_lines_dim2(tb0_range_outer,
@@ -457,6 +461,8 @@ def test_mult_lines_dim2(tb0_range_outer,
                                flags=["-Wno-fatal"])
 
 
+# These configurations are deprecated
+@pytest.mark.skip
 @pytest.mark.parametrize("mem_width", [16, 64])
 @pytest.mark.parametrize("use_sram_stub", [0, 1])
 @pytest.mark.parametrize("fifo_mode", [0, 1])
@@ -828,6 +834,8 @@ def test_chain_3porttile(num_tiles=2,
                                flags=["-Wno-fatal"])
 
 
+# These configurations are deprecated
+@pytest.mark.skip
 def test_identity_stream(data_width=16,
                          mem_width=64,
                          mem_depth=512,
@@ -1089,6 +1097,8 @@ def test_identity_stream(data_width=16,
                                flags=["-Wno-fatal"])
 
 
+# These configurations are deprecated
+@pytest.mark.skip
 @pytest.mark.parametrize("read_delay", [0, 1])
 def test_top(read_delay,
              data_width=16,
@@ -1337,6 +1347,8 @@ def test_top(read_delay,
                                flags=["-Wno-fatal"])
 
 
+# These configurations are deprecated
+@pytest.mark.skip
 def test_config_storage(data_width=16,
                         mem_width=64,
                         mem_depth=512,
@@ -1575,6 +1587,8 @@ def test_config_storage(data_width=16,
                                flags=["-Wno-fatal"])
 
 
+# These configurations are deprecated
+@pytest.mark.skip
 def test_ports3_stride1(read_delay=1,
                         data_width=16,
                         mem_width=64,
@@ -1822,9 +1836,11 @@ def test_ports3_stride1(read_delay=1,
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
+# These configurations are deprecated
+@pytest.mark.skip
 def test_2ports_idstream(data_width=16,
                          mem_width=64,
                          mem_depth=512,
@@ -2087,7 +2103,7 @@ def test_2ports_idstream(data_width=16,
         tempdir = "dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
