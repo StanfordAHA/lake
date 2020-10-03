@@ -10,39 +10,24 @@ from lake.models.reg_fifo_model import RegFIFOModel
 
 
 @pytest.mark.parametrize("mem_width", [16, 64])
-@pytest.mark.parametrize("banks", [1, 2])
+@pytest.mark.parametrize("in_out_ports", [1, 2])
 @pytest.mark.parametrize("depth", [16, 100])
 def test_storage_fifo(mem_width,  # CGRA Params
-                      banks,
                       depth,
+                      in_out_ports,
+                      banks=1,
                       data_width=16,
                       mem_depth=512,
                       input_iterator_support=6,  # Addr Controllers
-                      output_iterator_support=6,
-                      interconnect_input_ports=1,  # Connection to int
-                      interconnect_output_ports=1,
+                      output_iterator_support=6,  # Addr Controllers
                       mem_input_ports=1,
                       mem_output_ports=1,
                       use_sram_stub=1,
                       read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                       rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                       agg_height=4,
-                      max_agg_schedule=16,
-                      input_max_port_sched=16,
-                      output_max_port_sched=16,
-                      align_input=1,
-                      max_line_length=128,
-                      max_tb_height=1,
-                      tb_range_max=32,
-                      tb_sched_max=32,
-                      max_tb_stride=15,
-                      num_tb=1,
-                      tb_iterator_support=2,
-                      multiwrite=1,
-                      max_prefetch=64,
-                      config_data_width=16,
+                      config_data_width=32,
                       config_addr_width=8,
-                      remove_tb=False,
                       fifo_mode=True):
 
     fw_int = int(mem_width / data_width)
@@ -53,6 +38,7 @@ def test_storage_fifo(mem_width,  # CGRA Params
     new_config = {}
     new_config["fifo_ctrl_fifo_depth"] = depth
     new_config["mode"] = 1
+    new_config["tile_en"] = 1
 
     model_rf = RegFIFOModel(data_width=data_width,
                             width_mult=fw_int,
@@ -65,30 +51,16 @@ def test_storage_fifo(mem_width,  # CGRA Params
                      banks=banks,
                      input_iterator_support=input_iterator_support,
                      output_iterator_support=output_iterator_support,
-                     interconnect_input_ports=interconnect_input_ports,
-                     interconnect_output_ports=interconnect_output_ports,
+                     interconnect_input_ports=in_out_ports,
+                     interconnect_output_ports=in_out_ports,
                      mem_input_ports=mem_input_ports,
                      mem_output_ports=mem_output_ports,
                      use_sram_stub=use_sram_stub,
                      read_delay=read_delay,
                      rw_same_cycle=rw_same_cycle,
                      agg_height=agg_height,
-                     max_agg_schedule=max_agg_schedule,
-                     input_max_port_sched=input_max_port_sched,
-                     output_max_port_sched=output_max_port_sched,
-                     align_input=align_input,
-                     max_line_length=max_line_length,
-                     max_tb_height=max_tb_height,
-                     tb_range_max=tb_range_max,
-                     tb_sched_max=tb_sched_max,
-                     max_tb_stride=max_tb_stride,
-                     num_tb=num_tb,
-                     tb_iterator_support=tb_iterator_support,
-                     multiwrite=multiwrite,
-                     max_prefetch=max_prefetch,
                      config_data_width=config_data_width,
                      config_addr_width=config_addr_width,
-                     remove_tb=remove_tb,
                      fifo_mode=fifo_mode)
 
     magma_dut = kts.util.to_magma(lt_dut,
@@ -124,10 +96,19 @@ def test_storage_fifo(mem_width,  # CGRA Params
         push = rand.randint(0, 1)
         pop = rand.randint(0, 1)
 
-        tester.circuit.data_in = data_in
-        tester.circuit.wen = push
-        tester.circuit.ren = pop
-        (model_out, model_val, model_empty, model_full) = model_rf.interact(push, pop, [data_in])
+        if in_out_ports > 1:
+            tester.circuit.data_in_0 = data_in
+        else:
+            tester.circuit.data_in = data_in
+
+        tester.circuit.ren_in[0] = pop
+        tester.circuit.wen_in[0] = push
+
+        (model_out,
+         model_val_x,
+         model_empty,
+         model_full,
+         model_val) = model_rf.interact(push, pop, [data_in], push)
 
         push_cnt = push_cnt + push
         pop_cnt = pop_cnt + pop
@@ -139,7 +120,10 @@ def test_storage_fifo(mem_width,  # CGRA Params
         # Now check the outputs
         tester.circuit.valid_out.expect(model_val)
         if model_val:
-            tester.circuit.data_out.expect(model_out[0])
+            if in_out_ports > 1:
+                tester.circuit.data_out_0.expect(model_out[0])
+            else:
+                tester.circuit.data_out.expect(model_out[0])
 
         tester.step(2)
 
@@ -151,6 +135,6 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
 
 if __name__ == "__main__":
-    test_storage_fifo(mem_width=32,
+    test_storage_fifo(mem_width=64,
                       banks=1,
                       depth=100)

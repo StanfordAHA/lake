@@ -32,8 +32,6 @@ class Prefetcher(Generator):
                                    size=self.fw_int,
                                    explicit_array=True,
                                    packed=True)
-        self._mem_valid_data = self.input("mem_valid_data", 1)
-        self._mem_valid_data_out = self.output("mem_valid_data_out", 1)
 
         self._valid_read = self.input("valid_read", 1)
         self._tba_rdy_in = self.input("tba_rdy_in", 1)
@@ -45,7 +43,7 @@ class Prefetcher(Generator):
         self._input_latency.add_attribute(ConfigRegAttr(doc))
 
         self._max_lat = const(self.max_prefetch - 1,
-                              clog2(self.max_prefetch))
+                              clog2(self.max_prefetch) + 1)
 
         # Outputs
         self._data_out = self.output("data_out",
@@ -71,8 +69,6 @@ class Prefetcher(Generator):
                        rst_n=self._rst_n,
                        clk_en=1,
                        data_in=self._data_in,
-                       mem_valid_data=self._mem_valid_data,
-                       mem_valid_data_out=self._mem_valid_data_out,
                        data_out=self._data_out,
                        push=self._valid_read,
                        pop=self._tba_rdy_in,

@@ -181,7 +181,6 @@ class InputAddrCtrl(Generator):
         # (1 per input port) to send to the sram banks
         for i in range(self.interconnect_input_ports):
             self.add_child(f"address_gen_{i}", AddrGen(iterator_support=self.iterator_support,
-                                                       address_width=self.address_width,
                                                        config_width=self.config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -254,13 +253,15 @@ class InputAddrCtrl(Generator):
                     self._addresses[i][0] = self._local_addrs[0][0][self.mem_addr_width - 1, 0]
                 # Check to write data from other interconnect input ports (other than first)
                 # If this input port is active on this bank...
-                elif self._wen_reduced_saved[self._counter + 1][i]:
-                    self._done[i][0] = 1
-                    # This should only go through if the wen_en is on...
-                    self._wen[i][0] = self._wen_en_saved[self._counter + 1]
-                    self._port_out_exp[i][self._counter + 1] = 1
-                    self._data_out[i][0] = self._data_in_saved[self._counter + 1]
-                    self._addresses[i][0] = self._local_addrs_saved[self._counter + 1][0][self.mem_addr_width - 1, 0]
+                elif self.interconnect_input_ports > 1:
+                    if self._wen_reduced_saved[self._counter + 1][i]:
+                        self._done[i][0] = 1
+                        # This should only go through if the wen_en is on...
+                        self._wen[i][0] = self._wen_en_saved[self._counter + 1]
+                        self._port_out_exp[i][self._counter + 1] = 1
+                        self._data_out[i][0] = self._data_in_saved[self._counter + 1]
+                        self._addresses[i][0] = \
+                            self._local_addrs_saved[self._counter + 1][0][self.mem_addr_width - 1, 0]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def save_mult_int_signals(self):
@@ -294,7 +295,7 @@ class InputAddrCtrl(Generator):
         if ~self._rst_n:
             self._counter = 0
         elif self.interconnect_input_ports == 1:
-            self.counter = 0
+            self._counter = 0
         # the data/wen from first interconnect input port is directly written, so
         # we do not have to resend that to SRAM
         elif self._counter == self.interconnect_input_ports - 2:
