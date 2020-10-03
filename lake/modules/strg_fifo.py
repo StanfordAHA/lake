@@ -128,8 +128,6 @@ class StrgFIFO(Generator):
         # This one breaks out the read pointer so we can properly
         # reorder the data to storage
 
-        self._mem_valid_data_out = self.var("mem_valid_data_out", 1)
-
         self.add_child("front_rf", self._front_rf,
                        clk=self._clk,
                        clk_en=kts.const(1, 1),
@@ -179,8 +177,6 @@ class StrgFIFO(Generator):
             self.wire(self._back_pop, self._pop & (~self._empty | self._push) & ~self._back_pl)
         else:
             self.wire(self._back_pop, self._pop & (~self._empty | self._push))
-
-        self._mem_valid_data_out1 = self.var("mem_valid_data_out1", 1)
 
         self._back_parallel_out = self.var("back_parallel_out",
                                            width=self.data_width,
