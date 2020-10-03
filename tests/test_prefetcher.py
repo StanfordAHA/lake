@@ -77,8 +77,6 @@ def test_prefetcher_basic(num_tiles,
             setattr(tester.circuit, f"data_in_{j}", data_in[j])
         tester.circuit.valid_read = valid_read
         tester.circuit.tba_rdy_in = tba_rdy_in
-        if num_tiles > 1:
-            tester.circuit.mem_valid_data = mem_valid_data
 
         tester.eval()
 
@@ -88,8 +86,6 @@ def test_prefetcher_basic(num_tiles,
         if (model_v):
             for j in range(fw_int):
                 getattr(tester.circuit, f"data_out_{j}").expect(model_d[j])
-            if num_tiles > 1:
-                tester.circuit.mem_valid_data_out.expect(model_mem_valid)
 
         tester.step(2)
 

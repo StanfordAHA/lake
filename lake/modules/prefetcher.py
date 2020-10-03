@@ -34,7 +34,7 @@ class Prefetcher(Generator):
                                    size=self.fw_int,
                                    explicit_array=True,
                                    packed=True)
-
+        
         if self.num_tiles > 1:
             self._mem_valid_data = self.input("mem_valid_data", 1)
             self._mem_valid_data_out = self.output("mem_valid_data_out", 1)

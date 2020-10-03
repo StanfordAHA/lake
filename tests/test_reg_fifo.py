@@ -83,8 +83,6 @@ def test_reg_fifo_basic(width_mult,
 
         tester.circuit.valid.expect(model_val)
         if model_val:
-            if num_tiles > 1:
-                tester.circuit.mem_valid_data_out.expect(model_mem_valid)
             if width_mult == 1:
                 tester.circuit.data_out.expect(model_out[0])
             else:

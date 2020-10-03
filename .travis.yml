@@ -8,9 +8,7 @@ install:
   - docker exec -i lake bash -c 'cd lake && python3 -m pip install -e .'
 
 script:
-  - docker exec -i lake bash -c 'cd lake && python3 -m pycodestyle lake/'
-  - docker exec -i lake bash -c 'cd lake && python3 -m pycodestyle tests/'
-  - docker exec -i lake bash -c 'cd lake && pytest --pycodestyle -v tests/'
+  - docker exec -i lake bash -c 'lake/.travis/run.sh'
 
 notifications:
   email:
