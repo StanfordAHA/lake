@@ -36,12 +36,12 @@ class AggregationBuffer(Generator):
         self._data_out = self.output("data_out", self.mem_width)
         self._valid_out = self.output("valid_out", 1)
 
-        # self._data_out_chop = []
-        # for i in range(self.fw_int):
-        #    self._data_out_chop.append(self.output(f"data_out_chop_{i}", self.data_width))
-        #    self.add_stmt(
-        #        self._data_out_chop[i].assign(self._data_out[(self.data_width * (i + 1)) - 1,
-        #                                                     self.data_width * i]))
+        self._data_out_chop = []
+        for i in range(self.fw_int):
+            self._data_out_chop.append(self.output(f"data_out_chop_{i}", self.data_width))
+            self.add_stmt(
+                self._data_out_chop[i].assign(self._data_out[(self.data_width * (i + 1)) - 1,
+                                                             self.data_width * i]))
 
         # CONFIG:
         # We receive a periodic (doesn't need to be, but has a maximum schedule,
