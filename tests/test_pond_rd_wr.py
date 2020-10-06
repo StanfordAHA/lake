@@ -63,13 +63,20 @@ def test_pond(data_width=16,  # CGRA Params
     for i in range(32):
         # Incrementing Data
         data_in_pond[0] = data_in_pond[0] + 1
-
+        #data_in_pond[0] = 2 
 
         if interconnect_input_ports == 1:
             tester.circuit.data_in_pond = data_in_pond[0]
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
+        
+        if i >= 15 and i < 31:
+            tester.circuit.data_out_pond.expect(i-15)
+
+        if i >= 16:
+            tester.circuit.data_out_pond.expect(i-16)
+   
         tester.eval()
         tester.step(2)
 
