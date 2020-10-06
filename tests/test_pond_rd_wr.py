@@ -8,6 +8,7 @@ import tempfile
 from lake.models.lake_top_model import LakeTopModel
 from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 
+
 def test_pond(data_width=16,  # CGRA Params
               mem_depth=32,
               default_iterator_support=2,
@@ -19,7 +20,6 @@ def test_pond(data_width=16,  # CGRA Params
               interconnect_input_ports=1,  # Connection to int
               interconnect_output_ports=1):
 
-  
     ### DUT
     pond_dut = Pond(data_width=data_width,  # CGRA Params
                     mem_depth=mem_depth,
@@ -69,10 +69,10 @@ def test_pond(data_width=16,  # CGRA Params
         else:
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
-        
+
         if i >= 16:
-            tester.circuit.data_out_pond.expect(i-15)
-   
+            tester.circuit.data_out_pond.expect(i - 15)
+
         tester.eval()
         tester.step(2)
 
