@@ -4,12 +4,16 @@ from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
-from lake.utils.util import extract_formal_annotation, safe_wire, add_counter
+from lake.utils.util import extract_formal_annotation, generate_pond_api, safe_wire, add_counter, trim_config
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.modules.storage_config_seq import StorageConfigSeq
+from lake.utils.parse_clkwork_config import extract_controller_json, map_controller
+from lake.utils.parse_clkwork_config import ControllerInfo
+from lake.utils.util import create_list_from_ctrl
+from _kratos import create_wrapper_flatten
 
 
 class Pond(Generator):
@@ -331,6 +335,48 @@ class Pond(Generator):
 
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
+
+    def get_static_bitstream_json(self,
+                                  root_node):
+
+        # Dummy variables to fill in later when compiler
+        # generates different collateral for different designs
+        flattened = create_wrapper_flatten(self.internal_generator.clone(),
+                                           self.name + "_W")
+
+        # Store all configurations here
+        config = []
+
+        # Get controllers from json node...
+        assert "in2regfile" in root_node
+        assert "regfile2out" in root_node
+        in2rf_ctrl = map_controller(extract_controller_json(root_node["in2regfile"]), "in2regfile")
+        rf2out_ctrl = map_controller(extract_controller_json(root_node["regfile2out"]), "regfile2out")
+
+        # Configure registers based on controller data...
+        config.append(trim_config(flattened, "rf_write_iter_0_dimensionality", in2rf_ctrl.dim))
+        config.append(trim_config(flattened, "rf_write_addr_0_starting_addr", in2rf_ctrl.in_data_strt))
+        config.append(trim_config(flattened, "rf_write_sched_0_sched_addr_gen_starting_addr", in2rf_ctrl.cyc_strt))
+        for i in range(in2rf_ctrl.dim):
+            config.append(trim_config(flattened, f"rf_write_addr_0_strides_{i}", in2rf_ctrl.in_data_stride[i]))
+            config.append(trim_config(flattened, f"rf_write_iter_0_ranges_{i}", in2rf_ctrl.extent[i]))
+            config.append(trim_config(flattened, f"rf_write_sched_0_sched_addr_gen_strides_{i}", in2rf_ctrl.cyc_stride[i]))
+
+        config.append(trim_config(flattened, "rf_read_iter_0_dimensionality", rf2out_ctrl.dim))
+        config.append(trim_config(flattened, "rf_read_addr_0_starting_addr", rf2out_ctrl.out_data_strt))
+        config.append(trim_config(flattened, "rf_read_sched_0_sched_addr_gen_starting_addr", rf2out_ctrl.cyc_strt))
+        for i in range(rf2out_ctrl.dim):
+            config.append(trim_config(flattened, f"rf_read_addr_0_strides_{i}", rf2out_ctrl.out_data_stride[i]))
+            config.append(trim_config(flattened, f"rf_read_iter_0_ranges_{i}", rf2out_ctrl.extent[i]))
+            config.append(trim_config(flattened, f"rf_read_sched_0_sched_addr_gen_strides_{i}", rf2out_ctrl.cyc_stride[i]))
+
+        # Handle control registers... (should really be done in garnet TODO)
+        config.append(trim_config(flattened, "flush_reg_sel", 0))  # 1
+        config.append(trim_config(flattened, "flush_reg_value", 0))  # 1
+        # Activate the tile...
+        config.append(trim_config(flattened, "tile_en", 1))  # 1
+
+        return config
 
 
 if __name__ == "__main__":
