@@ -12,7 +12,6 @@ from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.modules.storage_config_seq import StorageConfigSeq
 from lake.utils.parse_clkwork_config import extract_controller_json, map_controller
 from lake.utils.parse_clkwork_config import ControllerInfo
-from lake.utils.util import create_list_from_ctrl
 from _kratos import create_wrapper_flatten
 
 
