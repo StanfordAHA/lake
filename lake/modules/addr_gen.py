@@ -15,6 +15,8 @@ class AddrGen(Generator):
 
         super().__init__(f"addr_gen", debug=True)
 
+        assert iterator_support > 1, f"Hardware only supports an iterator support of 2 or more: you tried {iterator_support}"
+
         self.iterator_support = iterator_support
         self.config_width = config_width
         # Create params for instancing this module...
@@ -60,7 +62,7 @@ class AddrGen(Generator):
         # GENERATION LOGIC: begin
         self.wire(self._strt_addr, self._starting_addr)
         self.wire(self._addr_out, self._calc_addr)
-        self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
+        self._mux_sel = self.input("mux_sel", clog2(self.iterator_support_par))
 
         self._current_addr = self.var("current_addr", self.config_width_par)
         # Calculate address by taking previous calculation and adding the muxed stride
