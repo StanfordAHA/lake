@@ -123,7 +123,8 @@ class AggFormal(Generator):
                            rst_n=self._rst_n,
                            step=self._agg_write[i],
                            # addr_out=self._agg_write_addr[i])
-                           mux_sel=forloop_ctr.ports.mux_sel_out)
+                           mux_sel=forloop_ctr.ports.mux_sel_out,
+                           restart=forloop_ctr.ports.restart)
             safe_wire(self, self._agg_write_addr[i], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=self.default_iterator_support,
@@ -161,7 +162,8 @@ class AggFormal(Generator):
                            step=self._write,
                            #  (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))),
                            # addr_out=self._agg_read_addr_gen_out[i])
-                           mux_sel=forloop_ctr_rd.ports.mux_sel_out)
+                           mux_sel=forloop_ctr_rd.ports.mux_sel_out,
+                           restart=forloop_ctr_rd.ports.restart)
 
             safe_wire(self, self._agg_read_addr_gen_out[i], newAG.ports.addr_out)
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])
