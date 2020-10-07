@@ -169,7 +169,7 @@ class StrgUBVec(Generator):
 
         for i in range(self.interconnect_input_ports):
 
-            self.agg_iter_support = 5
+            self.agg_iter_support = 6
             self.agg_addr_width = 4
             self.agg_range_width = 16
 
@@ -315,7 +315,7 @@ class StrgUBVec(Generator):
 
             self.tb_iter_support = 6
             self.tb_addr_width = 4
-            self.tb_range_width = 12
+            self.tb_range_width = 16
 
             _AG = AddrGen(iterator_support=self.default_iterator_support,
                           config_width=self.tb_addr_width)
