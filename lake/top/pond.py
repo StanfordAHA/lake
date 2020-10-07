@@ -126,7 +126,7 @@ class Pond(Generator):
         for wr_port in range(self.interconnect_input_ports):
 
             RF_WRITE_ITER = ForLoop(iterator_support=self.default_iterator_support,
-                                    config_width=self.default_config_width)
+                                    config_width=self.cycle_count_width)
             RF_WRITE_ADDR = AddrGen(iterator_support=self.default_iterator_support,
                                     config_width=self.default_config_width)
             RF_WRITE_SCHED = SchedGen(iterator_support=self.default_iterator_support,
@@ -160,7 +160,7 @@ class Pond(Generator):
         for rd_port in range(self.interconnect_output_ports):
 
             RF_READ_ITER = ForLoop(iterator_support=self.default_iterator_support,
-                                   config_width=self.default_config_width)
+                                   config_width=self.cycle_count_width)
             RF_READ_ADDR = AddrGen(iterator_support=self.default_iterator_support,
                                    config_width=self.default_config_width)
             RF_READ_SCHED = SchedGen(iterator_support=self.default_iterator_support,
