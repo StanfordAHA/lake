@@ -115,7 +115,6 @@ class ValidIO(Generator):
                     config.append(trim_config(flattened, f"loops_stencil_valid_ranges_{i}", stencil_valid.extent[i]))
                     config.append(trim_config(flattened, f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stencil_valid.cyc_stride[i]))
 
-
         return config
 
 
