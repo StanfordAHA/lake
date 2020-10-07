@@ -144,7 +144,8 @@ class Pond(Generator):
                            clk=self._gclk,
                            rst_n=self._rst_n,
                            step=self._write[wr_port],
-                           mux_sel=RF_WRITE_ITER.ports.mux_sel_out)
+                           mux_sel=RF_WRITE_ITER.ports.mux_sel_out,
+                           restart=RF_WRITE_ITER.ports.restart)
             safe_wire(self, self._write_addr[wr_port], RF_WRITE_ADDR.ports.addr_out)
 
             self.add_child(f"rf_write_sched_{wr_port}",
@@ -176,7 +177,8 @@ class Pond(Generator):
                            clk=self._gclk,
                            rst_n=self._rst_n,
                            step=self._read[rd_port],
-                           mux_sel=RF_READ_ITER.ports.mux_sel_out)
+                           mux_sel=RF_READ_ITER.ports.mux_sel_out,
+                           restart=RF_READ_ITER.ports.restart)
             safe_wire(self, self._read_addr[rd_port], RF_READ_ADDR.ports.addr_out)
 
             self.add_child(f"rf_read_sched_{rd_port}",
