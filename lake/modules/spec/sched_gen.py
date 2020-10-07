@@ -43,15 +43,15 @@ class SchedGen(Generator):
         # PORT DEFS: end
 
         self.add_child(f"sched_addr_gen",
-                       AddrGen(iterator_support=self.iterator_support,
-                               config_width=self.config_width),
-
+                       AddrGen(),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._valid_out,
                        mux_sel=self._mux_sel,
                        addr_out=self._addr_out,
-                       restart=const(0, 1))
+                       restart=const(0, 1),
+                       CONFIG_WIDTH=self.config_width_par,
+                       ITERATOR_SUPPORT=self.iterator_support_par)
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
