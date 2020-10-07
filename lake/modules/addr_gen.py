@@ -27,6 +27,8 @@ class AddrGen(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
+        self._restart = self.input("restart", 1)
+
         self._strides = self.input("strides", self.config_width,
                                    size=self.iterator_support,
                                    packed=True, explicit_array=True)
@@ -70,7 +72,11 @@ class AddrGen(Generator):
         if ~self._rst_n:
             self._current_addr = 0
         elif self._step:
-            self._current_addr = self._current_addr + self._strides[self._mux_sel]
+            # mux_sel as 0 but update means that the machine is resetting.
+            if self._restart:
+                self._current_addr = 0
+            else:
+                self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
 
 if __name__ == "__main__":

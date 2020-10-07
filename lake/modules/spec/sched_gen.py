@@ -52,7 +52,8 @@ class SchedGen(Generator):
                        rst_n=self._rst_n,
                        step=self._valid_out,
                        mux_sel=self._mux_sel,
-                       addr_out=self._addr_out)
+                       addr_out=self._addr_out,
+                       restart=const(0, 1))
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
