@@ -13,7 +13,7 @@ class AddrGen(Generator):
                  iterator_support=6,
                  config_width=16):
 
-        super().__init__(f"addr_gen", debug=True)
+        super().__init__(f"addr_gen_{iterator_support}_{config_width}", debug=True)
 
         assert iterator_support > 1, f"Hardware only supports an iterator support of 2 or more: you tried {iterator_support}"
 

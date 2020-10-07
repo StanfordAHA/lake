@@ -14,7 +14,7 @@ class SchedGen(Generator):
                  iterator_support=6,
                  config_width=16):
 
-        super().__init__(f"sched_gen")
+        super().__init__(f"sched_gen_{iterator_support}_{config_width}")
 
         self.iterator_support = iterator_support
         self.config_width = config_width
