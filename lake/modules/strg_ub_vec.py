@@ -169,7 +169,7 @@ class StrgUBVec(Generator):
 
         for i in range(self.interconnect_input_ports):
 
-            self.agg_iter_support = 4
+            self.agg_iter_support = 6
             self.agg_addr_width = 4
             self.agg_range_width = 16
 
