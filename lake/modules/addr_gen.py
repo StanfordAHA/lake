@@ -13,13 +13,17 @@ class AddrGen(Generator):
                  iterator_support=6,
                  config_width=16):
 
-        super().__init__(f"addr_gen", debug=True)
+        super().__init__(f"addr_gen_{iterator_support}_{config_width}", debug=True)
+
+        assert iterator_support > 1, f"Hardware only supports an iterator support of 2 or more: you tried {iterator_support}"
 
         self.iterator_support = iterator_support
         self.config_width = config_width
         # Create params for instancing this module...
-        self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, value=self.iterator_support)
-        self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, value=self.config_width)
+        # self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1,
+        #                                        initial_value=self.iterator_support)
+        # self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1,
+        #                                    initial_value=self.config_width)
 
         # PORT DEFS: begin
 

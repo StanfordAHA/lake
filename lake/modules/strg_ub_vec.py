@@ -8,7 +8,7 @@ from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
-from lake.utils.util import safe_wire
+from lake.utils.util import safe_wire, add_counter
 import kratos as kts
 
 
@@ -60,8 +60,7 @@ class StrgUBVec(Generator):
                                    explicit_array=True)
 
         # Create cycle counter to share...
-        self._cycle_count = self.var("cycle_count", 16)
-        self.add_code(self.increment_cycle_count)
+        self._cycle_count = add_counter(self, "cycle_count", 16)
 
         # outputs
         self._data_out = self.output("data_out", self.data_width,

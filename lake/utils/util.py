@@ -1,4 +1,5 @@
 import kratos as kts
+from kratos import *
 import math
 import os as os
 from enum import Enum
@@ -184,6 +185,53 @@ def trim_config(flat_gen, cfg_reg_name, value):
     bmask = int(math.pow(2, cfg_port.width)) - 1
     print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
     return (cfg_reg_name, value & bmask)
+
+
+# Add a simple counter to a design and return the signal
+def add_counter(generator, name, bitwidth):
+    ctr = generator.var(name, bitwidth)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def ctr_inc_code():
+        if ~generator._rst_n:
+            ctr = 0
+        else:
+            ctr = ctr + 1
+
+    generator.add_code(ctr_inc_code)
+    return ctr
+
+
+# Function for generating Pond API
+def generate_pond_api(ctrl_rd, ctrl_wr):
+    (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
+    (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
+
+    new_config = {}
+
+    new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
+    new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
+    new_config["rf_read_addr_0_strides_0"] = tform_strides_rd[0]
+    new_config["rf_read_addr_0_strides_1"] = tform_strides_rd[1]
+    new_config["rf_read_iter_0_ranges_0"] = tform_ranges_rd[0]
+    new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
+
+    new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
+    new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd[0]
+    new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd[1]
+
+    new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
+    new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
+    new_config["rf_write_addr_0_strides_0"] = tform_strides_wr[0]
+    new_config["rf_write_addr_0_strides_1"] = tform_strides_wr[1]
+    new_config["rf_write_iter_0_ranges_0"] = tform_ranges_wr[0]
+    new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
+
+    new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
+    new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr[0]
+    new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr[1]
+
+    return new_config
 
 
 def process_line(item):
