@@ -232,3 +232,49 @@ def generate_pond_api(ctrl_rd, ctrl_wr):
     new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr[1]
 
     return new_config
+
+
+def process_line(item):
+    item = item.strip()
+    item_nobrack = item.rstrip("]").lstrip("[")
+    individ = item_nobrack.split(" ")
+    print(f"individ: {individ}")
+    inced = []
+    for i in range(len(individ)):
+        inced.append(int(individ[i]) + 1)
+
+    ret_str = "[" + str(inced[0])
+    for i in range(len(inced) - 1):
+        ret_str = ret_str + " " + str(inced[i + 1])
+    ret_str = ret_str + "]"
+    return ret_str
+
+
+def increment_line(line):
+    splitline = line.split(",")
+    di = splitline[0]
+    vi = splitline[1]
+    do = splitline[2]
+    vo = splitline[3]
+
+    di_p = process_line(di)
+    vi_p = vi
+    do_p = process_line(do)
+    vo_p = vo
+
+    return di_p + ", " + vi_p + ", " + do_p + ", " + vo_p
+
+
+def increment_csv(file_in, file_out, fields):
+    with open(file_in) as infile:
+        infile_lines = infile.readlines()
+        with open(file_out, "w+") as outfile:
+            outfile.write(infile_lines[0])
+            for i in range(len(infile_lines) - 1):
+                if len(infile_lines[i + 1]) > 5:
+                    print(f"line {i}: {infile_lines[i + 1]}")
+                    outfile.write(increment_line(infile_lines[i + 1]))
+
+
+if __name__ == "__main__":
+    increment_csv("sequence.csv", "inced_csv.csv", [])
