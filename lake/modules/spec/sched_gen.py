@@ -19,8 +19,8 @@ class SchedGen(Generator):
         self.iterator_support = iterator_support
         self.config_width = config_width
         # Create params for instancing this module...
-        self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, initial_value=self.iterator_support)
-        self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, initial_value=self.config_width)
+        # self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, initial_value=self.iterator_support)
+        # self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, initial_value=self.config_width)
         # PORT DEFS: begin
 
         # INPUTS
@@ -51,9 +51,7 @@ class SchedGen(Generator):
                        step=self._valid_out,
                        mux_sel=self._mux_sel,
                        addr_out=self._addr_out,
-                       restart=const(0, 1),
-                       CONFIG_WIDTH=self.config_width_par,
-                       ITERATOR_SUPPORT=self.iterator_support_par)
+                       restart=const(0, 1))
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)

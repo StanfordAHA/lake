@@ -20,10 +20,10 @@ class AddrGen(Generator):
         self.iterator_support = iterator_support
         self.config_width = config_width
         # Create params for instancing this module...
-        self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1,
-                                               initial_value=self.iterator_support)
-        self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1,
-                                           initial_value=self.config_width)
+        # self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1,
+        #                                        initial_value=self.iterator_support)
+        # self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1,
+        #                                    initial_value=self.config_width)
 
         # PORT DEFS: begin
 
@@ -33,13 +33,13 @@ class AddrGen(Generator):
 
         self._restart = self.input("restart", 1)
 
-        self._strides = self.input("strides", self.config_width_par,
-                                   size=self.iterator_support_par,
+        self._strides = self.input("strides", self.config_width,
+                                   size=self.iterator_support,
                                    packed=True, explicit_array=True)
         self._strides.add_attribute(ConfigRegAttr("Strides of address generator"))
         self._strides.add_attribute(FormalAttr(f"{self._strides.name}", FormalSignalConstraint.SOLVE))
 
-        self._starting_addr = self.input("starting_addr", self.config_width_par)
+        self._starting_addr = self.input("starting_addr", self.config_width)
         self._starting_addr.add_attribute(ConfigRegAttr("Starting address of address generator"))
         self._starting_addr.add_attribute(FormalAttr(f"{self._starting_addr.name}", FormalSignalConstraint.SOLVE))
 
@@ -47,24 +47,24 @@ class AddrGen(Generator):
 
         # OUTPUTS
         # TODO why is this config width instead of address width?
-        self._addr_out = self.output("addr_out", self.config_width_par)
+        self._addr_out = self.output("addr_out", self.config_width)
 
         # PORT DEFS: end
 
         # LOCAL VARIABLES: begin
-        self._strt_addr = self.var("strt_addr", self.config_width_par)
+        self._strt_addr = self.var("strt_addr", self.config_width)
 
-        self._calc_addr = self.var("calc_addr", self.config_width_par)
+        self._calc_addr = self.var("calc_addr", self.config_width)
 
-        self._max_value = self.var("max_value", self.iterator_support_par)
+        self._max_value = self.var("max_value", self.iterator_support)
 
         # LOCAL VARIABLES: end
         # GENERATION LOGIC: begin
         self.wire(self._strt_addr, self._starting_addr)
         self.wire(self._addr_out, self._calc_addr)
-        self._mux_sel = self.input("mux_sel", clog2(self.iterator_support_par))
+        self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
 
-        self._current_addr = self.var("current_addr", self.config_width_par)
+        self._current_addr = self.var("current_addr", self.config_width)
         # Calculate address by taking previous calculation and adding the muxed stride
         self.wire(self._calc_addr, self._strt_addr + self._current_addr)
 
