@@ -65,7 +65,7 @@ class ValidIO(Generator):
         self.add_child(f"valid_out_sched_gen",
                        SchedGen(iterator_support=self.default_iterator_support,
                                 config_width=self.cycle_count_width),
-                       clk=self._clk,
+                       clk=self._gclk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        mux_sel=self._loops_valid_out.ports.mux_sel_out,
