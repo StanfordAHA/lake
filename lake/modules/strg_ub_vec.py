@@ -320,7 +320,7 @@ class StrgUBVec(Generator):
 
             self.tb_iter_support = 6
             self.tb_addr_width = 4
-            self.tb_range_width = 8
+            self.tb_range_width = 16
 
             _AG = AddrGen(iterator_support=self.default_iterator_support,
                           config_width=self.tb_addr_width)
