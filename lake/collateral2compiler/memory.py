@@ -82,8 +82,6 @@ class Memory(Generator):
             self.write_width = mem_params["read_write_port_width"]
             self.read_width = mem_params["read_write_port_width"]
 
-        self.chaining = mem_params["chaining"]
-
         assert self.capacity % self.write_width == 0
         assert self.capacity % self.read_width == 0
 
