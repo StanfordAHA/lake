@@ -12,6 +12,7 @@ from lake.collateral2compiler.mem_port import MemPort
 
 tile = TopLake()
 
+# MemPort attributes are latency, initiation interval
 agg_write_port = MemPort(1, 0)
 agg_read_port = MemPort(0, 0)
 
