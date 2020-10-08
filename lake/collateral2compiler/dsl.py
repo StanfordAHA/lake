@@ -1,13 +1,14 @@
 from lake.collateral2compiler.top_lake import TopLake
 from lake.collateral2compiler.mem_port import MemPort
 
-# example of DSL
+# example of DSL (makes current mem tile with 2 agg,
+# wide SRAM, 2 tb
 
 # mem_collateral is part of Lake, not exposed to user
 
 # LAKE OBJECT MUST BE FIRST INSTANTIATED
 # IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
-# MEMORIES MUST BE INSTANTIATED BEFORE PORTS
+# MEMORIES SHOULD BE INSTANTIATED BEFORE EDGES
 
 tile = TopLake()
 
@@ -86,9 +87,3 @@ tile.add_edge({"from_signal": "sram",
                "to_signal": "tb1"})
 
 tile.construct_lake()
-
-'''tile.add_edge(from_signal="agg",
-             to_signal="tb",
-              addr_gen_dim=4,
-              addr_gen_max_range=65536,
-              addr_gen_max_stride=65536)'''
