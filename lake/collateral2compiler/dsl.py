@@ -46,7 +46,11 @@ sram_params = {"name": "sram",
 tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
 
 tile.add_edge({"from_signal": "agg",
-               "to_signal": "sram"})
+               "to_signal": "sram",
+               # these are defaults, so not specified for further edges
+               "dim": 6,
+               "max_range": 65536,
+               "max_stride": 65536})
 
 tile.add_edge({"from_signal": "agg1",
                "to_signal": "sram"})
