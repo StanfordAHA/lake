@@ -4,7 +4,8 @@ from lake.collateral2compiler.mem_port import MemPort
 # example of DSL (makes current mem tile with 2 agg,
 # wide SRAM, 2 tb
 
-# mem_collateral is part of Lake, not exposed to user
+# mem_collateral is part of TopLake for collateral
+# to compiler, not exposed to user
 
 # LAKE OBJECT MUST BE FIRST INSTANTIATED
 # IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
@@ -48,8 +49,8 @@ tile.add_edge({"from_signal": "agg",
                "to_signal": "sram",
                # these are defaults, so not specified for further edges
                "dim": 6,
-               "max_range": 65536,
-               "max_stride": 65536})
+               "max_range": 65535,
+               "max_stride": 65535})
 
 tile.add_edge({"from_signal": "agg1",
                "to_signal": "sram"})
