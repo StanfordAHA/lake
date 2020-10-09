@@ -6,6 +6,9 @@ from enum import Enum
 from lake.attributes.formal_attr import FormalAttr
 
 
+lake_util_verbose_trim = False
+
+
 def check_env():
     lake_controller_path = os.getenv("LAKE_CONTROLLERS")
     lake_stream_path = os.getenv("LAKE_STREAM")
@@ -177,14 +180,24 @@ def zext(gen, wire, size):
         return zext_signal
 
 
+# Trim an individual config
 def trim_config(flat_gen, cfg_reg_name, value):
     cfg_port = flat_gen.get_port(cfg_reg_name)
     if cfg_port is None:
         print(f"No config reg: {cfg_reg_name}...is that expected?")
         return (cfg_reg_name, 0)
     bmask = int(math.pow(2, cfg_port.width)) - 1
-    print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
+    if lake_util_verbose_trim:
+        print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
     return (cfg_reg_name, value & bmask)
+
+
+def trim_config_list(flat_gen, config_list):
+    # Store trimmed values here...
+    config = []
+    for name, value in config_list:
+        config.append(trim_config(flat_gen, name, value))
+    return config
 
 
 # Add a simple counter to a design and return the signal

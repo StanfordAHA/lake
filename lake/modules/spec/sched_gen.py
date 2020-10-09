@@ -18,9 +18,7 @@ class SchedGen(Generator):
 
         self.iterator_support = iterator_support
         self.config_width = config_width
-        # Create params for instancing this module...
-        # self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, initial_value=self.iterator_support)
-        # self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, initial_value=self.config_width)
+
         # PORT DEFS: begin
 
         # INPUTS
@@ -35,7 +33,6 @@ class SchedGen(Generator):
         self._cycle_count = self.input("cycle_count", self.config_width)
         self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
         self._addr_out = self.var("addr_out", self.config_width)
-        # self._zext_addr_out = self._addr_out.extend(self._cycle_count.width)
 
         # Compare based on minimum of addr + global cycle...
         self.c_a_cmp = min(self._cycle_count.width, self._addr_out.width)
@@ -55,7 +52,6 @@ class SchedGen(Generator):
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
-        # self.add_code(self.set_cycle_num)
 
     @always_comb
     def set_valid_out(self):
