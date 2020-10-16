@@ -183,6 +183,12 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
             else:
                 wrapper.write(f".{config}({config}),\n")
 
+    
+    with open("LakeWrapper.v", "a") as wrapper:
+        with open(lake_file, "r") as original:
+            for line in original:
+                wrapper.write(line)
+
 def transform_strides_and_ranges(ranges, strides, dimensionality):
     assert len(ranges) == len(strides), "Strides and ranges should be same length..."
     tform_ranges = [range_item - 2 for range_item in ranges[0:dimensionality]]
