@@ -87,6 +87,7 @@ def get_configs_dict(configs):
 def set_configs_sv(generator, filepath, configs_dict):
     int_gen = generator.internal_generator
     ports = int_gen.get_port_names()
+    configs_list = []
 
     remain = []
     for port_name in ports:
@@ -121,6 +122,7 @@ def set_configs_sv(generator, filepath, configs_dict):
                 # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + value + ";\n")
+                configs_list.append(name)
 
         # set all unused config regs to 0 since we remove them
         # from tile interface and they need to be set
@@ -133,9 +135,53 @@ def set_configs_sv(generator, filepath, configs_dict):
                 print(port_name)
             if port is not None:
                 fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
+                configs_list.append(remaining)
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = " + str(port_width) + "'h0;\n")
                 # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
+    return configs_list
 
+def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
+    with open(lake_file, 'r') as lake:
+        start = False
+        not_configs = []
+        for line in lake:
+            if "module LakeTop_W (" in line:
+                start = True
+            elif start and ");" in line:
+                start = False
+            elif start:
+                add = 1
+                for config in configs_list:
+                    if config in line:
+                        add = 0
+                        break
+                if add == 1: 
+                    not_configs.append(line)
+
+    with open("LakeWrapper.v", "w+") as wrapper:
+        wrapper.write("module LakeWrapper (\n")
+        for not_config in not_configs:
+            wrapper.write(not_config)
+        wrapper.write(");\n")
+
+        with open(configs_file, "r") as configs:
+            for config in configs:
+                wrapper.write(config)
+
+        wrapper.write("LakeTop_W LakeTop_W (\n")
+        for not_config in not_configs:
+            try_name = not_config.split("]")
+            if len(try_name) == 1:
+                try_name = not_config.split("logic")
+            name = try_name[1].split(",")[0]
+            wrapper.write(f".{name}({name}),\n")
+
+        for i in range(len(configs_list)):
+            config = configs_list[i]
+            if i == len(configs_list) - 1:
+                wrapper.write(f".{config}({config})\n);\n")
+            else:
+                wrapper.write(f".{config}({config}),\n")
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
     assert len(ranges) == len(strides), "Strides and ranges should be same length..."
