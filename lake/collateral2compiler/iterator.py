@@ -9,13 +9,13 @@ class EdgeType(IntEnum):
 class NodeType(IntEnum):
     ITERATOR = 0
     CONDITION = 1
-
+    EXTERNAL = 2
 
 class Controller():
     def __init__(self):
         self.iterators = []
 
-    def add_iterator(it, path):
+    def add_node(it, path):
         self.iterators.append(it)
 
 
@@ -56,25 +56,35 @@ class IteratorNode(ControllerNode):
         self.it_stride = it_stride
         self.num_conditions = num_conditions
 
+class ExternalNode(ControllerNode):
+    def __init__(self, name):
+        super().__init__(self, name, EXTERNAL)
 
 # normal affine expression (current)
 addressor = Controller()
-levels = 2
-for i in range(levels):
+for i in range(2):
     it = IteratorNode(f"it_{i}", 65535, 65535, 1)
-    addressor.add_iterator(it, [WEIGHTED])
+    addressor.add_node(it, [WEIGHTED])
 
+# default could be order in which they are added
 addressor.define_loop_levels(["it_0", "it_1"])
 
 # condition for one iterator
 cond_add = Controller()
-cond_add.add_iterator(IteratorNode("i", 65535, 65535, 2),
-                      [DIRECT, CONDITION, WEIGHTED])
-cond_add.add_iterator(IteratorNOde("j", 65535, 65535, 1), [WEIGHTED])
+cond_add.add_node(IteratorNode("i", 65535, 65535, 2),
+                  [DIRECT, CONDITION, WEIGHTED])
+cond_add.add_node(IteratorNode("j", 65535, 65535, 1), [WEIGHTED])
+
+addressor.define_loop_levels(["i", "j"])
 
 # condition for two iterators
 cond_add2 = Controller()
-cond_add2.add_iterator(IteratorNode("i", 65535, 65535, 2),
-                       [DIRECT, CONDITION, WEIGHTED])
-cond_add2.add_iterator(IteratorNOde("j", 65535, 65535, 2),
-                       [DIRECT, CONDITION, WEIGHTED])
+cond_add2.add_node(IteratorNode("i", 65535, 65535, 2),
+                   [DIRECT, CONDITION, WEIGHTED])
+cond_add2.add_node(IteratorNOde("j", 65535, 65535, 2),
+                   [DIRECT, CONDITION, WEIGHTED])
+
+addressor.define_loop_levels(["i", "j"])
+
+ext_ctrl = Controller()
+ext_ctrl.add_node(ExternalNode("addr"), [DIRECT])
