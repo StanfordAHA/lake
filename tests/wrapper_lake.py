@@ -55,3 +55,6 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+
+    # Example usage:
+    # python tests/wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
