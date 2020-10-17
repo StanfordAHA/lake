@@ -161,8 +161,9 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
                 if add == 1:
                     not_configs.append(line)
 
-    # write top level interface (without config regs)
     with open("LakeWrapper.v", "w+") as wrapper:
+
+        # write top level interface (without config regs)
         wrapper.write("module LakeWrapper (\n")
         for not_config in not_configs:
             wrapper.write(not_config)

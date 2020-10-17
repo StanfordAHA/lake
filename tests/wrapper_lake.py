@@ -33,24 +33,27 @@ def wrapper(config_path_input):
     get_lake_wrapper(config_path=config_path)
 
 
+def error(usage):
+    print(usage)
+    sys.exit(2)
+
+
 def main(argv):
     usage = "File usage: python wrapper.py -c [csv_file path relative to LAKE_CONTROLLERS environment variable]"
     try:
         options, remainder = getopt.getopt(argv, 'c:', ["csv_file="])
     except getopt.GetoptError as e:
-        print(usage)
-        sys.exit(2)
+        error(usage)
 
     if len(options) != 1:
-        print(usage)
-        sys.exit(2)
+        error(usage)
 
     for opt, arg in options:
         if opt in ("-c", "--csv_file"):
             wrapper(arg)
         else:
             print("Invalid command line argument.")
-            sys.exit(2)
+            error(usage)
 
 
 if __name__ == "__main__":
