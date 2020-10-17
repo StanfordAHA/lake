@@ -75,6 +75,7 @@ class TopLake():
 
     def merge_mems(self, mems_to_merge, is_from):
         for mem in mems_to_merge.keys():
+            # print("MEMORY ", mem, " ", mems_to_merge[mem])
             if len(mems_to_merge[mem]) > 1:
                 merged_mem = self.memories[mems_to_merge[mem][0]]
 
@@ -108,9 +109,11 @@ class TopLake():
                 merged_mem["write_ports"] = write_ports
                 merged_mem["read_write_ports"] = rw_ports
 
-                if is_from:
+                if not is_from:
+                    # print("NOT IS FROM ", mem, merged_mem["name"])
                     self.merged_edges.append({"from_signal": mem, "to_signal": merged_mem["name"]})
                 else:
+                    # print("IS FROM ", merged_mem["name"], mem)
                     self.merged_edges.append({"to_signal": mem, "from_signal": merged_mem["name"]})
                     
 
@@ -119,19 +122,21 @@ class TopLake():
                 # print(merged_mem)
                 self.merged_mems[name] = merged_mem
 
-            else:
-                self.merged_edges.append({"from_signal": mem, "to_signal": mems_to_merge[mem]})
+            # need to handle case where memories are not merged
+            # else:
+                # self.merged_edges.append({"from_signal": mem, "to_signal": mems_to_merge[mem]})
 
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
-        print(self.merged_mems)
-        print(self.merged_edges)
+
+        # print(self.merged_mems)
+        # print(self.merged_edges)
 
         for mem in self.merged_mems:
             params = port_to_info(self.merged_mems[mem])
             self.compiler_mems[mem] = params
 
-        print(self.compiler_mems)
+        # print(self.compiler_mems)
         get_json(self.compiler_mems, self.merged_edges, filename)
 #            m = mem_inst(self.merged_mems[mem], self.mem_collateral)
 #            self.mem_insts[mem] = m

@@ -118,52 +118,12 @@
     },
     "edges": [
         {
-            "from_signal": "agg",
-            "to_signal": []
-        },
-        {
-            "from_signal": "agg1",
-            "to_signal": []
+            "to_signal": "sram",
+            "from_signal": "merged_agg_agg1"
         },
         {
             "from_signal": "sram",
-            "to_signal": "merged_agg_agg1"
-        },
-        {
-            "from_signal": "tb",
-            "to_signal": [
-                "sram"
-            ]
-        },
-        {
-            "from_signal": "tb1",
-            "to_signal": [
-                "sram"
-            ]
-        },
-        {
-            "from_signal": "agg",
-            "to_signal": [
-                "sram"
-            ]
-        },
-        {
-            "from_signal": "agg1",
-            "to_signal": [
-                "sram"
-            ]
-        },
-        {
-            "to_signal": "sram",
-            "from_signal": "merged_tb_tb1"
-        },
-        {
-            "from_signal": "tb",
-            "to_signal": []
-        },
-        {
-            "from_signal": "tb1",
-            "to_signal": []
+            "to_signal": "merged_tb_tb1"
         }
     ]
 }
