@@ -42,7 +42,6 @@ def base_lake(config_path,
 
 
 def get_lake_wrapper(config_path,
-                  stream_path,
                   in_file_name="input",
                   out_file_name="output",
                   in_ports=2,
@@ -120,11 +119,11 @@ def test_conv_3_3():
     config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
     
-    get_lake_wrapper(config_path=config_path,
-                  stream_path=stream_path)
+    get_lake_wrapper(config_path=config_path)
+                  # stream_path=stream_path)
 
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path)
+    # gen_test_lake(config_path=config_path,
+    #               stream_path=stream_path)
 
     
 @pytest.mark.skip
