@@ -29,8 +29,8 @@ class Edge(Generator):
         # data_in
         self.to_signal = edge_params["to_signal"]
         self.dim = edge_params["dim"] if "dim" in edge_params else 6
-        self.max_range = edge_params["max_range"] if "max_range" in edge_params else 65536
-        self.max_stride = edge_params["max_stride"] if "max_stride" in edge_params else 65536
+        self.max_range = edge_params["max_range"] if "max_range" in edge_params else 65535
+        self.max_stride = edge_params["max_stride"] if "max_stride" in edge_params else 65535
 
         self._write(f"write_{self.to_signal}",
                     width=1)

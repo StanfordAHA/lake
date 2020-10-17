@@ -5,9 +5,8 @@ from lake.utils.util import safe_wire
 from lake.collateral2compiler.helper import *
 
 
-def mem_inst(mem_params, mem_collateral):
-    # print(mem_params)
-
+def port_to_info(mem_params):
+    
     port_types = ["write", "read", "read_write"]
     for s_ in port_types:
         s = s_ + "_ports"
@@ -27,6 +26,16 @@ def mem_inst(mem_params, mem_collateral):
     for s_ in port_types:
         s = s_ + "_info"
         mem_params[s] = [p.port_info for p in mem_params[s[:-4] + "ports"]]
+        # ports are not JSON serializable, so just store 
+        # port info
+        del mem_params[s_ + "_ports"]
+
+    return mem_params
+
+def mem_inst(mem_params, mem_collateral):
+    # print(mem_params)
+
+    mem_params = port_to_info(mem_params)
     mem = Memory(mem_params)
     get_params(mem, mem_collateral, "mem")
 

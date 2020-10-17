@@ -1,11 +1,12 @@
 {
     "memories": {
         "sram": {
-            "mem_name": "sram",
+            "name": "sram",
             "capacity": 512,
             "word_width": 16,
-            "num_read_ports": 1,
-            "num_write_ports": 1,
+            "read_write_port_width": 4,
+            "num_write_ports": 0,
+            "num_read_ports": 0,
             "num_read_write_ports": 1,
             "write_info": [],
             "read_info": [],
@@ -18,22 +19,16 @@
                         "max": 511
                     }
                 }
-            ],
-            "write_width": 4,
-            "read_width": 4,
-            "chaining": 1,
-            "write_width_bits": 2,
-            "read_width_bits": 2,
-            "write_bits": 7,
-            "read_bits": 7,
-            "addr_width": 9
+            ]
         },
-        "merged_agg_agg1": {
-            "mem_name": "merged_agg_agg1",
+        "merged_agg_agg1_": {
+            "name": "merged_agg_agg1",
             "capacity": 8,
             "word_width": 16,
-            "num_read_ports": 2,
+            "read_port_width": 4,
+            "write_port_width": 1,
             "num_write_ports": 2,
+            "num_read_ports": 2,
             "num_read_write_ports": 0,
             "write_info": [
                 {
@@ -71,22 +66,16 @@
                     }
                 }
             ],
-            "read_write_info": [],
-            "write_width": 1,
-            "read_width": 4,
-            "chaining": 0,
-            "write_width_bits": 1,
-            "read_width_bits": 2,
-            "write_bits": 3,
-            "read_bits": 1,
-            "addr_width": 3
+            "read_write_info": []
         },
-        "merged_tb_tb1": {
-            "mem_name": "merged_tb_tb1",
+        "merged_tb_tb1_": {
+            "name": "merged_tb_tb1",
             "capacity": 16,
             "word_width": 16,
-            "num_read_ports": 2,
+            "read_port_width": 1,
+            "write_port_width": 1,
             "num_write_ports": 2,
+            "num_read_ports": 2,
             "num_read_write_ports": 0,
             "write_info": [
                 {
@@ -124,45 +113,57 @@
                     }
                 }
             ],
-            "read_write_info": [],
-            "write_width": 1,
-            "read_width": 1,
-            "chaining": 0,
-            "write_width_bits": 1,
-            "read_width_bits": 1,
-            "write_bits": 4,
-            "read_bits": 4,
-            "addr_width": 4
+            "read_write_info": []
         }
     },
-    "edges": {
-        "edge_0": {
+    "edges": [
+        {
             "from_signal": "agg",
-            "to_signal": "sram",
-            "dim": 6,
-            "max_range": 65536,
-            "max_stride": 65536
+            "to_signal": []
         },
-        "edge_1": {
+        {
             "from_signal": "agg1",
+            "to_signal": []
+        },
+        {
+            "from_signal": "sram",
+            "to_signal": "merged_agg_agg1"
+        },
+        {
+            "from_signal": "tb",
+            "to_signal": [
+                "sram"
+            ]
+        },
+        {
+            "from_signal": "tb1",
+            "to_signal": [
+                "sram"
+            ]
+        },
+        {
+            "from_signal": "agg",
+            "to_signal": [
+                "sram"
+            ]
+        },
+        {
+            "from_signal": "agg1",
+            "to_signal": [
+                "sram"
+            ]
+        },
+        {
             "to_signal": "sram",
-            "dim": 6,
-            "max_range": 65536,
-            "max_stride": 65536
+            "from_signal": "merged_tb_tb1"
         },
-        "edge_2": {
-            "from_signal": "sram",
-            "to_signal": "tb",
-            "dim": 6,
-            "max_range": 65536,
-            "max_stride": 65536
+        {
+            "from_signal": "tb",
+            "to_signal": []
         },
-        "edge_3": {
-            "from_signal": "sram",
-            "to_signal": "tb1",
-            "dim": 6,
-            "max_range": 65536,
-            "max_stride": 65536
+        {
+            "from_signal": "tb1",
+            "to_signal": []
         }
-    }
+    ]
 }
