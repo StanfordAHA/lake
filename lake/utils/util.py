@@ -190,6 +190,7 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
             else:
                 wrapper.write(f".{config}({config}),\n")
 
+        wrapper.write("endmodule\n\n")
     # append wrapper module to original verilog file
     with open("LakeWrapper.v", "a") as wrapper:
         with open(lake_file, "r") as original:
