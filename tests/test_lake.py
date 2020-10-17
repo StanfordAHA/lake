@@ -12,12 +12,11 @@ from lake.utils.parse_clkwork_csv import generate_data_lists
 # configurations
 from lake.utils.parse_clkwork_config import *
 from lake.utils.util import get_configs_dict, set_configs_sv
-from lake.utils.util import generate_lake_config_wrapper
 from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
 
 
-def base_lake(config_path,
+def base_lake_tester(config_path,
               in_file_name,
               out_file_name,
               in_ports,
@@ -41,26 +40,6 @@ def base_lake(config_path,
     return lt_dut, configs, configs_list, magma_dut, tester
 
 
-def get_lake_wrapper(config_path,
-                     in_file_name="input",
-                     out_file_name="output",
-                     in_ports=2,
-                     out_ports=2):
-
-    lt_dut, configs, configs_list, magma_dut, tester = \
-        base_lake(config_path,
-                  in_file_name,
-                  out_file_name,
-                  in_ports,
-                  out_ports)
-
-    with tempfile.TemporaryDirectory() as tempdir:
-        tester.compile_and_run(target="verilator",
-                               flags=["-Wno-fatal"])
-
-    generate_lake_config_wrapper(configs_list, "configs.sv", "build/LakeTop_W.v")
-
-
 def gen_test_lake(config_path,
                   stream_path,
                   in_file_name="input",
@@ -69,7 +48,7 @@ def gen_test_lake(config_path,
                   out_ports=2):
 
     lt_dut, configs, configs_list, magma_dut, tester = \
-        base_lake(config_path,
+        base_lake_tester(config_path,
                   in_file_name,
                   out_file_name,
                   in_ports,
@@ -119,13 +98,6 @@ def test_conv_3_3():
 
     gen_test_lake(config_path=config_path,
                   stream_path=stream_path)
-
-
-def wrapper_conv_3_3():
-    lc, ls = check_env()
-    config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
-
-    get_lake_wrapper(config_path=config_path)
 
 
 @pytest.mark.skip
@@ -218,7 +190,6 @@ if __name__ == "__main__":
 
     # conv_3_3
     test_conv_3_3()
-    wrapper_conv_3_3()
 
     # gaussian
     # test_gaussian()
