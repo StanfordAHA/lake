@@ -38,9 +38,14 @@ class TopLakeHW(Generator):
 
         self.memories = memories
 
+        i = 0
         for mem in self.memories.keys():
             m = mem_inst(self.memories[mem])
-
+            self.add_child(f"memory_{i}",
+                           m,
+                           clk=self.clk,
+                           rst_n=self.rst_n)
+            i += 1
 
 if __name__ == "__main__":
     a = True

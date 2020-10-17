@@ -1,7 +1,10 @@
+import copy
+
 from lake.collateral2compiler.memory import mem_inst, port_to_info
 from lake.collateral2compiler.edge import edge_inst
 from lake.collateral2compiler.helper import *
 from lake.collateral2compiler.hw_top_lake import TopLakeHW
+
 
 class TopLake():
     def __init__(self,
@@ -20,6 +23,7 @@ class TopLake():
         self.merged_mems = {}
         self.merged_edges = []
 
+        self.hw_memories = {}
         self.memories = {}
         self.mem_insts = {}
 
@@ -58,6 +62,8 @@ class TopLake():
 
     # after all edges are added
     def banking(self):
+        self.hw_memories = copy.deepcopy(self.memories)
+        
         memories_from = {}
         memories_to = {}
         for mem in self.memories.keys():
@@ -164,9 +170,9 @@ class TopLake():
         TopLakeHW(self.word_width,
                   self.input_ports,
                   self.output_ports,
-                  self.memories)
+                  self.hw_memories)
         
     def construct_lake(self):
         self.banking()
         self.get_compiler_json()
-        # self.generate_hardware()
+        self.generate_hardware()

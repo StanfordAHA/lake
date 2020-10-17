@@ -64,7 +64,7 @@ class Memory(Generator):
         self.capacity = mem_params["capacity"]
 
         self.word_width = mem_params["word_width"]
-
+        
         if "num_read_ports" not in mem_params:
             self.num_read_ports = 0
         else:
