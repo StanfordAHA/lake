@@ -17,10 +17,10 @@ from lake.utils.util import check_env
 
 
 def base_lake_tester(config_path,
-              in_file_name,
-              out_file_name,
-              in_ports,
-              out_ports):
+                     in_file_name,
+                     out_file_name,
+                     in_ports,
+                     out_ports):
 
     lt_dut = LakeTop(interconnect_input_ports=in_ports,
                      interconnect_output_ports=out_ports,
@@ -49,10 +49,10 @@ def gen_test_lake(config_path,
 
     lt_dut, configs, configs_list, magma_dut, tester = \
         base_lake_tester(config_path,
-                  in_file_name,
-                  out_file_name,
-                  in_ports,
-                  out_ports)
+                         in_file_name,
+                         out_file_name,
+                         in_ports,
+                         out_ports)
 
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0

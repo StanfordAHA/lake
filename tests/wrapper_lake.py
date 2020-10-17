@@ -15,10 +15,10 @@ def get_lake_wrapper(config_path,
 
     lt_dut, configs, configs_list, magma_dut, tester = \
         base_lake_tester(config_path,
-                  in_file_name,
-                  out_file_name,
-                  in_ports,
-                  out_ports)
+                         in_file_name,
+                         out_file_name,
+                         in_ports,
+                         out_ports)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
