@@ -176,12 +176,18 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
         # instantiate LakeTop_W module with
         # full interface, first with nonconfigs
         wrapper.write("LakeTop_W LakeTop_W (\n")
-        for not_config in not_configs:
+        for i in range(len(not_configs)):
+            not_config = not_configs[i]
             try_name = not_config.split("]")
             if len(try_name) == 1:
                 try_name = not_config.split("logic")
             name = try_name[1].split(",")[0]
-            wrapper.write(f".{name}({name}),\n")
+            # if there are no config regs, this is the last
+            # signal in the interface
+            if (i == len(not_configs) - 1) and (len(configs_list) == 0):
+                wrapper.write(f".{name}({name})\n);\n")
+            else:
+                wrapper.write(f".{name}({name}),\n")
 
         # hook up config regs for LakeTop_W as well
         for i in range(len(configs_list)):
@@ -192,7 +198,8 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
                 wrapper.write(f".{config}({config}),\n")
 
         wrapper.write("endmodule\n\n")
-    # append wrapper module to original verilog file
+
+    # prepend wrapper module to original verilog file
     with open("LakeWrapper.v", "a") as wrapper:
         with open(lake_file, "r") as original:
             for line in original:
