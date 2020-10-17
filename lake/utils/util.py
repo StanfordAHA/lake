@@ -140,7 +140,9 @@ def set_configs_sv(generator, filepath, configs_dict):
                 # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
     return configs_list
 
+
 def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
+    # get top level interface, minus config regs in not_configs
     with open(lake_file, 'r') as lake:
         start = False
         not_configs = []
@@ -158,16 +160,20 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
                 if add == 1: 
                     not_configs.append(line)
 
+    # write top level interface (without config regs)
     with open("LakeWrapper.v", "w+") as wrapper:
         wrapper.write("module LakeWrapper (\n")
         for not_config in not_configs:
             wrapper.write(not_config)
         wrapper.write(");\n")
 
+        # set config regs as constants
         with open(configs_file, "r") as configs:
             for config in configs:
                 wrapper.write(config)
 
+        # instantiate LakeTop_W module with 
+        # full interface, first with nonconfigs
         wrapper.write("LakeTop_W LakeTop_W (\n")
         for not_config in not_configs:
             try_name = not_config.split("]")
@@ -176,6 +182,7 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
             name = try_name[1].split(",")[0]
             wrapper.write(f".{name}({name}),\n")
 
+        # hook up config regs for LakeTop_W as well
         for i in range(len(configs_list)):
             config = configs_list[i]
             if i == len(configs_list) - 1:
@@ -183,11 +190,12 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
             else:
                 wrapper.write(f".{config}({config}),\n")
 
-    
+    # append wrapper module to original verilog file
     with open("LakeWrapper.v", "a") as wrapper:
         with open(lake_file, "r") as original:
             for line in original:
                 wrapper.write(line)
+
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
     assert len(ranges) == len(strides), "Strides and ranges should be same length..."

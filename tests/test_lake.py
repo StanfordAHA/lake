@@ -11,16 +11,17 @@ from lake.utils.sram_macro import SRAMMacroInfo
 from lake.utils.parse_clkwork_csv import generate_data_lists
 # configurations
 from lake.utils.parse_clkwork_config import *
-from lake.utils.util import get_configs_dict, set_configs_sv, extract_formal_annotation, generate_lake_config_wrapper
+from lake.utils.util import get_configs_dict, set_configs_sv
+from lake.utils.util import generate_lake_config_wrapper
+from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
 
 
-def get_lake_wrapper(config_path,
-                  stream_path,
-                  in_file_name="input",
-                  out_file_name="output",
-                  in_ports=2,
-                  out_ports=2):
+def base_lake(config_path,
+              in_file_name,
+              out_file_name,
+              in_ports,
+              out_ports):
 
     lt_dut = LakeTop(interconnect_input_ports=in_ports,
                      interconnect_output_ports=out_ports,
@@ -34,13 +35,33 @@ def get_lake_wrapper(config_path,
                                   check_multiple_driver=False,
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False)
-
+    
     tester = fault.Tester(magma_dut, magma_dut.clk)
+
+    return lt_dut, configs, configs_list, magma_dut, tester
+
+
+def get_lake_wrapper(config_path,
+                  stream_path,
+                  in_file_name="input",
+                  out_file_name="output",
+                  in_ports=2,
+                  out_ports=2):
+
+
+    lt_dut, configs, configs_list, magma_dut, tester = \
+        base_lake(config_path,
+                  in_file_name,
+                  out_file_name,
+                  in_ports,
+                  out_ports)
+
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
                                flags=["-Wno-fatal"])
 
     generate_lake_config_wrapper(configs_list, "configs.sv", "build/LakeTop_W.v")
+
 
 def gen_test_lake(config_path,
                   stream_path,
@@ -49,20 +70,12 @@ def gen_test_lake(config_path,
                   in_ports=2,
                   out_ports=2):
 
-    lt_dut = LakeTop(interconnect_input_ports=in_ports,
-                     interconnect_output_ports=out_ports,
-                     stencil_valid=False)
-
-    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
-    set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
-
-    magma_dut = kts.util.to_magma(lt_dut,
-                                  flatten_array=True,
-                                  check_multiple_driver=False,
-                                  optimize_if=False,
-                                  check_flip_flop_always_ff=False)
-
-    tester = fault.Tester(magma_dut, magma_dut.clk)
+    lt_dut, configs, configs_list, magma_dut, tester = \
+        base_lake(config_path,
+                  in_file_name,
+                  out_file_name,
+                  in_ports,
+                  out_ports)
 
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
@@ -106,14 +119,14 @@ def test_conv_3_3():
     lc, ls = check_env()
     config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
-    # gen_test_lake(config_path=config_path,
+    
     get_lake_wrapper(config_path=config_path,
                   stream_path=stream_path)
 
     gen_test_lake(config_path=config_path,
                   stream_path=stream_path)
 
-
+    
 @pytest.mark.skip
 def test_gaussian():
     lc, ls = check_env()
