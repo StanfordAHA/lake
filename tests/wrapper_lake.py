@@ -34,10 +34,15 @@ def wrapper(config_path_input):
 
 
 def main(argv):
+    usage = "File usage: python wrapper.py -c [csv_file path relative to LAKE_CONTROLLERS environment variable]"
     try:
         options, remainder = getopt.getopt(argv, 'c:', ["csv_file="])
     except getopt.GetoptError as e:
-        print("File usage: python wrapper.py -c [csv_file path relative to LAKE_CONTROLLER environment variable]")
+        print(usage)
+        sys.exit(2)
+
+    if len(options) != 1:
+        print(usage)
         sys.exit(2)
 
     for opt, arg in options:
