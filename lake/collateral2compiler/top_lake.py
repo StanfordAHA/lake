@@ -1,11 +1,19 @@
 from lake.collateral2compiler.memory import mem_inst, port_to_info
 from lake.collateral2compiler.edge import edge_inst
 from lake.collateral2compiler.helper import *
-# from lake.collateral2compiler.edge
-
+from lake.collateral2compiler.hw_top_lake import TopLakeHW
 
 class TopLake():
-    def __init__(self):
+    def __init__(self,
+                 word_width,
+                 input_ports,
+                 output_ports):
+
+        # parameters
+        self.word_width = word_width
+        self.input_ports = input_ports
+        self.output_ports = output_ports
+
         self.mem_collateral = {}
         self.edge_collateral = {}
 
@@ -138,6 +146,8 @@ class TopLake():
 
         # print(self.compiler_mems)
         get_json(self.compiler_mems, self.merged_edges, filename)
+
+
 #            m = mem_inst(self.merged_mems[mem], self.mem_collateral)
 #            self.mem_insts[mem] = m
 
@@ -150,6 +160,13 @@ class TopLake():
         #                  self.edge_collateral)
         # get_json(self.mem_collateral, self.edge_collateral, filename)
 
+    def generate_hardware(self):
+        TopLakeHW(self.word_width,
+                  self.input_ports,
+                  self.output_ports,
+                  self.memories)
+        
     def construct_lake(self):
         self.banking()
         self.get_compiler_json()
+        # self.generate_hardware()

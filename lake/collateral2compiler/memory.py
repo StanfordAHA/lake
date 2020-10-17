@@ -32,7 +32,7 @@ def port_to_info(mem_params):
 
     return mem_params
 
-def mem_inst(mem_params, mem_collateral):
+def mem_inst(mem_params, mem_collateral={}):
     # print(mem_params)
 
     mem_params = port_to_info(mem_params)

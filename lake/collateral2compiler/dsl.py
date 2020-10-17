@@ -11,7 +11,7 @@ from lake.collateral2compiler.mem_port import MemPort
 # IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
 # MEMORIES SHOULD BE INSTANTIATED BEFORE EDGES
 
-tile = TopLake()
+tile = TopLake(16, 2, 2)
 
 # MemPort attributes are latency, initiation interval
 agg_write_port = MemPort(1, 0)
