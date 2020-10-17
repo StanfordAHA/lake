@@ -157,7 +157,7 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
                     if config in line:
                         add = 0
                         break
-                if add == 1: 
+                if add == 1:
                     not_configs.append(line)
 
     # write top level interface (without config regs)
@@ -172,7 +172,7 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
             for config in configs:
                 wrapper.write(config)
 
-        # instantiate LakeTop_W module with 
+        # instantiate LakeTop_W module with
         # full interface, first with nonconfigs
         wrapper.write("LakeTop_W LakeTop_W (\n")
         for not_config in not_configs:

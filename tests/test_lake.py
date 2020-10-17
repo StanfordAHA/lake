@@ -35,18 +35,17 @@ def base_lake(config_path,
                                   check_multiple_driver=False,
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False)
-    
+
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
     return lt_dut, configs, configs_list, magma_dut, tester
 
 
 def get_lake_wrapper(config_path,
-                  in_file_name="input",
-                  out_file_name="output",
-                  in_ports=2,
-                  out_ports=2):
-
+                     in_file_name="input",
+                     out_file_name="output",
+                     in_ports=2,
+                     out_ports=2):
 
     lt_dut, configs, configs_list, magma_dut, tester = \
         base_lake(config_path,
@@ -108,24 +107,28 @@ def gen_test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_conv_3_3():
     lc, ls = check_env()
     config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
-    
+
+    gen_test_lake(config_path=config_path,
+                  stream_path=stream_path)
+
+
+def wrapper_conv_3_3():
+    lc, ls = check_env()
+    config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
+    stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
+
     get_lake_wrapper(config_path=config_path)
-                  # stream_path=stream_path)
 
-    # gen_test_lake(config_path=config_path,
-    #               stream_path=stream_path)
 
-    
 @pytest.mark.skip
 def test_gaussian():
     lc, ls = check_env()
@@ -216,6 +219,7 @@ if __name__ == "__main__":
 
     # conv_3_3
     test_conv_3_3()
+    wrapper_conv_3_3()
 
     # gaussian
     # test_gaussian()
