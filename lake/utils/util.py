@@ -151,6 +151,7 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
                 start = True
             elif start and ");" in line:
                 start = False
+                break
             elif start:
                 add = 1
                 for config in configs_list:
