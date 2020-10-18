@@ -63,7 +63,7 @@ def main(argv):
             elif arg == "True":
                 stencil_valid = True
             else:
-                print("Invalid option for stencil valid...defaulting to True")
+                print("Invalid option for stencil valid (must be True or False)...defaulting to True")
         else:
             print("Invalid command line argument.")
             error(usage)
