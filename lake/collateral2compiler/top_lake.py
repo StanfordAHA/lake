@@ -111,30 +111,21 @@ class TopLake():
                     name += mem_["name"] + "_"
 
                     if is_from:
-                        for e in self.hw_edges:
-                            if e["from_signal"] == mem_["name"]:
-                                while f"mux_{self.mux_count}" in self.hw_memories.keys():
-                                    self.mux_count += 1
-                                e["to_signal"] = f"mux_{self.mux_count}"
-                                break
-                        to_edge = {"from_signal": f"mux_{self.mux_count}",
-                                   "to_signal": mem}
-                        get_full_edge_params(to_edge)
-                        if to_edge not in self.hw_edges:
-                            self.hw_edges.append(to_edge)
-                            
+                        check, not_check = "from", "to"
                     else:
-                        for e in self.hw_edges:
-                            if e["to_signal"] == mem_["name"]:
-                                while f"mux_{self.mux_count}" in self.hw_memories.keys():
-                                    self.mux_count += 1
-                                e["from_signal"] = f"mux_{self.mux_count}"
-                                break
-                        to_edge = {"to_signal": f"mux_{self.mux_count}",
-                                   "from_signal": mem}
-                        get_full_edge_params(to_edge)
-                        if to_edge not in self.hw_edges:
-                            self.hw_edges.append(to_edge)
+                        check, not_check = "to", "from"
+
+                    for e in self.hw_edges:
+                        if e[check + "_signal"] == mem_["name"]:
+                            while f"mux_{self.mux_count}" in self.hw_memories.keys():
+                                self.mux_count += 1
+                            e[not_check + "_signal"] = f"mux_{self.mux_count}"
+                            break
+                    to_edge = {check + "_signal": f"mux_{self.mux_count}",
+                               not_check + "_signal": mem}
+                    get_full_edge_params(to_edge)
+                    if to_edge not in self.hw_edges:
+                       self.hw_edges.append(to_edge)
                         
                     rport = mem_["read_ports"].copy()
                     for r in rport:
