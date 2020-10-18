@@ -8,6 +8,7 @@ from test_lake import base_lake_tester
 
 
 def get_lake_wrapper(config_path,
+                     stencil_valid,
                      in_file_name="input",
                      out_file_name="output",
                      in_ports=2,
@@ -19,7 +20,7 @@ def get_lake_wrapper(config_path,
                          out_file_name,
                          in_ports,
                          out_ports,
-                         True)
+                         stencil_valid)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
@@ -28,10 +29,11 @@ def get_lake_wrapper(config_path,
     generate_lake_config_wrapper(configs_list, "configs.sv", "build/LakeTop_W.v")
 
 
-def wrapper(config_path_input):
+def wrapper(config_path_input, stencil_valid):
     lc, ls = check_env()
     config_path = lc + config_path_input
-    get_lake_wrapper(config_path=config_path)
+    get_lake_wrapper(config_path=config_path,
+                     stencil_valid=stencil_valid)
 
 
 def error(usage):
@@ -40,21 +42,33 @@ def error(usage):
 
 
 def main(argv):
-    usage = "File usage: python wrapper.py -c [csv_file path relative to LAKE_CONTROLLERS environment variable]"
+    usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
+    usage += " [-s / --stencil_valid] [True or False indicating whether or not to generate hardware with stencil_valid (default: True)"
     try:
-        options, remainder = getopt.getopt(argv, 'c:', ["csv_file="])
+        options, remainder = getopt.getopt(argv, 'c:s:', ["csv_file=", "stencil_valid="])
     except getopt.GetoptError as e:
         error(usage)
 
-    if len(options) != 1:
+    if len(options) not in (1, 2):
         error(usage)
+
+    stencil_valid = True
 
     for opt, arg in options:
         if opt in ("-c", "--csv_file"):
-            wrapper(arg)
+            csv_file = arg
+        elif opt in ("-s", "--stencil_valid"):
+            if arg == "False":
+                stencil_valid = False
+            elif arg == "True":
+                stencil_valid = True
+            else:
+                print("Invalid option for stencil valid...defaulting to True")
         else:
             print("Invalid command line argument.")
             error(usage)
+
+    wrapper(csv_file, stencil_valid)
 
 
 if __name__ == "__main__":
