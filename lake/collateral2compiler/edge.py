@@ -5,6 +5,15 @@ from lake.modules.addr_gen import AddrGen
 from lake.collateral2compiler.helper import *
 
 
+def get_full_edge_params(edge_params):
+    if "dim" not in edge_params:
+        edge_params["dim"] = 6
+    if "max_range" not in edge_params:
+        edge_params["max_range"] = 65535
+    if "max_stride" not in edge_params:
+        edge_params["max_stride"] = 65535
+
+
 def edge_inst(edge_params, from_mem, to_mem, from_inst, to_inst, edge_collateral):
 
     edge = Edge(edge_params, from_mem, to_mem, from_inst, to_inst)
@@ -28,9 +37,9 @@ class Edge(Generator):
         self.from_signal = edge_params["from_signal"]
         # data_in
         self.to_signal = edge_params["to_signal"]
-        self.dim = edge_params["dim"] if "dim" in edge_params else 6
-        self.max_range = edge_params["max_range"] if "max_range" in edge_params else 65535
-        self.max_stride = edge_params["max_stride"] if "max_stride" in edge_params else 65535
+        self.dim = edge_params["dim"]
+        self.max_range = edge_params["max_range"]
+        self.max_stride = edge_params["max_stride"]
 
         self._write(f"write_{self.to_signal}",
                     width=1)
