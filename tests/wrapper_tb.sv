@@ -18,6 +18,7 @@ module TB;
     reg [31:0] config0;
     reg [31:0] config1;
     reg [2:0] test;
+    reg [0:0] stencil_valid;
 
     LakeWrapper DUT (
         .addr_in_0(0),
@@ -45,6 +46,7 @@ module TB;
         .empty(empty),
         .full(full),
         .sram_ready_out(read_out),
+        .stencil_valid(stencil_valid),
         .valid_out(valid_out)
     );
 
