@@ -20,11 +20,12 @@ def base_lake_tester(config_path,
                      in_file_name,
                      out_file_name,
                      in_ports,
-                     out_ports):
+                     out_ports,
+                     stencil_valid=False):
 
     lt_dut = LakeTop(interconnect_input_ports=in_ports,
                      interconnect_output_ports=out_ports,
-                     stencil_valid=False)
+                     stencil_valid=stencil_valid)
 
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
     configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))

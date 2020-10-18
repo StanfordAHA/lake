@@ -18,7 +18,8 @@ def get_lake_wrapper(config_path,
                          in_file_name,
                          out_file_name,
                          in_ports,
-                         out_ports)
+                         out_ports,
+                         True)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
