@@ -61,6 +61,8 @@ class Memory(Generator):
 
         super().__init__("lake_mem", debug=True)
 
+        # print("MEM PARAMS ", mem_params)
+
         self.mem_name = mem_params["name"]
         self.capacity = mem_params["capacity"]
 
@@ -85,12 +87,18 @@ class Memory(Generator):
         self.read_info = mem_params["read_info"]
         self.read_write_info = mem_params["read_write_info"]
 
+        self.og_num_write_ports = mem_params["num_write_ports"]
+        self.og_num_read_ports = mem_params["num_read_ports"]
+        self.og_num_read_write_ports = mem_params["num_read_write_ports"]
+
         if self.num_read_write_ports == 0:
             self.write_width = mem_params["write_port_width"]  # max(write_port_width, read_write_port_width)
             self.read_width = mem_params["read_port_width"]  # max(read_port_width, read_write_port_width)
         else:
             self.write_width = mem_params["read_write_port_width"]
             self.read_width = mem_params["read_write_port_width"]
+            self.num_write_ports = mem_params["num_read_write_ports"]
+            self.num_read_ports = mem_params["num_read_write_ports"]
 
         assert self.capacity % self.write_width == 0
         assert self.capacity % self.read_width == 0
@@ -125,7 +133,7 @@ class Memory(Generator):
                                packed=True)
 
         # clean up
-        if self.num_write_ports != 0 and self.num_read_ports != 0:
+        if self.og_num_write_ports != 0 and self.og_num_read_ports != 0:
             self.write_addr = self.input("write_addr",
                                          width=self.addr_width,
                                          size=self.num_write_ports,
@@ -152,11 +160,9 @@ class Memory(Generator):
             else:
                 self.add_code(self.read_data_latency_0)
 
-        elif self.num_read_write_ports != 0:
+        elif self.og_num_read_write_ports != 0:
 
             # clean up
-            self.num_write_ports = self.num_read_write_ports
-            self.num_read_ports = self.num_read_write_ports
             self.read_write_addr = self.input("read_write_addr",
                                               width=self.addr_width,
                                               size=self.num_read_write_ports,

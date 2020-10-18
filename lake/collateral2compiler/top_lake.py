@@ -27,15 +27,13 @@ class TopLake():
         self.hw_edges = []
 
         self.mux_count = 0
-        self.muxes = []
+        self.muxes = {}
 
         self.memories = {}
         self.mem_insts = {}
 
         self.edges = []
         self.compiler_mems = {}
-
-        self.muxes = []
 
     # default for ports is no ports
     def add_memory(self, mem_params, write_ports=[], read_ports=[], read_write_ports=[]):
@@ -123,7 +121,10 @@ class TopLake():
                                 self.mux_count += 1
                             e[not_check + "_signal"] = f"mux_{self.mux_count}"
                             if f"mux_{self.mux_count}" not in self.muxes:
-                                self.muxes.append(f"mux_{self.mux_count}")
+                                self.muxes[f"mux_{self.mux_count}"] = [check, mem_["name"]]
+                            else:
+                                self.muxes[f"mux_{self.mux_count}"].append(mem_["name"])
+                                
                             break
 
                     to_edge = {check + "_signal": f"mux_{self.mux_count}",
@@ -184,12 +185,13 @@ class TopLake():
         get_json(self.compiler_mems, self.merged_edges, filename)
 
     def generate_hardware(self):
-        TopLakeHW(self.word_width,
+        hw = TopLakeHW(self.word_width,
                   self.input_ports,
                   self.output_ports,
                   self.hw_memories,
                   self.hw_edges,
                   self.muxes)
+        verilog(hw, filename="Lake_hw.sv")
 
     def construct_lake(self):
         self.banking()
