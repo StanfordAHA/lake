@@ -27,6 +27,7 @@ class TopLake():
         self.hw_edges = []
 
         self.mux_count = 0
+        self.muxes = []
 
         self.memories = {}
         self.mem_insts = {}
@@ -69,7 +70,7 @@ class TopLake():
     def banking(self):
         self.hw_memories = copy.deepcopy(self.memories)
         self.hw_edges = copy.deepcopy(self.edges)
-        
+
         memories_from = {}
         memories_to = {}
         for mem in self.memories.keys():
@@ -110,6 +111,7 @@ class TopLake():
 
                     name += mem_["name"] + "_"
 
+                    # add mux connections for HW generation
                     if is_from:
                         check, not_check = "from", "to"
                     else:
@@ -120,13 +122,17 @@ class TopLake():
                             while f"mux_{self.mux_count}" in self.hw_memories.keys():
                                 self.mux_count += 1
                             e[not_check + "_signal"] = f"mux_{self.mux_count}"
+                            if f"mux_{self.mux_count}" not in self.muxes:
+                                self.muxes.append(f"mux_{self.mux_count}")
                             break
+
                     to_edge = {check + "_signal": f"mux_{self.mux_count}",
                                not_check + "_signal": mem}
                     get_full_edge_params(to_edge)
                     if to_edge not in self.hw_edges:
-                       self.hw_edges.append(to_edge)
-                        
+                        self.hw_edges.append(to_edge)
+
+                    # get compiler related information for merged memories
                     rport = mem_["read_ports"].copy()
                     for r in rport:
                         r.set_addr_domain([merged_cap, merged_cap + mem_["capacity"]])
@@ -152,7 +158,6 @@ class TopLake():
                 else:
                     # print("IS FROM ", merged_mem["name"], mem)
                     self.merged_edges.append({"to_signal": mem, "from_signal": merged_mem["name"]})
-                    
 
                 self.get_addl_mem_params(merged_mem, write_ports, read_ports, [])
 
@@ -162,7 +167,7 @@ class TopLake():
             # need to handle case where memories are not merged
             # else:
                 # self.merged_edges.append({"from_signal": mem, "to_signal": mems_to_merge[mem]})
-            
+
             self.mux_count += 1
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
@@ -170,6 +175,7 @@ class TopLake():
         # print(self.merged_mems)
         # print(self.merged_edges)
         print(self.hw_edges)
+        print(self.muxes)
         for mem in self.merged_mems:
             params = port_to_info(self.merged_mems[mem])
             self.compiler_mems[mem] = params
@@ -177,25 +183,14 @@ class TopLake():
         # print(self.compiler_mems)
         get_json(self.compiler_mems, self.merged_edges, filename)
 
-
-#            m = mem_inst(self.merged_mems[mem], self.mem_collateral)
-#            self.mem_insts[mem] = m
-
-        #for edge in self.edges:
-        #    e = edge_inst(edge,
-        #                  self.memories[edge["from_signal"]],
-        #                  self.memories[edge["to_signal"]],
-        #                  self.mem_insts[edge["from_signal"]],
-        #                  self.mem_insts[edge["to_signal"]],
-        #                  self.edge_collateral)
-        # get_json(self.mem_collateral, self.edge_collateral, filename)
-
     def generate_hardware(self):
         TopLakeHW(self.word_width,
                   self.input_ports,
                   self.output_ports,
-                  self.hw_memories)
-        
+                  self.hw_memories,
+                  self.hw_edges,
+                  self.muxes)
+
     def construct_lake(self):
         self.banking()
         self.get_compiler_json()

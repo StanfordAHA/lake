@@ -11,6 +11,7 @@ class NodeType(IntEnum):
     CONDITION = 1
     EXTERNAL = 2
 
+
 class Controller():
     def __init__(self):
         self.iterators = []
@@ -56,9 +57,11 @@ class IteratorNode(ControllerNode):
         self.it_stride = it_stride
         self.num_conditions = num_conditions
 
+
 class ExternalNode(ControllerNode):
     def __init__(self, name):
         super().__init__(self, name, EXTERNAL)
+
 
 # normal affine expression (current)
 addressor = Controller()

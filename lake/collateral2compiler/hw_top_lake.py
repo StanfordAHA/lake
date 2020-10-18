@@ -10,7 +10,9 @@ class TopLakeHW(Generator):
                  word_width,
                  input_ports,
                  output_ports,
-                 memories):
+                 memories,
+                 edges,
+                 muxes):
 
         super().__init__("lake_top", debug=True)
 
@@ -46,6 +48,7 @@ class TopLakeHW(Generator):
                            clk=self.clk,
                            rst_n=self.rst_n)
             i += 1
+
 
 if __name__ == "__main__":
     a = True
