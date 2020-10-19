@@ -28,6 +28,7 @@ class TopLake():
         self.hw_memories = {}
         self.hw_edges_no_muxes = []
         self.hw_edges = []
+        self.hardware_edges = []
 
         self.mux_count = 0
         self.muxes = {}
@@ -86,6 +87,36 @@ class TopLake():
         # print()
         # print("MEMORIES TO ", memories_to)
 
+        for mem in memories_from:
+            if len(memories_from[mem]) > 1:
+                for e in self.edges:
+                    if e["to_signal"] == mem:
+                        x = copy.deepcopy(e)
+                        x["from_signal"] = memories_from[mem]
+                        self.hardware_edges.append(x) if x not in self.hardware_edges else self.hardware_edges
+
+        for mem in memories_to:
+            if len(memories_to[mem]) > 1:    
+                for e in self.edges:
+                    if e["from_signal"] == mem:
+                        x = copy.deepcopy(e)
+                        x["to_signal"] = memories_to[mem]
+                        self.hardware_edges.append(x) if x not in self.hardware_edges else self.hardware_edges
+
+        for h in self.hardware_edges:
+            for sig in ("to_signal", "from_signal"):
+                if type(h[sig]) != list:
+                    h[sig] = [h[sig]]
+
+        for e in self.edges:
+            add = 1
+            for h in self.hardware_edges:   
+                if e["from_signal"] in h["from_signal"] and e["to_signal"] in h["to_signal"]:
+                    add = 0
+                    break
+            if add == 1:
+                self.hardware_edges.append(e)
+                
         self.merge_mems(memories_from, 1)
         self.merge_mems(memories_to, 0)
         # e = Edge(edge_params)
@@ -185,11 +216,13 @@ class TopLake():
         get_json(self.compiler_mems, self.merged_edges, filename)
 
     def generate_hardware(self):
+        print(self.hardware_edges)
+        # print(self.hw_edges_no_muxes)
         hw = TopLakeHW(self.word_width,
                        self.input_ports,
                        self.output_ports,
                        self.hw_memories,
-                       self.hw_edges_no_muxes,
+                       self.hardware_edges,
                        self.muxes)
 
         verilog(hw, filename="Lake_hw.sv")
