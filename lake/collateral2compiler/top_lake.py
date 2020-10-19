@@ -12,6 +12,8 @@ class TopLake():
                  input_ports,
                  output_ports):
 
+        # TO DO clean up
+
         # parameters
         self.word_width = word_width
         self.input_ports = input_ports
@@ -47,18 +49,13 @@ class TopLake():
         mem_params["read_ports"] = read_ports
         mem_params["write_ports"] = write_ports
         mem_params["read_write_ports"] = read_write_ports
-        # mem = {mem_name: mem_params}
+
         self.memories[mem_name] = mem_params
-        # self.compiler_memories[mem_name] = mem_params
 
     def get_addl_mem_params(self, mem_params, write_ports, read_ports, read_write_ports):
         mem_params["num_write_ports"] = len(write_ports)
         mem_params["num_read_ports"] = len(read_ports)
         mem_params["num_read_write_ports"] = len(read_write_ports)
-
-        # mem_params["write_info"] = [port.port_info for port in write_ports]
-        # mem_params["read_info"] = [port.port_info for port in read_ports]
-        # mem_params["read_write_info"] = [port.port_info for port in read_write_ports]
 
     def add_edge(self, edge_params):
         get_full_edge_params(edge_params)
@@ -83,9 +80,9 @@ class TopLake():
                 if edge["to_signal"] == mem:
                     memories_from[mem].append(edge["from_signal"])
 
-        print("MEMORIES FROM ", memories_from)
-        print()
-        print("MEMORIES TO ", memories_to)
+        # print("MEMORIES FROM ", memories_from)
+        # print()
+        # print("MEMORIES TO ", memories_to)
 
         self.merge_mems(memories_from, 1)
         self.merge_mems(memories_to, 0)
@@ -175,8 +172,9 @@ class TopLake():
 
         # print(self.merged_mems)
         # print(self.merged_edges)
-        print(self.hw_edges)
-        print(self.muxes)
+        # print(self.hw_edges)
+        # print(self.muxes)
+
         for mem in self.merged_mems:
             params = port_to_info(self.merged_mems[mem])
             self.compiler_mems[mem] = params
@@ -191,9 +189,16 @@ class TopLake():
                   self.hw_memories,
                   self.hw_edges,
                   self.muxes)
+
         verilog(hw, filename="Lake_hw.sv")
+
+    def get_compiler_collateral(self):
+        self.banking()
+        self.get_compiler_json()
 
     def construct_lake(self):
         self.banking()
         self.get_compiler_json()
         self.generate_hardware()
+
+    

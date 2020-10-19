@@ -11,6 +11,7 @@ from lake.collateral2compiler.mem_port import MemPort
 # IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
 # MEMORIES SHOULD BE INSTANTIATED BEFORE EDGES
 
+# word_width, input_ports, output_ports
 tile = TopLake(16, 2, 2)
 
 # MemPort attributes are latency, initiation interval
@@ -83,4 +84,12 @@ tile.add_edge({"from_signal": "sram",
 tile.add_edge({"from_signal": "sram",
                "to_signal": "tb1"})
 
-tile.construct_lake()
+# TO DO require INPUT and OUTPUT edges added for mem input/output
+
+# for compiler collateral only
+tile.get_compiler_collateral()
+
+# for HW (integration in progress)
+# tile.generate_hardware()
+# for both compiler collateral and HW generation
+# tile.construct_lake()
