@@ -117,14 +117,14 @@ class Memory(Generator):
         self.data_in = self.input("data_in",
                                   width=self.word_width,
                                   size=(self.num_write_ports, self.write_width),
-                                  explicit_array=True,
-                                  packed=True)
+                                  explicit_array=True)
+        #                     packed=True)
 
         self.data_out = self.output("data_out",
                                     width=self.word_width,
                                     size=(self.num_read_ports, self.read_width),
-                                    explicit_array=True,
-                                    packed=True)
+                                    explicit_array=True)
+        #                       packed=True)
 
         self.memory = self.var("memory",
                                width=self.word_width,

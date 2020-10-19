@@ -47,10 +47,10 @@ class TopLakeHW(Generator):
         subscript_mems = list(self.memories.keys())
 
         self.mem_data_outs = [self.var(f"mem_data_out_{i}",
-                     width=self.word_width,
-                     size=self.memories[subscript_mems[i]]["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]] else "read_write_port_width"],
-                     explicit_array=True,
-                     packed=True) for i in range(num_mem)]
+                                       width=self.word_width,
+                                       size=self.memories[subscript_mems[i]]["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]] else "read_write_port_width"],
+                                       explicit_array=True) for i in range(num_mem)]
+        # packed=True) for i in range(num_mem)]
 
         self.mem_insts = {}
 
@@ -66,6 +66,7 @@ class TopLakeHW(Generator):
                            data_out=self.mem_data_outs[i])
             i += 1
 
+        # wire input and output data
         is_input, is_output = [], []
         for mem_name in self.mem_insts.keys():
             make_input, make_output = True, True
@@ -79,14 +80,33 @@ class TopLakeHW(Generator):
             elif make_output:
                 is_output.append(mem_name)
 
-        print(is_input)
-        print(is_output)
+        assert len(is_input) == self.input_ports
+        assert len(is_output) == self.output_ports
 
-#        for mux in self.muxes:
-            
-#        @always_comb
-#        def mux_gen():
-#            if mux_sel
+        # wire input data to input memories
+        for i in range(len(is_input)):
+            in_mem = is_input[i]
+            safe_wire(self, self.mem_insts[in_mem].ports.data_in, self.data_in[i])
+
+        # wire output data from output memories
+        for i in range(len(is_output)):
+            out_mem = is_output[i]
+            self.wire(self.data_out[i], self.mem_data_outs[subscript_mems.index(out_mem)])  # , self.mem_insts[out_mem].ports.data_out)
+
+        for edge in self.edges:
+            # create mux if needed
+
+            # create accessor
+
+            # create input addressor
+
+            # create output addressor
+
+            # create accessor
+
+            #        @always_comb
+            #        def mux_gen():
+            #            if mux_sel
 
 
 if __name__ == "__main__":
