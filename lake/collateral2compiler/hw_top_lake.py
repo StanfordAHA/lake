@@ -94,11 +94,46 @@ class TopLakeHW(Generator):
             self.wire(self.data_out[i], self.mem_data_outs[subscript_mems.index(out_mem)])  # , self.mem_insts[out_mem].ports.data_out)
 
         for edge in self.edges:
-            # create mux if needed
 
-            # create accessor
+            edge_name = edge["from_signal"] + "_" + edge["to_signal"] + "_edge"
+
+            # create mux if needed 
+            # (need to check if previously created)
+            need_mux = None
+            for i in range(len(self.muxes)):
+                mux = self.muxes[i]
+                if edge["to_signal"] in mux[1:]:
+                    need_mux = mux
+                
+            if need_mux is not None:
+                num_signals = len(mux) - 1
+                
+            # create accessor, forloop
+
+            self.valid = self.var(edge_name + "_accessor_vaild", 1)
+
+            forloop = ForLoop(iterator_support=edge["dim"])
+            loop_itr = forloop.get_iter()
+            loop_wth = forloop.get_cfg_width()
+
+            self.add_child(edge_name + "_forloop",
+                forloop,
+                clk=self.clk,
+                rst_n=self.rst_n,
+                step=self.valid)
 
             # create input addressor
+            newAG = AddrGen(iterator_support=edge["dim"],
+                            config_width=self.default_config_width)
+            self.add_child(edge["to_signal"] + "write_addr_gen",
+                           newAG,
+                           clk=self.clk,
+                           rst_n=self.rst_n,
+                           step=self.valid,
+                           # addr_out=self._agg_write_addr[i])
+                           mux_sel=forloop.ports.mux_sel_out)
+
+            safe_wire(self, self._agg_write_addr[i], newAG.ports.addr_out)
 
             # create output addressor
 
@@ -108,6 +143,36 @@ class TopLakeHW(Generator):
             #        def mux_gen():
             #            if mux_sel
 
+newSG = SchedGen(iterator_support=self.default_iterator_support,                             config_width=self.default_config_width)
+            self.agg_write_scheds.append(newSG)
+            self.add_child(f"agg_write_sched_gen_{i}",
+                           newSG,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           mux_sel=forloop_ctr.ports.mux_sel_out,
+                           cycle_count=self._cycle_count,
+                           valid_output=self._agg_write[i])
 
+            forloop_ctr_rd = ForLoop(iterator_support=self.default_iterator_support,
+                                     # config_width=self.agg_rd_addr_gen_width)
+                                     config_width=self.default_config_width)            loop_itr = forloop_ctr_rd.get_iter()
+            loop_wth = forloop_ctr_rd.get_cfg_width()
+
+            self.add_child(f"loops_in2buf_autovec_read_{i}",
+                           forloop_ctr_rd,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=(self._write &
+                                 (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))))
+
+
+
+    @always_comb
+    def mux_gen():
+        for i in range(num_signals):
+            if mux_sel == i:
+                self.m_data_out = self.m_data_in[i]
+      
+ 
 if __name__ == "__main__":
     a = True
