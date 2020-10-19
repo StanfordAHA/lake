@@ -85,4 +85,4 @@ def test_pond(data_width=16,  # CGRA Params
 
 
 if __name__ == "__main__":
-    test_pond()        
+    test_pond()
