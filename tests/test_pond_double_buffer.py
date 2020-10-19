@@ -63,7 +63,7 @@ def test_pond(data_width=16,  # CGRA Params
     for i in range(48):
         # Incrementing Data
         if i < 32:
-           data_in_pond[0] = data_in_pond[0] + 1
+            data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
             tester.circuit.data_in_pond = data_in_pond[0]
@@ -78,12 +78,10 @@ def test_pond(data_width=16,  # CGRA Params
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="pond_new"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
-
 if __name__ == "__main__":
-    test_pond()
+    test_pond()        
