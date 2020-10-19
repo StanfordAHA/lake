@@ -121,7 +121,7 @@ class TopLake():
                                 self.muxes[f"mux_{self.mux_count}"] = [check, mem_["name"]]
                             else:
                                 self.muxes[f"mux_{self.mux_count}"].append(mem_["name"])
-                                
+
                             break
 
                     to_edge = {check + "_signal": f"mux_{self.mux_count}",
@@ -184,11 +184,11 @@ class TopLake():
 
     def generate_hardware(self):
         hw = TopLakeHW(self.word_width,
-                  self.input_ports,
-                  self.output_ports,
-                  self.hw_memories,
-                  self.hw_edges,
-                  self.muxes)
+                       self.input_ports,
+                       self.output_ports,
+                       self.hw_memories,
+                       self.hw_edges,
+                       self.muxes)
 
         verilog(hw, filename="Lake_hw.sv")
 
@@ -200,5 +200,3 @@ class TopLake():
         self.banking()
         self.get_compiler_json()
         self.generate_hardware()
-
-    
