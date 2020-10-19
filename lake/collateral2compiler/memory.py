@@ -137,8 +137,8 @@ class Memory(Generator):
             self.write_addr = self.input("write_addr",
                                          width=self.addr_width,
                                          size=self.num_write_ports,
-                                         explicit_array=True,
-                                         packed=True)
+                                         explicit_array=True)
+                 #                         packed=True)
             # assert self.write_info["latency"] == 1, \
             #         "Write port latency 0 not supported."
             self.write = self.input("write",
@@ -151,8 +151,8 @@ class Memory(Generator):
             self.read_addr = self.input("read_addr",
                                         width=self.addr_width,
                                         size=self.num_read_ports,
-                                        explicit_array=True,
-                                        packed=True)
+                                        explicit_array=True)
+                 #                       packed=True)
             # for now assuming all read ports have same latency
             # also should add support for other latencies
             if self.read_info[0]["latency"] == 1:
