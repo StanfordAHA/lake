@@ -166,18 +166,18 @@ class Memory(Generator):
             self.read_write_addr = self.input("read_write_addr",
                                               width=self.addr_width,
                                               size=self.num_read_write_ports,
-                                              explicit_array=True,
-                                              packed=True)
+                                              explicit_array=True)
+                 #                             packed=True)
             self.write_addr = self.var("write_addr",
                                        width=self.addr_width,
                                        size=self.num_read_write_ports,
-                                       explicit_array=True,
-                                       packed=True)
+                                       explicit_array=True)
+                 #                      packed=True)
             self.read_addr = self.var("read_addr",
                                       width=self.addr_width,
                                       size=self.num_read_write_ports,
-                                      explicit_array=True,
-                                      packed=True)
+                                      explicit_array=True)
+                  #                    packed=True)
 
             self.wire(self.write_addr, self.read_write_addr)
             self.wire(self.read_addr, self.read_write_addr)

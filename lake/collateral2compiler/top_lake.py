@@ -26,6 +26,7 @@ class TopLake():
         self.merged_edges = []
 
         self.hw_memories = {}
+        self.hw_edges_no_muxes = []
         self.hw_edges = []
 
         self.mux_count = 0
@@ -65,6 +66,7 @@ class TopLake():
     def banking(self):
         self.hw_memories = copy.deepcopy(self.memories)
         self.hw_edges = copy.deepcopy(self.edges)
+        self.hw_edges_no_muxes = copy.deepcopy(self.edges)
 
         memories_from = {}
         memories_to = {}
@@ -187,7 +189,7 @@ class TopLake():
                        self.input_ports,
                        self.output_ports,
                        self.hw_memories,
-                       self.hw_edges,
+                       self.hw_edges_no_muxes,
                        self.muxes)
 
         verilog(hw, filename="Lake_hw.sv")

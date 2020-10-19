@@ -205,22 +205,37 @@ class TopLakeHW(Generator):
                 step=self.valid)
 
             # create input addressor
-            newAG = AddrGen(iterator_support=edge["dim"],
-                            config_width=self.default_config_width)
-            self.add_child(edge["to_signal"] + "write_addr_gen",
-                           newAG,
+            readAG = AddrGen(iterator_support=edge["dim"],
+                             config_width=self.default_config_width)
+            self.add_child(edge["from_signal"] + "read_addr_gen",
+                           readAG,
                            clk=self.clk,
                            rst_n=self.rst_n,
                            step=self.valid,
-                           # addr_out=self._agg_write_addr[i])
                            mux_sel=forloop.ports.mux_sel_out)
 
-#            safe_wire(self, self._agg_write_addr[i], newAG.ports.addr_out)
+            if self.memories[edge["from_signal"]]["num_read_write_ports"] == 0:
+                safe_wire(self, self.mem_insts[edge["from_signal"]].ports.read_addr, readAG.ports.addr_out)
+            else:
+                safe_wire(self, self.mem_insts[edge["from_signal"]].ports.read_write_addr, readAG.ports.addr_out)
 
             # create output addressor
+            writeAG = AddrGen(iterator_support=edge["dim"],
+                            config_width=self.default_config_width)
+            self.add_child(edge["to_signal"] + "write_addr_gen",
+                           writeAG,
+                           clk=self.clk,
+                           rst_n=self.rst_n,
+                           step=self.valid,
+                           mux_sel=forloop.ports.mux_sel_out)
+
+            if self.memories[edge["to_signal"]]["num_read_write_ports"] == 0:
+                safe_wire(self, self.mem_insts[edge["to_signal"]].ports.write_addr, writeAG.ports.addr_out)
+            else:
+                safe_wire(self, self.mem_insts[edge["to_signal"]].ports.read_write_addr, writeAG.ports.addr_out)
 
             # create accessor
-
+            # calculate necessary delay between from_signal to to_signal
             #        @always_comb
             #        def mux_gen():
             #            if mux_sel
