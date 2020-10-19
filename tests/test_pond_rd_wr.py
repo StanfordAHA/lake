@@ -8,6 +8,7 @@ import tempfile
 from lake.models.lake_top_model import LakeTopModel
 from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 
+
 def test_pond(data_width=16,  # CGRA Params
               mem_depth=32,
               default_iterator_support=2,
@@ -40,7 +41,7 @@ def test_pond(data_width=16,  # CGRA Params
     tester = fault.Tester(magma_dut, magma_dut.clk)
     # Parameterize on start addr for read
     for start_addr_rd in range(16):
-        # Ranges, Strides, Dimensionality, Starting Addr, Starting Addr - Schedule 
+        # Ranges, Strides, Dimensionality, Starting Addr, Starting Addr - Schedule
         ctrl_rd = [[16, 1], [1, 0], 2, start_addr_rd, 16]
         ctrl_wr = [[16, 1], [1, 1], 2, 0, 0]
         pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
@@ -84,4 +85,4 @@ def test_pond(data_width=16,  # CGRA Params
 
 
 if __name__ == "__main__":
-    test_pond()        
+    test_pond()
