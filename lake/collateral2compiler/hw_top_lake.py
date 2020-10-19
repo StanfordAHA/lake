@@ -45,32 +45,45 @@ class TopLakeHW(Generator):
 
         num_mem = len(memories)
         subscript_mems = list(self.memories.keys())
-        self.mem_data_outs = []
+
         self.mem_data_outs = [self.var(f"mem_data_out_{i}",
                      width=self.word_width,
                      size=self.memories[subscript_mems[i]]["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]] else "read_write_port_width"],
                      explicit_array=True,
                      packed=True) for i in range(num_mem)]
+
+        self.mem_insts = {}
+
         i = 0
         for mem in self.memories.keys():
             m = mem_inst(self.memories[mem])
-            if "read_port_width" in self.memories[mem]:
-                dim_size = "read_port_width"
-            else:
-                dim_size = "read_write_port_width"
+            self.mem_insts[self.memories[mem]["name"]] = m
 
-            self.add_child(f"memory_{i}",
+            self.add_child(self.memories[mem]["name"],
                            m,
                            clk=self.clk,
                            rst_n=self.rst_n,
-                           data_in=0,
                            data_out=self.mem_data_outs[i])
-#            self.mem_data_outs.append(self.mem_data_out)
             i += 1
 
-#        for mux in self.muxes:
-        self.wire(self.data_out, self.data_in)
+        is_input, is_output = [], []
+        for mem_name in self.mem_insts.keys():
+            make_input, make_output = True, True
+            for e in self.edges:
+                if e["to_signal"] == mem_name:
+                    make_input = False
+                elif e["from_signal"] == mem_name:
+                    make_output = False
+            if make_input:
+                is_input.append(mem_name)
+            elif make_output:
+                is_output.append(mem_name)
 
+        print(is_input)
+        print(is_output)
+
+#        for mux in self.muxes:
+            
 #        @always_comb
 #        def mux_gen():
 #            if mux_sel

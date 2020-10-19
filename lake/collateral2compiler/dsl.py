@@ -84,8 +84,6 @@ tile.add_edge({"from_signal": "sram",
 tile.add_edge({"from_signal": "sram",
                "to_signal": "tb1"})
 
-# TO DO require INPUT and OUTPUT edges added for mem input/output
-
 # for compiler collateral only
 tile.get_compiler_collateral()
 
