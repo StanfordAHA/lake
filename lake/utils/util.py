@@ -1,3 +1,4 @@
+from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
 from kratos import *
 import math
@@ -271,18 +272,24 @@ def trim_config_list(flat_gen, config_list):
 
 
 # Add a simple counter to a design and return the signal
-def add_counter(generator, name, bitwidth):
+def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
     ctr = generator.var(name, bitwidth)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def ctr_inc_code():
         if ~generator._rst_n:
             ctr = 0
-        else:
+        elif increment:
             ctr = ctr + 1
 
     generator.add_code(ctr_inc_code)
     return ctr
+
+
+def add_config_reg(generator, name, description, bitwidth, **kwargs):
+    cfg_reg = generator.var(name, bitwidth, **kwargs)
+    cfg_reg.add_attribute(ConfigRegAttr(description))
+    return cfg_reg
 
 
 # Function for generating Pond API
