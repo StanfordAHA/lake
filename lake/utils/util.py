@@ -1,3 +1,4 @@
+from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
 from kratos import *
 import math
@@ -141,7 +142,11 @@ def set_configs_sv(generator, filepath, configs_dict):
     return configs_list
 
 
-def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
+def generate_lake_config_wrapper(configs_list,
+                                 configs_file,
+                                 lake_file,
+                                 module_name):
+
     # get top level interface, minus config regs in not_configs
     with open(lake_file, 'r') as lake:
         start = False
@@ -161,10 +166,10 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
                 if add == 1:
                     not_configs.append(line)
 
-    with open("LakeWrapper.v", "w+") as wrapper:
+    with open(f"LakeWrapper_{module_name}.v", "w+") as wrapper:
 
         # write top level interface (without config regs)
-        wrapper.write("module LakeWrapper (\n")
+        wrapper.write(f"module {module_name} (\n")
         for not_config in not_configs:
             wrapper.write(not_config)
         wrapper.write(");\n")
@@ -271,18 +276,24 @@ def trim_config_list(flat_gen, config_list):
 
 
 # Add a simple counter to a design and return the signal
-def add_counter(generator, name, bitwidth):
+def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
     ctr = generator.var(name, bitwidth)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def ctr_inc_code():
         if ~generator._rst_n:
             ctr = 0
-        else:
+        elif increment:
             ctr = ctr + 1
 
     generator.add_code(ctr_inc_code)
     return ctr
+
+
+def add_config_reg(generator, name, description, bitwidth, **kwargs):
+    cfg_reg = generator.input(name, bitwidth, **kwargs)
+    cfg_reg.add_attribute(ConfigRegAttr(description))
+    return cfg_reg
 
 
 # Function for generating Pond API
