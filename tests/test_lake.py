@@ -11,8 +11,34 @@ from lake.utils.sram_macro import SRAMMacroInfo
 from lake.utils.parse_clkwork_csv import generate_data_lists
 # configurations
 from lake.utils.parse_clkwork_config import *
-from lake.utils.util import get_configs_dict, set_configs_sv, extract_formal_annotation
+from lake.utils.util import get_configs_dict, set_configs_sv
+from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
+
+
+def base_lake_tester(config_path,
+                     in_file_name,
+                     out_file_name,
+                     in_ports,
+                     out_ports,
+                     stencil_valid=False):
+
+    lt_dut = LakeTop(interconnect_input_ports=in_ports,
+                     interconnect_output_ports=out_ports,
+                     stencil_valid=stencil_valid)
+
+    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
+    configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
+
+    magma_dut = kts.util.to_magma(lt_dut,
+                                  flatten_array=True,
+                                  check_multiple_driver=False,
+                                  optimize_if=False,
+                                  check_flip_flop_always_ff=False)
+
+    tester = fault.Tester(magma_dut, magma_dut.clk)
+
+    return lt_dut, configs, configs_list, magma_dut, tester
 
 
 def gen_test_lake(config_path,
@@ -22,20 +48,12 @@ def gen_test_lake(config_path,
                   in_ports=2,
                   out_ports=2):
 
-    lt_dut = LakeTop(interconnect_input_ports=in_ports,
-                     interconnect_output_ports=out_ports,
-                     stencil_valid=False)
-
-    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
-    set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
-
-    magma_dut = kts.util.to_magma(lt_dut,
-                                  flatten_array=True,
-                                  check_multiple_driver=False,
-                                  optimize_if=False,
-                                  check_flip_flop_always_ff=False)
-
-    tester = fault.Tester(magma_dut, magma_dut.clk)
+    lt_dut, configs, configs_list, magma_dut, tester = \
+        base_lake_tester(config_path,
+                         in_file_name,
+                         out_file_name,
+                         in_ports,
+                         out_ports)
 
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0

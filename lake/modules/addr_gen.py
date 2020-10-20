@@ -13,19 +13,19 @@ class AddrGen(Generator):
                  iterator_support=6,
                  config_width=16):
 
-        super().__init__(f"addr_gen", debug=True)
+        super().__init__(f"addr_gen_{iterator_support}_{config_width}", debug=True)
 
+        # Store local...
         self.iterator_support = iterator_support
         self.config_width = config_width
-        # Create params for instancing this module...
-        self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, value=self.iterator_support)
-        self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, value=self.config_width)
 
         # PORT DEFS: begin
 
         # INPUTS
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
+
+        self._restart = self.input("restart", 1)
 
         self._strides = self.input("strides", self.config_width,
                                    size=self.iterator_support,
@@ -70,7 +70,11 @@ class AddrGen(Generator):
         if ~self._rst_n:
             self._current_addr = 0
         elif self._step:
-            self._current_addr = self._current_addr + self._strides[self._mux_sel]
+            # mux_sel as 0 but update means that the machine is resetting.
+            if self._restart:
+                self._current_addr = 0
+            else:
+                self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
 
 if __name__ == "__main__":
