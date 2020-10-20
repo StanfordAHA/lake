@@ -287,7 +287,7 @@ def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
 
 
 def add_config_reg(generator, name, description, bitwidth, **kwargs):
-    cfg_reg = generator.var(name, bitwidth, **kwargs)
+    cfg_reg = generator.input(name, bitwidth, **kwargs)
     cfg_reg.add_attribute(ConfigRegAttr(description))
     return cfg_reg
 
