@@ -94,7 +94,10 @@ class TopLakeHW(Generator):
         # wire input data to input memories
         for i in range(len(is_input)):
             in_mem = is_input[i]
-            print(self.mem_insts[in_mem].ports)
+
+            # with static schedule, incoming data is always written
+            self.wire(self.mem_insts[in_mem].ports.write, 1)
+
             safe_wire(self, self.mem_insts[in_mem].ports.data_in, self.data_in[i])
 
             self.valid = self.var(in_mem + "_accessor_vaild", 1)
@@ -206,7 +209,7 @@ class TopLakeHW(Generator):
             # create input addressor
             readAG = AddrGen(iterator_support=edge["dim"],
                              config_width=self.default_config_width)
-            self.add_child(edge_name + "read_addr_gen",
+            self.add_child(f"{edge_name}_read_addr_gen",
                            readAG,
                            clk=self.clk,
                            rst_n=self.rst_n,
@@ -217,7 +220,6 @@ class TopLakeHW(Generator):
                 # can assign same read addrs to all the memories
                 for i in range(len(edge["from_signal"])):
                     safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr, readAG.ports.addr_out)
-
             else:
                 # there needs to be an if valid check here
                 for i in range(len(edge["from_signal"])):
@@ -225,7 +227,7 @@ class TopLakeHW(Generator):
 
             if num_mux_from > 1:
                 num_mux_bits = clog2(num_mux_from)
-                self.mux_sel = self.var(edge_name + "_mux_sel",
+                self.mux_sel = self.var(f"{edge_name}_mux_sel",
                                         width=num_mux_bits)
 
                 safe_wire(self, self.mux_sel,
@@ -233,25 +235,45 @@ class TopLakeHW(Generator):
                     self.mem_insts[edge["from_signal"][0]].ports.read_addr.width])
 
                 comb = self.combinational()
-                for i in range(1, num_mux_from):
+                for i in range(num_mux_from):
                     if_mux_sel = IfStmt(self.mux_sel == i)
-                    if_mux_sel.then_(self.mem_insts[edge["to_signal"][0]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
+                    for j in range(len(edge["to_signal"])):
+                        if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
                     comb.add_stmt(if_mux_sel)
 
             # create output addressor
             writeAG = AddrGen(iterator_support=edge["dim"],
                             config_width=self.default_config_width)
-            self.add_child(edge["to_signal"] + "write_addr_gen",
+            self.add_child(f"{edge_name}_write_addr_gen",
                            writeAG,
                            clk=self.clk,
                            rst_n=self.rst_n,
                            step=self.valid,
                            mux_sel=forloop.ports.mux_sel_out)
 
-            if self.memories[edge["to_signal"]]["num_read_write_ports"] == 0:
-                safe_wire(self, self.mem_insts[edge["to_signal"]].ports.write_addr, writeAG.ports.addr_out)
+            if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:
+                for i in range(len(edge["to_signal"])):
+                    safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr, writeAG.ports.addr_out)
             else:
-                safe_wire(self, self.mem_insts[edge["to_signal"]].ports.read_write_addr, writeAG.ports.addr_out)
+                for i in range(len(edge["to_signal"])):
+                    safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr, writeAG.ports.addr_out)
+
+            if num_mux_to > 1:
+                num_mux_bits = clog2(num_mux_to)
+                self.mux_sel_to = self.var(f"{edge_name}_mux_sel_to",
+                                           width=num_mux_bits)
+
+                safe_wire(self, self.mux_sel_to,
+                    writeAG.ports.addr_out[self.mem_insts[edge["to_signal"][0]].ports.write_addr.width + num_mux_to - 1,
+                    self.mem_insts[edge["to_signal"][0]].ports.write_addr.width])
+
+                comb_mux_to = self.combinational()
+                for i in range(num_mux_to):
+                    if_mux_sel_to = IfStmt(self.mux_sel_to == i)
+                    if_mux_sel_to.then_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(1))
+                    if_mux_sel_to.else_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(0))
+                    comb_mux_to.add_stmt(if_mux_sel_to)
+
 
             # create accessor
             # calculate necessary delay between from_signal to to_signal
