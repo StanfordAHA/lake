@@ -159,7 +159,8 @@ class StrgUBVec(Generator):
             agg_read_port = MemPort(0, 0)
             # agg = Memory(4, 16, 1, 4, 1, 1, 0, agg_write_port.port_info, agg_read_port.port_info)
 
-            agg_params = {"capacity": 4,
+            agg_params = {"name": f"agg_{i}",
+                          "capacity": 4,
                           "word_width": 16,
                           "num_read_ports": 1,
                           "read_port_width": 4,
@@ -357,7 +358,8 @@ class StrgUBVec(Generator):
             tb_read_port = MemPort(0, 0)
             # tb = Memory(8, 16, 1, 1, 1, 4, 0, tb_write_port.port_info, tb_read_port.port_info)
 
-            tb_params = {"capacity": 8,
+            tb_params = {"name": f"tb_{i}",
+                         "capacity": 8,
                          "word_width": 16,
                          "num_read_ports": 1,
                          "read_port_width": 1,

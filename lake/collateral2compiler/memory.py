@@ -26,6 +26,7 @@ def port_to_info(mem_params):
     for s_ in port_types:
         s = s_ + "_info"
         mem_params[s] = [p.port_info for p in mem_params[s[:-4] + "ports"]]
+        mem_params["num_" + s_ + "_ports"] = len(mem_params[s])
         # ports are not JSON serializable, so just store
         # port info
         del mem_params[s_ + "_ports"]
