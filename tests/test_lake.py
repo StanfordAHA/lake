@@ -103,6 +103,8 @@ def test_conv_3_3():
                   out_file_name="output_2_")
 
 
+# not all of these tests/folders still exist,
+# update in_file_name and out_file_name args if needed
 @pytest.mark.skip
 def test_gaussian():
     lc, ls = check_env()
