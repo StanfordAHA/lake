@@ -14,8 +14,7 @@ class TopLakeHW(Generator):
                  input_ports,
                  output_ports,
                  memories,
-                 edges,
-                 muxes):
+                 edges):
 
         super().__init__("lake_top", debug=True)
 
@@ -27,7 +26,6 @@ class TopLakeHW(Generator):
         # objects
         self.memories = memories
         self.edges = edges
-        self.muxes = muxes
 
         self.default_config_width = 16
 
