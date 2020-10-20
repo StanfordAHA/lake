@@ -37,16 +37,18 @@ class SchedGen(Generator):
         # Receive signal on last iteration of looping structure and
         # gate the output...
         self._finished = self.input("finished", 1)
+        self._valid_gate_inv = self.var("valid_gate_inv", 1)
         self._valid_gate = self.var("valid_gate", 1)
+        self.wire(self._valid_gate, ~self._valid_gate_inv)
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def valid_gate_ff():
+        def valid_gate_inv_ff():
             if ~self._rst_n:
-                self._valid_gate = 1
+                self._valid_gate_inv = 0
             # If we are finishing the looping structure, turn this off to implement one-shot
             elif self._finished:
-                self._valid_gate = 0
-        self.add_code(valid_gate_ff)
+                self._valid_gate_inv = 1
+        self.add_code(valid_gate_inv_ff)
 
         # Compare based on minimum of addr + global cycle...
         self.c_a_cmp = min(self._cycle_count.width, self._addr_out.width)
