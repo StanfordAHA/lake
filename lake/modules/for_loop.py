@@ -13,7 +13,7 @@ class ForLoop(Generator):
                  iterator_support=6,
                  config_width=16):
 
-        super().__init__(f"for_loop", debug=True)
+        super().__init__(f"for_loop_{iterator_support}_{config_width}", debug=True)
 
         self.iterator_support = iterator_support
         self.config_width = config_width
@@ -78,6 +78,9 @@ class ForLoop(Generator):
             self.add_code(self.max_value_update, idx=i)
         # GENERATION LOGIC: end
 
+        self._restart = self.output("restart", 1)
+        self.wire(self._restart, ~self._done)
+
     @always_comb
     # Find lowest ready
     def set_mux_sel(self):
@@ -85,14 +88,14 @@ class ForLoop(Generator):
         self._done = 0
         for i in range(self.iterator_support):
             if ~self._done:
-                if ~self._max_value[i]:
+                if ~self._max_value[i] & (i < self._dimensionality):
                     self._mux_sel = i
                     self._done = 1
 
     @always_comb
     def set_clear(self, idx):
         self._clear[idx] = 0
-        if (idx < self._mux_sel) & self._step:
+        if ((idx < self._mux_sel) & self._step) | (~self._done):
             self._clear[idx] = 1
 
     @always_comb
@@ -100,9 +103,9 @@ class ForLoop(Generator):
         self._inc[idx] = 0
         # We always increment the innermost, and then have priority
         # on clear in the flops.
-        if (const(idx, 5) == 0) & self._step & (idx <= self._dimensionality):
+        if (const(idx, 5) == 0) & self._step & (idx < self._dimensionality):
             self._inc[idx] = 1
-        elif (idx == self._mux_sel) & self._step & (idx <= self._dimensionality):
+        elif (idx == self._mux_sel) & self._step & (idx < self._dimensionality):
             self._inc[idx] = 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))

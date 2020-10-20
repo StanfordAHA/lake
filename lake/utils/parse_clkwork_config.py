@@ -5,6 +5,9 @@ ControllerInfo = collections.namedtuple('ControllerInfo',
                                             in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt')
 
 
+verbose_controller_info = False
+
+
 def transform_strides_and_ranges(ranges, strides, dimensionality):
     assert len(ranges) == len(strides), "Strides and ranges should be same length..."
     tform_ranges = [range_item - 2 for range_item in ranges[0:dimensionality]]
@@ -127,18 +130,19 @@ def map_controller(controller, name):
     ctrl_mux_data_strides = controller.mux_data_stride
     ctrl_mux_data_strt = controller.mux_data_strt
 
-    '''print(f"extracted controller for: {name}")
-    print(f"dim: {ctrl_dim}")
-    print(f"range: {ctrl_ranges}")
-    print(f"sched stride: {ctrl_cyc_strides}")
-    print(f"in data stride: {ctrl_in_data_strides}")
-    print(f"sched start: {ctrl_cyc_strt}")
-    print(f"in data start: {ctrl_in_data_strt}")
-    print(f"out data stride: {ctrl_out_data_strides}")
-    print(f"out data start: {ctrl_out_data_strt}")
-    print(f"mux data start: {ctrl_mux_data_strt}")
-    print(f"mux data stride: {ctrl_mux_data_strides}")
-    print()'''
+    if verbose_controller_info:
+        print(f"extracted controller for: {name}")
+        print(f"dim: {ctrl_dim}")
+        print(f"range: {ctrl_ranges}")
+        print(f"sched stride: {ctrl_cyc_strides}")
+        print(f"in data stride: {ctrl_in_data_strides}")
+        print(f"sched start: {ctrl_cyc_strt}")
+        print(f"in data start: {ctrl_in_data_strt}")
+        print(f"out data stride: {ctrl_out_data_strides}")
+        print(f"out data start: {ctrl_out_data_strt}")
+        print(f"mux data start: {ctrl_mux_data_strt}")
+        print(f"mux data stride: {ctrl_mux_data_strides}")
+        print()
 
     # Now transforms ranges and strides
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)

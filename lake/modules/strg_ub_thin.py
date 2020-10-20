@@ -139,6 +139,7 @@ class StrgUBThin(Generator):
                        rst_n=self._rst_n,
                        step=self._write,
                        mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
+                       restart=fl_ctr_sram_wr.ports.restart,
                        addr_out=self._write_addr)
 
         # scheduler modules
@@ -170,6 +171,7 @@ class StrgUBThin(Generator):
                        rst_n=self._rst_n,
                        step=self._read,
                        mux_sel=fl_ctr_sram_rd.ports.mux_sel_out,
+                       restart=fl_ctr_sram_rd.ports.restart,
                        addr_out=self._read_addr)
 
         self.add_child(f"sram_read_sched_gen",

@@ -1,8 +1,12 @@
 import kratos as kts
+from kratos import *
 import math
 import os as os
 from enum import Enum
 from lake.attributes.formal_attr import FormalAttr
+
+
+lake_util_verbose_trim = False
 
 
 def check_env():
@@ -83,6 +87,7 @@ def get_configs_dict(configs):
 def set_configs_sv(generator, filepath, configs_dict):
     int_gen = generator.internal_generator
     ports = int_gen.get_port_names()
+    configs_list = []
 
     remain = []
     for port_name in ports:
@@ -118,6 +123,7 @@ def set_configs_sv(generator, filepath, configs_dict):
                 # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + value + ";\n")
+                configs_list.append(name)
 
         # set all unused config regs to 0 since we remove them
         # from tile interface and they need to be set
@@ -126,14 +132,81 @@ def set_configs_sv(generator, filepath, configs_dict):
             port_split = remaining.split("_")
             if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
                 port_name = "_".join(port_split[:-1])
-            if port_name is not None:
-                port = int_gen.get_port(port_name)
-                if port is None:
-                    print(port_name)
-                if port is not None:
-                    fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
+            port = int_gen.get_port(port_name)
+            if port is None:
+                print(port_name)
+            if port is not None:
+                fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
+                configs_list.append(remaining)
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = " + str(port_width) + "'h0;\n")
                 # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
+    return configs_list
+
+
+def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
+    # get top level interface, minus config regs in not_configs
+    with open(lake_file, 'r') as lake:
+        start = False
+        not_configs = []
+        for line in lake:
+            if "module LakeTop_W (" in line:
+                start = True
+            elif start and ");" in line:
+                start = False
+                break
+            elif start:
+                add = 1
+                for config in configs_list:
+                    if config in line:
+                        add = 0
+                        break
+                if add == 1:
+                    not_configs.append(line)
+
+    with open("LakeWrapper.v", "w+") as wrapper:
+
+        # write top level interface (without config regs)
+        wrapper.write("module LakeWrapper (\n")
+        for not_config in not_configs:
+            wrapper.write(not_config)
+        wrapper.write(");\n")
+
+        # set config regs as constants
+        with open(configs_file, "r") as configs:
+            for config in configs:
+                wrapper.write(config)
+
+        # instantiate LakeTop_W module with
+        # full interface, first with nonconfigs
+        wrapper.write("LakeTop_W LakeTop_W (\n")
+        for i in range(len(not_configs)):
+            not_config = not_configs[i]
+            try_name = not_config.split("]")
+            if len(try_name) == 1:
+                try_name = not_config.split("logic")
+            name = try_name[1].split(",")[0]
+            # if there are no config regs, this is the last
+            # signal in the interface
+            if (i == len(not_configs) - 1) and (len(configs_list) == 0):
+                wrapper.write(f".{name}({name})\n);\n")
+            else:
+                wrapper.write(f".{name}({name}),\n")
+
+        # hook up config regs for LakeTop_W as well
+        for i in range(len(configs_list)):
+            config = configs_list[i]
+            if i == len(configs_list) - 1:
+                wrapper.write(f".{config}({config})\n);\n")
+            else:
+                wrapper.write(f".{config}({config}),\n")
+
+        wrapper.write("endmodule\n\n")
+
+    # prepend wrapper module to original verilog file
+    with open("LakeWrapper.v", "a") as wrapper:
+        with open(lake_file, "r") as original:
+            for line in original:
+                wrapper.write(line)
 
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
@@ -179,11 +252,115 @@ def zext(gen, wire, size):
         return zext_signal
 
 
+# Trim an individual config
 def trim_config(flat_gen, cfg_reg_name, value):
     cfg_port = flat_gen.get_port(cfg_reg_name)
     if cfg_port is None:
         print(f"No config reg: {cfg_reg_name}...is that expected?")
         return (cfg_reg_name, 0)
     bmask = int(math.pow(2, cfg_port.width)) - 1
-    # print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
+
+    if lake_util_verbose_trim:
+        print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
     return (cfg_reg_name, value & bmask)
+
+
+def trim_config_list(flat_gen, config_list):
+    # Store trimmed values here...
+    config = []
+    for name, value in config_list:
+        config.append(trim_config(flat_gen, name, value))
+    return config
+
+
+# Add a simple counter to a design and return the signal
+def add_counter(generator, name, bitwidth):
+    ctr = generator.var(name, bitwidth)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def ctr_inc_code():
+        if ~generator._rst_n:
+            ctr = 0
+        else:
+            ctr = ctr + 1
+
+    generator.add_code(ctr_inc_code)
+    return ctr
+
+
+# Function for generating Pond API
+def generate_pond_api(ctrl_rd, ctrl_wr):
+    (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
+    (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
+
+    new_config = {}
+
+    new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
+    new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
+    new_config["rf_read_addr_0_strides_0"] = tform_strides_rd[0]
+    new_config["rf_read_addr_0_strides_1"] = tform_strides_rd[1]
+    new_config["rf_read_iter_0_ranges_0"] = tform_ranges_rd[0]
+    new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
+
+    new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
+    new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd[0]
+    new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd[1]
+
+    new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
+    new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
+    new_config["rf_write_addr_0_strides_0"] = tform_strides_wr[0]
+    new_config["rf_write_addr_0_strides_1"] = tform_strides_wr[1]
+    new_config["rf_write_iter_0_ranges_0"] = tform_ranges_wr[0]
+    new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
+
+    new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
+    new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr[0]
+    new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr[1]
+
+    return new_config
+
+
+def process_line(item):
+    item = item.strip()
+    item_nobrack = item.rstrip("]").lstrip("[")
+    individ = item_nobrack.split(" ")
+    print(f"individ: {individ}")
+    inced = []
+    for i in range(len(individ)):
+        inced.append(int(individ[i]) + 1)
+
+    ret_str = "[" + str(inced[0])
+    for i in range(len(inced) - 1):
+        ret_str = ret_str + " " + str(inced[i + 1])
+    ret_str = ret_str + "]"
+    return ret_str
+
+
+def increment_line(line):
+    splitline = line.split(",")
+    di = splitline[0]
+    vi = splitline[1]
+    do = splitline[2]
+    vo = splitline[3]
+
+    di_p = process_line(di)
+    vi_p = vi
+    do_p = process_line(do)
+    vo_p = vo
+
+    return di_p + ", " + vi_p + ", " + do_p + ", " + vo_p
+
+
+def increment_csv(file_in, file_out, fields):
+    with open(file_in) as infile:
+        infile_lines = infile.readlines()
+        with open(file_out, "w+") as outfile:
+            outfile.write(infile_lines[0])
+            for i in range(len(infile_lines) - 1):
+                if len(infile_lines[i + 1]) > 5:
+                    print(f"line {i}: {infile_lines[i + 1]}")
+                    outfile.write(increment_line(infile_lines[i + 1]))
+
+
+if __name__ == "__main__":
+    increment_csv("sequence.csv", "inced_csv.csv", [])
