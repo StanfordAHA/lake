@@ -103,12 +103,12 @@ class TopLakeHW(Generator):
                               config_width=self.default_config_width)
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
-            
+
             self.add_child(in_mem + "_forloop",
-                forloop,
-                clk=self.clk,
-                rst_n=self.rst_n,
-                step=self.valid)
+                           forloop,
+                           clk=self.clk,
+                           rst_n=self.rst_n,
+                           step=self.valid)
 
             newAG = AddrGen(iterator_support=6,
                             config_width=self.default_config_width)
@@ -123,9 +123,9 @@ class TopLakeHW(Generator):
                 safe_wire(self, self.mem_insts[in_mem].ports.write_addr, newAG.ports.addr_out)
             else:
                 safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr, newAG.ports.addr_out)
-                
-            newSG = SchedGen(iterator_support=6, 
-                        config_width=self.default_config_width)
+
+            newSG = SchedGen(iterator_support=6,
+                             config_width=self.default_config_width)
             self.add_child(in_mem + "write_sched_gen",
                            newSG,
                            clk=self.clk,
@@ -145,12 +145,12 @@ class TopLakeHW(Generator):
                               config_width=self.default_config_width)
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
-            
+
             self.add_child(out_mem + "_forloop",
-                forloop,
-                clk=self.clk,
-                rst_n=self.rst_n,
-                step=self.valid)
+                           forloop,
+                           clk=self.clk,
+                           rst_n=self.rst_n,
+                           step=self.valid)
 
             newAG = AddrGen(iterator_support=6,
                             config_width=self.default_config_width)
@@ -165,9 +165,9 @@ class TopLakeHW(Generator):
                 safe_wire(self, self.mem_insts[in_mem].ports.read_addr, newAG.ports.addr_out)
             else:
                 safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr, newAG.ports.addr_out)
-                
-            newSG = SchedGen(iterator_support=6, 
-                        config_width=self.default_config_width)
+
+            newSG = SchedGen(iterator_support=6,
+                             config_width=self.default_config_width)
             self.add_child(out_mem + "read_sched_gen",
                            newSG,
                            clk=self.clk,
@@ -180,16 +180,16 @@ class TopLakeHW(Generator):
 
             edge_name = edge["from_signal"] + "_" + edge["to_signal"] + "_edge"
 
-            # create mux if needed 
+            # create mux if needed
             # (need to check if previously created)
             need_mux = None
             for mux in self.muxes:
                 if edge["to_signal"] in mux[1:]:
                     need_mux = mux
-                
+
             if need_mux is not None:
                 num_signals = len(mux) - 1
-                
+
             # create accessor, forloop
 
             self.valid = self.var(edge_name + "_accessor_vaild", 1)
@@ -199,10 +199,10 @@ class TopLakeHW(Generator):
             loop_wth = forloop.get_cfg_width()
 
             self.add_child(edge_name + "_forloop",
-                forloop,
-                clk=self.clk,
-                rst_n=self.rst_n,
-                step=self.valid)
+                           forloop,
+                           clk=self.clk,
+                           rst_n=self.rst_n,
+                           step=self.valid)
 
             # create input addressor
             newAG = AddrGen(iterator_support=edge["dim"],
@@ -232,11 +232,12 @@ class TopLakeHW(Generator):
         else:
             self._cycle_count = self._cycle_count + 1
 
-    #@always_comb
-    #def mux_gen():
+    # @always_comb
+    # def mux_gen():
     #    for i in range(num_signals):
     #        if mux_sel == i:
     #            self.m_data_out = self.m_data_in[i]
-      
+
+
 if __name__ == "__main__":
     a = True

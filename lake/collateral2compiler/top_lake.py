@@ -1,7 +1,8 @@
 import copy
+from graphviz import Digraph
 
 from lake.collateral2compiler.memory import mem_inst, port_to_info
-from lake.collateral2compiler.edge import edge_inst, get_full_edge_params
+from lake.collateral2compiler.edge import edge_inst, get_full_edge_params, Edge
 from lake.collateral2compiler.helper import *
 from lake.collateral2compiler.hw_top_lake import TopLakeHW
 
@@ -37,6 +38,8 @@ class TopLake():
         self.edges = []
         self.compiler_mems = {}
 
+        self.graph_ir = Digraph(comment="Graph represenation of Lake HW", format="png")
+
     # default for ports is no ports
     def add_memory(self, mem_params, write_ports=[], read_ports=[], read_write_ports=[]):
 
@@ -51,15 +54,19 @@ class TopLake():
         mem_params["read_write_ports"] = read_write_ports
 
         self.memories[mem_name] = mem_params
+        # self.memories[mem_name] = mem_inst(mem_params=mem_params)
+        self.graph_ir.node(mem_name, label=f"MEM NODE: RP: 0 WP: 1")
 
     def get_addl_mem_params(self, mem_params, write_ports, read_ports, read_write_ports):
         mem_params["num_write_ports"] = len(write_ports)
         mem_params["num_read_ports"] = len(read_ports)
         mem_params["num_read_write_ports"] = len(read_write_ports)
 
-    def add_edge(self, edge_params):
+    def add_edge(self, edge_params, p1=None, p2=None):
         get_full_edge_params(edge_params)
         self.edges.append(edge_params)
+        # self.edges.append(Edge(edge_params=edge_params))
+        self.graph_ir.edge(edge_params["from_signal"], edge_params["to_signal"])
 
     # after all edges are added
     def banking(self):
@@ -200,3 +207,6 @@ class TopLake():
         self.banking()
         self.get_compiler_json()
         self.generate_hardware()
+
+    def print_ir_graph(self):
+        self.graph_ir.render('lake_graph.gv', view=True)

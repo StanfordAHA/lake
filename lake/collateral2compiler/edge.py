@@ -25,10 +25,10 @@ def edge_inst(edge_params, from_mem, to_mem, from_inst, to_inst, edge_collateral
 class Edge(Generator):
     def __init__(self,
                  edge_params,
-                 from_mem,
-                 to_mem,
-                 from_inst,
-                 to_inst):
+                 from_mem=None,
+                 to_mem=None,
+                 from_inst=None,
+                 to_inst=None):
 
         super().__init__(f"lake_edge", debug=True)
 
@@ -41,8 +41,8 @@ class Edge(Generator):
         self.max_range = edge_params["max_range"]
         self.max_stride = edge_params["max_stride"]
 
-        self._write(f"write_{self.to_signal}",
-                    width=1)
+        # self._write(f"write_{self.to_signal}",
+        #             width=1)
 
         forloop = ForLoop(iterator_support=self.dim,
                           config_width=clog2(self.max_range))
@@ -51,20 +51,20 @@ class Edge(Generator):
         # with just these params and then pass in mem for this signal
         # self._write_addr(f"write_addr_{to_signal}")
 
-        self.add_child(f"loops_{self.from_signal}_{self.to_signal}",
-                       forloop,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._write)
+        # self.add_child(f"loops_{self.from_signal}_{self.to_signal}",
+        #                forloop,
+        #                clk=self._clk,
+        #                rst_n=self._rst_n,
+        #                step=self._write)
 
-        AG_write = AddrGen(iterator_support=addr_gen_dim,
-                           config_width=clog2(addr_gen_max_range))
+        # AG_write = AddrGen(iterator_support=self.dim,
+        #                    config_width=clog2(self.max_stride))
 
-        self.add_child(f"AG_write_{self.from_signal}_{self.to_signal}",
-                       AG_write,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._write,
-                       mux_sel=forloop.ports.mux_sel_out)
+        # self.add_child(f"AG_write_{self.from_signal}_{self.to_signal}",
+        #                AG_write,
+        #                clk=self._clk,
+        #                rst_n=self._rst_n,
+        #                step=self._write,
+        #                mux_sel=forloop.ports.mux_sel_out)
 
-        safe_wire(self, AG_write.ports.addr_out, self._write_addr)
+        # safe_wire(self, AG_write.ports.addr_out, self._write_addr)

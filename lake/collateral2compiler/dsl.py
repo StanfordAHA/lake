@@ -91,3 +91,4 @@ tile.get_compiler_collateral()
 # tile.generate_hardware()
 # for both compiler collateral and HW generation
 # tile.construct_lake()
+tile.print_ir_graph()
