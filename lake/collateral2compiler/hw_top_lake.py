@@ -214,24 +214,29 @@ class TopLakeHW(Generator):
                            mux_sel=forloop.ports.mux_sel_out)
 
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
+                # can assign same read addrs to all the memories
+                for i in range(len(edge["from_signal"])):
+                    safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr, readAG.ports.addr_out)
 
-                if num_mux_from > 1:
-                    num_mux_bits = clog2(num_mux_from)
-                    self.mux_sel = self.var(edge_name + "_mux_sel",
-                                            width=num_mux_bits)
-                    safe_wire(self, self.mux_sel, 
-                        readAG.ports.addr_out[self.mem_insts[edge["from_signal"][0]].ports.read_addr.width + num_mux_from - 1, 
-                        self.mem_insts[edge["from_signal"][0]].ports.read_addr.width])
-
-                    comb = self.combinational()
-                    for i in range(1, num_mux_from):
-                        if_mux_sel = IfStmt(self.mux_sel == i)
-                        port_width = self.mem_insts[edge["from_signal"][i]].ports.read_addr.width
-                        if_mux_sel.then_(self.mem_insts[edge["from_signal"][i]].ports.read_addr.assign(readAG.ports.addr_out[port_width-1, 0]))
-#                         if_mux_sel.else_(self.mem_insts[edge["from_signal"][i]].ports.read_addr.assign(0))
-                        comb.add_stmt(if_mux_sel)
             else:
-                safe_wire(self, self.mem_insts[edge["from_signal"]].ports.read_write_addr, readAG.ports.addr_out)
+                # there needs to be an if valid check here
+                for i in range(len(edge["from_signal"])):
+                    safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_write_addr, readAG.ports.addr_out)
+
+            if num_mux_from > 1:
+                num_mux_bits = clog2(num_mux_from)
+                self.mux_sel = self.var(edge_name + "_mux_sel",
+                                        width=num_mux_bits)
+
+                safe_wire(self, self.mux_sel,
+                    readAG.ports.addr_out[self.mem_insts[edge["from_signal"][0]].ports.read_addr.width + num_mux_from - 1,
+                    self.mem_insts[edge["from_signal"][0]].ports.read_addr.width])
+
+                comb = self.combinational()
+                for i in range(1, num_mux_from):
+                    if_mux_sel = IfStmt(self.mux_sel == i)
+                    if_mux_sel.then_(self.mem_insts[edge["to_signal"][0]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
+                    comb.add_stmt(if_mux_sel)
 
             # create output addressor
             writeAG = AddrGen(iterator_support=edge["dim"],
