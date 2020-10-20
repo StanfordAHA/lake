@@ -142,7 +142,11 @@ def set_configs_sv(generator, filepath, configs_dict):
     return configs_list
 
 
-def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
+def generate_lake_config_wrapper(configs_list,
+                                 configs_file,
+                                 lake_file,
+                                 module_name):
+
     # get top level interface, minus config regs in not_configs
     with open(lake_file, 'r') as lake:
         start = False
@@ -162,10 +166,10 @@ def generate_lake_config_wrapper(configs_list, configs_file, lake_file):
                 if add == 1:
                     not_configs.append(line)
 
-    with open("LakeWrapper.v", "w+") as wrapper:
+    with open(f"LakeWrapper_{module_name}.v", "w+") as wrapper:
 
         # write top level interface (without config regs)
-        wrapper.write("module LakeWrapper (\n")
+        wrapper.write(f"module {module_name} (\n")
         for not_config in not_configs:
             wrapper.write(not_config)
         wrapper.write(");\n")
