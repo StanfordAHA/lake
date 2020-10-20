@@ -932,7 +932,10 @@ class LakeTop(Generator):
         if "stencil_valid" in root_node:
             # We know we are using it now...
             config.append((f"use_stencil_valid", 1))
-            num_valids = int(root_node["stencil_valid"]["num_valids"])
+            if "num_valids" in root_node["stencil_valid"]:
+                num_valids = int(root_node["stencil_valid"]["num_valids"])
+            else:
+                num_valids = 65535
             config.append((f"num_stencil_valids", num_valids - 1))
             stencil_valid = map_controller(extract_controller_json(root_node["stencil_valid"]), "stencil_valid")
 
