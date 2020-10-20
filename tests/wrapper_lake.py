@@ -46,6 +46,7 @@ def error(usage):
 def main(argv):
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
     usage += " [-s / --stencil_valid] [True or False indicating whether or not to generate hardware with stencil_valid (default: True)"
+    usage += " [-n] [module name for LakeWrapper module (default: LakeWrapper)]"
     try:
         options, remainder = getopt.getopt(argv, 'c:s:n:', ["csv_file=", "stencil_valid="])
     except getopt.GetoptError as e:
