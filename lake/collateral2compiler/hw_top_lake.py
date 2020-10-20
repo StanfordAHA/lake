@@ -241,6 +241,11 @@ class TopLakeHW(Generator):
                         if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
                     comb.add_stmt(if_mux_sel)
 
+            # no muxing from
+            else:
+                for j in range(len(edge["to_signal"])):
+                    safe_wire(self, self.mem_insts[edge["to_signal"][j]].ports.data_in, self.mem_insts[edge["from_signal"][0]].ports.data_out)
+
             # create output addressor
             writeAG = AddrGen(iterator_support=edge["dim"],
                             config_width=self.default_config_width)
@@ -274,6 +279,9 @@ class TopLakeHW(Generator):
                     if_mux_sel_to.else_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(0))
                     comb_mux_to.add_stmt(if_mux_sel_to)
 
+            # no muxing to
+            else:
+                self.wire(self.mem_insts[edge["to_signal"][0]].ports.write, 1)
 
             # create accessor
             # calculate necessary delay between from_signal to to_signal
