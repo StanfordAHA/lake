@@ -27,8 +27,9 @@ def port_to_info(mem_params):
         s = s_ + "_info"
         mem_params[s] = [p.port_info for p in mem_params[s[:-4] + "ports"]]
         mem_params["num_" + s_ + "_ports"] = len(mem_params[s])
+
         # ports are not JSON serializable, so just store
-        # port info
+        # port info instead of port obejcts
         del mem_params[s_ + "_ports"]
 
     return mem_params
@@ -37,8 +38,11 @@ def port_to_info(mem_params):
 def mem_inst(mem_params, mem_collateral={}):
     # print(mem_params)
 
+    # get full memory parameters with port information
     mem_params = port_to_info(mem_params)
+    # create memory instance
     mem = Memory(mem_params)
+    # get memory parameters for compiler collateral if needed
     get_params(mem, mem_collateral, "mem")
 
     return mem
@@ -47,18 +51,6 @@ def mem_inst(mem_params, mem_collateral={}):
 class Memory(Generator):
     def __init__(self,
                  mem_params):
-        # capacity,
-        # word_width,
-        # num_read_ports,
-        # read_port_width,
-        # num_write_ports,
-        # write_port_width,
-        #  num_read_write_ports,
-        #  read_write_port_width,
-        # chaining,
-        #  read_write_info,
-        # write_info,
-        # read_info):
 
         super().__init__("lake_mem", debug=True)
 
@@ -140,8 +132,7 @@ class Memory(Generator):
                                          size=self.num_write_ports,
                                          explicit_array=True)
             #                         packed=True)
-            # assert self.write_info["latency"] == 1, \
-            #         "Write port latency 0 not supported."
+
             self.write = self.input("write",
                                     width=1,
                                     size=self.num_write_ports,
@@ -154,6 +145,7 @@ class Memory(Generator):
                                         size=self.num_read_ports,
                                         explicit_array=True)
             #                       packed=True)
+
             # for now assuming all read ports have same latency
             # also should add support for other latencies
             if self.read_info[0]["latency"] == 1:
@@ -192,13 +184,8 @@ class Memory(Generator):
             self.add_code(self.read_data_latency_1)
             self.add_code(self.write_data_latency_1)
 
-    # @always_ff((posedge, "clk"), (negedge, "rst_n"))
     @always_ff((posedge, "clk"))
     def write_data_latency_1(self):
-        # if ~self.rst_n:
-        #     for i in range(self.capacity):
-        #         self.memory[i] = 0
-        # else:
         for p in range(self.num_write_ports):
             if self.write[p]:
                 for i in range(self.write_width):

@@ -252,6 +252,8 @@ class TopLakeHW(Generator):
             # actually written)
             else:
                 for j in range(len(edge["to_signal"])):
+                    # print("TO DATA IN ", self.memories[edge["to_signal"][j]])
+                    # print(self.memories[edge["from_signal"][0]])
                     safe_wire(self, self.mem_insts[edge["to_signal"][j]].ports.data_in, self.mem_insts[edge["from_signal"][0]].ports.data_out)
 
             # create output addressor
