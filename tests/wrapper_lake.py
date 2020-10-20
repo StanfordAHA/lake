@@ -1,4 +1,4 @@
-import getopt
+import argparse
 import sys
 import tempfile
 
@@ -43,43 +43,37 @@ def error(usage):
     sys.exit(2)
 
 
-def main(argv):
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='LakeWrapper')
+    parser.add_argument("-c",
+                        type=str,
+                        help="required: csv_file path relative to LAKE_CONTROLLERS environment variable")
+    parser.add_argument("-s",
+                        type=str,
+                        help="optional: True or False indicating whether or not to generate hardware with stencil_valid (default: True)",
+                        default="True")
+    parser.add_argument("-n",
+                        type=str,
+                        help="optional: module name for LakeWrapper module (default: LakeWrapper)",
+                        default="LakeWrapper")
+    
+    args = parser.parse_args()
+    
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
     usage += " [-s / --stencil_valid] [True or False indicating whether or not to generate hardware with stencil_valid (default: True)"
     usage += " [-n] [module name for LakeWrapper module (default: LakeWrapper)]"
-    try:
-        options, remainder = getopt.getopt(argv, 'c:s:n:', ["csv_file=", "stencil_valid="])
-    except getopt.GetoptError as e:
+    
+    if args.s == "False":
+        stencil_valid = False
+    elif args.s == "True":
+        stencil_valid = True
+    else:
+        print("Invalid option for stencil valid (must be True or False)...defaulting to True")
+
+    if args.c is None:
         error(usage)
 
-    csv_file = None
-    stencil_valid = True
-    name = "LakeWrapper"
-
-    for opt, arg in options:
-        if opt in ("-c", "--csv_file"):
-            csv_file = arg
-        elif opt in ("-s", "--stencil_valid"):
-            if arg == "False":
-                stencil_valid = False
-            elif arg == "True":
-                stencil_valid = True
-            else:
-                print("Invalid option for stencil valid (must be True or False)...defaulting to True")
-        elif opt == "-n":
-            name = arg
-        else:
-            print("Invalid command line argument.")
-            error(usage)
-
-    if csv_file is None:
-        error(usage)
-
-    wrapper(csv_file, stencil_valid, name)
-
-
-if __name__ == "__main__":
-    main(sys.argv[1:])
+    wrapper(args.c, stencil_valid, args.n)
 
     # Example usage:
     # python tests/wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
