@@ -103,7 +103,6 @@ def set_configs_sv(generator, filepath, configs_dict):
                 remain.append(port + f"_{i}")
 
     with open(filepath, "w+") as fi:
-        port_width = None
         for name in configs_dict.keys():
             # binstr = str(hex(configs_dict[name]))
             # binsplit = binstr.split("x")
@@ -128,7 +127,6 @@ def set_configs_sv(generator, filepath, configs_dict):
         # set all unused config regs to 0 since we remove them
         # from tile interface and they need to be set
         for remaining in remain:
-            port_name = None
             port_split = remaining.split("_")
             if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
                 port_name = "_".join(port_split[:-1])
@@ -259,7 +257,6 @@ def trim_config(flat_gen, cfg_reg_name, value):
         print(f"No config reg: {cfg_reg_name}...is that expected?")
         return (cfg_reg_name, 0)
     bmask = int(math.pow(2, cfg_port.width)) - 1
-
     if lake_util_verbose_trim:
         print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
     return (cfg_reg_name, value & bmask)
