@@ -52,6 +52,7 @@ def main(argv):
     except getopt.GetoptError as e:
         error(usage)
 
+    csv_file = None
     stencil_valid = True
     name = "LakeWrapper"
 
@@ -70,6 +71,9 @@ def main(argv):
         else:
             print("Invalid command line argument.")
             error(usage)
+
+    if csv_file is None:
+        error(usage)
 
     wrapper(csv_file, stencil_valid, name)
 
