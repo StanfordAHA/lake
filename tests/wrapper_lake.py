@@ -10,8 +10,8 @@ from test_lake import base_lake_tester
 def get_lake_wrapper(config_path,
                      stencil_valid,
                      name,
-                     in_file_name="input",
-                     out_file_name="output",
+                     in_file_name="",
+                     out_file_name="",
                      in_ports=2,
                      out_ports=2):
 
@@ -32,6 +32,9 @@ def get_lake_wrapper(config_path,
 
 def wrapper(config_path_input, stencil_valid, name):
     lc, ls = check_env()
+    # we are in the process of transitioning to csvs being in this folder
+    # lc = <path to clockwork>/aha_garnet_design/
+
     config_path = lc + config_path_input
     get_lake_wrapper(config_path=config_path,
                      stencil_valid=stencil_valid,

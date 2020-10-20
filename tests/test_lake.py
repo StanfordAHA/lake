@@ -98,7 +98,9 @@ def test_conv_3_3():
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
 
     gen_test_lake(config_path=config_path,
-                  stream_path=stream_path)
+                  stream_path=stream_path,
+                  in_file_name="input_",
+                  out_file_name="output_2_")
 
 
 @pytest.mark.skip

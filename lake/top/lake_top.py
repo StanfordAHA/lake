@@ -973,11 +973,11 @@ class LakeTop(Generator):
         input_ports = 1
         output_ports = 1
 
-        in2agg = map_controller(extract_controller(config_path + '/' + in_file_name + '_in2agg_0.csv'), "in2agg")
-        agg2sram = map_controller(extract_controller(config_path + '/' + in_file_name + '_agg2sram.csv'), "agg2sram")
-        sram2tb = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb")
-        tb2out0 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0")
-        tb2out1 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1")
+        in2agg = map_controller(extract_controller(config_path + '/' + in_file_name + 'in2agg_0.csv'), "in2agg")
+        agg2sram = map_controller(extract_controller(config_path + '/' + in_file_name + 'agg2sram.csv'), "agg2sram")
+        sram2tb = map_controller(extract_controller(config_path + '/' + out_file_name + 'sram2tb.csv'), "sram2tb")
+        tb2out0 = map_controller(extract_controller(config_path + '/' + out_file_name + 'tb2out_0.csv'), "tb2out0")
+        tb2out1 = map_controller(extract_controller(config_path + '/' + out_file_name + 'tb2out_1.csv'), "tb2out1")
 
         # Getting bitstreams is a little unweildy due to fault (or its underlying implementation) not
         # handling arrays in the interface.
