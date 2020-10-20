@@ -84,10 +84,5 @@ tile.add_edge({"from_signal": "sram",
 tile.add_edge({"from_signal": "sram",
                "to_signal": "tb1"})
 
-# for compiler collateral only
-tile.get_compiler_collateral()
-
-# for HW (integration in progress)
-# tile.generate_hardware()
 # for both compiler collateral and HW generation
-# tile.construct_lake()
+tile.construct_lake()
