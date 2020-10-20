@@ -56,13 +56,13 @@ if __name__ == "__main__":
                         type=str,
                         help="optional: module name for LakeWrapper module (default: LakeWrapper)",
                         default="LakeWrapper")
-    
+
     args = parser.parse_args()
-    
+
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
     usage += " [-s / --stencil_valid] [True or False indicating whether or not to generate hardware with stencil_valid (default: True)"
     usage += " [-n] [module name for LakeWrapper module (default: LakeWrapper)]"
-    
+
     if args.s == "False":
         stencil_valid = False
     elif args.s == "True":
