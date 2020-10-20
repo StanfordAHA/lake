@@ -145,8 +145,8 @@ class Memory(Generator):
             self.write = self.input("write",
                                     width=1,
                                     size=self.num_write_ports,
-                                    explicit_array=True,
-                                    packed=True)
+                                    explicit_array=True)
+            #                         packed=True)
             self.add_code(self.write_data_latency_1)
 
             self.read_addr = self.input("read_addr",
@@ -186,8 +186,8 @@ class Memory(Generator):
             self.write = self.input("write",
                                     width=1,
                                     size=self.num_write_ports,
-                                    explicit_array=True,
-                                    packed=True)
+                                    explicit_array=True)
+            #                         packed=True)
 
             self.add_code(self.read_data_latency_1)
             self.add_code(self.write_data_latency_1)

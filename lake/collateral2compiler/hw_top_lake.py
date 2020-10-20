@@ -95,8 +95,11 @@ class TopLakeHW(Generator):
         for i in range(len(is_input)):
             in_mem = is_input[i]
 
+            # direct connection to write doesn't work??
+            self.high = self.var("high", 1)
+            self.wire(self.high, 1)
             # with static schedule, incoming data is always written
-            self.wire(self.mem_insts[in_mem].ports.write, 1)
+            self.wire(self.mem_insts[in_mem].ports.write, self.high)
 
             safe_wire(self, self.mem_insts[in_mem].ports.data_in, self.data_in[i])
 
@@ -263,6 +266,19 @@ class TopLakeHW(Generator):
                 for i in range(len(edge["to_signal"])):
                     safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr, writeAG.ports.addr_out)
 
+            # calculate necessary delay between from_signal to to_signal
+            # TO DO this may need to be more sophisticated and based on II as well
+
+            if "read_info" in self.memories[edge["from_signal"][0]]:
+                self.delay = self.memories[edge["from_signal"][0]]["read_info"][0]["latency"]
+            else:
+                self.delay = self.memories[edge["from_signal"][0]]["read_write_info"][0]["latency"]
+
+            if self.delay > 0:
+                self.delayed_writes = self.var(f"{edge_name}_delayed_writes",
+                                               width=self.delay)
+                self.add_code(self.get_delayed_write)
+
             if num_mux_to > 1:
                 num_mux_bits = clog2(num_mux_to)
                 self.mux_sel_to = self.var(f"{edge_name}_mux_sel_to",
@@ -275,19 +291,31 @@ class TopLakeHW(Generator):
                 comb_mux_to = self.combinational()
                 for i in range(num_mux_to):
                     if_mux_sel_to = IfStmt(self.mux_sel_to == i)
-                    if_mux_sel_to.then_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(1))
+                    if self.delay == 0:
+                        if_mux_sel_to.then_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.valid))
+                    else:
+                        if_mux_sel_to.then_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.delayed_writes[self.delay - 1]))
                     if_mux_sel_to.else_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(0))
                     comb_mux_to.add_stmt(if_mux_sel_to)
 
             # no muxing to
             else:
-                self.wire(self.mem_insts[edge["to_signal"][0]].ports.write, 1)
+                if self.delay == 0:
+                    self.wire(self.mem_insts[edge["to_signal"][0]].ports.write, self.valid)
+                else:
+                    self.wire(self.mem_insts[edge["to_signal"][0]].ports.write, self.delayed_writes[self.delay - 1])
 
             # create accessor
-            # calculate necessary delay between from_signal to to_signal
-            #        @always_comb
-            #        def mux_gen():
-            #            if mux_sel
+            newSG = SchedGen(iterator_support=6, 
+                        config_width=self.default_config_width)
+            self.add_child(edge_name + "_sched_gen",
+                           newSG,
+                           clk=self.clk,
+                           rst_n=self.rst_n,
+                           mux_sel=forloop.ports.mux_sel_out,
+                           cycle_count=self._cycle_count,
+                           valid_output=self.valid)
+
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def increment_cycle_count(self):
@@ -296,11 +324,15 @@ class TopLakeHW(Generator):
         else:
             self._cycle_count = self._cycle_count + 1
 
-    #@always_comb
-    #def mux_gen():
-    #    for i in range(num_signals):
-    #        if mux_sel == i:
-    #            self.m_data_out = self.m_data_in[i]
-      
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def get_delayed_write(self):
+        if ~self.rst_n:
+            self.delayed_writes = 0
+        else:
+            for i in range(self.delay - 1):
+                self.delayed_writes[i + 1] = self.delayed_writes[i]
+            self.delayed_writes[0] = self.valid
+     
+ 
 if __name__ == "__main__":
     a = True
