@@ -935,7 +935,6 @@ class LakeTop(Generator):
             num_valids = int(root_node["stencil_valid"]["num_valids"])
             config.append((f"num_stencil_valids", num_valids - 1))
             stencil_valid = map_controller(extract_controller_json(root_node["stencil_valid"]), "stencil_valid")
-            self._num_stencil_valids = add_config_reg(self, "num_stencil_valids", "number of stencil valids until done...", 16)
 
             # Check actual stencil valid property of hardware before programming
             if self.stencil_valid:
