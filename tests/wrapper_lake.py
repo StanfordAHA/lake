@@ -9,6 +9,7 @@ from test_lake import base_lake_tester
 
 def get_lake_wrapper(config_path,
                      stencil_valid,
+                     name,
                      in_file_name="input",
                      out_file_name="output",
                      in_ports=2,
@@ -26,14 +27,15 @@ def get_lake_wrapper(config_path,
         tester.compile_and_run(target="verilator",
                                flags=["-Wno-fatal"])
 
-    generate_lake_config_wrapper(configs_list, "configs.sv", "build/LakeTop_W.v")
+    generate_lake_config_wrapper(configs_list, "configs.sv", "build/LakeTop_W.v", name)
 
 
-def wrapper(config_path_input, stencil_valid):
+def wrapper(config_path_input, stencil_valid, name):
     lc, ls = check_env()
     config_path = lc + config_path_input
     get_lake_wrapper(config_path=config_path,
-                     stencil_valid=stencil_valid)
+                     stencil_valid=stencil_valid,
+                     name=name)
 
 
 def error(usage):
@@ -45,14 +47,12 @@ def main(argv):
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
     usage += " [-s / --stencil_valid] [True or False indicating whether or not to generate hardware with stencil_valid (default: True)"
     try:
-        options, remainder = getopt.getopt(argv, 'c:s:', ["csv_file=", "stencil_valid="])
+        options, remainder = getopt.getopt(argv, 'c:s:n:', ["csv_file=", "stencil_valid="])
     except getopt.GetoptError as e:
         error(usage)
 
-    if len(options) not in (1, 2):
-        error(usage)
-
     stencil_valid = True
+    name = "LakeWrapper"
 
     for opt, arg in options:
         if opt in ("-c", "--csv_file"):
@@ -64,11 +64,13 @@ def main(argv):
                 stencil_valid = True
             else:
                 print("Invalid option for stencil valid (must be True or False)...defaulting to True")
+        elif opt == "-n":
+            name = arg
         else:
             print("Invalid command line argument.")
             error(usage)
 
-    wrapper(csv_file, stencil_valid)
+    wrapper(csv_file, stencil_valid, name)
 
 
 if __name__ == "__main__":
