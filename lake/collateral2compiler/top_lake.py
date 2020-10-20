@@ -96,7 +96,7 @@ class TopLake():
                         self.hardware_edges.append(x) if x not in self.hardware_edges else self.hardware_edges
 
         for mem in memories_to:
-            if len(memories_to[mem]) > 1:    
+            if len(memories_to[mem]) > 1:
                 for e in self.edges:
                     if e["from_signal"] == mem:
                         x = copy.deepcopy(e)
@@ -105,18 +105,18 @@ class TopLake():
 
         for h in self.hardware_edges:
             for sig in ("to_signal", "from_signal"):
-                if type(h[sig]) != list:
+                if not isinstance(h[sig], list):
                     h[sig] = [h[sig]]
 
         for e in self.edges:
             add = 1
-            for h in self.hardware_edges:   
+            for h in self.hardware_edges:
                 if e["from_signal"] in h["from_signal"] and e["to_signal"] in h["to_signal"]:
                     add = 0
                     break
             if add == 1:
                 self.hardware_edges.append(e)
-                
+
         self.merge_mems(memories_from, 1)
         self.merge_mems(memories_to, 0)
         # e = Edge(edge_params)

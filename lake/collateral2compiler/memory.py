@@ -139,7 +139,7 @@ class Memory(Generator):
                                          width=self.addr_width,
                                          size=self.num_write_ports,
                                          explicit_array=True)
-                 #                         packed=True)
+            #                         packed=True)
             # assert self.write_info["latency"] == 1, \
             #         "Write port latency 0 not supported."
             self.write = self.input("write",
@@ -153,7 +153,7 @@ class Memory(Generator):
                                         width=self.addr_width,
                                         size=self.num_read_ports,
                                         explicit_array=True)
-                 #                       packed=True)
+            #                       packed=True)
             # for now assuming all read ports have same latency
             # also should add support for other latencies
             if self.read_info[0]["latency"] == 1:
@@ -168,17 +168,17 @@ class Memory(Generator):
                                               width=self.addr_width,
                                               size=self.num_read_write_ports,
                                               explicit_array=True)
-                 #                             packed=True)
+            #                             packed=True)
             self.write_addr = self.var("write_addr",
                                        width=self.addr_width,
                                        size=self.num_read_write_ports,
                                        explicit_array=True)
-                 #                      packed=True)
+            #                      packed=True)
             self.read_addr = self.var("read_addr",
                                       width=self.addr_width,
                                       size=self.num_read_write_ports,
                                       explicit_array=True)
-                  #                    packed=True)
+            #                    packed=True)
 
             self.wire(self.write_addr, self.read_write_addr)
             self.wire(self.read_addr, self.read_write_addr)
