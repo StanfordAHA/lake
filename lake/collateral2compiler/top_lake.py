@@ -233,7 +233,10 @@ class TopLake():
                        self.hw_memories,
                        self.hardware_edges)
 
-        verilog(hw, filename="Lake_hw.sv")
+        verilog(hw, filename="Lake_hw.sv",
+                check_multiple_driver=False,
+                optimize_if=False,
+                check_flip_flop_always_ff=False)
 
     def construct_lake(self):
         # prepare user input for compiler collateral and hardware

@@ -9,6 +9,7 @@ from lake.passes.passes import lift_config_reg
 from lake.utils.util import safe_wire
 
 
+# if write, need to check if that happens for read/write ports
 class TopLakeHW(Generator):
     def __init__(self,
                  word_width,
@@ -90,13 +91,16 @@ class TopLakeHW(Generator):
         assert len(is_input) == self.input_ports
         assert len(is_output) == self.output_ports
 
+        # direct connection to write doesn't work??
+        self.high = self.var("high", 1)
+        self.wire(self.high, 1)
+        self.low = self.var("low", 1)
+        self.wire(self.low, 0)
+
         # wire input data to input memories
         for i in range(len(is_input)):
             in_mem = is_input[i]
 
-            # direct connection to write doesn't work??
-            self.high = self.var("high", 1)
-            self.wire(self.high, 1)
             # with static schedule, incoming data is always written
             self.wire(self.mem_insts[in_mem].ports.write, self.high)
 
@@ -244,18 +248,24 @@ class TopLakeHW(Generator):
                           readAG.ports.addr_out[self.mem_insts[edge["from_signal"][0]].ports.read_addr.width + num_mux_from - 1,
                                                 self.mem_insts[edge["from_signal"][0]].ports.read_addr.width])
 
-                comb = self.combinational()
+                comb_mux_from = self.combinational()
                 for i in range(num_mux_from):
                     if_mux_sel = IfStmt(self.mux_sel == i)
                     for j in range(len(edge["to_signal"])):
+                        print("TO ", edge["to_signal"][j])
+                        print("FROM ", edge["from_signal"][i])
                         if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
-                    comb.add_stmt(if_mux_sel)
+                        # needed this to get rid of latch, but it is incorrect?
+                        if_mux_sel.else_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
+                    comb_mux_from.add_stmt(if_mux_sel)
 
             # no muxing from, data_out from the 1 from memory goes
             # to all to memories (valid determines whether it is
             # actually written)
             else:
                 for j in range(len(edge["to_signal"])):
+                    print("TO ", edge["to_signal"][j])
+                    print("FROM ", edge["from_signal"][0])
                     safe_wire(self, self.mem_insts[edge["to_signal"][j]].ports.data_in, self.mem_insts[edge["from_signal"][0]].ports.data_out)
 
             # create output addressor
@@ -308,8 +318,7 @@ class TopLakeHW(Generator):
                         if_mux_sel_to.then_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.valid))
                     else:
                         if_mux_sel_to.then_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.delayed_writes[self.delay - 1]))
-                    self.low = self.var("low", 1)
-                    self.wire(self.low, 0)
+
                     if_mux_sel_to.else_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.low))
                     comb_mux_to.add_stmt(if_mux_sel_to)
 
@@ -353,5 +362,5 @@ class TopLakeHW(Generator):
             self.delayed_writes[0] = self.valid
 
 # the best way to unit test this file is to call construct_lake() in dsl.py
-# that function calls functions that prepare the user input data for this 
+# that function calls functions that prepare the user input data for this
 # file to generate the hardware
