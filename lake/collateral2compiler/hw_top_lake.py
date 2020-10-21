@@ -165,10 +165,10 @@ class TopLakeHW(Generator):
                            step=self.valid,
                            mux_sel=forloop.ports.mux_sel_out)
 
-            if self.memories[in_mem]["num_read_write_ports"] == 0:
-                safe_wire(self, self.mem_insts[in_mem].ports.read_addr, newAG.ports.addr_out)
+            if self.memories[out_mem]["num_read_write_ports"] == 0:
+                safe_wire(self, self.mem_insts[out_mem].ports.read_addr, newAG.ports.addr_out)
             else:
-                safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr, newAG.ports.addr_out)
+                safe_wire(self, self.mem_insts[out_mem].ports.read_write_addr, newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=6,
                              config_width=self.default_config_width)
