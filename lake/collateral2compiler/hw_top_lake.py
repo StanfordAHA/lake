@@ -275,7 +275,7 @@ class TopLakeHW(Generator):
             # calculate necessary delay between from_signal to to_signal
             # TO DO this may need to be more sophisticated and based on II as well
 
-            if len(self.memories[edge["from_signal"][0]]["read_info"]) > 0:
+            if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
                 self.delay = self.memories[edge["from_signal"][0]]["read_info"][0]["latency"]
             else:
                 self.delay = self.memories[edge["from_signal"][0]]["read_write_info"][0]["latency"]
