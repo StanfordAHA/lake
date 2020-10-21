@@ -1,11 +1,12 @@
 from kratos import *
 from math import log
 from lake.collateral2compiler.memory import mem_inst
-from lake.utils.util import safe_wire
 from lake.collateral2compiler.helper import *
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.passes.passes import lift_config_reg
+from lake.utils.util import safe_wire
 
 
 class TopLakeHW(Generator):
@@ -121,7 +122,8 @@ class TopLakeHW(Generator):
                            clk=self.clk,
                            rst_n=self.rst_n,
                            step=self.valid,
-                           mux_sel=forloop.ports.mux_sel_out)
+                           mux_sel=forloop.ports.mux_sel_out,
+                           restart=forloop.ports.restart)
 
             if self.memories[in_mem]["num_read_write_ports"] == 0:
                 safe_wire(self, self.mem_insts[in_mem].ports.write_addr, newAG.ports.addr_out)
@@ -163,7 +165,8 @@ class TopLakeHW(Generator):
                            clk=self.clk,
                            rst_n=self.rst_n,
                            step=self.valid,
-                           mux_sel=forloop.ports.mux_sel_out)
+                           mux_sel=forloop.ports.mux_sel_out,
+                           restart=forloop.ports.restart)
 
             if self.memories[out_mem]["num_read_write_ports"] == 0:
                 safe_wire(self, self.mem_insts[out_mem].ports.read_addr, newAG.ports.addr_out)
@@ -217,7 +220,8 @@ class TopLakeHW(Generator):
                            clk=self.clk,
                            rst_n=self.rst_n,
                            step=self.valid,
-                           mux_sel=forloop.ports.mux_sel_out)
+                           mux_sel=forloop.ports.mux_sel_out,
+                           restart=forloop.ports.restart)
 
             # assign read address to all from memories
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
@@ -262,7 +266,8 @@ class TopLakeHW(Generator):
                            clk=self.clk,
                            rst_n=self.rst_n,
                            step=self.valid,
-                           mux_sel=forloop.ports.mux_sel_out)
+                           mux_sel=forloop.ports.mux_sel_out,
+                           restart=forloop.ports.restart)
 
             # set write addr for to memories
             if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:
@@ -326,6 +331,8 @@ class TopLakeHW(Generator):
                            mux_sel=forloop.ports.mux_sel_out,
                            cycle_count=self._cycle_count,
                            valid_output=self.valid)
+
+        lift_config_reg(self.internal_generator)
 
     # global cycle count for accessor comparison
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
