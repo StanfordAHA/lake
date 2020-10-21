@@ -210,8 +210,10 @@ class TopLake():
         get_json(self.compiler_mems, self.merged_edges, filename)
 
     def generate_hardware(self):
-
+        # print(self.hw_memories)
+        # print()
         # print(self.hardware_edges)
+
         hw = TopLakeHW(self.word_width,
                        self.input_ports,
                        self.output_ports,

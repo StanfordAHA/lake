@@ -328,7 +328,6 @@ class TopLakeHW(Generator):
                            valid_output=self.valid)
 
     # global cycle count for accessor comparison
-
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def increment_cycle_count(self):
         if ~self.rst_n:
@@ -346,6 +345,6 @@ class TopLakeHW(Generator):
                 self.delayed_writes[i + 1] = self.delayed_writes[i]
             self.delayed_writes[0] = self.valid
 
-
-if __name__ == "__main__":
-    a = True
+# the best way to unit test this file is to call construct_lake() in dsl.py
+# that function calls functions that prepare the user input data for this 
+# file to generate the hardware
