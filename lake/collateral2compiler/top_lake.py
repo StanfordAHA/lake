@@ -238,10 +238,13 @@ class TopLake():
                 optimize_if=False,
                 check_flip_flop_always_ff=False)
 
+        return hw
+
     def construct_lake(self):
         # prepare user input for compiler collateral and hardware
         self.banking()
         # generate compiler collateral
         self.get_compiler_json()
         # generate RTL
-        self.generate_hardware()
+        hw = self.generate_hardware()
+        return hw
