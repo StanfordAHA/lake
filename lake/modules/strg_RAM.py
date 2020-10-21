@@ -94,32 +94,10 @@ class StrgRAM(Generator):
         self._wen_to_strg = self.output("wen_to_strg", self.banks)
         self._ren_to_strg = self.output("ren_to_strg", self.banks)
 
-        # # Set addresses to storage
-        # for i in range(self.banks):
-        #     self.add_code(self.set_wen_addr, idx=i)
-        #     self.add_code(self.set_ren_addr, idx=i)
-        # # Now deal with a shared address vs separate addresses
-        # if self.rw_same_cycle:
-        #     # Separate
-        #     self._wen_addr_out = self.output("wen_addr_out", self.addr_width,
-        #                                      size=self.banks,
-        #                                      explicit_array=True,
-        #                                      packed=True)
-        #     self._ren_addr_out = self.output("ren_addr_out", self.addr_width,
-        #                                      size=self.banks,
-        #                                      explicit_array=True,
-        #                                      packed=True)
-        #     self.wire(self._wen_addr_out, self._wr_addr)
-        #     self.wire(self._ren_addr_out, self._rd_addr)
-        # else:
         self._addr_out = self.output("addr_out", self.mem_addr_width,
                                      size=self.banks,
                                      explicit_array=True,
                                      packed=True)
-        #     # If sharing the addresses, send read addr with priority
-        #     for i in range(self.banks):
-        #         self.wire(self._addr_out[i],
-        #                   kts.ternary(self._wen_to_strg[i], self._wr_addr, self._rd_addr))
 
         self._rd_bank = self.var("rd_bank", max(1, clog2(self.banks)))
         self.set_read_bank()
@@ -174,6 +152,7 @@ class StrgRAM(Generator):
             IDLE = self.rmw_fsm.add_state("IDLE")
             READ = self.rmw_fsm.add_state("READ")
             MODIFY = self.rmw_fsm.add_state("MODIFY")
+            DEFAULT = self.rmw_fsm.add_state("default")
             self.rmw_fsm.output(self._ready)
             self.rmw_fsm.output(self._valid_out)
             self.rmw_fsm.output(self._data_out)
@@ -211,6 +190,14 @@ class StrgRAM(Generator):
             MODIFY.output(self._data_out, 0)
             MODIFY.output(self._write_gate, 1)
             MODIFY.output(self._read_gate, 0)
+
+            # In DEFAULT we always stick in DEFAULT because it's over...
+            DEFAULT.next(DEFAULT, const(1, 1))
+            DEFAULT.output(self._ready, 0)
+            DEFAULT.output(self._valid_out, 0)
+            DEFAULT.output(self._data_out, 0)
+            DEFAULT.output(self._write_gate, 0)
+            DEFAULT.output(self._read_gate, 0)
 
             self.rmw_fsm.set_start_state(IDLE)
 
