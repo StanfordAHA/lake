@@ -9,7 +9,7 @@ from lake.passes.passes import lift_config_reg
 from lake.utils.util import safe_wire
 
 
-# if write, need to check if that happens for read/write ports
+# TO DO if write, need to check if that happens for read/write ports
 class TopLakeHW(Generator):
     def __init__(self,
                  word_width,
@@ -255,7 +255,7 @@ class TopLakeHW(Generator):
                         print("TO ", edge["to_signal"][j])
                         print("FROM ", edge["from_signal"][i])
                         if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
-                        # needed this to get rid of latch, but it is incorrect?
+                        # TO DO needed this to get rid of latch, but it is incorrect?
                         if_mux_sel.else_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
                     comb_mux_from.add_stmt(if_mux_sel)
 
