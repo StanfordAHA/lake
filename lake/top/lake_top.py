@@ -156,23 +156,6 @@ class LakeTop(Generator):
                                                 config_width=16)
             self._stencil_valid_int = self.var("stencil_valid_internal", 1)
 
-            # Define config regs to count number of stencil_valids...
-            # self._use_stencil_valid = add_config_reg(self, "use_stencil_valid", "use stencil valid...", 1)
-            # self._num_stencil_valids = add_config_reg(self, "num_stencil_valids", "number of stencil valids until done...", 16)
-            # self._stcl_vs = add_counter(self, "num_stcl_valid", 16, increment=self._use_stencil_valid & self._stencil_valid_int)
-
-            # self._stencil_valid_gate = self.var("stencil_valid_gate", 1)
-
-            # @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            # def stcl_valid_ff():
-            #     if ~self._rst_n:
-            #         self._stencil_valid_gate = 1
-            #     # If the stencil valid is high and the count is correct, turn it to 0, we are done
-            #     elif self._stencil_valid_int & (self._stcl_vs == self._num_stencil_valids) & self._use_stencil_valid:
-            #         self._stencil_valid_gate = 0
-
-            # self.add_code(stcl_valid_ff)
-
             # Loop Iterators for stencil valid...
             self.add_child(f"loops_stencil_valid",
                            self._loops_stencil_valid,
@@ -932,15 +915,7 @@ class LakeTop(Generator):
                     config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
 
         if "stencil_valid" in root_node:
-            # We know we are using it now...
-            # config.append((f"use_stencil_valid", 1))
-            # if "num_valids" in root_node["stencil_valid"]:
-            #     num_valids = int(root_node["stencil_valid"]["num_valids"])
-            # else:
-            #     num_valids = 65535
-            # config.append((f"num_stencil_valids", num_valids - 1))
             stencil_valid = map_controller(extract_controller_json(root_node["stencil_valid"]), "stencil_valid")
-
             # Check actual stencil valid property of hardware before programming
             if self.stencil_valid:
                 config.append((f"loops_stencil_valid_dimensionality", stencil_valid.dim))
@@ -1029,9 +1004,6 @@ class LakeTop(Generator):
             cfg_path = config_path + '/' + 'stencil_valid.csv'
             # Check if the stencil valid file exists...if it doesn't we just won't program it
             if os.path.exists(cfg_path):
-                # config.append((f"use_stencil_valid", 1))
-                # num_valids = 65535
-                # config.append((f"num_stencil_valids", num_valids - 1))
                 stcl_valid = map_controller(extract_controller(cfg_path), "stencil_valid")
                 config.append((f"loops_stencil_valid_dimensionality", stcl_valid.dim))
                 config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stcl_valid.cyc_strt))
