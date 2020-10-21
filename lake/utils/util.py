@@ -234,7 +234,8 @@ def safe_wire(gen, w_to, w_from):
     '''
     # Only works in one dimension...
     if w_to.width != w_from.width:
-        print(f"SAFEWIRE: WIDTH MISMATCH: {w_to.name} width {w_to.width} <-> {w_from.name} width {w_from.width}")
+        if lake_util_verbose_trim:
+            print(f"SAFEWIRE: WIDTH MISMATCH: {w_to.name} width {w_to.width} <-> {w_from.name} width {w_from.width}")
         # w1 contains smaller width...
         if w_to.width < w_from.width:
             gen.wire(w_to, w_from[w_to.width - 1, 0])
