@@ -134,6 +134,7 @@ class AggFormal(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            mux_sel=forloop_ctr.ports.mux_sel_out,
+                           finished=forloop_ctr.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self._agg_write[i])
 
@@ -212,6 +213,7 @@ class AggFormal(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        mux_sel=output_loops.ports.mux_sel_out,
+                       finished=output_loops.ports.restart,
                        valid_output=self._write)
 
         for idx in range(self.interconnect_input_ports):

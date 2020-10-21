@@ -153,6 +153,7 @@ class Pond(Generator):
                            clk=self._gclk,
                            rst_n=self._rst_n,
                            mux_sel=RF_WRITE_ITER.ports.mux_sel_out,
+                           finished=RF_WRITE_ITER.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self._write[wr_port])
 
@@ -186,6 +187,7 @@ class Pond(Generator):
                            clk=self._gclk,
                            rst_n=self._rst_n,
                            mux_sel=RF_READ_ITER.ports.mux_sel_out,
+                           finished=RF_READ_ITER.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self._read[rd_port])
 
