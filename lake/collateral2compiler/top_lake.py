@@ -68,6 +68,7 @@ class TopLake():
         # producer and consumer port widths must match
         assert self.memories[edge_params['from_signal']][from_key] == self.memories[edge_params['to_signal']][to_key]
 
+        get_full_edge_params(edge_params)
         self.edges.append(edge_params)
 
     # after all edges are added
@@ -99,7 +100,8 @@ class TopLake():
                     if e["to_signal"] == mem:
                         x = copy.deepcopy(e)
                         x["from_signal"] = memories_from[mem]
-                        self.hardware_edges.append(x) if x not in self.hardware_edges else self.hardware_edges
+                        if x not in self.hardware_edges:
+                            self.hardware_edges.append(x)
 
         for mem in memories_to:
             if len(memories_to[mem]) > 1:
@@ -107,7 +109,8 @@ class TopLake():
                     if e["from_signal"] == mem:
                         x = copy.deepcopy(e)
                         x["to_signal"] = memories_to[mem]
-                        self.hardware_edges.append(x) if x not in self.hardware_edges else self.hardware_edges
+                        if x not in self.hardware_edges:
+                            self.hardware_edges.append(x)
 
         for h in self.hardware_edges:
             for sig in ("to_signal", "from_signal"):
