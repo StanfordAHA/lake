@@ -1,3 +1,4 @@
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 import os
 from kratos import *
 from lake.modules.passthru import *
@@ -13,7 +14,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
-from lake.utils.util import trim_config_list, add_counter, add_config_reg
+from lake.utils.util import trim_config_list, extract_formal_annotation
 from lake.utils.parse_clkwork_config import map_controller, extract_controller
 from lake.utils.parse_clkwork_config import extract_controller_json
 from lake.modules.for_loop import ForLoop
@@ -89,7 +90,9 @@ class LakeTop(Generator):
 
         # CLK and RST
         self._clk = self.clock("clk")
+        self._clk.add_attribute(FormalAttr(self._clk.name, FormalSignalConstraint.CLK))
         self._rst_n = self.reset("rst_n")
+        self._rst_n.add_attribute(FormalAttr(self._rst_n.name, FormalSignalConstraint.RSTN))
 
         # Chaining config regs
         self._chain_data_in = self.input("chain_data_in",
@@ -98,6 +101,7 @@ class LakeTop(Generator):
                                          packed=True,
                                          explicit_array=True)
         self._chain_data_in.add_attribute(ControlSignalAttr(False))
+        self._chain_data_in.add_attribute(FormalAttr(self._chain_data_in.name, FormalSignalConstraint.SET0))
 
         # MAIN Inputs
         self._data_in = self.input("data_in",
@@ -106,6 +110,7 @@ class LakeTop(Generator):
                                    packed=True,
                                    explicit_array=True)
         self._data_in.add_attribute(ControlSignalAttr(False))
+        self._data_in.add_attribute(FormalAttr(self._data_in.name, FormalSignalConstraint.SEQUENCE))
 
         if self.rw_same_cycle:
             self._wr_addr_in = self.input("waddr",
@@ -114,12 +119,14 @@ class LakeTop(Generator):
                                           packed=True,
                                           explicit_array=True)
             self._wr_addr_in.add_attribute(ControlSignalAttr(False))
+            self._wr_addr_in.add_attribute(FormalAttr(self._wr_addr_in.name, FormalSignalConstraint.SET0))
             self._rd_addr_in = self.input("raddr",
                                           self.data_width,
                                           size=self.interconnect_input_ports,
                                           packed=True,
                                           explicit_array=True)
             self._rd_addr_in.add_attribute(ControlSignalAttr(False))
+            self._rd_addr_in.add_attribute(FormalAttr(self._rd_addr_in.name, FormalSignalConstraint.SET0))
         else:
             self._addr_in = self.input("addr_in",
                                        self.data_width,
@@ -127,16 +134,20 @@ class LakeTop(Generator):
                                        packed=True,
                                        explicit_array=True)
             self._addr_in.add_attribute(ControlSignalAttr(False))
+            self._addr_in.add_attribute(FormalAttr(self._addr_in.name, FormalSignalConstraint.SET0))
 
         self._wen = self.input("wen_in", self.interconnect_input_ports)
         self._wen.add_attribute(ControlSignalAttr(True))
+        self._wen.add_attribute(FormalAttr(self._wen.name, FormalSignalConstraint.SET0))
 
         self._ren = self.input("ren_in", self.interconnect_output_ports)
         self._ren.add_attribute(ControlSignalAttr(True))
+        self._ren.add_attribute(FormalAttr(self._ren.name, FormalSignalConstraint.SET0))
 
         self._config_data_in = self.input("config_data_in",
                                           self.config_data_width)
         self._config_data_in.add_attribute(ControlSignalAttr(False))
+        self._config_data_in.add_attribute(FormalAttr(self._ren.name, FormalSignalConstraint.SET0))
 
         self._config_data_in_shrt = self.var("config_data_in_shrt",
                                              self.data_width)
@@ -212,6 +223,7 @@ class LakeTop(Generator):
                                      packed=True,
                                      explicit_array=True)
         self._data_out.add_attribute(ControlSignalAttr(False))
+        self._data_out.add_attribute(FormalAttr(self._data_out.name, FormalSignalConstraint.SEQUENCE))
 
         # self._valid_out = self.output("valid_out",
         #                               self.interconnect_output_ports)
@@ -232,10 +244,12 @@ class LakeTop(Generator):
         # Add tile enable!
         self._tile_en = self.input("tile_en", 1)
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        self._tile_en.add_attribute(FormalAttr(self._tile_en.name, FormalSignalConstraint.SET1))
         # either normal or fifo mode rn...
         self.num_modes = 3
         self._mode = self.input("mode", max(1, clog2(self.num_modes)))
         self._mode.add_attribute(ConfigRegAttr("MODE!"))
+        self._mode.add_attribute(FormalAttr(self._mode.name, FormalSignalConstraint.SET0))
 
         # Currenlt mode = 0 is UB, mode = 1 is FIFO
         gclk = self.var("gclk", 1)
@@ -810,10 +824,10 @@ class LakeTop(Generator):
         if add_clk_enable:
             # self.clock_en("clk_en")
             kts.passes.auto_insert_clock_enable(self.internal_generator)
-            # Add input attr-
+            # Add input attr and formal attr...
             clk_en_port = self.internal_generator.get_port("clk_en")
             clk_en_port.add_attribute(ControlSignalAttr(False))
-
+            clk_en_port.add_attribute(FormalAttr(clk_en_port.name, FormalSignalConstraint.SET1))
         if add_flush:
             self.add_attribute("sync-reset=flush")
             kts.passes.auto_insert_sync_reset(self.internal_generator)
@@ -823,7 +837,7 @@ class LakeTop(Generator):
         # config regs
         lift_config_reg(self.internal_generator)
 
-        # extract_formal_annotation(self.internal_generator, "test.txt")
+        extract_formal_annotation(self, "lake_top_annotation.txt")
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def cycle_count_inc(self):
