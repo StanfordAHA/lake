@@ -63,7 +63,7 @@ tb_params = {"name": "tb",
              "capacity": 8,
              "word_width": 16,
              "read_port_width": 1,
-             "write_port_width": 1}
+             "write_port_width": 4}
 
 tile.add_memory(tb_params, [tb_write_port], [tb_read_port])
 
@@ -74,7 +74,7 @@ tb1_params = {"name": "tb1",
               "capacity": 8,
               "word_width": 16,
               "read_port_width": 1,
-              "write_port_width": 1}
+              "write_port_width": 4}
 
 tile.add_memory(tb1_params, [tb1_write_port], [tb1_read_port])
 
