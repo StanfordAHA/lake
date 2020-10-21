@@ -73,7 +73,7 @@
             "capacity": 16,
             "word_width": 16,
             "read_port_width": 1,
-            "write_port_width": 1,
+            "write_port_width": 4,
             "num_write_ports": 2,
             "num_read_ports": 2,
             "num_read_write_ports": 0,

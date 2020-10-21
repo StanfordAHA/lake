@@ -252,8 +252,6 @@ class TopLakeHW(Generator):
             # actually written)
             else:
                 for j in range(len(edge["to_signal"])):
-                    # print("TO DATA IN ", self.memories[edge["to_signal"][j]])
-                    # print(self.memories[edge["from_signal"][0]])
                     safe_wire(self, self.mem_insts[edge["to_signal"][j]].ports.data_in, self.mem_insts[edge["from_signal"][0]].ports.data_out)
 
             # create output addressor
@@ -277,7 +275,7 @@ class TopLakeHW(Generator):
             # calculate necessary delay between from_signal to to_signal
             # TO DO this may need to be more sophisticated and based on II as well
 
-            if "read_info" in self.memories[edge["from_signal"][0]]:
+            if len(self.memories[edge["from_signal"][0]]["read_info"]) > 0:
                 self.delay = self.memories[edge["from_signal"][0]]["read_info"][0]["latency"]
             else:
                 self.delay = self.memories[edge["from_signal"][0]]["read_write_info"][0]["latency"]
@@ -305,7 +303,9 @@ class TopLakeHW(Generator):
                         if_mux_sel_to.then_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.valid))
                     else:
                         if_mux_sel_to.then_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.delayed_writes[self.delay - 1]))
-                    if_mux_sel_to.else_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(0))
+                    self.low = self.var("low", 1)
+                    self.wire(self.low, 0)
+                    if_mux_sel_to.else_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.low))
                     comb_mux_to.add_stmt(if_mux_sel_to)
 
             # no muxing to, just write to the to memory

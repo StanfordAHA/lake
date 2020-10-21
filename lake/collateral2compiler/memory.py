@@ -84,6 +84,10 @@ class Memory(Generator):
         self.og_num_read_ports = mem_params["num_read_ports"]
         self.og_num_read_write_ports = mem_params["num_read_write_ports"]
 
+        # either read_width or write_width will be 1, because
+        # we can always reduce down to this case
+        # if we have read_write_ports, we assume read_width = write_width
+
         if self.num_read_write_ports == 0:
             self.write_width = mem_params["write_port_width"]  # max(write_port_width, read_write_port_width)
             self.read_width = mem_params["read_port_width"]  # max(read_port_width, read_write_port_width)
