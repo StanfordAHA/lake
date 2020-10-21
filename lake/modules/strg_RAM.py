@@ -152,7 +152,7 @@ class StrgRAM(Generator):
             IDLE = self.rmw_fsm.add_state("IDLE")
             READ = self.rmw_fsm.add_state("READ")
             MODIFY = self.rmw_fsm.add_state("MODIFY")
-            DEFAULT = self.rmw_fsm.add_state("default")
+            DEFAULT = self.rmw_fsm.add_state("_DEFAULT")
             self.rmw_fsm.output(self._ready)
             self.rmw_fsm.output(self._valid_out)
             self.rmw_fsm.output(self._data_out)
