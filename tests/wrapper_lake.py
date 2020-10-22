@@ -4,7 +4,7 @@ import tempfile
 
 from lake.utils.util import generate_lake_config_wrapper
 from lake.utils.util import check_env
-from lake.helper_test import base_lake_tester
+from lake.utils.test_infra import base_lake_tester
 
 
 def get_lake_wrapper(config_path,
