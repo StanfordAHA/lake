@@ -1,6 +1,7 @@
 import argparse
 import sys
 import tempfile
+import pytest
 
 from lake.utils.util import generate_lake_config_wrapper
 from lake.utils.util import check_env
@@ -44,6 +45,20 @@ def wrapper(config_path_input, stencil_valid, name):
 def error(usage):
     print(usage)
     sys.exit(2)
+
+
+# adding this test to ensure wrapper generation is not broken
+
+# have to skip this test for now because LAKE_CONTROLLERS will
+# be changing very soon in the future compared to the current
+# path as the compiler team changes directories (and eliminates
+# complicated csv file names)
+@pytest.mark.skip
+@pytest.mark.parametrize("stencil_valid", [True, False])
+@pytest.mark.parametrize("name", ["LakeWrapper", "LakeConv33"])
+def test_wrapper(stencil_valid,
+                 name):
+    wrapper(conv_3_3_wrapper_path, stencil_valid, name)
 
 
 if __name__ == "__main__":
