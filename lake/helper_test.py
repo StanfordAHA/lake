@@ -95,9 +95,9 @@ def conv_3_3_args():
     lc, ls = check_env()
     config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
-    in_file_name = "input_",
+    in_file_name = "input_"
     out_file_name = "output_2_"
-    return (config_path, stream_path, in_file_name, out_file_name)
+    return config_path, stream_path, in_file_name, out_file_name
 
 
 # not all of these tests/folders still exist,
