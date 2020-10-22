@@ -1,7 +1,6 @@
 from lake.top.lake_top import LakeTop
 import kratos as kts
 import fault
-import pytest
 import tempfile
 import os
 
@@ -105,7 +104,6 @@ def test_conv_3_3():
 
 # not all of these tests/folders still exist,
 # update in_file_name and out_file_name args if needed
-@pytest.mark.skip
 def test_gaussian():
     lc, ls = check_env()
     config_path = lc + "gaussian/hw_input_stencil_op_hcompute_hw_input_stencil_2_to_hw_input_stencil_op_hcompute_blur_unnormalized_stencil_1_11_ubuf"
@@ -116,7 +114,6 @@ def test_gaussian():
                   out_file_name="op_hcompute_blur_unnormalized_stencil_1")
 
 
-@pytest.mark.skip
 def test_cascade_1():
     lc, ls = check_env()
     config_path = lc + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"
@@ -126,7 +123,6 @@ def test_cascade_1():
                   out_file_name="conv")
 
 
-@pytest.mark.skip
 def test_cascade_2():
     lc, ls = check_env()
     config_path = lc + "cascade/buf2_conv_12_to_buf2_output_3_ubuf"
@@ -136,7 +132,6 @@ def test_cascade_2():
                   in_file_name="conv")
 
 
-@pytest.mark.skip
 def test_harris_1():
     lc, ls = check_env()
     config_path = lc + "harris/padded16_global_wrapper_stencil_op_hcompute_padded16_global_wrapper_stencil_0_to_padded16_global_wrapper_stencil_op_hcompute_grad_x_stencil_49_ubuf"
@@ -147,7 +142,6 @@ def test_harris_1():
                   out_file_name="op_hcompute_grad_x_stencil")
 
 
-@pytest.mark.skip
 def test_harris_2():
     lc, ls = check_env()
     config_path = lc + "harris/cim_stencil_op_hcompute_cim_stencil_55_to_cim_stencil_op_hcompute_cim_output_stencil_63_ubuf"
@@ -158,7 +152,6 @@ def test_harris_2():
                   out_file_name="op_hcompute_cim_output_stencil")
 
 
-@pytest.mark.skip
 def test_harris_3():
     lc, ls = check_env()
     config_path = lc + "harris/lxx_stencil_op_hcompute_lxx_stencil_7_to_lxx_stencil_op_hcompute_lgxx_stencil_1_32_ubuf"
@@ -169,7 +162,6 @@ def test_harris_3():
                   out_file_name="op_hcompute_lgxx_stencil_1")
 
 
-@pytest.mark.skip
 def test_harris_4():
     lc, ls = check_env()
     config_path = lc + "harris/lxy_stencil_op_hcompute_lxy_stencil_4_to_lxy_stencil_op_hcompute_lgxy_stencil_1_22_ubuf"
@@ -180,7 +172,6 @@ def test_harris_4():
                   out_file_name="op_hcompute_lgxy_stencil_1")
 
 
-@pytest.mark.skip
 def test_harris_5():
     lc, ls = check_env()
     config_path = lc + "harris/lyy_stencil_op_hcompute_lyy_stencil_2_to_lyy_stencil_op_hcompute_lgyy_stencil_1_12_ubuf"
