@@ -2,6 +2,7 @@ from lake.helper_test import conv_3_3_args, gen_test_lake
 import pytest
 
 
+# add more tests with this function by adding args
 @pytest.mark.parametrize("args", [conv_3_3_args()])
 def test_lake(args):
     gen_test_lake(config_path=args[0],
