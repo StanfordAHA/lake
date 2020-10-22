@@ -118,6 +118,7 @@ class TBFormal(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        mux_sel=fl_ctr_sram_rd.ports.mux_sel_out,
+                       finished=fl_ctr_sram_rd.ports.restart,
                        valid_output=self._read)
 
         for i in range(self.interconnect_output_ports):
@@ -180,6 +181,7 @@ class TBFormal(Generator):
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
+                           finished=fl_ctr_tb_rd.ports.restart,
                            valid_output=self._tb_read[i])
 
         if self.interconnect_output_ports > 1:
