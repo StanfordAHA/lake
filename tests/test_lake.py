@@ -1,4 +1,4 @@
-from lake.helper_test import conv_3_3_args, gen_test_lake
+from lake.utils.test_infra import conv_3_3_args, gen_test_lake
 import pytest
 
 
