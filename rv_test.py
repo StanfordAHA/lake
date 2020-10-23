@@ -12,19 +12,25 @@ def main():
 
     # input accessor valid (valid to tile)
     input_ac = 1
+    # keep track of input valids
     input_ac_count = 0
 
+    # tb has startup + steady state
     tb_no_ss = True
     tb_no_ss_cnt = 0
 
+    # keep track of valid data in SRAM
     valid_sram_cnt = 0
 
+    # simplify?
+    # keep track of valid data in tb
     valid_tb = [False, False]
     valid_tb_cycles = [0, 0]
     tb_index = 1
 
     for i in range(cycles):
 
+        # ready to tb
         if i < steady_state:
             ready["tb"] = 0
         else:
@@ -47,7 +53,9 @@ def main():
                     tb_no_ss = False
                 elif valid["tb"] == 1:
                     tb_no_ss_cnt += 1
-            else:
+
+            # get valid to valid out
+            if not tb_no_ss:
                 if valid_tb[tb_index] and valid_tb_cycles[tb_index] < fetch_width:
                     valid_tb_cycles[tb_index] += 1
                     valid["valid_out"] = 1 
@@ -60,21 +68,27 @@ def main():
                     else:
                         valid["valid_out"] = 0
             
+        # get valid to tb
+        # doesn't account for reuse of data in SRAM
+        # once written to TB, SRAM data is regarded as invalid
         if valid["sram"] == 1:
             valid_sram_cnt += 1
 
-        # doesn't account for reuse of data in SRAM
-        # once written to TB, SRAM data is regarded as invalid
         if valid_sram_cnt > 0:
             valid["tb"] = 1
             if valid["tb"] and ready["tb"]:
                 valid_sram_cnt -= 1
+        else:
+            valid["tb"] = 0
 
-        if input_ac_count == fetch_width:
+        # get valid to agg
+        valid["agg"] = input_ac
+
+        # get valid to SRAM
+        if input_ac_count == fetch_width - 1:
             valid["sram"] = 1
             input_ac_count = 0
         else:
-            valid["agg"] = input_ac
             valid["sram"] = 0
             if valid["agg"]:
                 input_ac_count += 1
