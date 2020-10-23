@@ -22,33 +22,26 @@ def main():
         if i < steady_state:
             ready["tb"] = 0
         else:
-            if tb_no_ss:
+            if not valid_tb[0] or not valid_tb[1]:
                 ready["tb"] = 1
+            else:
+                ready["tb"] = 0
 
+            if valid["tb"] and ready["tb"]:
+                if not valid_tb[0]:
+                    valid_tb[0] = True
+                elif not valid_tb[1]:
+                    valid_tb[1] = True
+                elif tb_no_ss:
+                    print("ERROR: at least one tb buffer should not be valid yet...")
+                    assert False
+
+            if tb_no_ss:
                 if tb_no_ss_cnt == 2:
                     tb_no_ss = False
                 elif valid["tb"] == 1:
                     tb_no_ss_cnt += 1
-                    if not valid_tb[0]:
-                        valid_tb[0] = True
-                    elif not valid_tb[1]:
-                        valid_tb[1] = True
-                    else:
-                        print("ERROR: at least one tb buffer should not be valid yet...")
-                        assert False
             else:
-                if not valid_tb[0] or not valid_tb[1]:
-                    ready["tb"] = 1
-                else:
-                    ready["tb"] = 0
-
-                if valid["tb"] and ready["tb"]:
-                    if not valid_tb[0]:
-                        valid_tb[0] = True
-                    elif not valid_tb[1]:
-                        valid_tb[1] = True
-
-#                 print(tb_index, " ", valid_tb[tb_index], " ", valid_tb_cycles)
                 if valid_tb[tb_index] and valid_tb_cycles[tb_index] < 4:
                     valid_tb_cycles[tb_index] += 1
                     valid["valid_out"] = 1 
