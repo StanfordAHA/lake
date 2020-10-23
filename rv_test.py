@@ -2,16 +2,18 @@ def main():
     valid = {"agg": 1, "sram": 0, "tb": 0, "valid_out": 0}
     ready = {"agg": 1, "sram": 1, "tb": 0}
 
-    # parameters
-    fetch_width = 4
-    # double buffer
-
-    tb_height = 2
+    # parameters from compiler team
     cycles = 50 
     steady_state = 16
 
+    # hardware parameters
+    fetch_width = 4
+    # double buffer
+    tb_height = 2
+
     # input accessor valid (valid to tile)
     input_ac = 1
+
     # keep track of input valids
     input_ac_count = 0
 
