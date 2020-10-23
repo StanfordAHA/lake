@@ -69,15 +69,18 @@ def main():
                         valid["valid_out"] = 0
             
         # get valid to tb
-        # doesn't account for reuse of data in SRAM
-        # once written to TB, SRAM data is regarded as invalid
         if valid["sram"] == 1:
             valid_sram_cnt += 1
 
         if valid_sram_cnt > 0:
-            valid["tb"] = 1
-            if valid["tb"] and ready["tb"]:
-                valid_sram_cnt -= 1
+            # not writing to SRAM, so can read from SRAM
+            if not (valid["sram"] and ready["sram"]):
+                valid["tb"] = 1
+                # only if data is written does tb count go down
+                # doesn't account for reuse of data in SRAM
+                # once written to TB, SRAM data is regarded as invalid
+                if valid["tb"] and ready["tb"]:
+                    valid_sram_cnt -= 1
         else:
             valid["tb"] = 0
 
