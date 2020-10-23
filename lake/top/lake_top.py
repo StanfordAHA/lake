@@ -965,7 +965,7 @@ class LakeTop(Generator):
         input_ports = 1
         output_ports = 1
 
-        config = None
+        config = []
 
         controllers = ["in2agg_0", "agg2sram", "sram2tb", "tb2out_0", "tb2out_1"]
         controller_objs = [None] * len(controllers)
@@ -1021,9 +1021,6 @@ class LakeTop(Generator):
                 ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
                 ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim)
             ]
-
-        if config is None:
-            config = []
 
         # control signals
         config.append(("flush_reg_sel", 0))
