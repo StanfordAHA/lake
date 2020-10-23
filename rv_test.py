@@ -1,7 +1,13 @@
 def main():
     valid = {"agg": 1, "sram": 0, "tb": 0, "valid_out": 0}
     ready = {"agg": 1, "sram": 1, "tb": 0}
-    cycles =50 
+
+    # parameters
+    fetch_width = 4
+    # double buffer
+
+    tb_height = 2
+    cycles = 50 
     steady_state = 16
 
     # input accessor valid (valid to tile)
@@ -37,15 +43,15 @@ def main():
                     assert False
 
             if tb_no_ss:
-                if tb_no_ss_cnt == 2:
+                if tb_no_ss_cnt == tb_height:
                     tb_no_ss = False
                 elif valid["tb"] == 1:
                     tb_no_ss_cnt += 1
             else:
-                if valid_tb[tb_index] and valid_tb_cycles[tb_index] < 4:
+                if valid_tb[tb_index] and valid_tb_cycles[tb_index] < fetch_width:
                     valid_tb_cycles[tb_index] += 1
                     valid["valid_out"] = 1 
-                elif valid_tb[tb_index] and valid_tb_cycles[tb_index] == 4:
+                elif valid_tb[tb_index] and valid_tb_cycles[tb_index] == fetch_width:
                     valid_tb_cycles[tb_index] = 0
                     valid_tb[tb_index] = False
                     tb_index = 1 - tb_index
@@ -64,7 +70,7 @@ def main():
             if valid["tb"] and ready["tb"]:
                 valid_sram_cnt -= 1
 
-        if input_ac_count == 4:
+        if input_ac_count == fetch_width:
             valid["sram"] = 1
             input_ac_count = 0
         else:
