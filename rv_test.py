@@ -40,7 +40,9 @@ def main():
                 ready["tb"] = 1
             else:
                 ready["tb"] = 0
-
+# write buffer is ready whenever there is space in write buffer
+# valid if data in it
+# valid if write buffer is full
             if valid["tb"] and ready["tb"]:
                 if not valid_tb[0]:
                     valid_tb[0] = True
@@ -74,6 +76,7 @@ def main():
         if valid["sram"] == 1:
             valid_sram_cnt += 1
 
+        # what is the update chunk size
         if valid_sram_cnt > 0:
             # not writing to SRAM, so can read from SRAM
             if not (valid["sram"] and ready["sram"]):
