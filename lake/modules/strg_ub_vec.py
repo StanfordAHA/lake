@@ -205,6 +205,7 @@ class StrgUBVec(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            mux_sel=forloop_ctr.ports.mux_sel_out,
+                           finished=forloop_ctr.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self._agg_write[i])
 
@@ -268,6 +269,7 @@ class StrgUBVec(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
+                       finished=fl_ctr_sram_wr.ports.restart,
                        valid_output=self._write)
 
         # -------------------------------- Delineate new group -------------------------------
@@ -291,6 +293,7 @@ class StrgUBVec(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        mux_sel=self.loops_sram2tb.ports.mux_sel_out,
+                       finished=self.loops_sram2tb.ports.restart,
                        valid_output=self._read)
 
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
@@ -365,6 +368,7 @@ class StrgUBVec(Generator):
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
+                           finished=fl_ctr_tb_rd.ports.restart,
                            valid_output=self._tb_read[i])
 
         if self.interconnect_output_ports > 1:

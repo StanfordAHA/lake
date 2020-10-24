@@ -34,6 +34,22 @@ class SchedGen(Generator):
         self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
         self._addr_out = self.var("addr_out", self.config_width)
 
+        # Receive signal on last iteration of looping structure and
+        # gate the output...
+        self._finished = self.input("finished", 1)
+        self._valid_gate_inv = self.var("valid_gate_inv", 1)
+        self._valid_gate = self.var("valid_gate", 1)
+        self.wire(self._valid_gate, ~self._valid_gate_inv)
+
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def valid_gate_inv_ff():
+            if ~self._rst_n:
+                self._valid_gate_inv = 0
+            # If we are finishing the looping structure, turn this off to implement one-shot
+            elif self._finished:
+                self._valid_gate_inv = 1
+        self.add_code(valid_gate_inv_ff)
+
         # Compare based on minimum of addr + global cycle...
         self.c_a_cmp = min(self._cycle_count.width, self._addr_out.width)
 
@@ -55,10 +71,7 @@ class SchedGen(Generator):
 
     @always_comb
     def set_valid_out(self):
-        if self._cycle_count == self._addr_out:
-            self._valid_out = 1
-        else:
-            self._valid_out = 0
+        self._valid_out = (self._cycle_count == self._addr_out) & self._valid_gate
 
     @always_comb
     def set_valid_output(self):
