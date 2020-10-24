@@ -105,7 +105,8 @@ def set_configs_sv(generator, filepath, configs_dict):
         port = attrs[0].get_port_name()
         if ("dimensionality" in port) or ("starting_addr" in port):
             remain.append(port)
-        else:
+        # check whether this is a config reg
+        elif len(curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))) != 0:
             for i in range(6):
                 remain.append(port + f"_{i}")
 
