@@ -16,13 +16,16 @@ def main():
 
     # keep track of input valids
     input_ac_count = 0
-
+    min_agg_update_size = 4
+    max_agg_update_size = 4
     # tb has startup + steady state
     tb_no_ss = True
     tb_no_ss_cnt = 0
 
     # keep track of valid data in SRAM
     valid_sram_cnt = 0
+    min_sram_update_size = 1
+    max_sram_update_size = 1024
 
     # simplify?
     # keep track of valid data in tb
@@ -73,33 +76,33 @@ def main():
                         valid["valid_out"] = 0
             
         # get valid to tb
+
+        if valid_sram_cnt == max_sram_update_size:
+            valid_sram_cnt = 0
         if valid["sram"] == 1:
             valid_sram_cnt += 1
 
         # what is the update chunk size
-        if valid_sram_cnt > 0:
+        if valid_sram_cnt >= min_sram_update_size and valid_sram_cnt <= max_sram_update_size:
             # not writing to SRAM, so can read from SRAM
             if not (valid["sram"] and ready["sram"]):
                 valid["tb"] = 1
-                # only if data is written does tb count go down
-                # doesn't account for reuse of data in SRAM
-                # once written to TB, SRAM data is regarded as invalid
-                if valid["tb"] and ready["tb"]:
-                    valid_sram_cnt -= 1
         else:
             valid["tb"] = 0
 
         # get valid to agg
         valid["agg"] = input_ac
 
-        # get valid to SRAM
-        if input_ac_count == fetch_width - 1:
-            valid["sram"] = 1
+        if input_ac_count == max_agg_update_size:
             input_ac_count = 0
+        if valid["agg"] == 1:
+            input_ac_count += 1
+
+        # get valid to SRAM
+        if input_ac_count >= min_agg_update_size and input_ac_count <= max_agg_update_size:
+            valid["sram"] = 1
         else:
             valid["sram"] = 0
-            if valid["agg"]:
-                input_ac_count += 1
 
         print("CYCLE: ", i)
         print("VALID: ", valid)
