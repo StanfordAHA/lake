@@ -14,6 +14,8 @@ def main():
     # input accessor valid (valid to tile)
     input_ac = 1
 
+    # min_update_size = max(1, read_port_width / write_port_width)
+    # max_update_size is in units of write_port_width
     # keep track of input valids
     input_ac_count = 0
     min_agg_update_size = 4
@@ -27,6 +29,9 @@ def main():
     min_sram_update_size = 1
     max_sram_update_size = 1024
 
+    valid_tb_cnt = 0
+    min_tb_update_size = 1
+    max_tb_update_size = 2*8
     # simplify?
     # keep track of valid data in tb
     valid_tb = [False, False]
@@ -74,15 +79,24 @@ def main():
                         valid["valid_out"] = 1
                     else:
                         valid["valid_out"] = 0
-            
-        # get valid to tb
+        
+        if valid_tb_cnt == max_tb_update_size:
+            valid_tb_cnt = 0
+        if valid["tb"] == 1:
+            valid_tb_cnt += 1
 
+        if i > steady_state and \
+            valid_tb_cnt >= min_tb_update_size and valid_tb_cnt <= max_tb_update_size:
+                valid["valid_out2"] = 1
+        else:
+            valid["valid_out2"] = 0
+
+        # get valid to tb
         if valid_sram_cnt == max_sram_update_size:
             valid_sram_cnt = 0
         if valid["sram"] == 1:
             valid_sram_cnt += 1
 
-        # what is the update chunk size
         if valid_sram_cnt >= min_sram_update_size and valid_sram_cnt <= max_sram_update_size:
             # not writing to SRAM, so can read from SRAM
             if not (valid["sram"] and ready["sram"]):
@@ -105,6 +119,9 @@ def main():
             valid["sram"] = 0
 
         print("CYCLE: ", i)
+        if "valid_out2" in valid:
+            valid["valid_out"] = valid["valid_out2"]
+            del valid["valid_out2"]
         print("VALID: ", valid)
         print("READY: ", ready)
         print("WRITE: ", [valid[key] & ready[key] for key in ready])
