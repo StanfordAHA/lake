@@ -14,6 +14,10 @@ def main():
     # input accessor valid (valid to tile)
     input_ac = 1
 
+    sram_capacity = 512
+    tb_capacity = 8
+    agg_capacity = 4
+
     # min_update_size = max(1, read_port_width / write_port_width)
     # max_update_size is in units of write_port_width
     # keep track of input valids
@@ -70,32 +74,39 @@ def main():
             if not tb_no_ss:
                 if valid_tb[tb_index] and valid_tb_cycles[tb_index] < fetch_width:
                     valid_tb_cycles[tb_index] += 1
-                    valid["valid_out"] = 1 
                 elif valid_tb[tb_index] and valid_tb_cycles[tb_index] == fetch_width:
                     valid_tb_cycles[tb_index] = 0
                     valid_tb[tb_index] = False
                     tb_index = 1 - tb_index
-                    if valid_tb[tb_index]:
-                        valid["valid_out"] = 1
-                    else:
-                        valid["valid_out"] = 0
         
         if valid_tb_cnt == max_tb_update_size:
             valid_tb_cnt = 0
         if valid["tb"] == 1:
             valid_tb_cnt += 1
 
+        if i < steady_state:
+            ready["tb"] = 0
+        elif valid_tb_cnt <= tb_capacity:
+            ready["tb"] = 1
+        else:
+            ready["tb"] = 0
+
         if i > steady_state and \
             valid_tb_cnt >= min_tb_update_size and valid_tb_cnt <= max_tb_update_size:
-                valid["valid_out2"] = 1
+                valid["valid_out"] = 1
         else:
-            valid["valid_out2"] = 0
+            valid["valid_out"] = 0
 
         # get valid to tb
         if valid_sram_cnt == max_sram_update_size:
             valid_sram_cnt = 0
         if valid["sram"] == 1:
             valid_sram_cnt += 1
+        
+        if valid_sram_cnt <= sram_capacity:
+            ready["sram"] = 1
+        else:
+            ready["sram"] = 0
 
         if valid_sram_cnt >= min_sram_update_size and valid_sram_cnt <= max_sram_update_size:
             # not writing to SRAM, so can read from SRAM
@@ -112,6 +123,11 @@ def main():
         if valid["agg"] == 1:
             input_ac_count += 1
 
+        if input_ac_count <= agg_capacity:
+            ready["agg"] = 1
+        else:
+            ready["agg"] = 0
+
         # get valid to SRAM
         if input_ac_count >= min_agg_update_size and input_ac_count <= max_agg_update_size:
             valid["sram"] = 1
@@ -119,9 +135,6 @@ def main():
             valid["sram"] = 0
 
         print("CYCLE: ", i)
-        if "valid_out2" in valid:
-            valid["valid_out"] = valid["valid_out2"]
-            del valid["valid_out2"]
         print("VALID: ", valid)
         print("READY: ", ready)
         print("WRITE: ", [valid[key] & ready[key] for key in ready])
