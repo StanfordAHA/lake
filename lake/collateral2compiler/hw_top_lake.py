@@ -38,13 +38,13 @@ class TopLakeHW(Generator):
 
         self.data_in = self.input("data_in",
                                   width=self.word_width,
-                                  size=self.input_ports,
+                                  size=(self.input_ports, 1),
                                   explicit_array=True,
                                   packed=True)
 
         self.data_out = self.output("data_out",
                                     width=self.word_width,
-                                    size=self.output_ports,
+                                    size=(self.output_ports, 1),
                                     explicit_array=True,
                                     packed=True)
 
@@ -57,7 +57,7 @@ class TopLakeHW(Generator):
         self.mem_data_outs = [self.var(f"mem_data_out_{i}",
                                        width=self.word_width,
                                        size=self.memories[subscript_mems[i]]["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]] else "read_write_port_width"],
-                                       explicit_array=True) for i in range(num_mem)]
+                                       explicit_array=True, packed=True) for i in range(num_mem)]
 
         self.mem_insts = {}
 
