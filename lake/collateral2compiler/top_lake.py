@@ -235,7 +235,7 @@ class TopLake():
 
         return hw
 
-    def test_lake(self):
+    def test_magma_lake(self):
         # prepare user input for compiler collateral and hardware
         self.banking()
         # generate compiler collateral
@@ -245,7 +245,7 @@ class TopLake():
         return hw
 
     def construct_lake(self):
-        hw = self.test_lake()
+        hw = self.test_magma_lake()
         
         verilog(hw, filename="Lake_hw.sv",
                 check_multiple_driver=False,

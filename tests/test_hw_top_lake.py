@@ -182,5 +182,5 @@ def test_conv_3_3(lt_dut):
                   lt_dut=lt_dut)
 
 
-hw = tile.test_lake()
+hw = tile.test_magma_lake()
 test_conv_3_3(hw)
