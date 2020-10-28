@@ -18,7 +18,7 @@ class TopLakeHW(Generator):
                  memories,
                  edges):
 
-        super().__init__("lake_top", debug=True)
+        super().__init__("LakeTop", debug=True)
 
         # parameters
         self.word_width = word_width
@@ -141,6 +141,7 @@ class TopLakeHW(Generator):
                            clk=self.clk,
                            rst_n=self.rst_n,
                            mux_sel=forloop.ports.mux_sel_out,
+                           finished=forloop.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self.valid)
 
@@ -184,6 +185,7 @@ class TopLakeHW(Generator):
                            clk=self.clk,
                            rst_n=self.rst_n,
                            mux_sel=forloop.ports.mux_sel_out,
+                           finished=forloop.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self.valid)
 
@@ -252,8 +254,8 @@ class TopLakeHW(Generator):
                 for i in range(num_mux_from):
                     if_mux_sel = IfStmt(self.mux_sel == i)
                     for j in range(len(edge["to_signal"])):
-                        print("TO ", edge["to_signal"][j])
-                        print("FROM ", edge["from_signal"][i])
+                        # print("TO ", edge["to_signal"][j])
+                        # print("FROM ", edge["from_signal"][i])
                         if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
                         # TO DO needed this to get rid of latch, but it is incorrect?
                         if_mux_sel.else_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
@@ -264,8 +266,8 @@ class TopLakeHW(Generator):
             # actually written)
             else:
                 for j in range(len(edge["to_signal"])):
-                    print("TO ", edge["to_signal"][j])
-                    print("FROM ", edge["from_signal"][0])
+                    # print("TO ", edge["to_signal"][j])
+                    # print("FROM ", edge["from_signal"][0])
                     safe_wire(self, self.mem_insts[edge["to_signal"][j]].ports.data_in, self.mem_insts[edge["from_signal"][0]].ports.data_out)
 
             # create output addressor
@@ -338,6 +340,7 @@ class TopLakeHW(Generator):
                            clk=self.clk,
                            rst_n=self.rst_n,
                            mux_sel=forloop.ports.mux_sel_out,
+                           finished=forloop.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self.valid)
 
