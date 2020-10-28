@@ -106,7 +106,7 @@ class TopLakeHW(Generator):
 
             safe_wire(self, self.mem_insts[in_mem].ports.data_in, self.data_in[i])
 
-            self.valid = self.var(in_mem + "_accessor_vaild", 1)
+            self.valid = self.var(in_mem + "_accessor_valid", 1)
 
             forloop = ForLoop(iterator_support=6,
                               config_width=self.default_config_width)
@@ -150,7 +150,7 @@ class TopLakeHW(Generator):
             out_mem = is_output[i]
             self.wire(self.data_out[i], self.mem_data_outs[subscript_mems.index(out_mem)])  # , self.mem_insts[out_mem].ports.data_out)
 
-            self.valid = self.var(out_mem + "_accessor_vaild", 1)
+            self.valid = self.var(out_mem + "_accessor_valid", 1)
 
             forloop = ForLoop(iterator_support=6,
                               config_width=self.default_config_width)
@@ -206,7 +206,7 @@ class TopLakeHW(Generator):
             edge_name = from_sigs + to_sigs + "edge"
 
             # create forloop and accessor valid output signal
-            self.valid = self.var(edge_name + "_accessor_vaild", 1)
+            self.valid = self.var(edge_name + "_accessor_valid", 1)
 
             forloop = ForLoop(iterator_support=edge["dim"])
             loop_itr = forloop.get_iter()
