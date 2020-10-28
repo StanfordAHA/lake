@@ -78,6 +78,8 @@ class StrgUBVec(Generator):
         self._addr = self.var("addr", clog2(self.mem_depth))
 
         self._agg_write = self.var("agg_write", self.interconnect_input_ports)
+        self._accesor_input = self.output("accessor_input", self.interconnect_input_ports)
+        self.wire(self._accesor_input, self._agg_write)
 
         # Make this based on the size
         self._agg_write_addr = self.var("agg_write_addr", 2 + clog2(self.agg_height),

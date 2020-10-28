@@ -225,10 +225,6 @@ class LakeTop(Generator):
         self._data_out.add_attribute(ControlSignalAttr(False))
         self._data_out.add_attribute(FormalAttr(self._data_out.name, FormalSignalConstraint.SEQUENCE))
 
-        # self._valid_out = self.output("valid_out",
-        #                               self.interconnect_output_ports)
-        # self._valid_out.add_attribute(ControlSignalAttr(False))
-
         self._data_out_tile = self.var("data_out_tile",
                                        self.data_width,
                                        size=self.interconnect_output_ports,
@@ -238,6 +234,7 @@ class LakeTop(Generator):
         self._valid_out_tile = self.output("valid_out",
                                            self.interconnect_output_ports)
         self._valid_out_tile.add_attribute(ControlSignalAttr(False))
+        self._valid_out_tile.add_attribute(FormalAttr(self._valid_out_tile.name, FormalSignalConstraint.SEQUENCE))
 
         self.address_width = clog2(self.num_tiles * self.mem_depth)
 
@@ -450,7 +447,13 @@ class LakeTop(Generator):
                                      packed=True,
                                      explicit_array=True)
 
+        self._ub_valid_out = self.var("ub_valid_out",
+                                      self.interconnect_output_ports)
+
         if self.fw_int > 1:
+            self._valid_in = self.output("valid_in", self.interconnect_input_ports)
+            self._valid_in.add_attribute(FormalAttr(self._valid_in.name, FormalSignalConstraint.SEQUENCE))
+
             strg_ub = StrgUBVec(data_width=self.data_width,
                                 mem_width=self.mem_width,
                                 mem_depth=self.mem_depth,
@@ -501,9 +504,6 @@ class LakeTop(Generator):
                                      packed=True,
                                      explicit_array=True)
 
-        self._ub_valid_out = self.var("ub_valid_out",
-                                      self.interconnect_output_ports)
-
         self._ub_wen_to_mem = self.var("ub_wen_to_mem", self.mem_output_ports,
                                        size=self.banks,
                                        explicit_array=True,
@@ -548,6 +548,9 @@ class LakeTop(Generator):
                        data_to_strg=self._ub_data_to_mem,
                        wen_to_strg=self._ub_wen_to_mem,
                        accessor_output=self._accessor_output)
+
+        self.wire(self._ub_valid_out, strg_ub.ports.accessor_output)
+        self.wire(self._valid_in, strg_ub.ports.accessor_input)
 
         # Handle different names - sorry
         if self.rw_same_cycle:
