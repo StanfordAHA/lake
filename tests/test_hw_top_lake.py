@@ -16,6 +16,7 @@ from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
 from lake.collateral2compiler.top_lake import TopLake
 from lake.collateral2compiler.mem_port import MemPort
+from lake.collateral2compiler.dsl import * 
 
 def base_lake_tester(config_path,
                      in_file_name,
@@ -26,7 +27,7 @@ def base_lake_tester(config_path,
                      stencil_valid=False):
 
     magma_dut = kts.util.to_magma(lt_dut,
-#                                  flatten_array=True,
+                                  flatten_array=True,
                                   check_multiple_driver=False,
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False)
@@ -181,199 +182,5 @@ def test_conv_3_3(lt_dut):
                   lt_dut=lt_dut)
 
 
-@pytest.mark.skip
-def test_gaussian():
-    lc, ls = check_env()
-    config_path = lc + "gaussian/hw_input_stencil_op_hcompute_hw_input_stencil_2_to_hw_input_stencil_op_hcompute_blur_unnormalized_stencil_1_11_ubuf"
-    stream_path = ls + "buf.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path,
-                  in_file_name="op_hcompute_hw_input_stencil",
-                  out_file_name="op_hcompute_blur_unnormalized_stencil_1")
-
-
-@pytest.mark.skip
-def test_cascade_1():
-    lc, ls = check_env()
-    config_path = lc + "cascade/buf1_input_10_to_buf1_conv_15_ubuf"
-    stream_path = ls + "buf1.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path,
-                  out_file_name="conv")
-
-
-@pytest.mark.skip
-def test_cascade_2():
-    lc, ls = check_env()
-    config_path = lc + "cascade/buf2_conv_12_to_buf2_output_3_ubuf"
-    stream_path = ls + "buf2.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path,
-                  in_file_name="conv")
-
-
-@pytest.mark.skip
-def test_harris_1():
-    lc, ls = check_env()
-    config_path = lc + "harris/padded16_global_wrapper_stencil_op_hcompute_padded16_global_wrapper_stencil_0_to_padded16_global_wrapper_stencil_op_hcompute_grad_x_stencil_49_ubuf"
-    stream_path = ls + "buf.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path,
-                  in_file_name="op_hcompute_padded16_global_wrapper_stencil",
-                  out_file_name="op_hcompute_grad_x_stencil")
-
-
-@pytest.mark.skip
-def test_harris_2():
-    lc, ls = check_env()
-    config_path = lc + "harris/cim_stencil_op_hcompute_cim_stencil_55_to_cim_stencil_op_hcompute_cim_output_stencil_63_ubuf"
-    stream_path = ls + "buf.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path,
-                  in_file_name="op_hcompute_cim_stencil",
-                  out_file_name="op_hcompute_cim_output_stencil")
-
-
-@pytest.mark.skip
-def test_harris_3():
-    lc, ls = check_env()
-    config_path = lc + "harris/lxx_stencil_op_hcompute_lxx_stencil_7_to_lxx_stencil_op_hcompute_lgxx_stencil_1_32_ubuf"
-    stream_path = ls + "buf.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path,
-                  in_file_name="op_hcompute_lxx_stencil",
-                  out_file_name="op_hcompute_lgxx_stencil_1")
-
-
-@pytest.mark.skip
-def test_harris_4():
-    lc, ls = check_env()
-    config_path = lc + "harris/lxy_stencil_op_hcompute_lxy_stencil_4_to_lxy_stencil_op_hcompute_lgxy_stencil_1_22_ubuf"
-    stream_path = ls + "buf.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path,
-                  in_file_name="op_hcompute_lxy_stencil",
-                  out_file_name="op_hcompute_lgxy_stencil_1")
-
-
-@pytest.mark.skip
-def test_harris_5():
-    lc, ls = check_env()
-    config_path = lc + "harris/lyy_stencil_op_hcompute_lyy_stencil_2_to_lyy_stencil_op_hcompute_lgyy_stencil_1_12_ubuf"
-    stream_path = ls + "buf.csv"
-    gen_test_lake(config_path=config_path,
-                  stream_path=stream_path,
-                  in_file_name="op_hcompute_lyy_stencil",
-                  out_file_name="op_hcompute_lgyy_stencil_1")
-
-# example of DSL (makes current mem tile with 2 agg,
-# wide SRAM, 2 tb
-
-# mem_collateral is part of TopLake for collateral
-# to compiler, not exposed to user
-
-# LAKE OBJECT MUST BE FIRST INSTANTIATED
-# IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
-# MEMORIES SHOULD BE INSTANTIATED BEFORE EDGES
-
-# word_width, input_ports, output_ports
-tile = TopLake(16, 2, 2)
-
-# MemPort attributes are latency, initiation interval
-agg_write_port = MemPort(1, 0)
-agg_read_port = MemPort(0, 0)
-
-agg_params = {"name": "agg",
-              "capacity": 4,
-              "word_width": 16,
-              "read_port_width": 4,
-              "write_port_width": 1}
-
-# add_memory takes in params, W ports, R ports, R/W ports
-tile.add_memory(agg_params, [agg_write_port], [agg_read_port])
-
-agg1_write_port = MemPort(1, 0)
-agg1_read_port = MemPort(0, 0)
-agg1_params = {"name": "agg1",
-               "capacity": 4,
-               "word_width": 16,
-               "read_port_width": 4,
-               "write_port_width": 1}
-
-tile.add_memory(agg1_params, [agg1_write_port], [agg1_read_port])
-
-sram_write_read_port = MemPort(1, 0)
-
-sram_params = {"name": "sram",
-               "capacity": 512,
-               "word_width": 16,
-               "read_write_port_width": 4}
-
-tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
-
-tile.add_edge({"from_signal": "agg",
-               "to_signal": "sram",
-               # these are defaults, so not specified for further edges
-               "dim": 6,
-               "max_range": 65535,
-               "max_stride": 65535})
-
-tile.add_edge({"from_signal": "agg1",
-               "to_signal": "sram"})
-
-tb_write_port = MemPort(1, 0)
-tb_read_port = MemPort(0, 0)
-
-tb_params = {"name": "tb",
-             "capacity": 8,
-             "word_width": 16,
-             "read_port_width": 1,
-             "write_port_width": 4}
-
-tile.add_memory(tb_params, [tb_write_port], [tb_read_port])
-
-tb1_write_port = MemPort(1, 0)
-tb1_read_port = MemPort(0, 0)
-
-tb1_params = {"name": "tb1",
-              "capacity": 8,
-              "word_width": 16,
-              "read_port_width": 1,
-              "write_port_width": 4}
-
-tile.add_memory(tb1_params, [tb1_write_port], [tb1_read_port])
-
-tile.add_edge({"from_signal": "sram",
-               "to_signal": "tb"})
-
-tile.add_edge({"from_signal": "sram",
-               "to_signal": "tb1"})
-
-# for both compiler collateral and HW generation
-hw = tile.construct_lake()
-
+hw = tile.test_lake()
 test_conv_3_3(hw)
-
-    # gaussian
-    # test_gaussian()
-
-    # cascade_1
-    # test_cascade_1()
-
-    # cascade_2
-    # test_cascade_2()
-
-    # harris_1
-    # test_harris_1()
-
-    # harris_2
-    # test_harris_2()
-
-    # harris_3
-    # test_harris_3()
-
-    # harris_4
-    # test_harris_4()
-
-    # harris_5
-    # test_harris_5()

@@ -233,14 +233,9 @@ class TopLake():
                        self.hw_memories,
                        self.hardware_edges)
 
-        verilog(hw, filename="Lake_hw.sv",
-                check_multiple_driver=False,
-                optimize_if=False,
-                check_flip_flop_always_ff=False)
-
         return hw
 
-    def construct_lake(self):
+    def test_lake(self):
         # prepare user input for compiler collateral and hardware
         self.banking()
         # generate compiler collateral
@@ -248,3 +243,12 @@ class TopLake():
         # generate RTL
         hw = self.generate_hardware()
         return hw
+
+    def construct_lake(self):
+        hw = self.test_lake()
+        
+        verilog(hw, filename="Lake_hw.sv",
+                check_multiple_driver=False,
+                optimize_if=False,
+                check_flip_flop_always_ff=False)
+        
