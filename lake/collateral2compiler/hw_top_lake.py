@@ -38,13 +38,13 @@ class TopLakeHW(Generator):
 
         self.data_in = self.input("data_in",
                                   width=self.word_width,
-                                  size=(self.input_ports, 1),
+                                  size=self.input_ports,
                                   explicit_array=True,
                                   packed=True)
 
         self.data_out = self.output("data_out",
                                     width=self.word_width,
-                                    size=(self.output_ports, 1),
+                                    size=self.output_ports,
                                     explicit_array=True,
                                     packed=True)
 
@@ -104,7 +104,7 @@ class TopLakeHW(Generator):
             # with static schedule, incoming data is always written
             self.wire(self.mem_insts[in_mem].ports.write, self.high)
 
-            safe_wire(self, self.mem_insts[in_mem].ports.data_in, self.data_in[i])
+            safe_wire(self, self.mem_insts[in_mem].ports.data_in[0], self.data_in[i])
 
             self.valid = self.var(in_mem + "_accessor_valid", 1)
 
@@ -148,7 +148,7 @@ class TopLakeHW(Generator):
         # wire output data from output memories
         for i in range(len(is_output)):
             out_mem = is_output[i]
-            self.wire(self.data_out[i], self.mem_data_outs[subscript_mems.index(out_mem)])  # , self.mem_insts[out_mem].ports.data_out)
+            self.wire(self.data_out[i], self.mem_data_outs[subscript_mems.index(out_mem)][0])  # , self.mem_insts[out_mem].ports.data_out)
 
             self.valid = self.var(out_mem + "_accessor_valid", 1)
 
