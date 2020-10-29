@@ -27,7 +27,7 @@ def base_lake_tester(config_path,
                      stencil_valid=False):
 
     magma_dut = kts.util.to_magma(lt_dut,
-                                  # flatten_array=True,
+                                  flatten_array=True,
                                   check_multiple_driver=False,
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False)
@@ -149,10 +149,10 @@ def gen_test_lake(config_path,
     tester.circuit.tbwrite_addr_gen_strides_2 = 4
 
     for i in range(len(out_data[0])):
-        for j in range(len(in_data)):
-            if i < len(in_data[j]):
-                setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
-        # tester.circuit.data_in_0 = i
+        #for j in range(len(in_data)):
+        #    if i < len(in_data[j]):
+        #        setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
+        tester.circuit.data_in_0 = i
 
         tester.eval()
 
