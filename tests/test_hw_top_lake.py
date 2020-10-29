@@ -34,7 +34,7 @@ def base_lake_tester(config_path,
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False)
 
-    tester = fault.Tester(magma_dut, magma_dut.clk)
+    tester = fault.Tester(magma_dut, magma_dut.clk_mem)
     configs_list = []
     return lt_dut, configs, configs_list, magma_dut, tester
 
@@ -56,7 +56,7 @@ def gen_test_lake(config_path,
                          lt_dut)
 
     tester.circuit.clk_en = 1
-    tester.circuit.clk = 0
+    tester.circuit.clk_mem = 0
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1

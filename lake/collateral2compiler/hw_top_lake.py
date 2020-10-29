@@ -41,7 +41,10 @@ class TopLakeHW(Generator):
         self.tile_en = self.input("tile_en", 1)
         self.tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
-        self.clk = self.clock("clk")
+        self.clk_mem = self.clock("clk_mem")
+        clk = self.var("clk", 1)
+        self.clk = kts.util.clock(clk)
+        self.wire(clk, kts.util.clock(self.clk_mem & self.tile_en))
         # active low asynchornous reset
         self.rst_n = self.reset("rst_n", 1)
 
@@ -363,15 +366,16 @@ class TopLakeHW(Generator):
         lift_config_reg(self.internal_generator)
 
     # global cycle count for accessor comparison
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk_mem"), (negedge, "rst_n"))
     def increment_cycle_count(self):
         if ~self.rst_n:
             self._cycle_count = 0
-        else:
+        # clking was weird
+        elif self.tile_en:
             self._cycle_count = self._cycle_count + 1
 
     # delay in valid between read from memory and write to next memory
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk_mem"), (negedge, "rst_n"))
     def get_delayed_write(self):
         if ~self.rst_n:
             self.delayed_writes = 0
