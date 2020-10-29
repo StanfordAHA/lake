@@ -135,7 +135,7 @@ class Memory(Generator):
                                          width=self.addr_width,
                                          size=self.num_write_ports,
                                          explicit_array=True)
-            #                         packed=True)
+                 #                        packed=True)
 
             self.write = self.input("write",
                                     width=1,

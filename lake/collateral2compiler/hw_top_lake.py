@@ -130,9 +130,9 @@ class TopLakeHW(Generator):
                            restart=forloop.ports.restart)
 
             if self.memories[in_mem]["num_read_write_ports"] == 0:
-                safe_wire(self, self.mem_insts[in_mem].ports.write_addr, newAG.ports.addr_out)
+                safe_wire(self, self.mem_insts[in_mem].ports.write_addr[0], newAG.ports.addr_out)
             else:
-                safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr, newAG.ports.addr_out)
+                safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=6,
                              config_width=self.default_config_width)
@@ -174,9 +174,9 @@ class TopLakeHW(Generator):
                            restart=forloop.ports.restart)
 
             if self.memories[out_mem]["num_read_write_ports"] == 0:
-                safe_wire(self, self.mem_insts[out_mem].ports.read_addr, newAG.ports.addr_out)
+                safe_wire(self, self.mem_insts[out_mem].ports.read_addr[0], newAG.ports.addr_out)
             else:
-                safe_wire(self, self.mem_insts[out_mem].ports.read_write_addr, newAG.ports.addr_out)
+                safe_wire(self, self.mem_insts[out_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=6,
                              config_width=self.default_config_width)
@@ -233,11 +233,11 @@ class TopLakeHW(Generator):
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
                 # can assign same read addrs to all the memories
                 for i in range(len(edge["from_signal"])):
-                    safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr, readAG.ports.addr_out)
+                    safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr[0], readAG.ports.addr_out)
             else:
                 # there needs to be an if valid check here
                 for i in range(len(edge["from_signal"])):
-                    safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_write_addr, readAG.ports.addr_out)
+                    safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_write_addr[0], readAG.ports.addr_out)
 
             # if needing to mux, choose which from memory we get data
             # from for to memory data in
@@ -284,10 +284,10 @@ class TopLakeHW(Generator):
             # set write addr for to memories
             if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:
                 for i in range(len(edge["to_signal"])):
-                    safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr, writeAG.ports.addr_out)
+                    safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out)
             else:
                 for i in range(len(edge["to_signal"])):
-                    safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr, writeAG.ports.addr_out)
+                    safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr[0], writeAG.ports.addr_out)
 
             # calculate necessary delay between from_signal to to_signal
             # TO DO this may need to be more sophisticated and based on II as well
