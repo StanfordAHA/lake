@@ -13,7 +13,7 @@ from lake.passes.passes import lift_config_reg
 from lake.utils.util import safe_wire, trim_config_list
 from lake.utils.parse_clkwork_config import * 
 
-# TO DO if write, need to check if that happens for read/write ports
+
 class TopLakeHW(Generator):
     def __init__(self,
                  word_width,
@@ -72,6 +72,8 @@ class TopLakeHW(Generator):
                                        explicit_array=True, packed=True) for i in range(num_mem)]
 
         self.mem_insts = {}
+
+        self.mem_read_write_addrs = {}
 
         i = 0
         for mem in self.memories.keys():
@@ -252,7 +254,8 @@ class TopLakeHW(Generator):
             else:
                 # there needs to be an if valid check here
                 for i in range(len(edge["from_signal"])):
-                    safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_write_addr[0], readAG.ports.addr_out)
+                    self.mem_read_write_addrs[edge["from_signal"][i]]["read_addr"] = readAG.ports.addr_out
+                # safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_write_addr[0], readAG.ports.addr_out)
 
             # if needing to mux, choose which from memory we get data
             # from for to memory data in
@@ -307,7 +310,8 @@ class TopLakeHW(Generator):
                         safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out)
             else:
                 for i in range(len(edge["to_signal"])):
-                    safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr[0], writeAG.ports.addr_out)
+                    self.mem_read_write_addrs[edge["to_signal"][i]] = {"write": self.valid, "write_addr": writeAG.ports.addr_out}
+                    # safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr[0], writeAG.ports.addr_out)
 
             # calculate necessary delay between from_signal to to_signal
             # TO DO this may need to be more sophisticated and based on II as well
@@ -363,6 +367,17 @@ class TopLakeHW(Generator):
                            finished=forloop.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self.valid)
+
+        read_write_addr_comb = self.combinational()
+        for mem_name in self.memories:
+            if mem_name in self.mem_read_write_addrs:
+                mem_info = self.mem_read_write_addrs[mem_name]
+                if_write = IfStmt(mem_info["write"] == 1)
+                addr_width = self.mem_insts[mem_name].ports.read_write_addr[0].width
+                if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0]))
+                if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0]))
+                # safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr[0], writeAG.ports.addr_out)
+                read_write_addr_comb.add_stmt(if_write)
 
         lift_config_reg(self.internal_generator)
 
