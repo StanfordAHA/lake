@@ -292,9 +292,9 @@ class TopLakeHW(Generator):
                            writeAG,
                            clk=self.gclk,
                            rst_n=self.rst_n)
-                           # step=self.valid,
-                           # mux_sel=forloop.ports.mux_sel_out,
-                           # restart=forloop.ports.restart)
+            # step=self.valid,
+            # mux_sel=forloop.ports.mux_sel_out,
+            # restart=forloop.ports.restart)
 
             # set write addr for to memories
             if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:

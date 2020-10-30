@@ -16,7 +16,8 @@ from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
 from lake.collateral2compiler.top_lake import TopLake
 from lake.collateral2compiler.mem_port import MemPort
-from lake.collateral2compiler.dsl import * 
+from lake.collateral2compiler.dsl import *
+
 
 def base_lake_tester(config_path,
                      in_file_name,
@@ -52,7 +53,7 @@ def gen_test_lake(config_path,
                          in_file_name,
                          out_file_name,
                          in_ports,
-                         out_ports, 
+                         out_ports,
                          lt_dut)
 
     tester.circuit.clk_en = 1
@@ -66,102 +67,17 @@ def gen_test_lake(config_path,
     # args are input ports, output ports
     in_data, out_data, valids = generate_data_lists(stream_path, in_ports, out_ports)
 
-    #tester.circuit.agg1_forloop_dimensionality =
-    #tester.circuit.agg1_forloop_ranges =
-    #tester.circuit.agg1write_addr_gen_starting_addr =
-    #tester.circuit.agg1write_addr_gen_strides =
-    #tester.circuit.agg1write_sched_gen_sched_addr_gen_starting_addr =
-    #tester.circuit.agg1write_sched_gen_sched_addr_gen_strides =
-    #tester.circuit.agg_agg1_sram_edge_forloop_dimensionality = 2
-    #tester.circuit.agg_agg1_sram_edge_forloop_ranges_0 = 4
-    #tester.circuit.agg_agg1_sram_edge_forloop_ranges_1 = 16
-    #tester.circuit.agg_agg1_sram_edge_read_addr_gen_starting_addr = 0
-    # all 0
-    #tester.circuit.agg_agg1_sram_edge_read_addr_gen_strides_0 = 0
-
-    #tester.circuit.agg_agg1_sram_edge_sched_gen_sched_addr_gen_starting_addr = 4
-    #tester.circuit.agg_agg1_sram_edge_sched_gen_sched_addr_gen_strides_0 = 4
-    #tester.circuit.agg_agg1_sram_edge_sched_gen_sched_addr_gen_strides_1 = 16
-
-    #tester.circuit.agg_agg1_sram_edge_write_addr_gen_starting_addr = 0
-    #tester.circuit.agg_agg1_sram_edge_write_addr_gen_strides_0 = 1
-    #tester.circuit.agg_agg1_sram_edge_write_addr_gen_strides_1 = 4
-
-    #tester.circuit.agg_forloop_dimensionality = 3
-    #tester.circuit.agg_forloop_ranges_0 = 4 
-    #tester.circuit.agg_forloop_ranges_1 = 4
-    #tester.circuit.agg_forloop_ranges_2 = 16
-
-    #tester.circuit.agg_write_addr_gen_starting_addr = 0
-    #tester.circuit.agg_write_addr_gen_strides_0 = 1 
-
-    #tester.circuit.agg_write_sched_gen_sched_addr_gen_starting_addr = 0
-    #tester.circuit.agg_write_sched_gen_sched_addr_gen_strides_0 = 1
-    #tester.circuit.agg_write_sched_gen_sched_addr_gen_strides_1 = 4
-    #tester.circuit.agg_write_sched_gen_sched_addr_gen_strides_2 = 16
-
-    #tester.circuit.sram_tb_tb1_edge_forloop_dimensionality = 3
-    #tester.circuit.sram_tb_tb1_edge_forloop_ranges_0 = 2
-    #tester.circuit.sram_tb_tb1_edge_forloop_ranges_1 = 4
-    #tester.circuit.sram_tb_tb1_edge_forloop_ranges_2 = 14
-
-    #tester.circuit.sram_tb_tb1_edge_read_addr_gen_starting_addr = 0
-    #tester.circuit.sram_tb_tb1_edge_read_addr_gen_strides_0 = 4
-    #tester.circuit.sram_tb_tb1_edge_read_addr_gen_strides_1 = 1
-    #tester.circuit.sram_tb_tb1_edge_read_addr_gen_strides_2 = 4
-
-    #tester.circuit.sram_tb_tb1_edge_sched_gen_sched_addr_gen_starting_addr = 27
-    #tester.circuit.sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_0 = 2
-    #tester.circuit.sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_1 = 4
-    #tester.circuit.sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_2 = 16
-
-    #tester.circuit.sram_tb_tb1_edge_write_addr_gen_starting_addr = 0
-    #tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_0 = 8
-    #tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_1 = 1
-    #tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_2 = 4
-
-    #tester.circuit.tb1_forloop_dimensionality = 3
-    #tester.circuit.tb1_forloop_ranges_0 = 4
-    #tester.circuit.tb1_forloop_ranges_1 = 4
-    #tester.circuit.tb1_forloop_ranges_2 = 14
-
-    #tester.circuit.tb1_read_sched_gen_sched_addr_gen_starting_addr = 32
-    #tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_0 = 1
-    #tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_1 = 4
-    #tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_2 = 16
-
-    #tester.circuit.tb1_write_addr_gen_starting_addr = 0
-    #tester.circuit.tb1_write_addr_gen_strides_0 = 8
-    #tester.circuit.tb1_write_addr_gen_strides_1 = 1
-    #tester.circuit.tb1_write_addr_gen_strides_2 = 4
-
-    #tester.circuit.tb_forloop_dimensionality = 3
-    #tester.circuit.tb_forloop_ranges_0 = 4
-    #tester.circuit.tb_forloop_ranges_1 = 4
-    #tester.circuit.tb_forloop_ranges_2 = 14
-
-    #tester.circuit.tb_read_sched_gen_sched_addr_gen_starting_addr = 32
-    #tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_0 = 1
-    #tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_1 = 4
-    #tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_2 = 16
-
-    #tester.circuit.tb_write_addr_gen_starting_addr = 0
-    #tester.circuit.tb_write_addr_gen_strides_0 = 8
-    #tester.circuit.tb_write_addr_gen_strides_1 = 1
-    #tester.circuit.tb_write_addr_gen_strides_2 = 4
-
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
 
     for i in range(len(out_data[0])):
-        #for j in range(len(in_data)):
-        #    if i < len(in_data[j]):
-        #        setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
-        tester.circuit.data_in_0 = i
+        for j in range(len(in_data)):
+            if i < len(in_data[j]):
+                setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
 
         tester.eval()
 
-        #for j in range(len(out_data)):
+        # for j in range(len(out_data)):
         #    if i < len(out_data[j]):
         #        if len(valids) != 0 and valids[i] == 1:
         #            getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
@@ -171,7 +87,7 @@ def gen_test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="hw"
+        tempdir = "hw"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])
