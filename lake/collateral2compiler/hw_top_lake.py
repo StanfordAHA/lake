@@ -42,9 +42,11 @@ class TopLakeHW(Generator):
         self.tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
         self.clk_mem = self.clock("clk_mem")
-        clk = self.var("clk", 1)
-        self.clk = kts.util.clock(clk)
-        self.wire(clk, kts.util.clock(self.clk_mem & self.tile_en))
+
+        gclk = self.var("gclk", 1)
+        self.gclk = kts.util.clock(gclk)
+        self.wire(gclk, kts.util.clock(self.clk_mem & self.tile_en))
+
         # active low asynchornous reset
         self.rst_n = self.reset("rst_n", 1)
 
@@ -82,7 +84,7 @@ class TopLakeHW(Generator):
 
             self.add_child(self.memories[mem]["name"],
                            m,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            data_out=self.mem_data_outs[i])
             i += 1
@@ -128,7 +130,7 @@ class TopLakeHW(Generator):
 
             self.add_child(f"input2{in_mem}_forloop",
                            forloop,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            step=self.valid)
 
@@ -136,7 +138,7 @@ class TopLakeHW(Generator):
                             config_width=4)#self.default_config_width)
             self.add_child(f"input2{in_mem}_write_addr_gen",
                            newAG,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            step=self.valid,
                            mux_sel=forloop.ports.mux_sel_out,
@@ -151,7 +153,7 @@ class TopLakeHW(Generator):
                              config_width=self.default_config_width)
             self.add_child(f"input2{in_mem}_write_sched_gen",
                            newSG,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            mux_sel=forloop.ports.mux_sel_out,
                            finished=forloop.ports.restart,
@@ -172,7 +174,7 @@ class TopLakeHW(Generator):
 
             self.add_child(f"{out_mem}2output_forloop",
                            forloop,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            step=self.valid)
 
@@ -180,7 +182,7 @@ class TopLakeHW(Generator):
                             config_width=self.default_config_width)
             self.add_child(f"{out_mem}2output_read_addr_gen",
                            newAG,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            step=self.valid,
                            mux_sel=forloop.ports.mux_sel_out,
@@ -195,7 +197,7 @@ class TopLakeHW(Generator):
                              config_width=self.default_config_width)
             self.add_child(f"{out_mem}2output_read_sched_gen",
                            newSG,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            mux_sel=forloop.ports.mux_sel_out,
                            finished=forloop.ports.restart,
@@ -227,7 +229,7 @@ class TopLakeHW(Generator):
 
             self.add_child(edge_name + "_forloop",
                            forloop,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            step=self.valid)
 
@@ -236,7 +238,7 @@ class TopLakeHW(Generator):
                              config_width=self.default_config_width)
             self.add_child(f"{edge_name}_read_addr_gen",
                            readAG,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            step=self.valid,
                            mux_sel=forloop.ports.mux_sel_out,
@@ -294,7 +296,7 @@ class TopLakeHW(Generator):
                               config_width=self.default_config_width)
             self.add_child(f"{edge_name}_write_addr_gen",
                            writeAG,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            step=self.valid,
                            mux_sel=forloop.ports.mux_sel_out,
@@ -361,7 +363,7 @@ class TopLakeHW(Generator):
 
             self.add_child(edge_name + "_sched_gen",
                            newSG,
-                           clk=self.clk,
+                           clk=self.gclk,
                            rst_n=self.rst_n,
                            mux_sel=forloop.ports.mux_sel_out,
                            finished=forloop.ports.restart,
@@ -382,7 +384,7 @@ class TopLakeHW(Generator):
         lift_config_reg(self.internal_generator)
 
     # global cycle count for accessor comparison
-    @always_ff((posedge, "clk_mem"), (negedge, "rst_n"))
+    @always_ff((posedge, "gclk"), (negedge, "rst_n"))
     def increment_cycle_count(self):
         if ~self.rst_n:
             self._cycle_count = 0
@@ -391,7 +393,7 @@ class TopLakeHW(Generator):
             self._cycle_count = self._cycle_count + 1
 
     # delay in valid between read from memory and write to next memory
-    @always_ff((posedge, "clk_mem"), (negedge, "rst_n"))
+    @always_ff((posedge, "gclk"), (negedge, "rst_n"))
     def get_delayed_write(self):
         if ~self.rst_n:
             self.delayed_writes = 0
