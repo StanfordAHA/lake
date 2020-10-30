@@ -413,10 +413,8 @@ class TopLakeHW(Generator):
             ("agg_agg1_sram_edge_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
             ("agg_agg1_sram_edge_forloop_dimensionality", agg2sram.dim),
 
-            ("strg_sram_tb_tb1_edge_read_addr_gen_starting_addr", sram2tb.out_data_strt),
-            ("strg_ub_tb_write_addr_gen_0_starting_addr", sram2tb.in_data_strt),
-            ("strg_ub_tb_write_addr_gen_1_starting_addr", sram2tb.in_data_strt),
-            ("strg_ub_out_port_sel_addr_starting_addr", sram2tb.mux_data_strt),
+            ("sram_tb_tb1_edge_read_addr_gen_starting_addr", sram2tb.out_data_strt),
+            ("sram_tb_tb1_edge_write_addr_gen_starting_addr", sram2tb.in_data_strt),
             ("sram_tb_tb1_edge_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
             ("sram_tb_tb1_edge_forloop_dimensionality", sram2tb.dim),
 
@@ -482,15 +480,19 @@ class TopLakeHW(Generator):
             config.append((f"sram_tb_tb1_edge_forloop_ranges_{i}", sram2tb.extent[i]))
             config.append((f"sram_tb_tb1_edge_read_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
             config.append((f"sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
-            for tb in range(len(tbs)):
-                config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
+            config.append((f"sram_tb_tb1_edge_write_addr_gen_strides_{i}", sram2tb.in_data_stride[i]))
 
         tbs = [tb2out0, tb2out1]
         for tb in range(len(tbs)):
             elem = tbs[tb]
             for i in range(elem.dim):
-                config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
-                config.append((f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
-                config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+                if tb == 0:
+                    config.append((f"tb2output_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
+                    config.append((f"tb2output_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+                    config.append((f"tb2output_forloop_ranges_{i}", elem.extent[i]))
+                else:
+                    config.append((f"tb12output_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
+                    config.append((f"tb12output_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+                    config.append((f"tb12output_forloop_ranges_{i}", elem.extent[i]))
 
         return trim_config_list(flattened, config)

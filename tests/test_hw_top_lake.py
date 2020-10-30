@@ -105,7 +105,7 @@ def gen_test_lake(config_path,
     #tester.circuit.sram_tb_tb1_edge_forloop_ranges_1 = 4
     #tester.circuit.sram_tb_tb1_edge_forloop_ranges_2 = 14
 
-    tester.circuit.sram_tb_tb1_edge_read_addr_gen_starting_addr = 0
+    #tester.circuit.sram_tb_tb1_edge_read_addr_gen_starting_addr = 0
     #tester.circuit.sram_tb_tb1_edge_read_addr_gen_strides_0 = 4
     #tester.circuit.sram_tb_tb1_edge_read_addr_gen_strides_1 = 1
     #tester.circuit.sram_tb_tb1_edge_read_addr_gen_strides_2 = 4
@@ -115,40 +115,40 @@ def gen_test_lake(config_path,
     #tester.circuit.sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_1 = 4
     #tester.circuit.sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_2 = 16
 
-    tester.circuit.sram_tb_tb1_edge_write_addr_gen_starting_addr = 0
-    tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_0 = 8
-    tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_1 = 1
-    tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_2 = 4
+    #tester.circuit.sram_tb_tb1_edge_write_addr_gen_starting_addr = 0
+    #tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_0 = 8
+    #tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_1 = 1
+    #tester.circuit.sram_tb_tb1_edge_write_addr_gen_strides_2 = 4
 
     #tester.circuit.tb1_forloop_dimensionality = 3
-    tester.circuit.tb1_forloop_ranges_0 = 4
-    tester.circuit.tb1_forloop_ranges_1 = 4
-    tester.circuit.tb1_forloop_ranges_2 = 14
+    #tester.circuit.tb1_forloop_ranges_0 = 4
+    #tester.circuit.tb1_forloop_ranges_1 = 4
+    #tester.circuit.tb1_forloop_ranges_2 = 14
 
     #tester.circuit.tb1_read_sched_gen_sched_addr_gen_starting_addr = 32
-    tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_0 = 1
-    tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_1 = 4
-    tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_2 = 16
+    #tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_0 = 1
+    #tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_1 = 4
+    #tester.circuit.tb1_read_sched_gen_sched_addr_gen_strides_2 = 16
 
     #tester.circuit.tb1_write_addr_gen_starting_addr = 0
-    tester.circuit.tb1_write_addr_gen_strides_0 = 8
-    tester.circuit.tb1_write_addr_gen_strides_1 = 1
-    tester.circuit.tb1_write_addr_gen_strides_2 = 4
+    #tester.circuit.tb1_write_addr_gen_strides_0 = 8
+    #tester.circuit.tb1_write_addr_gen_strides_1 = 1
+    #tester.circuit.tb1_write_addr_gen_strides_2 = 4
 
     #tester.circuit.tb_forloop_dimensionality = 3
-    tester.circuit.tb_forloop_ranges_0 = 4
-    tester.circuit.tb_forloop_ranges_1 = 4
-    tester.circuit.tb_forloop_ranges_2 = 14
+    #tester.circuit.tb_forloop_ranges_0 = 4
+    #tester.circuit.tb_forloop_ranges_1 = 4
+    #tester.circuit.tb_forloop_ranges_2 = 14
 
     #tester.circuit.tb_read_sched_gen_sched_addr_gen_starting_addr = 32
-    tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_0 = 1
-    tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_1 = 4
-    tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_2 = 16
+    #tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_0 = 1
+    #tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_1 = 4
+    #tester.circuit.tb_read_sched_gen_sched_addr_gen_strides_2 = 16
 
     #tester.circuit.tb_write_addr_gen_starting_addr = 0
-    tester.circuit.tb_write_addr_gen_strides_0 = 8
-    tester.circuit.tb_write_addr_gen_strides_1 = 1
-    tester.circuit.tb_write_addr_gen_strides_2 = 4
+    #tester.circuit.tb_write_addr_gen_strides_0 = 8
+    #tester.circuit.tb_write_addr_gen_strides_1 = 1
+    #tester.circuit.tb_write_addr_gen_strides_2 = 4
 
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
