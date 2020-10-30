@@ -217,6 +217,7 @@ class TopLakeHW(Generator):
             self.valid = self.var(edge_name + "_accessor_valid", 1)
 
             forloop = ForLoop(iterator_support=edge["dim"])
+            self.forloop = forloop
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
 
@@ -229,13 +230,11 @@ class TopLakeHW(Generator):
             # create input addressor
             readAG = AddrGen(iterator_support=edge["dim"],
                              config_width=self.default_config_width)
+            # valid, mux_sel, restart are all delayed
             self.add_child(f"{edge_name}_read_addr_gen",
                            readAG,
                            clk=self.gclk,
-                           rst_n=self.rst_n,
-                           # step=self.valid, - delayed_write
-                           mux_sel=forloop.ports.mux_sel_out,
-                           restart=forloop.ports.restart)
+                           rst_n=self.rst_n)
 
             # assign read address to all from memories
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
@@ -318,6 +317,13 @@ class TopLakeHW(Generator):
             if self.delay > 0:
                 self.delayed_writes = self.var(f"{edge_name}_delayed_writes",
                                                width=self.delay)
+                self.delayed_mux_sels = self.var(f"{edge_name}_delayed_mux_sels",
+                    width=self.forloop.ports.mux_sel_out.width,
+                    size=self.delay,
+                    explicit_array=True,
+                    packed=True)
+                self.delayed_restarts = self.var(f"{edge_name}_delayed_restarts",
+                    width=self.delay)
                 self.add_code(self.get_delayed_write)
 
             # if we have a mux for the two memories, choose who to
@@ -351,8 +357,12 @@ class TopLakeHW(Generator):
 
             if self.delay == 0:
                 self.wire(readAG.ports.step, self.valid)
+                self.wire(readAG.ports.mux_sel, self.forloop.ports.mux_sel_out)
+                self.wire(readAG.ports.restart, self.forloop.ports.restart)
             else:
                 self.wire(readAG.ports.step, self.delayed_writes[self.delay - 1])
+                self.wire(readAG.ports.mux_sel, self.delayed_mux_sels[self.delay - 1])
+                self.wire(readAG.ports.restart, self.delayed_restarts[self.delay - 1])
             # create accessor for edge
             newSG = SchedGen(iterator_support=6,
                              config_width=self.default_config_width)
@@ -395,10 +405,16 @@ class TopLakeHW(Generator):
     def get_delayed_write(self):
         if ~self.rst_n:
             self.delayed_writes = 0
+            self.delayed_mux_sels = 0
+            self.delayed_restarts = 0
         elif self.tile_en:
             for i in range(self.delay - 1):
                 self.delayed_writes[i + 1] = self.delayed_writes[i]
+                self.delayed_mux_sels[i + 1] = self.delayed_mux_sels[i]
+                self.delayed_restarts[i + 1] = self.delayed_restarts[i]
             self.delayed_writes[0] = self.valid
+            self.delayed_mux_sels[0] = self.forloop.ports.mux_sel_out
+            self.delayed_restarts[0] = self.forloop.ports.restart
 
     def get_static_bitstream(self,
                              config_path,
