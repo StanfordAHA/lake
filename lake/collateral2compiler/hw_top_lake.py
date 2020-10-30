@@ -266,14 +266,15 @@ class TopLakeHW(Generator):
                                                 self.mem_insts[edge["from_signal"][0]].ports.read_addr.width])
 
                 comb_mux_from = self.combinational()
-                for i in range(num_mux_from):
-                    if_mux_sel = IfStmt(self.mux_sel == i)
+                # for i in range(num_mux_from):
+                if True:
+                    if_mux_sel = IfStmt(self.mux_sel == 0)
                     for j in range(len(edge["to_signal"])):
                         # print("TO ", edge["to_signal"][j])
                         # print("FROM ", edge["from_signal"][i])
-                        if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
-                        # TO DO needed this to get rid of latch, but it is incorrect?
-                        if_mux_sel.else_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][i]].ports.data_out))
+                        if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][0]].ports.data_out))
+                        # TO DO needed else to get rid of latch, but don't really want it...should really just use a switch statement here
+                        if_mux_sel.else_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][1]].ports.data_out))
                     comb_mux_from.add_stmt(if_mux_sel)
 
             # no muxing from, data_out from the 1 from memory goes
