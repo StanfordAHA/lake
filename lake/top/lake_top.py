@@ -14,7 +14,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
-from lake.utils.util import trim_config_list, extract_formal_annotation
+from lake.utils.util import trim_config_list, extract_formal_annotation, extract_config_relation
 from lake.utils.parse_clkwork_config import map_controller, extract_controller
 from lake.utils.parse_clkwork_config import extract_controller_json
 from lake.modules.for_loop import ForLoop
@@ -839,6 +839,7 @@ class LakeTop(Generator):
         lift_config_reg(self.internal_generator)
 
         extract_formal_annotation(self, "lake_top_annotation.txt")
+        extract_config_relation(self)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def cycle_count_inc(self):

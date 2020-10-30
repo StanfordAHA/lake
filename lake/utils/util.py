@@ -84,6 +84,24 @@ def extract_formal_annotation(generator, filepath):
             fi.write(f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n")
 
 
+def extract_config_relation(generator: kts.Generator, filepath=None):
+    # Get internal gen
+    int_gen = generator.internal_generator
+    for cg in int_gen.get_child_generators():
+        # Find child strg_ub
+        if cg.instance_name == "strg_ub":
+            if filepath is None:
+                filepath = f"{int_gen.name}_config_relation.txt"
+            with open(filepath, "w+") as fi:
+                # Grab the for loops structures
+                for_loops = [x for x in cg.get_child_generators() if "for_loop" in x.name]
+                for for_loop in for_loops:
+                    restart_port = for_loop.get_port("restart")
+                    outgoing_conns = restart_port.connected_to()
+                    for outgoing_conn in outgoing_conns:
+                        fi.write(f"{for_loop.instance_name},{outgoing_conn.generator.instance_name}\n")
+
+
 def get_configs_dict(configs):
     configs_dict = {}
     for (f1, f2) in configs:
