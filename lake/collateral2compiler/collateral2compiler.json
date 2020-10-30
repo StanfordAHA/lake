@@ -36,7 +36,7 @@
                     "initiation_interval": 0,
                     "addr_domain": {
                         "min": 0,
-                        "max": 4
+                        "max": 3
                     }
                 },
                 {
@@ -44,7 +44,7 @@
                     "initiation_interval": 0,
                     "addr_domain": {
                         "min": 4,
-                        "max": 8
+                        "max": 7
                     }
                 }
             ],
@@ -54,7 +54,7 @@
                     "initiation_interval": 0,
                     "addr_domain": {
                         "min": 0,
-                        "max": 4
+                        "max": 3
                     }
                 },
                 {
@@ -62,7 +62,7 @@
                     "initiation_interval": 0,
                     "addr_domain": {
                         "min": 4,
-                        "max": 8
+                        "max": 7
                     }
                 }
             ],
@@ -83,7 +83,7 @@
                     "initiation_interval": 0,
                     "addr_domain": {
                         "min": 0,
-                        "max": 8
+                        "max": 7
                     }
                 },
                 {
@@ -91,7 +91,7 @@
                     "initiation_interval": 0,
                     "addr_domain": {
                         "min": 8,
-                        "max": 16
+                        "max": 15
                     }
                 }
             ],
@@ -101,7 +101,7 @@
                     "initiation_interval": 0,
                     "addr_domain": {
                         "min": 0,
-                        "max": 8
+                        "max": 7
                     }
                 },
                 {
@@ -109,7 +109,7 @@
                     "initiation_interval": 0,
                     "addr_domain": {
                         "min": 8,
-                        "max": 16
+                        "max": 15
                     }
                 }
             ],

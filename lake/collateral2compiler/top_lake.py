@@ -173,14 +173,14 @@ class TopLake():
                     # get compiler related information for merged memories
                     rport = mem_["read_ports"].copy()
                     for r in rport:
-                        r.set_addr_domain([merged_cap, merged_cap + mem_["capacity"]])
+                        r.set_addr_domain([merged_cap, merged_cap + mem_["capacity"] - 1])
                     read_ports += rport
                     wport = mem_["write_ports"].copy()
                     for w in wport:
-                        w.set_addr_domain([merged_cap, merged_cap + mem_["capacity"]])
+                        w.set_addr_domain([merged_cap, merged_cap + mem_["capacity"] - 1])
                     rwport = mem_["read_write_ports"].copy()
                     for rw in rwport:
-                        rw.set_addr_domain([merged_cap, merged_cap + mem_["capacity"]])
+                        rw.set_addr_domain([merged_cap, merged_cap + mem_["capacity"] - 1])
                     write_ports += wport
                     merged_cap += mem_["capacity"]
 
