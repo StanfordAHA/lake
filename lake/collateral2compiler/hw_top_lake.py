@@ -240,7 +240,7 @@ class TopLakeHW(Generator):
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
                 # can assign same read addrs to all the memories
                 for i in range(len(edge["from_signal"])):
-                    # TO DO this should be deleted once mem addressing changes
+                    # TO DO this should be deleted once mem addressing changes, we actually don't get into this if but it also doesn't matter for agg addressing...
                     if edge["from_signal"] in ("agg", "agg1"):
                         safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr[0], readAG.ports.addr_out * 4)
                     else:
@@ -297,8 +297,11 @@ class TopLakeHW(Generator):
             if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:
                 for i in range(len(edge["to_signal"])):
                     # TO DO this should be deleted once mem addressing changes
-                    if edge["to_signal"] in ("tb", "tb1"):
-                        safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out * 4)
+                    if edge["to_signal"][i] in ("tb", "tb1"):
+                        self.adjust_addr = self.var(f"{edge_name}_adjust_addr", width = writeAG.ports.addr_out.width)
+                        comb = self.combinational()
+                        comb.add_stmt(self.adjust_addr.assign(writeAG.ports.addr_out * 4))
+                        safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], self.adjust_addr)
                     else:
                         safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out)
             else:
