@@ -95,7 +95,7 @@ def gen_test_lake(config_path,
 
 def test_conv_3_3(lt_dut):
     lc, ls = check_env()
-    config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
+    config_path = lc + "conv_3_3_recipe_dsl"
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
 
     gen_test_lake(config_path=config_path,
