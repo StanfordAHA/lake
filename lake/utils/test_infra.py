@@ -3,6 +3,7 @@ import kratos as kts
 import fault
 import tempfile
 import os
+import sys
 
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
@@ -89,6 +90,14 @@ def gen_test_lake(config_path,
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal"])
+
+
+def lake_test_app_args(app):
+    if app == "conv_3_3":
+        return conv_3_3_args()
+
+    print(f"{app} is not supported.")
+    sys.exit()
 
 
 def conv_3_3_args():

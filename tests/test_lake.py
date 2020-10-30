@@ -1,9 +1,9 @@
-from lake.utils.test_infra import conv_3_3_args, gen_test_lake
+from lake.utils.test_infra import lake_test_app_args, gen_test_lake
 import pytest
 
 
 # add more tests with this function by adding args
-@pytest.mark.parametrize("args", [conv_3_3_args()])
+@pytest.mark.parametrize("args", [lake_test_app_args("conv_3_3")])
 def test_lake(args):
     gen_test_lake(config_path=args[0],
                   stream_path=args[1],
@@ -12,5 +12,5 @@ def test_lake(args):
 
 
 if __name__ == "__main__":
-    conv33args = conv_3_3_args()
+    conv33args = lake_test_app_args("conv_3_3")
     test_lake(conv33args)
