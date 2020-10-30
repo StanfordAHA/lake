@@ -298,7 +298,7 @@ class TopLakeHW(Generator):
                 for i in range(len(edge["to_signal"])):
                     # TO DO this should be deleted once mem addressing changes
                     if edge["to_signal"][i] in ("tb", "tb1"):
-                        self.adjust_addr = self.var(f"{edge_name}_adjust_addr", width = writeAG.ports.addr_out.width)
+                        self.adjust_addr = self.var(f"{edge_name}_adjust_addr", width=writeAG.ports.addr_out.width)
                         comb = self.combinational()
                         comb.add_stmt(self.adjust_addr.assign(writeAG.ports.addr_out * 4))
                         safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], self.adjust_addr)
@@ -321,12 +321,12 @@ class TopLakeHW(Generator):
                 self.delayed_writes = self.var(f"{edge_name}_delayed_writes",
                                                width=self.delay)
                 self.delayed_mux_sels = self.var(f"{edge_name}_delayed_mux_sels",
-                    width=self.forloop.ports.mux_sel_out.width,
-                    size=self.delay,
-                    explicit_array=True,
-                    packed=True)
+                                                 width=self.forloop.ports.mux_sel_out.width,
+                                                 size=self.delay,
+                                                 explicit_array=True,
+                                                 packed=True)
                 self.delayed_restarts = self.var(f"{edge_name}_delayed_restarts",
-                    width=self.delay)
+                                                 width=self.delay)
                 self.add_code(self.get_delayed_write)
 
             # if we have a mux for the two memories, choose who to
@@ -388,8 +388,8 @@ class TopLakeHW(Generator):
                 if_write = IfStmt(mem_info["write"] == 1)
                 addr_width = self.mem_insts[mem_name].ports.read_write_addr[0].width
                 # TO DO this should be deleted once mem addressing changes
-                if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0]*4))
-                if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0]*4))
+                if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0] * 4))
+                if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0] * 4))
                 read_write_addr_comb.add_stmt(if_write)
 
         lift_config_reg(self.internal_generator)
