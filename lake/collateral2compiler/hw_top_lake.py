@@ -11,7 +11,7 @@ from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.passes.passes import lift_config_reg
 from lake.utils.util import safe_wire, trim_config_list
-from lake.utils.parse_clkwork_config import * 
+from lake.utils.parse_clkwork_config import *
 
 
 class TopLakeHW(Generator):
@@ -122,9 +122,8 @@ class TopLakeHW(Generator):
 
             safe_wire(self, self.mem_insts[in_mem].ports.data_in[0], self.data_in[i])
 
-
             forloop = ForLoop(iterator_support=6,
-                              config_width=16)#self.default_config_width)
+                              config_width=16)  # self.default_config_width)
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
 
@@ -135,7 +134,7 @@ class TopLakeHW(Generator):
                            step=self.valid)
 
             newAG = AddrGen(iterator_support=6,
-                            config_width=4)#self.default_config_width)
+                            config_width=4)  # self.default_config_width)
             self.add_child(f"input2{in_mem}_write_addr_gen",
                            newAG,
                            clk=self.gclk,
@@ -250,7 +249,7 @@ class TopLakeHW(Generator):
                 for i in range(len(edge["from_signal"])):
                     # TO DO this should be deleted once mem addressing changes
                     if edge["from_signal"] in ("agg", "agg1"):
-                        safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr[0], readAG.ports.addr_out*4)
+                        safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr[0], readAG.ports.addr_out * 4)
                     else:
                         safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr[0], readAG.ports.addr_out)
             else:
@@ -307,7 +306,7 @@ class TopLakeHW(Generator):
                 for i in range(len(edge["to_signal"])):
                     # TO DO this should be deleted once mem addressing changes
                     if edge["to_signal"] in ("tb", "tb1"):
-                        safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out*4)
+                        safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out * 4)
                     else:
                         safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out)
             else:
@@ -317,7 +316,7 @@ class TopLakeHW(Generator):
 
             # calculate necessary delay between from_signal to to_signal
             # TO DO this may need to be more sophisticated and based on II as well
-
+            # TO DO indexing is kind of ugly, change afterwards
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
                 self.delay = self.memories[edge["from_signal"][0]]["read_info"][0]["latency"]
             else:
@@ -370,6 +369,8 @@ class TopLakeHW(Generator):
                            cycle_count=self._cycle_count,
                            valid_output=self.valid)
 
+        # for read write memories, choose either read or write address based on whether
+        # we are writing to the memory
         read_write_addr_comb = self.combinational()
         for mem_name in self.memories:
             if mem_name in self.mem_read_write_addrs:
@@ -378,7 +379,6 @@ class TopLakeHW(Generator):
                 addr_width = self.mem_insts[mem_name].ports.read_write_addr[0].width
                 if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0]))
                 if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0]))
-                # safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr[0], writeAG.ports.addr_out)
                 read_write_addr_comb.add_stmt(if_write)
 
         lift_config_reg(self.internal_generator)
@@ -388,7 +388,7 @@ class TopLakeHW(Generator):
     def increment_cycle_count(self):
         if ~self.rst_n:
             self._cycle_count = 0
-        # clking was weird
+        # clking was weird - TO DO change once gclk gate works
         elif self.tile_en:
             self._cycle_count = self._cycle_count + 1
 
