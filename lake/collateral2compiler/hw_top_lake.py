@@ -96,11 +96,11 @@ class TopLakeHW(Generator):
             for e in self.edges:
                 if mem_name in e["to_signal"]:
                     make_input = False
-                elif mem_name in e["from_signal"]:
+                if mem_name in e["from_signal"]:
                     make_output = False
             if make_input:
                 is_input.append(mem_name)
-            elif make_output:
+            if make_output:
                 is_output.append(mem_name)
 
         # assume this for now
@@ -211,13 +211,7 @@ class TopLakeHW(Generator):
             num_mux_to = len(edge["to_signal"])
 
             # get unique edge_name identifier for hardware modules
-            from_sigs, to_sigs = "", ""
-            for e in edge["from_signal"]:
-                from_sigs += e + "_"
-            for e in edge["to_signal"]:
-                to_sigs += e + "_"
-
-            edge_name = from_sigs + to_sigs + "edge"
+            edge_name = get_edge_name(edge)
 
             # create forloop and accessor valid output signal
             self.valid = self.var(edge_name + "_accessor_valid", 1)
