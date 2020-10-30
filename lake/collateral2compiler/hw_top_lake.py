@@ -108,8 +108,6 @@ class TopLakeHW(Generator):
         assert len(is_output) == self.output_ports
 
         # direct connection to write doesn't work??
-        self.high = self.var("high", 1)
-        self.wire(self.high, 1)
         self.low = self.var("low", 1)
         self.wire(self.low, 0)
 
