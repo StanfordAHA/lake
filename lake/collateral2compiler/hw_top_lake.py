@@ -378,7 +378,7 @@ class TopLakeHW(Generator):
         lift_config_reg(self.internal_generator)
 
     # global cycle count for accessor comparison
-    @always_ff((posedge, "gclk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk_mem"), (negedge, "rst_n"))
     def increment_cycle_count(self):
         if ~self.rst_n:
             self._cycle_count = 0
@@ -387,11 +387,11 @@ class TopLakeHW(Generator):
             self._cycle_count = self._cycle_count + 1
 
     # delay in valid between read from memory and write to next memory
-    @always_ff((posedge, "gclk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk_mem"), (negedge, "rst_n"))
     def get_delayed_write(self):
         if ~self.rst_n:
             self.delayed_writes = 0
-        else:
+        elif self.tile_en:
             for i in range(self.delay - 1):
                 self.delayed_writes[i + 1] = self.delayed_writes[i]
             self.delayed_writes[0] = self.valid
