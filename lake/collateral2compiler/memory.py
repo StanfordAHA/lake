@@ -123,9 +123,15 @@ class Memory(Generator):
                                     explicit_array=True,
                                     packed=True)
 
+        self.mem_size = max(self.read_width, self.write_width)
+
+        assert self.capacity % self.mem_size == 0
+        assert self.read_width == 1 or self.write_width == 1 or self.read_width == self.write_width
+
         self.memory = self.var("memory",
                                width=self.word_width,
                                size=self.capacity,
+                               # size=(self.capacity / self.mem_size, self.mem_size),
                                explicit_array=True,
                                packed=True)
 
