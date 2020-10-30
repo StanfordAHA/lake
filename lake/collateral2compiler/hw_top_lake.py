@@ -234,7 +234,10 @@ class TopLakeHW(Generator):
             self.add_child(f"{edge_name}_read_addr_gen",
                            readAG,
                            clk=self.gclk,
-                           rst_n=self.rst_n)
+                           rst_n=self.rst_n,
+                           step=self.valid,
+                           mux_sel=forloop.ports.mux_sel_out,
+                           restart=forloop.ports.restart)
 
             # assign read address to all from memories
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
@@ -288,10 +291,10 @@ class TopLakeHW(Generator):
             self.add_child(f"{edge_name}_write_addr_gen",
                            writeAG,
                            clk=self.gclk,
-                           rst_n=self.rst_n,
-                           step=self.valid,
-                           mux_sel=forloop.ports.mux_sel_out,
-                           restart=forloop.ports.restart)
+                           rst_n=self.rst_n)
+                           # step=self.valid,
+                           # mux_sel=forloop.ports.mux_sel_out,
+                           # restart=forloop.ports.restart)
 
             # set write addr for to memories
             if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:
@@ -359,13 +362,13 @@ class TopLakeHW(Generator):
                     self.wire(self.mem_insts[edge["to_signal"][0]].ports.write, self.delayed_writes[self.delay - 1])
 
             if self.delay == 0:
-                self.wire(readAG.ports.step, self.valid)
-                self.wire(readAG.ports.mux_sel, self.forloop.ports.mux_sel_out)
-                self.wire(readAG.ports.restart, self.forloop.ports.restart)
+                self.wire(writeAG.ports.step, self.valid)
+                self.wire(writeAG.ports.mux_sel, self.forloop.ports.mux_sel_out)
+                self.wire(writeAG.ports.restart, self.forloop.ports.restart)
             else:
-                self.wire(readAG.ports.step, self.delayed_writes[self.delay - 1])
-                self.wire(readAG.ports.mux_sel, self.delayed_mux_sels[self.delay - 1])
-                self.wire(readAG.ports.restart, self.delayed_restarts[self.delay - 1])
+                self.wire(writeAG.ports.step, self.delayed_writes[self.delay - 1])
+                self.wire(writeAG.ports.mux_sel, self.delayed_mux_sels[self.delay - 1])
+                self.wire(writeAG.ports.restart, self.delayed_restarts[self.delay - 1])
             # create accessor for edge
             newSG = SchedGen(iterator_support=6,
                              config_width=self.default_config_width)
