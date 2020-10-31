@@ -119,7 +119,7 @@ class TopLakeHW(Generator):
         assert len(is_input) == self.input_ports
         assert len(is_output) == self.output_ports
 
-        # direct connection to write doesn't work??
+        # TO DO direct connection to write doesn't work??
         self.low = self.var("low", 1)
         self.wire(self.low, 0)
 
@@ -261,7 +261,6 @@ class TopLakeHW(Generator):
             else:
                 for i in range(len(edge["from_signal"])):
                     self.mem_read_write_addrs[edge["from_signal"][i]]["read_addr"] = readAG.ports.addr_out
-                # safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_write_addr[0], readAG.ports.addr_out)
 
             # if needing to mux, choose which from memory we get data
             # from for to memory data in
@@ -276,6 +275,7 @@ class TopLakeHW(Generator):
 
                 comb_mux_from = self.combinational()
                 # for i in range(num_mux_from):
+                # TO DO add_fn_ln issue with switch stmt??
                 if True:
                     if_mux_sel = IfStmt(self.mux_sel == 0)
                     for j in range(len(edge["to_signal"])):
@@ -298,13 +298,11 @@ class TopLakeHW(Generator):
             # create output addressor
             writeAG = AddrGen(iterator_support=edge["dim"],
                               config_width=self.default_config_width)
+            # step, mux_sel, restart may need delayed signals (assigned later)
             self.add_child(f"{edge_name}_write_addr_gen",
                            writeAG,
                            clk=self.gclk,
                            rst_n=self.rst_n)
-            # step=self.valid,
-            # mux_sel=forloop.ports.mux_sel_out,
-            # restart=forloop.ports.restart)
 
             # set write addr for to memories
             if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:
@@ -320,7 +318,6 @@ class TopLakeHW(Generator):
             else:
                 for i in range(len(edge["to_signal"])):
                     self.mem_read_write_addrs[edge["to_signal"][i]] = {"write": self.valid, "write_addr": writeAG.ports.addr_out}
-                    # safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.read_write_addr[0], writeAG.ports.addr_out)
 
             # calculate necessary delay between from_signal to to_signal
             # TO DO this may need to be more sophisticated and based on II as well
@@ -389,6 +386,7 @@ class TopLakeHW(Generator):
                 else:
                     self.wire(self.mem_insts[edge["to_signal"][0]].ports.write, self.delayed_writes[self.delay - 1])
 
+            # assign delayed signals for write addressor if needed
             if self.delay == 0:
                 self.wire(writeAG.ports.step, self.valid)
                 self.wire(writeAG.ports.mux_sel, self.forloop.ports.mux_sel_out)
@@ -397,6 +395,7 @@ class TopLakeHW(Generator):
                 self.wire(writeAG.ports.step, self.delayed_writes[self.delay - 1])
                 self.wire(writeAG.ports.mux_sel, self.delayed_mux_sels[self.delay - 1])
                 self.wire(writeAG.ports.restart, self.delayed_restarts[self.delay - 1])
+
             # create accessor for edge
             newSG = SchedGen(iterator_support=6,
                              config_width=self.default_config_width)
