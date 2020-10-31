@@ -572,7 +572,17 @@ if __name__ == "__main__":
                 MemPort(
                     1, 0)], 'read_write_ports': []}}
 
-    edges = [{'from_signal': ['agg', 'agg1'], 'to_signal': ['sram'], 'dim': 6, 'max_range': 65535, 'max_stride': 65535}, {'from_signal': ['sram'], 'to_signal': ['tb', 'tb1'], 'dim': 6, 'max_range': 65535, 'max_stride': 65535}]
+    edges = [
+        {'from_signal': ['agg', 'agg1'],
+            'to_signal': ['sram'],
+            'dim': 6,
+            'max_range': 65535,
+            'max_stride': 65535},
+        {'from_signal': ['sram'],
+            'to_signal': ['tb', 'tb1'],
+            'dim': 6,
+            'max_range': 65535,
+            'max_stride': 65535}]
 
     tile = TopLakeHW(word_width=16,
                      input_ports=2,
