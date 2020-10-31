@@ -7,7 +7,6 @@ write_port = MemPort(1, 0)
 
 pond_params = {"name": "pond",
                "capacity": 32,
-               "word_width": 16,
                "read_port_width": 1,
                "write_port_width": 1}
 

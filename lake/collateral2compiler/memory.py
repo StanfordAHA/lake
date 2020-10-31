@@ -35,13 +35,13 @@ def port_to_info(mem_params):
     return mem_params
 
 
-def mem_inst(mem_params, mem_collateral={}):
+def mem_inst(mem_params, word_width, mem_collateral={}):
     # print(mem_params)
 
     # get full memory parameters with port information
     mem_params = port_to_info(mem_params)
     # create memory instance
-    mem = Memory(mem_params)
+    mem = Memory(mem_params, word_width)
     # get memory parameters for compiler collateral if needed
     get_params(mem, mem_collateral, "mem")
 
@@ -50,16 +50,17 @@ def mem_inst(mem_params, mem_collateral={}):
 
 class Memory(Generator):
     def __init__(self,
-                 mem_params):
+                 mem_params,
+                 word_width):
 
         super().__init__("lake_mem", debug=True)
 
         # print("MEM PARAMS ", mem_params)
 
+        self.word_width = word_width
+
         self.mem_name = mem_params["name"]
         self.capacity = mem_params["capacity"]
-
-        self.word_width = mem_params["word_width"]
 
         if "num_read_ports" not in mem_params:
             self.num_read_ports = 0

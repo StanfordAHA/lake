@@ -19,7 +19,6 @@ agg_read_port = MemPort(0, 0)
 
 agg_params = {"name": "agg",
               "capacity": 4,
-              "word_width": 16,
               "read_port_width": 4,
               "write_port_width": 1}
 
@@ -30,7 +29,6 @@ agg1_write_port = MemPort(1, 0)
 agg1_read_port = MemPort(0, 0)
 agg1_params = {"name": "agg1",
                "capacity": 4,
-               "word_width": 16,
                "read_port_width": 4,
                "write_port_width": 1}
 
@@ -40,7 +38,6 @@ sram_write_read_port = MemPort(1, 0)
 
 sram_params = {"name": "sram",
                "capacity": 512,
-               "word_width": 16,
                "read_write_port_width": 4}
 
 tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
@@ -60,7 +57,6 @@ tb_read_port = MemPort(0, 0)
 
 tb_params = {"name": "tb",
              "capacity": 8,
-             "word_width": 16,
              "read_port_width": 1,
              "write_port_width": 4}
 
@@ -71,7 +67,6 @@ tb1_read_port = MemPort(0, 0)
 
 tb1_params = {"name": "tb1",
               "capacity": 8,
-              "word_width": 16,
               "read_port_width": 1,
               "write_port_width": 4}
 
