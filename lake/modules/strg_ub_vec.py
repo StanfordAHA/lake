@@ -60,7 +60,7 @@ class StrgUBVec(Generator):
                                    explicit_array=True)
 
         # Create cycle counter to share...
-        self._cycle_count = add_counter(self, "cycle_count", 16)
+        self._cycle_count = add_counter(self, "cycle_count", 16, clk=self._clk)
 
         # outputs
         self._data_out = self.output("data_out", self.data_width,

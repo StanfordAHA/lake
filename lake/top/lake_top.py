@@ -163,6 +163,7 @@ class LakeTop(Generator):
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, self._clk & self._tile_en)
+        print(gclk)
 
         self._cycle_count = add_counter(self, "cycle_count", 16, clk=self._gclk)
 
