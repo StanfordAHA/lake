@@ -4,6 +4,7 @@ from _kratos import create_wrapper_flatten
 from math import log
 
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.collateral2compiler.mem_port import MemPort
 from lake.collateral2compiler.memory import mem_inst
 from lake.collateral2compiler.helper import *
 from lake.modules.for_loop import ForLoop
@@ -74,7 +75,7 @@ class TopLakeHW(Generator):
                 self._cycle_count = self._cycle_count + 1
 
         self.add_always(increment_cycle_count)
-        #self.add_code(increment_cycle_count)
+        # self.add_code(increment_cycle_count)
 
         num_mem = len(memories)
         subscript_mems = list(self.memories.keys())
@@ -357,8 +358,7 @@ class TopLakeHW(Generator):
                         self.delayed_restarts[0] = self.forloop.ports.restart
 
                 self.add_always(get_delayed_write)
-                #self.add_code(self.get_delayed_write)
-
+                # self.add_code(self.get_delayed_write)
 
             # if we have a mux for the two memories, choose who to
             # write to
@@ -537,3 +537,54 @@ class TopLakeHW(Generator):
                     config.append((f"tb12output_forloop_ranges_{i}", elem.extent[i]))
 
         return trim_config_list(flattened, config)
+
+
+if __name__ == "__main__":
+    # this is auto generated after top_lake pre-processing for inputs
+    # for hardware generation
+    memories = {
+        'agg': {
+            'name': 'agg', 'capacity': 4, 'word_width': 16, 'read_port_width': 4, 'write_port_width': 1, 'num_write_ports': 1, 'num_read_ports': 1, 'num_read_write_ports': 0, 'read_ports': [
+                MemPort(
+                    0, 0)], 'write_ports': [
+                MemPort(
+                    1, 0)], 'read_write_ports': []}, 'agg1': {
+            'name': 'agg1', 'capacity': 4, 'word_width': 16, 'read_port_width': 4, 'write_port_width': 1, 'num_write_ports': 1, 'num_read_ports': 1, 'num_read_write_ports': 0, 'read_ports': [
+                MemPort(
+                    0, 0)], 'write_ports': [
+                MemPort(
+                    1, 0)], 'read_write_ports': []}, 'sram': {
+            'name': 'sram', 'capacity': 512, 'word_width': 16, 'read_write_port_width': 4, 'num_write_ports': 0, 'num_read_ports': 0, 'num_read_write_ports': 1, 'read_ports': [], 'write_ports': [], 'read_write_ports': [
+                MemPort(
+                    1, 0)]}, 'tb': {
+            'name': 'tb', 'capacity': 8, 'word_width': 16, 'read_port_width': 1, 'write_port_width': 4, 'num_write_ports': 1, 'num_read_ports': 1, 'num_read_write_ports': 0, 'read_ports': [
+                MemPort(
+                    0, 0)], 'write_ports': [
+                MemPort(
+                    1, 0)], 'read_write_ports': []}, 'tb1': {
+            'name': 'tb1', 'capacity': 8, 'word_width': 16, 'read_port_width': 1, 'write_port_width': 4, 'num_write_ports': 1, 'num_read_ports': 1, 'num_read_write_ports': 0, 'read_ports': [
+                MemPort(
+                    0, 0)], 'write_ports': [
+                MemPort(
+                    1, 0)], 'read_write_ports': []}}
+
+    edges = [{'from_signal': ['agg', 'agg1'], 'to_signal': ['sram'], 'dim': 6, 'max_range': 65535, 'max_stride': 65535}, {'from_signal': ['sram'], 'to_signal': ['tb', 'tb1'], 'dim': 6, 'max_range': 65535, 'max_stride': 65535}]
+
+    tile = TopLakeHW(word_width=16,
+                     input_ports=2,
+                     output_ports=2,
+                     memories=memories,
+                     edges=edges)
+
+    verilog(tile, filename="Lake_hw.sv",
+            check_multiple_driver=False,
+            optimize_if=False,
+            check_flip_flop_always_ff=False)
+
+    # Generator.clear_context_hash()
+
+    # magma_dut = kts.util.to_magma(tile,
+    #        flatten_array=True,
+    # check_multiple_driver=False,
+    # optimize_if=False,
+    # check_flip_flop_always_ff=False)
