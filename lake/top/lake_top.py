@@ -154,8 +154,26 @@ class LakeTop(Generator):
 
         self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
 
+        # Add tile enable!
+        self._tile_en = self.input("tile_en", 1)
+        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        self._tile_en.add_attribute(FormalAttr(self._tile_en.name, FormalSignalConstraint.SET1))
+
+        # Currenlt mode = 0 is UB, mode = 1 is FIFO
+        gclk = self.var("gclk", 1)
+        self._gclk = kts.util.clock(gclk)
+        self.wire(gclk, self._clk & self._tile_en)
+
         self._cycle_count = self.var("cycle_count", 16)
-        self.add_code(self.cycle_count_inc)
+
+        @always_ff((posedge, self._gclk), (negedge, "rst_n"))
+        def cycle_count_inc(self):
+            if ~self._rst_n:
+                self._cycle_count = 0
+            else:
+                self._cycle_count = self._cycle_count + 1
+
+        self.add_always(cycle_count_inc)
 
         if self.stencil_valid:
 
@@ -241,21 +259,11 @@ class LakeTop(Generator):
 
         self.address_width = clog2(self.num_tiles * self.mem_depth)
 
-        # Add tile enable!
-        self._tile_en = self.input("tile_en", 1)
-        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
-        self._tile_en.add_attribute(FormalAttr(self._tile_en.name, FormalSignalConstraint.SET1))
-
         # either normal or fifo mode rn...
         self.num_modes = 3
         self._mode = self.input("mode", max(1, clog2(self.num_modes)))
         self._mode.add_attribute(ConfigRegAttr("MODE!"))
         self._mode.add_attribute(FormalAttr(self._mode.name, FormalSignalConstraint.SET0))
-
-        # Currenlt mode = 0 is UB, mode = 1 is FIFO
-        gclk = self.var("gclk", 1)
-        self._gclk = kts.util.clock(gclk)
-        self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
         self._mem_data_out = self.var("mem_data_out",
                                       self.data_width,
@@ -839,13 +847,6 @@ class LakeTop(Generator):
         lift_config_reg(self.internal_generator)
 
         extract_formal_annotation(self, "lake_top_annotation.txt")
-
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def cycle_count_inc(self):
-        if ~self._rst_n:
-            self._cycle_count = 0
-        else:
-            self._cycle_count = self._cycle_count + 1
 
     def supports(self, prop):
         attr = getattr(self, prop)
