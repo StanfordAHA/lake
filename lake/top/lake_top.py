@@ -159,7 +159,7 @@ class LakeTop(Generator):
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
         self._tile_en.add_attribute(FormalAttr(self._tile_en.name, FormalSignalConstraint.SET1))
 
-        # Currenlt mode = 0 is UB, mode = 1 is FIFO
+        # gate clock with tile_en
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, self._clk & self._tile_en)
@@ -259,6 +259,7 @@ class LakeTop(Generator):
 
         self.address_width = clog2(self.num_tiles * self.mem_depth)
 
+        # Currently mode = 0 is UB, mode = 1 is FIFO
         # either normal or fifo mode rn...
         self.num_modes = 3
         self._mode = self.input("mode", max(1, clog2(self.num_modes)))
