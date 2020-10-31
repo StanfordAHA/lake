@@ -45,7 +45,7 @@ class TopLakeHW(Generator):
 
         gclk = self.var("gclk", 1)
         self.gclk = kts.util.clock(gclk)
-        self.wire(gclk, kts.util.clock(self.clk_mem & self.tile_en))
+        self.wire(gclk, self.clk_mem & self.tile_en)
 
         # active low asynchornous reset
         self.rst_n = self.reset("rst_n", 1)
@@ -63,7 +63,18 @@ class TopLakeHW(Generator):
                                     packed=True)
 
         self._cycle_count = self.var("cycle_count", 16)
-        self.add_code(self.increment_cycle_count)
+
+        # global cycle count for accessor comparison
+        @always_ff((posedge, self.gclk), (negedge, "rst_n"))
+        def increment_cycle_count(self):
+            if ~self.rst_n:
+                self._cycle_count = 0
+            # clking was weird - TO DO change once gclk gate works
+            elif self.tile_en:
+                self._cycle_count = self._cycle_count + 1
+
+        self.add_always(increment_cycle_count)
+        #self.add_code(increment_cycle_count)
 
         num_mem = len(memories)
         subscript_mems = list(self.memories.keys())
@@ -328,7 +339,26 @@ class TopLakeHW(Generator):
                                                  packed=True)
                 self.delayed_restarts = self.var(f"{edge_name}_delayed_restarts",
                                                  width=self.delay)
-                self.add_code(self.get_delayed_write)
+
+                # delay in valid between read from memory and write to next memory
+                @always_ff((posedge, self.gclk), (negedge, "rst_n"))
+                def get_delayed_write(self):
+                    if ~self.rst_n:
+                        self.delayed_writes = 0
+                        self.delayed_mux_sels = 0
+                        self.delayed_restarts = 0
+                    elif self.tile_en:
+                        for i in range(self.delay - 1):
+                            self.delayed_writes[i + 1] = self.delayed_writes[i]
+                            self.delayed_mux_sels[i + 1] = self.delayed_mux_sels[i]
+                            self.delayed_restarts[i + 1] = self.delayed_restarts[i]
+                        self.delayed_writes[0] = self.valid
+                        self.delayed_mux_sels[0] = self.forloop.ports.mux_sel_out
+                        self.delayed_restarts[0] = self.forloop.ports.restart
+
+                self.add_always(get_delayed_write)
+                #self.add_code(self.get_delayed_write)
+
 
             # if we have a mux for the two memories, choose who to
             # write to
@@ -394,31 +424,6 @@ class TopLakeHW(Generator):
                 read_write_addr_comb.add_stmt(if_write)
 
         lift_config_reg(self.internal_generator)
-
-    # global cycle count for accessor comparison
-    @always_ff((posedge, "clk_mem"), (negedge, "rst_n"))
-    def increment_cycle_count(self):
-        if ~self.rst_n:
-            self._cycle_count = 0
-        # clking was weird - TO DO change once gclk gate works
-        elif self.tile_en:
-            self._cycle_count = self._cycle_count + 1
-
-    # delay in valid between read from memory and write to next memory
-    @always_ff((posedge, "clk_mem"), (negedge, "rst_n"))
-    def get_delayed_write(self):
-        if ~self.rst_n:
-            self.delayed_writes = 0
-            self.delayed_mux_sels = 0
-            self.delayed_restarts = 0
-        elif self.tile_en:
-            for i in range(self.delay - 1):
-                self.delayed_writes[i + 1] = self.delayed_writes[i]
-                self.delayed_mux_sels[i + 1] = self.delayed_mux_sels[i]
-                self.delayed_restarts[i + 1] = self.delayed_restarts[i]
-            self.delayed_writes[0] = self.valid
-            self.delayed_mux_sels[0] = self.forloop.ports.mux_sel_out
-            self.delayed_restarts[0] = self.forloop.ports.restart
 
     def get_static_bitstream(self,
                              config_path,
