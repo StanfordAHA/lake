@@ -70,12 +70,10 @@ class TopLakeHW(Generator):
         def increment_cycle_count(self):
             if ~self.rst_n:
                 self._cycle_count = 0
-            # clking was weird - TO DO change once gclk gate works
-            elif self.tile_en:
+            else:
                 self._cycle_count = self._cycle_count + 1
 
         self.add_always(increment_cycle_count)
-        # self.add_code(increment_cycle_count)
 
         num_mem = len(memories)
         subscript_mems = list(self.memories.keys())
@@ -345,7 +343,7 @@ class TopLakeHW(Generator):
                         self.delayed_writes = 0
                         self.delayed_mux_sels = 0
                         self.delayed_restarts = 0
-                    elif self.tile_en:
+                    else:
                         for i in range(self.delay - 1):
                             self.delayed_writes[i + 1] = self.delayed_writes[i]
                             self.delayed_mux_sels[i + 1] = self.delayed_mux_sels[i]
@@ -355,7 +353,6 @@ class TopLakeHW(Generator):
                         self.delayed_restarts[0] = self.forloop.ports.restart
 
                 self.add_always(get_delayed_write)
-                # self.add_code(self.get_delayed_write)
 
             # if we have a mux for the two memories, choose who to
             # write to
