@@ -55,7 +55,7 @@ class Pond(Generator):
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
-        self._cycle_count = add_counter(self, "cycle_count", self.cycle_count_width)
+        self._cycle_count = add_counter(self, "cycle_count", self.cycle_count_width, self._gclk)
 
         # Create write enable + addr, same for read.
         # self._write = self.input("write", self.interconnect_input_ports)
