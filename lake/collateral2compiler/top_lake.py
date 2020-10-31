@@ -56,7 +56,24 @@ class TopLake():
         mem_params["num_read_ports"] = len(read_ports)
         mem_params["num_read_write_ports"] = len(read_write_ports)
 
-    def add_edge(self, edge_params):
+    # TO DO put the defaults here instead of the additional function
+    def add_edge(self, 
+        from_signal,
+        to_signal,
+        dim=None,
+        max_range=None,
+        max_stride=None):
+
+        edge_params = {"from_signal": from_signal,
+            "to_signal": to_signal}
+
+        if dim is not None:
+            edge_params["dim"] = dim
+        if max_range is not None:
+            edge_params["max_range"] = max_range
+        if max_stride is not None:
+            edge_params["max_stride"] = max_stride
+
         # check if producer and consumer port widths match
         from_key = "read_port_width"
         to_key = "write_port_width"

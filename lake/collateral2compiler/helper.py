@@ -2,6 +2,25 @@ from kratos import *
 import json
 
 
+def make_params(name,
+                capacity,
+                read_port_width=0,
+                write_port_width=0,
+                read_write_port_width=0):
+
+    params_dict = {"name": name,
+                   "capacity": capacity}
+
+    if read_port_width != 0:
+        params_dict["read_port_width"] = read_port_width
+    if write_port_width != 0:
+        params_dict["write_port_width"] = write_port_width
+    if read_write_port_width != 0:
+        params_dict["read_write_port_width"] = read_write_port_width
+
+    return params_dict
+
+
 def get_params(gen, collateral, name_id):
     orig_gen = Generator("original")
     gen_dict = vars(gen).copy()
