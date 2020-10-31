@@ -14,7 +14,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
-from lake.utils.util import trim_config_list, extract_formal_annotation
+from lake.utils.util import trim_config_list, extract_formal_annotation, add_counter
 from lake.utils.parse_clkwork_config import map_controller, extract_controller
 from lake.utils.parse_clkwork_config import extract_controller_json
 from lake.modules.for_loop import ForLoop
@@ -164,16 +164,7 @@ class LakeTop(Generator):
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, self._clk & self._tile_en)
 
-        self._cycle_count = self.var("cycle_count", 16)
-
-        @always_ff((posedge, self._gclk), (negedge, "rst_n"))
-        def cycle_count_inc(self):
-            if ~self._rst_n:
-                self._cycle_count = 0
-            else:
-                self._cycle_count = self._cycle_count + 1
-
-        self.add_always(cycle_count_inc)
+        self._cycle_count = add_counter(self, "cycle_count", 16, clk=self._gclk)
 
         if self.stencil_valid:
 

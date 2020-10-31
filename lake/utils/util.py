@@ -284,10 +284,10 @@ def trim_config_list(flat_gen, config_list):
 
 
 # Add a simple counter to a design and return the signal
-def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
+def add_counter(generator, name, bitwidth, clk="clk", increment=kts.const(1, 1)):
     ctr = generator.var(name, bitwidth)
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, clk), (negedge, "rst_n"))
     def ctr_inc_code():
         if ~generator._rst_n:
             ctr = 0
