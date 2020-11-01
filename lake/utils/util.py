@@ -103,11 +103,13 @@ def set_configs_sv(generator, filepath, configs_dict):
         if len(attrs) != 1:
             continue
         port = attrs[0].get_port_name()
-        if ("dimensionality" in port) or ("starting_addr" in port):
-            remain.append(port)
-        else:
-            for i in range(6):
-                remain.append(port + f"_{i}")
+        # find config regs
+        if len(curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))) == 1:
+            if ("strides" in port) or ("ranges" in port):
+                for i in range(6):
+                    remain.append(port + f"_{i}")
+            else:
+                remain.append(port)
 
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
