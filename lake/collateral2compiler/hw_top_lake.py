@@ -37,6 +37,7 @@ class TopLakeHW(Generator):
         self.edges = edges
 
         self.default_config_width = 16
+        self.cycle_count_width = 16
 
         # inputs
         self.tile_en = self.input("tile_en", 1)
@@ -110,8 +111,14 @@ class TopLakeHW(Generator):
                     make_output = False
             if make_input:
                 is_input.append(mem_name)
+                if "input_edge_params" not in self.memories[mem_name]:
+                    self.memories[mem_name]["input_edge_params"] = {}
+                    get_full_edge_params(mem_params["input_edge_params"])
             if make_output:
                 is_output.append(mem_name)
+                if "output_edge_params" not in self.memories[mem_name]:
+                    self.memories[mem_name]["output_edge_params"] = {}
+                    get_full_edge_params(mem_params["output_edge_params"])
 
         # assume this for now
         assert len(is_input) == self.input_ports
@@ -125,13 +132,17 @@ class TopLakeHW(Generator):
         for i in range(len(is_input)):
             in_mem = is_input[i]
 
+            input_dim = self.memories[in_mem]["input_edge_params"]["dim"]
+            input_range = self.memories[in_mem]["input_edge_params"]["max_range"]
+            input_stride = self.memories[in_mem]["input_edge_params"]["max_stride"]
+
             self.valid = self.var(f"input2{in_mem}_accessor_valid", 1)
             self.wire(self.mem_insts[in_mem].ports.write, self.valid)
 
             safe_wire(self, self.mem_insts[in_mem].ports.data_in[0], self.data_in[i])
 
-            forloop = ForLoop(iterator_support=6,
-                              config_width=16)  # self.default_config_width)
+            forloop = ForLoop(iterator_support=input_dim,
+                              config_width=max(1, clog2(input_range)))  # self.default_config_width)
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
 
@@ -141,8 +152,8 @@ class TopLakeHW(Generator):
                            rst_n=self.rst_n,
                            step=self.valid)
 
-            newAG = AddrGen(iterator_support=6,
-                            config_width=4)  # self.default_config_width)
+            newAG = AddrGen(iterator_support=input_dim,
+                            config_width=max(1, clog2(input_range)))  # self.default_config_width)
             self.add_child(f"input2{in_mem}_write_addr_gen",
                            newAG,
                            clk=self.gclk,
@@ -156,8 +167,8 @@ class TopLakeHW(Generator):
             else:
                 safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
-            newSG = SchedGen(iterator_support=6,
-                             config_width=self.default_config_width)
+            newSG = SchedGen(iterator_support=input_dim,
+                             config_width=self.cycle_count_width)
             self.add_child(f"input2{in_mem}_write_sched_gen",
                            newSG,
                            clk=self.gclk,
@@ -170,12 +181,17 @@ class TopLakeHW(Generator):
         # wire output data from output memories
         for i in range(len(is_output)):
             out_mem = is_output[i]
+
+            output_dim = self.memories[out_mem]["output_edge_params"]["dim"]
+            output_range = self.memories[out_mem]["output_edge_params"]["max_range"]
+            output_stride = self.memories[out_mem]["output_edge_params"]["max_stride"]
+
             self.wire(self.data_out[i], self.mem_data_outs[subscript_mems.index(out_mem)][0])  # , self.mem_insts[out_mem].ports.data_out)
 
             self.valid = self.var(f"{out_mem}2output_accessor_valid", 1)
 
-            forloop = ForLoop(iterator_support=6,
-                              config_width=self.default_config_width)
+            forloop = ForLoop(iterator_support=output_dim,
+                              config_width=max(1, clog2(output_range)))#self.default_config_width)
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
 
@@ -185,8 +201,8 @@ class TopLakeHW(Generator):
                            rst_n=self.rst_n,
                            step=self.valid)
 
-            newAG = AddrGen(iterator_support=6,
-                            config_width=self.default_config_width)
+            newAG = AddrGen(iterator_support=output_dim,
+                            config_width=max(1, clog2(output_range)))#self.default_config_width)
             self.add_child(f"{out_mem}2output_read_addr_gen",
                            newAG,
                            clk=self.gclk,
@@ -200,8 +216,8 @@ class TopLakeHW(Generator):
             else:
                 safe_wire(self, self.mem_insts[out_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
-            newSG = SchedGen(iterator_support=6,
-                             config_width=self.default_config_width)
+            newSG = SchedGen(iterator_support=output_dim,
+                             config_width=self.cycle_count_width)#self.default_config_width)
             self.add_child(f"{out_mem}2output_read_sched_gen",
                            newSG,
                            clk=self.gclk,
@@ -394,8 +410,8 @@ class TopLakeHW(Generator):
                 self.wire(writeAG.ports.restart, self.delayed_restarts[self.delay - 1])
 
             # create accessor for edge
-            newSG = SchedGen(iterator_support=6,
-                             config_width=self.default_config_width)
+            newSG = SchedGen(iterator_support=edge["dim"],
+                             config_width=self.cycle_count_width)#self.default_config_width)
 
             self.add_child(edge_name + "_sched_gen",
                            newSG,

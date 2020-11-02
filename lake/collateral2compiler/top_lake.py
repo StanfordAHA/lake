@@ -37,7 +37,7 @@ class TopLake():
         self.muxes = {}
 
     # default for ports is no ports
-    def add_memory(self, mem_params, write_ports=[], read_ports=[], read_write_ports=[]):
+    def add_memory(self, mem_params, write_ports=[], read_ports=[], read_write_ports=[], is_input=False, is_output=False, input_edge_params=None, output_edge_params=None):
 
         mem_name = mem_params["name"]
 
@@ -48,6 +48,30 @@ class TopLake():
         mem_params["read_ports"] = read_ports
         mem_params["write_ports"] = write_ports
         mem_params["read_write_ports"] = read_write_ports
+
+        if is_input:
+            if input_edge_params is not None:
+                dim = input_edge_params[0]
+                max_range = input_edge_params[1]
+                max_stride = input_edge_params[2]
+                mem_params["input_edge_params"] = {"dim": dim,
+                    "max_range": max_range,
+                    "max_stride": max_stride}
+            else:
+                mem_params["input_edge_params"] = {}
+                get_full_edge_params(mem_params["input_edge_params"])
+
+        if is_output:
+            if output_edge_params is not None:
+                dim = output_edge_params[0]
+                max_range = output_edge_params[1]
+                max_stride = output_edge_params[2]
+                mem_params["output_edge_params"] = {"dim": dim,
+                    "max_range": max_range,
+                    "max_stride": max_stride}
+            else:
+                mem_params["output_edge_params"] = {}
+                get_full_edge_params(mem_params["output_edge_params"])
 
         self.memories[mem_name] = mem_params
 
