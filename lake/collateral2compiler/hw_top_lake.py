@@ -4,9 +4,10 @@ from _kratos import create_wrapper_flatten
 from math import log
 
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.collateral2compiler.edge import get_full_edge_params
+from lake.collateral2compiler.helper import *
 from lake.collateral2compiler.mem_port import MemPort
 from lake.collateral2compiler.memory import mem_inst
-from lake.collateral2compiler.helper import *
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
@@ -113,12 +114,12 @@ class TopLakeHW(Generator):
                 is_input.append(mem_name)
                 if "input_edge_params" not in self.memories[mem_name]:
                     self.memories[mem_name]["input_edge_params"] = {}
-                    get_full_edge_params(mem_params["input_edge_params"])
+                    get_full_edge_params(self.memories[mem_name]["input_edge_params"])
             if make_output:
                 is_output.append(mem_name)
                 if "output_edge_params" not in self.memories[mem_name]:
                     self.memories[mem_name]["output_edge_params"] = {}
-                    get_full_edge_params(mem_params["output_edge_params"])
+                    get_full_edge_params(self.memories[mem_name]["output_edge_params"])
 
         # assume this for now
         assert len(is_input) == self.input_ports
