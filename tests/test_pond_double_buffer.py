@@ -6,10 +6,10 @@ import random as rand
 import pytest
 import tempfile
 from lake.models.lake_top_model import LakeTopModel
-from lake.utils.util import transform_strides_and_ranges, generate_pond_api_new, generate_pond_api
+from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 
 
-def test_pond(data_width=16,  # CGRA Params
+def test_pond_double_buffer(data_width=16,  # CGRA Params
               mem_depth=32,
               default_iterator_support=2,
               config_data_width=32,
@@ -43,7 +43,7 @@ def test_pond(data_width=16,  # CGRA Params
     # Ranges, Strides, Dimensionality, Starting Addr, Starting Addr - Schedule
     ctrl_rd = [[32, 1], [1, 0], 2, 0, 16, [1, 0]]
     ctrl_wr = [[32, 1], [1, 1], 2, 0, 0, [1, 1]]
-    pond_config = generate_pond_api_new(ctrl_rd, ctrl_wr)
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -85,5 +85,5 @@ def test_pond(data_width=16,  # CGRA Params
 
 
 if __name__ == "__main__":
-    test_pond()
+    test_pond_double_buffer()
 
