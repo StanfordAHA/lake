@@ -10,15 +10,15 @@ from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 
 
 def test_pond_double_buffer(data_width=16,  # CGRA Params
-              mem_depth=32,
-              default_iterator_support=2,
-              config_data_width=32,
-              config_addr_width=8,
-              cycle_count_width=16,
-              add_clk_enable=True,
-              add_flush=True,
-              interconnect_input_ports=1,  # Connection to int
-              interconnect_output_ports=1):
+                            mem_depth=32,
+                            default_iterator_support=2,
+                            config_data_width=32,
+                            config_addr_width=8,
+                            cycle_count_width=16,
+                            add_clk_enable=True,
+                            add_flush=True,
+                            interconnect_input_ports=1,  # Connection to int
+                            interconnect_output_ports=1):
 
     ### DUT
     pond_dut = Pond(data_width=data_width,  # CGRA Params
@@ -86,4 +86,3 @@ def test_pond_double_buffer(data_width=16,  # CGRA Params
 
 if __name__ == "__main__":
     test_pond_double_buffer()
-
