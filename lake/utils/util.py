@@ -308,38 +308,6 @@ def add_config_reg(generator, name, description, bitwidth, **kwargs):
 def generate_pond_api(ctrl_rd, ctrl_wr):
     (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
     (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
-
-    new_config = {}
-
-    new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
-    new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
-    new_config["rf_read_addr_0_strides_0"] = tform_strides_rd[0]
-    new_config["rf_read_addr_0_strides_1"] = tform_strides_rd[1]
-    new_config["rf_read_iter_0_ranges_0"] = tform_ranges_rd[0]
-    new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
-
-    new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
-    new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd[0]
-    new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd[1]
-
-    new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
-    new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
-    new_config["rf_write_addr_0_strides_0"] = tform_strides_wr[0]
-    new_config["rf_write_addr_0_strides_1"] = tform_strides_wr[1]
-    new_config["rf_write_iter_0_ranges_0"] = tform_ranges_wr[0]
-    new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
-
-    new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
-    new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr[0]
-    new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr[1]
-
-    return new_config
-
-
-# Function for generating Pond API
-def generate_pond_api_new(ctrl_rd, ctrl_wr):
-    (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
-    (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
     
     (tform_ranges_rd_sched, tform_strides_rd_sched) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[5], ctrl_rd[2])
     (tform_ranges_wr_sched, tform_strides_wr_sched) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[5], ctrl_wr[2])
