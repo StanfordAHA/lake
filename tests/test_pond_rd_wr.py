@@ -6,7 +6,7 @@ import random as rand
 import pytest
 import tempfile
 from lake.models.lake_top_model import LakeTopModel
-from lake.utils.util import transform_strides_and_ranges, generate_pond_api
+from lake.utils.util import transform_strides_and_ranges, generate_pond_api_new, generate_pond_api
 
 
 def test_pond(data_width=16,  # CGRA Params
@@ -41,9 +41,9 @@ def test_pond(data_width=16,  # CGRA Params
     tester = fault.Tester(magma_dut, magma_dut.clk)
     ###
     # Ranges, Strides, Dimensionality, Starting Addr, Starting Addr - Schedule
-    ctrl_rd = [[16, 1], [1, 1], 2, 0, 16]
-    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
+    ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1] ]
+    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1] ]
+    pond_config = generate_pond_api_new(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
