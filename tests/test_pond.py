@@ -10,15 +10,15 @@ from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 
 
 def test_pond_basic(data_width=16,  # CGRA Params
-              mem_depth=32,
-              default_iterator_support=2,
-              config_data_width=32,
-              config_addr_width=8,
-              cycle_count_width=16,
-              add_clk_enable=True,
-              add_flush=True,
-              interconnect_input_ports=1,  # Connection to int
-              interconnect_output_ports=1):
+                    mem_depth=32,
+                    default_iterator_support=2,
+                    config_data_width=32,
+                    config_addr_width=8,
+                    cycle_count_width=16,
+                    add_clk_enable=True,
+                    add_flush=True,
+                    interconnect_input_ports=1,  # Connection to int
+                    interconnect_output_ports=1):
 
     ### DUT
     pond_dut = Pond(data_width=data_width,  # CGRA Params
@@ -41,8 +41,8 @@ def test_pond_basic(data_width=16,  # CGRA Params
     tester = fault.Tester(magma_dut, magma_dut.clk)
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Ranges (schedule)
-    ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1] ]
-    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1] ]
+    ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
+    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
     pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
@@ -84,15 +84,15 @@ def test_pond_basic(data_width=16,  # CGRA Params
 
 
 def test_pond_strided_read(data_width=16,  # CGRA Params
-              mem_depth=32,
-              default_iterator_support=2,
-              config_data_width=32,
-              config_addr_width=8,
-              cycle_count_width=16,
-              add_clk_enable=True,
-              add_flush=True,
-              interconnect_input_ports=1,  # Connection to int
-              interconnect_output_ports=1):
+                           mem_depth=32,
+                           default_iterator_support=2,
+                           config_data_width=32,
+                           config_addr_width=8,
+                           cycle_count_width=16,
+                           add_clk_enable=True,
+                           add_flush=True,
+                           interconnect_input_ports=1,  # Connection to int
+                           interconnect_output_ports=1):
 
     ### DUT
     pond_dut = Pond(data_width=data_width,  # CGRA Params
@@ -113,7 +113,7 @@ def test_pond_strided_read(data_width=16,  # CGRA Params
                                   check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
-    
+
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[8, 1], [2, 0], 1, 0, 16, [1, 0]]
@@ -145,8 +145,7 @@ def test_pond_strided_read(data_width=16,  # CGRA Params
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
         if i >= 16:
-            print((i-16)*2 + 1)
-            tester.circuit.data_out_pond.expect((i - 16)*2 + 1)
+            tester.circuit.data_out_pond.expect((i - 16) * 2 + 1)
 
         tester.eval()
         tester.step(2)
@@ -160,15 +159,15 @@ def test_pond_strided_read(data_width=16,  # CGRA Params
 
 
 def test_pond_b2b_read(data_width=16,  # CGRA Params
-              mem_depth=32,
-              default_iterator_support=2,
-              config_data_width=32,
-              config_addr_width=8,
-              cycle_count_width=16,
-              add_clk_enable=True,
-              add_flush=True,
-              interconnect_input_ports=1,  # Connection to int
-              interconnect_output_ports=1):
+                       mem_depth=32,
+                       default_iterator_support=2,
+                       config_data_width=32,
+                       config_addr_width=8,
+                       cycle_count_width=16,
+                       add_clk_enable=True,
+                       add_flush=True,
+                       interconnect_input_ports=1,  # Connection to int
+                       interconnect_output_ports=1):
 
     ### DUT
     pond_dut = Pond(data_width=data_width,  # CGRA Params
@@ -210,7 +209,7 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
 
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    for i in range(16*11):
+    for i in range(16 * 11):
         # Incrementing Data
         data_in_pond[0] = data_in_pond[0] + 1
 
@@ -221,7 +220,7 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
                 setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
 
         if i >= 16:
-            tester.circuit.data_out_pond.expect(((i - 16)%16) + 1)
+            tester.circuit.data_out_pond.expect(((i - 16) % 16) + 1)
 
         tester.eval()
         tester.step(2)
@@ -232,4 +231,3 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
-
