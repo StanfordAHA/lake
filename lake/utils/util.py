@@ -308,10 +308,9 @@ def add_config_reg(generator, name, description, bitwidth, **kwargs):
 def generate_pond_api(ctrl_rd, ctrl_wr):
     (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
     (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
-    
+
     (tform_ranges_rd_sched, tform_strides_rd_sched) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[5], ctrl_rd[2])
     (tform_ranges_wr_sched, tform_strides_wr_sched) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[5], ctrl_wr[2])
-
 
     new_config = {}
 
@@ -338,8 +337,6 @@ def generate_pond_api(ctrl_rd, ctrl_wr):
     new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
 
     return new_config
-
-
 
 
 def process_line(item):

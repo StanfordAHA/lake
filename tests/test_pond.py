@@ -232,3 +232,4 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
