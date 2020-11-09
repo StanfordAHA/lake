@@ -95,7 +95,7 @@ class ForLoop(Generator):
     @always_comb
     def set_clear(self, idx):
         self._clear[idx] = 0
-        if ((idx < self._mux_sel) & self._step) | (~self._done):
+        if ((idx < self._mux_sel) | (~self._done)) & self._step:
             self._clear[idx] = 1
 
     @always_comb
