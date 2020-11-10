@@ -287,7 +287,7 @@ class Pond(Generator):
         self.add_child(f"rf",
                        self.RF_GEN,
                        clk=self._gclk,
-                       # rst_n=self._rst_n,
+                       rst_n=self._rst_n,
                        data_out=self._mem_data_out)
 
         # Opt in for config_write
