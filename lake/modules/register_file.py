@@ -28,7 +28,7 @@ class RegisterFile(Generator):
         # Clock and Reset          #
         ############################
         self._clk = self.clock("clk")
-        self._rst_n = self.reset("rst_n")
+        # self._rst_n = self.reset("rst_n")
 
         ############################
         # Inputs                   #
@@ -105,19 +105,15 @@ class RegisterFile(Generator):
     ##########################
     # Access sram array      #
     ##########################
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"))
     def seq_data_access(self):
         for i in range(self.write_ports):
-            if ~self._rst_n:
-                self._data_array = 0
-            elif self._wen[i]:
+            if self._wen[i]:
                 self._data_array[self._wr_addr[i]] = self._data_in[i]
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"))
     def seq_data_access_one_w(self):
-        if ~self._rst_n:
-            self._data_array = 0
-        elif self._wen:
+        if self._wen:
             self._data_array[self._wr_addr] = self._data_in
 
     @always_comb
