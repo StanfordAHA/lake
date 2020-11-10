@@ -79,7 +79,7 @@ class ForLoop(Generator):
         # GENERATION LOGIC: end
 
         self._restart = self.output("restart", 1)
-        self.wire(self._restart, ~self._done)
+        self.wire(self._restart, ~self._done & self._step)
 
     @always_comb
     # Find lowest ready
@@ -95,7 +95,7 @@ class ForLoop(Generator):
     @always_comb
     def set_clear(self, idx):
         self._clear[idx] = 0
-        if ((idx < self._mux_sel) & self._step) | (~self._done):
+        if ((idx < self._mux_sel) | (~self._done)) & self._step:
             self._clear[idx] = 1
 
     @always_comb
