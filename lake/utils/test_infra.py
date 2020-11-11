@@ -87,15 +87,17 @@ def gen_test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "temp_separate"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 def lake_test_app_args(app):
     if app == "conv_3_3":
         return conv_3_3_args()
-
+    elif app == "separate":
+        return separate_args()
     print(f"{app} is not supported.")
     sys.exit()
 
@@ -106,4 +108,15 @@ def conv_3_3_args():
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
     in_file_name = "input_"
     out_file_name = "output_2_"
+    return config_path, stream_path, in_file_name, out_file_name
+
+
+def separate_args():
+    lc, ls = check_env()
+    # config_path = lc + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf"
+    config_path = "/Users/max/Documents/POND/clockwork/aha_garnet_design_new/conv_3_3/lake_collateral/ub_hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11"
+    # stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
+    stream_path = "/Users/max/Documents/POND/clockwork/aha_garnet_design/conv_3_3/lake_stream/hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11_ubuf_0_top_SMT.csv"
+    in_file_name = ""
+    out_file_name = ""
     return config_path, stream_path, in_file_name, out_file_name

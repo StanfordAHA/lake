@@ -12,5 +12,5 @@ def test_lake(args):
 
 
 if __name__ == "__main__":
-    conv33args = lake_test_app_args("conv_3_3")
+    conv33args = lake_test_app_args("separate")
     test_lake(conv33args)
