@@ -384,6 +384,11 @@ def increment_csv(file_in, file_out, fields):
 # Takes in a bus of valid tags with an associated data stream
 # Send the proper data stream thru
 def decode(generator, sel, signals):
+
+    # This base case means we don't need to actually do anything
+    if sel.width == 1:
+        return signals[0]
+
     # Create scan signal
     tmp_done = generator.var(f"decode_sel_done_{sel.name}_{signals.name}", 1)
     if signals.size[0] > 1:
