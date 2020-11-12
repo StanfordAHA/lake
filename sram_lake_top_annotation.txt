@@ -1,0 +1,12 @@
+input logic [8:0] strg_ub_input_addr_gen_starting_addr	SOLVE
+input logic [5:0] [8:0] strg_ub_input_addr_gen_strides	SOLVE
+input logic [5:0] [8:0] strg_ub_output_addr_gen_strides	SOLVE
+input logic [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr	SOLVE
+input logic [3:0] strg_ub_loops_in2buf_autovec_write_dimensionality	SOLVE
+input logic [5:0] [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides	SOLVE
+input logic [15:0] strg_ub_input_sched_gen_sched_addr_gen_starting_addr	SOLVE
+input logic [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality	SOLVE
+input logic [5:0] [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides	SOLVE
+input logic [8:0] strg_ub_output_addr_gen_starting_addr	SOLVE
+input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_read_ranges	SOLVE
+input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_write_ranges	SOLVE
