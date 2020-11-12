@@ -1,0 +1,12 @@
+clk
+cycle_count
+data_out
+strg_ub.mux_sel_d1
+strg_ub.output_port_sel_addr
+strg_ub.read_d1
+strg_ub.restart_d1
+rst_n
+strg_ub.tb
+strg_ub.tb_read
+strg_ub.tb_read_addr
+strg_ub.tb_write_addr

@@ -1,0 +1,12 @@
+strg_ub.agg
+strg_ub.agg_read_addr
+strg_ub.agg_read_addr_gen_out
+strg_ub.agg_write
+strg_ub.agg_write_addr
+strg_ub.agg_write_index
+clk
+cycle_count
+data_in
+strg_ub.input_port_sel_addr
+rst_n
+strg_ub.write

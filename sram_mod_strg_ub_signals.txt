@@ -1,0 +1,15 @@
+strg_ub.addr
+strg_ub.addr_out
+strg_ub.cen_to_strg
+clk
+cycle_count
+strg_ub.data_from_strg
+strg_ub.data_to_strg
+strg_ub.read
+strg_ub.read_addr
+rst_n
+strg_ub.sram_read_data
+strg_ub.sram_write_data
+strg_ub.wen_to_strg
+strg_ub.write
+strg_ub.write_addr
