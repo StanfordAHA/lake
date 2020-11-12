@@ -58,6 +58,32 @@ def get_size_str(port):
     return dim_2 + dim_1
 
 
+def modular_formal_annotation(gen):
+
+    agg, sram, tb = [], [], []
+    for var_name, var in gen.vars:
+        print(var_name)
+        if "agg" in var_name or var_name in ("data_in", "input_port_sel_addr"):
+            agg.append(var_name)
+        if var_name in ("clk", "rst_n", "cycle_count"):
+            for l in (agg, sram, tb):
+                l.append(var_name)
+
+        if var_name in ("write"):
+            agg.append(var_name)
+            sram.append(var_name)
+
+        if "tb" in var_name or "d1" in var_name or var_name in ("data_out", "output_port_sel_addr"):
+            tb.append(var_name)
+
+        if "strg" in var_name or "sram" in var_name or var_name in ("write_addr", "read_addr", "addr", "addr_out", "read"):
+            sram.append(var_name)
+
+    print(agg)
+    print(sram)
+    print(tb)
+    
+
 def extract_formal_annotation(generator, filepath):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator

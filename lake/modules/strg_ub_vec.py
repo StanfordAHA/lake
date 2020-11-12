@@ -8,7 +8,7 @@ from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
-from lake.utils.util import safe_wire, add_counter
+from lake.utils.util import safe_wire, add_counter, modular_formal_annotation
 import kratos as kts
 
 
@@ -398,6 +398,8 @@ class StrgUBVec(Generator):
 
         for idx in range(self.interconnect_output_ports):
             self.add_code(self.tb_to_out, idx=idx)
+
+        modular_formal_annotation(self)
 
     @always_comb
     def set_sram_addr(self):
