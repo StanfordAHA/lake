@@ -60,9 +60,9 @@ def get_size_str(port):
 
 def modular_formal_annotation(gen):
 
+    filepath = "mod_strg_ub_signals.txt"
     agg, sram, tb = [], [], []
     for var_name, var in gen.vars:
-        print(var_name)
         if "agg" in var_name or var_name in ("data_in", "input_port_sel_addr"):
             agg.append(var_name)
         if var_name in ("clk", "rst_n", "cycle_count"):
@@ -79,14 +79,33 @@ def modular_formal_annotation(gen):
         if "strg" in var_name or "sram" in var_name or var_name in ("write_addr", "read_addr", "addr", "addr_out", "read"):
             sram.append(var_name)
 
-    print(agg)
-    print(sram)
-    print(tb)
-    
+    for a in range(len(agg)):
+        if agg[a] not in ("data_in", "data_out", "clk", "rst_n", "cycle_count"):
+            agg[a] = "strg_ub." + agg[a]
+    for a in range(len(sram)):
+        if sram[a] not in ("data_in", "data_out", "clk", "rst_n", "cycle_count"):
+            sram[a] = "strg_ub." + sram[a]
+    for a in range(len(agg)):
+        if tb[a] not in ("data_in", "data_out", "clk", "rst_n", "cycle_count"):
+            tb[a] = "strg_ub." + tb[a]
+
+    with open("agg_" + filepath, "w+") as fi:
+        for a in agg:
+            fi.write(a + "\n")
+
+    with open("sram_" + filepath, "w+") as fi:
+        for a in sram:
+            fi.write(a + "\n")
+
+    with open("tb_" + filepath, "w+") as fi:
+        for a in tb:
+            fi.write(a + "\n")
+
 
 def extract_formal_annotation(generator, filepath):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
+    agg, sram, tb = [], [], []
 
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
@@ -107,7 +126,48 @@ def extract_formal_annotation(generator, filepath):
                 form_attr = attrs[0]
             size_str = get_size_str(curr_port)
 
-            fi.write(f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n")
+            out_string = f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n"
+            fi.write(out_string)
+            if "loops_in2buf_autovec_write" in form_attr.get_annotation():
+                agg.append(out_string)
+                sram.append(out_string)
+            elif "loops_buf2out_autovec_read" in form_attr.get_annotation():
+                sram.append(out_string)
+                tb.append(out_string)
+            elif "loops_in2buf" in form_attr.get_annotation():
+                agg.append(out_string)
+            elif "agg" in form_attr.get_annotation():
+                agg.append(out_string)
+            elif "port_sel_addr" in form_attr.get_annotation():
+                agg.append(out_string)
+            elif "input_sched_gen" in form_attr.get_annotation():
+                agg.append(out_string)
+                sram.append(out_string)
+            elif "input_addr_gen" in form_attr.get_annotation():
+                sram.append(out_string)
+            elif "output_addr_gen" in form_attr.get_annotation():
+                sram.append(out_string)
+            elif "output_sched_gen" in form_attr.get_annotation():
+                sram.append(out_string)
+                tb.append(out_string)
+            elif "tb" in form_attr.get_annotation():
+                tb.append(out_string)
+            elif "loops_buf2out_read" in form_attr.get_annotation():
+                tb.append(out_string)
+            elif "out_port_sel_addr" in form_attr.get_annotation():
+                tb.append(out_string)
+
+    with open("agg_" + filepath, "w+") as fi:
+        for a in agg:
+            fi.write(a)
+
+    with open("sram_" + filepath, "w+") as fi:
+        for a in sram:
+            fi.write(a)
+
+    with open("tb_" + filepath, "w+") as fi:
+        for a in tb:
+            fi.write(a)
 
 
 def get_configs_dict(configs):
