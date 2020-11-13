@@ -867,6 +867,10 @@ class LakeTop(Generator):
         # Store all configurations here
         config = []
 
+        # Compiler tells us to turn on the chain enable...
+        if "chain_en" in root_node:
+            config.append(("chain_chain_en", 1))
+
         if "in2agg_0" in root_node:
             in2agg = map_controller(extract_controller_json(root_node["in2agg_0"]), "in2agg_0")
             config.append(("strg_ub_agg_write_addr_gen_0_starting_addr", in2agg.in_data_strt))
