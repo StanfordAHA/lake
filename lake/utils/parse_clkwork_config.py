@@ -145,7 +145,10 @@ def map_controller(controller, name):
         print()
 
     # Now transforms ranges and strides
-    (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
+    tform_cyc_strides = None
+    if ctrl_cyc_strt is not None:
+        (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
+
     tform_in_data_strides = None
     if ctrl_in_data_strt is not None:
         (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
