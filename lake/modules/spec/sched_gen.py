@@ -4,6 +4,7 @@ import operator
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.modules.addr_gen import AddrGen
 from lake.passes.passes import lift_config_reg
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 
 
 class SchedGen(Generator):
@@ -41,6 +42,12 @@ class SchedGen(Generator):
         self._valid_gate = self.var("valid_gate", 1)
         self.wire(self._valid_gate, ~self._valid_gate_inv)
 
+        # Since dim = 0 is not sufficient, we need a way to prevent
+        # the controllers from firing on the starting offset
+        self._enable = self.input("enable", 1)
+        self._enable.add_attribute(ConfigRegAttr("Disable the controller so it never fires..."))
+        self._enable.add_attribute(FormalAttr(f"{self._enable.name}", FormalSignalConstraint.SOLVE))
+
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def valid_gate_inv_ff():
             if ~self._rst_n:
@@ -75,7 +82,7 @@ class SchedGen(Generator):
 
     @always_comb
     def set_valid_output(self):
-        self._valid_output = self._valid_out
+        self._valid_output = self._valid_out & self._enable
 
 
 if __name__ == "__main__":
