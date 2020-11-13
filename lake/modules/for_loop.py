@@ -79,7 +79,7 @@ class ForLoop(Generator):
         # GENERATION LOGIC: end
 
         self._restart = self.output("restart", 1)
-        self.wire(self._restart, ~self._done & self._step)
+        self.wire(self._restart, self._step &  (~self._done))
 
     @always_comb
     # Find lowest ready
