@@ -1,6 +1,8 @@
 from kratos import *
 from functools import reduce
 import operator
+
+import kratos
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.modules.addr_gen import AddrGen
 from lake.passes.passes import lift_config_reg
@@ -13,12 +15,14 @@ class SchedGen(Generator):
     '''
     def __init__(self,
                  iterator_support=6,
-                 config_width=16):
+                 config_width=16,
+                 use_enable=True):
 
         super().__init__(f"sched_gen_{iterator_support}_{config_width}")
 
         self.iterator_support = iterator_support
         self.config_width = config_width
+        self.use_enable = use_enable
 
         # PORT DEFS: begin
 
@@ -44,9 +48,14 @@ class SchedGen(Generator):
 
         # Since dim = 0 is not sufficient, we need a way to prevent
         # the controllers from firing on the starting offset
-        self._enable = self.input("enable", 1)
-        self._enable.add_attribute(ConfigRegAttr("Disable the controller so it never fires..."))
-        self._enable.add_attribute(FormalAttr(f"{self._enable.name}", FormalSignalConstraint.SOLVE))
+        if self.use_enable:
+            self._enable = self.input("enable", 1)
+            self._enable.add_attribute(ConfigRegAttr("Disable the controller so it never fires..."))
+            self._enable.add_attribute(FormalAttr(f"{self._enable.name}", FormalSignalConstraint.SOLVE))
+        # Otherwise we set it as a 1 and leave it up to synthesis...
+        else:
+            self._enable = self.var("enable", 1)
+            self.wire(self._enable, kratos.const(1, 1))
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def valid_gate_inv_ff():
