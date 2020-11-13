@@ -39,7 +39,7 @@ class SchedGen(Generator):
         self._finished = self.input("finished", 1)
         self._valid_gate_inv = self.var("valid_gate_inv", 1)
         self._valid_gate = self.var("valid_gate", 1)
-        self.wire(self._valid_gate, ~self._valid_gate_inv)
+        self.wire(self._valid_gate, (~self._valid_gate_inv))
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def valid_gate_inv_ff():

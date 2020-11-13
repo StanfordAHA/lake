@@ -117,7 +117,7 @@ class StrgFIFO(Generator):
         self._front_rd_ptr = self.var("front_rd_ptr", max(1, clog2(self.fw_int)))
 
         self._front_push = self.var("front_push", 1)
-        self.wire(self._front_push, self._push & (~self._full | self._pop))
+        self.wire(self._front_push, self._push & ((~self._full) | self._pop))
 
         self._front_rf = RegFIFO(data_width=self.data_width,
                                  width_mult=1,
@@ -174,9 +174,9 @@ class StrgFIFO(Generator):
 
         self._back_pop = self.var("back_pop", 1)
         if self.fw_int == 1:
-            self.wire(self._back_pop, self._pop & (~self._empty | self._push) & ~self._back_pl)
+            self.wire(self._back_pop, self._pop & ((~self._empty) | self._push) & (~self._back_pl))
         else:
-            self.wire(self._back_pop, self._pop & (~self._empty | self._push))
+            self.wire(self._back_pop, self._pop & ((~self._empty) | self._push))
 
         self.add_child("back_rf", self._back_rf,
                        clk=self._clk,
@@ -317,7 +317,7 @@ class StrgFIFO(Generator):
         # further, we make sure there is a queued write, or current buffer is
         # full and there is an incoming push
         # and there is stuff in memory to be read
-        self._wen_to_strg[idx] = ((~self._ren_to_strg[idx] | kts.const(int(self.rw_same_cycle), 1)) &
+        self._wen_to_strg[idx] = (((~self._ren_to_strg[idx]) | kts.const(int(self.rw_same_cycle), 1)) &
                                   (self._queued_write[idx] |  # Already queued a write...
                                   (((self._front_occ == self.fw_int) & self._push &  # Grossness
                                     (~self._front_pop)) &
@@ -330,7 +330,7 @@ class StrgFIFO(Generator):
         self._ren_to_strg[idx] = ((((self._back_occ == self.read_delay) | self._fw_is_1)) &
                                   (self._curr_bank_rd == idx) &  # Proper bank
                                   (self._pop | ((self._back_occ == 0) & (self._back_num_load == 0))) &
-                                  ((self._num_words_mem > 1) | ((self._num_words_mem == 1) & ~self._back_pl)))
+                                  ((self._num_words_mem > 1) | ((self._num_words_mem == 1) & (~self._back_pl))))
 
     # Num load to back is 0 unless we are doing a parallel load
     # in which case we can count it out
@@ -352,9 +352,9 @@ class StrgFIFO(Generator):
                 self._back_occ = self._back_push.extend(self._back_occ.width)
             else:
                 self._back_occ = self._back_num_load
-        elif self._back_push & ~self._back_pop:
+        elif self._back_push & (~self._back_pop):
             self._back_occ = self._back_occ + 1
-        elif ~self._back_push & self._back_pop:
+        elif (~self._back_push) & self._back_pop:
             self._back_occ = self._back_occ - 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -366,9 +366,9 @@ class StrgFIFO(Generator):
                 self._front_occ = 1
             else:
                 self._front_occ = 0
-        elif self._front_push & ~self._front_pop:
+        elif self._front_push & (~self._front_pop):
             self._front_occ = self._front_occ + 1
-        elif ~self._front_push & self._front_pop:
+        elif (~self._front_push) & self._front_pop:
             self._front_occ = self._front_occ - 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -381,15 +381,15 @@ class StrgFIFO(Generator):
     @always_comb
     def set_front_par_read(self):
         # If the front is full and not being drained, need to write out to write queue or memory
-        self._front_par_read = (self._front_occ == self.fw_int) & self._push & ~self._front_pop
+        self._front_par_read = (self._front_occ == self.fw_int) & self._push & (~self._front_pop)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_num_words_mem(self):
         if ~self._rst_n:
             self._num_words_mem = 0
-        elif ~self._back_pl & self._front_par_read:
+        elif (~self._back_pl) & self._front_par_read:
             self._num_words_mem = self._num_words_mem + 1
-        elif self._back_pl & ~self._front_par_read:
+        elif self._back_pl & (~self._front_par_read):
             self._num_words_mem = self._num_words_mem - 1
 
     # This signal drives the automatic passthrough to the back end
@@ -414,7 +414,7 @@ class StrgFIFO(Generator):
         # If the parallel read is happening, but the write is not
         # going through, then you must have a conflict and be queueing
         # Only write the queue for the current bank
-        elif self._front_par_read & ~self._wen_to_strg[idx] & (self._curr_bank_wr == idx):
+        elif self._front_par_read & (~self._wen_to_strg[idx]) & (self._curr_bank_wr == idx):
             self._write_queue[idx] = self._front_combined
             self._queued_write[idx] = 1
         elif self._wen_to_strg[idx]:

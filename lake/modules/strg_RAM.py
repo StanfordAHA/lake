@@ -161,8 +161,8 @@ class StrgRAM(Generator):
 
             # In IDLE we go to a read state if reading, and modify state
             # if writing....
-            IDLE.next(IDLE, ~(self._wen) & ~(self._ren))
-            IDLE.next(READ, self._ren & ~self._wen)
+            IDLE.next(IDLE, (~self._wen) & (~self._ren))
+            IDLE.next(READ, self._ren & (~self._wen))
             IDLE.next(MODIFY, self._wen)
             # OUT
             IDLE.output(self._ready, 1)
@@ -172,8 +172,8 @@ class StrgRAM(Generator):
             IDLE.output(self._read_gate, 1)
 
             # In READ, we effectively use the same transitions as IDLE
-            READ.next(IDLE, ~self._wen & ~self._ren)
-            READ.next(READ, self._ren & ~self._wen)
+            READ.next(IDLE, (~self._wen) & (~self._ren))
+            READ.next(READ, self._ren & (~self._wen))
             READ.next(MODIFY, self._wen)
             # OUT
             READ.output(self._ready, 1)
@@ -255,13 +255,13 @@ class StrgRAM(Generator):
                         self._rd_valid = 0
                     else:
                         # Assumes write priority
-                        self._rd_valid = self._ren & ~self._wen
+                        self._rd_valid = self._ren & (~self._wen)
                 self.add_code(read_valid_ff)
         else:
             if self.rw_same_cycle:
                 self.wire(self._rd_valid, self._ren)
             else:
-                self.wire(self._rd_valid, self._ren & ~self._wen)
+                self.wire(self._rd_valid, self._ren & (~self._wen))
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_dat_to_write(self):
@@ -302,7 +302,7 @@ class StrgRAM(Generator):
     def set_addr_rmw(self, idx):
         self._addr_out[idx] = self._rd_addr[self.mem_addr_width + self.word_width - 1, self.word_width]
         # If we are performing the write
-        if self._wen & ~self._write_gate:
+        if self._wen & (~self._write_gate):
             self._addr_out[idx] = self._wr_addr[self.mem_addr_width + self.word_width - 1, self.word_width]
         elif self._write_gate:
             self._addr_out[idx] = \

@@ -140,7 +140,7 @@ class FIFOControl(Generator):
 
         for i in range(self.banks):
             self.wire(self._wen_mem_en[i],
-                      (self._wen_mem[i] & ~self._same_bank[i]) | self._write_buffed[i])
+                      (self._wen_mem[i] & (~self._same_bank[i])) | self._write_buffed[i])
 
         for i in range(self.banks):
             self.wire(self._fifo_to_mem_data[i],
@@ -155,12 +155,12 @@ class FIFOControl(Generator):
 
         self.data_out_comb = self.combinational()
         self.data_out_if = self.data_out_comb.if_(self._ren_mem_reg[0] &
-                                                  (~self._empty_d1 | self._write_d1))
+                                                  ((~self._empty_d1) | self._write_d1))
         self.data_out_if.then_(self._data_out.assign(ternary(self._passthru,
                                                              self._passthru_reg,
                                                              self._data_out_sel[0])))
         for i in range(self.banks - 1):
-            self.temp_if = IfStmt(self._ren_mem_reg[i + 1] & (~self._empty_d1 | self._write_d1))
+            self.temp_if = IfStmt(self._ren_mem_reg[i + 1] & ((~self._empty_d1) | self._write_d1))
             self.temp_if.then_(self._data_out.assign(ternary(self._passthru,
                                                              self._passthru_reg,
                                                              self._data_out_sel[i + 1])))
@@ -193,21 +193,21 @@ class FIFOControl(Generator):
         if self._reset:
             self._empty_d1 = 0
         elif self._clk_en:
-            self._empty_d1 = ~self._flush & self._empty
+            self._empty_d1 = (~self._flush) & self._empty
 
     @always((posedge, "clk"), (posedge, "reset"))
     def write_d1_reg(self):
         if self._reset:
             self._write_d1 = 0
         elif self._clk_en:
-            self._write_d1 = ~self._flush & self._wen
+            self._write_d1 = (~self._flush) & self._wen
 
     @always((posedge, "clk"), (posedge, "reset"))
     def valid_update(self):
         if self._reset:
             self._valid = 0
         elif self._clk_en:
-            self._valid = ~self._flush & (self._ren & (~self._empty | self._wen))
+            self._valid = (~self._flush) & (self._ren & ((~self._empty) | self._wen))
 
     @always((posedge, "clk"), (posedge, "reset"))
     def num_words_update(self):
@@ -222,9 +222,9 @@ class FIFOControl(Generator):
     def next_num_words_comb(self):
         if self._ren & self._wen:
             self._next_num_words_mem = 0
-        elif self._ren & ~self._empty:
+        elif self._ren & (~self._empty):
             self._next_num_words_mem = 65535
-        elif self._wen & ~self._full:
+        elif self._wen & (~self._full):
             self._next_num_words_mem = 1
         else:
             self._next_num_words_mem = 0
@@ -245,8 +245,8 @@ class FIFOControl(Generator):
             if self._flush:
                 self._read_addr = 0
             # READ AND NO WRITE
-            elif self._ren & ~self._wen:
-                if self._circular_en & ~self._empty:
+            elif self._ren & (~self._wen):
+                if self._circular_en & (~self._empty):
                     if (self._read_addr + 1) == self._write_addr:
                         self._read_addr = 0
                     else:
@@ -265,7 +265,7 @@ class FIFOControl(Generator):
             if self._flush:
                 self._write_addr = 0
             # WRITE AND NO READ AND NOT FULL
-            elif self._wen & ~self._ren & ~self._full:
+            elif self._wen & (~self._ren) & (~self._full):
                 self._write_addr = self._write_addr + 1
             # READ AND WRITE
             elif self._ren & self._wen:
@@ -291,8 +291,8 @@ class FIFOControl(Generator):
                 self._read_to_write = 1
             # Transition out of the init stage after a read or write
             # READ AND NO WRITE
-            elif self._ren & ~self._wen:
-                if self._circular_en & ~self._empty:
+            elif self._ren & (~self._wen):
+                if self._circular_en & (~self._empty):
                     if (self._read_addr + 1) == self._write_addr:
                         self._read_to_write = 1
                     else:
@@ -303,7 +303,7 @@ class FIFOControl(Generator):
                     else:
                         self._read_to_write = 0
             # WRITE AND NO READ
-            elif self._wen & ~self._ren & ~self._full:
+            elif self._wen & (~self._ren) & (~self._full):
                 self._read_to_write = 0
 
     @always((posedge, "clk"), (posedge, "reset"))
@@ -325,9 +325,9 @@ class FIFOControl(Generator):
             if self._flush:
                 self._passthru = 0
             # Transition out of the init stage after a read or write
-            elif self._ren & ~self._wen & ~self._empty:
+            elif self._ren & (~self._wen) & (~self._empty):
                 self._passthru = 0
-            elif self._wen & ~self._ren & ~self._full:
+            elif self._wen & (~self._ren) & (~self._full):
                 self._passthru = 0
             elif self._ren & self._wen:
                 if self._empty & (self._same_bank.r_or()):

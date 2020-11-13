@@ -88,7 +88,7 @@ class ForLoop(Generator):
         self._done = 0
         for i in range(self.iterator_support):
             if ~self._done:
-                if ~self._max_value[i] & (i < self._dimensionality):
+                if (~self._max_value[i]) & (i < self._dimensionality):
                     self._mux_sel = i
                     self._done = 1
 

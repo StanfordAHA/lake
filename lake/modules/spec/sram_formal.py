@@ -202,7 +202,7 @@ class SRAMFormal(Generator):
         if ~self._rst_n:
             self._valid_out = 0
         else:
-            self._valid_out = self._cen_to_sram & ~self._wen_to_sram
+            self._valid_out = self._cen_to_sram & (~self._wen_to_sram)
 
 
 if __name__ == "__main__":
