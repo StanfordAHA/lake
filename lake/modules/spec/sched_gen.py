@@ -87,11 +87,11 @@ class SchedGen(Generator):
 
     @always_comb
     def set_valid_out(self):
-        self._valid_out = (self._cycle_count == self._addr_out) & self._valid_gate
+        self._valid_out = (self._cycle_count == self._addr_out) & self._valid_gate & self._enable
 
     @always_comb
     def set_valid_output(self):
-        self._valid_output = self._valid_out & self._enable
+        self._valid_output = self._valid_out
 
 
 if __name__ == "__main__":
