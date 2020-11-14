@@ -130,7 +130,8 @@ class Pond(Generator):
             RF_WRITE_ADDR = AddrGen(iterator_support=self.default_iterator_support,
                                     config_width=self.default_config_width)
             RF_WRITE_SCHED = SchedGen(iterator_support=self.default_iterator_support,
-                                      config_width=self.cycle_count_width)
+                                      config_width=self.cycle_count_width,
+                                      use_enable=False)
 
             self.add_child(f"rf_write_iter_{wr_port}",
                            RF_WRITE_ITER,
@@ -165,7 +166,8 @@ class Pond(Generator):
             RF_READ_ADDR = AddrGen(iterator_support=self.default_iterator_support,
                                    config_width=self.default_config_width)
             RF_READ_SCHED = SchedGen(iterator_support=self.default_iterator_support,
-                                     config_width=self.cycle_count_width)
+                                     config_width=self.cycle_count_width,
+                                     use_enable=False)
 
             self.add_child(f"rf_read_iter_{rd_port}",
                            RF_READ_ITER,
