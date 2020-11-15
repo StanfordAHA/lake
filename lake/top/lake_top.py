@@ -1032,8 +1032,8 @@ class LakeTop(Generator):
         agg2sram_1 = controller_objs[3]
         sram2tb_0 = controller_objs[4]
         sram2tb_1 = controller_objs[5]
-        tb2out0 = controller_objs[6]
-        tb2out1 = controller_objs[7]
+        tb2out_0 = controller_objs[6]
+        tb2out_1 = controller_objs[7]
 
         # Getting bitstreams is a little unwieldy due to fault (or its underlying implementation) not
         # handling arrays in the interface.
@@ -1146,19 +1146,25 @@ class LakeTop(Generator):
                 config.append((f"strg_ub_output_sched_gen_1_sched_addr_gen_strides_{i}", sram2tb_1.cyc_stride[i]))
                 config.append((f"strg_ub_tb_write_addr_gen_1_strides_{i}", sram2tb_1.in_data_stride[i]))
 
-        tbs = [tb2out0, tb2out1]
-        if tb2out0 is not None and tb2out1 is not None:
+        if tb2out_0 is not None:
+            config.append((f"strg_ub_tb_read_addr_gen_0_starting_addr", tb2out_0.out_data_strt))
+            config.append((f"strg_ub_tb_read_sched_gen_0_enable", 1))
+            config.append((f"strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out_0.cyc_strt))
+            config.append((f"strg_ub_loops_buf2out_read_0_dimensionality", tb2out_0.dim))
+            for i in range(tb2out_0.dim):
+                config.append((f"strg_ub_loops_buf2out_read_0_ranges_{i}", tb2out_0.extent[i]))
+                config.append((f"strg_ub_tb_read_addr_gen_0_strides_{i}", tb2out_0.out_data_stride[i]))
+                config.append((f"strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_{i}", tb2out_0.cyc_stride[i]))
 
-            for tb in range(len(tbs)):
-                elem = tbs[tb]
-                config.append((f"strg_ub_tb_read_addr_gen_{tb}_starting_addr", elem.out_data_strt))
-                config.append((f"strg_ub_tb_read_sched_gen_{tb}_enable", 1))
-                config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_starting_addr", elem.cyc_strt))
-                config.append((f"strg_ub_loops_buf2out_read_{tb}_dimensionality", elem.dim))
-                for i in range(elem.dim):
-                    config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
-                    config.append((f"strg_ub_tb_read_addr_gen_{tb}_strides_{i}", elem.out_data_stride[i]))
-                    config.append((f"strg_ub_tb_read_sched_gen_{tb}_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+        if tb2out_1 is not None:
+            config.append((f"strg_ub_tb_read_addr_gen_1_starting_addr", tb2out_1.out_data_strt))
+            config.append((f"strg_ub_tb_read_sched_gen_1_enable", 1))
+            config.append((f"strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out_1.cyc_strt))
+            config.append((f"strg_ub_loops_buf2out_read_1_dimensionality", tb2out_1.dim))
+            for i in range(tb2out_1.dim):
+                config.append((f"strg_ub_loops_buf2out_read_1_ranges_{i}", tb2out_1.extent[i]))
+                config.append((f"strg_ub_tb_read_addr_gen_1_strides_{i}", tb2out_1.out_data_stride[i]))
+                config.append((f"strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_{i}", tb2out_1.cyc_stride[i]))
 
         return trim_config_list(flattened, config)
 
