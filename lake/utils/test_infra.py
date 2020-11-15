@@ -72,7 +72,7 @@ def gen_test_lake(config_path,
     # for i in range(len(out_data[0])):
     for i in range(40000):
         if i >= 10000:
-            tester.circuit.data_in_0 = 10000 - i
+            tester.circuit.data_in_0 = i - 10000
         # for j in range(len(in_data)):
         #     if i < len(in_data[j]):
         #         setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
@@ -90,7 +90,7 @@ def gen_test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "resnet3"
+        tempdir = "resnet4"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])
