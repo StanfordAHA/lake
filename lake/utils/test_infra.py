@@ -69,6 +69,7 @@ def gen_test_lake(config_path,
     for (f1, f2) in configs:
         setattr(tester.circuit, f1, f2)
 
+    # for i in range(len(out_data[0])):
     for i in range(40000):
         if i >= 10000:
             tester.circuit.data_in_0 = 10000 - i
