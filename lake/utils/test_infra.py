@@ -84,8 +84,8 @@ def gen_test_lake(config_path,
             # if i < len(out_data[j]):
             #     if len(valids) != 0 and valids[i] == 1:
             #         getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
-                if len(valids) == 0:
-                    getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
+            if len(valids) == 0:
+                getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
 
         tester.step(2)
 
