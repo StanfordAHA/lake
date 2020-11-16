@@ -4,6 +4,7 @@ from _kratos import create_wrapper_flatten
 from math import log
 
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.collateral2compiler.edge import get_full_edge_params
 from lake.collateral2compiler.helper import *
 from lake.collateral2compiler.mem_port import MemPort
@@ -12,7 +13,7 @@ from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.passes.passes import lift_config_reg
-from lake.utils.util import safe_wire, trim_config_list
+from lake.utils.util import safe_wire, trim_config_list, extract_formal_annotation
 from lake.utils.parse_clkwork_config import *
 
 
@@ -43,8 +44,10 @@ class TopLakeHW(Generator):
         # inputs
         self.tile_en = self.input("tile_en", 1)
         self.tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        self.tile_en.add_attribute(FormalAttr(self.tile_en.name, FormalSignalConstraint.SET1))
 
         self.clk_mem = self.clock("clk_mem")
+        self.clk_mem.add_attribute(FormalAttr(self.clk_mem.name, FormalSignalConstraint.CLK))
 
         gclk = self.var("gclk", 1)
         self.gclk = kts.util.clock(gclk)
@@ -52,18 +55,21 @@ class TopLakeHW(Generator):
 
         # active low asynchornous reset
         self.rst_n = self.reset("rst_n", 1)
+        self.rst_n.add_attribute(FormalAttr(self.rst_n.name, FormalSignalConstraint.RSTN))
 
         self.data_in = self.input("data_in",
                                   width=self.word_width,
                                   size=self.input_ports,
                                   explicit_array=True,
                                   packed=True)
+        self.data_in.add_attribute(FormalAttr(self.data_in.name, FormalSignalConstraint.SEQUENCE))
 
         self.data_out = self.output("data_out",
                                     width=self.word_width,
                                     size=self.output_ports,
                                     explicit_array=True,
                                     packed=True)
+        self.data_out.add_attribute(FormalAttr(self.data_out.name, FormalSignalConstraint.SEQUENCE))
 
         self._cycle_count = self.var("cycle_count", 16)
 
@@ -437,6 +443,8 @@ class TopLakeHW(Generator):
                 read_write_addr_comb.add_stmt(if_write)
 
         lift_config_reg(self.internal_generator)
+
+        extract_formal_annotation(self, "dsl_annotation.txt")
 
     def get_static_bitstream(self,
                              config_path,
