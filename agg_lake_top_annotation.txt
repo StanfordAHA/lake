@@ -22,3 +22,7 @@ input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_write_ranges	SOLVE
 input logic [15:0] strg_ub_agg_write_sched_gen_0_sched_addr_gen_starting_addr	SOLVE
 input logic [5:0] [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides	SOLVE
 input logic strg_ub_port_sel_addr_starting_addr	SOLVE
+input logic [1:0] [15:0] data_in SEQ
+input logic [1:0] valid_in SEQ
+output logic [3:0] [15:0] sram_write_data SEQ
+output logic [0:0] write SEQ

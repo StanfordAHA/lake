@@ -7,6 +7,8 @@ strg_ub.agg_write_index
 clk
 cycle_count
 data_in
+valid_in
 strg_ub.input_port_sel_addr
 rst_n
 strg_ub.write
+strg_ub.sram_write_data
