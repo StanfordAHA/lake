@@ -80,7 +80,7 @@ def test_pond_basic(data_width=16,  # CGRA Params
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_pond_strided_read(data_width=16,  # CGRA Params
@@ -151,11 +151,10 @@ def test_pond_strided_read(data_width=16,  # CGRA Params
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "new"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_pond_b2b_read(data_width=16,  # CGRA Params
@@ -226,8 +225,7 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "new2"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
