@@ -24,8 +24,8 @@ input logic [5:0] [15:0] strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides	SO
 input logic strg_ub_port_sel_addr_starting_addr	SOLVE
 input logic [1:0] [15:0] data_in SEQUENCE
 input logic [1:0] valid_in SEQUENCE
-output logic [3:0] [15:0] sram_write_data SEQUENCE
-output logic [0:0] write SEQUENCE
+output logic [3:0] [15:0] strg_ub.sram_write_data SEQUENCE
+output logic [0:0] strg_ub.write SEQUENCE
 input logic chain_chain_en  SET0
 input logic tile_en SET1
 input logic clk_en  SET1
