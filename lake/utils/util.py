@@ -324,6 +324,7 @@ def generate_pond_api(ctrl_rd, ctrl_wr):
     new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
     new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
     new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
+    new_config["rf_read_sched_0_enable"] = 1
 
     new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
     new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
@@ -335,6 +336,7 @@ def generate_pond_api(ctrl_rd, ctrl_wr):
     new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
     new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
     new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
+    new_config["rf_write_sched_0_enable"] = 1
 
     return new_config
 
