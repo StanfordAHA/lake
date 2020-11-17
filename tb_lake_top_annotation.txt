@@ -1,20 +1,30 @@
+input logic [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr	SOLVE
+input logic [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr	SOLVE
+input logic [5:0] [3:0] strg_ub_tb_write_addr_gen_0_strides	SOLVE
+input logic [3:0] strg_ub_loops_buf2out_read_0_dimensionality	SOLVE
 input logic [3:0] strg_ub_tb_read_addr_gen_1_starting_addr	SOLVE
 input logic [3:0] strg_ub_tb_write_addr_gen_0_starting_addr	SOLVE
-input logic [5:0] [15:0] strg_ub_loops_buf2out_read_0_ranges	SOLVE
-input logic [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr	SOLVE
-input logic [3:0] strg_ub_loops_buf2out_read_0_dimensionality	SOLVE
-input logic [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr	SOLVE
-input logic [5:0] [3:0] strg_ub_tb_read_addr_gen_1_strides	SOLVE
-input logic [5:0] [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides	SOLVE
-input logic [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr	SOLVE
-input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides	SOLVE
-input logic [5:0] [3:0] strg_ub_tb_write_addr_gen_0_strides	SOLVE
-input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides	SOLVE
-input logic [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality	SOLVE
 input logic [3:0] strg_ub_tb_read_addr_gen_0_starting_addr	SOLVE
-input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_read_ranges	SOLVE
-input logic [5:0] [15:0] strg_ub_loops_buf2out_read_1_ranges	SOLVE
+input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides	SOLVE
 input logic [5:0] [3:0] strg_ub_tb_write_addr_gen_1_strides	SOLVE
+input logic [5:0] [3:0] strg_ub_tb_read_addr_gen_1_strides	SOLVE
 input logic [3:0] strg_ub_loops_buf2out_read_1_dimensionality	SOLVE
+input logic [5:0] [15:0] strg_ub_loops_buf2out_read_1_ranges	SOLVE
+input logic [15:0] strg_ub_output_sched_gen_sched_addr_gen_starting_addr	SOLVE
 input logic [5:0] [3:0] strg_ub_tb_read_addr_gen_0_strides	SOLVE
+input logic [5:0] [15:0] strg_ub_output_sched_gen_sched_addr_gen_strides	SOLVE
+input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides	SOLVE
+input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_read_ranges	SOLVE
+input logic [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality	SOLVE
+input logic [5:0] [15:0] strg_ub_loops_buf2out_read_0_ranges	SOLVE
 input logic [3:0] strg_ub_tb_write_addr_gen_1_starting_addr	SOLVE
+output logic [1:0] [15:0] data_out SEQUENCE
+input logic [3:0] [15:0] strg_ub.sram_read_data SEQUENCE
+output logic [1:0] strg_ub.tb_read SEQUENCE
+input logic chain_chain_en  SET0
+input logic tile_en SET1
+input logic clk_en  SET1
+input logic clk CLK
+input logic [1:0] mode  SET0
+input logic rst_n   RSTN
+input logic flush   SET0
