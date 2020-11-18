@@ -58,9 +58,13 @@ def get_size_str(port):
     return dim_2 + dim_1
 
 
-def extract_formal_annotation(generator, filepath):
+def extract_formal_annotation(generator, filepath, mem_names, edges):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
+    
+    mems = {}
+    for i in mem_names:
+        mems[i] = []
 
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
@@ -81,8 +85,17 @@ def extract_formal_annotation(generator, filepath):
                 form_attr = attrs[0]
             size_str = get_size_str(curr_port)
 
-            fi.write(f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n")
+            out_string = f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n"
+            fi.write(out_string)
 
+            for i in mem_names:
+                if i in form_attr.get_annotation():
+                    mems[i].append(out_string)
+
+    for i in mem_names:
+        with open(i + filepath, "w+") as fi:
+            for a in mems[i]:
+                fi.write(a)
 
 def get_configs_dict(configs):
     configs_dict = {}
