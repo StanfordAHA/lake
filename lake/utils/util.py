@@ -61,6 +61,7 @@ def get_size_str(port):
 def modular_formal_annotation(gen, mem_names):
     filepath = "mod_strg_ub_signals.txt"
 
+    int_gen = gen.internal_generator
     mems = {}
     for i in mem_names:
         mems[i] = []
@@ -69,18 +70,24 @@ def modular_formal_annotation(gen, mem_names):
 
         in_mem = False
         for i in mem_names:
-            if mem_name in var_name:
+            if i in var_name:
                 in_mem = True
-                mems[i].append(out_string)
+                curr_port = int_gen.get_port(var_name)
+                if curr_port is not None:
+                    attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
+                    if len(attrs) == 0:
+                        mems[i].append(var_name)
+                else:
+                    mems[i].append(var_name)
 
         if not in_mem:
             for i in mem_names:
-                mems[i].append(out_string)
+                mems[i].append(var_name)
     
     for i in mem_names:
         with open(i + filepath, "w+") as fi:
             for a in mems[i]:
-                fi.write(a)
+                fi.write(a + "\n")
             
 def extract_formal_annotation(generator, filepath, mem_names, edges):
     # Get the port list and emit the annotation for each...

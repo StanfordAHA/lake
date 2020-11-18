@@ -13,7 +13,8 @@ from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.passes.passes import lift_config_reg
-from lake.utils.util import safe_wire, trim_config_list, extract_formal_annotation
+from lake.utils.util import safe_wire, trim_config_list
+from lake.utils.util import extract_formal_annotation, modular_formal_annotation
 from lake.utils.parse_clkwork_config import *
 
 
@@ -86,7 +87,7 @@ class TopLakeHW(Generator):
         num_mem = len(memories)
         subscript_mems = list(self.memories.keys())
 
-        self.mem_data_outs = [self.var(f"mem_data_out_{i}",
+        self.mem_data_outs = [self.var(f"mem_data_out_{subscript_mems[i]}",
                                        width=self.word_width,
                                        size=self.memories[subscript_mems[i]]["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]] else "read_write_port_width"],
                                        explicit_array=True, packed=True) for i in range(num_mem)]
@@ -445,6 +446,7 @@ class TopLakeHW(Generator):
         lift_config_reg(self.internal_generator)
 
         extract_formal_annotation(self, "dsl_annotation.txt", subscript_mems, edges)
+        modular_formal_annotation(self, subscript_mems)
 
     def get_static_bitstream(self,
                              config_path,
