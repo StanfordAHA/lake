@@ -13,6 +13,7 @@ input logic [5:0] [15:0] strg_ub_loops_buf2out_read_1_ranges	SOLVE
 input logic [5:0] [3:0] strg_ub_tb_read_addr_gen_0_strides	SOLVE
 input logic [5:0] [15:0] strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides	SOLVE
 input logic [3:0] strg_ub_tb_write_addr_gen_1_starting_addr	SOLVE
+input logic [5:0] [15:0] strg_ub_loops_buf2out_read_0_ranges  SOLVE
 output logic [1:0] [15:0] data_out SEQUENCE
 output logic [1:0] valid_out SEQUENCE
 input logic [3:0] [15:0] strg_ub.sram_read_data SEQUENCE
