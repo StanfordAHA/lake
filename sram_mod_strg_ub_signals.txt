@@ -13,3 +13,4 @@ strg_ub.sram_write_data
 strg_ub.wen_to_strg
 strg_ub.write
 strg_ub.write_addr
+mem_0.mem_0.data_array
