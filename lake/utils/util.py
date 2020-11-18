@@ -88,8 +88,14 @@ def extract_formal_annotation(generator, filepath, mem_names, edges):
             out_string = f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n"
             fi.write(out_string)
 
+            in_mem = False
             for i in mem_names:
                 if i in form_attr.get_annotation():
+                    in_mem = True
+                    mems[i].append(out_string)
+
+            if not in_mem:
+                for i in mem_names:
                     mems[i].append(out_string)
 
     for i in mem_names:
