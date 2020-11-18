@@ -1,0 +1,25 @@
+input logic [1:0] [15:0] data_in	SEQUENCE
+input logic [5:0] [15:0] agg_agg1_sram_edge_sched_gen_sched_addr_gen_strides	SOLVE
+input logic [5:0] [15:0] agg_agg1_sram_edge_forloop_ranges	SOLVE
+input logic [5:0] [15:0] input2agg1_forloop_ranges	SOLVE
+input logic [15:0] input2agg_write_addr_gen_starting_addr	SOLVE
+input logic [15:0] input2agg1_write_sched_gen_sched_addr_gen_starting_addr	SOLVE
+input logic [15:0] agg_agg1_sram_edge_write_addr_gen_starting_addr	SOLVE
+input logic [15:0] input2agg1_write_addr_gen_starting_addr	SOLVE
+input logic [5:0] [15:0] input2agg1_write_sched_gen_sched_addr_gen_strides	SOLVE
+output logic [1:0] [15:0] data_out	SEQUENCE
+input logic [3:0] agg_agg1_sram_edge_forloop_dimensionality	SOLVE
+input logic [3:0] input2agg1_forloop_dimensionality	SOLVE
+input logic tile_en	SET1
+input logic [15:0] agg_agg1_sram_edge_read_addr_gen_starting_addr	SOLVE
+input logic clk_mem	CLK
+input logic [5:0] [15:0] input2agg1_write_addr_gen_strides	SOLVE
+input logic [5:0] [15:0] input2agg_forloop_ranges	SOLVE
+input logic [15:0] input2agg_write_sched_gen_sched_addr_gen_starting_addr	SOLVE
+input logic [15:0] agg_agg1_sram_edge_sched_gen_sched_addr_gen_starting_addr	SOLVE
+input logic rst_n	RSTN
+input logic [5:0] [15:0] agg_agg1_sram_edge_read_addr_gen_strides	SOLVE
+input logic [5:0] [15:0] input2agg_write_addr_gen_strides	SOLVE
+input logic [5:0] [15:0] input2agg_write_sched_gen_sched_addr_gen_strides	SOLVE
+input logic [3:0] input2agg_forloop_dimensionality	SOLVE
+input logic [5:0] [15:0] agg_agg1_sram_edge_write_addr_gen_strides	SOLVE
