@@ -19,9 +19,9 @@ input logic [3:0] strg_ub_loops_buf2out_autovec_read_dimensionality	SOLVE
 input logic [5:0] [15:0] strg_ub_loops_buf2out_read_0_ranges	SOLVE
 input logic [3:0] strg_ub_tb_write_addr_gen_1_starting_addr	SOLVE
 output logic [1:0] [15:0] data_out SEQUENCE
-output logic [1:0] strg_ub.tb_read SEQUENCE
+output logic [1:0] valid_out SEQUENCE
 input logic [3:0] [15:0] strg_ub.sram_read_data SEQUENCE
-input logic [0:0] strg_ub.read_d1 SEQUENCE
+input logic [0:0] strg_ub.read SEQUENCE
 input logic chain_chain_en  SET0
 input logic tile_en SET1
 input logic clk_en  SET1

@@ -1,6 +1,7 @@
 clk
 cycle_count
 data_out
+valid_out
 rst_n
 strg_ub.tb
 strg_ub.tb_read_addr
