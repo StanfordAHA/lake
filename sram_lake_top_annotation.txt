@@ -10,3 +10,14 @@ input logic [5:0] [15:0] strg_ub_input_sched_gen_sched_addr_gen_strides	SOLVE
 input logic [8:0] strg_ub_output_addr_gen_starting_addr	SOLVE
 input logic [5:0] [15:0] strg_ub_loops_buf2out_autovec_read_ranges	SOLVE
 input logic [5:0] [15:0] strg_ub_loops_in2buf_autovec_write_ranges	SOLVE
+input logic [1:0] [15:0] strg_ub.sram_write_data SEQUENCE
+input logic [1:0] strg_ub.write SEQUENCE
+output logic [3:0] [15:0] strg_ub.sram_read_data SEQUENCE
+output logic [0:0] strg_ub.read SEQUENCE
+input logic chain_chain_en  SET0
+input logic tile_en SET1
+input logic clk_en  SET1
+input logic clk CLK
+input logic [1:0] mode  SET0
+input logic rst_n   RSTN
+input logic flush   SET0
