@@ -67,7 +67,7 @@ def gen_test_lake(config_path,
     in_data, out_data, valids = generate_data_lists(stream_path, in_ports, out_ports)
 
     config = {}
-    config["strg_ub_agg_write_addr_gen_0_starting_addr"] = 8
+    '''config["strg_ub_agg_write_addr_gen_0_starting_addr"] = 8
     config["strg_ub_agg_write_addr_gen_0_strides_0"] = 1
     config["strg_ub_agg_write_addr_gen_0_strides_1"] = 0
     config["strg_ub_agg_write_addr_gen_0_strides_2"] = 0
@@ -145,7 +145,7 @@ def gen_test_lake(config_path,
     config["strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_3"] = 0
     config["strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_4"] = 0
     config["strg_ub_agg_write_sched_gen_1_sched_addr_gen_strides_5"] = 0
-    config["strg_ub_port_sel_addr_starting_addr"] = 0
+    config["strg_ub_port_sel_addr_starting_addr"] = 0'''
     '''config["strg_ub_agg_write_addr_gen_0_starting_addr"] = 0
     config["strg_ub_agg_write_addr_gen_0_strides_0"] = 1
     config["strg_ub_agg_write_addr_gen_0_strides_1"] = 0
@@ -466,8 +466,149 @@ def gen_test_lake(config_path,
 
     config["strg_ub_port_sel_addr_starting_addr"] = 0'''
 
-    #for (f1, f2) in configs:
-    #    setattr(tester.circuit, f1, f2)
+    '''config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr"] = 32768
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr"] = 7
+    config["strg_ub_tb_write_addr_gen_0_strides_0"] = 0
+    config["strg_ub_tb_write_addr_gen_0_strides_1"] = 0
+    config["strg_ub_tb_write_addr_gen_0_strides_2"] = 0
+    config["strg_ub_tb_write_addr_gen_0_strides_3"] = 0
+    config["strg_ub_tb_write_addr_gen_0_strides_4"] = 0
+    config["strg_ub_tb_write_addr_gen_0_strides_5"] = 0
+    config["strg_ub_loops_buf2out_read_0_dimensionality"] = 1
+    config["strg_ub_tb_read_addr_gen_1_starting_addr"] = 0
+    config["strg_ub_tb_write_addr_gen_0_starting_addr"] = 1
+    config["strg_ub_tb_read_addr_gen_0_starting_addr"] = 4
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0"] = 1
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_tb_write_addr_gen_1_strides_0"] = 0
+    config["strg_ub_tb_write_addr_gen_1_strides_1"] = 0
+    config["strg_ub_tb_write_addr_gen_1_strides_2"] = 0
+    config["strg_ub_tb_write_addr_gen_1_strides_3"] = 0
+    config["strg_ub_tb_write_addr_gen_1_strides_4"] = 0
+    config["strg_ub_tb_write_addr_gen_1_strides_5"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_0"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_1"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_2"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_3"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_4"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_5"] = 0
+    config["strg_ub_loops_buf2out_read_1_dimensionality"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_0"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_1"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_2"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_3"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_4"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_5"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_starting_addr"] = 5
+    config["strg_ub_tb_read_addr_gen_0_strides_0"] = 1
+    config["strg_ub_tb_read_addr_gen_0_strides_1"] = 0
+    config["strg_ub_tb_read_addr_gen_0_strides_2"] = 0
+    config["strg_ub_tb_read_addr_gen_0_strides_3"] = 0
+    config["strg_ub_tb_read_addr_gen_0_strides_4"] = 0
+    config["strg_ub_tb_read_addr_gen_0_strides_5"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_0"] = 4
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_0"] = 7
+    config["strg_ub_loops_buf2out_autovec_read_ranges_1"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_2"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_3"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_4"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_5"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_dimensionality"] = 1
+    config["strg_ub_loops_buf2out_read_0_ranges_0"] = 8
+    config["strg_ub_loops_buf2out_read_0_ranges_1"] = 0
+    config["strg_ub_loops_buf2out_read_0_ranges_2"] = 0
+    config["strg_ub_loops_buf2out_read_0_ranges_3"] = 0
+    config["strg_ub_loops_buf2out_read_0_ranges_4"] = 0
+    config["strg_ub_loops_buf2out_read_0_ranges_5"] = 0
+    config["strg_ub_tb_write_addr_gen_1_starting_addr"] = 0'''
+
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr"] = 32768
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr"] = 7
+    config["strg_ub_tb_write_addr_gen_0_strides_0"] = 15
+    config["strg_ub_tb_write_addr_gen_0_strides_1"] = 15
+    config["strg_ub_tb_write_addr_gen_0_strides_2"] = 15
+    config["strg_ub_tb_write_addr_gen_0_strides_3"] = 15
+    config["strg_ub_tb_write_addr_gen_0_strides_4"] = 15
+    config["strg_ub_tb_write_addr_gen_0_strides_5"] = 15
+    config["strg_ub_loops_buf2out_read_0_dimensionality"] = 1
+    config["strg_ub_tb_read_addr_gen_1_starting_addr"] = 0
+    config["strg_ub_tb_write_addr_gen_0_starting_addr"] = 2
+    config["strg_ub_tb_read_addr_gen_0_starting_addr"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_0"] = 1
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_tb_read_sched_gen_0_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_tb_write_addr_gen_1_strides_0"] = 15
+    config["strg_ub_tb_write_addr_gen_1_strides_1"] = 15
+    config["strg_ub_tb_write_addr_gen_1_strides_2"] = 15
+    config["strg_ub_tb_write_addr_gen_1_strides_3"] = 15
+    config["strg_ub_tb_write_addr_gen_1_strides_4"] = 15
+    config["strg_ub_tb_write_addr_gen_1_strides_5"] = 15
+    config["strg_ub_tb_read_addr_gen_1_strides_0"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_1"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_2"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_3"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_4"] = 0
+    config["strg_ub_tb_read_addr_gen_1_strides_5"] = 0
+    config["strg_ub_loops_buf2out_read_1_dimensionality"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_0"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_1"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_2"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_3"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_4"] = 0
+    config["strg_ub_loops_buf2out_read_1_ranges_5"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_starting_addr"] = 5
+    config["strg_ub_tb_read_addr_gen_0_strides_0"] = 1
+    config["strg_ub_tb_read_addr_gen_0_strides_1"] = 0
+    config["strg_ub_tb_read_addr_gen_0_strides_2"] = 0
+    config["strg_ub_tb_read_addr_gen_0_strides_3"] = 0
+    config["strg_ub_tb_read_addr_gen_0_strides_4"] = 0
+    config["strg_ub_tb_read_addr_gen_0_strides_5"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_0"] = 4
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_output_sched_gen_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_0"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_tb_read_sched_gen_1_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_0"] = 6
+    config["strg_ub_loops_buf2out_autovec_read_ranges_1"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_2"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_3"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_4"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_ranges_5"] = 0
+    config["strg_ub_loops_buf2out_autovec_read_dimensionality"] = 1
+    config["strg_ub_loops_buf2out_read_0_ranges_0"] = 10
+    config["strg_ub_loops_buf2out_read_0_ranges_1"] = 0
+    config["strg_ub_loops_buf2out_read_0_ranges_2"] = 0
+    config["strg_ub_loops_buf2out_read_0_ranges_3"] = 0
+    config["strg_ub_loops_buf2out_read_0_ranges_4"] = 0
+    config["strg_ub_loops_buf2out_read_0_ranges_5"] = 0
+    config["strg_ub_tb_write_addr_gen_1_starting_addr"] = 2
+    for (f1, f2) in configs:
+        setattr(tester.circuit, f1, f2)
 
     for key in config.keys():
         setattr(tester.circuit, key, config[key])
@@ -490,7 +631,7 @@ def gen_test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="nestan_agg"
+        tempdir="nestan_tb1"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal", "--trace"])
