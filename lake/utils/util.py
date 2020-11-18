@@ -383,5 +383,41 @@ def increment_csv(file_in, file_out, fields):
                     outfile.write(increment_line(infile_lines[i + 1]))
 
 
+# Takes in a bus of valid tags with an associated data stream
+# Send the proper data stream thru
+def decode(generator, sel, signals):
+
+    # This base case means we don't need to actually do anything
+    if sel.width == 1:
+        return signals[0]
+
+    # Create scan signal
+    tmp_done = generator.var(f"decode_sel_done_{sel.name}_{signals.name}", 1)
+    if signals.size[0] > 1:
+        if len(signals.size) > 1:
+            ret = generator.var(f"decode_ret_{sel.name}_{signals.name}",
+                                signals.width,
+                                size=signals.size[1:],
+                                explicit_array=True,
+                                packed=True)
+        else:
+            ret = generator.var(f"decode_ret_{sel.name}_{signals.name}",
+                                signals.width)
+    else:
+        ret = generator.var(f"decode_ret_{sel.name}_{signals.name}", 1)
+
+    @always_comb
+    def scan_lowest():
+        tmp_done = 0
+        ret = 0
+        for i in range(sel.width):
+            if ~tmp_done & sel[i]:
+                ret = signals[i]
+                tmp_done = 1
+
+    generator.add_code(scan_lowest)
+    return ret
+
+
 if __name__ == "__main__":
     increment_csv("sequence.csv", "inced_csv.csv", [])

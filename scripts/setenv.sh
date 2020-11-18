@@ -5,7 +5,7 @@ ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 ROOT="$(dirname ${ROOT})"
 
 # detect if clockwork as been cloned or not
-CLOCKWORK_DIR="${ROOT}/clockwork"
+export CLOCKWORK_DIR="${ROOT}/clockwork"
 
 if [ ! -d ${CLOCKWORK_DIR} ]
 then
