@@ -16,7 +16,7 @@ def test_pond():
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False)
 
-    tester = fault.Tester(magma_dut, magma_dut.clk_mem)
+    tester = fault.Tester(magma_dut, magma_dut.clk)
     for start_addr_rd in range(16):
         # Ranges, Strides, Dimensionality, Starting Addr, Starting Addr - Schedule
         ctrl_rd = [[16, 1], [1, 0], 2, start_addr_rd, 16]
@@ -52,6 +52,7 @@ def test_pond():
 
             if i >= 16:
                 tester.circuit.data_out.expect(i - 15 + start_addr_rd)
+
 
             tester.eval()
             tester.step(2)

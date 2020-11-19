@@ -35,7 +35,7 @@ def base_lake_tester(config_path,
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False)
 
-    tester = fault.Tester(magma_dut, magma_dut.clk_mem)
+    tester = fault.Tester(magma_dut, magma_dut.clk)
     configs_list = []
     return lt_dut, configs, configs_list, magma_dut, tester
 

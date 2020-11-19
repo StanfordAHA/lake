@@ -47,7 +47,7 @@ class TopLakeHW(Generator):
         self.tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
         self.tile_en.add_attribute(FormalAttr(self.tile_en.name, FormalSignalConstraint.SET1))
 
-        self.clk_mem = self.clock("clk_mem")
+        self.clk_mem = self.clock("clk")
         self.clk_mem.add_attribute(FormalAttr(self.clk_mem.name, FormalSignalConstraint.CLK))
 
         gclk = self.var("gclk", 1)
