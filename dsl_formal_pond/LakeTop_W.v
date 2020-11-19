@@ -1,6 +1,8 @@
 module LakeTop (
   input logic clk,
+  input logic clk_en,
   input logic [0:0] [15:0] data_in,
+  input logic flush,
   input logic [1:0] input2pond_forloop_dimensionality,
   input logic [1:0] [15:0] input2pond_forloop_ranges,
   input logic [4:0] input2pond_write_addr_gen_starting_addr,
@@ -46,7 +48,12 @@ always_ff @(posedge gclk, negedge rst_n) begin
   if (~rst_n) begin
     cycle_count <= 16'h0;
   end
-  else cycle_count <= cycle_count + 16'h1;
+  else if (clk_en) begin
+    if (flush) begin
+      cycle_count <= 16'h0;
+    end
+    else cycle_count <= cycle_count + 16'h1;
+  end
 end
 assign pond_clk = gclk;
 assign low = 1'h0;
@@ -62,7 +69,9 @@ assign pond_read_addr[0] = pond2output_read_addr_gen_addr_out;
 assign pond2output_read_sched_gen_clk = gclk;
 lake_mem pond (
   .clk(pond_clk),
+  .clk_en(clk_en),
   .data_in(pond_data_in),
+  .flush(flush),
   .read_addr(pond_read_addr),
   .rst_n(rst_n),
   .write(input2pond_accessor_valid),
@@ -75,7 +84,9 @@ for_loop_2_16 #(
   .ITERATOR_SUPPORT(2'h2))
 input2pond_forloop (
   .clk(input2pond_forloop_clk),
+  .clk_en(clk_en),
   .dimensionality(input2pond_forloop_dimensionality),
+  .flush(flush),
   .ranges(input2pond_forloop_ranges),
   .rst_n(rst_n),
   .step(input2pond_accessor_valid),
@@ -85,6 +96,8 @@ input2pond_forloop (
 
 addr_gen_2_5 input2pond_write_addr_gen (
   .clk(input2pond_write_addr_gen_clk),
+  .clk_en(clk_en),
+  .flush(flush),
   .mux_sel(input2pond_forloop_mux_sel_out),
   .restart(input2pond_forloop_restart),
   .rst_n(rst_n),
@@ -96,8 +109,10 @@ addr_gen_2_5 input2pond_write_addr_gen (
 
 sched_gen_2_16 input2pond_write_sched_gen (
   .clk(input2pond_write_sched_gen_clk),
+  .clk_en(clk_en),
   .cycle_count(cycle_count),
   .finished(input2pond_forloop_restart),
+  .flush(flush),
   .mux_sel(input2pond_forloop_mux_sel_out),
   .rst_n(rst_n),
   .sched_addr_gen_starting_addr(input2pond_write_sched_gen_sched_addr_gen_starting_addr),
@@ -110,7 +125,9 @@ for_loop_2_16 #(
   .ITERATOR_SUPPORT(2'h2))
 pond2output_forloop (
   .clk(pond2output_forloop_clk),
+  .clk_en(clk_en),
   .dimensionality(pond2output_forloop_dimensionality),
+  .flush(flush),
   .ranges(pond2output_forloop_ranges),
   .rst_n(rst_n),
   .step(pond2output_accessor_valid),
@@ -120,6 +137,8 @@ pond2output_forloop (
 
 addr_gen_2_5 pond2output_read_addr_gen (
   .clk(pond2output_read_addr_gen_clk),
+  .clk_en(clk_en),
+  .flush(flush),
   .mux_sel(pond2output_forloop_mux_sel_out),
   .restart(pond2output_forloop_restart),
   .rst_n(rst_n),
@@ -131,8 +150,10 @@ addr_gen_2_5 pond2output_read_addr_gen (
 
 sched_gen_2_16 pond2output_read_sched_gen (
   .clk(pond2output_read_sched_gen_clk),
+  .clk_en(clk_en),
   .cycle_count(cycle_count),
   .finished(pond2output_forloop_restart),
+  .flush(flush),
   .mux_sel(pond2output_forloop_mux_sel_out),
   .rst_n(rst_n),
   .sched_addr_gen_starting_addr(pond2output_read_sched_gen_sched_addr_gen_starting_addr),
@@ -144,7 +165,9 @@ endmodule   // LakeTop
 
 module LakeTop_W (
   input logic clk,
+  input logic clk_en,
   input logic [0:0] [15:0] data_in,
+  input logic flush,
   input logic [1:0] input2pond_forloop_dimensionality,
   input logic [15:0] input2pond_forloop_ranges_0,
   input logic [15:0] input2pond_forloop_ranges_1,
@@ -188,7 +211,9 @@ assign LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides[0] = pond2outpu
 assign LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides[1] = pond2output_read_sched_gen_sched_addr_gen_strides_1;
 LakeTop LakeTop (
   .clk(clk),
+  .clk_en(clk_en),
   .data_in(data_in),
+  .flush(flush),
   .input2pond_forloop_dimensionality(input2pond_forloop_dimensionality),
   .input2pond_forloop_ranges(LakeTop_input2pond_forloop_ranges),
   .input2pond_write_addr_gen_starting_addr(input2pond_write_addr_gen_starting_addr),
@@ -210,6 +235,8 @@ endmodule   // LakeTop_W
 
 module addr_gen_2_16 (
   input logic clk,
+  input logic clk_en,
+  input logic flush,
   input logic mux_sel,
   input logic restart,
   input logic rst_n,
@@ -230,17 +257,24 @@ always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
     current_addr <= 16'h0;
   end
-  else if (step) begin
-    if (restart) begin
+  else if (clk_en) begin
+    if (flush) begin
       current_addr <= 16'h0;
     end
-    else current_addr <= current_addr + strides[mux_sel];
+    else if (step) begin
+      if (restart) begin
+        current_addr <= 16'h0;
+      end
+      else current_addr <= current_addr + strides[mux_sel];
+    end
   end
 end
 endmodule   // addr_gen_2_16
 
 module addr_gen_2_5 (
   input logic clk,
+  input logic clk_en,
+  input logic flush,
   input logic mux_sel,
   input logic restart,
   input logic rst_n,
@@ -261,11 +295,16 @@ always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
     current_addr <= 5'h0;
   end
-  else if (step) begin
-    if (restart) begin
+  else if (clk_en) begin
+    if (flush) begin
       current_addr <= 5'h0;
     end
-    else current_addr <= current_addr + strides[mux_sel];
+    else if (step) begin
+      if (restart) begin
+        current_addr <= 5'h0;
+      end
+      else current_addr <= current_addr + strides[mux_sel];
+    end
   end
 end
 endmodule   // addr_gen_2_5
@@ -276,7 +315,9 @@ module for_loop_2_16 #(
 )
 (
   input logic clk,
+  input logic clk_en,
   input logic [1:0] dimensionality,
+  input logic flush,
   input logic [1:0] [15:0] ranges,
   input logic rst_n,
   input logic step,
@@ -331,11 +372,16 @@ always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
     dim_counter[0] <= 16'h0;
   end
-  else if (clear[0]) begin
-    dim_counter[0] <= 16'h0;
-  end
-  else if (inc[0]) begin
-    dim_counter[0] <= inced_cnt;
+  else if (clk_en) begin
+    if (flush) begin
+      dim_counter[0] <= 16'h0;
+    end
+    else if (clear[0]) begin
+      dim_counter[0] <= 16'h0;
+    end
+    else if (inc[0]) begin
+      dim_counter[0] <= inced_cnt;
+    end
   end
 end
 
@@ -343,11 +389,16 @@ always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
     max_value[0] <= 1'h0;
   end
-  else if (clear[0]) begin
-    max_value[0] <= 1'h0;
-  end
-  else if (inc[0]) begin
-    max_value[0] <= maxed_value;
+  else if (clk_en) begin
+    if (flush) begin
+      max_value[0] <= 1'h0;
+    end
+    else if (clear[0]) begin
+      max_value[0] <= 1'h0;
+    end
+    else if (inc[0]) begin
+      max_value[0] <= maxed_value;
+    end
   end
 end
 always_comb begin
@@ -370,11 +421,16 @@ always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
     dim_counter[1] <= 16'h0;
   end
-  else if (clear[1]) begin
-    dim_counter[1] <= 16'h0;
-  end
-  else if (inc[1]) begin
-    dim_counter[1] <= inced_cnt;
+  else if (clk_en) begin
+    if (flush) begin
+      dim_counter[1] <= 16'h0;
+    end
+    else if (clear[1]) begin
+      dim_counter[1] <= 16'h0;
+    end
+    else if (inc[1]) begin
+      dim_counter[1] <= inced_cnt;
+    end
   end
 end
 
@@ -382,11 +438,16 @@ always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
     max_value[1] <= 1'h0;
   end
-  else if (clear[1]) begin
-    max_value[1] <= 1'h0;
-  end
-  else if (inc[1]) begin
-    max_value[1] <= maxed_value;
+  else if (clk_en) begin
+    if (flush) begin
+      max_value[1] <= 1'h0;
+    end
+    else if (clear[1]) begin
+      max_value[1] <= 1'h0;
+    end
+    else if (inc[1]) begin
+      max_value[1] <= maxed_value;
+    end
   end
 end
 assign restart = ~done;
@@ -394,7 +455,9 @@ endmodule   // for_loop_2_16
 
 module lake_mem (
   input logic clk,
+  input logic clk_en,
   input logic [0:0][0:0] [15:0] data_in,
+  input logic flush,
   input logic [4:0] read_addr [0:0],
   input logic rst_n,
   input logic write,
@@ -405,8 +468,10 @@ module lake_mem (
 logic [31:0][15:0] memory;
 
 always_ff @(posedge clk) begin
-  if (write) begin
-    memory[write_addr[0] + 5'h0] <= data_in[0][0];
+  if (clk_en) begin
+    if (write) begin
+      memory[write_addr[0] + 5'h0] <= data_in[0][0];
+    end
   end
 end
 always_comb begin
@@ -416,8 +481,10 @@ endmodule   // lake_mem
 
 module sched_gen_2_16 (
   input logic clk,
+  input logic clk_en,
   input logic [15:0] cycle_count,
   input logic finished,
+  input logic flush,
   input logic mux_sel,
   input logic rst_n,
   input logic [15:0] sched_addr_gen_starting_addr,
@@ -435,8 +502,13 @@ always_ff @(posedge clk, negedge rst_n) begin
   if (~rst_n) begin
     valid_gate_inv <= 1'h0;
   end
-  else if (finished) begin
-    valid_gate_inv <= 1'h1;
+  else if (clk_en) begin
+    if (flush) begin
+      valid_gate_inv <= 1'h0;
+    end
+    else if (finished) begin
+      valid_gate_inv <= 1'h1;
+    end
   end
 end
 always_comb begin
@@ -447,6 +519,8 @@ always_comb begin
 end
 addr_gen_2_16 sched_addr_gen (
   .clk(clk),
+  .clk_en(clk_en),
+  .flush(flush),
   .mux_sel(mux_sel),
   .restart(1'h0),
   .rst_n(rst_n),
