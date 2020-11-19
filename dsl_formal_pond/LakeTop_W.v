@@ -1,18 +1,18 @@
 module LakeTop (
-  input logic clk_mem,
+  input logic clk,
   input logic [0:0] [15:0] data_in,
-  input logic [3:0] input2pond_forloop_dimensionality,
-  input logic [5:0] [15:0] input2pond_forloop_ranges,
-  input logic [15:0] input2pond_write_addr_gen_starting_addr,
-  input logic [5:0] [15:0] input2pond_write_addr_gen_strides,
+  input logic [1:0] input2pond_forloop_dimensionality,
+  input logic [1:0] [15:0] input2pond_forloop_ranges,
+  input logic [4:0] input2pond_write_addr_gen_starting_addr,
+  input logic [1:0] [4:0] input2pond_write_addr_gen_strides,
   input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] input2pond_write_sched_gen_sched_addr_gen_strides,
-  input logic [3:0] pond2output_forloop_dimensionality,
-  input logic [5:0] [15:0] pond2output_forloop_ranges,
-  input logic [15:0] pond2output_read_addr_gen_starting_addr,
-  input logic [5:0] [15:0] pond2output_read_addr_gen_strides,
+  input logic [1:0] [15:0] input2pond_write_sched_gen_sched_addr_gen_strides,
+  input logic [1:0] pond2output_forloop_dimensionality,
+  input logic [1:0] [15:0] pond2output_forloop_ranges,
+  input logic [4:0] pond2output_read_addr_gen_starting_addr,
+  input logic [1:0] [4:0] pond2output_read_addr_gen_strides,
   input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] pond2output_read_sched_gen_sched_addr_gen_strides,
+  input logic [1:0] [15:0] pond2output_read_sched_gen_sched_addr_gen_strides,
   input logic rst_n,
   input logic tile_en,
   output logic [0:0] [15:0] data_out
@@ -22,25 +22,25 @@ logic [15:0] cycle_count;
 logic gclk;
 logic input2pond_accessor_valid;
 logic input2pond_forloop_clk;
-logic [2:0] input2pond_forloop_mux_sel_out;
+logic input2pond_forloop_mux_sel_out;
 logic input2pond_forloop_restart;
-logic [15:0] input2pond_write_addr_gen_addr_out;
+logic [4:0] input2pond_write_addr_gen_addr_out;
 logic input2pond_write_addr_gen_clk;
 logic input2pond_write_sched_gen_clk;
 logic low;
 logic [0:0][15:0] mem_data_out_pond;
 logic pond2output_accessor_valid;
 logic pond2output_forloop_clk;
-logic [2:0] pond2output_forloop_mux_sel_out;
+logic pond2output_forloop_mux_sel_out;
 logic pond2output_forloop_restart;
-logic [15:0] pond2output_read_addr_gen_addr_out;
+logic [4:0] pond2output_read_addr_gen_addr_out;
 logic pond2output_read_addr_gen_clk;
 logic pond2output_read_sched_gen_clk;
 logic pond_clk;
 logic [0:0][0:0][15:0] pond_data_in;
 logic [4:0] pond_read_addr [0:0];
 logic [4:0] pond_write_addr [0:0];
-assign gclk = clk_mem & tile_en;
+assign gclk = clk & tile_en;
 
 always_ff @(posedge gclk, negedge rst_n) begin
   if (~rst_n) begin
@@ -53,12 +53,12 @@ assign low = 1'h0;
 assign pond_data_in[0] = data_in[0];
 assign input2pond_forloop_clk = gclk;
 assign input2pond_write_addr_gen_clk = gclk;
-assign pond_write_addr[0] = input2pond_write_addr_gen_addr_out[4:0];
+assign pond_write_addr[0] = input2pond_write_addr_gen_addr_out;
 assign input2pond_write_sched_gen_clk = gclk;
 assign data_out[0] = mem_data_out_pond[0];
 assign pond2output_forloop_clk = gclk;
 assign pond2output_read_addr_gen_clk = gclk;
-assign pond_read_addr[0] = pond2output_read_addr_gen_addr_out[4:0];
+assign pond_read_addr[0] = pond2output_read_addr_gen_addr_out;
 assign pond2output_read_sched_gen_clk = gclk;
 lake_mem pond (
   .clk(pond_clk),
@@ -70,9 +70,9 @@ lake_mem pond (
   .data_out(mem_data_out_pond)
 );
 
-for_loop_6_16 #(
+for_loop_2_16 #(
   .CONFIG_WIDTH(5'h10),
-  .ITERATOR_SUPPORT(4'h6))
+  .ITERATOR_SUPPORT(2'h2))
 input2pond_forloop (
   .clk(input2pond_forloop_clk),
   .dimensionality(input2pond_forloop_dimensionality),
@@ -83,7 +83,7 @@ input2pond_forloop (
   .restart(input2pond_forloop_restart)
 );
 
-addr_gen_6_16 input2pond_write_addr_gen (
+addr_gen_2_5 input2pond_write_addr_gen (
   .clk(input2pond_write_addr_gen_clk),
   .mux_sel(input2pond_forloop_mux_sel_out),
   .restart(input2pond_forloop_restart),
@@ -94,7 +94,7 @@ addr_gen_6_16 input2pond_write_addr_gen (
   .addr_out(input2pond_write_addr_gen_addr_out)
 );
 
-sched_gen_6_16 input2pond_write_sched_gen (
+sched_gen_2_16 input2pond_write_sched_gen (
   .clk(input2pond_write_sched_gen_clk),
   .cycle_count(cycle_count),
   .finished(input2pond_forloop_restart),
@@ -105,9 +105,9 @@ sched_gen_6_16 input2pond_write_sched_gen (
   .valid_output(input2pond_accessor_valid)
 );
 
-for_loop_6_16 #(
+for_loop_2_16 #(
   .CONFIG_WIDTH(5'h10),
-  .ITERATOR_SUPPORT(4'h6))
+  .ITERATOR_SUPPORT(2'h2))
 pond2output_forloop (
   .clk(pond2output_forloop_clk),
   .dimensionality(pond2output_forloop_dimensionality),
@@ -118,7 +118,7 @@ pond2output_forloop (
   .restart(pond2output_forloop_restart)
 );
 
-addr_gen_6_16 pond2output_read_addr_gen (
+addr_gen_2_5 pond2output_read_addr_gen (
   .clk(pond2output_read_addr_gen_clk),
   .mux_sel(pond2output_forloop_mux_sel_out),
   .restart(pond2output_forloop_restart),
@@ -129,7 +129,7 @@ addr_gen_6_16 pond2output_read_addr_gen (
   .addr_out(pond2output_read_addr_gen_addr_out)
 );
 
-sched_gen_6_16 pond2output_read_sched_gen (
+sched_gen_2_16 pond2output_read_sched_gen (
   .clk(pond2output_read_sched_gen_clk),
   .cycle_count(cycle_count),
   .finished(pond2output_forloop_restart),
@@ -143,99 +143,51 @@ sched_gen_6_16 pond2output_read_sched_gen (
 endmodule   // LakeTop
 
 module LakeTop_W (
-  input logic clk_mem,
+  input logic clk,
   input logic [0:0] [15:0] data_in,
-  input logic [3:0] input2pond_forloop_dimensionality,
+  input logic [1:0] input2pond_forloop_dimensionality,
   input logic [15:0] input2pond_forloop_ranges_0,
   input logic [15:0] input2pond_forloop_ranges_1,
-  input logic [15:0] input2pond_forloop_ranges_2,
-  input logic [15:0] input2pond_forloop_ranges_3,
-  input logic [15:0] input2pond_forloop_ranges_4,
-  input logic [15:0] input2pond_forloop_ranges_5,
-  input logic [15:0] input2pond_write_addr_gen_starting_addr,
-  input logic [15:0] input2pond_write_addr_gen_strides_0,
-  input logic [15:0] input2pond_write_addr_gen_strides_1,
-  input logic [15:0] input2pond_write_addr_gen_strides_2,
-  input logic [15:0] input2pond_write_addr_gen_strides_3,
-  input logic [15:0] input2pond_write_addr_gen_strides_4,
-  input logic [15:0] input2pond_write_addr_gen_strides_5,
+  input logic [4:0] input2pond_write_addr_gen_starting_addr,
+  input logic [4:0] input2pond_write_addr_gen_strides_0,
+  input logic [4:0] input2pond_write_addr_gen_strides_1,
   input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_starting_addr,
   input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_strides_0,
   input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_strides_1,
-  input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_strides_2,
-  input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_strides_3,
-  input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_strides_4,
-  input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_strides_5,
-  input logic [3:0] pond2output_forloop_dimensionality,
+  input logic [1:0] pond2output_forloop_dimensionality,
   input logic [15:0] pond2output_forloop_ranges_0,
   input logic [15:0] pond2output_forloop_ranges_1,
-  input logic [15:0] pond2output_forloop_ranges_2,
-  input logic [15:0] pond2output_forloop_ranges_3,
-  input logic [15:0] pond2output_forloop_ranges_4,
-  input logic [15:0] pond2output_forloop_ranges_5,
-  input logic [15:0] pond2output_read_addr_gen_starting_addr,
-  input logic [15:0] pond2output_read_addr_gen_strides_0,
-  input logic [15:0] pond2output_read_addr_gen_strides_1,
-  input logic [15:0] pond2output_read_addr_gen_strides_2,
-  input logic [15:0] pond2output_read_addr_gen_strides_3,
-  input logic [15:0] pond2output_read_addr_gen_strides_4,
-  input logic [15:0] pond2output_read_addr_gen_strides_5,
+  input logic [4:0] pond2output_read_addr_gen_starting_addr,
+  input logic [4:0] pond2output_read_addr_gen_strides_0,
+  input logic [4:0] pond2output_read_addr_gen_strides_1,
   input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_starting_addr,
   input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_strides_0,
   input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_strides_1,
-  input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_strides_2,
-  input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_strides_3,
-  input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_strides_4,
-  input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_strides_5,
   input logic rst_n,
   input logic tile_en,
   output logic [0:0] [15:0] data_out
 );
 
-logic [5:0][15:0] LakeTop_input2pond_forloop_ranges;
-logic [5:0][15:0] LakeTop_input2pond_write_addr_gen_strides;
-logic [5:0][15:0] LakeTop_input2pond_write_sched_gen_sched_addr_gen_strides;
-logic [5:0][15:0] LakeTop_pond2output_forloop_ranges;
-logic [5:0][15:0] LakeTop_pond2output_read_addr_gen_strides;
-logic [5:0][15:0] LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides;
+logic [1:0][15:0] LakeTop_input2pond_forloop_ranges;
+logic [1:0][4:0] LakeTop_input2pond_write_addr_gen_strides;
+logic [1:0][15:0] LakeTop_input2pond_write_sched_gen_sched_addr_gen_strides;
+logic [1:0][15:0] LakeTop_pond2output_forloop_ranges;
+logic [1:0][4:0] LakeTop_pond2output_read_addr_gen_strides;
+logic [1:0][15:0] LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides;
 assign LakeTop_input2pond_forloop_ranges[0] = input2pond_forloop_ranges_0;
 assign LakeTop_input2pond_forloop_ranges[1] = input2pond_forloop_ranges_1;
-assign LakeTop_input2pond_forloop_ranges[2] = input2pond_forloop_ranges_2;
-assign LakeTop_input2pond_forloop_ranges[3] = input2pond_forloop_ranges_3;
-assign LakeTop_input2pond_forloop_ranges[4] = input2pond_forloop_ranges_4;
-assign LakeTop_input2pond_forloop_ranges[5] = input2pond_forloop_ranges_5;
 assign LakeTop_input2pond_write_addr_gen_strides[0] = input2pond_write_addr_gen_strides_0;
 assign LakeTop_input2pond_write_addr_gen_strides[1] = input2pond_write_addr_gen_strides_1;
-assign LakeTop_input2pond_write_addr_gen_strides[2] = input2pond_write_addr_gen_strides_2;
-assign LakeTop_input2pond_write_addr_gen_strides[3] = input2pond_write_addr_gen_strides_3;
-assign LakeTop_input2pond_write_addr_gen_strides[4] = input2pond_write_addr_gen_strides_4;
-assign LakeTop_input2pond_write_addr_gen_strides[5] = input2pond_write_addr_gen_strides_5;
 assign LakeTop_input2pond_write_sched_gen_sched_addr_gen_strides[0] = input2pond_write_sched_gen_sched_addr_gen_strides_0;
 assign LakeTop_input2pond_write_sched_gen_sched_addr_gen_strides[1] = input2pond_write_sched_gen_sched_addr_gen_strides_1;
-assign LakeTop_input2pond_write_sched_gen_sched_addr_gen_strides[2] = input2pond_write_sched_gen_sched_addr_gen_strides_2;
-assign LakeTop_input2pond_write_sched_gen_sched_addr_gen_strides[3] = input2pond_write_sched_gen_sched_addr_gen_strides_3;
-assign LakeTop_input2pond_write_sched_gen_sched_addr_gen_strides[4] = input2pond_write_sched_gen_sched_addr_gen_strides_4;
-assign LakeTop_input2pond_write_sched_gen_sched_addr_gen_strides[5] = input2pond_write_sched_gen_sched_addr_gen_strides_5;
 assign LakeTop_pond2output_forloop_ranges[0] = pond2output_forloop_ranges_0;
 assign LakeTop_pond2output_forloop_ranges[1] = pond2output_forloop_ranges_1;
-assign LakeTop_pond2output_forloop_ranges[2] = pond2output_forloop_ranges_2;
-assign LakeTop_pond2output_forloop_ranges[3] = pond2output_forloop_ranges_3;
-assign LakeTop_pond2output_forloop_ranges[4] = pond2output_forloop_ranges_4;
-assign LakeTop_pond2output_forloop_ranges[5] = pond2output_forloop_ranges_5;
 assign LakeTop_pond2output_read_addr_gen_strides[0] = pond2output_read_addr_gen_strides_0;
 assign LakeTop_pond2output_read_addr_gen_strides[1] = pond2output_read_addr_gen_strides_1;
-assign LakeTop_pond2output_read_addr_gen_strides[2] = pond2output_read_addr_gen_strides_2;
-assign LakeTop_pond2output_read_addr_gen_strides[3] = pond2output_read_addr_gen_strides_3;
-assign LakeTop_pond2output_read_addr_gen_strides[4] = pond2output_read_addr_gen_strides_4;
-assign LakeTop_pond2output_read_addr_gen_strides[5] = pond2output_read_addr_gen_strides_5;
 assign LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides[0] = pond2output_read_sched_gen_sched_addr_gen_strides_0;
 assign LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides[1] = pond2output_read_sched_gen_sched_addr_gen_strides_1;
-assign LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides[2] = pond2output_read_sched_gen_sched_addr_gen_strides_2;
-assign LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides[3] = pond2output_read_sched_gen_sched_addr_gen_strides_3;
-assign LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides[4] = pond2output_read_sched_gen_sched_addr_gen_strides_4;
-assign LakeTop_pond2output_read_sched_gen_sched_addr_gen_strides[5] = pond2output_read_sched_gen_sched_addr_gen_strides_5;
 LakeTop LakeTop (
-  .clk_mem(clk_mem),
+  .clk(clk),
   .data_in(data_in),
   .input2pond_forloop_dimensionality(input2pond_forloop_dimensionality),
   .input2pond_forloop_ranges(LakeTop_input2pond_forloop_ranges),
@@ -256,14 +208,14 @@ LakeTop LakeTop (
 
 endmodule   // LakeTop_W
 
-module addr_gen_6_16 (
+module addr_gen_2_16 (
   input logic clk,
-  input logic [2:0] mux_sel,
+  input logic mux_sel,
   input logic restart,
   input logic rst_n,
   input logic [15:0] starting_addr,
   input logic step,
-  input logic [5:0] [15:0] strides,
+  input logic [1:0] [15:0] strides,
   output logic [15:0] addr_out
 );
 
@@ -285,85 +237,92 @@ always_ff @(posedge clk, negedge rst_n) begin
     else current_addr <= current_addr + strides[mux_sel];
   end
 end
-endmodule   // addr_gen_6_16
+endmodule   // addr_gen_2_16
 
-module for_loop_6_16 #(
+module addr_gen_2_5 (
+  input logic clk,
+  input logic mux_sel,
+  input logic restart,
+  input logic rst_n,
+  input logic [4:0] starting_addr,
+  input logic step,
+  input logic [1:0] [4:0] strides,
+  output logic [4:0] addr_out
+);
+
+logic [4:0] calc_addr;
+logic [4:0] current_addr;
+logic [4:0] strt_addr;
+assign strt_addr = starting_addr;
+assign addr_out = calc_addr;
+assign calc_addr = strt_addr + current_addr;
+
+always_ff @(posedge clk, negedge rst_n) begin
+  if (~rst_n) begin
+    current_addr <= 5'h0;
+  end
+  else if (step) begin
+    if (restart) begin
+      current_addr <= 5'h0;
+    end
+    else current_addr <= current_addr + strides[mux_sel];
+  end
+end
+endmodule   // addr_gen_2_5
+
+module for_loop_2_16 #(
   parameter CONFIG_WIDTH = 5'h10,
-  parameter ITERATOR_SUPPORT = 4'h6
+  parameter ITERATOR_SUPPORT = 2'h2
 )
 (
   input logic clk,
-  input logic [3:0] dimensionality,
-  input logic [5:0] [15:0] ranges,
+  input logic [1:0] dimensionality,
+  input logic [1:0] [15:0] ranges,
   input logic rst_n,
   input logic step,
-  output logic [2:0] mux_sel_out,
+  output logic mux_sel_out,
   output logic restart
 );
 
-logic [5:0] clear;
-logic [5:0][15:0] dim_counter;
+logic [1:0] clear;
+logic [1:0][15:0] dim_counter;
 logic done;
-logic [5:0] inc;
+logic [1:0] inc;
 logic [15:0] inced_cnt;
-logic [5:0] max_value;
+logic [1:0] max_value;
 logic maxed_value;
-logic [2:0] mux_sel;
+logic mux_sel;
 assign mux_sel_out = mux_sel;
 assign inced_cnt = dim_counter[mux_sel] + 16'h1;
 assign maxed_value = (dim_counter[mux_sel] == ranges[mux_sel]) & inc[mux_sel];
 always_comb begin
-  mux_sel = 3'h0;
+  mux_sel = 1'h0;
   done = 1'h0;
   if (~done) begin
-    if ((~max_value[0]) & (dimensionality > 4'h0)) begin
-      mux_sel = 3'h0;
+    if ((~max_value[0]) & (dimensionality > 2'h0)) begin
+      mux_sel = 1'h0;
       done = 1'h1;
     end
   end
   if (~done) begin
-    if ((~max_value[1]) & (dimensionality > 4'h1)) begin
-      mux_sel = 3'h1;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if ((~max_value[2]) & (dimensionality > 4'h2)) begin
-      mux_sel = 3'h2;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if ((~max_value[3]) & (dimensionality > 4'h3)) begin
-      mux_sel = 3'h3;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if ((~max_value[4]) & (dimensionality > 4'h4)) begin
-      mux_sel = 3'h4;
-      done = 1'h1;
-    end
-  end
-  if (~done) begin
-    if ((~max_value[5]) & (dimensionality > 4'h5)) begin
-      mux_sel = 3'h5;
+    if ((~max_value[1]) & (dimensionality > 2'h1)) begin
+      mux_sel = 1'h1;
       done = 1'h1;
     end
   end
 end
 always_comb begin
   clear[0] = 1'h0;
-  if (((mux_sel > 3'h0) & step) | (~done)) begin
+  if (((mux_sel > 1'h0) & step) | (~done)) begin
     clear[0] = 1'h1;
   end
 end
 always_comb begin
   inc[0] = 1'h0;
-  if ((5'h0 == 5'h0) & step & (dimensionality > 4'h0)) begin
+  if ((5'h0 == 5'h0) & step & (dimensionality > 2'h0)) begin
     inc[0] = 1'h1;
   end
-  else if ((mux_sel == 3'h0) & step & (dimensionality > 4'h0)) begin
+  else if ((mux_sel == 1'h0) & step & (dimensionality > 2'h0)) begin
     inc[0] = 1'h1;
   end
 end
@@ -393,16 +352,16 @@ always_ff @(posedge clk, negedge rst_n) begin
 end
 always_comb begin
   clear[1] = 1'h0;
-  if (((mux_sel > 3'h1) & step) | (~done)) begin
+  if (((mux_sel > 1'h1) & step) | (~done)) begin
     clear[1] = 1'h1;
   end
 end
 always_comb begin
   inc[1] = 1'h0;
-  if ((5'h1 == 5'h0) & step & (dimensionality > 4'h1)) begin
+  if ((5'h1 == 5'h0) & step & (dimensionality > 2'h1)) begin
     inc[1] = 1'h1;
   end
-  else if ((mux_sel == 3'h1) & step & (dimensionality > 4'h1)) begin
+  else if ((mux_sel == 1'h1) & step & (dimensionality > 2'h1)) begin
     inc[1] = 1'h1;
   end
 end
@@ -430,164 +389,8 @@ always_ff @(posedge clk, negedge rst_n) begin
     max_value[1] <= maxed_value;
   end
 end
-always_comb begin
-  clear[2] = 1'h0;
-  if (((mux_sel > 3'h2) & step) | (~done)) begin
-    clear[2] = 1'h1;
-  end
-end
-always_comb begin
-  inc[2] = 1'h0;
-  if ((5'h2 == 5'h0) & step & (dimensionality > 4'h2)) begin
-    inc[2] = 1'h1;
-  end
-  else if ((mux_sel == 3'h2) & step & (dimensionality > 4'h2)) begin
-    inc[2] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[2] <= 16'h0;
-  end
-  else if (clear[2]) begin
-    dim_counter[2] <= 16'h0;
-  end
-  else if (inc[2]) begin
-    dim_counter[2] <= inced_cnt;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[2] <= 1'h0;
-  end
-  else if (clear[2]) begin
-    max_value[2] <= 1'h0;
-  end
-  else if (inc[2]) begin
-    max_value[2] <= maxed_value;
-  end
-end
-always_comb begin
-  clear[3] = 1'h0;
-  if (((mux_sel > 3'h3) & step) | (~done)) begin
-    clear[3] = 1'h1;
-  end
-end
-always_comb begin
-  inc[3] = 1'h0;
-  if ((5'h3 == 5'h0) & step & (dimensionality > 4'h3)) begin
-    inc[3] = 1'h1;
-  end
-  else if ((mux_sel == 3'h3) & step & (dimensionality > 4'h3)) begin
-    inc[3] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[3] <= 16'h0;
-  end
-  else if (clear[3]) begin
-    dim_counter[3] <= 16'h0;
-  end
-  else if (inc[3]) begin
-    dim_counter[3] <= inced_cnt;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[3] <= 1'h0;
-  end
-  else if (clear[3]) begin
-    max_value[3] <= 1'h0;
-  end
-  else if (inc[3]) begin
-    max_value[3] <= maxed_value;
-  end
-end
-always_comb begin
-  clear[4] = 1'h0;
-  if (((mux_sel > 3'h4) & step) | (~done)) begin
-    clear[4] = 1'h1;
-  end
-end
-always_comb begin
-  inc[4] = 1'h0;
-  if ((5'h4 == 5'h0) & step & (dimensionality > 4'h4)) begin
-    inc[4] = 1'h1;
-  end
-  else if ((mux_sel == 3'h4) & step & (dimensionality > 4'h4)) begin
-    inc[4] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[4] <= 16'h0;
-  end
-  else if (clear[4]) begin
-    dim_counter[4] <= 16'h0;
-  end
-  else if (inc[4]) begin
-    dim_counter[4] <= inced_cnt;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[4] <= 1'h0;
-  end
-  else if (clear[4]) begin
-    max_value[4] <= 1'h0;
-  end
-  else if (inc[4]) begin
-    max_value[4] <= maxed_value;
-  end
-end
-always_comb begin
-  clear[5] = 1'h0;
-  if (((mux_sel > 3'h5) & step) | (~done)) begin
-    clear[5] = 1'h1;
-  end
-end
-always_comb begin
-  inc[5] = 1'h0;
-  if ((5'h5 == 5'h0) & step & (dimensionality > 4'h5)) begin
-    inc[5] = 1'h1;
-  end
-  else if ((mux_sel == 3'h5) & step & (dimensionality > 4'h5)) begin
-    inc[5] = 1'h1;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    dim_counter[5] <= 16'h0;
-  end
-  else if (clear[5]) begin
-    dim_counter[5] <= 16'h0;
-  end
-  else if (inc[5]) begin
-    dim_counter[5] <= inced_cnt;
-  end
-end
-
-always_ff @(posedge clk, negedge rst_n) begin
-  if (~rst_n) begin
-    max_value[5] <= 1'h0;
-  end
-  else if (clear[5]) begin
-    max_value[5] <= 1'h0;
-  end
-  else if (inc[5]) begin
-    max_value[5] <= maxed_value;
-  end
-end
 assign restart = ~done;
-endmodule   // for_loop_6_16
+endmodule   // for_loop_2_16
 
 module lake_mem (
   input logic clk,
@@ -611,14 +414,14 @@ always_comb begin
 end
 endmodule   // lake_mem
 
-module sched_gen_6_16 (
+module sched_gen_2_16 (
   input logic clk,
   input logic [15:0] cycle_count,
   input logic finished,
-  input logic [2:0] mux_sel,
+  input logic mux_sel,
   input logic rst_n,
   input logic [15:0] sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] sched_addr_gen_strides,
+  input logic [1:0] [15:0] sched_addr_gen_strides,
   output logic valid_output
 );
 
@@ -642,7 +445,7 @@ end
 always_comb begin
   valid_output = valid_out;
 end
-addr_gen_6_16 sched_addr_gen (
+addr_gen_2_16 sched_addr_gen (
   .clk(clk),
   .mux_sel(mux_sel),
   .restart(1'h0),
@@ -653,6 +456,6 @@ addr_gen_6_16 sched_addr_gen (
   .addr_out(addr_out)
 );
 
-endmodule   // sched_gen_6_16
+endmodule   // sched_gen_2_16
 
 

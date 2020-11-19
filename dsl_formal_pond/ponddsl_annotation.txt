@@ -1,17 +1,17 @@
-input logic rst_n	RSTN
-input logic tile_en	SET1
-input logic [15:0] pond2output_read_addr_gen_starting_addr	SOLVE
-input logic [3:0] input2pond_forloop_dimensionality	SOLVE
-input logic clk_mem	CLK
-input logic [5:0] [15:0] pond2output_forloop_ranges	SOLVE
-input logic [0:0] [15:0] data_in	SEQUENCE
-input logic [5:0] [15:0] input2pond_forloop_ranges	SOLVE
-input logic [5:0] [15:0] pond2output_read_addr_gen_strides	SOLVE
-input logic [5:0] [15:0] pond2output_read_sched_gen_sched_addr_gen_strides	SOLVE
-input logic [15:0] input2pond_write_addr_gen_starting_addr	SOLVE
-input logic [3:0] pond2output_forloop_dimensionality	SOLVE
-input logic [5:0] [15:0] input2pond_write_addr_gen_strides	SOLVE
-output logic [0:0] [15:0] data_out	SEQUENCE
-input logic [5:0] [15:0] input2pond_write_sched_gen_sched_addr_gen_strides	SOLVE
+input logic clk	CLK
 input logic [15:0] pond2output_read_sched_gen_sched_addr_gen_starting_addr	SOLVE
+input logic rst_n	RSTN
+input logic [1:0] [15:0] input2pond_write_sched_gen_sched_addr_gen_strides	SOLVE
+input logic [1:0] input2pond_forloop_dimensionality	SOLVE
+input logic [1:0] [4:0] input2pond_write_addr_gen_strides	SOLVE
 input logic [15:0] input2pond_write_sched_gen_sched_addr_gen_starting_addr	SOLVE
+input logic [1:0] [15:0] pond2output_forloop_ranges	SOLVE
+input logic [1:0] [15:0] pond2output_read_sched_gen_sched_addr_gen_strides	SOLVE
+input logic [0:0] [15:0] data_in	SEQUENCE
+input logic [1:0] [4:0] pond2output_read_addr_gen_strides	SOLVE
+input logic [4:0] input2pond_write_addr_gen_starting_addr	SOLVE
+input logic [1:0] pond2output_forloop_dimensionality	SOLVE
+input logic [4:0] pond2output_read_addr_gen_starting_addr	SOLVE
+output logic [0:0] [15:0] data_out	SEQUENCE
+input logic tile_en	SET1
+input logic [1:0] [15:0] input2pond_forloop_ranges	SOLVE

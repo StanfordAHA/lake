@@ -1,4 +1,4 @@
-clk_mem
+clk
 cycle_count
 data_in
 data_out
