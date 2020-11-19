@@ -54,6 +54,8 @@ class TopLakeHW(Generator):
         self.gclk = kts.util.clock(gclk)
         self.wire(gclk, self.clk_mem & self.tile_en)
 
+        self.clk_en = self.clock_en("clk_en", 1)
+
         # active low asynchornous reset
         self.rst_n = self.reset("rst_n", 1)
         self.rst_n.add_attribute(FormalAttr(self.rst_n.name, FormalSignalConstraint.RSTN))
@@ -442,6 +444,14 @@ class TopLakeHW(Generator):
                 if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0] * 4))
                 if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0] * 4))
                 read_write_addr_comb.add_stmt(if_write)
+
+        kts.passes.auto_insert_clock_enable(self.internal_generator)
+        clk_en_port = self.internal_generator.get_port("clk_en")
+        clk_en_port.add_attribute(FormalAttr(clk_en_port.name, FormalSignalConstraint.SET1))
+
+        self.add_attribute("sync-reset=flush")
+        kts.passes.auto_insert_sync_reset(self.internal_generator)
+        flush_port = self.internal_generator.get_port("flush")
 
         lift_config_reg(self.internal_generator)
 
