@@ -161,7 +161,7 @@ class TopLakeHW(Generator):
                            step=self.valid)
 
             newAG = AddrGen(iterator_support=input_dim,
-                            config_width=max(1, clog2(input_range)))  # self.default_config_width)
+                            config_width=max(1, clog2(input_stride)))  # self.default_config_width)
             self.add_child(f"input2{in_mem}_write_addr_gen",
                            newAG,
                            clk=self.gclk,
@@ -210,7 +210,7 @@ class TopLakeHW(Generator):
                            step=self.valid)
 
             newAG = AddrGen(iterator_support=output_dim,
-                            config_width=max(1, clog2(output_range)))#self.default_config_width)
+                            config_width=max(1, clog2(output_stride)))#self.default_config_width)
             self.add_child(f"{out_mem}2output_read_addr_gen",
                            newAG,
                            clk=self.gclk,
