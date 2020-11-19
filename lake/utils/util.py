@@ -365,7 +365,8 @@ def trim_config_list(flat_gen, config_list):
     # Store trimmed values here...
     config = []
     for name, value in config_list:
-        config.append(trim_config(flat_gen, name, value))
+        if value is not None:
+            config.append(trim_config(flat_gen, name, value))
     return config
 
 

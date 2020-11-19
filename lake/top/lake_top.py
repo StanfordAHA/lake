@@ -995,7 +995,7 @@ class LakeTop(Generator):
         print(f"Current_name: {self.name}")
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
-        if None not in controller_objs:
+        if True:
             # Set configuration...
             config = [
                 ("strg_ub_agg_read_addr_gen_0_starting_addr", agg2sram.out_data_strt),
@@ -1018,9 +1018,9 @@ class LakeTop(Generator):
                 ("strg_ub_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
                 ("strg_ub_loops_buf2out_read_0_dimensionality", tb2out0.dim),
 
-                ("strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
-                ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
-                ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim)
+               # ("strg_ub_tb_read_addr_gen_1_starting_addr", tb2out1.out_data_strt),
+               # ("strg_ub_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
+               # ("strg_ub_loops_buf2out_read_1_dimensionality", tb2out1.dim)
             ]
 
         # control signals
@@ -1075,12 +1075,13 @@ class LakeTop(Generator):
                 config.append((f"strg_ub_loops_buf2out_autovec_read_ranges_{i}", sram2tb.extent[i]))
                 config.append((f"strg_ub_output_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
                 config.append((f"strg_ub_output_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
-                config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
+                if sram2tb.mux_data_stride is not None:
+                    config.append((f"strg_ub_out_port_sel_addr_strides_{i}", sram2tb.mux_data_stride[i]))
                 for tb in range(len(tbs)):
                     config.append((f"strg_ub_tb_write_addr_gen_{tb}_strides_{i}", sram2tb.in_data_stride[i]))
 
-        if tb2out0 is not None and tb2out1 is not None:
-            for tb in range(len(tbs)):
+        if tb2out0 is not None:# and tb2out1 is not None:
+            for tb in range(1):
                 elem = tbs[tb]
                 for i in range(elem.dim):
                     config.append((f"strg_ub_loops_buf2out_read_{tb}_ranges_{i}", elem.extent[i]))
