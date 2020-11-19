@@ -285,10 +285,10 @@ class TopLake():
         hw = self.generate_hardware()
         return hw
 
-    def construct_lake(self):
+    def construct_lake(self, filename="Lake_hw.sv"):
         hw = self.test_magma_lake()
 
-        verilog(hw, filename="Lake_hw.sv",
+        verilog(hw, filename=filename,
                 check_multiple_driver=False,
                 optimize_if=False,
                 check_flip_flop_always_ff=False)
