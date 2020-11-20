@@ -18,19 +18,8 @@ class AggFormal(Generator):
                  data_width=16,  # CGRA Params
                  mem_width=64,
                  mem_depth=512,
-                 banks=1,
-                 input_addr_iterator_support=6,
-                 output_addr_iterator_support=6,
-                 input_sched_iterator_support=6,
-                 output_sched_iterator_support=6,
-                 config_width=16,
-                 #  output_config_width=16,
-                 interconnect_input_ports=1,  # Connection to int
+                 interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=1,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
-                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4):
         super().__init__("agg_formal", debug=True)
 
@@ -198,7 +187,8 @@ class AggFormal(Generator):
                            rst_n=self._rst_n,
                            step=self._write,
                            # addr_out=self._input_port_sel_addr)
-                           mux_sel=fl_ctr_sram_wr.ports.mux_sel_out)
+                           mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
+                           restart=output_loops.ports.restart)
             safe_wire(self, self._input_port_sel_addr, tmp_AG.ports.addr_out)
 
         else:

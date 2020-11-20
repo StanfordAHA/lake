@@ -21,11 +21,7 @@ class TBFormal(Generator):
                  config_width=16,
                  #  output_config_width=16,
                  interconnect_input_ports=1,  # Connection to int
-                 interconnect_output_ports=1,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
-                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 interconnect_output_ports=2,
                  agg_height=4):
         super().__init__("tb_formal", debug=True)
 
@@ -122,17 +118,6 @@ class TBFormal(Generator):
                        valid_output=self._read)
 
         for i in range(self.interconnect_output_ports):
-            # fl_ctr_tb_wr = ForLoop(iterator_support=self.default_iterator_support,
-            #                        config_width=self.default_config_width)
-            # loop_itr = fl_ctr_tb_wr.get_iter()
-            # loop_wth = fl_ctr_tb_wr.get_cfg_width()
-
-            # self.add_child(f"tb_write_loops_{i}",
-            #                fl_ctr_tb_wr,
-            #                clk=self._clk,
-            #                rst_n=self._rst_n,
-            #                step=self._read & (self._output_port_sel_addr ==
-            #                                   const(i, self._output_port_sel_addr.width)))
 
             newAG = AddrGen(iterator_support=self.default_iterator_support,
                             config_width=self.default_config_width)
@@ -186,26 +171,17 @@ class TBFormal(Generator):
 
         if self.interconnect_output_ports > 1:
 
-            # fl_ctr_out_sel = ForLoop(iterator_support=self.default_iterator_support,
-            #                          # config_width=clog2(self.interconnect_output_ports))
-            #                          config_width=self.default_config_width)
-            # loop_itr = fl_ctr_out_sel.get_iter()
-            # loop_wth = fl_ctr_out_sel.get_cfg_width()
-
-            # self.add_child(f"tb_sel_loops",
-            #                fl_ctr_out_sel,
-            #                clk=self._clk,
-            #                rst_n=self._rst_n,
-            #                step=self._read)
+            tmp_AG = AddrGen(iterator_support=self.default_iterator_support,
+                             config_width=self.default_config_width)
 
             self.add_child(f"out_port_sel_addr",
-                           AddrGen(iterator_support=self.default_iterator_support,
-                                   config_width=self.default_config_width),
+                           tmp_AG,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._read,
                            mux_sel=fl_ctr_sram_rd.ports.mux_sel_out,
-                           addr_out=self._output_port_sel_addr)
+                           restart=fl_ctr_sram_rd.ports.restart)
+            safe_wire(gen=self, w_to=self._output_port_sel_addr, w_from=tmp_AG.ports.addr_out)
             # Addr for port select should be driven on agg to sram write sched
         else:
             self.wire(self._output_port_sel_addr[0], const(0, self._output_port_sel_addr.width))

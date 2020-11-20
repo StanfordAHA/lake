@@ -22,10 +22,6 @@ class SRAMFormal(Generator):
                  #  output_config_width=16,
                  interconnect_input_ports=1,  # Connection to int
                  interconnect_output_ports=1,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
-                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4):
         super().__init__("sram_formal", debug=True)
 

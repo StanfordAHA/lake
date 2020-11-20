@@ -26,21 +26,21 @@ from _kratos import create_wrapper_flatten
 class LakeTop(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
-                 mem_width=64,
+                 mem_width=16,
                  mem_depth=512,
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
                  input_config_width=16,
                  output_config_width=16,
-                 interconnect_input_ports=2,  # Connection to int
-                 interconnect_output_ports=2,
+                 interconnect_input_ports=1,  # Connection to int
+                 interconnect_output_ports=1,
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sram_stub=True,
                  sram_macro_info=SRAMMacroInfo("tsmc_name"),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
                  config_data_width=32,
                  config_addr_width=8,
@@ -469,7 +469,7 @@ class LakeTop(Generator):
                                 config_width=self.input_config_width)
 
         else:
-
+            print("use thin.....")
             strg_ub = StrgUBThin(data_width=self.data_width,
                                  mem_width=self.mem_width,
                                  mem_depth=self.mem_depth,
@@ -1172,16 +1172,35 @@ class LakeTop(Generator):
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
     use_sram_stub = True
-    fifo_mode = True
-    mem_width = 64
-    lake_dut = LakeTop(mem_width=mem_width,
+
+    data_width = 16
+    fifo_mode = False
+    mem_width = 16
+    mem_depth = 512
+    # Dual port or not...
+    rw_same_cycle = True
+    input_ports = 1
+    output_ports = 1
+    gen_addr = False
+
+    lake_name = "dualport_bare"
+    stcl_valid = False
+
+    lake_dut = LakeTop(data_width=16,
+                       mem_width=mem_width,
+                       mem_depth=mem_depth,
                        sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,
                        fifo_mode=fifo_mode,
+                       interconnect_input_ports=input_ports,
+                       interconnect_output_ports=output_ports,
+                       gen_addr=gen_addr,
                        add_clk_enable=True,
-                       add_flush=True)
+                       add_flush=True,
+                       stencil_valid=stcl_valid,
+                       name=lake_name)
     print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
-    verilog(lake_dut, filename="lake_top.sv",
+    verilog(lake_dut, filename=f"{lake_name}.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
