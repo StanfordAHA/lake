@@ -3,7 +3,7 @@ from math import log
 from lake.collateral2compiler.mem_port import MemPort
 from lake.utils.util import safe_wire
 from lake.collateral2compiler.helper import *
-
+from lake.modules.sram import SRAM
 
 def port_to_info(mem_params):
 
@@ -124,76 +124,114 @@ class Memory(Generator):
                                     explicit_array=True,
                                     packed=True)
 
-        self.mem_size = max(self.read_width, self.write_width)
+        if mem_params["use_macro"]:
 
-        assert self.capacity % self.mem_size == 0
-        assert self.read_width == 1 or self.write_width == 1 or self.read_width == self.write_width
+            if True:
+                # clean up
+                self.read_write_addr = self.input("read_write_addr",
+                                                  width=self.addr_width,
+                                                  size=self.num_read_write_ports,
+                                                  explicit_array=True)
+                #                             packed=True)
+                self.write = self.input("write",
+                                        width=1,
+                                        size=self.num_write_ports)
+                #                         explicit_array=True)
+                #                         packed=True)
 
-        self.memory = self.var("memory",
-                               width=self.word_width,
-                               size=self.capacity,
-                               # size=(self.capacity / self.mem_size, self.mem_size),
-                               explicit_array=True,
-                               packed=True)
+            sram = SRAM(False,
+                 "SRAM_NAME",
+                 word_width,
+                 mem_params["read_write_port_width"],
+                 mem_params["capacity"],
+                 mem_params["num_read_write_ports"],
+                 mem_params["num_read_write_ports"],
+                 clog2(mem_params["capacity"]),
+                 0,
+                 1)
 
-        # clean up
-        if self.og_num_write_ports != 0 and self.og_num_read_ports != 0:
-            self.write_addr = self.input("write_addr",
-                                         width=self.addr_width,
-                                         size=self.num_write_ports,
-                                         explicit_array=True)
-            #                        packed=True)
+            self.add_child("SRAM_" + mem_params["name"], sram,
+                           clk=self.clk,
+                           clk_en=1,
+                           mem_data_in_bank=self.data_in,
+                           mem_data_out_bank=self.data_out,
+                           mem_addr_in_bank=self.read_write_addr,
+                           mem_cen_in_bank=1,
+                           mem_wen_in_bank=self.write,
+                           wtsel=0,
+                           rtsel=1)
+        else:
+            self.mem_size = max(self.read_width, self.write_width)
 
-            self.write = self.input("write",
-                                    width=1,
-                                    size=self.num_write_ports)
-            #                         explicit_array=True)
-            #                         packed=True)
-            self.add_code(self.write_data_latency_1)
+            assert self.capacity % self.mem_size == 0
+            assert self.read_width == 1 or self.write_width == 1 or self.read_width == self.write_width
 
-            self.read_addr = self.input("read_addr",
-                                        width=self.addr_width,
-                                        size=self.num_read_ports,
-                                        explicit_array=True)
-            #                       packed=True)
-
-            # for now assuming all read ports have same latency
-            # also should add support for other latencies
-            if self.read_info[0]["latency"] == 1:
-                self.add_code(self.read_data_latency_1)
-            else:
-                self.add_code(self.read_data_latency_0)
-
-        elif self.og_num_read_write_ports != 0:
+            self.memory = self.var("memory",
+                                   width=self.word_width,
+                                   size=self.capacity,
+                                   # size=(self.capacity / self.mem_size, self.mem_size),
+                                   explicit_array=True,
+                                   packed=True)
 
             # clean up
-            self.read_write_addr = self.input("read_write_addr",
-                                              width=self.addr_width,
-                                              size=self.num_read_write_ports,
-                                              explicit_array=True)
-            #                             packed=True)
-            self.write_addr = self.var("write_addr",
-                                       width=self.addr_width,
-                                       size=self.num_read_write_ports,
-                                       explicit_array=True)
-            #                      packed=True)
-            self.read_addr = self.var("read_addr",
-                                      width=self.addr_width,
-                                      size=self.num_read_write_ports,
-                                      explicit_array=True)
-            #                    packed=True)
+            if self.og_num_write_ports != 0 and self.og_num_read_ports != 0:
+                self.write_addr = self.input("write_addr",
+                                             width=self.addr_width,
+                                             size=self.num_write_ports,
+                                             explicit_array=True)
+                #                        packed=True)
 
-            self.wire(self.write_addr, self.read_write_addr)
-            self.wire(self.read_addr, self.read_write_addr)
+                self.write = self.input("write",
+                                        width=1,
+                                        size=self.num_write_ports)
+                #                         explicit_array=True)
+                #                         packed=True)
+                self.add_code(self.write_data_latency_1)
 
-            self.write = self.input("write",
-                                    width=1,
-                                    size=self.num_write_ports)
-            #                         explicit_array=True)
-            #                         packed=True)
+                self.read_addr = self.input("read_addr",
+                                            width=self.addr_width,
+                                            size=self.num_read_ports,
+                                            explicit_array=True)
+                #                       packed=True)
 
-            self.add_code(self.read_data_latency_1)
-            self.add_code(self.write_data_latency_1)
+                # for now assuming all read ports have same latency
+                # also should add support for other latencies
+                if self.read_info[0]["latency"] == 1:
+                    self.add_code(self.read_data_latency_1)
+                else:
+                    self.add_code(self.read_data_latency_0)
+
+            elif self.og_num_read_write_ports != 0:
+
+                # clean up
+                self.read_write_addr = self.input("read_write_addr",
+                                                  width=self.addr_width,
+                                                  size=self.num_read_write_ports,
+                                                  explicit_array=True)
+                #                             packed=True)
+                self.write_addr = self.var("write_addr",
+                                           width=self.addr_width,
+                                           size=self.num_read_write_ports,
+                                           explicit_array=True)
+                #                      packed=True)
+                self.read_addr = self.var("read_addr",
+                                          width=self.addr_width,
+                                          size=self.num_read_write_ports,
+                                          explicit_array=True)
+                #                    packed=True)
+
+                self.wire(self.write_addr, self.read_write_addr)
+                self.wire(self.read_addr, self.read_write_addr)
+
+                self.write = self.input("write",
+                                        width=1,
+                                        size=self.num_write_ports)
+                #                         explicit_array=True)
+                #                         packed=True)
+
+                self.add_code(self.read_data_latency_1)
+                self.add_code(self.write_data_latency_1)
+
 
     @always_ff((posedge, "clk"))
     def write_data_latency_1(self):

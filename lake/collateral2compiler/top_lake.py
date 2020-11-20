@@ -4,6 +4,8 @@ from lake.collateral2compiler.memory import mem_inst, port_to_info
 from lake.collateral2compiler.edge import edge_inst, get_full_edge_params
 from lake.collateral2compiler.helper import *
 from lake.collateral2compiler.hw_top_lake import TopLakeHW
+from lake.utils.sram_macro import SRAMMacroInfo
+from lake.passes.passes import change_sram_port_names
 
 
 class TopLake():
@@ -288,7 +290,10 @@ class TopLake():
     def construct_lake(self, filename="Lake_hw.sv"):
         hw = self.test_magma_lake()
 
+        tsmc_info = SRAMMacroInfo("tsmc_name")
+        sram_port_pass = change_sram_port_names(use_sram_stub=False, sram_macro_info=tsmc_info)
         verilog(hw, filename=filename,
                 check_multiple_driver=False,
                 optimize_if=False,
-                check_flip_flop_always_ff=False)
+                check_flip_flop_always_ff=False,
+                additional_passes={"change sram port names": sram_port_pass})
