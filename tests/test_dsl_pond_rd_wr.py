@@ -43,6 +43,26 @@ def test_pond():
         config["pond2output_read_addr_gen_starting_addr"] = 20
         config["input2pond_forloop_ranges_0"] = 2
         config["input2pond_forloop_ranges_1"] = 1
+
+        config["pond2output_read_sched_gen_sched_addr_gen_starting_addr"] = 0
+        config["input2pond_write_sched_gen_sched_addr_gen_strides_0"] = 1
+        config["input2pond_write_sched_gen_sched_addr_gen_strides_1"] = 1
+        config["input2pond_forloop_dimensionality"] = 2
+        config["input2pond_write_addr_gen_strides_0"] = 13
+        config["input2pond_write_addr_gen_strides_1"] = 13
+        config["input2pond_write_sched_gen_sched_addr_gen_starting_addr"] = 0
+        config["pond2output_forloop_ranges_0"] = 3
+        config["pond2output_forloop_ranges_1"] = 6
+        config["pond2output_read_sched_gen_sched_addr_gen_strides_0"] = 1
+        config["pond2output_read_sched_gen_sched_addr_gen_strides_1"] = 1
+        config["pond2output_read_addr_gen_strides_0"] = 13
+        config["pond2output_read_addr_gen_strides_1"] = 13
+        config["input2pond_write_addr_gen_starting_addr"] = 0
+        config["pond2output_forloop_dimensionality"] = 2
+        config["pond2output_read_addr_gen_starting_addr"] = 0
+        config["input2pond_forloop_ranges_0"] = 2
+        config["input2pond_forloop_ranges_1"] = 2
+
         config["tile_en"] = 1
         config["clk_en"] = 1
 
@@ -63,7 +83,8 @@ def test_pond():
 
         data_in_pond = [0] * interconnect_input_ports
         valid_in = [0] * interconnect_input_ports
-        for i in range(32 - start_addr_rd):
+        for i in range(64):
+    #    for i in range(32 - start_addr_rd):
             # Incrementing Data
             data_in_pond[0] = data_in_pond[0] + 1
 
