@@ -219,6 +219,8 @@ class AggFormal(Generator):
         for idx in range(self.interconnect_input_ports):
             self.add_code(self.agg_ctrl, idx=idx)
         self.add_code(self.agg_to_sram)
+    
+        lift_config_reg(self.internal_generator)
 
     @always_ff((posedge, "clk"))
     def agg_ctrl(self, idx):
