@@ -573,6 +573,94 @@ sched_gen_6_16 sram_tb_tb1_edge_sched_gen (
 
 endmodule   // LakeTop
 
+module ReverseFlatten (
+  input logic clk_en,
+  input logic flush,
+  input logic [63:0] input_array,
+  output logic [3:0][0:0] [15:0] output_array
+);
+
+always_comb begin
+  output_array[0] = input_array[15:0];
+  output_array[1] = input_array[31:16];
+  output_array[2] = input_array[47:32];
+  output_array[3] = input_array[63:48];
+end
+endmodule   // ReverseFlatten
+
+module SRAM_NAME_generator (
+  input logic clk,
+  input logic clk_en,
+  input logic flush,
+  input logic [8:0] mem_addr_in_bank,
+  input logic mem_cen_in_bank,
+  input logic [3:0] [15:0] mem_data_in_bank,
+  input logic mem_wen_in_bank,
+  input logic [1:0] rtsel,
+  input logic [1:0] wtsel,
+  output logic [0:0][3:0] [15:0] mem_data_out_bank
+);
+
+logic [8:0] mem_addr_to_sram;
+logic mem_inst_0_pt_0_sram_cen;
+logic [31:0] mem_inst_0_pt_0_sram_data_in;
+logic [31:0] mem_inst_0_pt_0_sram_data_out;
+logic mem_inst_0_pt_0_sram_wen;
+logic mem_inst_0_pt_1_sram_cen;
+logic [31:0] mem_inst_0_pt_1_sram_data_in;
+logic [31:0] mem_inst_0_pt_1_sram_data_out;
+logic mem_inst_0_pt_1_sram_wen;
+logic [63:0] sram_mem_data_in_bank;
+logic [63:0] sram_mem_data_out_bank;
+assign mem_inst_0_pt_0_sram_cen = ~mem_cen_in_bank;
+assign mem_inst_0_pt_0_sram_data_in = sram_mem_data_in_bank[31:0];
+assign sram_mem_data_out_bank[31:0] = mem_inst_0_pt_0_sram_data_out;
+assign mem_inst_0_pt_0_sram_wen = ~mem_wen_in_bank;
+assign mem_inst_0_pt_1_sram_cen = ~mem_cen_in_bank;
+assign mem_inst_0_pt_1_sram_data_in = sram_mem_data_in_bank[63:32];
+assign sram_mem_data_out_bank[63:32] = mem_inst_0_pt_1_sram_data_out;
+assign mem_inst_0_pt_1_sram_wen = ~mem_wen_in_bank;
+always_comb begin
+  mem_addr_to_sram = mem_addr_in_bank;
+end
+flattenND flatten_data_in_0 (
+  .clk_en(clk_en),
+  .flush(flush),
+  .input_array(mem_data_in_bank),
+  .output_array(sram_mem_data_in_bank)
+);
+
+SRAM_NAME mem_inst_0_pt_0 (
+  .A(mem_addr_to_sram),
+  .CEB(mem_inst_0_pt_0_sram_cen),
+  .CLK(clk),
+  .D(mem_inst_0_pt_0_sram_data_in),
+  .RTSEL(rtsel),
+  .WEB(mem_inst_0_pt_0_sram_wen),
+  .WTSEL(wtsel),
+  .Q(mem_inst_0_pt_0_sram_data_out)
+);
+
+SRAM_NAME mem_inst_0_pt_1 (
+  .A(mem_addr_to_sram),
+  .CEB(mem_inst_0_pt_1_sram_cen),
+  .CLK(clk),
+  .D(mem_inst_0_pt_1_sram_data_in),
+  .RTSEL(rtsel),
+  .WEB(mem_inst_0_pt_1_sram_wen),
+  .WTSEL(wtsel),
+  .Q(mem_inst_0_pt_1_sram_data_out)
+);
+
+ReverseFlatten flatten_data_out_0 (
+  .clk_en(clk_en),
+  .flush(flush),
+  .input_array(sram_mem_data_out_bank),
+  .output_array(mem_data_out_bank)
+);
+
+endmodule   // SRAM_NAME_generator
+
 module addr_gen_6_16 (
   input logic clk,
   input logic clk_en,
@@ -648,6 +736,21 @@ always_ff @(posedge clk, negedge rst_n) begin
   end
 end
 endmodule   // addr_gen_6_4
+
+module flattenND (
+  input logic clk_en,
+  input logic flush,
+  input logic [3:0][0:0] [15:0] input_array,
+  output logic [63:0] output_array
+);
+
+always_comb begin
+  output_array[15:0] = input_array[0];
+  output_array[31:16] = input_array[1];
+  output_array[47:32] = input_array[2];
+  output_array[63:48] = input_array[3];
+end
+endmodule   // flattenND
 
 module for_loop_6_16 #(
   parameter CONFIG_WIDTH = 5'h10,
@@ -1053,31 +1156,19 @@ module lake_mem_unq0 (
   output logic [0:0][3:0] [15:0] data_out
 );
 
-logic [511:0][15:0] memory;
-logic [8:0] read_addr [0:0];
-logic [8:0] write_addr [0:0];
-assign write_addr = read_write_addr;
-assign read_addr = read_write_addr;
+SRAM_NAME_generator SRAM_sram (
+  .clk(clk),
+  .clk_en(clk_en),
+  .flush(flush),
+  .mem_addr_in_bank(read_write_addr),
+  .mem_cen_in_bank(1'h1),
+  .mem_data_in_bank(data_in),
+  .mem_wen_in_bank(write),
+  .rtsel(2'h1),
+  .wtsel(2'h0),
+  .mem_data_out_bank(data_out)
+);
 
-always_ff @(posedge clk, negedge rst_n) begin
-  if (clk_en) begin
-    data_out[0][0] <= memory[read_addr[0] + 9'h0];
-    data_out[0][1] <= memory[read_addr[0] + 9'h1];
-    data_out[0][2] <= memory[read_addr[0] + 9'h2];
-    data_out[0][3] <= memory[read_addr[0] + 9'h3];
-  end
-end
-
-always_ff @(posedge clk) begin
-  if (clk_en) begin
-    if (write) begin
-      memory[write_addr[0] + 9'h0] <= data_in[0][0];
-      memory[write_addr[0] + 9'h1] <= data_in[0][1];
-      memory[write_addr[0] + 9'h2] <= data_in[0][2];
-      memory[write_addr[0] + 9'h3] <= data_in[0][3];
-    end
-  end
-end
 endmodule   // lake_mem_unq0
 
 module lake_mem_unq1 (
