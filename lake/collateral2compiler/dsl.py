@@ -17,33 +17,33 @@ tile = TopLake(16, 2, 2)
 agg_write_port = MemPort(1, 0)
 agg_read_port = MemPort(0, 0)
 agg_params = make_params("agg", 4, read_port_width=4, write_port_width=1)
-tile.add_memory(agg_params, [agg_write_port], [agg_read_port])
+tile.add_memory(agg_params, [agg_write_port], [agg_read_port], is_input=True, input_edge_params=[6, 65535, 15])
 
 agg1_write_port = MemPort(1, 0)
 agg1_read_port = MemPort(0, 0)
 agg1_params = make_params("agg1", 4, read_port_width=4, write_port_width=1)
-tile.add_memory(agg1_params, [agg1_write_port], [agg1_read_port])
+tile.add_memory(agg1_params, [agg1_write_port], [agg1_read_port], is_input=True, input_edge_params=[6, 65535, 15])
 
 sram_write_read_port = MemPort(1, 0)
-sram_params = make_params("sram", 512, read_write_port_width=4)
+sram_params = make_params("sram", 512, read_write_port_width=4)#, use_macro=True)
 tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
 
 # these are defaults, so not specified for further edges
-tile.add_edge("agg", "sram", 6, 65535, 65535)
-tile.add_edge("agg1", "sram")
+tile.add_edge("agg", "sram", 6, 65535, 512)
+tile.add_edge("agg1", "sram", 6, 65535, 512)
 
 tb_write_port = MemPort(1, 0)
 tb_read_port = MemPort(0, 0)
 tb_params = make_params("tb", 8, read_port_width=1, write_port_width=4)
-tile.add_memory(tb_params, [tb_write_port], [tb_read_port])
+tile.add_memory(tb_params, [tb_write_port], [tb_read_port], is_output=True, output_edge_params=[6, 65535, 15])
 
 tb1_write_port = MemPort(1, 0)
 tb1_read_port = MemPort(0, 0)
 tb1_params = make_params("tb1", 8, read_port_width=1, write_port_width=4)
-tile.add_memory(tb1_params, [tb1_write_port], [tb1_read_port])
+tile.add_memory(tb1_params, [tb1_write_port], [tb1_read_port], is_output=True, output_edge_params=[6, 65535, 15])
 
-tile.add_edge("sram", "tb")
-tile.add_edge("sram", "tb1")
+tile.add_edge("sram", "tb", 6, 65535, 512)
+tile.add_edge("sram", "tb1", 6, 65535, 512)
 
 # for both compiler collateral and HW generation
-# tile.construct_lake()
+# tile.construct_lake("memtile.sv")
