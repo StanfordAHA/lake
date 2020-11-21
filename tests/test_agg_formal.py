@@ -13,22 +13,7 @@ import pytest
 
 def test_agg_formal():
 
-    agg_dut = AggFormal(data_width=16,  # CGRA Params
-                        mem_width=64,
-                        mem_depth=512,
-                        banks=1,
-                        input_addr_iterator_support=6,
-                        output_addr_iterator_support=6,
-                        input_sched_iterator_support=6,
-                        output_sched_iterator_support=6,
-                        config_width=16,
-                        interconnect_input_ports=1,  # Connection to int
-                        interconnect_output_ports=1,
-                        mem_input_ports=1,
-                        mem_output_ports=1,
-                        read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                        rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                        agg_height=4)
+    agg_dut = AggFormal()
 
     lift_config_reg(agg_dut.internal_generator)
 
@@ -73,6 +58,100 @@ def test_agg_formal():
     config["agg_read_addr_gen_0_starting_addr"] = 0
     config["agg_write_sched_gen_0_sched_addr_gen_strides_0"] = 1
 
+    config["agg_write_loops_1_ranges_0"] = 0
+    config["agg_write_loops_1_ranges_1"] = 0
+    config["agg_write_loops_1_ranges_2"] = 0
+    config["agg_write_loops_1_ranges_3"] = 0
+    config["agg_write_loops_1_ranges_4"] = 0
+    config["agg_write_loops_1_ranges_5"] = 0
+    config["agg_write_sched_gen_0_enable"] = 1
+    config["agg_write_sched_gen_1_enable"] = 1
+    config["agg_write_addr_gen_0_strides_0"] = 1
+    config["agg_write_addr_gen_0_strides_1"] = 0
+    config["agg_write_addr_gen_0_strides_2"] = 0
+    config["agg_write_addr_gen_0_strides_3"] = 0
+    config["agg_write_addr_gen_0_strides_4"] = 0
+    config["agg_write_addr_gen_0_strides_5"] = 0
+    config["port_sel_addr_starting_addr"] = 0
+    config["agg_write_sched_gen_1_sched_addr_gen_starting_addr"] = 3
+    config["agg_write_loops_1_dimensionality"] = 0
+    config["agg_read_addr_gen_1_strides_0"] = 0
+    config["agg_read_addr_gen_1_strides_1"] = 0
+    config["agg_read_addr_gen_1_strides_2"] = 0
+    config["agg_read_addr_gen_1_strides_3"] = 0
+    config["agg_read_addr_gen_1_strides_4"] = 0
+    config["agg_read_addr_gen_1_strides_5"] = 0
+    config["agg_read_loops_0_ranges_0"] = 54
+    config["agg_read_loops_0_ranges_1"] = 0
+    config["agg_read_loops_0_ranges_2"] = 0
+    config["agg_read_loops_0_ranges_3"] = 0
+    config["agg_read_loops_0_ranges_4"] = 0
+    config["agg_read_loops_0_ranges_5"] = 0
+    config["agg_read_addr_gen_1_starting_addr"] = 2
+    config["agg_write_loops_0_dimensionality"] = 1
+    config["agg_read_loops_1_dimensionality"] = 0
+    config["agg_select_loops_dimensionality"] = 6
+    config["agg_read_output_sched_gen_sched_addr_gen_starting_addr"] = 4
+    config["agg_select_loops_ranges_0"] = 0
+    config["agg_select_loops_ranges_1"] = 4
+    config["agg_select_loops_ranges_2"] = 0
+    config["agg_select_loops_ranges_3"] = 0
+    config["agg_select_loops_ranges_4"] = 0
+    config["agg_select_loops_ranges_5"] = 4
+    config["agg_write_addr_gen_1_starting_addr"] = 4
+    config["agg_read_loops_0_dimensionality"] = 1
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_0"] = 4
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_1"] = 4
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_2"] = 4
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_3"] = 4
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_4"] = 4
+    config["agg_read_output_sched_gen_sched_addr_gen_strides_5"] = 4
+    config["agg_read_output_sched_gen_enable"] = 1
+    config["port_sel_addr_strides_0"] = 2
+    config["port_sel_addr_strides_1"] = 2
+    config["port_sel_addr_strides_2"] = 2
+    config["port_sel_addr_strides_3"] = 2
+    config["port_sel_addr_strides_4"] = 2
+    config["port_sel_addr_strides_5"] = 2
+    config["agg_write_addr_gen_1_strides_0"] = 0
+    config["agg_write_addr_gen_1_strides_1"] = 0
+    config["agg_write_addr_gen_1_strides_2"] = 0
+    config["agg_write_addr_gen_1_strides_3"] = 0
+    config["agg_write_addr_gen_1_strides_4"] = 0
+    config["agg_write_addr_gen_1_strides_5"] = 0
+    config["agg_write_addr_gen_0_starting_addr"] = 0
+    config["agg_read_addr_gen_0_starting_addr"] = 0
+    config["agg_write_sched_gen_1_sched_addr_gen_strides_0"] = 0
+    config["agg_write_sched_gen_1_sched_addr_gen_strides_1"] = 0
+    config["agg_write_sched_gen_1_sched_addr_gen_strides_2"] = 0
+    config["agg_write_sched_gen_1_sched_addr_gen_strides_3"] = 0
+    config["agg_write_sched_gen_1_sched_addr_gen_strides_4"] = 0
+    config["agg_write_sched_gen_1_sched_addr_gen_strides_5"] = 0
+    config["agg_read_addr_gen_0_strides_0"] = 1
+    config["agg_read_addr_gen_0_strides_1"] = 0
+    config["agg_read_addr_gen_0_strides_2"] = 0
+    config["agg_read_addr_gen_0_strides_3"] = 0
+    config["agg_read_addr_gen_0_strides_4"] = 0
+    config["agg_read_addr_gen_0_strides_5"] = 0
+    config["agg_write_sched_gen_0_sched_addr_gen_strides_0"] = 1
+    config["agg_write_sched_gen_0_sched_addr_gen_strides_1"] = 0
+    config["agg_write_sched_gen_0_sched_addr_gen_strides_2"] = 0
+    config["agg_write_sched_gen_0_sched_addr_gen_strides_3"] = 0
+    config["agg_write_sched_gen_0_sched_addr_gen_strides_4"] = 0
+    config["agg_write_sched_gen_0_sched_addr_gen_strides_5"] = 0
+    config["agg_write_sched_gen_0_sched_addr_gen_starting_addr"] = 0
+    config["agg_write_loops_0_ranges_0"] = 1022
+    config["agg_write_loops_0_ranges_1"] = 0
+    config["agg_write_loops_0_ranges_2"] = 0
+    config["agg_write_loops_0_ranges_3"] = 0
+    config["agg_write_loops_0_ranges_4"] = 0
+    config["agg_write_loops_0_ranges_5"] = 0
+    config["agg_read_loops_1_ranges_0"] = 0
+    config["agg_read_loops_1_ranges_1"] = 0
+    config["agg_read_loops_1_ranges_2"] = 0
+    config["agg_read_loops_1_ranges_3"] = 0
+    config["agg_read_loops_1_ranges_4"] = 0
+    config["agg_read_loops_1_ranges_5"] = 0
     # configuration registers passed through from top level
     for key, value in config.items():
         setattr(tester.circuit, key, value)

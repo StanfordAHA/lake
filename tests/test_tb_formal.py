@@ -85,6 +85,88 @@ def test_tb_formal():
     config["tb_read_sched_gen_0_sched_addr_gen_strides_5"] = 65535
     config["tb_write_loops_0_dimensionality"] = 0
     config["tb_write_addr_gen_0_starting_addr"] = 65535
+
+    '''config["tb_read_sched_gen_0_sched_addr_gen_starting_addr"] = 7
+    config["tb_write_addr_gen_1_strides_0"] = 0
+    config["tb_write_addr_gen_1_strides_1"] = 0
+    config["tb_write_addr_gen_1_strides_2"] = 0
+    config["tb_write_addr_gen_1_strides_3"] = 0
+    config["tb_write_addr_gen_1_strides_4"] = 0
+    config["tb_write_addr_gen_1_strides_5"] = 0
+    config["tb_read_addr_gen_1_strides_0"] = 0
+    config["tb_read_addr_gen_1_strides_1"] = 0
+    config["tb_read_addr_gen_1_strides_2"] = 0
+    config["tb_read_addr_gen_1_strides_3"] = 0
+    config["tb_read_addr_gen_1_strides_4"] = 0
+    config["tb_read_addr_gen_1_strides_5"] = 0
+    config["tb_write_loops_ranges_0"] = 254
+    config["tb_write_loops_ranges_1"] = 0
+    config["tb_write_loops_ranges_2"] = 0
+    config["tb_write_loops_ranges_3"] = 0
+    config["tb_write_loops_ranges_4"] = 0
+    config["tb_write_loops_ranges_5"] = 0
+    config["tb_write_loops_dimensionality"] = 1
+    config["tb_read_sched_gen_1_enable"] = 0
+    config["tb_write_addr_gen_0_starting_addr"] = 0
+    config["tb_read_sched_gen_1_sched_addr_gen_starting_addr"] = 1030
+    config["out_port_sel_addr_starting_addr"] = 0
+    config["tb_write_sched_gen_sched_addr_gen_strides_0"] = 4
+    config["tb_write_sched_gen_sched_addr_gen_strides_1"] = 0
+    config["tb_write_sched_gen_sched_addr_gen_strides_2"] = 0
+    config["tb_write_sched_gen_sched_addr_gen_strides_3"] = 0
+    config["tb_write_sched_gen_sched_addr_gen_strides_4"] = 0
+    config["tb_write_sched_gen_sched_addr_gen_strides_5"] = 0
+    config["tb_read_loops_0_ranges_0"] = 1022
+    config["tb_read_loops_0_ranges_1"] = 0
+    config["tb_read_loops_0_ranges_2"] = 0
+    config["tb_read_loops_0_ranges_3"] = 0
+    config["tb_read_loops_0_ranges_4"] = 0
+    config["tb_read_loops_0_ranges_5"] = 0
+    config["tb_read_addr_gen_0_strides_0"] = 1
+    config["tb_read_addr_gen_0_strides_1"] = 0
+    config["tb_read_addr_gen_0_strides_2"] = 0
+    config["tb_read_addr_gen_0_strides_3"] = 0
+    config["tb_read_addr_gen_0_strides_4"] = 0
+    config["tb_read_addr_gen_0_strides_5"] = 0
+    config["tb_write_sched_gen_sched_addr_gen_starting_addr"] = 6
+    config["tb_read_sched_gen_1_sched_addr_gen_strides_0"] = 0
+    config["tb_read_sched_gen_1_sched_addr_gen_strides_1"] = 0
+    config["tb_read_sched_gen_1_sched_addr_gen_strides_2"] = 0
+    config["tb_read_sched_gen_1_sched_addr_gen_strides_3"] = 0
+    config["tb_read_sched_gen_1_sched_addr_gen_strides_4"] = 0
+    config["tb_read_sched_gen_1_sched_addr_gen_strides_5"] = 0
+    config["tb_read_addr_gen_1_starting_addr"] = 7
+    config["out_port_sel_addr_strides_0"] = 2
+    config["out_port_sel_addr_strides_1"] = 0
+    config["out_port_sel_addr_strides_2"] = 0
+    config["out_port_sel_addr_strides_3"] = 0
+    config["out_port_sel_addr_strides_4"] = 0
+    config["out_port_sel_addr_strides_5"] = 0
+    config["tb_read_loops_1_dimensionality"] = 0
+    config["tb_write_sched_gen_enable"] = 1
+    config["tb_read_sched_gen_0_enable"] = 1
+    config["tb_read_sched_gen_0_sched_addr_gen_strides_0"] = 1
+    config["tb_read_sched_gen_0_sched_addr_gen_strides_1"] = 0
+    config["tb_read_sched_gen_0_sched_addr_gen_strides_2"] = 0
+    config["tb_read_sched_gen_0_sched_addr_gen_strides_3"] = 0
+    config["tb_read_sched_gen_0_sched_addr_gen_strides_4"] = 0
+    config["tb_read_sched_gen_0_sched_addr_gen_strides_5"] = 0
+    config["tb_read_loops_0_dimensionality"] = 1
+    config["tb_write_addr_gen_1_starting_addr"] = 2
+    config["tb_write_addr_gen_0_strides_0"] = 1
+    config["tb_write_addr_gen_0_strides_1"] = 0
+    config["tb_write_addr_gen_0_strides_2"] = 0
+    config["tb_write_addr_gen_0_strides_3"] = 0
+    config["tb_write_addr_gen_0_strides_4"] = 0
+    config["tb_write_addr_gen_0_strides_5"] = 0
+    config["tb_read_addr_gen_0_starting_addr"] = 0
+    config["tb_read_loops_1_ranges_0"] = 0
+    config["tb_read_loops_1_ranges_1"] = 0
+    config["tb_read_loops_1_ranges_2"] = 0
+    config["tb_read_loops_1_ranges_3"] = 0
+    config["tb_read_loops_1_ranges_4"] = 0
+    config["tb_read_loops_1_ranges_5"] = 0'''
+
     # configuration registers passed through from top level
     for key, value in config.items():
         setattr(tester.circuit, key, value)
@@ -112,10 +194,11 @@ def test_tb_formal():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir="tb_formal"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":

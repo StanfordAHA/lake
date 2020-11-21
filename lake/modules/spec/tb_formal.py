@@ -137,7 +137,7 @@ class TBFormal(Generator):
             newAG = AddrGen(iterator_support=self.default_iterator_support,
                             config_width=self.default_config_width)
 
-            self.add_child(f"tb_write_addr_gen_{i}",
+            self.add_child(f"Tb_write_addr_gen_{i}",
                            newAG,
                            clk=self._clk,
                            rst_n=self._rst_n,
