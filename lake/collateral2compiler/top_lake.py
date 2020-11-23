@@ -6,6 +6,7 @@ from lake.collateral2compiler.helper import *
 from lake.collateral2compiler.hw_top_lake import TopLakeHW
 from lake.utils.sram_macro import SRAMMacroInfo
 from lake.passes.passes import change_sram_port_names
+from lake.modules.cfg_reg_wrapper import CFGRegWrapper
 
 
 class TopLake():
@@ -265,7 +266,7 @@ class TopLake():
         # print(self.compiler_mems)
         get_json(self.compiler_mems, self.merged_edges, filename)
 
-    def generate_hardware(self):
+    def generate_hardware(self, wrap_cfg=True):
         # print(self.hw_memories)
         # print()
         # print(self.hardware_edges)
@@ -276,19 +277,24 @@ class TopLake():
                        self.hw_memories,
                        self.hardware_edges)
 
+        # Wrap it if we need to...
+        if wrap_cfg:
+            hw = CFGRegWrapper(hw)
+
         return hw
 
-    def test_magma_lake(self):
+    def test_magma_lake(self, wrap_cfg=True):
         # prepare user input for compiler collateral and hardware
         self.banking()
         # generate compiler collateral
         self.get_compiler_json()
         # generate RTL
-        hw = self.generate_hardware()
+        hw = self.generate_hardware(wrap_cfg)
+
         return hw
 
-    def construct_lake(self, filename="Lake_hw.sv"):
-        hw = self.test_magma_lake()
+    def construct_lake(self, filename="Lake_hw.sv", wrap_cfg=True):
+        hw = self.test_magma_lake(wrap_cfg)
 
         tsmc_info = SRAMMacroInfo("tsmc_name")
         sram_port_pass = change_sram_port_names(use_sram_stub=False, sram_macro_info=tsmc_info)
