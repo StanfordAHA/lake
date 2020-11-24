@@ -14,7 +14,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
-from lake.utils.util import trim_config_list, extract_formal_annotation
+from lake.utils.util import safe_wire, trim_config_list, extract_formal_annotation
 from lake.utils.parse_clkwork_config import map_controller, extract_controller
 from lake.utils.parse_clkwork_config import extract_controller_json
 from lake.modules.for_loop import ForLoop
@@ -564,8 +564,12 @@ class LakeTop(Generator):
             self.wire(self._ub_addr_to_mem, strg_ub.ports.addr_out)
 
         if self.gen_addr is False:
-            self.wire(strg_ub.ports.read_addr, self._rd_addr_in[0])
-            self.wire(strg_ub.ports.write_addr, self._wr_addr_in[0])
+            for i in range(self.banks):
+                safe_wire(gen=self, w_to=strg_ub.ports.read_addr[i], w_from=self._rd_addr_in[i])
+                safe_wire(gen=self, w_to=strg_ub.ports.write_addr[i], w_from=self._wr_addr_in[i])
+                # self.wire(strg_ub.ports.read_addr, self._rd_addr_in[0])
+                # self.wire(strg_ub.ports.write_addr, self._wr_addr_in[0])
+
             self.wire(strg_ub.ports.wen_in, self._wen)
             self.wire(strg_ub.ports.ren_in, self._ren)
 
@@ -1171,22 +1175,24 @@ class LakeTop(Generator):
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = True
+    use_sram_stub = False
 
+    banks = 2
     data_width = 16
     fifo_mode = False
     mem_width = 16
-    mem_depth = 512
+    mem_depth = 1024
     # Dual port or not...
     rw_same_cycle = True
-    input_ports = 1
-    output_ports = 1
+    input_ports = 2
+    output_ports = 2
     gen_addr = False
 
-    lake_name = "dualport_bare"
+    lake_name = "two_dp_srams"
     stcl_valid = False
 
-    lake_dut = LakeTop(data_width=16,
+    lake_dut = LakeTop(data_width=data_width,
+                       banks=banks,
                        mem_width=mem_width,
                        mem_depth=mem_depth,
                        sram_macro_info=tsmc_info,

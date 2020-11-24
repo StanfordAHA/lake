@@ -1,3 +1,4 @@
+from lake.utils.util import safe_wire
 from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
@@ -49,6 +50,8 @@ class StrgUBThin(Generator):
         self.gen_addr = gen_addr
         self.default_iterator_support = 6
         self.default_config_width = 16
+        # Actually need to deal with this now...
+        self.banks = banks
         # generation parameters
         # inputs
         self._clk = self.clock("clk")
@@ -66,33 +69,52 @@ class StrgUBThin(Generator):
                                      explicit_array=True)
 
         self._data_to_sram = self.output("data_to_strg", self.data_width,
-                                         size=self.fetch_width,
+                                         size=self.banks,
                                          packed=True)
         self._data_from_sram = self.input("data_from_strg", self.data_width,
-                                          size=self.fetch_width,
+                                          size=self.banks,
                                           packed=True)
         # Early out in case...
         if self.gen_addr is False:
             # Pass through write enable, addr data and
             # read enable, addr data
-            self._read = self.input("ren_in", 1)
-            self._write = self.input("wen_in", 1)
-            self._write_addr = self.input("write_addr", self.config_width)
-            self._read_addr = self.input("read_addr", self.config_width)
-            self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
-            self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
-            self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
-            self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
-            self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
+            self._read = self.input("ren_in", self.banks)
+            self._write = self.input("wen_in", self.banks)
+            self._write_addr = self.input("write_addr", self.config_width,
+                                          size=self.banks,
+                                          explicit_array=True,
+                                          packed=True)
+            self._read_addr = self.input("read_addr", self.config_width,
+                                         size=self.banks,
+                                         packed=True,
+                                         explicit_array=True)
+            self._cen_to_sram = self.output("cen_to_strg", self.banks, packed=True)
+            self._wen_to_sram = self.output("wen_to_strg", self.banks, packed=True)
+            self._ren_to_sram = self.output("ren_to_strg", self.banks, packed=True)
+            self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), 
+                                                size=self.banks,
+                                                packed=True)
+            self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth),
+                                                size=self.banks,
+                                                packed=True)
             self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
+
+            # Basically need a crossbar - 
+            # For writes : each bank gets a wen if a port is applying wen and has its bank_addr set
+            # for i in range(self.banks):
+
+
             self.wire(self._accessor_output, self._read)
             self.wire(self._cen_to_sram, self._write | self._read)
             self.wire(self._wen_to_sram, self._write)
             self.wire(self._ren_to_sram, self._read)
             self.wire(self._data_out, self._data_from_sram)
             self.wire(self._data_in, self._data_to_sram)
-            self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
-            self.wire(self._rd_addr_to_sram, self._read_addr[clog2(self.mem_depth) - 1, 0])
+            for i in range(self.banks):
+                # self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
+                # self.wire(self._rd_addr_to_sram, self._read_addr[clog2(self.mem_depth) - 1, 0])
+                safe_wire(gen=self, w_to=self._wr_addr_to_sram[i], w_from=self._write_addr[i])
+                safe_wire(gen=self, w_to=self._rd_addr_to_sram[i], w_from=self._read_addr[i])
 
             return
 
