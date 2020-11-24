@@ -91,7 +91,7 @@ class StrgUBThin(Generator):
             self._cen_to_sram = self.output("cen_to_strg", self.banks, packed=True)
             self._wen_to_sram = self.output("wen_to_strg", self.banks, packed=True)
             self._ren_to_sram = self.output("ren_to_strg", self.banks, packed=True)
-            self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), 
+            self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth),
                                                 size=self.banks,
                                                 packed=True)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth),
@@ -99,10 +99,9 @@ class StrgUBThin(Generator):
                                                 packed=True)
             self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
 
-            # Basically need a crossbar - 
+            # Basically need a crossbar -
             # For writes : each bank gets a wen if a port is applying wen and has its bank_addr set
             # for i in range(self.banks):
-
 
             self.wire(self._accessor_output, self._read)
             self.wire(self._cen_to_sram, self._write | self._read)

@@ -7,31 +7,31 @@ import tempfile
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
 
-def test_m1():
 
-#  module two_dp_srams (
-#   input logic chain_chain_en,
-#   input logic [1:0] [15:0] chain_data_in,
-#   input logic clk,
-#   input logic clk_en,
-#   input logic [7:0] config_addr_in,
-#   input logic [31:0] config_data_in,
-#   input logic [7:0] config_en,
-#   input logic config_read,
-#   input logic config_write,
-#   input logic [1:0] [15:0] data_in,
-#   input logic flush,
-#   input logic [1:0] mode,
-#   input logic [1:0] [15:0] raddr,
-#   input logic [1:0] ren_in,
-#   input logic rst_n,
-#   input logic tile_en,
-#   input logic [1:0] [15:0] waddr,
-#   input logic [1:0] wen_in,
-#   output logic [7:0] [31:0] config_data_out,
-#   output logic [1:0] [15:0] data_out,
-#   output logic [1:0] valid_out
-# );
+def test_m1():
+    #  module two_dp_srams (
+    #   input logic chain_chain_en,
+    #   input logic [1:0] [15:0] chain_data_in,
+    #   input logic clk,
+    #   input logic clk_en,
+    #   input logic [7:0] config_addr_in,
+    #   input logic [31:0] config_data_in,
+    #   input logic [7:0] config_en,
+    #   input logic config_read,
+    #   input logic config_write,
+    #   input logic [1:0] [15:0] data_in,
+    #   input logic flush,
+    #   input logic [1:0] mode,
+    #   input logic [1:0] [15:0] raddr,
+    #   input logic [1:0] ren_in,
+    #   input logic rst_n,
+    #   input logic tile_en,
+    #   input logic [1:0] [15:0] waddr,
+    #   input logic [1:0] wen_in,
+    #   output logic [7:0] [31:0] config_data_out,
+    #   output logic [1:0] [15:0] data_out,
+    #   output logic [1:0] valid_out
+    # );
 
     new_config = {}
 
@@ -96,7 +96,6 @@ def test_m1():
     tester.circuit.rst_n = 1
     tester.step(2)
 
-
     for i in range(100):
         # Rand data
         tester.circuit.waddr_0 = i
@@ -121,6 +120,7 @@ def test_m1():
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 if __name__ == "__main__":
     test_m1()
