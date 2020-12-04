@@ -13,6 +13,7 @@ from lake.modules.chain_accessor import ChainAccessor
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
+from lake.passes.cut_generator import cut_generator
 from lake.utils.sram_macro import SRAMMacroInfo
 from lake.utils.util import trim_config_list, extract_formal_annotation
 from lake.utils.parse_clkwork_config import map_controller, extract_controller
@@ -1082,6 +1083,8 @@ if __name__ == "__main__":
                        add_flush=True)
     # print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
+    # cut the instance off
+    cut_generator(lake_dut["strg_ub"])
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
