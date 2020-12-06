@@ -81,7 +81,7 @@ def test_pond_double_buffer(data_width=16,  # CGRA Params
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
