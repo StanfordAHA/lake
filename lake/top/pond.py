@@ -130,7 +130,8 @@ class Pond(Generator):
             RF_WRITE_ADDR = AddrGen(iterator_support=self.default_iterator_support,
                                     config_width=self.default_config_width)
             RF_WRITE_SCHED = SchedGen(iterator_support=self.default_iterator_support,
-                                      config_width=self.cycle_count_width)
+                                      config_width=self.cycle_count_width,
+                                      use_enable=True)
 
             self.add_child(f"rf_write_iter_{wr_port}",
                            RF_WRITE_ITER,
@@ -165,7 +166,8 @@ class Pond(Generator):
             RF_READ_ADDR = AddrGen(iterator_support=self.default_iterator_support,
                                    config_width=self.default_config_width)
             RF_READ_SCHED = SchedGen(iterator_support=self.default_iterator_support,
-                                     config_width=self.cycle_count_width)
+                                     config_width=self.cycle_count_width,
+                                     use_enable=True)
 
             self.add_child(f"rf_read_iter_{rd_port}",
                            RF_READ_ITER,
@@ -287,7 +289,7 @@ class Pond(Generator):
         self.add_child(f"rf",
                        self.RF_GEN,
                        clk=self._gclk,
-                       # rst_n=self._rst_n,
+                       rst_n=self._rst_n,
                        data_out=self._mem_data_out)
 
         # Opt in for config_write
@@ -360,6 +362,7 @@ class Pond(Generator):
         config.append(("rf_write_iter_0_dimensionality", in2rf_ctrl.dim))
         config.append(("rf_write_addr_0_starting_addr", in2rf_ctrl.in_data_strt))
         config.append(("rf_write_sched_0_sched_addr_gen_starting_addr", in2rf_ctrl.cyc_strt))
+        config.append(("rf_write_sched_0_enable", 1))
         for i in range(in2rf_ctrl.dim):
             config.append((f"rf_write_addr_0_strides_{i}", in2rf_ctrl.in_data_stride[i]))
             config.append((f"rf_write_iter_0_ranges_{i}", in2rf_ctrl.extent[i]))
@@ -368,6 +371,8 @@ class Pond(Generator):
         config.append(("rf_read_iter_0_dimensionality", rf2out_ctrl.dim))
         config.append(("rf_read_addr_0_starting_addr", rf2out_ctrl.out_data_strt))
         config.append(("rf_read_sched_0_sched_addr_gen_starting_addr", rf2out_ctrl.cyc_strt))
+        config.append(("rf_read_sched_0_enable", 1))
+
         for i in range(rf2out_ctrl.dim):
             config.append((f"rf_read_addr_0_strides_{i}", rf2out_ctrl.out_data_stride[i]))
             config.append((f"rf_read_iter_0_ranges_{i}", rf2out_ctrl.extent[i]))
