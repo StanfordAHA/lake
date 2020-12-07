@@ -1183,6 +1183,9 @@ if __name__ == "__main__":
                        add_flush=True)
     # print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
+    cut_generator(lake_dut["strg_ub"]["sram_only"])
+    cut_generator(lake_dut["strg_ub"]["sram_tb_shared"])
+    cut_generator(lake_dut["strg_ub"]["tb_only"])
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
