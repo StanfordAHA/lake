@@ -75,8 +75,8 @@ class StrgUBAggOnly(Generator):
                                          size=self.interconnect_input_ports)
 
         self._floop_restart = self.input("floop_restart",
-                                             width=1,
-                                             size=self.interconnect_input_ports)
+                                         width=1,
+                                         size=self.interconnect_input_ports)
 
         self._agg_data_out = self.output(f"agg_data_out", self.data_width,
                                          size=(self.interconnect_input_ports,

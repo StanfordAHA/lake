@@ -74,8 +74,8 @@ class StrgUBAggSRAMShared(Generator):
                                           size=self.interconnect_input_ports)
 
         self._floop_restart = self.output("floop_restart",
-                                              width=1,
-                                              size=self.interconnect_input_ports)
+                                          width=1,
+                                          size=self.interconnect_input_ports)
 
         # The SRAM write is just the OR reduction of the aggregator reads
         self._agg_read_out = self.output("agg_read_out", self.interconnect_input_ports)

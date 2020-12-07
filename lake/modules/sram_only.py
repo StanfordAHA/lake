@@ -69,8 +69,8 @@ class StrgUBSRAMOnly(Generator):
                                          size=self.interconnect_input_ports)
 
         self._floop_restart = self.input("floop_restart",
-                                             width=1,
-                                             size=self.interconnect_input_ports)
+                                         width=1,
+                                         size=self.interconnect_input_ports)
 
         # sram to tb for loop
         self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel",

@@ -94,7 +94,6 @@ class StrgUBVec(Generator):
                                      packed=True,
                                      explicit_array=True)
 
-        
         ##################################################################################
         # CYCLE COUNTER
         ##################################################################################
@@ -103,124 +102,124 @@ class StrgUBVec(Generator):
         self._cycle_count = add_counter(self, "cycle_count", 16)
 
         agg_only = StrgUBAggOnly(data_width=self.data_width,
-                                mem_width=self.mem_width,
-                                mem_depth=self.mem_depth,
-                                banks=self.banks,
-                                input_addr_iterator_support=self.input_iterator_support,
-                                output_addr_iterator_support=self.output_iterator_support,
-                                input_sched_iterator_support=self.input_iterator_support,
-                                output_sched_iterator_support=self.output_iterator_support,
-                                interconnect_input_ports=self.interconnect_input_ports,
-                                interconnect_output_ports=self.interconnect_output_ports,
-                                read_delay=self.read_delay,
-                                rw_same_cycle=self.rw_same_cycle,
-                                agg_height=self.agg_height,
-                                config_width=self.input_config_width)
+                                 mem_width=self.mem_width,
+                                 mem_depth=self.mem_depth,
+                                 banks=self.banks,
+                                 input_addr_iterator_support=self.input_iterator_support,
+                                 output_addr_iterator_support=self.output_iterator_support,
+                                 input_sched_iterator_support=self.input_iterator_support,
+                                 output_sched_iterator_support=self.output_iterator_support,
+                                 interconnect_input_ports=self.interconnect_input_ports,
+                                 interconnect_output_ports=self.interconnect_output_ports,
+                                 read_delay=self.read_delay,
+                                 rw_same_cycle=self.rw_same_cycle,
+                                 agg_height=self.agg_height,
+                                 config_width=self.input_config_width)
 
         agg_sram_shared = StrgUBAggSRAMShared(data_width=self.data_width,
-                                mem_width=self.mem_width,
-                                mem_depth=self.mem_depth,
-                                banks=self.banks,
-                                input_addr_iterator_support=self.input_iterator_support,
-                                output_addr_iterator_support=self.output_iterator_support,
-                                input_sched_iterator_support=self.input_iterator_support,
-                                output_sched_iterator_support=self.output_iterator_support,
-                                interconnect_input_ports=self.interconnect_input_ports,
-                                interconnect_output_ports=self.interconnect_output_ports,
-                                read_delay=self.read_delay,
-                                rw_same_cycle=self.rw_same_cycle,
-                                agg_height=self.agg_height,
-                                config_width=self.input_config_width)
+                                              mem_width=self.mem_width,
+                                              mem_depth=self.mem_depth,
+                                              banks=self.banks,
+                                              input_addr_iterator_support=self.input_iterator_support,
+                                              output_addr_iterator_support=self.output_iterator_support,
+                                              input_sched_iterator_support=self.input_iterator_support,
+                                              output_sched_iterator_support=self.output_iterator_support,
+                                              interconnect_input_ports=self.interconnect_input_ports,
+                                              interconnect_output_ports=self.interconnect_output_ports,
+                                              read_delay=self.read_delay,
+                                              rw_same_cycle=self.rw_same_cycle,
+                                              agg_height=self.agg_height,
+                                              config_width=self.input_config_width)
 
         sram_only = StrgUBSRAMOnly(data_width=self.data_width,
-                                mem_width=self.mem_width,
-                                mem_depth=self.mem_depth,
-                                banks=self.banks,
-                                input_addr_iterator_support=self.input_iterator_support,
-                                output_addr_iterator_support=self.output_iterator_support,
-                                input_sched_iterator_support=self.input_iterator_support,
-                                output_sched_iterator_support=self.output_iterator_support,
-                                interconnect_input_ports=self.interconnect_input_ports,
-                                interconnect_output_ports=self.interconnect_output_ports,
-                                read_delay=self.read_delay,
-                                rw_same_cycle=self.rw_same_cycle,
-                                agg_height=self.agg_height,
-                                config_width=self.input_config_width)
+                                   mem_width=self.mem_width,
+                                   mem_depth=self.mem_depth,
+                                   banks=self.banks,
+                                   input_addr_iterator_support=self.input_iterator_support,
+                                   output_addr_iterator_support=self.output_iterator_support,
+                                   input_sched_iterator_support=self.input_iterator_support,
+                                   output_sched_iterator_support=self.output_iterator_support,
+                                   interconnect_input_ports=self.interconnect_input_ports,
+                                   interconnect_output_ports=self.interconnect_output_ports,
+                                   read_delay=self.read_delay,
+                                   rw_same_cycle=self.rw_same_cycle,
+                                   agg_height=self.agg_height,
+                                   config_width=self.input_config_width)
 
         sram_tb_shared = StrgUBSRAMTBShared(data_width=self.data_width,
-                                mem_width=self.mem_width,
-                                mem_depth=self.mem_depth,
-                                banks=self.banks,
-                                input_addr_iterator_support=self.input_iterator_support,
-                                output_addr_iterator_support=self.output_iterator_support,
-                                input_sched_iterator_support=self.input_iterator_support,
-                                output_sched_iterator_support=self.output_iterator_support,
-                                interconnect_input_ports=self.interconnect_input_ports,
-                                interconnect_output_ports=self.interconnect_output_ports,
-                                read_delay=self.read_delay,
-                                rw_same_cycle=self.rw_same_cycle,
-                                agg_height=self.agg_height,
-                                config_width=self.input_config_width)
+                                            mem_width=self.mem_width,
+                                            mem_depth=self.mem_depth,
+                                            banks=self.banks,
+                                            input_addr_iterator_support=self.input_iterator_support,
+                                            output_addr_iterator_support=self.output_iterator_support,
+                                            input_sched_iterator_support=self.input_iterator_support,
+                                            output_sched_iterator_support=self.output_iterator_support,
+                                            interconnect_input_ports=self.interconnect_input_ports,
+                                            interconnect_output_ports=self.interconnect_output_ports,
+                                            read_delay=self.read_delay,
+                                            rw_same_cycle=self.rw_same_cycle,
+                                            agg_height=self.agg_height,
+                                            config_width=self.input_config_width)
 
         tb_only = StrgUBTBOnly(data_width=self.data_width,
-                                mem_width=self.mem_width,
-                                mem_depth=self.mem_depth,
-                                banks=self.banks,
-                                input_addr_iterator_support=self.input_iterator_support,
-                                output_addr_iterator_support=self.output_iterator_support,
-                                input_sched_iterator_support=self.input_iterator_support,
-                                output_sched_iterator_support=self.output_iterator_support,
-                                interconnect_input_ports=self.interconnect_input_ports,
-                                interconnect_output_ports=self.interconnect_output_ports,
-                                read_delay=self.read_delay,
-                                rw_same_cycle=self.rw_same_cycle,
-                                agg_height=self.agg_height,
-                                config_width=self.input_config_width)
+                               mem_width=self.mem_width,
+                               mem_depth=self.mem_depth,
+                               banks=self.banks,
+                               input_addr_iterator_support=self.input_iterator_support,
+                               output_addr_iterator_support=self.output_iterator_support,
+                               input_sched_iterator_support=self.input_iterator_support,
+                               output_sched_iterator_support=self.output_iterator_support,
+                               interconnect_input_ports=self.interconnect_input_ports,
+                               interconnect_output_ports=self.interconnect_output_ports,
+                               read_delay=self.read_delay,
+                               rw_same_cycle=self.rw_same_cycle,
+                               agg_height=self.agg_height,
+                               config_width=self.input_config_width)
 
         self.add_child("agg_only",
-            agg_only,
-            clk=self._clk,
-            rst_n=self._rst_n,
-            cycle_count=self._cycle_count,
-            data_in=self._data_in)
+                       agg_only,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       cycle_count=self._cycle_count,
+                       data_in=self._data_in)
 
         self.add_child("agg_sram_shared",
-            agg_sram_shared,
-            clk=self._clk,
-            rst_n=self._rst_n,
-            cycle_count=self._cycle_count)
+                       agg_sram_shared,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       cycle_count=self._cycle_count)
 
         self.add_child("sram_only",
-            sram_only,
-            clk=self._clk,
-            rst_n=self._rst_n,
-            cycle_count=self._cycle_count,
-            wen_to_sram=self._wen_to_sram,
-            cen_to_sram=self._cen_to_sram,
-            addr_to_sram=self._addr_to_sram,
-            data_to_sram=self._data_to_sram)
+                       sram_only,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       cycle_count=self._cycle_count,
+                       wen_to_sram=self._wen_to_sram,
+                       cen_to_sram=self._cen_to_sram,
+                       addr_to_sram=self._addr_to_sram,
+                       data_to_sram=self._data_to_sram)
 
         self.add_child("sram_tb_shared",
-            sram_tb_shared,
-            clk=self._clk,
-            rst_n=self._rst_n,
-            cycle_count=self._cycle_count)
+                       sram_tb_shared,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       cycle_count=self._cycle_count)
 
         self.add_child("tb_only",
-            tb_only,
-            clk=self._clk,
-            rst_n=self._rst_n,
-            cycle_count=self._cycle_count,
-            sram_read_data=self._data_from_sram,
-            accessor_output=self._valid_out,
-            data_out=self._data_out)
+                       tb_only,
+                       clk=self._clk,
+                       rst_n=self._rst_n,
+                       cycle_count=self._cycle_count,
+                       sram_read_data=self._data_from_sram,
+                       accessor_output=self._valid_out,
+                       data_out=self._data_out)
 
         self.wire(agg_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
         self.wire(agg_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(agg_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
 
         self.wire(agg_sram_shared.ports.agg_data_out, agg_only.ports.agg_data_out)
-        
+
         self.wire(sram_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(sram_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
         self.wire(sram_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
