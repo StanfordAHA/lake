@@ -12,7 +12,7 @@ from lake.utils.util import safe_wire, add_counter, decode
 import kratos as kts
 
 
-class StrgUBVec(Generator):
+class StrgUBAggSRAMshared(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_width=64,
@@ -33,7 +33,7 @@ class StrgUBVec(Generator):
                  agg_height=4,
                  tb_height=2):
 
-        super().__init__("strg_ub_vec")
+        super().__init__("strg_ub_agg_sram_shared")
 
         ##################################################################################
         # Capture constructor parameter...
@@ -72,10 +72,6 @@ class StrgUBVec(Generator):
                                       packed=True,
                                       explicit_array=True)
 
-        self._sram_write_data = self.output("sram_write_data", data_width,
-                                         size=self.fetch_width,
-                                         packed=True)
-
         self._floop_mux_sel = self.output("floop_mux_sel", 
                               width=max(clog2(self.default_iterator_support), 1),
                               size=self.interconnect_input_ports)
@@ -89,11 +85,6 @@ class StrgUBVec(Generator):
         self._agg_read = self.var("agg_read", self.interconnect_input_ports)
 
         self.wire(self._agg_read_out, self._agg_read)
-
-        ##################################################################################
-        # SRAM RELEVANT SIGNALS
-        ##################################################################################
-        self._write = self.output("write", 1)
 
         ##################################################################################
         # AGG PATHS
@@ -128,20 +119,10 @@ class StrgUBVec(Generator):
                            mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
                            finished=fl_ctr_sram_wr.ports.restart,
                            valid_output=self._agg_read[i])
-
-            self.mem_addr_width = clog2(self.mem_depth)
-
-        ##################################################################################
-        # WIRE TO SRAM INTERFACE
-        ##################################################################################
-        # Now select the write address as a decode of the underlying enables
-        # self.wire(self._wen_to_sram, self._write)
-        self.wire(self._write, self._agg_read.r_or())
-        self.wire(self._sram_write_data, decode(self, self._agg_read, self._agg_data_out))
-
+            
 
 if __name__ == "__main__":
-    lake_dut = StrgUBVec()
-    verilog(lake_dut, filename="strg_ub_vec.sv",
+    lake_dut = StrgUBAggSRAMshared()
+    verilog(lake_dut, filename="strg_ub_agg_sram_shared.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})
