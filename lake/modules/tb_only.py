@@ -63,14 +63,14 @@ class StrgUBTBonly(Generator):
         self._cycle_count = self.input("cycle_count", 16)
 
         self._sram_read_data = self.input("sram_read_data", self.data_width,
-                                        size=self.fetch_width,
-                                        packed=True,
-                                        explicit_array=True)
+                                          size=self.fetch_width,
+                                          packed=True,
+                                          explicit_array=True)
 
         self._mux_sel_d1 = self.input("mux_sel_d1", kts.clog2(self.default_iterator_support), size=self.interconnect_output_ports,
-                                    packed=True,
-                                    explicit_array=True)
-        
+                                      packed=True,
+                                      explicit_array=True)
+
         self._t_read_d1 = self.input("t_read_d1", self.interconnect_output_ports)
         self._restart_d1 = self.input("restart_d1", self.interconnect_output_ports)
 
@@ -100,7 +100,7 @@ class StrgUBTBonly(Generator):
                                       size=self.interconnect_output_ports,
                                       packed=True,
                                       explicit_array=True)
-        
+
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
 
         # Break out valids...
@@ -134,7 +134,7 @@ class StrgUBTBonly(Generator):
                         self._sram_read_data
             self.add_code(tb_ctrl)
 
-            ##### READ FROM TB
+            # READ FROM TB
 
             fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
                                    config_width=self.tb_range_width)

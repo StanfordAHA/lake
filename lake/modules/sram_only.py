@@ -67,31 +67,31 @@ class StrgUBSRAMOnly(Generator):
                                           packed=True)
 
         # agg to sram for loop
-        self._floop_mux_sel = self.input("floop_mux_sel", 
-                              width=max(clog2(self.default_iterator_support), 1),
-                              size=self.interconnect_input_ports)
+        self._floop_mux_sel = self.input("floop_mux_sel",
+                                         width=max(clog2(self.default_iterator_support), 1),
+                                         size=self.interconnect_input_ports)
 
-        self._floop_mux_restart = self.input("floop_mux_restart", 
-                              width=1,
-                              size=self.interconnect_input_ports)
+        self._floop_mux_restart = self.input("floop_mux_restart",
+                                             width=1,
+                                             size=self.interconnect_input_ports)
 
         # sram to tb for loop
-        self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel", 
-                              width=max(clog2(self.default_iterator_support), 1),
-                              size=self.interconnect_output_ports)
+        self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel",
+                                                 width=max(clog2(self.default_iterator_support), 1),
+                                                 size=self.interconnect_output_ports)
 
-        self._loops_sram2tb_restart = self.input("loops_sram2tb_restart", 
-                              width=1,
-                              size=self.interconnect_output_ports)
+        self._loops_sram2tb_restart = self.input("loops_sram2tb_restart",
+                                                 width=1,
+                                                 size=self.interconnect_output_ports)
 
         self._agg_read = self.input("agg_read", self.interconnect_input_ports)
         self._t_read = self.input("t_read", self.interconnect_output_ports)
 
         self._agg_data_out = self.input(f"agg_data_out", self.data_width,
-                                      size=(self.interconnect_input_ports,
-                                            self.fetch_width),
-                                      packed=True,
-                                      explicit_array=True)
+                                        size=(self.interconnect_input_ports,
+                                              self.fetch_width),
+                                        packed=True,
+                                        explicit_array=True)
 
         self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
         self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
@@ -123,7 +123,7 @@ class StrgUBSRAMOnly(Generator):
                                          packed=True)
 
         self.mem_addr_width = clog2(self.mem_depth)
-        
+
         for i in range(self.interconnect_input_ports):
 
             _AG = AddrGen(iterator_support=self.default_iterator_support,

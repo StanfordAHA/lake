@@ -61,24 +61,24 @@ class StrgUBAggSRAMshared(Generator):
         self._rst_n = self.reset("rst_n")
 
         self._cycle_count = self.input("cycle_count", 16)
-        
+
         self._data_from_sram = self.input("data_from_strg", self.data_width,
                                           size=self.fetch_width,
                                           packed=True)
 
         self._agg_data_out = self.input(f"agg_data_out", self.data_width,
-                                      size=(self.interconnect_input_ports,
-                                            self.fetch_width),
-                                      packed=True,
-                                      explicit_array=True)
+                                        size=(self.interconnect_input_ports,
+                                              self.fetch_width),
+                                        packed=True,
+                                        explicit_array=True)
 
-        self._floop_mux_sel = self.output("floop_mux_sel", 
-                              width=max(clog2(self.default_iterator_support), 1),
-                              size=self.interconnect_input_ports)
+        self._floop_mux_sel = self.output("floop_mux_sel",
+                                          width=max(clog2(self.default_iterator_support), 1),
+                                          size=self.interconnect_input_ports)
 
-        self._floop_mux_restart = self.output("floop_mux_restart", 
-                              width=1,
-                              size=self.interconnect_input_ports)
+        self._floop_mux_restart = self.output("floop_mux_restart",
+                                              width=1,
+                                              size=self.interconnect_input_ports)
 
         # The SRAM write is just the OR reduction of the aggregator reads
         self._agg_read_out = self.output("agg_read_out", self.interconnect_input_ports)
@@ -119,7 +119,7 @@ class StrgUBAggSRAMshared(Generator):
                            mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
                            finished=fl_ctr_sram_wr.ports.restart,
                            valid_output=self._agg_read[i])
-            
+
 
 if __name__ == "__main__":
     lake_dut = StrgUBAggSRAMshared()

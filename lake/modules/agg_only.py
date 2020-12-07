@@ -69,19 +69,19 @@ class StrgUBAggOnly(Generator):
 
         self._agg_read = self.input("agg_read", self.interconnect_input_ports)
 
-        self._floop_mux_sel = self.input("floop_mux_sel", 
-                              width=max(clog2(self.default_iterator_support), 1),
-                              size=self.interconnect_input_ports)
+        self._floop_mux_sel = self.input("floop_mux_sel",
+                                         width=max(clog2(self.default_iterator_support), 1),
+                                         size=self.interconnect_input_ports)
 
-        self._floop_mux_restart = self.input("floop_mux_restart", 
-                              width=1,
-                              size=self.interconnect_input_ports)
+        self._floop_mux_restart = self.input("floop_mux_restart",
+                                             width=1,
+                                             size=self.interconnect_input_ports)
 
         self._agg_data_out = self.output(f"agg_data_out", self.data_width,
-                                      size=(self.interconnect_input_ports,
-                                            self.fetch_width),
-                                      packed=True,
-                                      explicit_array=True)
+                                         size=(self.interconnect_input_ports,
+                                               self.fetch_width),
+                                         packed=True,
+                                         explicit_array=True)
 
         ##################################################################################
         # AGG RELEVANT SIGNALS

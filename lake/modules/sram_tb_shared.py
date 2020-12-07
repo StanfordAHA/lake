@@ -62,22 +62,22 @@ class StrgUBSRAMTBShared(Generator):
 
         self._cycle_count = self.input("cycle_count", 16)
 
-        self._loops_sram2tb_mux_sel = self.output("loops_sram2tb_mux_sel", 
-                              width=max(clog2(self.default_iterator_support), 1),
-                              size=self.interconnect_output_ports)
+        self._loops_sram2tb_mux_sel = self.output("loops_sram2tb_mux_sel",
+                                                  width=max(clog2(self.default_iterator_support), 1),
+                                                  size=self.interconnect_output_ports)
 
-        self._loops_sram2tb_restart = self.output("loops_sram2tb_restart", 
-                              width=1,
-                              size=self.interconnect_output_ports)
+        self._loops_sram2tb_restart = self.output("loops_sram2tb_restart",
+                                                  width=1,
+                                                  size=self.interconnect_output_ports)
 
         self._t_read_out = self.output("t_read_out", self.interconnect_output_ports)
         self._t_read = self.var("t_read", self.interconnect_output_ports)
         self.wire(self._t_read_out, self._t_read)
 
         self._mux_sel_d1 = self.output("mux_sel_d1", kts.clog2(self.default_iterator_support), size=self.interconnect_output_ports,
-                                    packed=True,
-                                    explicit_array=True)
-        
+                                       packed=True,
+                                       explicit_array=True)
+
         self._t_read_d1 = self.output("t_read_d1", self.interconnect_output_ports)
         self._restart_d1 = self.output("restart_d1", self.interconnect_output_ports)
 
@@ -108,7 +108,6 @@ class StrgUBSRAMTBShared(Generator):
                            mux_sel=loops_sram2tb.ports.mux_sel_out,
                            finished=loops_sram2tb.ports.restart,
                            valid_output=self._t_read[i])
-
 
             @always_ff((posedge, "clk"), (negedge, "rst_n"))
             def delay_read():
