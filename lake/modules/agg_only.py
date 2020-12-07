@@ -43,6 +43,7 @@ class StrgUBAggOnly(Generator):
         self.interconnect_output_ports = interconnect_output_ports
         self.agg_height = agg_height
         self.tb_height = tb_height
+        self.mem_width = mem_width
         self.mem_depth = mem_depth
         self.config_width = config_width
         self.data_width = data_width
@@ -73,7 +74,7 @@ class StrgUBAggOnly(Generator):
                                          width=max(clog2(self.default_iterator_support), 1),
                                          size=self.interconnect_input_ports)
 
-        self._floop_mux_restart = self.input("floop_mux_restart",
+        self._floop_restart = self.input("floop_restart",
                                              width=1,
                                              size=self.interconnect_input_ports)
 
@@ -178,7 +179,7 @@ class StrgUBAggOnly(Generator):
                            step=self._agg_read[i],
                            #  (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))),
                            mux_sel=self._floop_mux_sel[i],
-                           restart=self._floop_mux_restart[i])
+                           restart=self._floop_restart[i])
             safe_wire(gen=self, w_to=self._agg_read_addr_gen_out[i], w_from=newAG.ports.addr_out)
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])
 

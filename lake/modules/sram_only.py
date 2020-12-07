@@ -42,6 +42,7 @@ class StrgUBSRAMOnly(Generator):
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.agg_height = agg_height
+        self.mem_width = mem_width
         self.tb_height = tb_height
         self.mem_depth = mem_depth
         self.config_width = config_width
@@ -62,16 +63,12 @@ class StrgUBSRAMOnly(Generator):
 
         self._cycle_count = self.input("cycle_count", 16)
 
-        self._data_from_sram = self.input("data_from_strg", self.data_width,
-                                          size=self.fetch_width,
-                                          packed=True)
-
         # agg to sram for loop
         self._floop_mux_sel = self.input("floop_mux_sel",
                                          width=max(clog2(self.default_iterator_support), 1),
                                          size=self.interconnect_input_ports)
 
-        self._floop_mux_restart = self.input("floop_mux_restart",
+        self._floop_restart = self.input("floop_restart",
                                              width=1,
                                              size=self.interconnect_input_ports)
 
@@ -93,10 +90,10 @@ class StrgUBSRAMOnly(Generator):
                                         packed=True,
                                         explicit_array=True)
 
-        self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
-        self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
-        self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
-        self._data_to_sram = self.output("data_to_strg", self.data_width,
+        self._wen_to_sram = self.output("wen_to_sram", 1, packed=True)
+        self._cen_to_sram = self.output("cen_to_sram", 1, packed=True)
+        self._addr_to_sram = self.output("addr_to_sram", clog2(self.mem_depth), packed=True)
+        self._data_to_sram = self.output("data_to_sram", self.data_width,
                                          size=self.fetch_width,
                                          packed=True)
 
@@ -134,7 +131,7 @@ class StrgUBSRAMOnly(Generator):
                            rst_n=self._rst_n,
                            step=self._agg_read[i],
                            mux_sel=self._floop_mux_sel[i],
-                           restart=self._floop_mux_restart[i])
+                           restart=self._floop_restart[i])
             safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=_AG.ports.addr_out)
 
         ##################################################################################

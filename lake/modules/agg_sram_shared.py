@@ -12,7 +12,7 @@ from lake.utils.util import safe_wire, add_counter, decode
 import kratos as kts
 
 
-class StrgUBAggSRAMshared(Generator):
+class StrgUBAggSRAMShared(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_width=64,
@@ -43,6 +43,7 @@ class StrgUBAggSRAMshared(Generator):
         self.interconnect_output_ports = interconnect_output_ports
         self.agg_height = agg_height
         self.tb_height = tb_height
+        self.mem_width = mem_width
         self.mem_depth = mem_depth
         self.config_width = config_width
         self.data_width = data_width
@@ -62,10 +63,6 @@ class StrgUBAggSRAMshared(Generator):
 
         self._cycle_count = self.input("cycle_count", 16)
 
-        self._data_from_sram = self.input("data_from_strg", self.data_width,
-                                          size=self.fetch_width,
-                                          packed=True)
-
         self._agg_data_out = self.input(f"agg_data_out", self.data_width,
                                         size=(self.interconnect_input_ports,
                                               self.fetch_width),
@@ -76,7 +73,7 @@ class StrgUBAggSRAMshared(Generator):
                                           width=max(clog2(self.default_iterator_support), 1),
                                           size=self.interconnect_input_ports)
 
-        self._floop_mux_restart = self.output("floop_mux_restart",
+        self._floop_restart = self.output("floop_restart",
                                               width=1,
                                               size=self.interconnect_input_ports)
 
@@ -106,7 +103,7 @@ class StrgUBAggSRAMshared(Generator):
                            step=self._agg_read[i])
 
             self.wire(self._floop_mux_sel[i], fl_ctr_sram_wr.ports.mux_sel_out)
-            self.wire(self._floop_mux_restart[i], fl_ctr_sram_wr.ports.restart)
+            self.wire(self._floop_restart[i], fl_ctr_sram_wr.ports.restart)
 
             # scheduler modules
             self.add_child(f"agg_read_sched_gen_{i}",
@@ -122,7 +119,7 @@ class StrgUBAggSRAMshared(Generator):
 
 
 if __name__ == "__main__":
-    lake_dut = StrgUBAggSRAMshared()
+    lake_dut = StrgUBAggSRAMShared()
     verilog(lake_dut, filename="strg_ub_agg_sram_shared.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})

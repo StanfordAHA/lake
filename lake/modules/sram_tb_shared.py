@@ -43,6 +43,7 @@ class StrgUBSRAMTBShared(Generator):
         self.interconnect_output_ports = interconnect_output_ports
         self.agg_height = agg_height
         self.tb_height = tb_height
+        self.mem_width = mem_width
         self.mem_depth = mem_depth
         self.config_width = config_width
         self.data_width = data_width

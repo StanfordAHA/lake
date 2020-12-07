@@ -12,7 +12,7 @@ from lake.utils.util import safe_wire, add_counter, decode
 import kratos as kts
 
 
-class StrgUBTBonly(Generator):
+class StrgUBTBOnly(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_width=64,
@@ -43,6 +43,7 @@ class StrgUBTBonly(Generator):
         self.interconnect_output_ports = interconnect_output_ports
         self.agg_height = agg_height
         self.tb_height = tb_height
+        self.mem_width = mem_width
         self.mem_depth = mem_depth
         self.config_width = config_width
         self.data_width = data_width
@@ -177,7 +178,7 @@ class StrgUBTBonly(Generator):
 
 
 if __name__ == "__main__":
-    lake_dut = StrgUBTBonly()
+    lake_dut = StrgUBTBOnly()
     verilog(lake_dut, filename="strg_ub_tb_only.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})
