@@ -836,9 +836,6 @@ class LakeTop(Generator):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
-        # config regs
-        lift_config_reg(self.internal_generator)
-
         extract_formal_annotation(self, "lake_top_annotation.txt")
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -1183,9 +1180,12 @@ if __name__ == "__main__":
                        add_flush=True)
     # print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
+    cut_generator(lake_dut["strg_ub"]["agg_only"])
+    cut_generator(lake_dut["strg_ub"]["agg_sram_shared"])
     cut_generator(lake_dut["strg_ub"]["sram_only"])
-    cut_generator(lake_dut["strg_ub"]["sram_tb_shared"])
-    cut_generator(lake_dut["strg_ub"]["tb_only"])
+
+    # config regs
+    lift_config_reg(lake_dut.internal_generator)
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
