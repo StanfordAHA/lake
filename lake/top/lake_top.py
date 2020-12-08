@@ -836,7 +836,6 @@ class LakeTop(Generator):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
-        extract_formal_annotation(self, "lake_top_annotation.txt")
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def cycle_count_inc(self):
@@ -1186,6 +1185,7 @@ if __name__ == "__main__":
 
     # config regs
     lift_config_reg(lake_dut.internal_generator)
+    extract_formal_annotation(lake_dut, "lake_top_annotation.txt")
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
