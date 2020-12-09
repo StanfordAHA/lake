@@ -250,12 +250,12 @@ assign mode_mask[0] = |mode;
 assign mode_mask[1] = 1'h0;
 assign chain_accessor_output = accessor_output | mode_mask;
 assign strg_ub_agg_data_out_top = agg_data_out_top;
-assign strg_ub_agg_read_out_top = agg_read_out_top;
 assign strg_ub_floop_mux_sel_top = floop_mux_sel_top;
 assign strg_ub_floop_restart_top = floop_restart_top;
+assign strg_ub_agg_read_out_top = agg_read_out_top;
+assign strg_ub_cen_to_sram_top = cen_to_sram_top;
 assign strg_ub_addr_to_sram_top = addr_to_sram_top;
 assign strg_ub_wen_to_sram_top = wen_to_sram_top;
-assign strg_ub_cen_to_sram_top = cen_to_sram_top;
 assign strg_ub_data_to_sram_top = data_to_sram_top;
 for_loop_6_16 #(
   .CONFIG_WIDTH(5'h10),
@@ -879,7 +879,6 @@ module reg_fifo_d_4_w_1 #(
   output logic empty,
   output logic full,
   output logic [3:0][0:0] [data_width-1:0] parallel_out,
-  output logic [1:0] rd_ptr_out,
   output logic valid
 );
 
@@ -890,7 +889,6 @@ logic read;
 logic [3:0][0:0][data_width-1:0] reg_array;
 logic [1:0] wr_ptr;
 logic write;
-assign rd_ptr_out = rd_ptr;
 assign full = num_items == 3'h4;
 assign empty = num_items == 3'h0;
 assign read = pop & (~passthru) & (~empty);
@@ -1016,6 +1014,7 @@ module reg_fifo_d_4_w_1_unq0 #(
   output logic empty,
   output logic full,
   output logic [3:0][0:0] [data_width-1:0] parallel_out,
+  output logic [1:0] rd_ptr_out,
   output logic valid
 );
 
@@ -1026,6 +1025,7 @@ logic read;
 logic [3:0][0:0][data_width-1:0] reg_array;
 logic [1:0] wr_ptr;
 logic write;
+assign rd_ptr_out = rd_ptr;
 assign full = num_items == 3'h4;
 assign empty = num_items == 3'h0;
 assign read = pop & (~passthru) & (~empty);
@@ -1549,7 +1549,7 @@ always_comb begin
 end
 assign empty = num_items == 16'h0;
 assign full = fifo_depth == num_items;
-reg_fifo_d_4_w_1 #(
+reg_fifo_d_4_w_1_unq0 #(
   .data_width(16'h10))
 front_rf (
   .clk(clk),
@@ -1571,7 +1571,7 @@ front_rf (
   .valid(front_valid)
 );
 
-reg_fifo_d_4_w_1_unq0 #(
+reg_fifo_d_4_w_1 #(
   .data_width(16'h10))
 back_rf (
   .clk(clk),

@@ -257,18 +257,18 @@ assign valid_out[1] = ub_valid_out[1];
 assign mode_mask[0] = |mode;
 assign mode_mask[1] = 1'h0;
 assign chain_accessor_output = accessor_output | mode_mask;
-assign strg_ub_addr_to_sram_top = addr_to_sram_top;
-assign strg_ub_data_to_sram_top = data_to_sram_top;
-assign strg_ub_wen_to_sram_top = wen_to_sram_top;
 assign strg_ub_cen_to_sram_top = cen_to_sram_top;
-assign strg_ub_loops_sram2tb_mux_sel_top = loops_sram2tb_mux_sel_top;
-assign strg_ub_t_read_d1_top = t_read_d1_top;
+assign strg_ub_wen_to_sram_top = wen_to_sram_top;
+assign strg_ub_data_to_sram_top = data_to_sram_top;
+assign strg_ub_addr_to_sram_top = addr_to_sram_top;
 assign strg_ub_t_read_out_top = t_read_out_top;
 assign strg_ub_mux_sel_d1_top = mux_sel_d1_top;
-assign strg_ub_loops_sram2tb_restart_top = loops_sram2tb_restart_top;
 assign strg_ub_restart_d1_top = restart_d1_top;
-assign strg_ub_accessor_output_top = accessor_output_top;
+assign strg_ub_t_read_d1_top = t_read_d1_top;
+assign strg_ub_loops_sram2tb_mux_sel_top = loops_sram2tb_mux_sel_top;
+assign strg_ub_loops_sram2tb_restart_top = loops_sram2tb_restart_top;
 assign strg_ub_data_out_top = data_out_top;
+assign strg_ub_accessor_output_top = accessor_output_top;
 for_loop_6_16 #(
   .CONFIG_WIDTH(5'h10),
   .ITERATOR_SUPPORT(4'h6))

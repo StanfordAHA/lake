@@ -240,8 +240,8 @@ assign mode_mask[0] = |mode;
 assign mode_mask[1] = 1'h0;
 assign chain_accessor_output = accessor_output | mode_mask;
 assign strg_ub_agg_data_out_top = agg_data_out_top;
-assign strg_ub_data_out_top = data_out_top;
 assign strg_ub_accessor_output_top = accessor_output_top;
+assign strg_ub_data_out_top = data_out_top;
 for_loop_6_16 #(
   .CONFIG_WIDTH(5'h10),
   .ITERATOR_SUPPORT(4'h6))

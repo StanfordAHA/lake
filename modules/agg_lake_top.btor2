@@ -172,7 +172,7 @@
 171 output 169 config_data_out[1] ; agg_sram_tb/modular/agg_lake_top.sv:93
 172 const 1 0
 173 slice 1 13 0 0
-174 ite 1 12 173 172 $techmap\chain.$verific$i19$agg_sram_tb/modular/agg_lake_top.sv:18$7268 ; agg_sram_tb/modular/agg_lake_top.sv:18
+174 ite 1 12 173 172 $techmap\chain.$verific$i19$agg_sram_tb/modular/agg_lake_top.sv:18$7105 ; agg_sram_tb/modular/agg_lake_top.sv:18
 175 input 153
 176 const 153 1111111111111111000000000000000000000000000000000000000000000000
 177 and 153 175 176
@@ -196,7 +196,7 @@
 195 ite 4 191 158 193 $techmap\fifo_ctrl.front_rf.$auto$async2sync.cc:109:execute$7973
 196 concat 163 195 157
 197 uext 153 196 58
-198 srl 153 192 197 $techmap\fifo_ctrl.front_rf.$verific$mux_73$agg_sram_tb/modular/agg_lake_top.sv:1009$7423 ; agg_sram_tb/modular/agg_lake_top.sv:1009
+198 srl 153 192 197 $techmap\fifo_ctrl.front_rf.$verific$mux_73$agg_sram_tb/modular/agg_lake_top.sv:1009$7403 ; agg_sram_tb/modular/agg_lake_top.sv:1009
 199 slice 6 198 15 0
 200 state 6 $techmap\fifo_ctrl.$auto$async2sync.cc:104:execute$8007
 201 init 6 200 168
@@ -206,12 +206,12 @@
 205 not 1 204
 206 const 1 1
 207 uext 6 206 15
-208 eq 1 203 207 $techmap\fifo_ctrl.$verific$equal_37$agg_sram_tb/modular/agg_lake_top.sv:1394$6806 ; agg_sram_tb/modular/agg_lake_top.sv:1394
+208 eq 1 203 207 $techmap\fifo_ctrl.$verific$equal_37$agg_sram_tb/modular/agg_lake_top.sv:1394$6663 ; agg_sram_tb/modular/agg_lake_top.sv:1394
 209 state 1 $techmap\fifo_ctrl.$auto$async2sync.cc:104:execute$8031
 210 init 1 209 172
 211 ite 1 202 172 209 $techmap\fifo_ctrl.$auto$async2sync.cc:109:execute$8033
-212 and 1 208 211 $techmap\fifo_ctrl.$verific$i62$agg_sram_tb/modular/agg_lake_top.sv:1417$6827 ; agg_sram_tb/modular/agg_lake_top.sv:1417
-213 or 1 205 212 $techmap\fifo_ctrl.$verific$i63$agg_sram_tb/modular/agg_lake_top.sv:1417$6828 ; agg_sram_tb/modular/agg_lake_top.sv:1417
+212 and 1 208 211 $techmap\fifo_ctrl.$verific$i62$agg_sram_tb/modular/agg_lake_top.sv:1417$6684 ; agg_sram_tb/modular/agg_lake_top.sv:1417
+213 or 1 205 212 $techmap\fifo_ctrl.$verific$i63$agg_sram_tb/modular/agg_lake_top.sv:1417$6685 ; agg_sram_tb/modular/agg_lake_top.sv:1417
 214 not 1 211
 215 const 34 000
 216 slice 1 49 0 0
@@ -220,20 +220,20 @@
 219 slice 1 49 0 0
 220 concat 4 219 218
 221 concat 34 217 220
-222 ite 34 211 221 215 $techmap\fifo_ctrl.$verific$mux_158$agg_sram_tb/modular/agg_lake_top.sv:1530$6895 ; agg_sram_tb/modular/agg_lake_top.sv:1530
+222 ite 34 211 221 215 $techmap\fifo_ctrl.$verific$mux_158$agg_sram_tb/modular/agg_lake_top.sv:1530$6752 ; agg_sram_tb/modular/agg_lake_top.sv:1530
 223 redor 1 222
 224 not 1 223
-225 and 1 211 224 $techmap\fifo_ctrl.$verific$i66$agg_sram_tb/modular/agg_lake_top.sv:1418$6829 ; agg_sram_tb/modular/agg_lake_top.sv:1418
-226 or 1 214 225 $techmap\fifo_ctrl.$verific$i67$agg_sram_tb/modular/agg_lake_top.sv:1418$6830 ; agg_sram_tb/modular/agg_lake_top.sv:1418
-227 and 1 213 226 $techmap\fifo_ctrl.$verific$i68$agg_sram_tb/modular/agg_lake_top.sv:1418$6831 ; agg_sram_tb/modular/agg_lake_top.sv:1418
+225 and 1 211 224 $techmap\fifo_ctrl.$verific$i66$agg_sram_tb/modular/agg_lake_top.sv:1418$6686 ; agg_sram_tb/modular/agg_lake_top.sv:1418
+226 or 1 214 225 $techmap\fifo_ctrl.$verific$i67$agg_sram_tb/modular/agg_lake_top.sv:1418$6687 ; agg_sram_tb/modular/agg_lake_top.sv:1418
+227 and 1 213 226 $techmap\fifo_ctrl.$verific$i68$agg_sram_tb/modular/agg_lake_top.sv:1418$6688 ; agg_sram_tb/modular/agg_lake_top.sv:1418
 228 state 34 $techmap\fifo_ctrl.$auto$async2sync.cc:104:execute$8015
 229 init 34 228 215
 230 ite 34 202 215 228 $techmap\fifo_ctrl.$auto$async2sync.cc:109:execute$8017
 231 const 34 100
-232 eq 1 230 231 $techmap\fifo_ctrl.$verific$equal_68$agg_sram_tb/modular/agg_lake_top.sv:1418$6832 ; agg_sram_tb/modular/agg_lake_top.sv:1418
+232 eq 1 230 231 $techmap\fifo_ctrl.$verific$equal_68$agg_sram_tb/modular/agg_lake_top.sv:1418$6689 ; agg_sram_tb/modular/agg_lake_top.sv:1418
 233 not 1 232
-234 or 1 233 216 $techmap\fifo_ctrl.$verific$i71$agg_sram_tb/modular/agg_lake_top.sv:1418$6834 ; agg_sram_tb/modular/agg_lake_top.sv:1418
-235 and 1 227 234 $techmap\fifo_ctrl.$verific$i72$agg_sram_tb/modular/agg_lake_top.sv:1418$6835 ; agg_sram_tb/modular/agg_lake_top.sv:1418
+234 or 1 233 216 $techmap\fifo_ctrl.$verific$i71$agg_sram_tb/modular/agg_lake_top.sv:1418$6691 ; agg_sram_tb/modular/agg_lake_top.sv:1418
+235 and 1 227 234 $techmap\fifo_ctrl.$verific$i72$agg_sram_tb/modular/agg_lake_top.sv:1418$6692 ; agg_sram_tb/modular/agg_lake_top.sv:1418
 236 state 34 $techmap\fifo_ctrl.$auto$async2sync.cc:104:execute$8011
 237 init 34 236 215
 238 ite 34 202 215 236 $techmap\fifo_ctrl.$auto$async2sync.cc:109:execute$8013
@@ -241,37 +241,37 @@
 240 not 1 239
 241 not 1 240
 242 slice 1 151 0 0
-243 or 1 241 242 $techmap\fifo_ctrl.$verific$i75$agg_sram_tb/modular/agg_lake_top.sv:1419$6838 ; agg_sram_tb/modular/agg_lake_top.sv:1419
-244 and 1 235 243 $techmap\fifo_ctrl.$verific$i76$agg_sram_tb/modular/agg_lake_top.sv:1419$6839 ; agg_sram_tb/modular/agg_lake_top.sv:1419
+243 or 1 241 242 $techmap\fifo_ctrl.$verific$i75$agg_sram_tb/modular/agg_lake_top.sv:1419$6695 ; agg_sram_tb/modular/agg_lake_top.sv:1419
+244 and 1 235 243 $techmap\fifo_ctrl.$verific$i76$agg_sram_tb/modular/agg_lake_top.sv:1419$6696 ; agg_sram_tb/modular/agg_lake_top.sv:1419
 245 sort bitvec 14
 246 slice 245 203 13 0
 247 slice 1 238 2 2
 248 uext 245 247 13
-249 add 245 246 248 $techmap\fifo_ctrl.$verific$add_178$agg_sram_tb/modular/agg_lake_top.sv:1564$6908 ; agg_sram_tb/modular/agg_lake_top.sv:1564
+249 add 245 246 248 $techmap\fifo_ctrl.$verific$add_178$agg_sram_tb/modular/agg_lake_top.sv:1564$6765 ; agg_sram_tb/modular/agg_lake_top.sv:1564
 250 slice 4 238 1 0
 251 concat 6 249 250
 252 uext 6 230 13
-253 add 6 251 252 $techmap\fifo_ctrl.$verific$add_179$agg_sram_tb/modular/agg_lake_top.sv:1564$6909 ; agg_sram_tb/modular/agg_lake_top.sv:1564
-254 eq 1 32 253 $techmap\fifo_ctrl.$verific$equal_181$agg_sram_tb/modular/agg_lake_top.sv:1567$6911 ; agg_sram_tb/modular/agg_lake_top.sv:1567
+253 add 6 251 252 $techmap\fifo_ctrl.$verific$add_179$agg_sram_tb/modular/agg_lake_top.sv:1564$6766 ; agg_sram_tb/modular/agg_lake_top.sv:1564
+254 eq 1 32 253 $techmap\fifo_ctrl.$verific$equal_181$agg_sram_tb/modular/agg_lake_top.sv:1567$6768 ; agg_sram_tb/modular/agg_lake_top.sv:1567
 255 not 1 254
-256 or 1 255 216 $techmap\fifo_ctrl.$verific$i7$agg_sram_tb/modular/agg_lake_top.sv:1379$6775 ; agg_sram_tb/modular/agg_lake_top.sv:1379
-257 and 1 242 256 $techmap\fifo_ctrl.$verific$i8$agg_sram_tb/modular/agg_lake_top.sv:1379$6776 ; agg_sram_tb/modular/agg_lake_top.sv:1379
-258 and 1 244 257 $techmap\fifo_ctrl.front_rf.$verific$i11$agg_sram_tb/modular/agg_lake_top.sv:913$7375 ; agg_sram_tb/modular/agg_lake_top.sv:913
+256 or 1 255 216 $techmap\fifo_ctrl.$verific$i7$agg_sram_tb/modular/agg_lake_top.sv:1379$6632 ; agg_sram_tb/modular/agg_lake_top.sv:1379
+257 and 1 242 256 $techmap\fifo_ctrl.$verific$i8$agg_sram_tb/modular/agg_lake_top.sv:1379$6633 ; agg_sram_tb/modular/agg_lake_top.sv:1379
+258 and 1 244 257 $techmap\fifo_ctrl.front_rf.$verific$i11$agg_sram_tb/modular/agg_lake_top.sv:913$7355 ; agg_sram_tb/modular/agg_lake_top.sv:913
 259 state 34 $techmap\fifo_ctrl.front_rf.$auto$async2sync.cc:104:execute$7959
 260 init 34 259 215
 261 ite 34 191 215 259 $techmap\fifo_ctrl.front_rf.$auto$async2sync.cc:109:execute$7961
 262 redor 1 261
 263 not 1 262
-264 and 1 258 263 $techmap\fifo_ctrl.front_rf.$verific$i12$agg_sram_tb/modular/agg_lake_top.sv:913$7376 ; agg_sram_tb/modular/agg_lake_top.sv:913
-265 ite 6 264 24 199 $techmap\fifo_ctrl.front_rf.$verific$mux_74$agg_sram_tb/modular/agg_lake_top.sv:1009$7424 ; agg_sram_tb/modular/agg_lake_top.sv:1009
+264 and 1 258 263 $techmap\fifo_ctrl.front_rf.$verific$i12$agg_sram_tb/modular/agg_lake_top.sv:913$7356 ; agg_sram_tb/modular/agg_lake_top.sv:913
+265 ite 6 264 24 199 $techmap\fifo_ctrl.front_rf.$verific$mux_74$agg_sram_tb/modular/agg_lake_top.sv:1009$7404 ; agg_sram_tb/modular/agg_lake_top.sv:1009
 266 redor 1 253
 267 not 1 266
 268 not 1 267
-269 or 1 268 242 $techmap\fifo_ctrl.$verific$i13$agg_sram_tb/modular/agg_lake_top.sv:1383$6781 ; agg_sram_tb/modular/agg_lake_top.sv:1383
-270 and 1 216 269 $techmap\fifo_ctrl.$verific$i14$agg_sram_tb/modular/agg_lake_top.sv:1383$6782 ; agg_sram_tb/modular/agg_lake_top.sv:1383
+269 or 1 268 242 $techmap\fifo_ctrl.$verific$i13$agg_sram_tb/modular/agg_lake_top.sv:1383$6638 ; agg_sram_tb/modular/agg_lake_top.sv:1383
+270 and 1 216 269 $techmap\fifo_ctrl.$verific$i14$agg_sram_tb/modular/agg_lake_top.sv:1383$6639 ; agg_sram_tb/modular/agg_lake_top.sv:1383
 271 not 1 263
-272 or 1 271 264 $techmap\fifo_ctrl.front_rf.$verific$i77$agg_sram_tb/modular/agg_lake_top.sv:1012$7425 ; agg_sram_tb/modular/agg_lake_top.sv:1012
-273 and 1 244 272 $techmap\fifo_ctrl.front_rf.$verific$i78$agg_sram_tb/modular/agg_lake_top.sv:1012$7426 ; agg_sram_tb/modular/agg_lake_top.sv:1012
+272 or 1 271 264 $techmap\fifo_ctrl.front_rf.$verific$i77$agg_sram_tb/modular/agg_lake_top.sv:1012$7405 ; agg_sram_tb/modular/agg_lake_top.sv:1012
+273 and 1 244 272 $techmap\fifo_ctrl.front_rf.$verific$i78$agg_sram_tb/modular/agg_lake_top.sv:1012$7406 ; agg_sram_tb/modular/agg_lake_top.sv:1012
 274 and 1 270 273 $techmap\fifo_ctrl.back_rf.$verific$i10$agg_sram_tb/modular/agg_lake_top.sv:1048$7485 ; agg_sram_tb/modular/agg_lake_top.sv:1048
 275 state 34 $techmap\fifo_ctrl.back_rf.$auto$async2sync.cc:104:execute$7975
 276 init 34 275 215
@@ -281,7 +281,7 @@
 280 and 1 274 279 $techmap\fifo_ctrl.back_rf.$verific$i11$agg_sram_tb/modular/agg_lake_top.sv:1048$7486 ; agg_sram_tb/modular/agg_lake_top.sv:1048
 281 ite 6 280 265 188 $techmap\fifo_ctrl.back_rf.$verific$mux_73$agg_sram_tb/modular/agg_lake_top.sv:1144$7534 ; agg_sram_tb/modular/agg_lake_top.sv:1144
 282 slice 6 155 15 0
-283 ite 6 211 282 281 $techmap\fifo_ctrl.$verific$mux_159$agg_sram_tb/modular/agg_lake_top.sv:1532$6896 ; agg_sram_tb/modular/agg_lake_top.sv:1532
+283 ite 6 211 282 281 $techmap\fifo_ctrl.$verific$mux_159$agg_sram_tb/modular/agg_lake_top.sv:1532$6753 ; agg_sram_tb/modular/agg_lake_top.sv:1532
 284 sort bitvec 48
 285 const 19 00000000000000000000000000000000
 286 state 6 $techmap\sram_ctrl.$auto$async2sync.cc:104:execute$8047
@@ -314,67 +314,67 @@
 313 uext 4 312 1
 314 or 4 5 313 $verific$or_80$agg_sram_tb/modular/agg_lake_top.sv:259$82 ; agg_sram_tb/modular/agg_lake_top.sv:259
 315 slice 1 314 0 0
-316 ite 1 315 311 174 $techmap\chain.$verific$i35$agg_sram_tb/modular/agg_lake_top.sv:18$7284 ; agg_sram_tb/modular/agg_lake_top.sv:18
+316 ite 1 315 311 174 $techmap\chain.$verific$i35$agg_sram_tb/modular/agg_lake_top.sv:18$7121 ; agg_sram_tb/modular/agg_lake_top.sv:18
 317 slice 1 13 1 1
-318 ite 1 12 317 172 $techmap\chain.$verific$i18$agg_sram_tb/modular/agg_lake_top.sv:18$7267 ; agg_sram_tb/modular/agg_lake_top.sv:18
+318 ite 1 12 317 172 $techmap\chain.$verific$i18$agg_sram_tb/modular/agg_lake_top.sv:18$7104 ; agg_sram_tb/modular/agg_lake_top.sv:18
 319 slice 1 310 1 1
-320 ite 1 315 319 318 $techmap\chain.$verific$i34$agg_sram_tb/modular/agg_lake_top.sv:18$7283 ; agg_sram_tb/modular/agg_lake_top.sv:18
+320 ite 1 315 319 318 $techmap\chain.$verific$i34$agg_sram_tb/modular/agg_lake_top.sv:18$7120 ; agg_sram_tb/modular/agg_lake_top.sv:18
 321 slice 1 13 2 2
-322 ite 1 12 321 172 $techmap\chain.$verific$i17$agg_sram_tb/modular/agg_lake_top.sv:18$7266 ; agg_sram_tb/modular/agg_lake_top.sv:18
+322 ite 1 12 321 172 $techmap\chain.$verific$i17$agg_sram_tb/modular/agg_lake_top.sv:18$7103 ; agg_sram_tb/modular/agg_lake_top.sv:18
 323 slice 1 310 2 2
-324 ite 1 315 323 322 $techmap\chain.$verific$i33$agg_sram_tb/modular/agg_lake_top.sv:18$7282 ; agg_sram_tb/modular/agg_lake_top.sv:18
+324 ite 1 315 323 322 $techmap\chain.$verific$i33$agg_sram_tb/modular/agg_lake_top.sv:18$7119 ; agg_sram_tb/modular/agg_lake_top.sv:18
 325 slice 1 13 3 3
-326 ite 1 12 325 172 $techmap\chain.$verific$i16$agg_sram_tb/modular/agg_lake_top.sv:18$7265 ; agg_sram_tb/modular/agg_lake_top.sv:18
+326 ite 1 12 325 172 $techmap\chain.$verific$i16$agg_sram_tb/modular/agg_lake_top.sv:18$7102 ; agg_sram_tb/modular/agg_lake_top.sv:18
 327 slice 1 310 3 3
-328 ite 1 315 327 326 $techmap\chain.$verific$i32$agg_sram_tb/modular/agg_lake_top.sv:18$7281 ; agg_sram_tb/modular/agg_lake_top.sv:18
+328 ite 1 315 327 326 $techmap\chain.$verific$i32$agg_sram_tb/modular/agg_lake_top.sv:18$7118 ; agg_sram_tb/modular/agg_lake_top.sv:18
 329 slice 1 13 4 4
-330 ite 1 12 329 172 $techmap\chain.$verific$i15$agg_sram_tb/modular/agg_lake_top.sv:18$7264 ; agg_sram_tb/modular/agg_lake_top.sv:18
+330 ite 1 12 329 172 $techmap\chain.$verific$i15$agg_sram_tb/modular/agg_lake_top.sv:18$7101 ; agg_sram_tb/modular/agg_lake_top.sv:18
 331 slice 1 310 4 4
-332 ite 1 315 331 330 $techmap\chain.$verific$i31$agg_sram_tb/modular/agg_lake_top.sv:18$7280 ; agg_sram_tb/modular/agg_lake_top.sv:18
+332 ite 1 315 331 330 $techmap\chain.$verific$i31$agg_sram_tb/modular/agg_lake_top.sv:18$7117 ; agg_sram_tb/modular/agg_lake_top.sv:18
 333 slice 1 13 5 5
-334 ite 1 12 333 172 $techmap\chain.$verific$i14$agg_sram_tb/modular/agg_lake_top.sv:18$7263 ; agg_sram_tb/modular/agg_lake_top.sv:18
+334 ite 1 12 333 172 $techmap\chain.$verific$i14$agg_sram_tb/modular/agg_lake_top.sv:18$7100 ; agg_sram_tb/modular/agg_lake_top.sv:18
 335 slice 1 310 5 5
-336 ite 1 315 335 334 $techmap\chain.$verific$i30$agg_sram_tb/modular/agg_lake_top.sv:18$7279 ; agg_sram_tb/modular/agg_lake_top.sv:18
+336 ite 1 315 335 334 $techmap\chain.$verific$i30$agg_sram_tb/modular/agg_lake_top.sv:18$7116 ; agg_sram_tb/modular/agg_lake_top.sv:18
 337 slice 1 13 6 6
-338 ite 1 12 337 172 $techmap\chain.$verific$i13$agg_sram_tb/modular/agg_lake_top.sv:18$7262 ; agg_sram_tb/modular/agg_lake_top.sv:18
+338 ite 1 12 337 172 $techmap\chain.$verific$i13$agg_sram_tb/modular/agg_lake_top.sv:18$7099 ; agg_sram_tb/modular/agg_lake_top.sv:18
 339 slice 1 310 6 6
-340 ite 1 315 339 338 $techmap\chain.$verific$i29$agg_sram_tb/modular/agg_lake_top.sv:18$7278 ; agg_sram_tb/modular/agg_lake_top.sv:18
+340 ite 1 315 339 338 $techmap\chain.$verific$i29$agg_sram_tb/modular/agg_lake_top.sv:18$7115 ; agg_sram_tb/modular/agg_lake_top.sv:18
 341 slice 1 13 7 7
-342 ite 1 12 341 172 $techmap\chain.$verific$i12$agg_sram_tb/modular/agg_lake_top.sv:18$7261 ; agg_sram_tb/modular/agg_lake_top.sv:18
+342 ite 1 12 341 172 $techmap\chain.$verific$i12$agg_sram_tb/modular/agg_lake_top.sv:18$7098 ; agg_sram_tb/modular/agg_lake_top.sv:18
 343 slice 1 310 7 7
-344 ite 1 315 343 342 $techmap\chain.$verific$i28$agg_sram_tb/modular/agg_lake_top.sv:18$7277 ; agg_sram_tb/modular/agg_lake_top.sv:18
+344 ite 1 315 343 342 $techmap\chain.$verific$i28$agg_sram_tb/modular/agg_lake_top.sv:18$7114 ; agg_sram_tb/modular/agg_lake_top.sv:18
 345 slice 1 13 8 8
-346 ite 1 12 345 172 $techmap\chain.$verific$i11$agg_sram_tb/modular/agg_lake_top.sv:18$7260 ; agg_sram_tb/modular/agg_lake_top.sv:18
+346 ite 1 12 345 172 $techmap\chain.$verific$i11$agg_sram_tb/modular/agg_lake_top.sv:18$7097 ; agg_sram_tb/modular/agg_lake_top.sv:18
 347 slice 1 310 8 8
-348 ite 1 315 347 346 $techmap\chain.$verific$i27$agg_sram_tb/modular/agg_lake_top.sv:18$7276 ; agg_sram_tb/modular/agg_lake_top.sv:18
+348 ite 1 315 347 346 $techmap\chain.$verific$i27$agg_sram_tb/modular/agg_lake_top.sv:18$7113 ; agg_sram_tb/modular/agg_lake_top.sv:18
 349 slice 1 13 9 9
-350 ite 1 12 349 172 $techmap\chain.$verific$i10$agg_sram_tb/modular/agg_lake_top.sv:18$7259 ; agg_sram_tb/modular/agg_lake_top.sv:18
+350 ite 1 12 349 172 $techmap\chain.$verific$i10$agg_sram_tb/modular/agg_lake_top.sv:18$7096 ; agg_sram_tb/modular/agg_lake_top.sv:18
 351 slice 1 310 9 9
-352 ite 1 315 351 350 $techmap\chain.$verific$i26$agg_sram_tb/modular/agg_lake_top.sv:18$7275 ; agg_sram_tb/modular/agg_lake_top.sv:18
+352 ite 1 315 351 350 $techmap\chain.$verific$i26$agg_sram_tb/modular/agg_lake_top.sv:18$7112 ; agg_sram_tb/modular/agg_lake_top.sv:18
 353 slice 1 13 10 10
-354 ite 1 12 353 172 $techmap\chain.$verific$i9$agg_sram_tb/modular/agg_lake_top.sv:18$7258 ; agg_sram_tb/modular/agg_lake_top.sv:18
+354 ite 1 12 353 172 $techmap\chain.$verific$i9$agg_sram_tb/modular/agg_lake_top.sv:18$7095 ; agg_sram_tb/modular/agg_lake_top.sv:18
 355 slice 1 310 10 10
-356 ite 1 315 355 354 $techmap\chain.$verific$i25$agg_sram_tb/modular/agg_lake_top.sv:18$7274 ; agg_sram_tb/modular/agg_lake_top.sv:18
+356 ite 1 315 355 354 $techmap\chain.$verific$i25$agg_sram_tb/modular/agg_lake_top.sv:18$7111 ; agg_sram_tb/modular/agg_lake_top.sv:18
 357 slice 1 13 11 11
-358 ite 1 12 357 172 $techmap\chain.$verific$i8$agg_sram_tb/modular/agg_lake_top.sv:18$7257 ; agg_sram_tb/modular/agg_lake_top.sv:18
+358 ite 1 12 357 172 $techmap\chain.$verific$i8$agg_sram_tb/modular/agg_lake_top.sv:18$7094 ; agg_sram_tb/modular/agg_lake_top.sv:18
 359 slice 1 310 11 11
-360 ite 1 315 359 358 $techmap\chain.$verific$i24$agg_sram_tb/modular/agg_lake_top.sv:18$7273 ; agg_sram_tb/modular/agg_lake_top.sv:18
+360 ite 1 315 359 358 $techmap\chain.$verific$i24$agg_sram_tb/modular/agg_lake_top.sv:18$7110 ; agg_sram_tb/modular/agg_lake_top.sv:18
 361 slice 1 13 12 12
-362 ite 1 12 361 172 $techmap\chain.$verific$i7$agg_sram_tb/modular/agg_lake_top.sv:18$7256 ; agg_sram_tb/modular/agg_lake_top.sv:18
+362 ite 1 12 361 172 $techmap\chain.$verific$i7$agg_sram_tb/modular/agg_lake_top.sv:18$7093 ; agg_sram_tb/modular/agg_lake_top.sv:18
 363 slice 1 310 12 12
-364 ite 1 315 363 362 $techmap\chain.$verific$i23$agg_sram_tb/modular/agg_lake_top.sv:18$7272 ; agg_sram_tb/modular/agg_lake_top.sv:18
+364 ite 1 315 363 362 $techmap\chain.$verific$i23$agg_sram_tb/modular/agg_lake_top.sv:18$7109 ; agg_sram_tb/modular/agg_lake_top.sv:18
 365 slice 1 13 13 13
-366 ite 1 12 365 172 $techmap\chain.$verific$i6$agg_sram_tb/modular/agg_lake_top.sv:18$7255 ; agg_sram_tb/modular/agg_lake_top.sv:18
+366 ite 1 12 365 172 $techmap\chain.$verific$i6$agg_sram_tb/modular/agg_lake_top.sv:18$7092 ; agg_sram_tb/modular/agg_lake_top.sv:18
 367 slice 1 310 13 13
-368 ite 1 315 367 366 $techmap\chain.$verific$i22$agg_sram_tb/modular/agg_lake_top.sv:18$7271 ; agg_sram_tb/modular/agg_lake_top.sv:18
+368 ite 1 315 367 366 $techmap\chain.$verific$i22$agg_sram_tb/modular/agg_lake_top.sv:18$7108 ; agg_sram_tb/modular/agg_lake_top.sv:18
 369 slice 1 13 14 14
-370 ite 1 12 369 172 $techmap\chain.$verific$i5$agg_sram_tb/modular/agg_lake_top.sv:18$7254 ; agg_sram_tb/modular/agg_lake_top.sv:18
+370 ite 1 12 369 172 $techmap\chain.$verific$i5$agg_sram_tb/modular/agg_lake_top.sv:18$7091 ; agg_sram_tb/modular/agg_lake_top.sv:18
 371 slice 1 310 14 14
-372 ite 1 315 371 370 $techmap\chain.$verific$i21$agg_sram_tb/modular/agg_lake_top.sv:18$7270 ; agg_sram_tb/modular/agg_lake_top.sv:18
+372 ite 1 315 371 370 $techmap\chain.$verific$i21$agg_sram_tb/modular/agg_lake_top.sv:18$7107 ; agg_sram_tb/modular/agg_lake_top.sv:18
 373 slice 1 13 15 15
-374 ite 1 12 373 172 $techmap\chain.$verific$i4$agg_sram_tb/modular/agg_lake_top.sv:18$7253 ; agg_sram_tb/modular/agg_lake_top.sv:18
+374 ite 1 12 373 172 $techmap\chain.$verific$i4$agg_sram_tb/modular/agg_lake_top.sv:18$7090 ; agg_sram_tb/modular/agg_lake_top.sv:18
 375 slice 1 310 15 15
-376 ite 1 315 375 374 $techmap\chain.$verific$i20$agg_sram_tb/modular/agg_lake_top.sv:18$7269 ; agg_sram_tb/modular/agg_lake_top.sv:18
+376 ite 1 315 375 374 $techmap\chain.$verific$i20$agg_sram_tb/modular/agg_lake_top.sv:18$7106 ; agg_sram_tb/modular/agg_lake_top.sv:18
 377 concat 4 320 316
 378 concat 34 324 377
 379 concat 38 328 378
@@ -399,70 +399,70 @@
 398 concat 6 376 397
 399 output 398 data_out[0] ; agg_sram_tb/modular/agg_lake_top.sv:94
 400 slice 1 14 0 0
-401 ite 1 12 400 172 $techmap\chain.$verific$i51$agg_sram_tb/modular/agg_lake_top.sv:25$7300 ; agg_sram_tb/modular/agg_lake_top.sv:25
+401 ite 1 12 400 172 $techmap\chain.$verific$i51$agg_sram_tb/modular/agg_lake_top.sv:25$7137 ; agg_sram_tb/modular/agg_lake_top.sv:25
 402 slice 1 27 0 0
 403 slice 1 314 1 1
-404 ite 1 403 402 401 $techmap\chain.$verific$i67$agg_sram_tb/modular/agg_lake_top.sv:25$7316 ; agg_sram_tb/modular/agg_lake_top.sv:25
+404 ite 1 403 402 401 $techmap\chain.$verific$i67$agg_sram_tb/modular/agg_lake_top.sv:25$7153 ; agg_sram_tb/modular/agg_lake_top.sv:25
 405 slice 1 14 1 1
-406 ite 1 12 405 172 $techmap\chain.$verific$i50$agg_sram_tb/modular/agg_lake_top.sv:25$7299 ; agg_sram_tb/modular/agg_lake_top.sv:25
+406 ite 1 12 405 172 $techmap\chain.$verific$i50$agg_sram_tb/modular/agg_lake_top.sv:25$7136 ; agg_sram_tb/modular/agg_lake_top.sv:25
 407 slice 1 27 1 1
-408 ite 1 403 407 406 $techmap\chain.$verific$i66$agg_sram_tb/modular/agg_lake_top.sv:25$7315 ; agg_sram_tb/modular/agg_lake_top.sv:25
+408 ite 1 403 407 406 $techmap\chain.$verific$i66$agg_sram_tb/modular/agg_lake_top.sv:25$7152 ; agg_sram_tb/modular/agg_lake_top.sv:25
 409 slice 1 14 2 2
-410 ite 1 12 409 172 $techmap\chain.$verific$i49$agg_sram_tb/modular/agg_lake_top.sv:25$7298 ; agg_sram_tb/modular/agg_lake_top.sv:25
+410 ite 1 12 409 172 $techmap\chain.$verific$i49$agg_sram_tb/modular/agg_lake_top.sv:25$7135 ; agg_sram_tb/modular/agg_lake_top.sv:25
 411 slice 1 27 2 2
-412 ite 1 403 411 410 $techmap\chain.$verific$i65$agg_sram_tb/modular/agg_lake_top.sv:25$7314 ; agg_sram_tb/modular/agg_lake_top.sv:25
+412 ite 1 403 411 410 $techmap\chain.$verific$i65$agg_sram_tb/modular/agg_lake_top.sv:25$7151 ; agg_sram_tb/modular/agg_lake_top.sv:25
 413 slice 1 14 3 3
-414 ite 1 12 413 172 $techmap\chain.$verific$i48$agg_sram_tb/modular/agg_lake_top.sv:25$7297 ; agg_sram_tb/modular/agg_lake_top.sv:25
+414 ite 1 12 413 172 $techmap\chain.$verific$i48$agg_sram_tb/modular/agg_lake_top.sv:25$7134 ; agg_sram_tb/modular/agg_lake_top.sv:25
 415 slice 1 27 3 3
-416 ite 1 403 415 414 $techmap\chain.$verific$i64$agg_sram_tb/modular/agg_lake_top.sv:25$7313 ; agg_sram_tb/modular/agg_lake_top.sv:25
+416 ite 1 403 415 414 $techmap\chain.$verific$i64$agg_sram_tb/modular/agg_lake_top.sv:25$7150 ; agg_sram_tb/modular/agg_lake_top.sv:25
 417 slice 1 14 4 4
-418 ite 1 12 417 172 $techmap\chain.$verific$i47$agg_sram_tb/modular/agg_lake_top.sv:25$7296 ; agg_sram_tb/modular/agg_lake_top.sv:25
+418 ite 1 12 417 172 $techmap\chain.$verific$i47$agg_sram_tb/modular/agg_lake_top.sv:25$7133 ; agg_sram_tb/modular/agg_lake_top.sv:25
 419 slice 1 27 4 4
-420 ite 1 403 419 418 $techmap\chain.$verific$i63$agg_sram_tb/modular/agg_lake_top.sv:25$7312 ; agg_sram_tb/modular/agg_lake_top.sv:25
+420 ite 1 403 419 418 $techmap\chain.$verific$i63$agg_sram_tb/modular/agg_lake_top.sv:25$7149 ; agg_sram_tb/modular/agg_lake_top.sv:25
 421 slice 1 14 5 5
-422 ite 1 12 421 172 $techmap\chain.$verific$i46$agg_sram_tb/modular/agg_lake_top.sv:25$7295 ; agg_sram_tb/modular/agg_lake_top.sv:25
+422 ite 1 12 421 172 $techmap\chain.$verific$i46$agg_sram_tb/modular/agg_lake_top.sv:25$7132 ; agg_sram_tb/modular/agg_lake_top.sv:25
 423 slice 1 27 5 5
-424 ite 1 403 423 422 $techmap\chain.$verific$i62$agg_sram_tb/modular/agg_lake_top.sv:25$7311 ; agg_sram_tb/modular/agg_lake_top.sv:25
+424 ite 1 403 423 422 $techmap\chain.$verific$i62$agg_sram_tb/modular/agg_lake_top.sv:25$7148 ; agg_sram_tb/modular/agg_lake_top.sv:25
 425 slice 1 14 6 6
-426 ite 1 12 425 172 $techmap\chain.$verific$i45$agg_sram_tb/modular/agg_lake_top.sv:25$7294 ; agg_sram_tb/modular/agg_lake_top.sv:25
+426 ite 1 12 425 172 $techmap\chain.$verific$i45$agg_sram_tb/modular/agg_lake_top.sv:25$7131 ; agg_sram_tb/modular/agg_lake_top.sv:25
 427 slice 1 27 6 6
-428 ite 1 403 427 426 $techmap\chain.$verific$i61$agg_sram_tb/modular/agg_lake_top.sv:25$7310 ; agg_sram_tb/modular/agg_lake_top.sv:25
+428 ite 1 403 427 426 $techmap\chain.$verific$i61$agg_sram_tb/modular/agg_lake_top.sv:25$7147 ; agg_sram_tb/modular/agg_lake_top.sv:25
 429 slice 1 14 7 7
-430 ite 1 12 429 172 $techmap\chain.$verific$i44$agg_sram_tb/modular/agg_lake_top.sv:25$7293 ; agg_sram_tb/modular/agg_lake_top.sv:25
+430 ite 1 12 429 172 $techmap\chain.$verific$i44$agg_sram_tb/modular/agg_lake_top.sv:25$7130 ; agg_sram_tb/modular/agg_lake_top.sv:25
 431 slice 1 27 7 7
-432 ite 1 403 431 430 $techmap\chain.$verific$i60$agg_sram_tb/modular/agg_lake_top.sv:25$7309 ; agg_sram_tb/modular/agg_lake_top.sv:25
+432 ite 1 403 431 430 $techmap\chain.$verific$i60$agg_sram_tb/modular/agg_lake_top.sv:25$7146 ; agg_sram_tb/modular/agg_lake_top.sv:25
 433 slice 1 14 8 8
-434 ite 1 12 433 172 $techmap\chain.$verific$i43$agg_sram_tb/modular/agg_lake_top.sv:25$7292 ; agg_sram_tb/modular/agg_lake_top.sv:25
+434 ite 1 12 433 172 $techmap\chain.$verific$i43$agg_sram_tb/modular/agg_lake_top.sv:25$7129 ; agg_sram_tb/modular/agg_lake_top.sv:25
 435 slice 1 27 8 8
-436 ite 1 403 435 434 $techmap\chain.$verific$i59$agg_sram_tb/modular/agg_lake_top.sv:25$7308 ; agg_sram_tb/modular/agg_lake_top.sv:25
+436 ite 1 403 435 434 $techmap\chain.$verific$i59$agg_sram_tb/modular/agg_lake_top.sv:25$7145 ; agg_sram_tb/modular/agg_lake_top.sv:25
 437 slice 1 14 9 9
-438 ite 1 12 437 172 $techmap\chain.$verific$i42$agg_sram_tb/modular/agg_lake_top.sv:25$7291 ; agg_sram_tb/modular/agg_lake_top.sv:25
+438 ite 1 12 437 172 $techmap\chain.$verific$i42$agg_sram_tb/modular/agg_lake_top.sv:25$7128 ; agg_sram_tb/modular/agg_lake_top.sv:25
 439 slice 1 27 9 9
-440 ite 1 403 439 438 $techmap\chain.$verific$i58$agg_sram_tb/modular/agg_lake_top.sv:25$7307 ; agg_sram_tb/modular/agg_lake_top.sv:25
+440 ite 1 403 439 438 $techmap\chain.$verific$i58$agg_sram_tb/modular/agg_lake_top.sv:25$7144 ; agg_sram_tb/modular/agg_lake_top.sv:25
 441 slice 1 14 10 10
-442 ite 1 12 441 172 $techmap\chain.$verific$i41$agg_sram_tb/modular/agg_lake_top.sv:25$7290 ; agg_sram_tb/modular/agg_lake_top.sv:25
+442 ite 1 12 441 172 $techmap\chain.$verific$i41$agg_sram_tb/modular/agg_lake_top.sv:25$7127 ; agg_sram_tb/modular/agg_lake_top.sv:25
 443 slice 1 27 10 10
-444 ite 1 403 443 442 $techmap\chain.$verific$i57$agg_sram_tb/modular/agg_lake_top.sv:25$7306 ; agg_sram_tb/modular/agg_lake_top.sv:25
+444 ite 1 403 443 442 $techmap\chain.$verific$i57$agg_sram_tb/modular/agg_lake_top.sv:25$7143 ; agg_sram_tb/modular/agg_lake_top.sv:25
 445 slice 1 14 11 11
-446 ite 1 12 445 172 $techmap\chain.$verific$i40$agg_sram_tb/modular/agg_lake_top.sv:25$7289 ; agg_sram_tb/modular/agg_lake_top.sv:25
+446 ite 1 12 445 172 $techmap\chain.$verific$i40$agg_sram_tb/modular/agg_lake_top.sv:25$7126 ; agg_sram_tb/modular/agg_lake_top.sv:25
 447 slice 1 27 11 11
-448 ite 1 403 447 446 $techmap\chain.$verific$i56$agg_sram_tb/modular/agg_lake_top.sv:25$7305 ; agg_sram_tb/modular/agg_lake_top.sv:25
+448 ite 1 403 447 446 $techmap\chain.$verific$i56$agg_sram_tb/modular/agg_lake_top.sv:25$7142 ; agg_sram_tb/modular/agg_lake_top.sv:25
 449 slice 1 14 12 12
-450 ite 1 12 449 172 $techmap\chain.$verific$i39$agg_sram_tb/modular/agg_lake_top.sv:25$7288 ; agg_sram_tb/modular/agg_lake_top.sv:25
+450 ite 1 12 449 172 $techmap\chain.$verific$i39$agg_sram_tb/modular/agg_lake_top.sv:25$7125 ; agg_sram_tb/modular/agg_lake_top.sv:25
 451 slice 1 27 12 12
-452 ite 1 403 451 450 $techmap\chain.$verific$i55$agg_sram_tb/modular/agg_lake_top.sv:25$7304 ; agg_sram_tb/modular/agg_lake_top.sv:25
+452 ite 1 403 451 450 $techmap\chain.$verific$i55$agg_sram_tb/modular/agg_lake_top.sv:25$7141 ; agg_sram_tb/modular/agg_lake_top.sv:25
 453 slice 1 14 13 13
-454 ite 1 12 453 172 $techmap\chain.$verific$i38$agg_sram_tb/modular/agg_lake_top.sv:25$7287 ; agg_sram_tb/modular/agg_lake_top.sv:25
+454 ite 1 12 453 172 $techmap\chain.$verific$i38$agg_sram_tb/modular/agg_lake_top.sv:25$7124 ; agg_sram_tb/modular/agg_lake_top.sv:25
 455 slice 1 27 13 13
-456 ite 1 403 455 454 $techmap\chain.$verific$i54$agg_sram_tb/modular/agg_lake_top.sv:25$7303 ; agg_sram_tb/modular/agg_lake_top.sv:25
+456 ite 1 403 455 454 $techmap\chain.$verific$i54$agg_sram_tb/modular/agg_lake_top.sv:25$7140 ; agg_sram_tb/modular/agg_lake_top.sv:25
 457 slice 1 14 14 14
-458 ite 1 12 457 172 $techmap\chain.$verific$i37$agg_sram_tb/modular/agg_lake_top.sv:25$7286 ; agg_sram_tb/modular/agg_lake_top.sv:25
+458 ite 1 12 457 172 $techmap\chain.$verific$i37$agg_sram_tb/modular/agg_lake_top.sv:25$7123 ; agg_sram_tb/modular/agg_lake_top.sv:25
 459 slice 1 27 14 14
-460 ite 1 403 459 458 $techmap\chain.$verific$i53$agg_sram_tb/modular/agg_lake_top.sv:25$7302 ; agg_sram_tb/modular/agg_lake_top.sv:25
+460 ite 1 403 459 458 $techmap\chain.$verific$i53$agg_sram_tb/modular/agg_lake_top.sv:25$7139 ; agg_sram_tb/modular/agg_lake_top.sv:25
 461 slice 1 14 15 15
-462 ite 1 12 461 172 $techmap\chain.$verific$i36$agg_sram_tb/modular/agg_lake_top.sv:25$7285 ; agg_sram_tb/modular/agg_lake_top.sv:25
+462 ite 1 12 461 172 $techmap\chain.$verific$i36$agg_sram_tb/modular/agg_lake_top.sv:25$7122 ; agg_sram_tb/modular/agg_lake_top.sv:25
 463 slice 1 27 15 15
-464 ite 1 403 463 462 $techmap\chain.$verific$i52$agg_sram_tb/modular/agg_lake_top.sv:25$7301 ; agg_sram_tb/modular/agg_lake_top.sv:25
+464 ite 1 403 463 462 $techmap\chain.$verific$i52$agg_sram_tb/modular/agg_lake_top.sv:25$7138 ; agg_sram_tb/modular/agg_lake_top.sv:25
 465 concat 4 408 404
 466 concat 34 412 465
 467 concat 38 416 466
@@ -508,7 +508,7 @@
 507 not 1 279
 508 or 1 507 280 $techmap\fifo_ctrl.back_rf.$verific$i76$agg_sram_tb/modular/agg_lake_top.sv:1147$7535 ; agg_sram_tb/modular/agg_lake_top.sv:1147
 509 and 1 270 508 $techmap\fifo_ctrl.back_rf.$verific$i77$agg_sram_tb/modular/agg_lake_top.sv:1147$7536 ; agg_sram_tb/modular/agg_lake_top.sv:1147
-510 ite 1 211 216 509 $techmap\fifo_ctrl.$verific$i161$agg_sram_tb/modular/agg_lake_top.sv:1533$6897 ; agg_sram_tb/modular/agg_lake_top.sv:1533
+510 ite 1 211 216 509 $techmap\fifo_ctrl.$verific$i161$agg_sram_tb/modular/agg_lake_top.sv:1533$6754 ; agg_sram_tb/modular/agg_lake_top.sv:1533
 511 uext 34 298 1
 512 srl 34 231 511 $techmap\sram_ctrl.$verific$Mux_127$agg_sram_tb/modular/agg_lake_top.sv:1798$6523 ; agg_sram_tb/modular/agg_lake_top.sv:1798
 513 slice 1 512 0 0
@@ -555,20 +555,20 @@
 554 uext 6 539 0 fifo_ctrl.back_rf.parallel_out[2][0] ; agg_sram_tb/modular/agg_lake_top.sv:1034
 555 uext 6 541 0 fifo_ctrl.back_rf.parallel_out[1][0] ; agg_sram_tb/modular/agg_lake_top.sv:1034
 556 uext 6 543 0 fifo_ctrl.back_rf.parallel_out[0][0] ; agg_sram_tb/modular/agg_lake_top.sv:1034
-557 redor 1 222 $techmap\fifo_ctrl.$verific$reduce_or_14$agg_sram_tb/modular/agg_lake_top.sv:1384$6783 ; agg_sram_tb/modular/agg_lake_top.sv:1384
-558 and 1 211 557 $techmap\fifo_ctrl.$verific$i16$agg_sram_tb/modular/agg_lake_top.sv:1384$6784 ; agg_sram_tb/modular/agg_lake_top.sv:1384
+557 redor 1 222 $techmap\fifo_ctrl.$verific$reduce_or_14$agg_sram_tb/modular/agg_lake_top.sv:1384$6640 ; agg_sram_tb/modular/agg_lake_top.sv:1384
+558 and 1 211 557 $techmap\fifo_ctrl.$verific$i16$agg_sram_tb/modular/agg_lake_top.sv:1384$6641 ; agg_sram_tb/modular/agg_lake_top.sv:1384
 559 uext 1 558 0 fifo_ctrl.back_rf.parallel_load ; agg_sram_tb/modular/agg_lake_top.sv:1026
 560 slice 6 155 63 48
-561 eq 1 222 231 $techmap\fifo_ctrl.$verific$equal_145$agg_sram_tb/modular/agg_lake_top.sv:1516$6890 ; agg_sram_tb/modular/agg_lake_top.sv:1516
-562 ite 6 561 560 168 $techmap\fifo_ctrl.$verific$mux_152$agg_sram_tb/modular/agg_lake_top.sv:1522$6894 ; agg_sram_tb/modular/agg_lake_top.sv:1522
+561 eq 1 222 231 $techmap\fifo_ctrl.$verific$equal_145$agg_sram_tb/modular/agg_lake_top.sv:1516$6747 ; agg_sram_tb/modular/agg_lake_top.sv:1516
+562 ite 6 561 560 168 $techmap\fifo_ctrl.$verific$mux_152$agg_sram_tb/modular/agg_lake_top.sv:1522$6751 ; agg_sram_tb/modular/agg_lake_top.sv:1522
 563 uext 6 562 0 fifo_ctrl.back_rf.parallel_in[3][0] ; agg_sram_tb/modular/agg_lake_top.sv:1025
 564 slice 6 155 47 32
-565 ite 6 561 564 560 $techmap\fifo_ctrl.$verific$mux_150$agg_sram_tb/modular/agg_lake_top.sv:1521$6893 ; agg_sram_tb/modular/agg_lake_top.sv:1521
+565 ite 6 561 564 560 $techmap\fifo_ctrl.$verific$mux_150$agg_sram_tb/modular/agg_lake_top.sv:1521$6750 ; agg_sram_tb/modular/agg_lake_top.sv:1521
 566 uext 6 565 0 fifo_ctrl.back_rf.parallel_in[2][0] ; agg_sram_tb/modular/agg_lake_top.sv:1025
 567 slice 6 155 31 16
-568 ite 6 561 567 564 $techmap\fifo_ctrl.$verific$mux_148$agg_sram_tb/modular/agg_lake_top.sv:1519$6892 ; agg_sram_tb/modular/agg_lake_top.sv:1519
+568 ite 6 561 567 564 $techmap\fifo_ctrl.$verific$mux_148$agg_sram_tb/modular/agg_lake_top.sv:1519$6749 ; agg_sram_tb/modular/agg_lake_top.sv:1519
 569 uext 6 568 0 fifo_ctrl.back_rf.parallel_in[1][0] ; agg_sram_tb/modular/agg_lake_top.sv:1025
-570 ite 6 561 282 567 $techmap\fifo_ctrl.$verific$mux_146$agg_sram_tb/modular/agg_lake_top.sv:1517$6891 ; agg_sram_tb/modular/agg_lake_top.sv:1517
+570 ite 6 561 282 567 $techmap\fifo_ctrl.$verific$mux_146$agg_sram_tb/modular/agg_lake_top.sv:1517$6748 ; agg_sram_tb/modular/agg_lake_top.sv:1517
 571 uext 6 570 0 fifo_ctrl.back_rf.parallel_in[0][0] ; agg_sram_tb/modular/agg_lake_top.sv:1025
 572 uext 34 222 0 fifo_ctrl.back_rf.num_load ; agg_sram_tb/modular/agg_lake_top.sv:1024
 573 uext 34 277 0 fifo_ctrl.back_rf.num_items ; agg_sram_tb/modular/agg_lake_top.sv:1038
@@ -581,16 +581,16 @@
 580 and 1 15 150 $verific$i15$agg_sram_tb/modular/agg_lake_top.sv:202$22 ; agg_sram_tb/modular/agg_lake_top.sv:202
 581 uext 1 580 0 fifo_ctrl.back_rf.clk ; agg_sram_tb/modular/agg_lake_top.sv:1020
 582 not 1 264
-583 and 1 257 582 $techmap\fifo_ctrl.front_rf.$verific$i69$agg_sram_tb/modular/agg_lake_top.sv:1004$7418 ; agg_sram_tb/modular/agg_lake_top.sv:1004
-584 eq 1 261 231 $techmap\fifo_ctrl.front_rf.$verific$equal_4$agg_sram_tb/modular/agg_lake_top.sv:910$7369 ; agg_sram_tb/modular/agg_lake_top.sv:910
+583 and 1 257 582 $techmap\fifo_ctrl.front_rf.$verific$i69$agg_sram_tb/modular/agg_lake_top.sv:1004$7398 ; agg_sram_tb/modular/agg_lake_top.sv:1004
+584 eq 1 261 231 $techmap\fifo_ctrl.front_rf.$verific$equal_4$agg_sram_tb/modular/agg_lake_top.sv:910$7349 ; agg_sram_tb/modular/agg_lake_top.sv:910
 585 not 1 584
-586 or 1 585 244 $techmap\fifo_ctrl.front_rf.$verific$i71$agg_sram_tb/modular/agg_lake_top.sv:1004$7420 ; agg_sram_tb/modular/agg_lake_top.sv:1004
-587 eq 1 238 231 $techmap\fifo_ctrl.$verific$equal_19$agg_sram_tb/modular/agg_lake_top.sv:1388$6788 ; agg_sram_tb/modular/agg_lake_top.sv:1388
-588 and 1 587 242 $techmap\fifo_ctrl.$verific$i21$agg_sram_tb/modular/agg_lake_top.sv:1388$6789 ; agg_sram_tb/modular/agg_lake_top.sv:1388
+586 or 1 585 244 $techmap\fifo_ctrl.front_rf.$verific$i71$agg_sram_tb/modular/agg_lake_top.sv:1004$7400 ; agg_sram_tb/modular/agg_lake_top.sv:1004
+587 eq 1 238 231 $techmap\fifo_ctrl.$verific$equal_19$agg_sram_tb/modular/agg_lake_top.sv:1388$6645 ; agg_sram_tb/modular/agg_lake_top.sv:1388
+588 and 1 587 242 $techmap\fifo_ctrl.$verific$i21$agg_sram_tb/modular/agg_lake_top.sv:1388$6646 ; agg_sram_tb/modular/agg_lake_top.sv:1388
 589 not 1 244
-590 and 1 588 589 $techmap\fifo_ctrl.$verific$i23$agg_sram_tb/modular/agg_lake_top.sv:1389$6791 ; agg_sram_tb/modular/agg_lake_top.sv:1389
-591 or 1 586 590 $techmap\fifo_ctrl.front_rf.$verific$i72$agg_sram_tb/modular/agg_lake_top.sv:1004$7421 ; agg_sram_tb/modular/agg_lake_top.sv:1004
-592 and 1 583 591 $techmap\fifo_ctrl.front_rf.$verific$i73$agg_sram_tb/modular/agg_lake_top.sv:1004$7422 ; agg_sram_tb/modular/agg_lake_top.sv:1004
+590 and 1 588 589 $techmap\fifo_ctrl.$verific$i23$agg_sram_tb/modular/agg_lake_top.sv:1389$6648 ; agg_sram_tb/modular/agg_lake_top.sv:1389
+591 or 1 586 590 $techmap\fifo_ctrl.front_rf.$verific$i72$agg_sram_tb/modular/agg_lake_top.sv:1004$7401 ; agg_sram_tb/modular/agg_lake_top.sv:1004
+592 and 1 583 591 $techmap\fifo_ctrl.front_rf.$verific$i73$agg_sram_tb/modular/agg_lake_top.sv:1004$7402 ; agg_sram_tb/modular/agg_lake_top.sv:1004
 593 uext 1 592 0 fifo_ctrl.front_rf.write ; agg_sram_tb/modular/agg_lake_top.sv:908
 594 state 4 $techmap\fifo_ctrl.front_rf.$auto$async2sync.cc:104:execute$7967
 595 init 4 594 158
@@ -606,8 +606,8 @@
 605 uext 6 604 0 fifo_ctrl.front_rf.reg_array[1][0] ; agg_sram_tb/modular/agg_lake_top.sv:906
 606 slice 6 192 15 0
 607 uext 6 606 0 fifo_ctrl.front_rf.reg_array[0][0] ; agg_sram_tb/modular/agg_lake_top.sv:906
-608 and 1 244 582 $techmap\fifo_ctrl.front_rf.$verific$i8$agg_sram_tb/modular/agg_lake_top.sv:912$7372 ; agg_sram_tb/modular/agg_lake_top.sv:912
-609 and 1 608 271 $techmap\fifo_ctrl.front_rf.$verific$i10$agg_sram_tb/modular/agg_lake_top.sv:912$7374 ; agg_sram_tb/modular/agg_lake_top.sv:912
+608 and 1 244 582 $techmap\fifo_ctrl.front_rf.$verific$i8$agg_sram_tb/modular/agg_lake_top.sv:912$7352 ; agg_sram_tb/modular/agg_lake_top.sv:912
+609 and 1 608 271 $techmap\fifo_ctrl.front_rf.$verific$i10$agg_sram_tb/modular/agg_lake_top.sv:912$7354 ; agg_sram_tb/modular/agg_lake_top.sv:912
 610 uext 1 609 0 fifo_ctrl.front_rf.read ; agg_sram_tb/modular/agg_lake_top.sv:905
 611 uext 4 195 0 fifo_ctrl.front_rf.rd_ptr_out ; agg_sram_tb/modular/agg_lake_top.sv:898
 612 uext 4 195 0 fifo_ctrl.front_rf.rd_ptr ; agg_sram_tb/modular/agg_lake_top.sv:904
@@ -719,23 +719,23 @@
 718 input 38
 719 and 38 718 505
 720 uext 34 206 2
-721 eq 1 230 720 $techmap\fifo_ctrl.$verific$equal_27$agg_sram_tb/modular/agg_lake_top.sv:1392$6796 ; agg_sram_tb/modular/agg_lake_top.sv:1392
+721 eq 1 230 720 $techmap\fifo_ctrl.$verific$equal_27$agg_sram_tb/modular/agg_lake_top.sv:1392$6653 ; agg_sram_tb/modular/agg_lake_top.sv:1392
 722 redor 1 230
 723 not 1 722
-724 and 1 723 224 $techmap\fifo_ctrl.$verific$i34$agg_sram_tb/modular/agg_lake_top.sv:1393$6802 ; agg_sram_tb/modular/agg_lake_top.sv:1393
-725 or 1 216 724 $techmap\fifo_ctrl.$verific$i35$agg_sram_tb/modular/agg_lake_top.sv:1393$6803 ; agg_sram_tb/modular/agg_lake_top.sv:1393
-726 and 1 721 725 $techmap\fifo_ctrl.$verific$i36$agg_sram_tb/modular/agg_lake_top.sv:1393$6804 ; agg_sram_tb/modular/agg_lake_top.sv:1393
+724 and 1 723 224 $techmap\fifo_ctrl.$verific$i34$agg_sram_tb/modular/agg_lake_top.sv:1393$6659 ; agg_sram_tb/modular/agg_lake_top.sv:1393
+725 or 1 216 724 $techmap\fifo_ctrl.$verific$i35$agg_sram_tb/modular/agg_lake_top.sv:1393$6660 ; agg_sram_tb/modular/agg_lake_top.sv:1393
+726 and 1 721 725 $techmap\fifo_ctrl.$verific$i36$agg_sram_tb/modular/agg_lake_top.sv:1393$6661 ; agg_sram_tb/modular/agg_lake_top.sv:1393
 727 uext 6 206 15
-728 ult 1 727 203 $techmap\fifo_ctrl.$verific$LessThan_36$agg_sram_tb/modular/agg_lake_top.sv:1393$6805 ; agg_sram_tb/modular/agg_lake_top.sv:1393
-729 and 1 208 214 $techmap\fifo_ctrl.$verific$i40$agg_sram_tb/modular/agg_lake_top.sv:1394$6808 ; agg_sram_tb/modular/agg_lake_top.sv:1394
-730 or 1 728 729 $techmap\fifo_ctrl.$verific$i41$agg_sram_tb/modular/agg_lake_top.sv:1394$6809 ; agg_sram_tb/modular/agg_lake_top.sv:1394
-731 and 1 726 730 $techmap\fifo_ctrl.$verific$i42$agg_sram_tb/modular/agg_lake_top.sv:1394$6810 ; agg_sram_tb/modular/agg_lake_top.sv:1394
+728 ult 1 727 203 $techmap\fifo_ctrl.$verific$LessThan_36$agg_sram_tb/modular/agg_lake_top.sv:1393$6662 ; agg_sram_tb/modular/agg_lake_top.sv:1393
+729 and 1 208 214 $techmap\fifo_ctrl.$verific$i40$agg_sram_tb/modular/agg_lake_top.sv:1394$6665 ; agg_sram_tb/modular/agg_lake_top.sv:1394
+730 or 1 728 729 $techmap\fifo_ctrl.$verific$i41$agg_sram_tb/modular/agg_lake_top.sv:1394$6666 ; agg_sram_tb/modular/agg_lake_top.sv:1394
+731 and 1 726 730 $techmap\fifo_ctrl.$verific$i42$agg_sram_tb/modular/agg_lake_top.sv:1394$6667 ; agg_sram_tb/modular/agg_lake_top.sv:1394
 732 not 1 731
 733 state 1 $techmap\fifo_ctrl.$auto$async2sync.cc:104:execute$8035
 734 init 1 733 172
 735 ite 1 202 172 733 $techmap\fifo_ctrl.$auto$async2sync.cc:109:execute$8037
-736 or 1 735 590 $techmap\fifo_ctrl.$verific$i26$agg_sram_tb/modular/agg_lake_top.sv:1389$6794 ; agg_sram_tb/modular/agg_lake_top.sv:1389
-737 and 1 732 736 $techmap\fifo_ctrl.$verific$i27$agg_sram_tb/modular/agg_lake_top.sv:1389$6795 ; agg_sram_tb/modular/agg_lake_top.sv:1389
+736 or 1 735 590 $techmap\fifo_ctrl.$verific$i26$agg_sram_tb/modular/agg_lake_top.sv:1389$6651 ; agg_sram_tb/modular/agg_lake_top.sv:1389
+737 and 1 732 736 $techmap\fifo_ctrl.$verific$i27$agg_sram_tb/modular/agg_lake_top.sv:1389$6652 ; agg_sram_tb/modular/agg_lake_top.sv:1389
 738 srl 4 663 298 $techmap\sram_ctrl.$verific$Mux_128$agg_sram_tb/modular/agg_lake_top.sv:1798$6524 ; agg_sram_tb/modular/agg_lake_top.sv:1798
 739 slice 1 738 0 0
 740 concat 4 737 152
@@ -763,26 +763,26 @@
 762 const 760 1111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 763 and 760 761 762
 764 uext 153 196 58
-765 srl 153 192 764 $techmap\fifo_ctrl.$verific$mux_49$agg_sram_tb/modular/agg_lake_top.sv:1409$6816 ; agg_sram_tb/modular/agg_lake_top.sv:1409
+765 srl 153 192 764 $techmap\fifo_ctrl.$verific$mux_49$agg_sram_tb/modular/agg_lake_top.sv:1409$6673 ; agg_sram_tb/modular/agg_lake_top.sv:1409
 766 slice 6 765 15 0
 767 uext 4 206 1
-768 add 4 195 767 $techmap\fifo_ctrl.$verific$add_50$agg_sram_tb/modular/agg_lake_top.sv:1410$6817 ; agg_sram_tb/modular/agg_lake_top.sv:1410
+768 add 4 195 767 $techmap\fifo_ctrl.$verific$add_50$agg_sram_tb/modular/agg_lake_top.sv:1410$6674 ; agg_sram_tb/modular/agg_lake_top.sv:1410
 769 concat 163 768 157
 770 uext 153 769 58
-771 srl 153 192 770 $techmap\fifo_ctrl.$verific$mux_51$agg_sram_tb/modular/agg_lake_top.sv:1410$6818 ; agg_sram_tb/modular/agg_lake_top.sv:1410
+771 srl 153 192 770 $techmap\fifo_ctrl.$verific$mux_51$agg_sram_tb/modular/agg_lake_top.sv:1410$6675 ; agg_sram_tb/modular/agg_lake_top.sv:1410
 772 slice 6 771 15 0
 773 slice 1 195 1 1
-774 add 1 773 206 $techmap\fifo_ctrl.$verific$add_52$agg_sram_tb/modular/agg_lake_top.sv:1411$6819 ; agg_sram_tb/modular/agg_lake_top.sv:1411
+774 add 1 773 206 $techmap\fifo_ctrl.$verific$add_52$agg_sram_tb/modular/agg_lake_top.sv:1411$6676 ; agg_sram_tb/modular/agg_lake_top.sv:1411
 775 slice 1 195 0 0
 776 concat 380 775 157
 777 concat 163 774 776
 778 uext 153 777 58
-779 srl 153 192 778 $techmap\fifo_ctrl.$verific$mux_53$agg_sram_tb/modular/agg_lake_top.sv:1411$6820 ; agg_sram_tb/modular/agg_lake_top.sv:1411
+779 srl 153 192 778 $techmap\fifo_ctrl.$verific$mux_53$agg_sram_tb/modular/agg_lake_top.sv:1411$6677 ; agg_sram_tb/modular/agg_lake_top.sv:1411
 780 slice 6 779 15 0
-781 add 4 195 675 $techmap\fifo_ctrl.$verific$add_54$agg_sram_tb/modular/agg_lake_top.sv:1412$6821 ; agg_sram_tb/modular/agg_lake_top.sv:1412
+781 add 4 195 675 $techmap\fifo_ctrl.$verific$add_54$agg_sram_tb/modular/agg_lake_top.sv:1412$6678 ; agg_sram_tb/modular/agg_lake_top.sv:1412
 782 concat 163 781 157
 783 uext 153 782 58
-784 srl 153 192 783 $techmap\fifo_ctrl.$verific$mux_55$agg_sram_tb/modular/agg_lake_top.sv:1412$6822 ; agg_sram_tb/modular/agg_lake_top.sv:1412
+784 srl 153 192 783 $techmap\fifo_ctrl.$verific$mux_55$agg_sram_tb/modular/agg_lake_top.sv:1412$6679 ; agg_sram_tb/modular/agg_lake_top.sv:1412
 785 slice 6 784 15 0
 786 concat 19 772 766
 787 concat 284 780 786
@@ -790,7 +790,7 @@
 789 state 153 $techmap\fifo_ctrl.$auto$async2sync.cc:104:execute$8027
 790 init 153 789 154
 791 ite 153 202 154 789 $techmap\fifo_ctrl.$auto$async2sync.cc:109:execute$8029
-792 ite 153 735 791 788 $techmap\fifo_ctrl.$verific$mux_56$agg_sram_tb/modular/agg_lake_top.sv:1413$6823 ; agg_sram_tb/modular/agg_lake_top.sv:1413
+792 ite 153 735 791 788 $techmap\fifo_ctrl.$verific$mux_56$agg_sram_tb/modular/agg_lake_top.sv:1413$6680 ; agg_sram_tb/modular/agg_lake_top.sv:1413
 793 slice 1 155 0 0
 794 state 6 $techmap\sram_ctrl.$auto$async2sync.cc:104:execute$8043
 795 init 6 794 168
@@ -1130,7 +1130,7 @@
 1129 state 9 $techmap\fifo_ctrl.$auto$async2sync.cc:104:execute$8019
 1130 init 9 1129 1125
 1131 ite 9 202 1125 1129 $techmap\fifo_ctrl.$auto$async2sync.cc:109:execute$8021
-1132 ite 9 737 1131 1128 $techmap\fifo_ctrl.$verific$mux_177$agg_sram_tb/modular/agg_lake_top.sv:1562$6907 ; agg_sram_tb/modular/agg_lake_top.sv:1562
+1132 ite 9 737 1131 1128 $techmap\fifo_ctrl.$verific$mux_177$agg_sram_tb/modular/agg_lake_top.sv:1562$6764 ; agg_sram_tb/modular/agg_lake_top.sv:1562
 1133 slice 9 7 10 2
 1134 slice 9 289 10 2
 1135 ite 9 739 1134 1133 $techmap\sram_ctrl.$verific$mux_32$agg_sram_tb/modular/agg_lake_top.sv:1698$6443 ; agg_sram_tb/modular/agg_lake_top.sv:1698
@@ -2393,10 +2393,10 @@
 2392 init 2390 2391 154
 2393 read 153 2391 1153
 2394 not 1 753
-2395 and 1 1118 2394 $techmap\mem_0.mem_0.$verific$i11$agg_sram_tb/modular/agg_lake_top.sv:1228$7214 ; agg_sram_tb/modular/agg_lake_top.sv:1228
-2396 ite 153 2395 2393 155 $techmap\mem_0.mem_0.$verific$mux_12$agg_sram_tb/modular/agg_lake_top.sv:1230$7216 ; agg_sram_tb/modular/agg_lake_top.sv:1230
-2397 ite 153 1102 2396 155 $techmap\mem_0.mem_0.$verific$mux_13$agg_sram_tb/modular/agg_lake_top.sv:1231$7217 ; agg_sram_tb/modular/agg_lake_top.sv:1231
-2398 next 153 155 2397 $techmap\mem_0.mem_0.$verific$dff_14$agg_sram_tb/modular/agg_lake_top.sv:1232$7218 ; agg_sram_tb/modular/agg_lake_top.sv:1232
+2395 and 1 1118 2394 $techmap\mem_0.mem_0.$verific$i11$agg_sram_tb/modular/agg_lake_top.sv:1228$7423 ; agg_sram_tb/modular/agg_lake_top.sv:1228
+2396 ite 153 2395 2393 155 $techmap\mem_0.mem_0.$verific$mux_12$agg_sram_tb/modular/agg_lake_top.sv:1230$7425 ; agg_sram_tb/modular/agg_lake_top.sv:1230
+2397 ite 153 1102 2396 155 $techmap\mem_0.mem_0.$verific$mux_13$agg_sram_tb/modular/agg_lake_top.sv:1231$7426 ; agg_sram_tb/modular/agg_lake_top.sv:1231
+2398 next 153 155 2397 $techmap\mem_0.mem_0.$verific$dff_14$agg_sram_tb/modular/agg_lake_top.sv:1232$7427 ; agg_sram_tb/modular/agg_lake_top.sv:1232
 2399 ite 4 1102 749 162 $techmap\config_seq.$verific$mux_22$agg_sram_tb/modular/agg_lake_top.sv:1293$3826 ; agg_sram_tb/modular/agg_lake_top.sv:1293
 2400 ite 4 33 158 2399 $techmap\config_seq.$verific$mux_23$agg_sram_tb/modular/agg_lake_top.sv:1293$3827 ; agg_sram_tb/modular/agg_lake_top.sv:1293
 2401 ite 4 161 158 2400 $techmap\config_seq.$auto$async2sync.cc:108:execute$8000
@@ -2438,104 +2438,104 @@
 2437 next 4 182 2436 $techmap\fifo_ctrl.back_rf.$verific$dff_64$agg_sram_tb/modular/agg_lake_top.sv:1136$7520 ; agg_sram_tb/modular/agg_lake_top.sv:1136
 2438 uext 38 206 3
 2439 uext 38 596 2
-2440 sll 38 2438 2439 $techmap\fifo_ctrl.front_rf.$verific$Decoder_34$agg_sram_tb/modular/agg_lake_top.sv:959$7393 ; agg_sram_tb/modular/agg_lake_top.sv:959
+2440 sll 38 2438 2439 $techmap\fifo_ctrl.front_rf.$verific$Decoder_34$agg_sram_tb/modular/agg_lake_top.sv:959$7373 ; agg_sram_tb/modular/agg_lake_top.sv:959
 2441 slice 1 2440 0 0
-2442 ite 6 2441 24 606 $techmap\fifo_ctrl.front_rf.$verific$mux_38$agg_sram_tb/modular/agg_lake_top.sv:959$7397 ; agg_sram_tb/modular/agg_lake_top.sv:959
+2442 ite 6 2441 24 606 $techmap\fifo_ctrl.front_rf.$verific$mux_38$agg_sram_tb/modular/agg_lake_top.sv:959$7377 ; agg_sram_tb/modular/agg_lake_top.sv:959
 2443 slice 1 2440 1 1
-2444 ite 6 2443 24 604 $techmap\fifo_ctrl.front_rf.$verific$mux_37$agg_sram_tb/modular/agg_lake_top.sv:959$7396 ; agg_sram_tb/modular/agg_lake_top.sv:959
+2444 ite 6 2443 24 604 $techmap\fifo_ctrl.front_rf.$verific$mux_37$agg_sram_tb/modular/agg_lake_top.sv:959$7376 ; agg_sram_tb/modular/agg_lake_top.sv:959
 2445 slice 1 2440 2 2
-2446 ite 6 2445 24 602 $techmap\fifo_ctrl.front_rf.$verific$mux_36$agg_sram_tb/modular/agg_lake_top.sv:959$7395 ; agg_sram_tb/modular/agg_lake_top.sv:959
+2446 ite 6 2445 24 602 $techmap\fifo_ctrl.front_rf.$verific$mux_36$agg_sram_tb/modular/agg_lake_top.sv:959$7375 ; agg_sram_tb/modular/agg_lake_top.sv:959
 2447 slice 1 2440 3 3
-2448 ite 6 2447 24 600 $techmap\fifo_ctrl.front_rf.$verific$mux_35$agg_sram_tb/modular/agg_lake_top.sv:959$7394 ; agg_sram_tb/modular/agg_lake_top.sv:959
+2448 ite 6 2447 24 600 $techmap\fifo_ctrl.front_rf.$verific$mux_35$agg_sram_tb/modular/agg_lake_top.sv:959$7374 ; agg_sram_tb/modular/agg_lake_top.sv:959
 2449 concat 19 2444 2442
 2450 concat 284 2446 2449
 2451 concat 153 2448 2450
 2452 slice 284 192 63 16
 2453 concat 153 2452 24
-2454 ite 153 590 2453 2451 $techmap\fifo_ctrl.front_rf.$verific$mux_39$agg_sram_tb/modular/agg_lake_top.sv:959$7398 ; agg_sram_tb/modular/agg_lake_top.sv:959
-2455 ite 153 592 2454 192 $techmap\fifo_ctrl.front_rf.$verific$mux_40$agg_sram_tb/modular/agg_lake_top.sv:960$7399 ; agg_sram_tb/modular/agg_lake_top.sv:960
-2456 ite 153 172 154 2455 $techmap\fifo_ctrl.front_rf.$verific$mux_41$agg_sram_tb/modular/agg_lake_top.sv:960$7400 ; agg_sram_tb/modular/agg_lake_top.sv:960
-2457 ite 153 16 2456 192 $techmap\fifo_ctrl.front_rf.$verific$mux_42$agg_sram_tb/modular/agg_lake_top.sv:961$7401 ; agg_sram_tb/modular/agg_lake_top.sv:961
-2458 ite 153 33 154 2457 $techmap\fifo_ctrl.front_rf.$verific$mux_43$agg_sram_tb/modular/agg_lake_top.sv:961$7402 ; agg_sram_tb/modular/agg_lake_top.sv:961
+2454 ite 153 590 2453 2451 $techmap\fifo_ctrl.front_rf.$verific$mux_39$agg_sram_tb/modular/agg_lake_top.sv:959$7378 ; agg_sram_tb/modular/agg_lake_top.sv:959
+2455 ite 153 592 2454 192 $techmap\fifo_ctrl.front_rf.$verific$mux_40$agg_sram_tb/modular/agg_lake_top.sv:960$7379 ; agg_sram_tb/modular/agg_lake_top.sv:960
+2456 ite 153 172 154 2455 $techmap\fifo_ctrl.front_rf.$verific$mux_41$agg_sram_tb/modular/agg_lake_top.sv:960$7380 ; agg_sram_tb/modular/agg_lake_top.sv:960
+2457 ite 153 16 2456 192 $techmap\fifo_ctrl.front_rf.$verific$mux_42$agg_sram_tb/modular/agg_lake_top.sv:961$7381 ; agg_sram_tb/modular/agg_lake_top.sv:961
+2458 ite 153 33 154 2457 $techmap\fifo_ctrl.front_rf.$verific$mux_43$agg_sram_tb/modular/agg_lake_top.sv:961$7382 ; agg_sram_tb/modular/agg_lake_top.sv:961
 2459 ite 153 191 154 2458 $techmap\fifo_ctrl.front_rf.$auto$async2sync.cc:108:execute$7964
-2460 next 153 189 2459 $techmap\fifo_ctrl.front_rf.$verific$dff_44$agg_sram_tb/modular/agg_lake_top.sv:961$7392 ; agg_sram_tb/modular/agg_lake_top.sv:961
+2460 next 153 189 2459 $techmap\fifo_ctrl.front_rf.$verific$dff_44$agg_sram_tb/modular/agg_lake_top.sv:961$7372 ; agg_sram_tb/modular/agg_lake_top.sv:961
 2461 uext 4 206 1
-2462 add 4 195 2461 $techmap\fifo_ctrl.front_rf.$verific$add_60$agg_sram_tb/modular/agg_lake_top.sv:999$7412 ; agg_sram_tb/modular/agg_lake_top.sv:999
-2463 ite 4 609 2462 195 $techmap\fifo_ctrl.front_rf.$verific$mux_61$agg_sram_tb/modular/agg_lake_top.sv:1000$7413 ; agg_sram_tb/modular/agg_lake_top.sv:1000
-2464 or 1 172 590 $techmap\fifo_ctrl.front_rf.$verific$i60$agg_sram_tb/modular/agg_lake_top.sv:995$7411 ; agg_sram_tb/modular/agg_lake_top.sv:995
-2465 ite 4 2464 158 2463 $techmap\fifo_ctrl.front_rf.$verific$mux_62$agg_sram_tb/modular/agg_lake_top.sv:1000$7414 ; agg_sram_tb/modular/agg_lake_top.sv:1000
-2466 ite 4 16 2465 195 $techmap\fifo_ctrl.front_rf.$verific$mux_63$agg_sram_tb/modular/agg_lake_top.sv:1001$7415 ; agg_sram_tb/modular/agg_lake_top.sv:1001
-2467 ite 4 33 158 2466 $techmap\fifo_ctrl.front_rf.$verific$mux_64$agg_sram_tb/modular/agg_lake_top.sv:1001$7416 ; agg_sram_tb/modular/agg_lake_top.sv:1001
+2462 add 4 195 2461 $techmap\fifo_ctrl.front_rf.$verific$add_60$agg_sram_tb/modular/agg_lake_top.sv:999$7392 ; agg_sram_tb/modular/agg_lake_top.sv:999
+2463 ite 4 609 2462 195 $techmap\fifo_ctrl.front_rf.$verific$mux_61$agg_sram_tb/modular/agg_lake_top.sv:1000$7393 ; agg_sram_tb/modular/agg_lake_top.sv:1000
+2464 or 1 172 590 $techmap\fifo_ctrl.front_rf.$verific$i60$agg_sram_tb/modular/agg_lake_top.sv:995$7391 ; agg_sram_tb/modular/agg_lake_top.sv:995
+2465 ite 4 2464 158 2463 $techmap\fifo_ctrl.front_rf.$verific$mux_62$agg_sram_tb/modular/agg_lake_top.sv:1000$7394 ; agg_sram_tb/modular/agg_lake_top.sv:1000
+2466 ite 4 16 2465 195 $techmap\fifo_ctrl.front_rf.$verific$mux_63$agg_sram_tb/modular/agg_lake_top.sv:1001$7395 ; agg_sram_tb/modular/agg_lake_top.sv:1001
+2467 ite 4 33 158 2466 $techmap\fifo_ctrl.front_rf.$verific$mux_64$agg_sram_tb/modular/agg_lake_top.sv:1001$7396 ; agg_sram_tb/modular/agg_lake_top.sv:1001
 2468 ite 4 191 158 2467 $techmap\fifo_ctrl.front_rf.$auto$async2sync.cc:108:execute$7972
-2469 next 4 193 2468 $techmap\fifo_ctrl.front_rf.$verific$dff_65$agg_sram_tb/modular/agg_lake_top.sv:1001$7410 ; agg_sram_tb/modular/agg_lake_top.sv:1001
+2469 next 4 193 2468 $techmap\fifo_ctrl.front_rf.$verific$dff_65$agg_sram_tb/modular/agg_lake_top.sv:1001$7390 ; agg_sram_tb/modular/agg_lake_top.sv:1001
 2470 uext 6 206 15
-2471 sub 6 203 2470 $techmap\fifo_ctrl.$verific$sub_100$agg_sram_tb/modular/agg_lake_top.sv:1454$6856 ; agg_sram_tb/modular/agg_lake_top.sv:1454
+2471 sub 6 203 2470 $techmap\fifo_ctrl.$verific$sub_100$agg_sram_tb/modular/agg_lake_top.sv:1454$6713 ; agg_sram_tb/modular/agg_lake_top.sv:1454
 2472 not 1 590
-2473 and 1 211 2472 $techmap\fifo_ctrl.$verific$i100$agg_sram_tb/modular/agg_lake_top.sv:1453$6855 ; agg_sram_tb/modular/agg_lake_top.sv:1453
-2474 ite 6 2473 2471 203 $techmap\fifo_ctrl.$verific$mux_101$agg_sram_tb/modular/agg_lake_top.sv:1455$6857 ; agg_sram_tb/modular/agg_lake_top.sv:1455
+2473 and 1 211 2472 $techmap\fifo_ctrl.$verific$i100$agg_sram_tb/modular/agg_lake_top.sv:1453$6712 ; agg_sram_tb/modular/agg_lake_top.sv:1453
+2474 ite 6 2473 2471 203 $techmap\fifo_ctrl.$verific$mux_101$agg_sram_tb/modular/agg_lake_top.sv:1455$6714 ; agg_sram_tb/modular/agg_lake_top.sv:1455
 2475 uext 6 206 15
-2476 add 6 203 2475 $techmap\fifo_ctrl.$verific$add_97$agg_sram_tb/modular/agg_lake_top.sv:1451$6853 ; agg_sram_tb/modular/agg_lake_top.sv:1451
-2477 and 1 214 590 $techmap\fifo_ctrl.$verific$i97$agg_sram_tb/modular/agg_lake_top.sv:1450$6852 ; agg_sram_tb/modular/agg_lake_top.sv:1450
-2478 ite 6 2477 2476 2474 $techmap\fifo_ctrl.$verific$mux_102$agg_sram_tb/modular/agg_lake_top.sv:1455$6858 ; agg_sram_tb/modular/agg_lake_top.sv:1455
-2479 ite 6 33 168 2478 $techmap\fifo_ctrl.$verific$mux_103$agg_sram_tb/modular/agg_lake_top.sv:1455$6859 ; agg_sram_tb/modular/agg_lake_top.sv:1455
-2480 ite 6 16 2479 203 $techmap\fifo_ctrl.$verific$mux_104$agg_sram_tb/modular/agg_lake_top.sv:1456$6860 ; agg_sram_tb/modular/agg_lake_top.sv:1456
+2476 add 6 203 2475 $techmap\fifo_ctrl.$verific$add_97$agg_sram_tb/modular/agg_lake_top.sv:1451$6710 ; agg_sram_tb/modular/agg_lake_top.sv:1451
+2477 and 1 214 590 $techmap\fifo_ctrl.$verific$i97$agg_sram_tb/modular/agg_lake_top.sv:1450$6709 ; agg_sram_tb/modular/agg_lake_top.sv:1450
+2478 ite 6 2477 2476 2474 $techmap\fifo_ctrl.$verific$mux_102$agg_sram_tb/modular/agg_lake_top.sv:1455$6715 ; agg_sram_tb/modular/agg_lake_top.sv:1455
+2479 ite 6 33 168 2478 $techmap\fifo_ctrl.$verific$mux_103$agg_sram_tb/modular/agg_lake_top.sv:1455$6716 ; agg_sram_tb/modular/agg_lake_top.sv:1455
+2480 ite 6 16 2479 203 $techmap\fifo_ctrl.$verific$mux_104$agg_sram_tb/modular/agg_lake_top.sv:1456$6717 ; agg_sram_tb/modular/agg_lake_top.sv:1456
 2481 ite 6 202 168 2480 $techmap\fifo_ctrl.$auto$async2sync.cc:108:execute$8008
-2482 next 6 200 2481 $techmap\fifo_ctrl.$verific$dff_105$agg_sram_tb/modular/agg_lake_top.sv:1456$6851 ; agg_sram_tb/modular/agg_lake_top.sv:1456
-2483 ite 1 33 172 731 $techmap\fifo_ctrl.$verific$i46$agg_sram_tb/modular/agg_lake_top.sv:1405$6812 ; agg_sram_tb/modular/agg_lake_top.sv:1405
-2484 ite 1 16 2483 211 $techmap\fifo_ctrl.$verific$i47$agg_sram_tb/modular/agg_lake_top.sv:1406$6813 ; agg_sram_tb/modular/agg_lake_top.sv:1406
+2482 next 6 200 2481 $techmap\fifo_ctrl.$verific$dff_105$agg_sram_tb/modular/agg_lake_top.sv:1456$6708 ; agg_sram_tb/modular/agg_lake_top.sv:1456
+2483 ite 1 33 172 731 $techmap\fifo_ctrl.$verific$i46$agg_sram_tb/modular/agg_lake_top.sv:1405$6669 ; agg_sram_tb/modular/agg_lake_top.sv:1405
+2484 ite 1 16 2483 211 $techmap\fifo_ctrl.$verific$i47$agg_sram_tb/modular/agg_lake_top.sv:1406$6670 ; agg_sram_tb/modular/agg_lake_top.sv:1406
 2485 ite 1 202 172 2484 $techmap\fifo_ctrl.$auto$async2sync.cc:108:execute$8032
-2486 next 1 209 2485 $techmap\fifo_ctrl.$verific$i48$agg_sram_tb/modular/agg_lake_top.sv:1406$7198 ; agg_sram_tb/modular/agg_lake_top.sv:1406
+2486 next 1 209 2485 $techmap\fifo_ctrl.$verific$i48$agg_sram_tb/modular/agg_lake_top.sv:1406$7055 ; agg_sram_tb/modular/agg_lake_top.sv:1406
 2487 uext 34 206 2
-2488 sub 34 230 2487 $techmap\fifo_ctrl.$verific$sub_132$agg_sram_tb/modular/agg_lake_top.sv:1500$6880 ; agg_sram_tb/modular/agg_lake_top.sv:1500
+2488 sub 34 230 2487 $techmap\fifo_ctrl.$verific$sub_132$agg_sram_tb/modular/agg_lake_top.sv:1500$6737 ; agg_sram_tb/modular/agg_lake_top.sv:1500
 2489 not 1 273
-2490 and 1 2489 270 $techmap\fifo_ctrl.$verific$i132$agg_sram_tb/modular/agg_lake_top.sv:1499$6879 ; agg_sram_tb/modular/agg_lake_top.sv:1499
-2491 ite 34 2490 2488 230 $techmap\fifo_ctrl.$verific$mux_133$agg_sram_tb/modular/agg_lake_top.sv:1501$6881 ; agg_sram_tb/modular/agg_lake_top.sv:1501
+2490 and 1 2489 270 $techmap\fifo_ctrl.$verific$i132$agg_sram_tb/modular/agg_lake_top.sv:1499$6736 ; agg_sram_tb/modular/agg_lake_top.sv:1499
+2491 ite 34 2490 2488 230 $techmap\fifo_ctrl.$verific$mux_133$agg_sram_tb/modular/agg_lake_top.sv:1501$6738 ; agg_sram_tb/modular/agg_lake_top.sv:1501
 2492 uext 34 206 2
-2493 add 34 230 2492 $techmap\fifo_ctrl.$verific$add_129$agg_sram_tb/modular/agg_lake_top.sv:1497$6877 ; agg_sram_tb/modular/agg_lake_top.sv:1497
+2493 add 34 230 2492 $techmap\fifo_ctrl.$verific$add_129$agg_sram_tb/modular/agg_lake_top.sv:1497$6734 ; agg_sram_tb/modular/agg_lake_top.sv:1497
 2494 not 1 270
-2495 and 1 273 2494 $techmap\fifo_ctrl.$verific$i129$agg_sram_tb/modular/agg_lake_top.sv:1496$6876 ; agg_sram_tb/modular/agg_lake_top.sv:1496
-2496 ite 34 2495 2493 2491 $techmap\fifo_ctrl.$verific$mux_134$agg_sram_tb/modular/agg_lake_top.sv:1501$6882 ; agg_sram_tb/modular/agg_lake_top.sv:1501
+2495 and 1 273 2494 $techmap\fifo_ctrl.$verific$i129$agg_sram_tb/modular/agg_lake_top.sv:1496$6733 ; agg_sram_tb/modular/agg_lake_top.sv:1496
+2496 ite 34 2495 2493 2491 $techmap\fifo_ctrl.$verific$mux_134$agg_sram_tb/modular/agg_lake_top.sv:1501$6739 ; agg_sram_tb/modular/agg_lake_top.sv:1501
 2497 concat 34 158 273
-2498 ite 34 224 2497 222 $techmap\fifo_ctrl.$verific$mux_126$agg_sram_tb/modular/agg_lake_top.sv:1494$6874 ; agg_sram_tb/modular/agg_lake_top.sv:1494
-2499 ite 34 211 2498 2496 $techmap\fifo_ctrl.$verific$mux_135$agg_sram_tb/modular/agg_lake_top.sv:1501$6883 ; agg_sram_tb/modular/agg_lake_top.sv:1501
-2500 ite 34 33 215 2499 $techmap\fifo_ctrl.$verific$mux_136$agg_sram_tb/modular/agg_lake_top.sv:1501$6884 ; agg_sram_tb/modular/agg_lake_top.sv:1501
-2501 ite 34 16 2500 230 $techmap\fifo_ctrl.$verific$mux_137$agg_sram_tb/modular/agg_lake_top.sv:1502$6885 ; agg_sram_tb/modular/agg_lake_top.sv:1502
+2498 ite 34 224 2497 222 $techmap\fifo_ctrl.$verific$mux_126$agg_sram_tb/modular/agg_lake_top.sv:1494$6731 ; agg_sram_tb/modular/agg_lake_top.sv:1494
+2499 ite 34 211 2498 2496 $techmap\fifo_ctrl.$verific$mux_135$agg_sram_tb/modular/agg_lake_top.sv:1501$6740 ; agg_sram_tb/modular/agg_lake_top.sv:1501
+2500 ite 34 33 215 2499 $techmap\fifo_ctrl.$verific$mux_136$agg_sram_tb/modular/agg_lake_top.sv:1501$6741 ; agg_sram_tb/modular/agg_lake_top.sv:1501
+2501 ite 34 16 2500 230 $techmap\fifo_ctrl.$verific$mux_137$agg_sram_tb/modular/agg_lake_top.sv:1502$6742 ; agg_sram_tb/modular/agg_lake_top.sv:1502
 2502 ite 34 202 215 2501 $techmap\fifo_ctrl.$auto$async2sync.cc:108:execute$8016
-2503 next 34 228 2502 $techmap\fifo_ctrl.$verific$dff_138$agg_sram_tb/modular/agg_lake_top.sv:1502$6873 ; agg_sram_tb/modular/agg_lake_top.sv:1502
+2503 next 34 228 2502 $techmap\fifo_ctrl.$verific$dff_138$agg_sram_tb/modular/agg_lake_top.sv:1502$6730 ; agg_sram_tb/modular/agg_lake_top.sv:1502
 2504 uext 34 206 2
-2505 sub 34 238 2504 $techmap\fifo_ctrl.$verific$sub_115$agg_sram_tb/modular/agg_lake_top.sv:1477$6867 ; agg_sram_tb/modular/agg_lake_top.sv:1477
+2505 sub 34 238 2504 $techmap\fifo_ctrl.$verific$sub_115$agg_sram_tb/modular/agg_lake_top.sv:1477$6724 ; agg_sram_tb/modular/agg_lake_top.sv:1477
 2506 not 1 257
-2507 and 1 2506 244 $techmap\fifo_ctrl.$verific$i115$agg_sram_tb/modular/agg_lake_top.sv:1476$6866 ; agg_sram_tb/modular/agg_lake_top.sv:1476
-2508 ite 34 2507 2505 238 $techmap\fifo_ctrl.$verific$mux_116$agg_sram_tb/modular/agg_lake_top.sv:1478$6868 ; agg_sram_tb/modular/agg_lake_top.sv:1478
+2507 and 1 2506 244 $techmap\fifo_ctrl.$verific$i115$agg_sram_tb/modular/agg_lake_top.sv:1476$6723 ; agg_sram_tb/modular/agg_lake_top.sv:1476
+2508 ite 34 2507 2505 238 $techmap\fifo_ctrl.$verific$mux_116$agg_sram_tb/modular/agg_lake_top.sv:1478$6725 ; agg_sram_tb/modular/agg_lake_top.sv:1478
 2509 uext 34 206 2
-2510 add 34 238 2509 $techmap\fifo_ctrl.$verific$add_112$agg_sram_tb/modular/agg_lake_top.sv:1474$6864 ; agg_sram_tb/modular/agg_lake_top.sv:1474
-2511 and 1 257 589 $techmap\fifo_ctrl.$verific$i112$agg_sram_tb/modular/agg_lake_top.sv:1473$6863 ; agg_sram_tb/modular/agg_lake_top.sv:1473
-2512 ite 34 2511 2510 2508 $techmap\fifo_ctrl.$verific$mux_117$agg_sram_tb/modular/agg_lake_top.sv:1478$6869 ; agg_sram_tb/modular/agg_lake_top.sv:1478
+2510 add 34 238 2509 $techmap\fifo_ctrl.$verific$add_112$agg_sram_tb/modular/agg_lake_top.sv:1474$6721 ; agg_sram_tb/modular/agg_lake_top.sv:1474
+2511 and 1 257 589 $techmap\fifo_ctrl.$verific$i112$agg_sram_tb/modular/agg_lake_top.sv:1473$6720 ; agg_sram_tb/modular/agg_lake_top.sv:1473
+2512 ite 34 2511 2510 2508 $techmap\fifo_ctrl.$verific$mux_117$agg_sram_tb/modular/agg_lake_top.sv:1478$6726 ; agg_sram_tb/modular/agg_lake_top.sv:1478
 2513 concat 34 158 257
-2514 ite 34 590 2513 2512 $techmap\fifo_ctrl.$verific$mux_118$agg_sram_tb/modular/agg_lake_top.sv:1478$6870 ; agg_sram_tb/modular/agg_lake_top.sv:1478
-2515 ite 34 33 215 2514 $techmap\fifo_ctrl.$verific$mux_119$agg_sram_tb/modular/agg_lake_top.sv:1478$6871 ; agg_sram_tb/modular/agg_lake_top.sv:1478
-2516 ite 34 16 2515 238 $techmap\fifo_ctrl.$verific$mux_120$agg_sram_tb/modular/agg_lake_top.sv:1479$6872 ; agg_sram_tb/modular/agg_lake_top.sv:1479
+2514 ite 34 590 2513 2512 $techmap\fifo_ctrl.$verific$mux_118$agg_sram_tb/modular/agg_lake_top.sv:1478$6727 ; agg_sram_tb/modular/agg_lake_top.sv:1478
+2515 ite 34 33 215 2514 $techmap\fifo_ctrl.$verific$mux_119$agg_sram_tb/modular/agg_lake_top.sv:1478$6728 ; agg_sram_tb/modular/agg_lake_top.sv:1478
+2516 ite 34 16 2515 238 $techmap\fifo_ctrl.$verific$mux_120$agg_sram_tb/modular/agg_lake_top.sv:1479$6729 ; agg_sram_tb/modular/agg_lake_top.sv:1479
 2517 ite 34 202 215 2516 $techmap\fifo_ctrl.$auto$async2sync.cc:108:execute$8012
-2518 next 34 236 2517 $techmap\fifo_ctrl.$verific$dff_121$agg_sram_tb/modular/agg_lake_top.sv:1479$6861 ; agg_sram_tb/modular/agg_lake_top.sv:1479
+2518 next 34 236 2517 $techmap\fifo_ctrl.$verific$dff_121$agg_sram_tb/modular/agg_lake_top.sv:1479$6718 ; agg_sram_tb/modular/agg_lake_top.sv:1479
 2519 uext 34 206 2
-2520 sub 34 261 2519 $techmap\fifo_ctrl.front_rf.$verific$sub_23$agg_sram_tb/modular/agg_lake_top.sv:939$7385 ; agg_sram_tb/modular/agg_lake_top.sv:939
+2520 sub 34 261 2519 $techmap\fifo_ctrl.front_rf.$verific$sub_23$agg_sram_tb/modular/agg_lake_top.sv:939$7365 ; agg_sram_tb/modular/agg_lake_top.sv:939
 2521 not 1 592
-2522 and 1 2521 609 $techmap\fifo_ctrl.front_rf.$verific$i23$agg_sram_tb/modular/agg_lake_top.sv:938$7384 ; agg_sram_tb/modular/agg_lake_top.sv:938
-2523 ite 34 2522 2520 261 $techmap\fifo_ctrl.front_rf.$verific$mux_24$agg_sram_tb/modular/agg_lake_top.sv:940$7386 ; agg_sram_tb/modular/agg_lake_top.sv:940
+2522 and 1 2521 609 $techmap\fifo_ctrl.front_rf.$verific$i23$agg_sram_tb/modular/agg_lake_top.sv:938$7364 ; agg_sram_tb/modular/agg_lake_top.sv:938
+2523 ite 34 2522 2520 261 $techmap\fifo_ctrl.front_rf.$verific$mux_24$agg_sram_tb/modular/agg_lake_top.sv:940$7366 ; agg_sram_tb/modular/agg_lake_top.sv:940
 2524 uext 34 206 2
-2525 add 34 261 2524 $techmap\fifo_ctrl.front_rf.$verific$add_20$agg_sram_tb/modular/agg_lake_top.sv:936$7382 ; agg_sram_tb/modular/agg_lake_top.sv:936
+2525 add 34 261 2524 $techmap\fifo_ctrl.front_rf.$verific$add_20$agg_sram_tb/modular/agg_lake_top.sv:936$7362 ; agg_sram_tb/modular/agg_lake_top.sv:936
 2526 not 1 609
-2527 and 1 592 2526 $techmap\fifo_ctrl.front_rf.$verific$i20$agg_sram_tb/modular/agg_lake_top.sv:935$7381 ; agg_sram_tb/modular/agg_lake_top.sv:935
-2528 ite 34 2527 2525 2523 $techmap\fifo_ctrl.front_rf.$verific$mux_25$agg_sram_tb/modular/agg_lake_top.sv:940$7387 ; agg_sram_tb/modular/agg_lake_top.sv:940
-2529 ite 34 590 2513 2528 $techmap\fifo_ctrl.front_rf.$verific$mux_26$agg_sram_tb/modular/agg_lake_top.sv:940$7388 ; agg_sram_tb/modular/agg_lake_top.sv:940
+2527 and 1 592 2526 $techmap\fifo_ctrl.front_rf.$verific$i20$agg_sram_tb/modular/agg_lake_top.sv:935$7361 ; agg_sram_tb/modular/agg_lake_top.sv:935
+2528 ite 34 2527 2525 2523 $techmap\fifo_ctrl.front_rf.$verific$mux_25$agg_sram_tb/modular/agg_lake_top.sv:940$7367 ; agg_sram_tb/modular/agg_lake_top.sv:940
+2529 ite 34 590 2513 2528 $techmap\fifo_ctrl.front_rf.$verific$mux_26$agg_sram_tb/modular/agg_lake_top.sv:940$7368 ; agg_sram_tb/modular/agg_lake_top.sv:940
 2530 redor 1 215
 2531 not 1 2530
-2532 ite 34 2531 2513 215 $techmap\fifo_ctrl.front_rf.$verific$mux_16$agg_sram_tb/modular/agg_lake_top.sv:927$7379 ; agg_sram_tb/modular/agg_lake_top.sv:927
-2533 ite 34 172 2532 2529 $techmap\fifo_ctrl.front_rf.$verific$mux_27$agg_sram_tb/modular/agg_lake_top.sv:940$7389 ; agg_sram_tb/modular/agg_lake_top.sv:940
-2534 ite 34 16 2533 261 $techmap\fifo_ctrl.front_rf.$verific$mux_28$agg_sram_tb/modular/agg_lake_top.sv:941$7390 ; agg_sram_tb/modular/agg_lake_top.sv:941
-2535 ite 34 33 215 2534 $techmap\fifo_ctrl.front_rf.$verific$mux_29$agg_sram_tb/modular/agg_lake_top.sv:941$7391 ; agg_sram_tb/modular/agg_lake_top.sv:941
+2532 ite 34 2531 2513 215 $techmap\fifo_ctrl.front_rf.$verific$mux_16$agg_sram_tb/modular/agg_lake_top.sv:927$7359 ; agg_sram_tb/modular/agg_lake_top.sv:927
+2533 ite 34 172 2532 2529 $techmap\fifo_ctrl.front_rf.$verific$mux_27$agg_sram_tb/modular/agg_lake_top.sv:940$7369 ; agg_sram_tb/modular/agg_lake_top.sv:940
+2534 ite 34 16 2533 261 $techmap\fifo_ctrl.front_rf.$verific$mux_28$agg_sram_tb/modular/agg_lake_top.sv:941$7370 ; agg_sram_tb/modular/agg_lake_top.sv:941
+2535 ite 34 33 215 2534 $techmap\fifo_ctrl.front_rf.$verific$mux_29$agg_sram_tb/modular/agg_lake_top.sv:941$7371 ; agg_sram_tb/modular/agg_lake_top.sv:941
 2536 ite 34 191 215 2535 $techmap\fifo_ctrl.front_rf.$auto$async2sync.cc:108:execute$7960
-2537 next 34 259 2536 $techmap\fifo_ctrl.front_rf.$verific$dff_30$agg_sram_tb/modular/agg_lake_top.sv:941$7427 ; agg_sram_tb/modular/agg_lake_top.sv:941
+2537 next 34 259 2536 $techmap\fifo_ctrl.front_rf.$verific$dff_30$agg_sram_tb/modular/agg_lake_top.sv:941$7407 ; agg_sram_tb/modular/agg_lake_top.sv:941
 2538 uext 34 206 2
 2539 sub 34 277 2538 $techmap\fifo_ctrl.back_rf.$verific$sub_22$agg_sram_tb/modular/agg_lake_top.sv:1074$7495 ; agg_sram_tb/modular/agg_lake_top.sv:1074
 2540 not 1 529
@@ -2603,15 +2603,15 @@
 2602 ite 4 180 158 2601 $techmap\fifo_ctrl.back_rf.$auto$async2sync.cc:108:execute$7984
 2603 next 4 531 2602 $techmap\fifo_ctrl.back_rf.$verific$dff_54$agg_sram_tb/modular/agg_lake_top.sv:1119$7513 ; agg_sram_tb/modular/agg_lake_top.sv:1119
 2604 uext 4 206 1
-2605 add 4 596 2604 $techmap\fifo_ctrl.front_rf.$verific$add_49$agg_sram_tb/modular/agg_lake_top.sv:982$7404 ; agg_sram_tb/modular/agg_lake_top.sv:982
-2606 ite 4 592 2605 596 $techmap\fifo_ctrl.front_rf.$verific$mux_50$agg_sram_tb/modular/agg_lake_top.sv:983$7405 ; agg_sram_tb/modular/agg_lake_top.sv:983
+2605 add 4 596 2604 $techmap\fifo_ctrl.front_rf.$verific$add_49$agg_sram_tb/modular/agg_lake_top.sv:982$7384 ; agg_sram_tb/modular/agg_lake_top.sv:982
+2606 ite 4 592 2605 596 $techmap\fifo_ctrl.front_rf.$verific$mux_50$agg_sram_tb/modular/agg_lake_top.sv:983$7385 ; agg_sram_tb/modular/agg_lake_top.sv:983
 2607 concat 4 172 257
-2608 ite 4 590 2607 2606 $techmap\fifo_ctrl.front_rf.$verific$mux_51$agg_sram_tb/modular/agg_lake_top.sv:983$7406 ; agg_sram_tb/modular/agg_lake_top.sv:983
-2609 ite 4 172 158 2608 $techmap\fifo_ctrl.front_rf.$verific$mux_52$agg_sram_tb/modular/agg_lake_top.sv:983$7407 ; agg_sram_tb/modular/agg_lake_top.sv:983
-2610 ite 4 16 2609 596 $techmap\fifo_ctrl.front_rf.$verific$mux_53$agg_sram_tb/modular/agg_lake_top.sv:984$7408 ; agg_sram_tb/modular/agg_lake_top.sv:984
-2611 ite 4 33 158 2610 $techmap\fifo_ctrl.front_rf.$verific$mux_54$agg_sram_tb/modular/agg_lake_top.sv:984$7409 ; agg_sram_tb/modular/agg_lake_top.sv:984
+2608 ite 4 590 2607 2606 $techmap\fifo_ctrl.front_rf.$verific$mux_51$agg_sram_tb/modular/agg_lake_top.sv:983$7386 ; agg_sram_tb/modular/agg_lake_top.sv:983
+2609 ite 4 172 158 2608 $techmap\fifo_ctrl.front_rf.$verific$mux_52$agg_sram_tb/modular/agg_lake_top.sv:983$7387 ; agg_sram_tb/modular/agg_lake_top.sv:983
+2610 ite 4 16 2609 596 $techmap\fifo_ctrl.front_rf.$verific$mux_53$agg_sram_tb/modular/agg_lake_top.sv:984$7388 ; agg_sram_tb/modular/agg_lake_top.sv:984
+2611 ite 4 33 158 2610 $techmap\fifo_ctrl.front_rf.$verific$mux_54$agg_sram_tb/modular/agg_lake_top.sv:984$7389 ; agg_sram_tb/modular/agg_lake_top.sv:984
 2612 ite 4 191 158 2611 $techmap\fifo_ctrl.front_rf.$auto$async2sync.cc:108:execute$7968
-2613 next 4 594 2612 $techmap\fifo_ctrl.front_rf.$verific$dff_55$agg_sram_tb/modular/agg_lake_top.sv:984$7403 ; agg_sram_tb/modular/agg_lake_top.sv:984
+2613 next 4 594 2612 $techmap\fifo_ctrl.front_rf.$verific$dff_55$agg_sram_tb/modular/agg_lake_top.sv:984$7383 ; agg_sram_tb/modular/agg_lake_top.sv:984
 2614 ite 1 2040 2069 649 $techmap\loops_stencil_valid.$verific$i257$agg_sram_tb/modular/agg_lake_top.sv:677$3232 ; agg_sram_tb/modular/agg_lake_top.sv:677
 2615 ite 1 2196 172 2614 $techmap\loops_stencil_valid.$verific$i258$agg_sram_tb/modular/agg_lake_top.sv:677$3233 ; agg_sram_tb/modular/agg_lake_top.sv:677
 2616 ite 1 33 172 2615 $techmap\loops_stencil_valid.$verific$i259$agg_sram_tb/modular/agg_lake_top.sv:677$3234 ; agg_sram_tb/modular/agg_lake_top.sv:677
@@ -2648,14 +2648,14 @@
 2647 ite 1 16 2646 702 $techmap\loops_stencil_valid.$verific$i668$agg_sram_tb/modular/agg_lake_top.sv:874$3607 ; agg_sram_tb/modular/agg_lake_top.sv:874
 2648 ite 1 648 172 2647 $techmap\loops_stencil_valid.$auto$async2sync.cc:108:execute$7956
 2649 next 1 700 2648 $techmap\loops_stencil_valid.$verific$i669$agg_sram_tb/modular/agg_lake_top.sv:874$3603 ; agg_sram_tb/modular/agg_lake_top.sv:874
-2650 ite 1 737 172 735 $techmap\fifo_ctrl.$verific$i84$agg_sram_tb/modular/agg_lake_top.sv:1438$6843 ; agg_sram_tb/modular/agg_lake_top.sv:1438
+2650 ite 1 737 172 735 $techmap\fifo_ctrl.$verific$i84$agg_sram_tb/modular/agg_lake_top.sv:1438$6700 ; agg_sram_tb/modular/agg_lake_top.sv:1438
 2651 not 1 737
-2652 and 1 590 2651 $techmap\fifo_ctrl.$verific$i81$agg_sram_tb/modular/agg_lake_top.sv:1432$6841 ; agg_sram_tb/modular/agg_lake_top.sv:1432
-2653 ite 1 2652 206 2650 $techmap\fifo_ctrl.$verific$i86$agg_sram_tb/modular/agg_lake_top.sv:1438$6845 ; agg_sram_tb/modular/agg_lake_top.sv:1438
-2654 ite 1 33 172 2653 $techmap\fifo_ctrl.$verific$i88$agg_sram_tb/modular/agg_lake_top.sv:1438$6847 ; agg_sram_tb/modular/agg_lake_top.sv:1438
-2655 ite 1 16 2654 735 $techmap\fifo_ctrl.$verific$i90$agg_sram_tb/modular/agg_lake_top.sv:1439$6849 ; agg_sram_tb/modular/agg_lake_top.sv:1439
+2652 and 1 590 2651 $techmap\fifo_ctrl.$verific$i81$agg_sram_tb/modular/agg_lake_top.sv:1432$6698 ; agg_sram_tb/modular/agg_lake_top.sv:1432
+2653 ite 1 2652 206 2650 $techmap\fifo_ctrl.$verific$i86$agg_sram_tb/modular/agg_lake_top.sv:1438$6702 ; agg_sram_tb/modular/agg_lake_top.sv:1438
+2654 ite 1 33 172 2653 $techmap\fifo_ctrl.$verific$i88$agg_sram_tb/modular/agg_lake_top.sv:1438$6704 ; agg_sram_tb/modular/agg_lake_top.sv:1438
+2655 ite 1 16 2654 735 $techmap\fifo_ctrl.$verific$i90$agg_sram_tb/modular/agg_lake_top.sv:1439$6706 ; agg_sram_tb/modular/agg_lake_top.sv:1439
 2656 ite 1 202 172 2655 $techmap\fifo_ctrl.$auto$async2sync.cc:108:execute$8036
-2657 next 1 733 2656 $techmap\fifo_ctrl.$verific$i92$agg_sram_tb/modular/agg_lake_top.sv:1439$6850 ; agg_sram_tb/modular/agg_lake_top.sv:1439
+2657 next 1 733 2656 $techmap\fifo_ctrl.$verific$i92$agg_sram_tb/modular/agg_lake_top.sv:1439$6707 ; agg_sram_tb/modular/agg_lake_top.sv:1439
 2658 uext 4 206 1
 2659 add 4 749 2658 $techmap\config_seq.$verific$add_14$agg_sram_tb/modular/agg_lake_top.sv:1279$3821 ; agg_sram_tb/modular/agg_lake_top.sv:1279
 2660 or 1 23 22 $techmap\config_seq.$verific$i12$agg_sram_tb/modular/agg_lake_top.sv:1278$3818 ; agg_sram_tb/modular/agg_lake_top.sv:1278
@@ -2666,11 +2666,11 @@
 2665 ite 4 33 158 2664 $techmap\config_seq.$verific$mux_17$agg_sram_tb/modular/agg_lake_top.sv:1281$3824 ; agg_sram_tb/modular/agg_lake_top.sv:1281
 2666 ite 4 161 158 2665 $techmap\config_seq.$auto$async2sync.cc:108:execute$7996
 2667 next 4 747 2666 $techmap\config_seq.$verific$dff_18$agg_sram_tb/modular/agg_lake_top.sv:1281$3848 ; agg_sram_tb/modular/agg_lake_top.sv:1281
-2668 ite 153 2652 788 791 $techmap\fifo_ctrl.$verific$mux_84$agg_sram_tb/modular/agg_lake_top.sv:1438$6844 ; agg_sram_tb/modular/agg_lake_top.sv:1438
-2669 ite 153 33 154 2668 $techmap\fifo_ctrl.$verific$mux_86$agg_sram_tb/modular/agg_lake_top.sv:1438$6846 ; agg_sram_tb/modular/agg_lake_top.sv:1438
-2670 ite 153 16 2669 791 $techmap\fifo_ctrl.$verific$mux_88$agg_sram_tb/modular/agg_lake_top.sv:1439$6848 ; agg_sram_tb/modular/agg_lake_top.sv:1439
+2668 ite 153 2652 788 791 $techmap\fifo_ctrl.$verific$mux_84$agg_sram_tb/modular/agg_lake_top.sv:1438$6701 ; agg_sram_tb/modular/agg_lake_top.sv:1438
+2669 ite 153 33 154 2668 $techmap\fifo_ctrl.$verific$mux_86$agg_sram_tb/modular/agg_lake_top.sv:1438$6703 ; agg_sram_tb/modular/agg_lake_top.sv:1438
+2670 ite 153 16 2669 791 $techmap\fifo_ctrl.$verific$mux_88$agg_sram_tb/modular/agg_lake_top.sv:1439$6705 ; agg_sram_tb/modular/agg_lake_top.sv:1439
 2671 ite 153 202 154 2670 $techmap\fifo_ctrl.$auto$async2sync.cc:108:execute$8028
-2672 next 153 789 2671 $techmap\fifo_ctrl.$verific$dff_90$agg_sram_tb/modular/agg_lake_top.sv:1439$6814 ; agg_sram_tb/modular/agg_lake_top.sv:1439
+2672 next 153 789 2671 $techmap\fifo_ctrl.$verific$dff_90$agg_sram_tb/modular/agg_lake_top.sv:1439$6671 ; agg_sram_tb/modular/agg_lake_top.sv:1439
 2673 ite 6 33 168 24 $techmap\sram_ctrl.$verific$mux_17$agg_sram_tb/modular/agg_lake_top.sv:1673$6431 ; agg_sram_tb/modular/agg_lake_top.sv:1673
 2674 ite 6 16 2673 796 $techmap\sram_ctrl.$verific$mux_18$agg_sram_tb/modular/agg_lake_top.sv:1674$6432 ; agg_sram_tb/modular/agg_lake_top.sv:1674
 2675 ite 6 288 168 2674 $techmap\sram_ctrl.$auto$async2sync.cc:108:execute$8044
@@ -2694,19 +2694,19 @@
 2693 ite 284 161 1087 2692 $techmap\config_seq.$auto$async2sync.cc:108:execute$8004
 2694 next 284 1088 2693 $techmap\config_seq.$verific$dff_39$agg_sram_tb/modular/agg_lake_top.sv:1309$3828 ; agg_sram_tb/modular/agg_lake_top.sv:1309
 2695 uext 9 206 8
-2696 add 9 1128 2695 $techmap\fifo_ctrl.$verific$add_172$agg_sram_tb/modular/agg_lake_top.sv:1558$6903 ; agg_sram_tb/modular/agg_lake_top.sv:1558
-2697 ite 9 731 2696 1128 $techmap\fifo_ctrl.$verific$mux_173$agg_sram_tb/modular/agg_lake_top.sv:1559$6904 ; agg_sram_tb/modular/agg_lake_top.sv:1559
-2698 ite 9 33 1125 2697 $techmap\fifo_ctrl.$verific$mux_174$agg_sram_tb/modular/agg_lake_top.sv:1559$6905 ; agg_sram_tb/modular/agg_lake_top.sv:1559
-2699 ite 9 16 2698 1128 $techmap\fifo_ctrl.$verific$mux_175$agg_sram_tb/modular/agg_lake_top.sv:1560$6906 ; agg_sram_tb/modular/agg_lake_top.sv:1560
+2696 add 9 1128 2695 $techmap\fifo_ctrl.$verific$add_172$agg_sram_tb/modular/agg_lake_top.sv:1558$6760 ; agg_sram_tb/modular/agg_lake_top.sv:1558
+2697 ite 9 731 2696 1128 $techmap\fifo_ctrl.$verific$mux_173$agg_sram_tb/modular/agg_lake_top.sv:1559$6761 ; agg_sram_tb/modular/agg_lake_top.sv:1559
+2698 ite 9 33 1125 2697 $techmap\fifo_ctrl.$verific$mux_174$agg_sram_tb/modular/agg_lake_top.sv:1559$6762 ; agg_sram_tb/modular/agg_lake_top.sv:1559
+2699 ite 9 16 2698 1128 $techmap\fifo_ctrl.$verific$mux_175$agg_sram_tb/modular/agg_lake_top.sv:1560$6763 ; agg_sram_tb/modular/agg_lake_top.sv:1560
 2700 ite 9 202 1125 2699 $techmap\fifo_ctrl.$auto$async2sync.cc:108:execute$8024
-2701 next 9 1126 2700 $techmap\fifo_ctrl.$verific$dff_176$agg_sram_tb/modular/agg_lake_top.sv:1560$6902 ; agg_sram_tb/modular/agg_lake_top.sv:1560
+2701 next 9 1126 2700 $techmap\fifo_ctrl.$verific$dff_176$agg_sram_tb/modular/agg_lake_top.sv:1560$6759 ; agg_sram_tb/modular/agg_lake_top.sv:1560
 2702 uext 9 206 8
-2703 add 9 1131 2702 $techmap\fifo_ctrl.$verific$add_164$agg_sram_tb/modular/agg_lake_top.sv:1544$6898 ; agg_sram_tb/modular/agg_lake_top.sv:1544
-2704 ite 9 737 2703 1131 $techmap\fifo_ctrl.$verific$mux_165$agg_sram_tb/modular/agg_lake_top.sv:1545$6899 ; agg_sram_tb/modular/agg_lake_top.sv:1545
-2705 ite 9 33 1125 2704 $techmap\fifo_ctrl.$verific$mux_166$agg_sram_tb/modular/agg_lake_top.sv:1545$6900 ; agg_sram_tb/modular/agg_lake_top.sv:1545
-2706 ite 9 16 2705 1131 $techmap\fifo_ctrl.$verific$mux_167$agg_sram_tb/modular/agg_lake_top.sv:1546$6901 ; agg_sram_tb/modular/agg_lake_top.sv:1546
+2703 add 9 1131 2702 $techmap\fifo_ctrl.$verific$add_164$agg_sram_tb/modular/agg_lake_top.sv:1544$6755 ; agg_sram_tb/modular/agg_lake_top.sv:1544
+2704 ite 9 737 2703 1131 $techmap\fifo_ctrl.$verific$mux_165$agg_sram_tb/modular/agg_lake_top.sv:1545$6756 ; agg_sram_tb/modular/agg_lake_top.sv:1545
+2705 ite 9 33 1125 2704 $techmap\fifo_ctrl.$verific$mux_166$agg_sram_tb/modular/agg_lake_top.sv:1545$6757 ; agg_sram_tb/modular/agg_lake_top.sv:1545
+2706 ite 9 16 2705 1131 $techmap\fifo_ctrl.$verific$mux_167$agg_sram_tb/modular/agg_lake_top.sv:1546$6758 ; agg_sram_tb/modular/agg_lake_top.sv:1546
 2707 ite 9 202 1125 2706 $techmap\fifo_ctrl.$auto$async2sync.cc:108:execute$8020
-2708 next 9 1129 2707 $techmap\fifo_ctrl.$verific$dff_168$agg_sram_tb/modular/agg_lake_top.sv:1546$6889 ; agg_sram_tb/modular/agg_lake_top.sv:1546
+2708 next 9 1129 2707 $techmap\fifo_ctrl.$verific$dff_168$agg_sram_tb/modular/agg_lake_top.sv:1546$6746 ; agg_sram_tb/modular/agg_lake_top.sv:1546
 2709 slice 1 2078 0 0
 2710 ite 1 2035 2709 1553 $techmap\loops_stencil_valid.$verific$i87$agg_sram_tb/modular/agg_lake_top.sv:611$3074 ; agg_sram_tb/modular/agg_lake_top.sv:611
 2711 ite 1 2191 172 2710 $techmap\loops_stencil_valid.$verific$i103$agg_sram_tb/modular/agg_lake_top.sv:611$3090 ; agg_sram_tb/modular/agg_lake_top.sv:611
@@ -3299,8 +3299,8 @@
 3298 ite 1 16 3297 1838 $techmap\loops_stencil_valid.$verific$i630$agg_sram_tb/modular/agg_lake_top.sv:857$3572 ; agg_sram_tb/modular/agg_lake_top.sv:857
 3299 ite 1 648 172 3298 $techmap\loops_stencil_valid.$auto$async2sync.cc:108:execute$7892
 3300 next 1 1836 3299 $techmap\loops_stencil_valid.$verific$i646$agg_sram_tb/modular/agg_lake_top.sv:857$3515 ; agg_sram_tb/modular/agg_lake_top.sv:857
-3301 and 1 1118 753 $techmap\mem_0.mem_0.$verific$i5$agg_sram_tb/modular/agg_lake_top.sv:1220$7210 ; agg_sram_tb/modular/agg_lake_top.sv:1220
-3302 ite 1 1102 3301 172 $techmap\mem_0.mem_0.$verific$i8$agg_sram_tb/modular/agg_lake_top.sv:1223$7212 ; agg_sram_tb/modular/agg_lake_top.sv:1223
+3301 and 1 1118 753 $techmap\mem_0.mem_0.$verific$i5$agg_sram_tb/modular/agg_lake_top.sv:1220$7419 ; agg_sram_tb/modular/agg_lake_top.sv:1220
+3302 ite 1 1102 3301 172 $techmap\mem_0.mem_0.$verific$i8$agg_sram_tb/modular/agg_lake_top.sv:1223$7421 ; agg_sram_tb/modular/agg_lake_top.sv:1223
 3303 concat 4 3302 3302
 3304 concat 34 3302 3303
 3305 concat 38 3302 3304
