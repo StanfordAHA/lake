@@ -1171,21 +1171,30 @@ if __name__ == "__main__":
     use_sram_stub = True
     fifo_mode = True
     mem_width = 64
+    # no stencil valid needed for formal problems
+    stencil_valid = False
     lake_dut = LakeTop(mem_width=mem_width,
                        sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,
                        fifo_mode=fifo_mode,
                        add_clk_enable=True,
-                       add_flush=True)
-    # print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
+                       add_flush=True,
+                       stencil_valid=stencil_valid)
+
+    print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
+
+    # cuts for modular formal solving
     cut_generator(lake_dut["strg_ub"]["agg_only"])
     cut_generator(lake_dut["strg_ub"]["agg_sram_shared"])
     cut_generator(lake_dut["strg_ub"]["sram_only"])
 
-    # config regs
+    # config regs pass (needs to be after generator cuts)
     lift_config_reg(lake_dut.internal_generator)
+    # extract formal annotation after config regs have been lifted up
     extract_formal_annotation(lake_dut, "lake_top_annotation.txt")
+
+    # generate verilog
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
