@@ -43,14 +43,9 @@ module LakeTop (
   input logic [1:0] [15:0] data_out_top,
   input logic [15:0] fifo_ctrl_fifo_depth,
   input logic flush,
-  input logic [3:0] loops_stencil_valid_dimensionality,
-  input logic [5:0] [15:0] loops_stencil_valid_ranges,
   input logic [1:0] mode,
   input logic [1:0] ren_in,
   input logic rst_n,
-  input logic stencil_valid_sched_gen_enable,
-  input logic [15:0] stencil_valid_sched_gen_sched_addr_gen_starting_addr,
-  input logic [5:0] [15:0] stencil_valid_sched_gen_sched_addr_gen_strides,
   input logic strg_ub_agg_sram_shared_agg_read_sched_gen_0_enable,
   input logic [15:0] strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_starting_addr,
   input logic [5:0] [15:0] strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_strides,
@@ -86,7 +81,6 @@ module LakeTop (
   output logic empty,
   output logic full,
   output logic sram_ready_out,
-  output logic stencil_valid,
   output logic [1:0] valid_out
 );
 
@@ -118,8 +112,6 @@ logic fifo_ren_to_mem;
 logic fifo_valid_out;
 logic fifo_wen_to_mem;
 logic gclk;
-logic [2:0] loops_stencil_valid_mux_sel_out;
-logic loops_stencil_valid_restart;
 logic mem_0_clk;
 logic mem_0_clk_en;
 logic [8:0] mem_0_mem_addr_in_bank;
@@ -154,7 +146,6 @@ logic [0:0][3:0][15:0] sram_data_to_mem;
 logic sram_ren_to_mem;
 logic sram_valid_out;
 logic sram_wen_to_mem;
-logic stencil_valid_internal;
 logic [1:0] strg_ub_accessor_output_top;
 logic [1:0][3:0][15:0] strg_ub_agg_data_out_top;
 logic strg_ub_clk;
@@ -178,7 +169,6 @@ always_ff @(posedge clk, negedge rst_n) begin
     else cycle_count <= cycle_count + 16'h1;
   end
 end
-assign stencil_valid = stencil_valid_internal;
 assign config_data_out[0] = 32'(config_data_out_shrt[0]);
 assign config_data_out[1] = 32'(config_data_out_shrt[1]);
 assign gclk = clk & tile_en;
@@ -240,37 +230,8 @@ assign mode_mask[0] = |mode;
 assign mode_mask[1] = 1'h0;
 assign chain_accessor_output = accessor_output | mode_mask;
 assign strg_ub_agg_data_out_top = agg_data_out_top;
-assign strg_ub_accessor_output_top = accessor_output_top;
 assign strg_ub_data_out_top = data_out_top;
-for_loop_6_16 #(
-  .CONFIG_WIDTH(5'h10),
-  .ITERATOR_SUPPORT(4'h6))
-loops_stencil_valid (
-  .clk(clk),
-  .clk_en(clk_en),
-  .dimensionality(loops_stencil_valid_dimensionality),
-  .flush(flush),
-  .ranges(loops_stencil_valid_ranges),
-  .rst_n(rst_n),
-  .step(stencil_valid_internal),
-  .mux_sel_out(loops_stencil_valid_mux_sel_out),
-  .restart(loops_stencil_valid_restart)
-);
-
-sched_gen_6_16 stencil_valid_sched_gen (
-  .clk(clk),
-  .clk_en(clk_en),
-  .cycle_count(cycle_count),
-  .enable(stencil_valid_sched_gen_enable),
-  .finished(loops_stencil_valid_restart),
-  .flush(flush),
-  .mux_sel(loops_stencil_valid_mux_sel_out),
-  .rst_n(rst_n),
-  .sched_addr_gen_starting_addr(stencil_valid_sched_gen_sched_addr_gen_starting_addr),
-  .sched_addr_gen_strides(stencil_valid_sched_gen_sched_addr_gen_strides),
-  .valid_output(stencil_valid_internal)
-);
-
+assign strg_ub_accessor_output_top = accessor_output_top;
 storage_config_seq config_seq (
   .clk(config_seq_clk),
   .clk_en(config_seq_clk_en),
