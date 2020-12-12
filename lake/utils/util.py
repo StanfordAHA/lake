@@ -130,8 +130,31 @@ def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
 
     # print just the mappings
     with open(f"mapping_{filepath}", "w+") as fi:
+        move_regs = {}
+
+        for key in pairings.keys():
+            maps = pairings[key]["maps"]
+            if "agg_only" in key:
+                for reg in maps:
+                    if "read" in reg:
+                        move_regs[reg] = {"orig_key": key, "keyword": "agg_sram_shared", "index": pairings[key]["index"]}
+            elif "tb_only" in key:
+                for reg in maps:
+                    if "write" in reg:
+                        move_regs[reg] = {"orig_key": key, "keyword": "sram_tb_shared", "index": pairings[key]["index"]}
+
+        for reg_key in move_regs.keys():
+            reg = move_regs[reg_key]
+            for pairing_key in pairings.keys():
+                pairing = pairings[pairing_key]
+                if reg["keyword"] == pairing["keyword"] and reg["index"] == pairing["index"]:
+                    pairings[reg["orig_key"]]["maps"].remove(reg_key)
+                    pairing["maps"].append(reg_key)
+
         for key in pairings.keys():
             pairings[key] = pairings[key]["maps"]
+
+
         print(pairings, file=fi)
 
 
