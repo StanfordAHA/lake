@@ -1179,6 +1179,7 @@ class LakeTop(Generator):
 
 
 def get_formal_module(lake_dut, module):
+    need_config_lift = True
     # cuts for modular formal solving
     if module == "agg":
         cut_generator(lake_dut["strg_ub"]["sram_only"])
@@ -1191,6 +1192,9 @@ def get_formal_module(lake_dut, module):
         cut_generator(lake_dut["strg_ub"]["agg_only"])
         cut_generator(lake_dut["strg_ub"]["agg_sram_shared"])
         cut_generator(lake_dut["strg_ub"]["sram_only"])
+    else:
+        print("Error! Invalid module name given...must be one of agg, sram, or tb. Cuts not performed.")
+        return need_config_lift
 
     lift_config_reg(lake_dut.internal_generator)
     need_config_lift = False
@@ -1198,7 +1202,7 @@ def get_formal_module(lake_dut, module):
     mod_attr_map = {"agg": AggFormalAttr, "sram": SRAMFormalAttr, "tb": TBFormalAttr}
 
     # extract formal annotation after config regs have been lifted up
-    extract_formal_annotation(lake_dut, "lake_top_annotation.txt", mod_attr_map[module])
+    extract_formal_annotation(lake_dut, f"{module}_lake_top_annotation.txt", mod_attr_map[module])
 
     return need_config_lift
 
