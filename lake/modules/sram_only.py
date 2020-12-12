@@ -2,7 +2,7 @@ from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
-from lake.attributes.formal_attr import SRAMFormalAttr, FormalSignalConstraint
+from lake.attributes.formal_attr import *
 from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.sram_stub import SRAMStub
@@ -91,6 +91,7 @@ class StrgUBSRAMOnly(Generator):
                                               self.fetch_width),
                                         packed=True,
                                         explicit_array=True)
+        self._agg_data_out.add_attribute(AggFormalAttr(self._agg_data_out.name, FormalSignalConstraint.SEQUENCE))
         # sram attribute for data_in, comes from cut gen of agg_only for agg_data_out_top
 
         self._wen_to_sram = self.output("wen_to_sram", 1, packed=True)
