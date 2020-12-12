@@ -99,18 +99,18 @@ def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
             indices = [f"_{i}_" for i in range(height)]
 
             if "dimensionality" in port_name:
-                dim_keyword = ""
+                dim_keyword = None
                 for keyword in keywords:
                     if keyword in port_name:
                         dim_keyword = keyword
                         break
-                index = ""
+                index = None
                 for i in indices:
                     if i in port_name:
                         index = i
                         break
 
-                if dim_keyword == "":
+                if dim_keyword == None or index == None:
                     print(f"Error! Does not belong to any module...skipping {port_name}")
                 else:
                     # use keyword and index for this mapping to find 
