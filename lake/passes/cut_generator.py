@@ -15,6 +15,8 @@ def cut_generator(gen: kratos.Generator, suffix="_top"):
         print(port_name)
         attrs = port.find_attribute(lambda a: isinstance(a, FormalAttr))
         print(attrs)
+        # for attr in attrs:
+        #     new_port.add_attribute(FormalAttr(new_port_name, attr.get_annotation()))
         new_port_name = port_name + suffix
         new_port = parent_gen.port(port, new_port_name)
         # flip the port direction
