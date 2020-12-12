@@ -61,12 +61,17 @@ def get_size_str(port):
 def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
+    port_names = int_gen.get_port_names()
+
+    # mapping for which config regs the dimensionality config regs constrain
+    pairings = {}
 
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
-        for port_name in int_gen.get_port_names():
+        for port_name in port_names:
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
+
             pdir = "input"
             if str(curr_port.port_direction) == "PortDirection.Out":
                 pdir = "output"
@@ -86,6 +91,48 @@ def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
             size_str = get_size_str(curr_port)
 
             fi.write(f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n")
+
+            # dimensionality pairing constraints
+            keywords = ["agg_only", "agg_sram_shared", "sram_only", "sram_tb_shared", "tb_only"]
+            # make this dependent on agg_height and tb_height
+            height = 2
+            indices = [f"_{i}_" for i in range(height)]
+
+            if "dimensionality" in port_name:
+                dim_keyword = ""
+                for keyword in keywords:
+                    if keyword in port_name:
+                        dim_keyword = keyword
+                        break
+                index = ""
+                for i in indices:
+                    if i in port_name:
+                        index = i
+                        break
+
+                if dim_keyword == "":
+                    print(f"Error! Does not belong to any module...skipping {port_name}")
+                else:
+                    # use keyword and index for this mapping to find 
+                    # corresponding constrained config regs
+                    pairings[port_name[:-len("dimensionality")]] = {"keyword": dim_keyword, "index": index, "maps": []}
+
+    # find config regs to be constrained by keys in pairings
+    for port_name in port_names:
+        if "dimensionality" in port_name or "ranges" in port_name:
+            continue
+
+        for key in pairings.keys():
+            pairing = pairings[key]
+            if pairing["keyword"] in port_name and pairing["index"] in port_name:
+                pairing["maps"].append(port_name)
+                break
+
+    # print just the mappings
+    with open(f"mapping_{filepath}", "w+") as fi:
+        for key in pairings.keys():
+            pairings[key] = pairings[key]["maps"]
+        print(pairings, file=fi)
 
 
 def get_configs_dict(configs):
