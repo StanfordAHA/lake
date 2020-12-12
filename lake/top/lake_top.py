@@ -568,10 +568,10 @@ class LakeTop(Generator):
 
         if self.formal_module == "agg":
             self._formal_agg_data_out = self.output("formal_agg_data_out", self.data_width,
-                    size=(self.interconnect_input_ports,
-                        self.fw_int),
-                    packed=True,
-                    explicit_array=True)
+                                                    size=(self.interconnect_input_ports,
+                                                          self.fw_int),
+                                                    packed=True,
+                                                    explicit_array=True)
             self._formal_agg_data_out.add_attribute(AggFormalAttr(self._formal_agg_data_out.name, FormalSignalConstraint.SEQUENCE))
 
             self.wire(self._formal_agg_data_out, strg_ub.ports.strg_ub_agg_data_out)
@@ -1208,7 +1208,7 @@ def get_formal_module(module):
         cut_generator(lake_dut["strg_ub"]["sram_only"])
     else:
         print("Error! Invalid module name given...must be one of agg, sram, or tb. Cuts not performed.")
-        return lake_dut, need_config_lift, use_sram_stub, tsmc_info 
+        return lake_dut, need_config_lift, use_sram_stub, tsmc_info
 
     lift_config_reg(lake_dut.internal_generator)
     need_config_lift = False

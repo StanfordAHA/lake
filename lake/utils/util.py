@@ -110,10 +110,10 @@ def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
                         index = i
                         break
 
-                if dim_keyword == None or index == None:
+                if dim_keyword is None or index is None:
                     print(f"Error! Does not belong to any module...skipping {port_name}")
                 else:
-                    # use keyword and index for this mapping to find 
+                    # use keyword and index for this mapping to find
                     # corresponding constrained config regs
                     pairings[port_name[:-len("dimensionality")]] = {"keyword": dim_keyword, "index": index, "maps": []}
 
@@ -153,7 +153,6 @@ def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
 
         for key in pairings.keys():
             pairings[key] = pairings[key]["maps"]
-
 
         print(pairings, file=fi)
 
