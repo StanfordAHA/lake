@@ -274,6 +274,7 @@ class LakeTop(Generator):
                                                 packed=True,
                                                 explicit_array=True)
         self._formal_mem_data_out.add_attribute(SRAMFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
+        self._formal_mem_data_out.add_attribute(TBFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
 
         self.wire(self._formal_mem_data_out, self._mem_data_out)
 
@@ -1230,7 +1231,7 @@ if __name__ == "__main__":
     # optional: to add generator cuts for formal module verilog + annotations
     # change this line for various module extractions: agg, sram, tb
     # comment out for no module extractions
-    need_config_lift = get_formal_module(lake_dut, "agg")
+    need_config_lift = get_formal_module(lake_dut, "sram")
 
     # config regs pass (needs to be after generator cuts)
     if need_config_lift:

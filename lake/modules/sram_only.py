@@ -91,6 +91,7 @@ class StrgUBSRAMOnly(Generator):
                                               self.fetch_width),
                                         packed=True,
                                         explicit_array=True)
+        # sram attribute for data_in, comes from cut gen of agg_only for agg_data_out_top
 
         self._wen_to_sram = self.output("wen_to_sram", 1, packed=True)
         self._cen_to_sram = self.output("cen_to_sram", 1, packed=True)
@@ -98,7 +99,6 @@ class StrgUBSRAMOnly(Generator):
         self._data_to_sram = self.output("data_to_sram", self.data_width,
                                          size=self.fetch_width,
                                          packed=True)
-        self._data_to_sram.add_attribute(SRAMFormalAttr(self._data_to_sram.name, FormalSignalConstraint.SEQUENCE))
 
         ##################################################################################
         # INTERNAL SIGNALS

@@ -68,7 +68,6 @@ class StrgUBTBOnly(Generator):
                                           size=self.fetch_width,
                                           packed=True,
                                           explicit_array=True)
-        self._sram_read_data.add_attribute(TBFormalAttr(self._sram_read_data.name, FormalSignalConstraint.SEQUENCE))
 
         self._mux_sel_d1 = self.input("mux_sel_d1", kts.clog2(self.default_iterator_support), size=self.interconnect_output_ports,
                                       packed=True,
