@@ -4,7 +4,7 @@ from kratos import *
 import math
 import os as os
 from enum import Enum
-from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
+from lake.attributes.formal_attr import *
 
 
 lake_util_verbose_trim = False
@@ -58,7 +58,7 @@ def get_size_str(port):
     return dim_2 + dim_1
 
 
-def extract_formal_annotation(generator, filepath):
+def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
 
@@ -72,13 +72,17 @@ def extract_formal_annotation(generator, filepath):
                 pdir = "output"
             # If there are 0 or more than one attributes, let's just use the default X attribute
             if len(attrs) != 1:
-                if pdir is "input":
-                    form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
+                mod_attrs = curr_port.find_attribute(lambda a: isinstance(a, module_attr))
+                if len(mod_attrs) != 1:
+                    if pdir is "input":
+                        form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
+                    else:
+                        form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
                 else:
-                    form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
-
+                    form_attr = mod_attrs[0]
             else:
                 form_attr = attrs[0]
+
             size_str = get_size_str(curr_port)
 
             fi.write(f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n")

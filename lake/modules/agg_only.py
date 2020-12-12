@@ -2,6 +2,7 @@ from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import AggFormalAttr, FormalSignalConstraint
 from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.sram_stub import SRAMStub
@@ -83,6 +84,7 @@ class StrgUBAggOnly(Generator):
                                                self.fetch_width),
                                          packed=True,
                                          explicit_array=True)
+        self._agg_data_out.add_attribute(AggFormalAttr(self._agg_data_out.name, FormalSignalConstraint.SEQUENCE))
 
         ##################################################################################
         # AGG RELEVANT SIGNALS

@@ -2,6 +2,7 @@ from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import TBFormalAttr, FormalSignalConstraint
 from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.sram_stub import SRAMStub
@@ -67,6 +68,7 @@ class StrgUBTBOnly(Generator):
                                           size=self.fetch_width,
                                           packed=True,
                                           explicit_array=True)
+        self._sram_read_data.add_attribute(TBFormalAttr(self._sram_read_data.name, FormalSignalConstraint.SEQUENCE))
 
         self._mux_sel_d1 = self.input("mux_sel_d1", kts.clog2(self.default_iterator_support), size=self.interconnect_output_ports,
                                       packed=True,

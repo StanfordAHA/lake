@@ -1,4 +1,4 @@
-from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
+from lake.attributes.formal_attr import *
 import os
 from kratos import *
 from lake.modules.passthru import *
@@ -111,7 +111,7 @@ class LakeTop(Generator):
                                    packed=True,
                                    explicit_array=True)
         self._data_in.add_attribute(ControlSignalAttr(False))
-        self._data_in.add_attribute(FormalAttr(self._data_in.name, FormalSignalConstraint.SEQUENCE))
+        self._data_in.add_attribute(AggFormalAttr(self._data_in.name, FormalSignalConstraint.SEQUENCE))
 
         if self.rw_same_cycle:
             self._wr_addr_in = self.input("waddr",
@@ -224,7 +224,7 @@ class LakeTop(Generator):
                                      packed=True,
                                      explicit_array=True)
         self._data_out.add_attribute(ControlSignalAttr(False))
-        self._data_out.add_attribute(FormalAttr(self._data_out.name, FormalSignalConstraint.SEQUENCE))
+        self._data_out.add_attribute(TBFormalAttr(self._data_out.name, FormalSignalConstraint.SEQUENCE))
 
         # self._valid_out = self.output("valid_out",
         #                               self.interconnect_output_ports)
@@ -265,6 +265,17 @@ class LakeTop(Generator):
                                             self.fw_int),
                                       packed=True,
                                       explicit_array=True)
+
+        self._formal_mem_data_out = self.output("formal_mem_data_out",
+                                                self.data_width,
+                                                size=(self.banks,
+                                                      self.mem_output_ports,
+                                                      self.fw_int),
+                                                packed=True,
+                                                explicit_array=True)
+        self._formal_mem_data_out.add_attribute(SRAMFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
+
+        self.wire(self._formal_mem_data_out, self._mem_data_out)
 
         self._mem_data_low_pt = self.var("mem_data_low_pt",
                                          self.data_width,
@@ -836,7 +847,6 @@ class LakeTop(Generator):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
-
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def cycle_count_inc(self):
         if ~self._rst_n:
@@ -1165,6 +1175,33 @@ class LakeTop(Generator):
 
         return trim_config_list(flattened, config)
 
+# formal module functions
+
+
+def get_formal_module(lake_dut, module):
+    # cuts for modular formal solving
+    if module == "agg":
+        cut_generator(lake_dut["strg_ub"]["sram_only"])
+        cut_generator(lake_dut["strg_ub"]["sram_tb_shared"])
+        cut_generator(lake_dut["strg_ub"]["tb_only"])
+    elif module == "sram":
+        cut_generator(lake_dut["strg_ub"]["agg_only"])
+        cut_generator(lake_dut["strg_ub"]["tb_only"])
+    elif module == "tb":
+        cut_generator(lake_dut["strg_ub"]["agg_only"])
+        cut_generator(lake_dut["strg_ub"]["agg_sram_shared"])
+        cut_generator(lake_dut["strg_ub"]["sram_only"])
+
+    lift_config_reg(lake_dut.internal_generator)
+    need_config_lift = False
+
+    mod_attr_map = {"agg": AggFormalAttr, "sram": SRAMFormalAttr, "tb": TBFormalAttr}
+
+    # extract formal annotation after config regs have been lifted up
+    extract_formal_annotation(lake_dut, "lake_top_annotation.txt", mod_attr_map[module])
+
+    return need_config_lift
+
 
 if __name__ == "__main__":
     tsmc_info = SRAMMacroInfo("tsmc_name")
@@ -1184,15 +1221,14 @@ if __name__ == "__main__":
     print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
 
-    # cuts for modular formal solving
-    cut_generator(lake_dut["strg_ub"]["agg_only"])
-    cut_generator(lake_dut["strg_ub"]["agg_sram_shared"])
-    cut_generator(lake_dut["strg_ub"]["sram_only"])
+    need_config_lift = True
+
+    # optional: to add generator cuts for formal module verilog + annotations
+    need_config_lift = get_formal_module(lake_dut, "sram")
 
     # config regs pass (needs to be after generator cuts)
-    lift_config_reg(lake_dut.internal_generator)
-    # extract formal annotation after config regs have been lifted up
-    extract_formal_annotation(lake_dut, "lake_top_annotation.txt")
+    if need_config_lift:
+        lift_config_reg(lake_dut.internal_generator)
 
     # generate verilog
     verilog(lake_dut, filename="lake_top.sv",

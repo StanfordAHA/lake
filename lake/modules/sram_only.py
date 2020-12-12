@@ -2,6 +2,7 @@ from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import SRAMFormalAttr, FormalSignalConstraint
 from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.sram_stub import SRAMStub
@@ -84,6 +85,7 @@ class StrgUBSRAMOnly(Generator):
         self._agg_read = self.input("agg_read", self.interconnect_input_ports)
         self._t_read = self.input("t_read", self.interconnect_output_ports)
 
+        # data from aggs, get decoded for sram_write_data which is wired to data_to_sram
         self._agg_data_out = self.input(f"agg_data_out", self.data_width,
                                         size=(self.interconnect_input_ports,
                                               self.fetch_width),
@@ -96,6 +98,7 @@ class StrgUBSRAMOnly(Generator):
         self._data_to_sram = self.output("data_to_sram", self.data_width,
                                          size=self.fetch_width,
                                          packed=True)
+        self._data_to_sram.add_attribute(SRAMFormalAttr(self._data_to_sram.name, FormalSignalConstraint.SEQUENCE))
 
         ##################################################################################
         # INTERNAL SIGNALS

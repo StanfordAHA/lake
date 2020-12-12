@@ -2,6 +2,7 @@ from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import *
 from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.sram_stub import SRAMStub
@@ -217,8 +218,6 @@ class StrgUBVec(Generator):
         self.wire(agg_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
         self.wire(agg_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(agg_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
-
-        self.wire(agg_sram_shared.ports.agg_data_out, agg_only.ports.agg_data_out)
 
         self.wire(sram_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(sram_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)

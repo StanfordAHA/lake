@@ -63,12 +63,6 @@ class StrgUBAggSRAMShared(Generator):
 
         self._cycle_count = self.input("cycle_count", 16)
 
-        self._agg_data_out = self.input(f"agg_data_out", self.data_width,
-                                        size=(self.interconnect_input_ports,
-                                              self.fetch_width),
-                                        packed=True,
-                                        explicit_array=True)
-
         self._floop_mux_sel = self.output("floop_mux_sel",
                                           width=max(clog2(self.default_iterator_support), 1),
                                           size=self.interconnect_input_ports)
