@@ -51,7 +51,8 @@ class LakeTop(Generator):
                  add_flush=True,
                  name="LakeTop",
                  gen_addr=True,
-                 stencil_valid=True):
+                 stencil_valid=True,
+                 formal_module=None):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -80,6 +81,7 @@ class LakeTop(Generator):
         self.fifo_mode = fifo_mode
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
+        self.formal_module = formal_module
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -266,17 +268,18 @@ class LakeTop(Generator):
                                       packed=True,
                                       explicit_array=True)
 
-        self._formal_mem_data_out = self.output("formal_mem_data_out",
-                                                self.data_width,
-                                                size=(self.banks,
-                                                      self.mem_output_ports,
-                                                      self.fw_int),
-                                                packed=True,
-                                                explicit_array=True)
-        self._formal_mem_data_out.add_attribute(SRAMFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
-        self._formal_mem_data_out.add_attribute(TBFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
+        if self.formal_module == "sram" or formal_module == "tb":
+            self._formal_mem_data_out = self.output("formal_mem_data_out",
+                                                    self.data_width,
+                                                    size=(self.banks,
+                                                          self.mem_output_ports,
+                                                          self.fw_int),
+                                                    packed=True,
+                                                    explicit_array=True)
+            self._formal_mem_data_out.add_attribute(SRAMFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
+            self._formal_mem_data_out.add_attribute(TBFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
 
-        self.wire(self._formal_mem_data_out, self._mem_data_out)
+            self.wire(self._formal_mem_data_out, self._mem_data_out)
 
         self._mem_data_low_pt = self.var("mem_data_low_pt",
                                          self.data_width,
@@ -479,7 +482,8 @@ class LakeTop(Generator):
                                 read_delay=self.read_delay,
                                 rw_same_cycle=self.rw_same_cycle,
                                 agg_height=self.agg_height,
-                                config_width=self.input_config_width)
+                                config_width=self.input_config_width,
+                                agg_data_top=(self.formal_module == "agg"))
 
         else:
 
@@ -562,6 +566,15 @@ class LakeTop(Generator):
                        wen_to_strg=self._ub_wen_to_mem,
                        accessor_output=self._accessor_output)
 
+        if self.formal_module == "agg":
+            self._formal_agg_data_out = self.output("formal_agg_data_out", self.data_width,
+                    size=(self.interconnect_input_ports,
+                        self.fw_int),
+                    packed=True,
+                    explicit_array=True)
+            self._formal_agg_data_out.add_attribute(AggFormalAttr(self._formal_agg_data_out.name, FormalSignalConstraint.SEQUENCE))
+
+            self.wire(self._formal_agg_data_out, strg_ub.ports.strg_ub_agg_data_out)
         # Handle different names - sorry
         if self.rw_same_cycle:
             self.wire(strg_ub.ports.ren_to_strg, self._ub_cen_to_mem)
@@ -1179,8 +1192,8 @@ class LakeTop(Generator):
 # formal module functions
 
 
-def get_formal_module(lake_dut, module):
-    need_config_lift = True
+def get_formal_module(module):
+    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut(module)
     # cuts for modular formal solving
     if module == "agg":
         cut_generator(lake_dut["strg_ub"]["sram_only"])
@@ -1195,7 +1208,7 @@ def get_formal_module(lake_dut, module):
         cut_generator(lake_dut["strg_ub"]["sram_only"])
     else:
         print("Error! Invalid module name given...must be one of agg, sram, or tb. Cuts not performed.")
-        return need_config_lift
+        return lake_dut, need_config_lift, use_sram_stub, tsmc_info 
 
     lift_config_reg(lake_dut.internal_generator)
     need_config_lift = False
@@ -1205,10 +1218,10 @@ def get_formal_module(lake_dut, module):
     # extract formal annotation after config regs have been lifted up
     extract_formal_annotation(lake_dut, f"{module}_lake_top_annotation.txt", mod_attr_map[module])
 
-    return need_config_lift
+    return lake_dut, need_config_lift, use_sram_stub, tsmc_info
 
 
-if __name__ == "__main__":
+def get_lake_dut(formal_module=None):
     tsmc_info = SRAMMacroInfo("tsmc_name")
     use_sram_stub = True
     fifo_mode = True
@@ -1221,22 +1234,30 @@ if __name__ == "__main__":
                        fifo_mode=fifo_mode,
                        add_clk_enable=True,
                        add_flush=True,
-                       stencil_valid=stencil_valid)
+                       stencil_valid=stencil_valid,
+                       formal_module=formal_module)
 
     print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
-    sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
 
+    return lake_dut, True, use_sram_stub, tsmc_info
+
+
+if __name__ == "__main__":
     need_config_lift = True
 
     # optional: to add generator cuts for formal module verilog + annotations
     # change this line for various module extractions: agg, sram, tb
     # comment out for no module extractions
-    need_config_lift = get_formal_module(lake_dut, "agg")
+    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module("tb")
+
+    # normal generation
+    # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
 
     # config regs pass (needs to be after generator cuts)
     if need_config_lift:
         lift_config_reg(lake_dut.internal_generator)
 
+    sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     # generate verilog
     verilog(lake_dut, filename="lake_top.sv",
             optimize_if=False,

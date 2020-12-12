@@ -37,7 +37,8 @@ class StrgUBVec(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
-                 tb_height=2):
+                 tb_height=2,
+                 agg_data_top=False):
 
         super().__init__("strg_ub_vec")
 
@@ -231,6 +232,14 @@ class StrgUBVec(Generator):
         self.wire(tb_only.ports.t_read_d1, sram_tb_shared.ports.t_read_d1)
         self.wire(tb_only.ports.restart_d1, sram_tb_shared.ports.restart_d1)
         self.wire(tb_only.ports.t_read, sram_tb_shared.ports.t_read_out)
+
+        if agg_data_top:
+            self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,
+                    size=(self.interconnect_input_ports,
+                        self.fetch_width),
+                    packed=True,
+                    explicit_array=True)
+            self.wire(self._agg_data_out, agg_only.ports.agg_data_out)
 
 
 if __name__ == "__main__":
