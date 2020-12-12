@@ -103,11 +103,13 @@ def set_configs_sv(generator, filepath, configs_dict):
         if len(attrs) != 1:
             continue
         port = attrs[0].get_port_name()
-        if ("dimensionality" in port) or ("starting_addr" in port):
-            remain.append(port)
-        else:
-            for i in range(6):
-                remain.append(port + f"_{i}")
+        # find config regs
+        if len(curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))) == 1:
+            if ("strides" in port) or ("ranges" in port):
+                for i in range(6):
+                    remain.append(port + f"_{i}")
+            else:
+                remain.append(port)
 
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
@@ -307,6 +309,9 @@ def generate_pond_api(ctrl_rd, ctrl_wr):
     (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
     (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
 
+    (tform_ranges_rd_sched, tform_strides_rd_sched) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[5], ctrl_rd[2])
+    (tform_ranges_wr_sched, tform_strides_wr_sched) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[5], ctrl_wr[2])
+
     new_config = {}
 
     new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
@@ -317,8 +322,9 @@ def generate_pond_api(ctrl_rd, ctrl_wr):
     new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
 
     new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
-    new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd[0]
-    new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd[1]
+    new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
+    new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
+    new_config["rf_read_sched_0_enable"] = 1
 
     new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
     new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
@@ -328,8 +334,9 @@ def generate_pond_api(ctrl_rd, ctrl_wr):
     new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
 
     new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
-    new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr[0]
-    new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr[1]
+    new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
+    new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
+    new_config["rf_write_sched_0_enable"] = 1
 
     return new_config
 
@@ -374,6 +381,42 @@ def increment_csv(file_in, file_out, fields):
                 if len(infile_lines[i + 1]) > 5:
                     print(f"line {i}: {infile_lines[i + 1]}")
                     outfile.write(increment_line(infile_lines[i + 1]))
+
+
+# Takes in a bus of valid tags with an associated data stream
+# Send the proper data stream thru
+def decode(generator, sel, signals):
+
+    # This base case means we don't need to actually do anything
+    if sel.width == 1:
+        return signals[0]
+
+    # Create scan signal
+    tmp_done = generator.var(f"decode_sel_done_{sel.name}_{signals.name}", 1)
+    if signals.size[0] > 1:
+        if len(signals.size) > 1:
+            ret = generator.var(f"decode_ret_{sel.name}_{signals.name}",
+                                signals.width,
+                                size=signals.size[1:],
+                                explicit_array=True,
+                                packed=True)
+        else:
+            ret = generator.var(f"decode_ret_{sel.name}_{signals.name}",
+                                signals.width)
+    else:
+        ret = generator.var(f"decode_ret_{sel.name}_{signals.name}", 1)
+
+    @always_comb
+    def scan_lowest():
+        tmp_done = 0
+        ret = 0
+        for i in range(sel.width):
+            if ~tmp_done & sel[i]:
+                ret = signals[i]
+                tmp_done = 1
+
+    generator.add_code(scan_lowest)
+    return ret
 
 
 if __name__ == "__main__":
