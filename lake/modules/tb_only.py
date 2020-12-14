@@ -76,8 +76,6 @@ class StrgUBTBOnly(Generator):
         self._t_read_d1 = self.input("t_read_d1", self.interconnect_output_ports)
         self._restart_d1 = self.input("restart_d1", self.interconnect_output_ports)
 
-        self._t_read = self.input("t_read", self.interconnect_output_ports)
-
         self._valid_out = self.output("accessor_output", self.interconnect_output_ports)
         self._data_out = self.output("data_out", self.data_width,
                                      size=self.interconnect_output_ports,

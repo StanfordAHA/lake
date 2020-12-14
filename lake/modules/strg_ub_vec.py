@@ -231,7 +231,6 @@ class StrgUBVec(Generator):
         self.wire(tb_only.ports.mux_sel_d1, sram_tb_shared.ports.mux_sel_d1)
         self.wire(tb_only.ports.t_read_d1, sram_tb_shared.ports.t_read_d1)
         self.wire(tb_only.ports.restart_d1, sram_tb_shared.ports.restart_d1)
-        self.wire(tb_only.ports.t_read, sram_tb_shared.ports.t_read_out)
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,
