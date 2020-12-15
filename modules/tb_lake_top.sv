@@ -84,6 +84,7 @@ module LakeTop (
   output logic [1:0] [31:0] config_data_out,
   output logic [1:0] [15:0] data_out,
   output logic empty,
+  output logic [0:0][0:0][3:0] [15:0] formal_mem_data_out,
   output logic full,
   output logic sram_ready_out,
   output logic [1:0] valid_out
@@ -182,6 +183,7 @@ end
 assign config_data_out[0] = 32'(config_data_out_shrt[0]);
 assign config_data_out[1] = 32'(config_data_out_shrt[1]);
 assign gclk = clk & tile_en;
+assign formal_mem_data_out = mem_data_out;
 assign mem_data_low_pt[0] = mem_data_out[0][0];
 assign cfg_seq_clk = gclk;
 assign config_seq_clk = cfg_seq_clk;
@@ -239,14 +241,14 @@ assign valid_out[1] = ub_valid_out[1];
 assign mode_mask[0] = |mode;
 assign mode_mask[1] = 1'h0;
 assign chain_accessor_output = accessor_output | mode_mask;
-assign strg_ub_wen_to_sram_top = wen_to_sram_top;
-assign strg_ub_addr_to_sram_top = addr_to_sram_top;
-assign strg_ub_data_to_sram_top = data_to_sram_top;
-assign strg_ub_cen_to_sram_top = cen_to_sram_top;
+assign strg_ub_agg_data_out_top = agg_data_out_top;
+assign strg_ub_floop_restart_top = floop_restart_top;
 assign strg_ub_agg_read_out_top = agg_read_out_top;
 assign strg_ub_floop_mux_sel_top = floop_mux_sel_top;
-assign strg_ub_floop_restart_top = floop_restart_top;
-assign strg_ub_agg_data_out_top = agg_data_out_top;
+assign strg_ub_wen_to_sram_top = wen_to_sram_top;
+assign strg_ub_cen_to_sram_top = cen_to_sram_top;
+assign strg_ub_addr_to_sram_top = addr_to_sram_top;
+assign strg_ub_data_to_sram_top = data_to_sram_top;
 storage_config_seq config_seq (
   .clk(config_seq_clk),
   .clk_en(config_seq_clk_en),
@@ -840,6 +842,7 @@ module reg_fifo_d_4_w_1 #(
   output logic empty,
   output logic full,
   output logic [3:0][0:0] [data_width-1:0] parallel_out,
+  output logic [1:0] rd_ptr_out,
   output logic valid
 );
 
@@ -850,6 +853,7 @@ logic read;
 logic [3:0][0:0][data_width-1:0] reg_array;
 logic [1:0] wr_ptr;
 logic write;
+assign rd_ptr_out = rd_ptr;
 assign full = num_items == 3'h4;
 assign empty = num_items == 3'h0;
 assign read = pop & (~passthru) & (~empty);
@@ -975,7 +979,6 @@ module reg_fifo_d_4_w_1_unq0 #(
   output logic empty,
   output logic full,
   output logic [3:0][0:0] [data_width-1:0] parallel_out,
-  output logic [1:0] rd_ptr_out,
   output logic valid
 );
 
@@ -986,7 +989,6 @@ logic read;
 logic [3:0][0:0][data_width-1:0] reg_array;
 logic [1:0] wr_ptr;
 logic write;
-assign rd_ptr_out = rd_ptr;
 assign full = num_items == 3'h4;
 assign empty = num_items == 3'h0;
 assign read = pop & (~passthru) & (~empty);
@@ -1510,7 +1512,7 @@ always_comb begin
 end
 assign empty = num_items == 16'h0;
 assign full = fifo_depth == num_items;
-reg_fifo_d_4_w_1_unq0 #(
+reg_fifo_d_4_w_1 #(
   .data_width(16'h10))
 front_rf (
   .clk(clk),
@@ -1532,7 +1534,7 @@ front_rf (
   .valid(front_valid)
 );
 
-reg_fifo_d_4_w_1 #(
+reg_fifo_d_4_w_1_unq0 #(
   .data_width(16'h10))
 back_rf (
   .clk(clk),

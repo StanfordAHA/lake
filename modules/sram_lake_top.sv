@@ -79,6 +79,7 @@ module LakeTop (
   output logic [1:0] [31:0] config_data_out,
   output logic [1:0] [15:0] data_out,
   output logic empty,
+  output logic [0:0][0:0][3:0] [15:0] formal_mem_data_out,
   output logic full,
   output logic sram_ready_out,
   output logic [1:0] valid_out
@@ -172,6 +173,7 @@ end
 assign config_data_out[0] = 32'(config_data_out_shrt[0]);
 assign config_data_out[1] = 32'(config_data_out_shrt[1]);
 assign gclk = clk & tile_en;
+assign formal_mem_data_out = mem_data_out;
 assign mem_data_low_pt[0] = mem_data_out[0][0];
 assign cfg_seq_clk = gclk;
 assign config_seq_clk = cfg_seq_clk;
@@ -820,6 +822,7 @@ module reg_fifo_d_4_w_1 #(
   output logic empty,
   output logic full,
   output logic [3:0][0:0] [data_width-1:0] parallel_out,
+  output logic [1:0] rd_ptr_out,
   output logic valid
 );
 
@@ -830,6 +833,7 @@ logic read;
 logic [3:0][0:0][data_width-1:0] reg_array;
 logic [1:0] wr_ptr;
 logic write;
+assign rd_ptr_out = rd_ptr;
 assign full = num_items == 3'h4;
 assign empty = num_items == 3'h0;
 assign read = pop & (~passthru) & (~empty);
@@ -955,7 +959,6 @@ module reg_fifo_d_4_w_1_unq0 #(
   output logic empty,
   output logic full,
   output logic [3:0][0:0] [data_width-1:0] parallel_out,
-  output logic [1:0] rd_ptr_out,
   output logic valid
 );
 
@@ -966,7 +969,6 @@ logic read;
 logic [3:0][0:0][data_width-1:0] reg_array;
 logic [1:0] wr_ptr;
 logic write;
-assign rd_ptr_out = rd_ptr;
 assign full = num_items == 3'h4;
 assign empty = num_items == 3'h0;
 assign read = pop & (~passthru) & (~empty);
@@ -1490,7 +1492,7 @@ always_comb begin
 end
 assign empty = num_items == 16'h0;
 assign full = fifo_depth == num_items;
-reg_fifo_d_4_w_1_unq0 #(
+reg_fifo_d_4_w_1 #(
   .data_width(16'h10))
 front_rf (
   .clk(clk),
@@ -1512,7 +1514,7 @@ front_rf (
   .valid(front_valid)
 );
 
-reg_fifo_d_4_w_1 #(
+reg_fifo_d_4_w_1_unq0 #(
   .data_width(16'h10))
 back_rf (
   .clk(clk),
@@ -1725,7 +1727,6 @@ end
 endmodule   // strg_ram
 
 module strg_ub_agg_sram_shared (
-  input logic [1:0][3:0] [15:0] agg_data_out,
   input logic agg_read_sched_gen_0_enable,
   input logic [15:0] agg_read_sched_gen_0_sched_addr_gen_starting_addr,
   input logic [5:0] [15:0] agg_read_sched_gen_0_sched_addr_gen_strides,
@@ -2208,7 +2209,6 @@ end
 assign accessor_output = accessor_output_top;
 assign data_out = data_out_top;
 strg_ub_agg_sram_shared agg_sram_shared (
-  .agg_data_out(agg_data_out_top),
   .agg_read_sched_gen_0_enable(agg_sram_shared_agg_read_sched_gen_0_enable),
   .agg_read_sched_gen_0_sched_addr_gen_starting_addr(agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_starting_addr),
   .agg_read_sched_gen_0_sched_addr_gen_strides(agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_strides),

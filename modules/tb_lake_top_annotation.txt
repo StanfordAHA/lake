@@ -1,60 +1,61 @@
-input logic [1:0] [2:0] floop_mux_sel_top	SET0
-input logic [1:0] [15:0] addr_in	SET0
-input logic [5:0] [15:0] strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides	SOLVE
-input logic [5:0] [3:0] strg_ub_tb_only_tb_read_addr_gen_1_strides	SOLVE
-input logic [1:0] [15:0] chain_data_in	SET0
-input logic [1:0] [15:0] data_in	SEQUENCE
-input logic flush	SET0
-output logic sram_ready_out	X
-input logic [3:0] strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_dimensionality	SOLVE
-input logic strg_ub_sram_tb_shared_output_sched_gen_1_enable	SOLVE
-input logic [3:0] strg_ub_tb_only_loops_buf2out_read_1_dimensionality	SOLVE
-input logic cen_to_sram_top	SET0
-output logic [1:0] [31:0] config_data_out	X
-input logic [3:0] [15:0] data_to_sram_top	SET0
-input logic tile_en	SET1
-input logic config_write	SET0
-input logic [5:0] [15:0] strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges	SOLVE
-output logic empty	X
-input logic [8:0] addr_to_sram_top	SET0
-input logic [1:0] floop_restart_top	SET0
-input logic [3:0] strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_dimensionality	SOLVE
-input logic config_read	SET0
-input logic clk_en	SET1
-input logic [3:0] strg_ub_tb_only_tb_write_addr_gen_1_starting_addr	SOLVE
-input logic [3:0] strg_ub_tb_only_tb_read_addr_gen_0_starting_addr	SOLVE
-input logic [5:0] [15:0] strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides	SOLVE
-input logic [5:0] [15:0] strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides	SOLVE
-input logic wen_to_sram_top	SET0
-input logic strg_ub_tb_only_tb_read_sched_gen_0_enable	SOLVE
-input logic [15:0] strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_starting_addr	SOLVE
-input logic [31:0] ren_in	SET0
-input logic [15:0] strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_starting_addr	SOLVE
-input logic [5:0] [3:0] strg_ub_tb_only_tb_write_addr_gen_0_strides	SOLVE
-input logic [5:0] [15:0] strg_ub_tb_only_loops_buf2out_read_1_ranges	SOLVE
-input logic [1:0] ren_in	SET0
-input logic clk	CLK
 input logic chain_chain_en	SET0
-input logic [15:0] fifo_ctrl_fifo_depth	SET0
-input logic [5:0] [15:0] strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges	SOLVE
-input logic strg_ub_sram_tb_shared_output_sched_gen_0_enable	SOLVE
-input logic [3:0] strg_ub_tb_only_tb_write_addr_gen_0_starting_addr	SOLVE
-output logic [1:0] [15:0] data_out	SEQUENCE
-input logic [7:0] config_addr_in	SET0
-input logic rst_n	RSTN
-input logic [3:0] strg_ub_tb_only_loops_buf2out_read_0_dimensionality	SOLVE
-input logic [3:0] strg_ub_tb_only_tb_read_addr_gen_1_starting_addr	SOLVE
-input logic strg_ub_tb_only_tb_read_sched_gen_1_enable	SOLVE
-output logic [1:0] valid_out	X
-input logic [5:0] [3:0] strg_ub_tb_only_tb_read_addr_gen_0_strides	SOLVE
-input logic [5:0] [3:0] strg_ub_tb_only_tb_write_addr_gen_1_strides	SOLVE
 input logic [5:0] [15:0] strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides	SOLVE
-input logic [1:0] agg_read_out_top	SET0
-input logic [15:0] strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_starting_addr	SOLVE
-input logic [15:0] strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_starting_addr	SOLVE
-input logic [1:0] mode	SET0
-input logic [5:0] [15:0] strg_ub_tb_only_loops_buf2out_read_0_ranges	SOLVE
-input logic [1:0] [15:0] agg_data_out_top	SET0
+input logic [7:0] config_addr_in	SET0
+input logic [15:0] fifo_ctrl_fifo_depth	SET0
+input logic [8:0] addr_to_sram_top	SET0
+input logic [5:0] [15:0] strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides	SOLVE
+input logic strg_ub_tb_only_tb_read_sched_gen_1_enable	SOLVE
+output logic empty	X
+input logic [3:0] strg_ub_tb_only_tb_read_addr_gen_0_starting_addr	SOLVE
+input logic [1:0] [2:0] floop_mux_sel_top	SET0
+input logic [3:0] [15:0] data_to_sram_top	SET0
+output logic [1:0] [15:0] data_out	SEQUENCE
+input logic [5:0] [15:0] strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides	SOLVE
+input logic flush	SET0
+input logic strg_ub_sram_tb_shared_output_sched_gen_0_enable	SOLVE
+input logic [3:0] strg_ub_tb_only_tb_read_addr_gen_1_starting_addr	SOLVE
+input logic [1:0] floop_restart_top	SET0
 output logic full	X
-input logic [1:0] wen_in	SET0
+input logic [15:0] strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_starting_addr	SOLVE
+input logic [1:0] [15:0] addr_in	SET0
+input logic [31:0] ren_in	SET0
+input logic config_read	SET0
+input logic [1:0] agg_read_out_top	SET0
+input logic [5:0] [15:0] strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges	SOLVE
+input logic rst_n	RSTN
+input logic [5:0] [15:0] strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges	SOLVE
+input logic [1:0] [15:0] chain_data_in	SET0
+input logic [1:0] ren_in	SET0
+input logic [15:0] strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_starting_addr	SOLVE
+input logic [3:0] strg_ub_tb_only_loops_buf2out_read_0_dimensionality	SOLVE
+input logic strg_ub_tb_only_tb_read_sched_gen_0_enable	SOLVE
+input logic wen_to_sram_top	SET0
+output logic [1:0] [31:0] config_data_out	X
+input logic [3:0] strg_ub_tb_only_tb_write_addr_gen_0_starting_addr	SOLVE
+input logic [3:0] strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_dimensionality	SOLVE
+input logic [15:0] strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_starting_addr	SOLVE
+input logic [3:0] strg_ub_tb_only_tb_write_addr_gen_1_starting_addr	SOLVE
+input logic strg_ub_sram_tb_shared_output_sched_gen_1_enable	SOLVE
+input logic clk	CLK
+input logic cen_to_sram_top	SET0
+input logic [1:0] [15:0] data_in	SET0
+input logic clk_en	SET1
+input logic tile_en	SET1
+input logic [5:0] [3:0] strg_ub_tb_only_tb_read_addr_gen_0_strides	SOLVE
+input logic [5:0] [3:0] strg_ub_tb_only_tb_read_addr_gen_1_strides	SOLVE
+output logic [1:0] valid_out	X
+input logic [5:0] [15:0] strg_ub_tb_only_loops_buf2out_read_1_ranges	SOLVE
+input logic [5:0] [3:0] strg_ub_tb_only_tb_write_addr_gen_1_strides	SOLVE
 input logic [1:0] config_en	SET0
+input logic [5:0] [15:0] strg_ub_tb_only_loops_buf2out_read_0_ranges	SOLVE
+input logic [5:0] [3:0] strg_ub_tb_only_tb_write_addr_gen_0_strides	SOLVE
+input logic [1:0] [15:0] agg_data_out_top	SET0
+input logic config_write	SET0
+input logic [1:0] mode	SET0
+input logic [3:0] strg_ub_tb_only_loops_buf2out_read_1_dimensionality	SOLVE
+input logic [1:0] wen_in	SET0
+input logic [15:0] strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_starting_addr	SOLVE
+input logic [3:0] strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_dimensionality	SOLVE
+output logic sram_ready_out	X
+input logic [5:0] [15:0] strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides	SOLVE
+output logic [0:0] [15:0] formal_mem_data_out	SEQUENCE

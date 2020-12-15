@@ -88,6 +88,7 @@ module LakeTop (
   output logic [1:0] [31:0] config_data_out,
   output logic [1:0] [15:0] data_out,
   output logic empty,
+  output logic [1:0][3:0] [15:0] formal_agg_data_out,
   output logic full,
   output logic sram_ready_out,
   output logic [1:0] valid_out
@@ -247,15 +248,15 @@ assign valid_out[1] = ub_valid_out[1];
 assign mode_mask[0] = |mode;
 assign mode_mask[1] = 1'h0;
 assign chain_accessor_output = accessor_output | mode_mask;
+assign strg_ub_wen_to_sram_top = wen_to_sram_top;
 assign strg_ub_addr_to_sram_top = addr_to_sram_top;
 assign strg_ub_data_to_sram_top = data_to_sram_top;
 assign strg_ub_cen_to_sram_top = cen_to_sram_top;
-assign strg_ub_wen_to_sram_top = wen_to_sram_top;
+assign strg_ub_mux_sel_d1_top = mux_sel_d1_top;
 assign strg_ub_loops_sram2tb_mux_sel_top = loops_sram2tb_mux_sel_top;
+assign strg_ub_t_read_out_top = t_read_out_top;
 assign strg_ub_t_read_d1_top = t_read_d1_top;
 assign strg_ub_restart_d1_top = restart_d1_top;
-assign strg_ub_t_read_out_top = t_read_out_top;
-assign strg_ub_mux_sel_d1_top = mux_sel_d1_top;
 assign strg_ub_loops_sram2tb_restart_top = loops_sram2tb_restart_top;
 assign strg_ub_accessor_output_top = accessor_output_top;
 assign strg_ub_data_out_top = data_out_top;
@@ -329,6 +330,7 @@ strg_ub_vec strg_ub (
   .cen_to_strg(ub_cen_to_mem),
   .data_out(ub_data_out),
   .data_to_strg(ub_data_to_mem),
+  .strg_ub_agg_data_out(formal_agg_data_out),
   .wen_to_strg(ub_wen_to_mem)
 );
 
@@ -856,7 +858,6 @@ module reg_fifo_d_4_w_1 #(
   output logic empty,
   output logic full,
   output logic [3:0][0:0] [data_width-1:0] parallel_out,
-  output logic [1:0] rd_ptr_out,
   output logic valid
 );
 
@@ -867,7 +868,6 @@ logic read;
 logic [3:0][0:0][data_width-1:0] reg_array;
 logic [1:0] wr_ptr;
 logic write;
-assign rd_ptr_out = rd_ptr;
 assign full = num_items == 3'h4;
 assign empty = num_items == 3'h0;
 assign read = pop & (~passthru) & (~empty);
@@ -993,6 +993,7 @@ module reg_fifo_d_4_w_1_unq0 #(
   output logic empty,
   output logic full,
   output logic [3:0][0:0] [data_width-1:0] parallel_out,
+  output logic [1:0] rd_ptr_out,
   output logic valid
 );
 
@@ -1003,6 +1004,7 @@ logic read;
 logic [3:0][0:0][data_width-1:0] reg_array;
 logic [1:0] wr_ptr;
 logic write;
+assign rd_ptr_out = rd_ptr;
 assign full = num_items == 3'h4;
 assign empty = num_items == 3'h0;
 assign read = pop & (~passthru) & (~empty);
@@ -1526,7 +1528,7 @@ always_comb begin
 end
 assign empty = num_items == 16'h0;
 assign full = fifo_depth == num_items;
-reg_fifo_d_4_w_1 #(
+reg_fifo_d_4_w_1_unq0 #(
   .data_width(16'h10))
 front_rf (
   .clk(clk),
@@ -1548,7 +1550,7 @@ front_rf (
   .valid(front_valid)
 );
 
-reg_fifo_d_4_w_1_unq0 #(
+reg_fifo_d_4_w_1 #(
   .data_width(16'h10))
 back_rf (
   .clk(clk),
@@ -1971,7 +1973,6 @@ addr_gen_6_4 agg_read_addr_gen_1 (
 endmodule   // strg_ub_agg_only
 
 module strg_ub_agg_sram_shared (
-  input logic [1:0][3:0] [15:0] agg_data_out,
   input logic agg_read_sched_gen_0_enable,
   input logic [15:0] agg_read_sched_gen_0_sched_addr_gen_starting_addr,
   input logic [5:0] [15:0] agg_read_sched_gen_0_sched_addr_gen_strides,
@@ -2122,10 +2123,10 @@ module strg_ub_vec (
   output logic cen_to_strg,
   output logic [1:0] [15:0] data_out,
   output logic [3:0] [15:0] data_to_strg,
+  output logic [1:0][3:0] [15:0] strg_ub_agg_data_out,
   output logic wen_to_strg
 );
 
-logic [1:0][3:0][15:0] agg_only_agg_data_out;
 logic [1:0] agg_only_agg_read;
 logic [2:0] agg_only_floop_mux_sel [1:0];
 logic agg_only_floop_restart [1:0];
@@ -2178,11 +2179,10 @@ strg_ub_agg_only agg_only (
   .loops_in2buf_1_dimensionality(agg_only_loops_in2buf_1_dimensionality),
   .loops_in2buf_1_ranges(agg_only_loops_in2buf_1_ranges),
   .rst_n(rst_n),
-  .agg_data_out(agg_only_agg_data_out)
+  .agg_data_out(strg_ub_agg_data_out)
 );
 
 strg_ub_agg_sram_shared agg_sram_shared (
-  .agg_data_out(agg_only_agg_data_out),
   .agg_read_sched_gen_0_enable(agg_sram_shared_agg_read_sched_gen_0_enable),
   .agg_read_sched_gen_0_sched_addr_gen_starting_addr(agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_starting_addr),
   .agg_read_sched_gen_0_sched_addr_gen_strides(agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_strides),
