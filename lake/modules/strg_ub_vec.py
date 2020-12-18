@@ -65,6 +65,9 @@ class StrgUBVec(Generator):
                                    packed=True,
                                    explicit_array=True)
 
+        # Create cycle counter to share...
+        self._cycle_count = add_counter(self, "cycle_count", 16, clk=self._clk)
+
         self._data_from_sram = self.input("data_from_strg", self.data_width,
                                           size=self.fetch_width,
                                           packed=True)
@@ -176,9 +179,6 @@ class StrgUBVec(Generator):
 
         # Break out valids...
         self.wire(self._valid_out, self._tb_read)
-
-        # Create cycle counter to share...
-        self._cycle_count = add_counter(self, "cycle_count", 16)
 
         ##################################################################################
         # AGG PATHS
