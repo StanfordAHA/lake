@@ -1189,9 +1189,8 @@ class LakeTop(Generator):
 
         return trim_config_list(flattened, config)
 
+
 # formal module functions
-
-
 def get_formal_module(module):
     lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut(module)
     # cuts for modular formal solving
@@ -1221,14 +1220,19 @@ def get_formal_module(module):
     return lake_dut, need_config_lift, use_sram_stub, tsmc_info
 
 
-def get_lake_dut(formal_module=None):
-    tsmc_info = SRAMMacroInfo("tsmc_name")
-    use_sram_stub = True
-    fifo_mode = True
-    mem_width = 64
-    # no stencil valid needed for formal problems
-    stencil_valid = False
+def get_lake_dut(formal_module=None,
+                 in_ports=2,
+                 out_ports=2,
+                 # no stencil valid needed for formal problems
+                 stencil_valid=False,
+                 tsmc_info=SRAMMacroInfo("tsmc_name"),
+                 use_sram_stub=True,
+                 fifo_mode=True,
+                 mem_width=64):
+
     lake_dut = LakeTop(mem_width=mem_width,
+                       interconnect_input_ports=in_ports,
+                       interconnect_output_ports=out_ports,
                        sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,
                        fifo_mode=fifo_mode,
