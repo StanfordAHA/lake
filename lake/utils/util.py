@@ -288,8 +288,8 @@ def add_counter(generator, name, bitwidth, clk, increment=kts.const(1, 1)):
     ctr = generator.var(name, bitwidth)
     # clocks = generator.clo
     new_clk = kts.util.clock(clk)
-    print(f"Clock name next...")
-    print(clk)
+    # print(f"Clock name next...")
+    # print(clk)
 
     @always_ff((posedge, new_clk), (negedge, "rst_n"))
     def ctr_inc_code():
