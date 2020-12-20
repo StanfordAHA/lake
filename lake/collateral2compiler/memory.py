@@ -101,11 +101,12 @@ class Memory(Generator):
         assert self.capacity % self.write_width == 0
         assert self.capacity % self.read_width == 0
 
-        self.write_width_bits = max(1, clog2(self.write_width))
+        # self.write_width_bits = max(1, clog2(self.write_width))
         self.read_width_bits = max(1, clog2(self.read_width))
-        self.write_bits = clog2(int(self.capacity / self.write_width))
-        print("PARAMS: ", self.capacity, " ", self.read_width, " ", self.write_bits)
-        self.read_bits = clog2(int(self.capacity / self.read_width))
+        self.write_width_bits = max(1, clog2(int(self.capacity / self.write_width)))
+        # self.read_width_bits = max(1, clog2(int(self.capacity / self.read_width)))
+        print("PARAMS: ", mem_params["name"], " ", self.capacity, " ", self.write_width, " ", self.read_width, " ")
+        self.read_bits = max(1, clog2(int(self.capacity / self.read_width)))
         self.addr_width = max(1, clog2(self.capacity))
 
         # inputs
@@ -141,7 +142,7 @@ class Memory(Generator):
         # clean up
         if self.og_num_write_ports != 0 and self.og_num_read_ports != 0:
             self.write_addr = self.input("write_addr",
-                                         width=16,#self.addr_width,
+                                         width=16,  # self.addr_width,
                                          size=self.num_write_ports,
                                          explicit_array=True)
             #                        packed=True)
@@ -154,19 +155,19 @@ class Memory(Generator):
 
             assert self.write_info[0]["latency"] > 0
             self.add_write_data_block()
-            #self.add_code(self.write_data_latency_1)
+            # self.add_code(self.write_data_latency_1)
 
             self.read_addr = self.input("read_addr",
-                                        width=16,#self.addr_width,
+                                        width=16,  # self.addr_width,
                                         size=self.num_read_ports,
                                         explicit_array=True)
             #                       packed=True)
 
             # for now assuming all read ports have same latency
             # also should add support for other latencies
-            #if self.read_info[0]["latency"] == 1:
+            # if self.read_info[0]["latency"] == 1:
             #    self.add_code(self.read_data_latency_1)
-            #else:
+            # else:
             #    self.add_code(self.read_data_latency_0)
             self.add_read_data_block()
 
@@ -174,17 +175,17 @@ class Memory(Generator):
 
             # clean up
             self.read_write_addr = self.input("read_write_addr",
-                                              width=16,#self.addr_width,
+                                              width=16,  # self.addr_width,
                                               size=self.num_read_write_ports,
                                               explicit_array=True)
             #                             packed=True)
             self.write_addr = self.var("write_addr",
-                                       width=16,#self.addr_width,
+                                       width=16,  # self.addr_width,
                                        size=self.num_read_write_ports,
                                        explicit_array=True)
             #                      packed=True)
             self.read_addr = self.var("read_addr",
-                                      width=16,#self.addr_width,
+                                      width=16,  # self.addr_width,
                                       size=self.num_read_write_ports,
                                       explicit_array=True)
             #                    packed=True)
@@ -209,10 +210,13 @@ class Memory(Generator):
     def add_write_data_block(self):
         # print("mem last dim ", self.mem_last_dim, " ", self.write_width)
         if self.write_width > 1:
+            print("write 1 0")
             self.add_code(self.write_data_latency_1_0)
         elif self.mem_last_dim == 1:
+            print("write 1 1")
             self.add_code(self.write_data_latency_1_1)
         else:
+            print("write 1 2")
             self.add_code(self.write_data_latency_1_2)
 
     def add_read_data_block(self):
@@ -220,10 +224,13 @@ class Memory(Generator):
         # print("read width", self.read_width, " ", self.read_bits)
         if self.read_info[0]["latency"] == 1:
             if self.read_width > 1 and self.mem_last_dim > 1:
+                print("read 1 0")
                 self.add_code(self.read_data_latency_1_0)
             elif self.mem_last_dim == 1:
+                print("read 1 1")
                 self.add_code(self.read_data_latency_1_1)
             else:
+                print("read 1 2")
                 self.add_code(self.read_data_latency_1_2)
         else:
             if self.read_width > 1:
@@ -247,7 +254,7 @@ class Memory(Generator):
 
     # write_width is 1 and equal to width of memory
     @always_ff((posedge, "clk"))
-    def write_data_latency_1_1(self):        
+    def write_data_latency_1_1(self):
         for p in range(self.num_write_ports):
             if self.write[p]:
                 self.memory[0][self.write_addr[p][self.write_width_bits - 1, 0]] = self.data_in[p]
@@ -258,10 +265,11 @@ class Memory(Generator):
         for p in range(self.num_write_ports):
             if self.write[p]:
                 self.memory[self.write_addr[p]
-                   [clog2(self.mem_last_dim) + self.write_width_bits - 1, self.write_width_bits]] \
-                   [self.write_addr[p][self.write_width_bits - 1, 0]] \
+                            [clog2(self.mem_last_dim) + self.write_width_bits - 1, self.write_width_bits]] \
+                    [self.write_addr[p][self.write_width_bits - 1, 0]] \
 
-    # if self.read_width > 1:
+
+    # if self.read_width > 1
     @always_comb
     def read_data_latency_0_0(self):
         for p in range(self.num_read_ports):
@@ -271,16 +279,16 @@ class Memory(Generator):
     @always_comb
     def read_data_latency_0_1(self):
         for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[0]#[self.read_addr[p]
-                    #[self.read_width - 1, 0]]
+            self.data_out[p] = self.memory[0]  # [self.read_addr[p]
+            # [self.read_width - 1, 0]]
 
     # read width is 1 but less than the width of memory
     @always_comb
     def read_data_latency_0_2(self):
         for p in range(self.num_read_ports):
             self.data_out[p] = self.memory[self.read_addr[p]
-                    [clog2(self.mem_last_dim) + self.read_width_bits - 1, self.read_width_bits]] \
-                    [self.read_addr[p][self.read_width_bits - 1, 0]]
+                                           [clog2(self.mem_last_dim) + self.read_width_bits, self.read_width_bits + 1]] \
+                [self.read_addr[p][self.read_width_bits, 0]]
 
     # if self.read_width > 1:
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -293,15 +301,15 @@ class Memory(Generator):
     def read_data_latency_1_1(self):
         for p in range(self.num_read_ports):
             self.data_out[p] = self.memory[0][self.read_addr[p]
-                    [self.read_bits - 1, 0]]
+                                              [self.read_bits - 1, 0]]
 
     # read width is 1 but less than the width of memory
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def read_data_latency_1_2(self):
         for p in range(self.num_read_ports):
             self.data_out[p] = self.memory[self.read_addr[p]
-                    [clog2(self.mem_last_dim) + self.read_bits - 1, self.read_bits]] \
-                    [self.read_addr[p][self.read_bits - 1, 0]]
+                                           [clog2(self.mem_last_dim) + self.read_bits - 1, self.read_bits]] \
+                [self.read_addr[p][self.read_bits - 1, 0]]
 
 
 if __name__ == "__main__":
@@ -318,8 +326,8 @@ if __name__ == "__main__":
                   "write_ports": [agg_write_port],
                   "read_ports": [agg_read_port],
                   "read_write_ports": []}
- 
-    print("agg")   
+
+    print("agg")
     agg = mem_inst(agg_params, 16)
     verilog(agg, filename="agg_mem.sv")
 
@@ -331,7 +339,7 @@ if __name__ == "__main__":
                    "num_read_ports": 0,
                    "num_write_ports": 0,
                    "num_read_write_ports": 1,
-                   "read_ports":  [],
+                   "read_ports": [],
                    "write_port": [],
                    "read_write_ports": [sram_read_write_port]}
 
@@ -343,17 +351,16 @@ if __name__ == "__main__":
     tb_read_port = MemPort(0, 0)
 
     tb_params = {"name": "tb",
-                  "capacity": 8,
-                  "read_port_width": 1,
-                  "write_port_width": 4,
-                  "num_read_ports": 1,
-                  "num_write_ports": 1,
-                  "num_read_write_ports": 0,
-                  "write_ports": [tb_write_port],
-                  "read_ports": [tb_read_port],
-                  "read_write_ports": []}
+                 "capacity": 8,
+                 "read_port_width": 1,
+                 "write_port_width": 4,
+                 "num_read_ports": 1,
+                 "num_write_ports": 1,
+                 "num_read_write_ports": 0,
+                 "write_ports": [tb_write_port],
+                 "read_ports": [tb_read_port],
+                 "read_write_ports": []}
 
     print("tb")
     tb = mem_inst(tb_params, 16)
     verilog(tb, filename="tb_mem.sv")
-

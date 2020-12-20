@@ -201,7 +201,7 @@ class TopLakeHW(Generator):
             self.valid = self.var(f"{out_mem}2output_accessor_valid", 1)
 
             forloop = ForLoop(iterator_support=output_dim,
-                              config_width=max(1, clog2(output_range)))#self.default_config_width)
+                              config_width=max(1, clog2(output_range)))  # self.default_config_width)
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
 
@@ -212,7 +212,7 @@ class TopLakeHW(Generator):
                            step=self.valid)
 
             newAG = AddrGen(iterator_support=output_dim,
-                            config_width=max(1, clog2(output_stride)))#self.default_config_width)
+                            config_width=max(1, clog2(output_stride)))  # self.default_config_width)
             self.add_child(f"{out_mem}2output_read_addr_gen",
                            newAG,
                            clk=self.gclk,
@@ -227,7 +227,7 @@ class TopLakeHW(Generator):
                 safe_wire(self, self.mem_insts[out_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=output_dim,
-                             config_width=self.cycle_count_width)#self.default_config_width)
+                             config_width=self.cycle_count_width)  # self.default_config_width)
             self.add_child(f"{out_mem}2output_read_sched_gen",
                            newSG,
                            clk=self.gclk,
@@ -411,7 +411,7 @@ class TopLakeHW(Generator):
 
             # create accessor for edge
             newSG = SchedGen(iterator_support=edge["dim"],
-                             config_width=self.cycle_count_width)#self.default_config_width)
+                             config_width=self.cycle_count_width)  # self.default_config_width)
 
             self.add_child(edge_name + "_sched_gen",
                            newSG,
@@ -475,23 +475,28 @@ class TopLakeHW(Generator):
             ("agg_agg1_sram_edge_read_addr_gen_starting_addr", agg2sram.out_data_strt),
             ("agg_agg1_sram_edge_write_addr_gen_starting_addr", agg2sram.in_data_strt),
             ("agg_agg1_sram_edge_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
+            ("agg_agg1_sram_edge_sched_gen_enable", 1),
             ("agg_agg1_sram_edge_forloop_dimensionality", agg2sram.dim),
 
             ("sram_tb_tb1_edge_read_addr_gen_starting_addr", sram2tb.out_data_strt),
             ("sram_tb_tb1_edge_write_addr_gen_starting_addr", sram2tb.in_data_strt),
             ("sram_tb_tb1_edge_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
+            ("sram_tb_tb1_edge_sched_gen_enable", 1),
             ("sram_tb_tb1_edge_forloop_dimensionality", sram2tb.dim),
 
             ("input2agg_write_addr_gen_starting_addr", in2agg.in_data_strt),
             ("input2agg_write_sched_gen_sched_addr_gen_starting_addr", in2agg.cyc_strt),
+            ("input2agg_write_sched_gen_enable", 1),
             ("input2agg_forloop_dimensionality", in2agg.dim),
 
             ("tb2output_read_addr_gen_starting_addr", tb2out0.out_data_strt),
             ("tb2output_read_sched_gen_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
+            ("tb2output_read_sched_gen_enable", 1),
             ("tb2output_forloop_dimensionality", tb2out0.dim),
 
             ("tb12output_read_addr_gen_starting_addr", tb2out1.out_data_strt),
             ("tb12output_read_sched_gen_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
+            ("tb12output_read_sched_gen_enable", 1),
             ("tb12output_forloop_dimensionality", tb2out1.dim),
 
             # Control Signals...
