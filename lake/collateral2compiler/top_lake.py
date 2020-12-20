@@ -283,7 +283,7 @@ class TopLake():
 
         return hw
 
-    def test_magma_lake(self, wrap_cfg=True):
+    def test_magma_lake(self, wrap_cfg=False):
         # prepare user input for compiler collateral and hardware
         self.banking()
         # generate compiler collateral
@@ -293,7 +293,7 @@ class TopLake():
 
         return hw
 
-    def construct_lake(self, filename="Lake_hw.sv", wrap_cfg=True):
+    def construct_lake(self, filename="Lake_hw.sv", wrap_cfg=False):
         hw = self.test_magma_lake(wrap_cfg)
 
         tsmc_info = SRAMMacroInfo("tsmc_name")
