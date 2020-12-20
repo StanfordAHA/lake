@@ -207,23 +207,29 @@ class Memory(Generator):
 #            self.add_code(self.write_data_latency_1)
 
     def add_write_data_block(self):
-        # print("mem last dim ", self.mem_last_dim, " ", self.write_width)
+        print("mem last dim ", self.mem_last_dim, " ", self.write_width)
         if self.write_width > 1:
+            print("write 1 0")
             self.add_code(self.write_data_latency_1_0)
         elif self.mem_last_dim == 1:
+            print("write 1 1")
             self.add_code(self.write_data_latency_1_1)
         else:
+            print("write 1 2")
             self.add_code(self.write_data_latency_1_2)
 
     def add_read_data_block(self):
-        # print("mem last dim", self.mem_last_dim)
-        # print("read width", self.read_width, " ", self.read_bits)
+        print("mem last dim", self.mem_last_dim)
+        print("read width", self.read_width, " ", self.read_bits)
         if self.read_info[0]["latency"] == 1:
             if self.read_width > 1 and self.mem_last_dim > 1:
+                print("read 1 0")
                 self.add_code(self.read_data_latency_1_0)
             elif self.mem_last_dim == 1:
+                print("read 1 1")
                 self.add_code(self.read_data_latency_1_1)
             else:
+                print("read 1 2")
                 self.add_code(self.read_data_latency_1_2)
         else:
             if self.read_width > 1:

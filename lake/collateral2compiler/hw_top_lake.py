@@ -277,11 +277,7 @@ class TopLakeHW(Generator):
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
                 # can assign same read addrs to all the memories
                 for i in range(len(edge["from_signal"])):
-                    # TO DO this should be deleted once mem addressing changes, we actually don't get into this if but it also doesn't matter for agg addressing...
-                    if edge["from_signal"] in ("agg", "agg1"):
-                        safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr[0], readAG.ports.addr_out * 4)
-                    else:
-                        safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr[0], readAG.ports.addr_out)
+                    safe_wire(self, self.mem_insts[edge["from_signal"][i]].ports.read_addr[0], readAG.ports.addr_out)
             else:
                 for i in range(len(edge["from_signal"])):
                     self.mem_read_write_addrs[edge["from_signal"][i]]["read_addr"] = readAG.ports.addr_out
@@ -293,9 +289,9 @@ class TopLakeHW(Generator):
                 self.mux_sel = self.var(f"{edge_name}_mux_sel",
                                         width=num_mux_bits)
 
+                read_addr_width = max(1, clog2(self.memories[edge["from_signal"][0]]["capacity"]))
                 safe_wire(self, self.mux_sel,
-                          readAG.ports.addr_out[self.mem_insts[edge["from_signal"][0]].ports.read_addr.width + num_mux_from - 1,
-                                                self.mem_insts[edge["from_signal"][0]].ports.read_addr.width])
+                          readAG.ports.addr_out[read_addr_width + num_mux_from - 1, read_addr_width])
 
                 comb_mux_from = self.combinational()
                 # for i in range(num_mux_from):
@@ -331,14 +327,7 @@ class TopLakeHW(Generator):
             # set write addr for to memories
             if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:
                 for i in range(len(edge["to_signal"])):
-                    # TO DO this should be deleted once mem addressing changes
-                    if edge["to_signal"][i] in ("tb", "tb1"):
-                        self.adjust_addr = self.var(f"{edge_name}_adjust_addr", width=writeAG.ports.addr_out.width)
-                        comb = self.combinational()
-                        comb.add_stmt(self.adjust_addr.assign(writeAG.ports.addr_out * 4))
-                        safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], self.adjust_addr)
-                    else:
-                        safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out)
+                    safe_wire(self, self.mem_insts[edge["to_signal"][i]].ports.write_addr[0], writeAG.ports.addr_out)
             else:
                 for i in range(len(edge["to_signal"])):
                     self.mem_read_write_addrs[edge["to_signal"][i]] = {"write": self.valid, "write_addr": writeAG.ports.addr_out}
@@ -387,9 +376,10 @@ class TopLakeHW(Generator):
                 self.mux_sel_to = self.var(f"{edge_name}_mux_sel_to",
                                            width=num_mux_bits)
 
+                write_addr_width = max(1, clog2(self.memories[edge["to_signal"][0]]["capacity"]))
+
                 safe_wire(self, self.mux_sel_to,
-                          writeAG.ports.addr_out[self.mem_insts[edge["to_signal"][0]].ports.write_addr.width + num_mux_to - 1,
-                                                 self.mem_insts[edge["to_signal"][0]].ports.write_addr.width])
+                          writeAG.ports.addr_out[write_addr_width + num_mux_to - 1, write_addr_width])
 
                 comb_mux_to = self.combinational()
                 for i in range(num_mux_to):
@@ -441,8 +431,8 @@ class TopLakeHW(Generator):
                 if_write = IfStmt(mem_info["write"] == 1)
                 addr_width = self.mem_insts[mem_name].ports.read_write_addr[0].width
                 # TO DO this should be deleted once mem addressing changes
-                if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0] * 4))
-                if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0] * 4))
+                if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0]))
+                if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0]))
                 read_write_addr_comb.add_stmt(if_write)
 
         kts.passes.auto_insert_clock_enable(self.internal_generator)
