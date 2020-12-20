@@ -6,6 +6,8 @@ read_port = MemPort(0, 0)
 write_port = MemPort(1, 0)
 
 pond_params = make_params("pond", 32, 1, 1)
-pond.add_memory(pond_params, read_ports=[read_port], write_ports=[write_port], is_input=True, input_edge_params=[2, 2**16, 2**5], is_output=True, output_edge_params=[2, 2**16, 2**5])
+pond.add_memory(pond_params, read_ports=[read_port], write_ports=[write_port])
+pond.add_input_edge("pond", dim=2, max_stride=2**5)
+pond.add_output_edge("pond", dim=2, max_stride=2**5)
 
 pond.construct_lake()
