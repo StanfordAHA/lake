@@ -147,7 +147,7 @@ class Memory(Generator):
         ################################################################
 
         # I/O is different depending on whether we have read and write ports or
-        # read/write ports 
+        # read/write ports
         # TO DO change later - same read/write or read and write assumption as above
         if self.num_write_only_ports != 0 and self.num_read_only_ports != 0:
             # writes
@@ -191,13 +191,11 @@ class Memory(Generator):
                                       size=self.num_read_write_ports,
                                       explicit_array=True)
 
-            
             self.wire(self.read_addr, self.read_write_addr)
             # TO DO in self.read_write_info we should allow for different read
             # and write latencies?
             self.read_info = self.read_write_info
             self.add_read_data_block()
-            
 
     def add_write_data_block(self):
         # print("mem last dim ", self.mem_last_dim, " ", self.write_width)
