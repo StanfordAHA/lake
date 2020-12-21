@@ -102,6 +102,7 @@ class Memory(Generator):
         # of the port type with wider width addresses can fit in the memory
         self.mem_last_dim = int(self.capacity / self.mem_size)
 
+        # TO DO clean up after later logic is cleaned up
         self.read_width_bits = max(1, clog2(self.read_width))
         # bits for number of addresses there are to write to memory
         self.write_addr_bits = max(1, clog2(int(self.capacity / self.write_width)))
@@ -111,7 +112,7 @@ class Memory(Generator):
         # self.addr_width = max(1, clog2(self.capacity))
 
         ################################################################
-        # I/O INTERFACE + MEMORY
+        # I/O INTERFACE (WITHOUT ADDRESSING) + MEMORY
         ################################################################
         self.clk = self.clock("clk")
         # active low asynchornous reset
@@ -140,6 +141,10 @@ class Memory(Generator):
                                size=(self.mem_last_dim, self.mem_size),
                                explicit_array=True,
                                packed=True)
+
+        ################################################################
+        # ADDRESSING I/O AND SIGNALS
+        ################################################################
 
         # I/O is different depending on whether we have read and write ports or
         # read/write ports 
