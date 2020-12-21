@@ -60,18 +60,18 @@ class TopLake():
         mem_params["num_read_write_ports"] = len(read_write_ports)
 
     # TO DO put the defaults here instead of the additional function
-    def add_edge(self, 
-        from_signal,
-        to_signal,
-        dim=6,
-        max_range=65536,
-        max_stride=65536):
+    def add_edge(self,
+                 from_signal,
+                 to_signal,
+                 dim=6,
+                 max_range=65536,
+                 max_stride=65536):
 
         edge_params = {"from_signal": from_signal,
-            "to_signal": to_signal,
-            "dim": dim,
-            "max_range": max_range,
-            "max_stride": max_stride}
+                       "to_signal": to_signal,
+                       "dim": dim,
+                       "max_range": max_range,
+                       "max_stride": max_stride}
 
         # check if producer and consumer port widths match
         from_key, to_key = "read_port_width", "write_port_width"
@@ -100,7 +100,7 @@ class TopLake():
                 self.memories[mem]["is_input"] = False
             if "is_output" not in self.memories[mem].keys():
                 self.memories[mem]["is_output"] = False
-            
+
     # after all edges are added
     def banking(self):
         self.hw_memories = copy.deepcopy(self.memories)
@@ -196,6 +196,9 @@ class TopLake():
 
                     to_edge = {check + "_signal": f"mux_{self.mux_count}",
                                not_check + "_signal": mem}
+                    # TO DO this should be based on min dim, range, and stride
+                    # from the original mems that are being muxed - TO DO make this not
+                    # a limitation, perhaps with a port restriction?
                     get_full_edge_params(to_edge)
                     if to_edge not in self.hw_edges:
                         self.hw_edges.append(to_edge)

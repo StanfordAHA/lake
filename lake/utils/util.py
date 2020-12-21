@@ -83,16 +83,17 @@ def modular_formal_annotation(gen, mem_names):
         if not in_mem:
             for i in mem_names:
                 mems[i].append(var_name)
-    
+
     for i in mem_names:
         with open(i + filepath, "w+") as fi:
             for a in mems[i]:
                 fi.write(a + "\n")
-            
+
+
 def extract_formal_annotation(generator, filepath, mem_names, edges):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
-    
+
     mems = {}
     for i in mem_names:
         mems[i] = []
@@ -133,6 +134,7 @@ def extract_formal_annotation(generator, filepath, mem_names, edges):
         with open(i + filepath, "w+") as fi:
             for a in mems[i]:
                 fi.write(a)
+
 
 def get_configs_dict(configs):
     configs_dict = {}

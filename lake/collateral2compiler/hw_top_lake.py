@@ -563,86 +563,86 @@ if __name__ == "__main__":
     # for hardware generation
     memories = {
         'agg': {
-            'name': 'agg', 
-            'capacity': 4, 
-            'use_macro': False, 
-            'word_width': 16, 
-            'read_port_width': 4, 
-            'write_port_width': 1, 
-            'num_write_ports': 1, 
-            'num_read_ports': 1, 
-            'num_read_write_ports': 0, 
+            'name': 'agg',
+            'capacity': 4,
+            'use_macro': False,
+            'word_width': 16,
+            'read_port_width': 4,
+            'write_port_width': 1,
+            'num_write_ports': 1,
+            'num_read_ports': 1,
+            'num_read_write_ports': 0,
             'read_ports': [
                 MemPort(
-                    0, 0)], 
+                    0, 0)],
             'write_ports': [
                 MemPort(
-                    1, 0)], 
+                    1, 0)],
             'read_write_ports': []},
         'agg1': {
-            'name': 'agg1', 
-            'capacity': 4, 
-            'use_macro': False, 
-            'word_width': 16, 
-            'read_port_width': 4, 
-            'write_port_width': 1, 
-            'num_write_ports': 1, 
-            'num_read_ports': 1, 
-            'num_read_write_ports': 0, 
+            'name': 'agg1',
+            'capacity': 4,
+            'use_macro': False,
+            'word_width': 16,
+            'read_port_width': 4,
+            'write_port_width': 1,
+            'num_write_ports': 1,
+            'num_read_ports': 1,
+            'num_read_write_ports': 0,
             'read_ports': [
                 MemPort(
-                    0, 0)], 
+                    0, 0)],
             'write_ports': [
                 MemPort(
-                    1, 0)], 
+                    1, 0)],
             'read_write_ports': []},
         'sram': {
-            'name': 'sram', 
-            'capacity': 512, 
-            'use_macro': True, 
-            'word_width': 16, 
-            'read_write_port_width': 4, 
-            'num_write_ports': 0, 
-            'num_read_ports': 0, 
-            'num_read_write_ports': 1, 
-            'read_ports': [], 
-            'write_ports': [], 
+            'name': 'sram',
+            'capacity': 512,
+            'use_macro': True,
+            'word_width': 16,
+            'read_write_port_width': 4,
+            'num_write_ports': 0,
+            'num_read_ports': 0,
+            'num_read_write_ports': 1,
+            'read_ports': [],
+            'write_ports': [],
             'read_write_ports': [
                 MemPort(
                     1, 0)]},
         'tb': {
-            'name': 'tb', 
-            'capacity': 8, 
-            'use_macro': False, 
-            'word_width': 16, 
-            'read_port_width': 1, 
-            'write_port_width': 4, 
-            'num_write_ports': 1, 
-            'num_read_ports': 1, 
-            'num_read_write_ports': 0, 
+            'name': 'tb',
+            'capacity': 8,
+            'use_macro': False,
+            'word_width': 16,
+            'read_port_width': 1,
+            'write_port_width': 4,
+            'num_write_ports': 1,
+            'num_read_ports': 1,
+            'num_read_write_ports': 0,
             'read_ports': [
                 MemPort(
-                    0, 0)], 
+                    0, 0)],
             'write_ports': [
                 MemPort(
-                    1, 0)], 
+                    1, 0)],
             'read_write_ports': []},
         'tb1': {
-            'name': 'tb1', 
-            'capacity': 8, 
-            'use_macro': False, 
-            'word_width': 16, 
-            'read_port_width': 1, 
-            'write_port_width': 4, 
-            'num_write_ports': 1, 
-            'num_read_ports': 1, 
-            'num_read_write_ports': 0, 
+            'name': 'tb1',
+            'capacity': 8,
+            'use_macro': False,
+            'word_width': 16,
+            'read_port_width': 1,
+            'write_port_width': 4,
+            'num_write_ports': 1,
+            'num_read_ports': 1,
+            'num_read_write_ports': 0,
             'read_ports': [
                 MemPort(
-                    0, 0)], 
+                    0, 0)],
             'write_ports': [
                 MemPort(
-                    1, 0)], 
+                    1, 0)],
             'read_write_ports': []}}
 
     edges = [

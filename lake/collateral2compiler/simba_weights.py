@@ -11,7 +11,7 @@ weights.add_memory(weights_params, read_write_ports=[port])
 weights.construct_lake("simba_weights.sv")
 
 # accumulation buffer
-accum = TopLake(8*24, 1, 1)
+accum = TopLake(8 * 24, 1, 1)
 
 port = MemPort(1, 0)
 

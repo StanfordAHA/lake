@@ -22,9 +22,11 @@ from lake.utils.parse_clkwork_config import *
     Basically creating configuration wrapper with
     bogus config bus for synthesis numbers.
 '''
+
+
 class CFGRegWrapper(Generator):
     def __init__(self,
-                 child_gen:kts.Generator):
+                 child_gen: kts.Generator):
 
         super().__init__(f"{child_gen.name}_cfg_W", debug=True)
 
@@ -81,4 +83,3 @@ class CFGRegWrapper(Generator):
         else:
             newport = self.port_from_def(port, pname)
             self.wire(newport, port)
-
