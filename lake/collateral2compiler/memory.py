@@ -209,32 +209,20 @@ class Memory(Generator):
             print("Error: Write width > mem size which is not possible...please check code.")
 
     def add_read_data_block(self):
-        # print("mem last dim", self.mem_last_dim)
-        # print("read width", self.read_width, " ", self.read_addr_bits)
-        if self.read_info[0]["latency"] == 1:
-            if self.read_width > 1 and self.mem_last_dim > 1:
-                print("read 1 0")
+        if self.read_width == self.mem_size:
+            if self.read_info[0]["latency"] == 1:
                 self.add_code(self.read_data_latency_1_0)
-            elif self.mem_last_dim == 1:
-                print("read 1 1")
+            else:
+                self.add_code(self.read_data_latency_0_0)
+        elif self.read_width < self.mem_size:
+            if self.read_info[0]["latency"] == 1:
                 self.add_code(self.read_data_latency_1_1)
             else:
-                print("read 1 2")
-                self.add_code(self.read_data_latency_1_2)
+                self.add_code(self.read_data_latency_0_1)
         else:
-            if self.read_width > 1:
-                if self.mem_last_dim > 1:
-                    print("read 0 0")
-                    self.add_code(self.read_data_latency_0_0)
-                # self.mem_last_dim == 1
-                else:
-                    print("read 0 1")
-                    self.add_code(self.read_data_latency_0_1)
-            else:
-                print("read 0 2")
-                self.add_code(self.read_data_latency_0_2)
+            print("Error: Read width > mem size which is not possible...please check code.")
 
-    # write_width is greater than 1
+    # write width is same as innermost dimension for memory, so
     # just need to index with write addr in the last dimension of memory (mem_last_dim)
     @always_ff((posedge, "clk"))
     def write_data_latency_1_0(self):
@@ -242,7 +230,9 @@ class Memory(Generator):
             if self.write[p]:
                 self.memory[self.write_addr[p][self.mem_last_dim_bits - 1, 0]] = self.data_in[p]
 
-    # write_width is 1 and equal to width of memory
+    # write width is less than innermost dimension of memory, so
+    # last mem_size_bits will give innermost dimension for memory (mem_size) and
+    # the next self.mem_last_dim_bits will give the last dimension of memory (mem_last_dim)
     @always_ff((posedge, "clk"))
     def write_data_latency_1_1(self):
         for p in range(self.num_write_ports):
@@ -250,47 +240,27 @@ class Memory(Generator):
                 self.memory[self.write_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
                     [self.write_addr[p][self.mem_size_bits - 1, 0]] = self.data_in[p]
 
-    # if self.read_width > 1
     @always_comb
     def read_data_latency_0_0(self):
         for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[self.read_addr[p][clog2(self.mem_last_dim) - 1, 0]]
+            self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1, 0]]
 
-    # read_width is 1 and equal to width of memory
     @always_comb
     def read_data_latency_0_1(self):
         for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[0]  # [self.read_addr[p]
-            # [self.read_width - 1, 0]]
+            self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
+                    [self.read_addr[p][self.mem_size_bits - 1, 0]]
 
-    # read width is 1 but less than the width of memory
-    @always_comb
-    def read_data_latency_0_2(self):
-        for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[self.read_addr[p]
-                                           [clog2(self.mem_last_dim) + self.read_width_bits, self.read_width_bits + 1]] \
-                [self.read_addr[p][self.read_width_bits, 0]]
-
-    # if self.read_width > 1:
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def read_data_latency_1_0(self):
         for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[self.read_addr[p][clog2(self.mem_last_dim) - 1, 0]]
+            self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1, 0]]
 
-    # read_width is 1 and equal to width of memory
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def read_data_latency_1_1(self):
         for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[0][self.read_addr[p]
-                                              [self.read_addr_bits - 1, 0]]
-
-    # read width is 1 but less than the width of memory
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def read_data_latency_1_2(self):
-        for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[self.read_addr[p]
-                                           [clog2(self.mem_last_dim) + self.read_addr_bits - 1, self.read_addr_bits]] \
-                [self.read_addr[p][self.read_addr_bits - 1, 0]]
+            self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
+                    [self.read_addr[p][self.mem_size_bits - 1, 0]]
 
 
 if __name__ == "__main__":
