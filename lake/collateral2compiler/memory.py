@@ -102,6 +102,9 @@ class Memory(Generator):
         # of the port type with wider width addresses can fit in the memory
         self.mem_last_dim = int(self.capacity / self.mem_size)
 
+        self.mem_size_bits = max(1, clog2(self.mem_size))
+        self.mem_last_dim_bits = max(1, clog2(self.mem_last_dim))
+
         # TO DO clean up after later logic is cleaned up
         self.read_width_bits = max(1, clog2(self.read_width))
         # bits for number of addresses there are to write to memory
@@ -198,16 +201,12 @@ class Memory(Generator):
             self.add_read_data_block()
 
     def add_write_data_block(self):
-        # print("mem last dim ", self.mem_last_dim, " ", self.write_width)
-        if self.write_width > 1:
-            print("write 1 0")
+        if self.write_width == self.mem_size:
             self.add_code(self.write_data_latency_1_0)
-        elif self.mem_last_dim == 1:
-            print("write 1 1")
+        elif self.write_width < self.mem_size:
             self.add_code(self.write_data_latency_1_1)
         else:
-            print("write 1 2")
-            self.add_code(self.write_data_latency_1_2)
+            print("Error: Write width > mem size which is not possible...please check code.")
 
     def add_read_data_block(self):
         # print("mem last dim", self.mem_last_dim)
@@ -235,29 +234,21 @@ class Memory(Generator):
                 print("read 0 2")
                 self.add_code(self.read_data_latency_0_2)
 
-    # if self.write_width > 1:
+    # write_width is greater than 1
+    # just need to index with write addr in the last dimension of memory (mem_last_dim)
     @always_ff((posedge, "clk"))
     def write_data_latency_1_0(self):
         for p in range(self.num_write_ports):
             if self.write[p]:
-                self.memory[self.write_addr[p][clog2(self.mem_last_dim) - 1, 0]] = self.data_in[p]
+                self.memory[self.write_addr[p][self.mem_last_dim_bits - 1, 0]] = self.data_in[p]
 
     # write_width is 1 and equal to width of memory
     @always_ff((posedge, "clk"))
     def write_data_latency_1_1(self):
         for p in range(self.num_write_ports):
             if self.write[p]:
-                self.memory[0][self.write_addr[p][self.write_addr_bits - 1, 0]] = self.data_in[p]
-
-    # write_width is 1 but less than the width of memory
-    @always_ff((posedge, "clk"))
-    def write_data_latency_1_2(self):
-        for p in range(self.num_write_ports):
-            if self.write[p]:
-                self.memory[self.write_addr[p]
-                            [clog2(self.mem_last_dim) + self.write_addr_bits - 1, self.write_addr_bits]] \
-                    [self.write_addr[p][self.write_addr_bits - 1, 0]] \
-
+                self.memory[self.write_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
+                    [self.write_addr[p][self.mem_size_bits - 1, 0]] = self.data_in[p]
 
     # if self.read_width > 1
     @always_comb
