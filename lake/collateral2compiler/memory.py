@@ -249,7 +249,7 @@ class Memory(Generator):
     def read_data_latency_0_1(self):
         for p in range(self.num_read_ports):
             self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
-                    [self.read_addr[p][self.mem_size_bits - 1, 0]]
+                [self.read_addr[p][self.mem_size_bits - 1, 0]]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def read_data_latency_1_0(self):
@@ -260,7 +260,7 @@ class Memory(Generator):
     def read_data_latency_1_1(self):
         for p in range(self.num_read_ports):
             self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
-                    [self.read_addr[p][self.mem_size_bits - 1, 0]]
+                [self.read_addr[p][self.mem_size_bits - 1, 0]]
 
 
 if __name__ == "__main__":
