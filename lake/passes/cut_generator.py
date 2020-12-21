@@ -19,7 +19,7 @@ def cut_generator(gen: kratos.Generator, suffix="_top"):
         # only need to worry about the output
         if port.port_direction == kratos.PortDirection.In.value:
             continue
-        
+
         new_port_name = port_name + suffix
         new_port = parent_gen.port(port, new_port_name)
 
