@@ -267,6 +267,7 @@ class Memory(Generator):
                             [clog2(self.mem_last_dim) + self.write_width_bits - 1, self.write_width_bits]] \
                     [self.write_addr[p][self.write_width_bits - 1, 0]] \
 
+
     # if self.read_width > 1:
     @always_comb
     def read_data_latency_0_0(self):
