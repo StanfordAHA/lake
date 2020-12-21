@@ -24,7 +24,7 @@ agg1_write_port = MemPort(1, 0)
 agg1_read_port = MemPort(0, 0)
 agg1_params = make_params("agg1", 4, read_port_width=4, write_port_width=1)
 tile.add_memory(agg1_params, [agg1_write_port], [agg1_read_port])
-tile.add_input_edge("agg")
+tile.add_input_edge("agg1")
 
 sram_write_read_port = MemPort(1, 0)
 sram_params = make_params("sram", 512, read_write_port_width=4)#, use_macro=True)

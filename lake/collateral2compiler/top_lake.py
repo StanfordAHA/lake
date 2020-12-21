@@ -63,23 +63,18 @@ class TopLake():
     def add_edge(self, 
         from_signal,
         to_signal,
-        dim=None,
-        max_range=None,
-        max_stride=None):
+        dim=6,
+        max_range=65536,
+        max_stride=65536):
 
         edge_params = {"from_signal": from_signal,
-            "to_signal": to_signal}
-
-        if dim is not None:
-            edge_params["dim"] = dim
-        if max_range is not None:
-            edge_params["max_range"] = max_range
-        if max_stride is not None:
-            edge_params["max_stride"] = max_stride
+            "to_signal": to_signal,
+            "dim": dim,
+            "max_range": max_range,
+            "max_stride": max_stride}
 
         # check if producer and consumer port widths match
-        from_key = "read_port_width"
-        to_key = "write_port_width"
+        from_key, to_key = "read_port_width", "write_port_width"
         if self.memories[edge_params['from_signal']]["num_read_write_ports"] > 0:
             from_key = "read_write_port_width"
         if self.memories[edge_params['to_signal']]["num_read_write_ports"] > 0:
@@ -87,18 +82,25 @@ class TopLake():
 
         # producer and consumer port widths must match
         assert self.memories[edge_params['from_signal']][from_key] == self.memories[edge_params['to_signal']][to_key]
-
-        get_full_edge_params(edge_params)
         self.edges.append(edge_params)
 
     def add_input_edge(self, mem_name, dim=6, max_range=65536, max_stride=65536):
         self.memories[mem_name]["input_edge_params"] = \
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
+        self.memories[mem_name]["is_input"] = True
 
     def add_output_edge(self, mem_name, dim=6, max_range=65536, max_stride=65536):
         self.memories[mem_name]["output_edge_params"] = \
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
+        self.memories[mem_name]["is_output"] = True
 
+    def add_io_mem_tags(self):
+        for mem in self.memories.keys():
+            if "is_input" not in self.memories[mem].keys():
+                self.memories[mem]["is_input"] = False
+            if "is_output" not in self.memories[mem].keys():
+                self.memories[mem]["is_output"] = False
+            
     # after all edges are added
     def banking(self):
         self.hw_memories = copy.deepcopy(self.memories)
@@ -154,8 +156,8 @@ class TopLake():
             if add == 1:
                 self.hardware_edges.append(e)
 
-        self.merge_mems(memories_from, 1)
-        self.merge_mems(memories_to, 0)
+        self.merge_mems(memories_from, True)
+        self.merge_mems(memories_to, False)
 
     def merge_mems(self, mems_to_merge, is_from):
         for mem in mems_to_merge.keys():
@@ -218,12 +220,12 @@ class TopLake():
                 merged_mem["write_ports"] = write_ports
                 merged_mem["read_write_ports"] = rw_ports
 
-                if not is_from:
-                    # print("NOT IS FROM ", mem, merged_mem["name"])
-                    self.merged_edges.append({"from_signal": mem, "to_signal": merged_mem["name"]})
-                else:
+                if is_from:
                     # print("IS FROM ", merged_mem["name"], mem)
                     self.merged_edges.append({"to_signal": mem, "from_signal": merged_mem["name"]})
+                else:
+                    # print("NOT IS FROM ", mem, merged_mem["name"])
+                    self.merged_edges.append({"from_signal": mem, "to_signal": merged_mem["name"]})
 
                 self.get_addl_mem_params(merged_mem, write_ports, read_ports, [])
 
@@ -268,6 +270,8 @@ class TopLake():
         return hw
 
     def test_magma_lake(self, wrap_cfg=False):
+        # identify which memories are not inputs and/or outputs
+        self.add_io_mem_tags()
         # prepare user input for compiler collateral and hardware
         self.banking()
         # generate compiler collateral

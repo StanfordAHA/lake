@@ -5,7 +5,6 @@ from math import log
 
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
-from lake.collateral2compiler.edge import get_full_edge_params
 from lake.collateral2compiler.helper import *
 from lake.collateral2compiler.mem_port import MemPort
 from lake.collateral2compiler.memory import mem_inst
@@ -33,14 +32,14 @@ class TopLakeHW(Generator):
         self.input_ports = input_ports
         self.output_ports = output_ports
 
+        self.default_config_width = 16
+        self.cycle_count_width = 16
+
         self.stencil_valid = False
 
         # objects
         self.memories = memories
         self.edges = edges
-
-        self.default_config_width = 16
-        self.cycle_count_width = 16
 
         # inputs
         self.tile_en = self.input("tile_en", 1)
@@ -50,6 +49,7 @@ class TopLakeHW(Generator):
         self.clk_mem = self.clock("clk")
         self.clk_mem.add_attribute(FormalAttr(self.clk_mem.name, FormalSignalConstraint.CLK))
 
+        # gate clock with tile_en
         gclk = self.var("gclk", 1)
         self.gclk = kts.util.clock(gclk)
         self.wire(gclk, self.clk_mem & self.tile_en)
@@ -60,6 +60,7 @@ class TopLakeHW(Generator):
         self.rst_n = self.reset("rst_n", 1)
         self.rst_n.add_attribute(FormalAttr(self.rst_n.name, FormalSignalConstraint.RSTN))
 
+        # data in and out of top level Lake memory object
         self.data_in = self.input("data_in",
                                   width=self.word_width,
                                   size=self.input_ports,
@@ -74,9 +75,9 @@ class TopLakeHW(Generator):
                                     packed=True)
         self.data_out.add_attribute(FormalAttr(self.data_out.name, FormalSignalConstraint.SEQUENCE))
 
+        # global cycle count for accessor comparison
         self._cycle_count = self.var("cycle_count", 16)
 
-        # global cycle count for accessor comparison
         @always_ff((posedge, self.gclk), (negedge, "rst_n"))
         def increment_cycle_count(self):
             if ~self.rst_n:
@@ -89,15 +90,16 @@ class TopLakeHW(Generator):
         num_mem = len(memories)
         subscript_mems = list(self.memories.keys())
 
+        # list of the data out from each memory
         self.mem_data_outs = [self.var(f"mem_data_out_{subscript_mems[i]}",
                                        width=self.word_width,
                                        size=self.memories[subscript_mems[i]]["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]] else "read_write_port_width"],
                                        explicit_array=True, packed=True) for i in range(num_mem)]
 
-        self.mem_insts = {}
-
         self.mem_read_write_addrs = {}
 
+        # create memory instance for each memory
+        self.mem_insts = {}
         i = 0
         for mem in self.memories.keys():
             m = mem_inst(self.memories[mem], self.word_width)
@@ -110,27 +112,16 @@ class TopLakeHW(Generator):
                            data_out=self.mem_data_outs[i])
             i += 1
 
-        # wire input and output data
+        # get input and output memories
         is_input, is_output = [], []
-        for mem_name in self.mem_insts.keys():
-            make_input, make_output = True, True
-            for e in self.edges:
-                if mem_name in e["to_signal"]:
-                    make_input = False
-                if mem_name in e["from_signal"]:
-                    make_output = False
-            if make_input:
+        for mem_name in self.memories.keys():
+            mem = self.memories[mem_name]
+            if mem["is_input"]:
                 is_input.append(mem_name)
-                if "input_edge_params" not in self.memories[mem_name]:
-                    self.memories[mem_name]["input_edge_params"] = {}
-                    get_full_edge_params(self.memories[mem_name]["input_edge_params"])
-            if make_output:
+            if mem["is_output"]:
                 is_output.append(mem_name)
-                if "output_edge_params" not in self.memories[mem_name]:
-                    self.memories[mem_name]["output_edge_params"] = {}
-                    get_full_edge_params(self.memories[mem_name]["output_edge_params"])
 
-        # assume this for now
+        # TO DO assume this for now
         assert len(is_input) == self.input_ports
         assert len(is_output) == self.output_ports
 
