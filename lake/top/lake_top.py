@@ -1247,10 +1247,10 @@ if __name__ == "__main__":
     # optional: to add generator cuts for formal module verilog + annotations
     # change this line for various module extractions: agg, sram, tb
     # comment out for no module extractions
-    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module("agg")
+    # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module("agg")
 
     # normal generation
-    # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
+    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
 
     # config regs pass (needs to be after generator cuts)
     if need_config_lift:

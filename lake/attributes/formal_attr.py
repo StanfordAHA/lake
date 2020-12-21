@@ -41,8 +41,6 @@ class FormalAttrBase(kts.Attribute):
         return self.formalsig_cnst
 
 # these attributes should be used for all modules (agg, sram, tb)
-
-
 class FormalAttr(FormalAttrBase):
     def __init__(self,
                  port_name,
@@ -51,8 +49,6 @@ class FormalAttr(FormalAttrBase):
         super().__init__(port_name, formalsig_cnst, doc_string)
 
 # these are agg specific formal attributes
-
-
 class AggFormalAttr(FormalAttrBase):
     def __init__(self,
                  port_name,
@@ -61,8 +57,6 @@ class AggFormalAttr(FormalAttrBase):
         super().__init__(port_name, formalsig_cnst, doc_string)
 
 # these are sram specific formal attributes
-
-
 class SRAMFormalAttr(FormalAttrBase):
     def __init__(self,
                  port_name,
@@ -71,8 +65,6 @@ class SRAMFormalAttr(FormalAttrBase):
         super().__init__(port_name, formalsig_cnst, doc_string)
 
 # these are tb specific formal attributes
-
-
 class TBFormalAttr(FormalAttrBase):
     def __init__(self,
                  port_name,
