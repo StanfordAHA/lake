@@ -80,16 +80,13 @@ def gen_test_lake(config_path,
             if i < len(out_data[j]):
                 if len(valids) != 0 and valids[i] == 1:
                     getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
-                elif len(valids) == 0:
-                    getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
 
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "resnet5"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def lake_test_app_args(app):
@@ -113,7 +110,7 @@ def conv_3_3_args():
 # This is a weird custom test path until we can get consistent paths
 def separate_args():
     clkwrk_dir = os.getenv("CLOCKWORK_DIR")
-    config_path = clkwrk_dir + "/aha_garnet_design_new/resnet/lake_collateral/ub_hw_input_global_wrapper_stencil_cyclic_0_0_0"
+    config_path = clkwrk_dir + "/aha_garnet_design_new/conv_3_3/lake_collateral/ub_hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11"
     stream_path = clkwrk_dir + "/aha_garnet_design/conv_3_3/lake_stream/hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11_ubuf_0_top_SMT.csv"
     in_file_name = ""
     out_file_name = ""
