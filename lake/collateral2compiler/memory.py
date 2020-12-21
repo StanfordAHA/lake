@@ -105,13 +105,11 @@ class Memory(Generator):
         self.mem_size_bits = max(1, clog2(self.mem_size))
         self.mem_last_dim_bits = max(1, clog2(self.mem_last_dim))
 
-        # TO DO clean up after later logic is cleaned up
-        self.read_width_bits = max(1, clog2(self.read_width))
+        # unused params
         # bits for number of addresses there are to write to memory
         self.write_addr_bits = max(1, clog2(int(self.capacity / self.write_width)))
         # bits for number of addresses there are to read from memory
         self.read_addr_bits = max(1, clog2(int(self.capacity / self.read_width)))
-        # self.write_addr_bits = max(1, clog2(self.write_width))
         # self.addr_width = max(1, clog2(self.capacity))
 
         ################################################################
