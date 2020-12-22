@@ -114,7 +114,7 @@ class LakeTop(Generator):
                                    packed=True,
                                    explicit_array=True)
         self._data_in.add_attribute(ControlSignalAttr(False))
-        self._data_in.add_attribute(AggFormalAttr(self._data_in.name, FormalSignalConstraint.SEQUENCE))
+        self._data_in.add_attribute(FormalAttr(self._data_in.name, FormalSignalConstraint.SEQUENCE, "agg"))
 
         if self.rw_same_cycle:
             self._wr_addr_in = self.input("waddr",
@@ -227,7 +227,7 @@ class LakeTop(Generator):
                                      packed=True,
                                      explicit_array=True)
         self._data_out.add_attribute(ControlSignalAttr(False))
-        self._data_out.add_attribute(TBFormalAttr(self._data_out.name, FormalSignalConstraint.SEQUENCE))
+        self._data_out.add_attribute(FormalAttr(self._data_out.name, FormalSignalConstraint.SEQUENCE, "tb"))
 
         # self._valid_out = self.output("valid_out",
         #                               self.interconnect_output_ports)
@@ -277,8 +277,8 @@ class LakeTop(Generator):
                                                           self.fw_int),
                                                     packed=True,
                                                     explicit_array=True)
-            self._formal_mem_data_out.add_attribute(SRAMFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
-            self._formal_mem_data_out.add_attribute(TBFormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE))
+            self._formal_mem_data_out.add_attribute(
+                FormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE, self.formal_module))
 
             self.wire(self._formal_mem_data_out, self._mem_data_out)
 
@@ -573,7 +573,8 @@ class LakeTop(Generator):
                                                           self.fw_int),
                                                     packed=True,
                                                     explicit_array=True)
-            self._formal_agg_data_out.add_attribute(AggFormalAttr(self._formal_agg_data_out.name, FormalSignalConstraint.SEQUENCE))
+            self._formal_agg_data_out.add_attribute(
+                FormalAttr(self._formal_agg_data_out.name, FormalSignalConstraint.SEQUENCE, "agg"))
 
             self.wire(self._formal_agg_data_out, strg_ub.ports.strg_ub_agg_data_out)
         # Handle different names - sorry
@@ -1216,10 +1217,8 @@ def get_formal_module(module):
     lift_config_reg(lake_dut.internal_generator)
     need_config_lift = False
 
-    mod_attr_map = {"agg": AggFormalAttr, "sram": SRAMFormalAttr, "tb": TBFormalAttr}
-
     # extract formal annotation after config regs have been lifted up
-    extract_formal_annotation(lake_dut, f"{module}_lake_top_annotation.txt", mod_attr_map[module])
+    extract_formal_annotation(lake_dut, f"{module}_lake_top_annotation.txt", module)
 
     return lake_dut, need_config_lift, use_sram_stub, tsmc_info
 

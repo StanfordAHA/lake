@@ -99,7 +99,7 @@ class StrgUBSRAMOnly(Generator):
                                               self.fetch_width),
                                         packed=True,
                                         explicit_array=True)
-        self._agg_data_out.add_attribute(AggFormalAttr(self._agg_data_out.name, FormalSignalConstraint.SEQUENCE))
+        self._agg_data_out.add_attribute(FormalAttr(self._agg_data_out.name, FormalSignalConstraint.SEQUENCE, "agg"))
         # sram attribute for data_in, comes from cut gen of agg_only for agg_data_out_top
 
         self._wen_to_sram = self.output("wen_to_sram", 1, packed=True)

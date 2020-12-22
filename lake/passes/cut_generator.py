@@ -3,7 +3,7 @@ from lake.attributes.formal_attr import *
 
 
 def add_attrs(port, new_port, new_port_name):
-    attrs = port.find_attribute(lambda a: isinstance(a, FormalAttrBase))
+    attrs = port.find_attribute(lambda a: isinstance(a, FormalAttr))
     for attr in attrs:
         attr.port_name = new_port_name
         new_port.add_attribute(attr)

@@ -58,7 +58,7 @@ def get_size_str(port):
     return dim_2 + dim_1
 
 
-def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
+def extract_formal_annotation(generator, filepath, module_attr="agg"):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
     port_names = int_gen.get_port_names()
@@ -76,15 +76,13 @@ def extract_formal_annotation(generator, filepath, module_attr=AggFormalAttr):
             if str(curr_port.port_direction) == "PortDirection.Out":
                 pdir = "output"
             # If there are 0 or more than one attributes, let's just use the default X attribute
-            if len(attrs) != 1:
-                mod_attrs = curr_port.find_attribute(lambda a: isinstance(a, module_attr))
-                if len(mod_attrs) != 1:
-                    if pdir is "input":
-                        form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
-                    else:
-                        form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
+            # If there is 1 attribute, but it is not applied for this module or all modules,
+            # use the default X attribute
+            if len(attrs) != 1 or attrs[0].get_module() not in ("all", module_attr):
+                if pdir is "input":
+                    form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
                 else:
-                    form_attr = mod_attrs[0]
+                    form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
             else:
                 form_attr = attrs[0]
 

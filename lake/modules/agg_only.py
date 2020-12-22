@@ -88,7 +88,7 @@ class StrgUBAggOnly(Generator):
                                                self.fetch_width),
                                          packed=True,
                                          explicit_array=True)
-        self._agg_data_out.add_attribute(SRAMFormalAttr(self._agg_data_out.name, FormalSignalConstraint.SEQUENCE))
+        self._agg_data_out.add_attribute(FormalAttr(self._agg_data_out.name, FormalSignalConstraint.SEQUENCE, "sram"))
 
         ##################################################################################
         # AGG RELEVANT SIGNALS

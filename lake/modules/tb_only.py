@@ -2,7 +2,6 @@ from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
-from lake.attributes.formal_attr import TBFormalAttr, FormalSignalConstraint
 from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.sram_stub import SRAMStub

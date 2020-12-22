@@ -14,14 +14,16 @@ class FormalSignalConstraint(Enum):
 
 
 # parent class for formal attributes
-class FormalAttrBase(kts.Attribute):
+class FormalAttr(kts.Attribute):
     def __init__(self,
                  port_name,
                  formalsig_cnst,
+                 module="all",
                  doc_string=""):
         super().__init__()
         self.port_name = port_name
         self.formalsig_cnst = formalsig_cnst
+        self.module = module
         self.documentation = doc_string
         self.annotation = f"{self.port_name}\t{self.formalsig_cnst.name}"
 
@@ -34,44 +36,11 @@ class FormalAttrBase(kts.Attribute):
     def get_annotation(self):
         return self.annotation
 
+    def get_module(self):
+        return self.module
+
     def get_port_name(self):
         return self.port_name
 
     def get_formal_ann(self):
         return self.formalsig_cnst
-
-
-# these attributes should be used for all modules (agg, sram, tb)
-class FormalAttr(FormalAttrBase):
-    def __init__(self,
-                 port_name,
-                 formalsig_cnst,
-                 doc_string=""):
-        super().__init__(port_name, formalsig_cnst, doc_string)
-
-
-# these are agg specific formal attributes
-class AggFormalAttr(FormalAttrBase):
-    def __init__(self,
-                 port_name,
-                 formalsig_cnst,
-                 doc_string=""):
-        super().__init__(port_name, formalsig_cnst, doc_string)
-
-
-# these are sram specific formal attributes
-class SRAMFormalAttr(FormalAttrBase):
-    def __init__(self,
-                 port_name,
-                 formalsig_cnst,
-                 doc_string=""):
-        super().__init__(port_name, formalsig_cnst, doc_string)
-
-
-# these are tb specific formal attributes
-class TBFormalAttr(FormalAttrBase):
-    def __init__(self,
-                 port_name,
-                 formalsig_cnst,
-                 doc_string=""):
-        super().__init__(port_name, formalsig_cnst, doc_string)
