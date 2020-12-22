@@ -87,6 +87,7 @@ class TopLakeHW(Generator):
 
         self.add_always(increment_cycle_count)
 
+        # info about memories
         num_mem = len(memories)
         subscript_mems = list(self.memories.keys())
 
@@ -96,6 +97,8 @@ class TopLakeHW(Generator):
                                        size=self.memories[subscript_mems[i]]["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]] else "read_write_port_width"],
                                        explicit_array=True, packed=True) for i in range(num_mem)]
 
+        # keep track of write, read_addr, and write_addr vars for read/write memories
+        # to later check whether there is a write and what to use for the shared port
         self.mem_read_write_addrs = {}
 
         # create memory instance for each memory
@@ -103,12 +106,13 @@ class TopLakeHW(Generator):
         i = 0
         for mem in self.memories.keys():
             m = mem_inst(self.memories[mem], self.word_width)
-            self.mem_insts[self.memories[mem]["name"]] = m
+            self.mem_insts[mem] = m
 
-            self.add_child(self.memories[mem]["name"],
+            self.add_child(mem,
                            m,
                            clk=self.gclk,
                            rst_n=self.rst_n,
+                           # put data out in memory data out list
                            data_out=self.mem_data_outs[i])
             i += 1
 
@@ -120,10 +124,6 @@ class TopLakeHW(Generator):
                 is_input.append(mem_name)
             if mem["is_output"]:
                 is_output.append(mem_name)
-
-        # TO DO assume this for now
-        assert len(is_input) == self.input_ports
-        assert len(is_output) == self.output_ports
 
         # TO DO direct connection to write doesn't work??
         self.low = self.var("low", 1)

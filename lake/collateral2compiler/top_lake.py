@@ -84,6 +84,7 @@ class TopLake():
         assert self.memories[edge_params['from_signal']][from_key] == self.memories[edge_params['to_signal']][to_key]
         self.edges.append(edge_params)
 
+    # TO DO add to top_lake logic for merging input and output mems if multiple per port
     def add_input_edge(self, port, mem_name, dim=6, max_range=65536, max_stride=65536):
         self.memories[mem_name]["input_edge_params"] = \
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
