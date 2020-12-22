@@ -27,9 +27,6 @@ def base_lake_tester(config_path,
                                                   out_ports=out_ports,
                                                   stencil_valid=stencil_valid)
 
-    if need_config_lift:
-        lift_config_reg(lt_dut.internal_generator)
-
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
     configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 

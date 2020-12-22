@@ -52,7 +52,8 @@ class LakeTop(Generator):
                  name="LakeTop",
                  gen_addr=True,
                  stencil_valid=True,
-                 formal_module=None):
+                 formal_module=None,
+                 do_config_lift=True):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -861,6 +862,9 @@ class LakeTop(Generator):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
+        if do_config_lift:
+            lift_config_reg(self.internal_generator)
+
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def cycle_count_inc(self):
         if ~self._rst_n:
@@ -1187,7 +1191,11 @@ class LakeTop(Generator):
 
 # formal module functions
 def get_formal_module(module):
-    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut(module)
+    lake_dut, need_config_lift, use_sram_stub, tsmc_info = \
+        get_lake_dut(module,
+                     # need to lift config regs after generator cuts
+                     do_config_lift=False)
+
     # cuts for modular formal solving
     if module == "agg":
         cut_generator(lake_dut["strg_ub"]["sram_only"])
@@ -1204,6 +1212,7 @@ def get_formal_module(module):
         print("Error! Invalid module name given...must be one of agg, sram, or tb. Cuts not performed.")
         return lake_dut, need_config_lift, use_sram_stub, tsmc_info
 
+    # config regs pass (needs to be after generator cuts)
     lift_config_reg(lake_dut.internal_generator)
     need_config_lift = False
 
@@ -1223,7 +1232,8 @@ def get_lake_dut(formal_module=None,
                  tsmc_info=SRAMMacroInfo("tsmc_name"),
                  use_sram_stub=True,
                  fifo_mode=True,
-                 mem_width=64):
+                 mem_width=64,
+                 do_config_lift=True):
 
     lake_dut = LakeTop(mem_width=mem_width,
                        interconnect_input_ports=in_ports,
@@ -1234,11 +1244,13 @@ def get_lake_dut(formal_module=None,
                        add_clk_enable=True,
                        add_flush=True,
                        stencil_valid=stencil_valid,
-                       formal_module=formal_module)
+                       formal_module=formal_module,
+                       do_config_lift=do_config_lift)
 
     print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
 
-    return lake_dut, True, use_sram_stub, tsmc_info
+    # if do_config_lift, then do not need_config_lift later
+    return lake_dut, not do_config_lift, use_sram_stub, tsmc_info
 
 
 if __name__ == "__main__":
@@ -1252,9 +1264,8 @@ if __name__ == "__main__":
     # normal generation
     lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
 
-    # config regs pass (needs to be after generator cuts)
-    if need_config_lift:
-        lift_config_reg(lake_dut.internal_generator)
+    # config lift happens in all possible cases by this point
+    assert not need_config_lift
 
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     # generate verilog
