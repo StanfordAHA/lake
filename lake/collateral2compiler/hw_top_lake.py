@@ -13,7 +13,7 @@ from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.passes.passes import lift_config_reg
 from lake.utils.util import safe_wire, trim_config_list
-from lake.utils.util import extract_formal_annotation, modular_formal_annotation
+from lake.utils.util import extract_formal_annotation_colat, modular_formal_annotation
 from lake.utils.parse_clkwork_config import *
 
 
