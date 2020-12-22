@@ -65,11 +65,15 @@ class StrgUBSRAMTBShared(Generator):
 
         self._loops_sram2tb_mux_sel = self.output("loops_sram2tb_mux_sel",
                                                   width=max(clog2(self.default_iterator_support), 1),
-                                                  size=self.interconnect_output_ports)
+                                                  size=self.interconnect_output_ports,
+                                                  explicit_array=True,
+                                                  packed=True)
 
         self._loops_sram2tb_restart = self.output("loops_sram2tb_restart",
                                                   width=1,
-                                                  size=self.interconnect_output_ports)
+                                                  size=self.interconnect_output_ports,
+                                                  explicit_array=True,
+                                                  packed=True)
 
         self._t_read_out = self.output("t_read_out", self.interconnect_output_ports)
         self._t_read = self.var("t_read", self.interconnect_output_ports)
@@ -96,7 +100,7 @@ class StrgUBSRAMTBShared(Generator):
                            rst_n=self._rst_n,
                            step=self._t_read[i])
 
-            self.wire(self._loops_sram2tb_mux_sel[i], loops_sram2tb.ports.mux_sel_out)
+            safe_wire(gen=self, w_to=self._loops_sram2tb_mux_sel[i], w_from=loops_sram2tb.ports.mux_sel_out)
             self.wire(self._loops_sram2tb_restart[i], loops_sram2tb.ports.restart)
 
             self.add_child(f"output_sched_gen_{i}",

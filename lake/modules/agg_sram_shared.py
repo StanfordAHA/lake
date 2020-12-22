@@ -65,11 +65,15 @@ class StrgUBAggSRAMShared(Generator):
 
         self._floop_mux_sel = self.output("floop_mux_sel",
                                           width=max(clog2(self.default_iterator_support), 1),
-                                          size=self.interconnect_input_ports)
+                                          size=self.interconnect_input_ports,
+                                          explicit_array=True,
+                                          packed=True)
 
         self._floop_restart = self.output("floop_restart",
                                           width=1,
-                                          size=self.interconnect_input_ports)
+                                          size=self.interconnect_input_ports,
+                                          explicit_array=True,
+                                          packed=True)
 
         # The SRAM write is just the OR reduction of the aggregator reads
         self._agg_read_out = self.output("agg_read_out", self.interconnect_input_ports)
@@ -96,7 +100,7 @@ class StrgUBAggSRAMShared(Generator):
                            rst_n=self._rst_n,
                            step=self._agg_read[i])
 
-            self.wire(self._floop_mux_sel[i], fl_ctr_sram_wr.ports.mux_sel_out)
+            safe_wire(gen=self, w_to=self._floop_mux_sel[i], w_from=fl_ctr_sram_wr.ports.mux_sel_out)
             self.wire(self._floop_restart[i], fl_ctr_sram_wr.ports.restart)
 
             # scheduler modules

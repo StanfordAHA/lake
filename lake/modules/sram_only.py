@@ -67,20 +67,28 @@ class StrgUBSRAMOnly(Generator):
         # agg to sram for loop
         self._floop_mux_sel = self.input("floop_mux_sel",
                                          width=max(clog2(self.default_iterator_support), 1),
-                                         size=self.interconnect_input_ports)
+                                         size=self.interconnect_input_ports,
+                                         explicit_array=True,
+                                         packed=True)
 
         self._floop_restart = self.input("floop_restart",
                                          width=1,
-                                         size=self.interconnect_input_ports)
+                                         size=self.interconnect_input_ports,
+                                         explicit_array=True,
+                                         packed=True)
 
         # sram to tb for loop
         self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel",
                                                  width=max(clog2(self.default_iterator_support), 1),
-                                                 size=self.interconnect_output_ports)
+                                                 size=self.interconnect_output_ports,
+                                                 explicit_array=True,
+                                                 packed=True)
 
         self._loops_sram2tb_restart = self.input("loops_sram2tb_restart",
                                                  width=1,
-                                                 size=self.interconnect_output_ports)
+                                                 size=self.interconnect_output_ports,
+                                                 explicit_array=True,
+                                                 packed=True)
 
         self._agg_read = self.input("agg_read", self.interconnect_input_ports)
         self._t_read = self.input("t_read", self.interconnect_output_ports)
@@ -134,8 +142,9 @@ class StrgUBSRAMOnly(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._agg_read[i],
-                           mux_sel=self._floop_mux_sel[i],
+                           # mux_sel=self._floop_mux_sel[i],
                            restart=self._floop_restart[i])
+            safe_wire(gen=self, w_to=_AG.ports.mux_sel, w_from=self._floop_mux_sel[i])
             safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=_AG.ports.addr_out)
 
         ##################################################################################
@@ -150,8 +159,9 @@ class StrgUBSRAMOnly(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._t_read[i],
-                           mux_sel=self._loops_sram2tb_mux_sel[i],
+                           # mux_sel=self._loops_sram2tb_mux_sel[i],
                            restart=self._loops_sram2tb_restart[i])
+            safe_wire(gen=self, w_to=_AG.ports.mux_sel, w_from=self._loops_sram2tb_mux_sel[i])
             safe_wire(gen=self, w_to=self._s_read_addr[i], w_from=_AG.ports.addr_out)
 
         ##################################################################################
