@@ -142,8 +142,8 @@ class TopLakeHW(Generator):
                 f"input_port{input_port_index}_2{in_mem}_accessor_valid", 1)
             self.wire(self.mem_insts[in_mem].ports.write, self.valid)
 
-            safe_wire(self, self.mem_insts[in_mem].ports.data_in[0], 
-                self.data_in[input_port_index])
+            safe_wire(self, self.mem_insts[in_mem].ports.data_in[0],
+                      self.data_in[input_port_index])
 
             forloop = ForLoop(iterator_support=input_dim,
                               config_width=max(1, clog2(input_range)))  # self.default_config_width)
@@ -191,18 +191,17 @@ class TopLakeHW(Generator):
             output_stride = self.memories[out_mem]["output_edge_params"]["max_stride"]
             output_port_index = self.memories[out_mem]["output_port"]
 
-            self.wire(self.data_out[output_port_index], 
-                self.mem_data_outs[subscript_mems.index(out_mem)][0])
+            self.wire(self.data_out[output_port_index],
+                      self.mem_data_outs[subscript_mems.index(out_mem)][0])
 
-            # self.valid = self.var(f"{out_mem}2output_port_{output_port_index}_accessor_valid", 1)
-            self.valid = self.var(f"{out_mem}2output_accessor_valid", 1)
+            self.valid = self.var(f"{out_mem}2output_port{output_port_index}_accessor_valid", 1)
 
             forloop = ForLoop(iterator_support=output_dim,
                               config_width=max(1, clog2(output_range)))  # self.default_config_width)
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
 
-            self.add_child(f"{out_mem}2output_forloop",
+            self.add_child(f"{out_mem}2output_port{output_port_index}_forloop",
                            forloop,
                            clk=self.gclk,
                            rst_n=self.rst_n,
@@ -210,7 +209,7 @@ class TopLakeHW(Generator):
 
             newAG = AddrGen(iterator_support=output_dim,
                             config_width=max(1, clog2(output_stride)))  # self.default_config_width)
-            self.add_child(f"{out_mem}2output_read_addr_gen",
+            self.add_child(f"{out_mem}2output_port{output_port_index}_read_addr_gen",
                            newAG,
                            clk=self.gclk,
                            rst_n=self.rst_n,
@@ -225,7 +224,7 @@ class TopLakeHW(Generator):
 
             newSG = SchedGen(iterator_support=output_dim,
                              config_width=self.cycle_count_width)  # self.default_config_width)
-            self.add_child(f"{out_mem}2output_read_sched_gen",
+            self.add_child(f"{out_mem}2output_port{output_port_index}_read_sched_gen",
                            newSG,
                            clk=self.gclk,
                            rst_n=self.rst_n,
@@ -486,15 +485,15 @@ class TopLakeHW(Generator):
             ("input_port0_2agg_write_sched_gen_enable", 1),
             ("input_port0_2agg_forloop_dimensionality", in2agg.dim),
 
-            ("tb2output_read_addr_gen_starting_addr", tb2out0.out_data_strt),
-            ("tb2output_read_sched_gen_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
-            ("tb2output_read_sched_gen_enable", 1),
-            ("tb2output_forloop_dimensionality", tb2out0.dim),
+            ("tb2output_port0_read_addr_gen_starting_addr", tb2out0.out_data_strt),
+            ("tb2output_port0_read_sched_gen_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
+            ("tb2output_port0_read_sched_gen_enable", 1),
+            ("tb2output_port0_forloop_dimensionality", tb2out0.dim),
 
-            ("tb12output_read_addr_gen_starting_addr", tb2out1.out_data_strt),
-            ("tb12output_read_sched_gen_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
-            ("tb12output_read_sched_gen_enable", 1),
-            ("tb12output_forloop_dimensionality", tb2out1.dim),
+            ("tb12output_port1_read_addr_gen_starting_addr", tb2out1.out_data_strt),
+            ("tb12output_port1_read_sched_gen_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
+            ("tb12output_port1_read_sched_gen_enable", 1),
+            ("tb12output_port1_forloop_dimensionality", tb2out1.dim),
 
             # Control Signals...
             ("flush_reg_sel", 0),  # 1
@@ -553,13 +552,13 @@ class TopLakeHW(Generator):
             elem = tbs[tb]
             for i in range(elem.dim):
                 if tb == 0:
-                    config.append((f"tb2output_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
-                    config.append((f"tb2output_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
-                    config.append((f"tb2output_forloop_ranges_{i}", elem.extent[i]))
+                    config.append((f"tb2output_port0_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
+                    config.append((f"tb2output_port0_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+                    config.append((f"tb2output_port0_forloop_ranges_{i}", elem.extent[i]))
                 else:
-                    config.append((f"tb12output_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
-                    config.append((f"tb12output_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
-                    config.append((f"tb12output_forloop_ranges_{i}", elem.extent[i]))
+                    config.append((f"tb12output_port1_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
+                    config.append((f"tb12output_port1_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+                    config.append((f"tb12output_port1_forloop_ranges_{i}", elem.extent[i]))
 
         return trim_config_list(flattened, config)
 
