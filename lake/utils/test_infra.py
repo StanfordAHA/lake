@@ -1,4 +1,4 @@
-from lake.top.lake_top import LakeTop
+from lake.top.lake_top import get_lake_dut
 import kratos as kts
 import fault
 import tempfile
@@ -23,9 +23,9 @@ def base_lake_tester(config_path,
                      out_ports,
                      stencil_valid=False):
 
-    lt_dut = LakeTop(interconnect_input_ports=in_ports,
-                     interconnect_output_ports=out_ports,
-                     stencil_valid=stencil_valid)
+    lt_dut, need_config_lift, s, t = get_lake_dut(in_ports=in_ports,
+                                                  out_ports=out_ports,
+                                                  stencil_valid=stencil_valid)
 
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
     configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
@@ -80,7 +80,6 @@ def gen_test_lake(config_path,
             if i < len(out_data[j]):
                 if len(valids) != 0 and valids[i] == 1:
                     getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
-
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
