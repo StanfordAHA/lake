@@ -17,10 +17,12 @@ class FormalAttr(kts.Attribute):
     def __init__(self,
                  port_name,
                  formalsig_cnst,
+                 module="all",
                  doc_string=""):
         super().__init__()
         self.port_name = port_name
         self.formalsig_cnst = formalsig_cnst
+        self.module = module
         self.documentation = doc_string
         self.annotation = f"{self.port_name}\t{self.formalsig_cnst.name}"
 
@@ -32,6 +34,9 @@ class FormalAttr(kts.Attribute):
 
     def get_annotation(self):
         return self.annotation
+
+    def get_module(self):
+        return self.module
 
     def get_port_name(self):
         return self.port_name

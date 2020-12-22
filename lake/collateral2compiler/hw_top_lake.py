@@ -441,7 +441,7 @@ class TopLakeHW(Generator):
 
         lift_config_reg(self.internal_generator)
 
-        extract_formal_annotation(self, "dsl_annotation.txt", subscript_mems, edges)
+        extract_formal_annotation_colat(self, "dsl_annotation.txt", subscript_mems, edges)
         modular_formal_annotation(self, subscript_mems)
 
     def get_static_bitstream(self,

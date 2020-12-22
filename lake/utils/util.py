@@ -4,7 +4,7 @@ from kratos import *
 import math
 import os as os
 from enum import Enum
-from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
+from lake.attributes.formal_attr import *
 
 
 lake_util_verbose_trim = False
@@ -90,7 +90,103 @@ def modular_formal_annotation(gen, mem_names):
                 fi.write(a + "\n")
 
 
-def extract_formal_annotation(generator, filepath, mem_names, edges):
+def extract_formal_annotation(generator, filepath, module_attr="agg"):
+    # Get the port list and emit the annotation for each...
+    int_gen = generator.internal_generator
+    port_names = int_gen.get_port_names()
+
+    # mapping for which config regs the dimensionality config regs constrain
+    pairings = {}
+
+    with open(filepath, "w+") as fi:
+        # Now get the config registers from the top definition
+        for port_name in port_names:
+            curr_port = int_gen.get_port(port_name)
+            attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
+
+            pdir = "input"
+            if str(curr_port.port_direction) == "PortDirection.Out":
+                pdir = "output"
+            # If there are 0 or more than one attributes, let's just use the default X attribute
+            # If there is 1 attribute, but it is not applied for this module or all modules,
+            # use the default X attribute
+            if len(attrs) != 1 or attrs[0].get_module() not in ("all", module_attr):
+                if pdir is "input":
+                    form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
+                else:
+                    form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
+            else:
+                form_attr = attrs[0]
+
+            size_str = get_size_str(curr_port)
+
+            fi.write(f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n")
+
+            # dimensionality pairing constraints
+            keywords = ["agg_only", "agg_sram_shared", "sram_only", "sram_tb_shared", "tb_only"]
+            # make this dependent on agg_height and tb_height
+            height = 2
+            indices = [f"_{i}_" for i in range(height)]
+
+            if "dimensionality" in port_name:
+                dim_keyword = None
+                for keyword in keywords:
+                    if keyword in port_name:
+                        dim_keyword = keyword
+                        break
+                index = None
+                for i in indices:
+                    if i in port_name:
+                        index = i
+                        break
+
+                if dim_keyword is None or index is None:
+                    print(f"Error! Does not belong to any module...skipping {port_name}")
+                else:
+                    # use keyword and index for this mapping to find
+                    # corresponding constrained config regs
+                    pairings[port_name[:-len("dimensionality")]] = {"keyword": dim_keyword, "index": index, "maps": []}
+
+    # find config regs to be constrained by keys in pairings
+    for port_name in port_names:
+        if "dimensionality" in port_name or "ranges" in port_name:
+            continue
+
+        for key in pairings.keys():
+            pairing = pairings[key]
+            if pairing["keyword"] in port_name and pairing["index"] in port_name:
+                pairing["maps"].append(port_name)
+                break
+
+    # print just the mappings
+    with open(f"mapping_{filepath}", "w+") as fi:
+        move_regs = {}
+
+        for key in pairings.keys():
+            maps = pairings[key]["maps"]
+            if "agg_only" in key:
+                for reg in maps:
+                    if "read" in reg:
+                        move_regs[reg] = {"orig_key": key, "keyword": "agg_sram_shared", "index": pairings[key]["index"]}
+            elif "tb_only" in key:
+                for reg in maps:
+                    if "write" in reg:
+                        move_regs[reg] = {"orig_key": key, "keyword": "sram_tb_shared", "index": pairings[key]["index"]}
+
+        for reg_key in move_regs.keys():
+            reg = move_regs[reg_key]
+            for pairing_key in pairings.keys():
+                pairing = pairings[pairing_key]
+                if reg["keyword"] == pairing["keyword"] and reg["index"] == pairing["index"]:
+                    pairings[reg["orig_key"]]["maps"].remove(reg_key)
+                    pairing["maps"].append(reg_key)
+
+        for key in pairings.keys():
+            pairings[key] = pairings[key]["maps"]
+
+        print(pairings, file=fi)
+
+def extract_formal_annotation_colat(generator, filepath, mem_names, edges):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
 
