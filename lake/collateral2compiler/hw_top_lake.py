@@ -136,18 +136,21 @@ class TopLakeHW(Generator):
             input_dim = self.memories[in_mem]["input_edge_params"]["dim"]
             input_range = self.memories[in_mem]["input_edge_params"]["max_range"]
             input_stride = self.memories[in_mem]["input_edge_params"]["max_stride"]
+            input_port_index = self.memories[in_mem]["input_port"]
 
-            self.valid = self.var(f"input2{in_mem}_accessor_valid", 1)
+            self.valid = self.var(
+                f"input_port{input_port_index}_2{in_mem}_accessor_valid", 1)
             self.wire(self.mem_insts[in_mem].ports.write, self.valid)
 
-            safe_wire(self, self.mem_insts[in_mem].ports.data_in[0], self.data_in[i])
+            safe_wire(self, self.mem_insts[in_mem].ports.data_in[0], 
+                self.data_in[input_port_index])
 
             forloop = ForLoop(iterator_support=input_dim,
                               config_width=max(1, clog2(input_range)))  # self.default_config_width)
             loop_itr = forloop.get_iter()
             loop_wth = forloop.get_cfg_width()
 
-            self.add_child(f"input2{in_mem}_forloop",
+            self.add_child(f"input_port{input_port_index}_2{in_mem}_forloop",
                            forloop,
                            clk=self.gclk,
                            rst_n=self.rst_n,
@@ -155,7 +158,7 @@ class TopLakeHW(Generator):
 
             newAG = AddrGen(iterator_support=input_dim,
                             config_width=max(1, clog2(input_stride)))  # self.default_config_width)
-            self.add_child(f"input2{in_mem}_write_addr_gen",
+            self.add_child(f"input_port{input_port_index}_2{in_mem}_write_addr_gen",
                            newAG,
                            clk=self.gclk,
                            rst_n=self.rst_n,
@@ -170,7 +173,7 @@ class TopLakeHW(Generator):
 
             newSG = SchedGen(iterator_support=input_dim,
                              config_width=self.cycle_count_width)
-            self.add_child(f"input2{in_mem}_write_sched_gen",
+            self.add_child(f"input_port{input_port_index}_2{in_mem}_write_sched_gen",
                            newSG,
                            clk=self.gclk,
                            rst_n=self.rst_n,
@@ -186,9 +189,12 @@ class TopLakeHW(Generator):
             output_dim = self.memories[out_mem]["output_edge_params"]["dim"]
             output_range = self.memories[out_mem]["output_edge_params"]["max_range"]
             output_stride = self.memories[out_mem]["output_edge_params"]["max_stride"]
+            output_port_index = self.memories[out_mem]["output_port"]
 
-            self.wire(self.data_out[i], self.mem_data_outs[subscript_mems.index(out_mem)][0])  # , self.mem_insts[out_mem].ports.data_out)
+            self.wire(self.data_out[output_port_index], 
+                self.mem_data_outs[subscript_mems.index(out_mem)][0])
 
+            # self.valid = self.var(f"{out_mem}2output_port_{output_port_index}_accessor_valid", 1)
             self.valid = self.var(f"{out_mem}2output_accessor_valid", 1)
 
             forloop = ForLoop(iterator_support=output_dim,
@@ -475,10 +481,10 @@ class TopLakeHW(Generator):
             ("sram_tb_tb1_edge_sched_gen_enable", 1),
             ("sram_tb_tb1_edge_forloop_dimensionality", sram2tb.dim),
 
-            ("input2agg_write_addr_gen_starting_addr", in2agg.in_data_strt),
-            ("input2agg_write_sched_gen_sched_addr_gen_starting_addr", in2agg.cyc_strt),
-            ("input2agg_write_sched_gen_enable", 1),
-            ("input2agg_forloop_dimensionality", in2agg.dim),
+            ("input_port0_2agg_write_addr_gen_starting_addr", in2agg.in_data_strt),
+            ("input_port0_2agg_write_sched_gen_sched_addr_gen_starting_addr", in2agg.cyc_strt),
+            ("input_port0_2agg_write_sched_gen_enable", 1),
+            ("input_port0_2agg_forloop_dimensionality", in2agg.dim),
 
             ("tb2output_read_addr_gen_starting_addr", tb2out0.out_data_strt),
             ("tb2output_read_sched_gen_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
@@ -524,9 +530,9 @@ class TopLakeHW(Generator):
             config.append((f"wen_in_{i}_reg_value", 0))
 
         for i in range(in2agg.dim):
-            config.append((f"input2agg_forloop_ranges_{i}", in2agg.extent[i]))
-            config.append((f"input2agg_write_addr_gen_strides_{i}", in2agg.in_data_stride[i]))
-            config.append((f"input2agg_write_sched_gen_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
+            config.append((f"input_port0_2agg_forloop_ranges_{i}", in2agg.extent[i]))
+            config.append((f"input_port0_2agg_write_addr_gen_strides_{i}", in2agg.in_data_stride[i]))
+            config.append((f"input_port0_2agg_write_sched_gen_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
 
         for i in range(agg2sram.dim):
             config.append((f"agg_agg1_sram_edge_read_addr_gen_strides_{i}", agg2sram.out_data_stride[i]))

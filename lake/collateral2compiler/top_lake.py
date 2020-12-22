@@ -84,15 +84,17 @@ class TopLake():
         assert self.memories[edge_params['from_signal']][from_key] == self.memories[edge_params['to_signal']][to_key]
         self.edges.append(edge_params)
 
-    def add_input_edge(self, mem_name, dim=6, max_range=65536, max_stride=65536):
+    def add_input_edge(self, port, mem_name, dim=6, max_range=65536, max_stride=65536):
         self.memories[mem_name]["input_edge_params"] = \
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
         self.memories[mem_name]["is_input"] = True
+        self.memories[mem_name]["input_port"] = port
 
-    def add_output_edge(self, mem_name, dim=6, max_range=65536, max_stride=65536):
+    def add_output_edge(self, port, mem_name, dim=6, max_range=65536, max_stride=65536):
         self.memories[mem_name]["output_edge_params"] = \
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
         self.memories[mem_name]["is_output"] = True
+        self.memories[mem_name]["output_port"] = port
 
     def add_io_mem_tags(self):
         for mem in self.memories.keys():

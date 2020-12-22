@@ -105,12 +105,13 @@ class Memory(Generator):
         self.mem_size_bits = max(1, clog2(self.mem_size))
         self.mem_last_dim_bits = max(1, clog2(self.mem_last_dim))
 
-        # unused params
-        # bits for number of addresses there are to write to memory
-        self.write_addr_bits = max(1, clog2(int(self.capacity / self.write_width)))
-        # bits for number of addresses there are to read from memory
-        self.read_addr_bits = max(1, clog2(int(self.capacity / self.read_width)))
-        # self.addr_width = max(1, clog2(self.capacity))
+        # minimum required widths for address signals
+        if self.mem_size == self.write_width:
+            self.write_addr_width = self.mem_last_dim_bits
+            self.read_addr_width = self.mem_size_bits + self.mem_last_dim_bits
+        else:
+            self.write_addr_width = self.mem_size_bits + self.mem_last_dim_bits
+            self.read_addr_width = self.mem_last_dim_bits
 
         ################################################################
         # I/O INTERFACE (WITHOUT ADDRESSING) + MEMORY
@@ -149,11 +150,17 @@ class Memory(Generator):
 
         # I/O is different depending on whether we have read and write ports or
         # read/write ports
+
+        # we keep address width at 16 to avoid unpacked
+        # safe_wire errors for addr in hw_top_lake - can change by changing
+        # default_config_width for those addr gens while accounting for muxing
+        # bits, but the extra bits are unused anyway
+
         # TO DO change later - same read/write or read and write assumption as above
         if self.num_write_only_ports != 0 and self.num_read_only_ports != 0:
             # writes
             self.write_addr = self.input("write_addr",
-                                         width=16,  # self.addr_width,
+                                         width=16, # self.write_addr_width,
                                          size=self.num_write_ports,
                                          explicit_array=True)
 
@@ -163,7 +170,7 @@ class Memory(Generator):
 
             # reads
             self.read_addr = self.input("read_addr",
-                                        width=16,  # self.addr_width,
+                                        width=16, # self.read_addr_width,
                                         size=self.num_read_ports,
                                         explicit_array=True)
 
@@ -173,26 +180,29 @@ class Memory(Generator):
 
         elif self.num_read_write_ports != 0:
             self.read_write_addr = self.input("read_write_addr",
-                                              width=16,  # self.addr_width,
+                                              width=16, # max(self.read_addr_width, self.write_addr_width),
                                               size=self.num_read_write_ports,
                                               explicit_array=True)
 
             # writes
             self.write_addr = self.var("write_addr",
-                                       width=16,  # self.addr_width,
+                                       width=16, # self.write_addr_width,
                                        size=self.num_read_write_ports,
                                        explicit_array=True)
 
-            self.wire(self.write_addr, self.read_write_addr)
+            for p in range(self.num_read_write_ports):
+                safe_wire(gen=self, w_to=self.write_addr[p], w_from=self.read_write_addr[p])
+
             self.add_write_data_block()
 
             # reads
             self.read_addr = self.var("read_addr",
-                                      width=16,  # self.addr_width,
+                                      width=self.read_addr_width,
                                       size=self.num_read_write_ports,
                                       explicit_array=True)
+            for p in range(self.num_read_write_ports):
+                safe_wire(gen=self, w_to=self.read_addr[p], w_from=self.read_write_addr[p])
 
-            self.wire(self.read_addr, self.read_write_addr)
             # TO DO in self.read_write_info we should allow for different read
             # and write latencies?
             self.read_info = self.read_write_info
