@@ -13,7 +13,6 @@ class FormalSignalConstraint(Enum):
     SEQUENCE = auto()
 
 
-# parent class for formal attributes
 class FormalAttr(kts.Attribute):
     def __init__(self,
                  port_name,
