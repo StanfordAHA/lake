@@ -106,7 +106,8 @@ class SRAMFormal(Generator):
                        rst_n=self._rst_n,
                        step=self._write,
                        mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
-                       addr_out=self._write_addr)
+                       addr_out=self._write_addr,
+                       restart=fl_ctr_sram_wr.ports.restart)
 
         # scheduler modules
         self.add_child(f"sram_write_sched_gen",
@@ -116,6 +117,7 @@ class SRAMFormal(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
+                       finished=fl_ctr_sram_wr.ports.restart,
                        valid_output=self._write)
 
         # -------------------------------- Delineate new group -------------------------------
@@ -166,7 +168,8 @@ class SRAMFormal(Generator):
                        rst_n=self._rst_n,
                        step=self._read,
                        mux_sel=fl_ctr_sram_rd.ports.mux_sel_out,
-                       addr_out=self._read_addr)
+                       addr_out=self._read_addr,
+                       restart=fl_ctr_sram_rd.ports.restart)
 
         self.add_child(f"sram_read_sched_gen",
                        SchedGen(iterator_support=self.default_iterator_support,
@@ -175,6 +178,7 @@ class SRAMFormal(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        mux_sel=fl_ctr_sram_rd.ports.mux_sel_out,
+                       finished=fl_ctr_sram_rd.ports.restart,
                        valid_output=self._read)
 
         self.add_code(self.set_sram_addr)

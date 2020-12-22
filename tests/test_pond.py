@@ -1,125 +1,51 @@
 from lake.top.lake_top import LakeTop
+from lake.top.pond import Pond
 import kratos as kts
 import fault
 import random as rand
 import pytest
 import tempfile
 from lake.models.lake_top_model import LakeTopModel
+from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 
 
-# Deprecated on old pond...
-@pytest.mark.skip
-def test_pond(data_width=16,  # CGRA Params
-              mem_width=16,
-              mem_depth=32,
-              banks=1,
-              input_iterator_support=2,  # Addr Controllers
-              output_iterator_support=2,
-              interconnect_input_ports=2,  # Connection to int
-              interconnect_output_ports=2,
-              mem_input_ports=2,
-              mem_output_ports=2,
-              use_sram_stub=1,
-              read_delay=0,  # Cycle delay in read (SRAM vs Register File)
-              rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
-              agg_height=0,
-              max_agg_schedule=64,
-              input_max_port_sched=64,
-              output_max_port_sched=64,
-              align_input=0,
-              max_line_length=2048,
-              max_tb_height=1,
-              tb_range_max=2048,
-              tb_sched_max=64,
-              max_tb_stride=15,
-              num_tb=0,
-              tb_iterator_support=2,
-              multiwrite=1,
-              max_prefetch=64,
-              config_data_width=16,
-              config_addr_width=8,
-              remove_tb=True):
-
-    new_config = {}
-
-    # Input addr ctrl
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_dimensionality"] = 2
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_0"] = 16
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_ranges_1"] = 100
-    new_config["strg_ub_input_addr_ctrl_address_gen_0_strides_1"] = 0
-
-    new_config["strg_ub_input_addr_ctrl_address_gen_1_dimensionality"] = 2
-    new_config["strg_ub_input_addr_ctrl_address_gen_1_starting_addr"] = 16
-    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_0"] = 16
-    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_0"] = 0
-    new_config["strg_ub_input_addr_ctrl_address_gen_1_ranges_1"] = 100
-    new_config["strg_ub_input_addr_ctrl_address_gen_1_strides_1"] = 0
-
-    # Output addr ctrl
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_dimensionality"] = 2
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_starting_addr"] = 0
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_0"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_0"] = 1
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_ranges_1"] = 100
-    new_config["strg_ub_output_addr_ctrl_address_gen_0_strides_1"] = 0
-
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_dimensionality"] = 2
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_starting_addr"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_0"] = 16
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_0"] = 0
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_ranges_1"] = 100
-    new_config["strg_ub_output_addr_ctrl_address_gen_1_strides_1"] = 0
-
-    # These ports are desynched
-    new_config["strg_ub_sync_grp_sync_group_0"] = 1
-    new_config["strg_ub_sync_grp_sync_group_1"] = 2
-
-    # Don't use the model - this is handwritten for now
+def test_pond_basic(data_width=16,  # CGRA Params
+                    mem_depth=32,
+                    default_iterator_support=2,
+                    config_data_width=32,
+                    config_addr_width=8,
+                    cycle_count_width=16,
+                    add_clk_enable=True,
+                    add_flush=True,
+                    interconnect_input_ports=1,  # Connection to int
+                    interconnect_output_ports=1):
 
     ### DUT
-    lt_dut = LakeTop(data_width=data_width,  # CGRA Params
-                     mem_width=mem_width,
-                     mem_depth=mem_depth,
-                     banks=banks,
-                     input_iterator_support=input_iterator_support,  # Addr Controllers
-                     output_iterator_support=output_iterator_support,
-                     interconnect_input_ports=interconnect_input_ports,  # Connection to int
-                     interconnect_output_ports=interconnect_output_ports,
-                     mem_input_ports=mem_input_ports,
-                     mem_output_ports=mem_output_ports,
-                     use_sram_stub=use_sram_stub,
-                     read_delay=read_delay,  # Cycle delay in read (SRAM vs Register File)
-                     rw_same_cycle=rw_same_cycle,  # Does the memory allow r+w in same cycle?
-                     agg_height=agg_height,
-                     max_agg_schedule=max_agg_schedule,
-                     input_max_port_sched=input_max_port_sched,
-                     output_max_port_sched=output_max_port_sched,
-                     align_input=align_input,
-                     max_line_length=max_line_length,
-                     max_tb_height=max_tb_height,
-                     tb_range_max=tb_range_max,
-                     tb_sched_max=tb_sched_max,
-                     max_tb_stride=max_tb_stride,
-                     num_tb=num_tb,
-                     tb_iterator_support=tb_iterator_support,
-                     multiwrite=multiwrite,
-                     max_prefetch=max_prefetch,
-                     config_data_width=config_data_width,
-                     config_addr_width=config_addr_width,
-                     remove_tb=remove_tb,
-                     fifo_mode=False)
+    pond_dut = Pond(data_width=data_width,  # CGRA Params
+                    mem_depth=mem_depth,
+                    default_iterator_support=default_iterator_support,
+                    interconnect_input_ports=interconnect_input_ports,  # Connection to int
+                    interconnect_output_ports=interconnect_output_ports,
+                    config_data_width=config_data_width,
+                    config_addr_width=config_addr_width,
+                    cycle_count_width=cycle_count_width,
+                    add_clk_enable=add_clk_enable,
+                    add_flush=add_flush)
 
-    magma_dut = kts.util.to_magma(lt_dut,
+    magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
                                   optimize_if=False,
                                   check_flip_flop_always_ff=False)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
-    ###
-    for key, value in new_config.items():
+    # Ranges, Strides, Dimensionality, Starting Addr
+    # Starting Addr (schedule), Ranges (schedule)
+    ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
+    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
+
+    for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
 
     rand.seed(0)
@@ -127,50 +53,25 @@ def test_pond(data_width=16,  # CGRA Params
     tester.circuit.clk_en = 1
     tester.circuit.tile_en = 1
     tester.circuit.rst_n = 0
-    tester.step(2)
+    tester.step(1)
     tester.circuit.rst_n = 1
-    tester.step(2)
+    tester.step(1)
+    tester.circuit.clk_en = 1
 
-    data_in = [0] * interconnect_input_ports
+    data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    wen_en = 0
-    ren_en = 0
-    addr_in = 0
-    ren = 0
-
     for i in range(32):
         # Incrementing Data
-        if i < 12:
-            data_in[0] = data_in[0] + 1
-            valid_in[0] = 1
-            wen_en = 1
-            ren_en = 0
-            ren = 0
-        else:
-            data_in[0] = data_in[0] + 1
-            valid_in[0] = 1
-            wen_en = 3
-            ren_en = 3
-            ren = 3
+        data_in_pond[0] = data_in_pond[0] + 1
 
-        tester.circuit.addr_in = addr_in
-        tester.circuit.wen_en = wen_en
-        tester.circuit.ren_en = ren_en
-        tester.circuit.ren_in = ren
-
-        tester.eval()
-
-        if i >= 12:
-            data_in[1] = tester.circuit.data_out_0 + tester.circuit.data_out_1
-            valid_in[1] = tester.circuit.valid_out[1]
-
-        if(interconnect_input_ports == 1):
-            tester.circuit.data_in = data_in[0]
-            tester.circuit.wen_in = valid_in[0]
+        if interconnect_input_ports == 1:
+            tester.circuit.data_in_pond = data_in_pond[0]
         else:
             for j in range(interconnect_input_ports):
-                setattr(tester.circuit, f"data_in_{j}", data_in[j])
-                tester.circuit.wen_in[j] = valid_in[j]
+                setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
+
+        if i >= 16:
+            tester.circuit.data_out_pond.expect(i - 15)
 
         tester.eval()
         tester.step(2)
@@ -182,5 +83,149 @@ def test_pond(data_width=16,  # CGRA Params
                                flags=["-Wno-fatal"])
 
 
-if __name__ == "__main__":
-    test_pond()
+def test_pond_strided_read(data_width=16,  # CGRA Params
+                           mem_depth=32,
+                           default_iterator_support=2,
+                           config_data_width=32,
+                           config_addr_width=8,
+                           cycle_count_width=16,
+                           add_clk_enable=True,
+                           add_flush=True,
+                           interconnect_input_ports=1,  # Connection to int
+                           interconnect_output_ports=1):
+
+    ### DUT
+    pond_dut = Pond(data_width=data_width,  # CGRA Params
+                    mem_depth=mem_depth,
+                    default_iterator_support=default_iterator_support,
+                    interconnect_input_ports=interconnect_input_ports,  # Connection to int
+                    interconnect_output_ports=interconnect_output_ports,
+                    config_data_width=config_data_width,
+                    config_addr_width=config_addr_width,
+                    cycle_count_width=cycle_count_width,
+                    add_clk_enable=add_clk_enable,
+                    add_flush=add_flush)
+
+    magma_dut = kts.util.to_magma(pond_dut,
+                                  flatten_array=True,
+                                  check_multiple_driver=False,
+                                  optimize_if=False,
+                                  check_flip_flop_always_ff=False)
+
+    tester = fault.Tester(magma_dut, magma_dut.clk)
+
+    # Ranges, Strides, Dimensionality, Starting Addr
+    # Starting Addr (schedule), Ranges (schedule)
+    ctrl_rd = [[8, 1], [2, 0], 1, 0, 16, [1, 0]]
+    ctrl_wr = [[16, 1], [1, 1], 1, 0, 0, [1, 1]]
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
+
+    for key, value in pond_config.items():
+        setattr(tester.circuit, key, value)
+
+    rand.seed(0)
+    tester.circuit.clk = 0
+    tester.circuit.clk_en = 1
+    tester.circuit.tile_en = 1
+    tester.circuit.rst_n = 0
+    tester.step(1)
+    tester.circuit.rst_n = 1
+    tester.step(1)
+    tester.circuit.clk_en = 1
+
+    data_in_pond = [0] * interconnect_input_ports
+    valid_in = [0] * interconnect_input_ports
+    for i in range(24):
+        # Incrementing Data
+        data_in_pond[0] = data_in_pond[0] + 1
+
+        if interconnect_input_ports == 1:
+            tester.circuit.data_in_pond = data_in_pond[0]
+        else:
+            for j in range(interconnect_input_ports):
+                setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
+        if i >= 16:
+            tester.circuit.data_out_pond.expect((i - 16) * 2 + 1)
+
+        tester.eval()
+        tester.step(2)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        tester.compile_and_run(target="verilator",
+                               directory=tempdir,
+                               magma_output="verilog",
+                               flags=["-Wno-fatal"])
+
+
+def test_pond_b2b_read(data_width=16,  # CGRA Params
+                       mem_depth=32,
+                       default_iterator_support=2,
+                       config_data_width=32,
+                       config_addr_width=8,
+                       cycle_count_width=16,
+                       add_clk_enable=True,
+                       add_flush=True,
+                       interconnect_input_ports=1,  # Connection to int
+                       interconnect_output_ports=1):
+
+    ### DUT
+    pond_dut = Pond(data_width=data_width,  # CGRA Params
+                    mem_depth=mem_depth,
+                    default_iterator_support=default_iterator_support,
+                    interconnect_input_ports=interconnect_input_ports,  # Connection to int
+                    interconnect_output_ports=interconnect_output_ports,
+                    config_data_width=config_data_width,
+                    config_addr_width=config_addr_width,
+                    cycle_count_width=cycle_count_width,
+                    add_clk_enable=add_clk_enable,
+                    add_flush=add_flush)
+
+    magma_dut = kts.util.to_magma(pond_dut,
+                                  flatten_array=True,
+                                  check_multiple_driver=False,
+                                  optimize_if=False,
+                                  check_flip_flop_always_ff=False)
+
+    tester = fault.Tester(magma_dut, magma_dut.clk)
+    # Ranges, Strides, Dimensionality, Starting Addr
+    # Starting Addr (schedule), Ranges (schedule)
+    ctrl_rd = [[16, 10], [1, 0], 2, 0, 16, [1, 16]]
+    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
+
+    for key, value in pond_config.items():
+        setattr(tester.circuit, key, value)
+
+    rand.seed(0)
+    tester.circuit.clk = 0
+    tester.circuit.clk_en = 1
+    tester.circuit.tile_en = 1
+    tester.circuit.rst_n = 0
+    tester.step(1)
+    tester.circuit.rst_n = 1
+    tester.step(1)
+    tester.circuit.clk_en = 1
+
+    data_in_pond = [0] * interconnect_input_ports
+    valid_in = [0] * interconnect_input_ports
+    for i in range(16 * 11):
+        # Incrementing Data
+        data_in_pond[0] = data_in_pond[0] + 1
+
+        if interconnect_input_ports == 1:
+            tester.circuit.data_in_pond = data_in_pond[0]
+        else:
+            for j in range(interconnect_input_ports):
+                setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
+
+        if i >= 16:
+            tester.circuit.data_out_pond.expect(((i - 16) % 16) + 1)
+
+        tester.eval()
+        tester.step(2)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        tester.compile_and_run(target="verilator",
+                               directory=tempdir,
+                               magma_output="verilog",
+                               flags=["-Wno-fatal"])

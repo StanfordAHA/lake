@@ -129,19 +129,15 @@ class RegisterFile(Generator):
     def comb_data_out_one_r(self):
         self._data_out = self._data_array[self._rd_addr]
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"))
     def seq_data_out(self):
         for i in range(self.read_ports):
-            if ~self._rst_n:
-                self._data_out[i] = 0
-            elif self._ren:
+            if self._ren:
                 self._data_out[i] = self._data_array[self._rd_addr[i]]
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    @always_ff((posedge, "clk"))
     def seq_data_out_one_r(self):
-        if ~self._rst_n:
-            self._data_out = 0
-        elif self._ren:
+        if self._ren:
             self._data_out = self._data_array[self._rd_addr]
 
 

@@ -123,7 +123,8 @@ class AggFormal(Generator):
                            rst_n=self._rst_n,
                            step=self._agg_write[i],
                            # addr_out=self._agg_write_addr[i])
-                           mux_sel=forloop_ctr.ports.mux_sel_out)
+                           mux_sel=forloop_ctr.ports.mux_sel_out,
+                           restart=forloop_ctr.ports.restart)
             safe_wire(self, self._agg_write_addr[i], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=self.default_iterator_support,
@@ -133,6 +134,7 @@ class AggFormal(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            mux_sel=forloop_ctr.ports.mux_sel_out,
+                           finished=forloop_ctr.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self._agg_write[i])
 
@@ -161,7 +163,8 @@ class AggFormal(Generator):
                            step=self._write,
                            #  (self._input_port_sel_addr == const(i, self._input_port_sel_addr.width))),
                            # addr_out=self._agg_read_addr_gen_out[i])
-                           mux_sel=forloop_ctr_rd.ports.mux_sel_out)
+                           mux_sel=forloop_ctr_rd.ports.mux_sel_out,
+                           restart=forloop_ctr_rd.ports.restart)
 
             safe_wire(self, self._agg_read_addr_gen_out[i], newAG.ports.addr_out)
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])
@@ -210,6 +213,7 @@ class AggFormal(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        mux_sel=output_loops.ports.mux_sel_out,
+                       finished=output_loops.ports.restart,
                        valid_output=self._write)
 
         for idx in range(self.interconnect_input_ports):
@@ -219,8 +223,14 @@ class AggFormal(Generator):
     @always_ff((posedge, "clk"))
     def agg_ctrl(self, idx):
         if self._agg_write[idx]:
-            self._agg[idx][self._agg_write_addr[idx][self._agg_write_addr[0].width - 1, 2]]\
-                          [self._agg_write_addr[idx][1, 0]] = self._data_in[idx]
+            if self.agg_height == 1:
+                self._agg[idx][0][self._agg_write_addr[idx][clog2(self.fetch_width) - 1, 0]]\
+                    = self._data_in[idx]
+            else:
+                self._agg[idx][self._agg_write_addr[idx]
+                               [self._agg_write_addr[0].width - 1, clog2(self.fetch_width)]]\
+                    [self._agg_write_addr[idx][clog2(self.fetch_width) - 1, 0]]\
+                    = self._data_in[idx]
 
     @always_comb
     def agg_to_sram(self):

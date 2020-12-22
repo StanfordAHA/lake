@@ -1,8 +1,13 @@
+from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
+from kratos import *
 import math
 import os as os
 from enum import Enum
-from lake.attributes.formal_attr import FormalAttr
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
+
+
+lake_util_verbose_trim = False
 
 
 def check_env():
@@ -62,13 +67,19 @@ def extract_formal_annotation(generator, filepath):
         for port_name in int_gen.get_port_names():
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
-            if len(attrs) != 1:
-                continue
-            form_attr = attrs[0]
             pdir = "input"
-            size_str = get_size_str(curr_port)
             if str(curr_port.port_direction) == "PortDirection.Out":
                 pdir = "output"
+            # If there are 0 or more than one attributes, let's just use the default X attribute
+            if len(attrs) != 1:
+                if pdir is "input":
+                    form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
+                else:
+                    form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
+
+            else:
+                form_attr = attrs[0]
+            size_str = get_size_str(curr_port)
 
             fi.write(f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n")
 
@@ -83,6 +94,7 @@ def get_configs_dict(configs):
 def set_configs_sv(generator, filepath, configs_dict):
     int_gen = generator.internal_generator
     ports = int_gen.get_port_names()
+    configs_list = []
 
     remain = []
     for port_name in ports:
@@ -91,11 +103,13 @@ def set_configs_sv(generator, filepath, configs_dict):
         if len(attrs) != 1:
             continue
         port = attrs[0].get_port_name()
-        if ("dimensionality" in port) or ("starting_addr" in port):
-            remain.append(port)
-        else:
-            for i in range(6):
-                remain.append(port + f"_{i}")
+        # find config regs
+        if len(curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))) == 1:
+            if ("strides" in port) or ("ranges" in port):
+                for i in range(6):
+                    remain.append(port + f"_{i}")
+            else:
+                remain.append(port)
 
     with open(filepath, "w+") as fi:
         for name in configs_dict.keys():
@@ -117,6 +131,7 @@ def set_configs_sv(generator, filepath, configs_dict):
                 # fi.write("assign " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + str(port_width) + "'h" + value + ";\n")
                 fi.write("wire [" + str(port_width - 1) + ":0] " + name + " = " + value + ";\n")
+                configs_list.append(name)
 
         # set all unused config regs to 0 since we remove them
         # from tile interface and they need to be set
@@ -129,8 +144,80 @@ def set_configs_sv(generator, filepath, configs_dict):
                 print(port_name)
             if port is not None:
                 fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
+                configs_list.append(remaining)
                 # fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = " + str(port_width) + "'h0;\n")
                 # fi.write("assign " + remaining + " = " + str(port.width) + "'h0;\n")
+    return configs_list
+
+
+def generate_lake_config_wrapper(configs_list,
+                                 configs_file,
+                                 lake_file,
+                                 module_name):
+
+    # get top level interface, minus config regs in not_configs
+    with open(lake_file, 'r') as lake:
+        start = False
+        not_configs = []
+        for line in lake:
+            if "module LakeTop_W (" in line:
+                start = True
+            elif start and ");" in line:
+                start = False
+                break
+            elif start:
+                add = 1
+                for config in configs_list:
+                    if config in line:
+                        add = 0
+                        break
+                if add == 1:
+                    not_configs.append(line)
+
+    with open(f"LakeWrapper_{module_name}.v", "w+") as wrapper:
+
+        # write top level interface (without config regs)
+        wrapper.write(f"module {module_name} (\n")
+        for not_config in not_configs:
+            wrapper.write(not_config)
+        wrapper.write(");\n")
+
+        # set config regs as constants
+        with open(configs_file, "r") as configs:
+            for config in configs:
+                wrapper.write(config)
+
+        # instantiate LakeTop_W module with
+        # full interface, first with nonconfigs
+        wrapper.write("LakeTop_W LakeTop_W (\n")
+        for i in range(len(not_configs)):
+            not_config = not_configs[i]
+            try_name = not_config.split("]")
+            if len(try_name) == 1:
+                try_name = not_config.split("logic")
+            name = try_name[1].split(",")[0]
+            # if there are no config regs, this is the last
+            # signal in the interface
+            if (i == len(not_configs) - 1) and (len(configs_list) == 0):
+                wrapper.write(f".{name}({name})\n);\n")
+            else:
+                wrapper.write(f".{name}({name}),\n")
+
+        # hook up config regs for LakeTop_W as well
+        for i in range(len(configs_list)):
+            config = configs_list[i]
+            if i == len(configs_list) - 1:
+                wrapper.write(f".{config}({config})\n);\n")
+            else:
+                wrapper.write(f".{config}({config}),\n")
+
+        wrapper.write("endmodule\n\n")
+
+    # prepend wrapper module to original verilog file
+    with open("LakeWrapper.v", "a") as wrapper:
+        with open(lake_file, "r") as original:
+            for line in original:
+                wrapper.write(line)
 
 
 def transform_strides_and_ranges(ranges, strides, dimensionality):
@@ -176,11 +263,161 @@ def zext(gen, wire, size):
         return zext_signal
 
 
+# Trim an individual config
 def trim_config(flat_gen, cfg_reg_name, value):
     cfg_port = flat_gen.get_port(cfg_reg_name)
     if cfg_port is None:
         print(f"No config reg: {cfg_reg_name}...is that expected?")
         return (cfg_reg_name, 0)
     bmask = int(math.pow(2, cfg_port.width)) - 1
-    print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
+    if lake_util_verbose_trim:
+        print(f"Port name: {cfg_reg_name}, Port width: {cfg_port.width}, corresponding mask_val: {bmask}")
     return (cfg_reg_name, value & bmask)
+
+
+def trim_config_list(flat_gen, config_list):
+    # Store trimmed values here...
+    config = []
+    for name, value in config_list:
+        config.append(trim_config(flat_gen, name, value))
+    return config
+
+
+# Add a simple counter to a design and return the signal
+def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
+    ctr = generator.var(name, bitwidth)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def ctr_inc_code():
+        if ~generator._rst_n:
+            ctr = 0
+        elif increment:
+            ctr = ctr + 1
+
+    generator.add_code(ctr_inc_code)
+    return ctr
+
+
+def add_config_reg(generator, name, description, bitwidth, **kwargs):
+    cfg_reg = generator.input(name, bitwidth, **kwargs)
+    cfg_reg.add_attribute(ConfigRegAttr(description))
+    return cfg_reg
+
+
+# Function for generating Pond API
+def generate_pond_api(ctrl_rd, ctrl_wr):
+    (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
+    (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
+
+    (tform_ranges_rd_sched, tform_strides_rd_sched) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[5], ctrl_rd[2])
+    (tform_ranges_wr_sched, tform_strides_wr_sched) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[5], ctrl_wr[2])
+
+    new_config = {}
+
+    new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
+    new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
+    new_config["rf_read_addr_0_strides_0"] = tform_strides_rd[0]
+    new_config["rf_read_addr_0_strides_1"] = tform_strides_rd[1]
+    new_config["rf_read_iter_0_ranges_0"] = tform_ranges_rd[0]
+    new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
+
+    new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
+    new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
+    new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
+    new_config["rf_read_sched_0_enable"] = 1
+
+    new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
+    new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
+    new_config["rf_write_addr_0_strides_0"] = tform_strides_wr[0]
+    new_config["rf_write_addr_0_strides_1"] = tform_strides_wr[1]
+    new_config["rf_write_iter_0_ranges_0"] = tform_ranges_wr[0]
+    new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
+
+    new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
+    new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
+    new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
+    new_config["rf_write_sched_0_enable"] = 1
+
+    return new_config
+
+
+def process_line(item):
+    item = item.strip()
+    item_nobrack = item.rstrip("]").lstrip("[")
+    individ = item_nobrack.split(" ")
+    print(f"individ: {individ}")
+    inced = []
+    for i in range(len(individ)):
+        inced.append(int(individ[i]) + 1)
+
+    ret_str = "[" + str(inced[0])
+    for i in range(len(inced) - 1):
+        ret_str = ret_str + " " + str(inced[i + 1])
+    ret_str = ret_str + "]"
+    return ret_str
+
+
+def increment_line(line):
+    splitline = line.split(",")
+    di = splitline[0]
+    vi = splitline[1]
+    do = splitline[2]
+    vo = splitline[3]
+
+    di_p = process_line(di)
+    vi_p = vi
+    do_p = process_line(do)
+    vo_p = vo
+
+    return di_p + ", " + vi_p + ", " + do_p + ", " + vo_p
+
+
+def increment_csv(file_in, file_out, fields):
+    with open(file_in) as infile:
+        infile_lines = infile.readlines()
+        with open(file_out, "w+") as outfile:
+            outfile.write(infile_lines[0])
+            for i in range(len(infile_lines) - 1):
+                if len(infile_lines[i + 1]) > 5:
+                    print(f"line {i}: {infile_lines[i + 1]}")
+                    outfile.write(increment_line(infile_lines[i + 1]))
+
+
+# Takes in a bus of valid tags with an associated data stream
+# Send the proper data stream thru
+def decode(generator, sel, signals):
+
+    # This base case means we don't need to actually do anything
+    if sel.width == 1:
+        return signals[0]
+
+    # Create scan signal
+    tmp_done = generator.var(f"decode_sel_done_{sel.name}_{signals.name}", 1)
+    if signals.size[0] > 1:
+        if len(signals.size) > 1:
+            ret = generator.var(f"decode_ret_{sel.name}_{signals.name}",
+                                signals.width,
+                                size=signals.size[1:],
+                                explicit_array=True,
+                                packed=True)
+        else:
+            ret = generator.var(f"decode_ret_{sel.name}_{signals.name}",
+                                signals.width)
+    else:
+        ret = generator.var(f"decode_ret_{sel.name}_{signals.name}", 1)
+
+    @always_comb
+    def scan_lowest():
+        tmp_done = 0
+        ret = 0
+        for i in range(sel.width):
+            if ~tmp_done & sel[i]:
+                ret = signals[i]
+                tmp_done = 1
+
+    generator.add_code(scan_lowest)
+    return ret
+
+
+if __name__ == "__main__":
+    increment_csv("sequence.csv", "inced_csv.csv", [])
