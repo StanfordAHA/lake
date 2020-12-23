@@ -63,17 +63,26 @@ class StrgUBTBOnly(Generator):
 
         self._cycle_count = self.input("cycle_count", 16)
 
+        # data from SRAM
         self._sram_read_data = self.input("sram_read_data", self.data_width,
                                           size=self.fetch_width,
                                           packed=True,
                                           explicit_array=True)
+        # read enable from SRAM
+        self._t_read = self.input("t_read", self.interconnect_output_ports)
 
-        self._mux_sel_d1 = self.input("mux_sel_d1", kts.clog2(self.default_iterator_support), size=self.interconnect_output_ports,
-                                      packed=True,
-                                      explicit_array=True)
+        # sram to tb for loop
+        self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel",
+                                                 width=max(clog2(self.default_iterator_support), 1),
+                                                 size=self.interconnect_output_ports,
+                                                 explicit_array=True,
+                                                 packed=True)
 
-        self._t_read_d1 = self.input("t_read_d1", self.interconnect_output_ports)
-        self._restart_d1 = self.input("restart_d1", self.interconnect_output_ports)
+        self._loops_sram2tb_restart = self.input("loops_sram2tb_restart",
+                                                 width=1,
+                                                 size=self.interconnect_output_ports,
+                                                 explicit_array=True,
+                                                 packed=True)
 
         self._valid_out = self.output("accessor_output", self.interconnect_output_ports)
         self._data_out = self.output("data_out", self.data_width,
@@ -100,10 +109,33 @@ class StrgUBTBOnly(Generator):
                                       packed=True,
                                       explicit_array=True)
 
+        # write enable to tb, delayed 1 cycle from SRAM reads
+        self._t_read_d1 = self.var("t_read_d1", self.interconnect_output_ports)
+        # read enable for reads from tb
         self._tb_read = self.var("tb_read", self.interconnect_output_ports)
 
         # Break out valids...
         self.wire(self._valid_out, self._tb_read)
+
+        self._mux_sel_d1 = self.var("mux_sel_d1", kts.clog2(self.default_iterator_support), size=self.interconnect_output_ports,
+                                    packed=True,
+                                    explicit_array=True)
+
+        self._restart_d1 = self.var("restart_d1", self.interconnect_output_ports)
+
+        for i in range(self.interconnect_output_ports):
+            # signals delayed by 1 cycle from SRAM
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
+            def delay_read():
+                if ~self._rst_n:
+                    self._t_read_d1[i] = 0
+                    self._mux_sel_d1[i] = 0
+                    self._restart_d1[i] = 0
+                else:
+                    self._t_read_d1[i] = self._t_read[i]
+                    self._mux_sel_d1[i] = self._loops_sram2tb_mux_sel[i]
+                    self._restart_d1[i] = self._loops_sram2tb_restart[i]
+            self.add_code(delay_read)
 
         ##################################################################################
         # TB PATHS

@@ -79,13 +79,6 @@ class StrgUBSRAMTBShared(Generator):
         self._t_read = self.var("t_read", self.interconnect_output_ports)
         self.wire(self._t_read_out, self._t_read)
 
-        self._mux_sel_d1 = self.output("mux_sel_d1", kts.clog2(self.default_iterator_support), size=self.interconnect_output_ports,
-                                       packed=True,
-                                       explicit_array=True)
-
-        self._t_read_d1 = self.output("t_read_d1", self.interconnect_output_ports)
-        self._restart_d1 = self.output("restart_d1", self.interconnect_output_ports)
-
         ##################################################################################
         # TB PATHS
         ##################################################################################
@@ -113,18 +106,6 @@ class StrgUBSRAMTBShared(Generator):
                            mux_sel=loops_sram2tb.ports.mux_sel_out,
                            finished=loops_sram2tb.ports.restart,
                            valid_output=self._t_read[i])
-
-            @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            def delay_read():
-                if ~self._rst_n:
-                    self._t_read_d1[i] = 0
-                    self._mux_sel_d1[i] = 0
-                    self._restart_d1[i] = 0
-                else:
-                    self._t_read_d1[i] = self._t_read[i]
-                    self._mux_sel_d1[i] = loops_sram2tb.ports.mux_sel_out
-                    self._restart_d1[i] = loops_sram2tb.ports.restart
-            self.add_code(delay_read)
 
 
 if __name__ == "__main__":
