@@ -117,7 +117,9 @@ class StrgUBTBOnly(Generator):
         # Break out valids...
         self.wire(self._valid_out, self._tb_read)
 
-        self._mux_sel_d1 = self.var("mux_sel_d1", kts.clog2(self.default_iterator_support), size=self.interconnect_output_ports,
+        self._mux_sel_d1 = self.var("mux_sel_d1",
+                                    kts.clog2(self.default_iterator_support),
+                                    size=self.interconnect_output_ports,
                                     packed=True,
                                     explicit_array=True)
 
