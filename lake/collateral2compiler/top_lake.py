@@ -15,6 +15,13 @@ class TopLake():
                  input_ports,
                  output_ports):
 
+        # keeps track of whether this Lake object has been constructed
+        # already and can be directly used with preprocessing functions
+        # being called
+        self.constructed = False
+        # until hardware is created, it is None
+        self.hw = None
+
         # parameters
         self.word_width = word_width
         self.input_ports = input_ports
@@ -276,23 +283,30 @@ class TopLake():
         return hw
 
     def test_magma_lake(self, wrap_cfg=False):
-        # identify which memories are not inputs and/or outputs
-        self.add_io_mem_tags()
-        # prepare user input for compiler collateral and hardware
-        self.banking()
-        # generate compiler collateral
-        self.get_compiler_json()
-        # generate RTL
-        hw = self.generate_hardware(wrap_cfg)
+        if not self.constructed:
+            # identify which memories are not inputs and/or outputs
+            self.add_io_mem_tags()
+            # prepare user input for compiler collateral and hardware
+            self.banking()
+            # generate compiler collateral
+            self.get_compiler_json()
+            # generate RTL
+            self.hw = self.generate_hardware(wrap_cfg)
 
-        return hw
+        assert self.hw is not None
+
+        return self.hw
 
     def construct_lake(self, filename="Lake_hw.sv", wrap_cfg=False):
-        hw = self.test_magma_lake(wrap_cfg)
+        if not self.constructed:
+            self.test_magma_lake(wrap_cfg)
+            self.constructed = True
+
+        assert self.hw is not None
 
         tsmc_info = SRAMMacroInfo("tsmc_name")
         sram_port_pass = change_sram_port_names(use_sram_stub=False, sram_macro_info=tsmc_info)
-        verilog(hw, filename=filename,
+        verilog(self.hw, filename=filename,
                 check_multiple_driver=False,
                 optimize_if=False,
                 check_flip_flop_always_ff=False,

@@ -186,6 +186,7 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
 
         print(pairings, file=fi)
 
+
 def extract_formal_annotation_colat(generator, filepath, mem_names, edges):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator

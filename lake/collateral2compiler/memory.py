@@ -160,7 +160,7 @@ class Memory(Generator):
         if self.num_write_only_ports != 0 and self.num_read_only_ports != 0:
             # writes
             self.write_addr = self.input("write_addr",
-                                         width=16, # self.write_addr_width,
+                                         width=16,  # self.write_addr_width,
                                          size=self.num_write_ports,
                                          explicit_array=True)
 
@@ -170,7 +170,7 @@ class Memory(Generator):
 
             # reads
             self.read_addr = self.input("read_addr",
-                                        width=16, # self.read_addr_width,
+                                        width=16,  # self.read_addr_width,
                                         size=self.num_read_ports,
                                         explicit_array=True)
 
@@ -180,13 +180,13 @@ class Memory(Generator):
 
         elif self.num_read_write_ports != 0:
             self.read_write_addr = self.input("read_write_addr",
-                                              width=16, # max(self.read_addr_width, self.write_addr_width),
+                                              width=16,  # max(self.read_addr_width, self.write_addr_width),
                                               size=self.num_read_write_ports,
                                               explicit_array=True)
 
             # writes
             self.write_addr = self.var("write_addr",
-                                       width=16, # self.write_addr_width,
+                                       width=16,  # self.write_addr_width,
                                        size=self.num_read_write_ports,
                                        explicit_array=True)
 

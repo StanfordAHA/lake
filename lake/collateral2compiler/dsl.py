@@ -50,4 +50,4 @@ tile.add_edge("sram", "tb", 6, 65535, 512)
 tile.add_edge("sram", "tb1", 6, 65535, 512)
 
 # for both compiler collateral and HW generation
-# tile.construct_lake("memtile.sv")
+tile.construct_lake("memtile.sv")

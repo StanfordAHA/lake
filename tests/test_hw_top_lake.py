@@ -29,6 +29,8 @@ def base_lake_tester(config_path,
 
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
 
+    lt_dut.clear_context_hash()
+
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,

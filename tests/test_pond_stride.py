@@ -57,11 +57,12 @@ def test_pond():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="pond_stride"
+        tempdir = "pond_stride"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 if __name__ == "__main__":
     test_pond()
