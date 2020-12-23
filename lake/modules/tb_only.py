@@ -123,7 +123,11 @@ class StrgUBTBOnly(Generator):
                                     packed=True,
                                     explicit_array=True)
 
-        self._restart_d1 = self.var("restart_d1", self.interconnect_output_ports)
+        self._restart_d1 = self.var("restart_d1",
+                                    width=1,
+                                    size=self.interconnect_output_ports,
+                                    explicit_array=True,
+                                    packed=True)
 
         for i in range(self.interconnect_output_ports):
             # signals delayed by 1 cycle from SRAM
