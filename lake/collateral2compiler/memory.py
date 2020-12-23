@@ -66,6 +66,7 @@ class Memory(Generator):
         # general memory parameters
         self.mem_name = mem_params["name"]
         self.capacity = mem_params["capacity"]
+        self.rw_same_cycle = mem_params["rw_same_cycle"]
 
         # number of port types
         self.num_read_write_ports = mem_params["num_read_write_ports"]
@@ -126,7 +127,8 @@ class Memory(Generator):
                                   explicit_array=True,
                                   packed=True)
 
-        # write enable (high: write, low: read)
+        # write enable (high: write, low: read when rw_same_cycle = False, else
+        # only indicates write)
         self.write = self.input("write",
                                 width=1,
                                 size=self.num_write_ports)
@@ -156,11 +158,22 @@ class Memory(Generator):
         # default_config_width for those addr gens while accounting for muxing
         # bits, but the extra bits are unused anyway
 
+        if self.rw_same_cycle:
+            self.read = self.input("read",
+                                   width=1,
+                                   size=self.num_read_ports)
+        else:
+            self.read = self.var("read",
+                                 width=1,
+                                 size=self.num_read_ports)
+            for i in range(self.num_read_ports):
+                self.wire(self.read[i], 1)
+
         # TO DO change later - same read/write or read and write assumption as above
         if self.num_write_only_ports != 0 and self.num_read_only_ports != 0:
             # writes
             self.write_addr = self.input("write_addr",
-                                         width=16, # self.write_addr_width,
+                                         width=16,  # self.write_addr_width,
                                          size=self.num_write_ports,
                                          explicit_array=True)
 
@@ -170,7 +183,7 @@ class Memory(Generator):
 
             # reads
             self.read_addr = self.input("read_addr",
-                                        width=16, # self.read_addr_width,
+                                        width=16,  # self.read_addr_width,
                                         size=self.num_read_ports,
                                         explicit_array=True)
 
@@ -178,15 +191,16 @@ class Memory(Generator):
             # TO DO also should add support for other latencies
             self.add_read_data_block()
 
+        # rw_same_cycle is not valid here because read/write share the same port
         elif self.num_read_write_ports != 0:
             self.read_write_addr = self.input("read_write_addr",
-                                              width=16, # max(self.read_addr_width, self.write_addr_width),
+                                              width=16,  # max(self.read_addr_width, self.write_addr_width),
                                               size=self.num_read_write_ports,
                                               explicit_array=True)
 
             # writes
             self.write_addr = self.var("write_addr",
-                                       width=16, # self.write_addr_width,
+                                       width=16,  # self.write_addr_width,
                                        size=self.num_read_write_ports,
                                        explicit_array=True)
 
@@ -262,13 +276,15 @@ class Memory(Generator):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def read_data_latency_1_0(self):
         for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1, 0]]
+            if self.read[p]:
+                self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1, 0]]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def read_data_latency_1_1(self):
         for p in range(self.num_read_ports):
-            self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
-                [self.read_addr[p][self.mem_size_bits - 1, 0]]
+            if self.read[p]:
+                self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
+                    [self.read_addr[p][self.mem_size_bits - 1, 0]]
 
 
 if __name__ == "__main__":

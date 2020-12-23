@@ -195,6 +195,8 @@ class TopLakeHW(Generator):
                       self.mem_data_outs[subscript_mems.index(out_mem)][0])
 
             self.valid = self.var(f"{out_mem}2output_port{output_port_index}_accessor_valid", 1)
+            if self.memories[out_mem]["rw_same_cycle"]:
+                self.wire(self.mem_insts[out_mem].ports.read, self.valid)
 
             forloop = ForLoop(iterator_support=output_dim,
                               config_width=max(1, clog2(output_range)))  # self.default_config_width)

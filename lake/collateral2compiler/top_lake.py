@@ -52,6 +52,10 @@ class TopLake():
         mem_params["write_ports"] = write_ports
         mem_params["read_write_ports"] = read_write_ports
 
+        # initialize to False, changed if input/output edge added with this memory
+        mem_params["is_input"] = False
+        mem_params["is_output"] = False
+
         self.memories[mem_name] = mem_params
 
     def get_addl_mem_params(self, mem_params, write_ports, read_ports, read_write_ports):
@@ -96,13 +100,6 @@ class TopLake():
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
         self.memories[mem_name]["is_output"] = True
         self.memories[mem_name]["output_port"] = port
-
-    def add_io_mem_tags(self):
-        for mem in self.memories.keys():
-            if "is_input" not in self.memories[mem].keys():
-                self.memories[mem]["is_input"] = False
-            if "is_output" not in self.memories[mem].keys():
-                self.memories[mem]["is_output"] = False
 
     # after all edges are added
     def banking(self):
@@ -276,8 +273,6 @@ class TopLake():
         return hw
 
     def test_magma_lake(self, wrap_cfg=False):
-        # identify which memories are not inputs and/or outputs
-        self.add_io_mem_tags()
         # prepare user input for compiler collateral and hardware
         self.banking()
         # generate compiler collateral

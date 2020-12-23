@@ -7,11 +7,13 @@ def make_params(name,
                 read_port_width=0,
                 write_port_width=0,
                 read_write_port_width=0,
-                use_macro=False):
+                use_macro=False,
+                rw_same_cycle=False):
 
     params_dict = {"name": name,
                    "capacity": capacity,
-                   "use_macro": use_macro}
+                   "use_macro": use_macro,
+                   "rw_same_cycle": rw_same_cycle}
 
     if read_port_width != 0:
         params_dict["read_port_width"] = read_port_width

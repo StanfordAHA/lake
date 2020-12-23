@@ -23,7 +23,6 @@ def test_pond():
         ctrl_wr = [[16, 1], [1, 1], 2, 0, 0]
 #        pond_config = generate_pond_api(ctrl_rd, ctrl_wr, True)
 
-
         config = {}
         config["pond2output_read_sched_gen_sched_addr_gen_starting_addr"] = 0
         config["input2pond_write_sched_gen_sched_addr_gen_strides_0"] = 1
@@ -84,7 +83,7 @@ def test_pond():
         data_in_pond = [0] * interconnect_input_ports
         valid_in = [0] * interconnect_input_ports
         for i in range(64):
-    #    for i in range(32 - start_addr_rd):
+            #    for i in range(32 - start_addr_rd):
             # Incrementing Data
             data_in_pond[0] = data_in_pond[0] + 1
 
@@ -97,12 +96,11 @@ def test_pond():
 #            if i >= 16:
 #                tester.circuit.data_out.expect(i - 15 + start_addr_rd)
 
-
             tester.eval()
             tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="pond_nestan"
+        tempdir = "pond_nestan"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",

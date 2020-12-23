@@ -50,18 +50,18 @@ def test_pond():
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
         if i >= 16:
-            print((i - 16) * 2 + 1)
-#            tester.circuit.data_out.expect((i - 16) * 2 + 1)
+            tester.circuit.data_out.expect((i - 16) * 2 + 1)
 
         tester.eval()
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="pond_stride"
+        tempdir = "pond_stride"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 if __name__ == "__main__":
     test_pond()
