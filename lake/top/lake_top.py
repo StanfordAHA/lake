@@ -269,18 +269,30 @@ class LakeTop(Generator):
                                       packed=True,
                                       explicit_array=True)
 
-        if self.formal_module == "sram" or formal_module == "tb":
-            self._formal_mem_data_out = self.output("formal_mem_data_out",
-                                                    self.data_width,
-                                                    size=(self.banks,
-                                                          self.mem_output_ports,
-                                                          self.fw_int),
-                                                    packed=True,
-                                                    explicit_array=True)
-            self._formal_mem_data_out.add_attribute(
-                FormalAttr(self._formal_mem_data_out.name, FormalSignalConstraint.SEQUENCE, self.formal_module))
+        if self.formal_module == "sram":
+            self._formal_mem_data = self.output("formal_mem_data",
+                                                self.data_width,
+                                                size=(self.banks,
+                                                      self.mem_output_ports,
+                                                      self.fw_int),
+                                                packed=True,
+                                                explicit_array=True)
+            self._formal_mem_data.add_attribute(
+                FormalAttr(self._formal_mem_data.name, FormalSignalConstraint.SEQUENCE, self.formal_module))
 
-            self.wire(self._formal_mem_data_out, self._mem_data_out)
+            self.wire(self._formal_mem_data, self._mem_data_out)
+        elif formal_module == "tb":
+            self._formal_mem_data = self.input("formal_mem_data",
+                                               self.data_width,
+                                               size=(self.banks,
+                                                     self.mem_output_ports,
+                                                     self.fw_int),
+                                               packed=True,
+                                               explicit_array=True)
+            self._formal_mem_data.add_attribute(
+                FormalAttr(self._formal_mem_data.name, FormalSignalConstraint.SEQUENCE, self.formal_module))
+
+            self.wire(self._mem_data_out, self._formal_mem_data)
 
         self._mem_data_low_pt = self.var("mem_data_low_pt",
                                          self.data_width,
@@ -746,28 +758,31 @@ class LakeTop(Generator):
             self.wire(self._mem_wen_dp, self._all_wen_to_mem[self._mode])
             self.wire(self._mem_addr_dp, self._all_addr_to_mem[self._mode])
 
-            for i in range(self.banks):
-                mbank = SRAM(use_sram_stub=self.use_sram_stub,
-                             sram_name=self.sram_macro_info.name,
-                             data_width=self.data_width,
-                             fw_int=self.fw_int,
-                             mem_depth=self.mem_depth,
-                             mem_input_ports=self.mem_input_ports,
-                             mem_output_ports=self.mem_output_ports,
-                             address_width=self.address_width,
-                             bank_num=i,
-                             num_tiles=self.num_tiles)
+            # have SRAM when not doing formal module generation or when generating
+            # SRAM modular problem for formal team
+            if self.formal_module is None or self.formal_module == "sram":
+                for i in range(self.banks):
+                    mbank = SRAM(use_sram_stub=self.use_sram_stub,
+                                 sram_name=self.sram_macro_info.name,
+                                 data_width=self.data_width,
+                                 fw_int=self.fw_int,
+                                 mem_depth=self.mem_depth,
+                                 mem_input_ports=self.mem_input_ports,
+                                 mem_output_ports=self.mem_output_ports,
+                                 address_width=self.address_width,
+                                 bank_num=i,
+                                 num_tiles=self.num_tiles)
 
-                self.add_child(f"mem_{i}", mbank,
-                               clk=self._gclk,
-                               clk_en=self._clk_en | self._config_en.r_or(),
-                               mem_data_in_bank=self._mem_data_in[i],
-                               mem_data_out_bank=self._mem_data_out[i],
-                               mem_addr_in_bank=self._mem_addr_in[i],
-                               mem_cen_in_bank=self._mem_cen_in[i],
-                               mem_wen_in_bank=self._mem_wen_in[i],
-                               wtsel=self.sram_macro_info.wtsel_value,
-                               rtsel=self.sram_macro_info.rtsel_value)
+                    self.add_child(f"mem_{i}", mbank,
+                                   clk=self._gclk,
+                                   clk_en=self._clk_en | self._config_en.r_or(),
+                                   mem_data_in_bank=self._mem_data_in[i],
+                                   mem_data_out_bank=self._mem_data_out[i],
+                                   mem_addr_in_bank=self._mem_addr_in[i],
+                                   mem_cen_in_bank=self._mem_cen_in[i],
+                                   mem_wen_in_bank=self._mem_wen_in[i],
+                                   wtsel=self.sram_macro_info.wtsel_value,
+                                   rtsel=self.sram_macro_info.rtsel_value)
         else:
 
             self.wire(self._mem_data_dp, self._ub_data_to_mem)
@@ -1258,10 +1273,10 @@ if __name__ == "__main__":
     # optional: to add generator cuts for formal module verilog + annotations
     # change this line for various module extractions: agg, sram, tb
     # comment out for no module extractions
-    # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module("agg")
+    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module("tb")
 
     # normal generation
-    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
+    # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
 
     # config lift happens in all possible cases by this point
     assert not need_config_lift
