@@ -49,13 +49,14 @@ def list_to_int(list_d, width):
 
 
 def get_size_str(port):
-    dim_1 = ""
-    dim_2 = ""
-    if port.size[0] > 1 or port.explicit_array:
-        dim_2 = f"[{port.size[0] - 1}:0] "
+    width_dim = ""
+    size_dims = ""
+    for dim in range(len(port.size)):
+        if port.size[dim] > 1 or port.explicit_array:
+            size_dims += f"[{port.size[dim] - 1}:0] "
     if port.width > 1:
-        dim_1 = f"[{port.width - 1}:0] "
-    return dim_2 + dim_1
+        width_dim = f"[{port.width - 1}:0] "
+    return size_dims + width_dim
 
 
 def extract_formal_annotation(generator, filepath, module_attr="agg"):
