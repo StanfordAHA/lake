@@ -145,7 +145,6 @@ def test_pond_strided_read(data_width=16,  # CGRA Params
             for j in range(interconnect_input_ports):
                 setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
         if i >= 16:
-            print((i - 16) * 2 + 1)
             tester.circuit.data_out_pond.expect((i - 16) * 2 + 1)
 
         tester.eval()

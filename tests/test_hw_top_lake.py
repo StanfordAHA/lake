@@ -16,7 +16,7 @@ from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
 from lake.collateral2compiler.top_lake import TopLake
 from lake.collateral2compiler.mem_port import MemPort
-from lake.collateral2compiler.dsl import *
+from lake.collateral2compiler.dsl_examples.memtile import *
 
 
 def base_lake_tester(config_path,
@@ -93,15 +93,17 @@ def gen_test_lake(config_path,
                                flags=["-Wno-fatal", "--trace"])
 
 
-def test_conv_3_3(lt_dut):
+def test_conv_3_3():
     lc, ls = check_env()
     config_path = lc + "conv_3_3_recipe_dsl"
     stream_path = ls + "conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf_0_top_SMT.csv"
+
+    lt_dut = tile.test_magma_lake()
 
     gen_test_lake(config_path=config_path,
                   stream_path=stream_path,
                   lt_dut=lt_dut)
 
 
-hw = tile.test_magma_lake()
-test_conv_3_3(hw)
+if __name__ == "__main__":
+    test_conv_3_3()
