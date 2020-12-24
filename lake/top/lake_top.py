@@ -22,6 +22,7 @@ from lake.modules.for_loop import ForLoop
 from lake.modules.spec.sched_gen import SchedGen
 import kratos as kts
 from _kratos import create_wrapper_flatten
+import argparse
 
 
 class LakeTop(Generator):
@@ -1268,16 +1269,23 @@ def get_lake_dut(formal_module=None,
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='LakeTop')
+    parser.add_argument("-f",
+                        help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for, default = agg",
+                        default="agg")
+
+    args = parser.parse_args()
+
     need_config_lift = True
-    module = ""
-    # optional: to add generator cuts for formal module verilog + annotations
-    # change this line for various module extractions: agg, sram, tb
-    # comment out for no module extractions
-    # module = "sram"
-    # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
 
     # normal generation
-    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
+    if args.f is None:
+        module = ""
+        lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
+    # optional: to add generator cuts for formal module verilog + annotations
+    else:
+        module = args.f
+        lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
 
     # config lift happens in all possible cases by this point
     assert not need_config_lift
