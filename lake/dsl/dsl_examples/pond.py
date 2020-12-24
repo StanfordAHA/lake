@@ -1,4 +1,4 @@
-from lake.collateral2compiler.lake_imports import *
+from lake.dsl.lake_imports import *
 
 pond = TopLake(16, 1, 1)
 

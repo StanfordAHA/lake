@@ -1,4 +1,4 @@
-from lake.collateral2compiler.lake_imports import *
+from lake.dsl.lake_imports import *
 
 # weight buffer
 weights = TopLake(64, 1, 1)

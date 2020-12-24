@@ -1,8 +1,8 @@
 from kratos import *
 from math import log
-from lake.collateral2compiler.mem_port import MemPort
+from lake.dsl.mem_port import MemPort
 from lake.utils.util import safe_wire
-from lake.collateral2compiler.helper import *
+from lake.dsl.helper import *
 
 
 def port_to_info(mem_params):

@@ -2,7 +2,7 @@ from kratos import *
 from lake.modules.for_loop import ForLoop
 from lake.utils.util import safe_wire
 from lake.modules.addr_gen import AddrGen
-from lake.collateral2compiler.helper import *
+from lake.dsl.helper import *
 
 
 def get_full_edge_params(edge_params):
