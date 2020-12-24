@@ -4,6 +4,7 @@ import pytest
 import tempfile
 
 
+@pytest.mark.skip
 def test_formal_tb():
     lt_dut, n, u, t = get_formal_module("tb")
 

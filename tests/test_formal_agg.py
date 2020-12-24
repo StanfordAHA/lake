@@ -4,6 +4,7 @@ import pytest
 import tempfile
 
 
+@pytest.mark.skip
 def test_formal_agg():
     lt_dut, n, u, t = get_formal_module("agg")
 
@@ -126,9 +127,10 @@ def test_formal_agg():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "agg_formal"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":
