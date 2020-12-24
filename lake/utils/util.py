@@ -56,7 +56,7 @@ def get_size_str(port):
             size_dims += f"[{port.size[dim] - 1}:0]"
     if port.width > 1:
         width_dim = f"[{port.width - 1}:0] "
-    return size_dims + width_dim
+    return size_dims + " " + width_dim
 
 
 def extract_formal_annotation(generator, filepath, module_attr="agg"):
