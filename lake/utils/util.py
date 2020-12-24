@@ -49,6 +49,8 @@ def list_to_int(list_d, width):
 
 
 def get_size_str(port):
+    # format for formal team: no space between the size dims,
+    # but space between the size dims and width dim
     width_dim = ""
     size_dims = ""
     for dim in range(len(port.size)):
