@@ -1280,18 +1280,19 @@ if __name__ == "__main__":
 
     # normal generation
     if args.f is None:
-        module = ""
+        prefix = ""
         lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
     # optional: to add generator cuts for formal module verilog + annotations
     else:
         module = args.f
         lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
+        prefix = f"{module}_"
 
     # config lift happens in all possible cases by this point
     assert not need_config_lift
 
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     # generate verilog
-    verilog(lake_dut, filename=f"{module}lake_top.sv",
+    verilog(lake_dut, filename=f"{prefix}lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
