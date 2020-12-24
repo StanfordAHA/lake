@@ -44,7 +44,7 @@ def test_formal_agg():
     config["strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_strides_3"] = 0
     config["strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_strides_4"] = 0
     config["strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_strides_5"] = 0
-    config["strg_ub_agg_only_agg_read_addr_gen_0_starting_addr"] = 1
+    config["strg_ub_agg_only_agg_read_addr_gen_0_starting_addr"] = 0
     config["strg_ub_agg_only_agg_write_addr_gen_1_starting_addr"] = 0
     config["strg_ub_agg_sram_shared_loops_in2buf_autovec_write_1_dimensionality"] = 0
     config["strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_strides_0"] = 4
@@ -107,7 +107,7 @@ def test_formal_agg():
     config["strg_ub_agg_only_agg_write_addr_gen_0_strides_3"] = 0
     config["strg_ub_agg_only_agg_write_addr_gen_0_strides_4"] = 0
     config["strg_ub_agg_only_agg_write_addr_gen_0_strides_5"] = 0
-    config["strg_ub_agg_only_agg_write_addr_gen_0_starting_addr"] = 4
+    config["strg_ub_agg_only_agg_write_addr_gen_0_starting_addr"] = 0
     config["strg_ub_agg_only_agg_write_sched_gen_0_sched_addr_gen_strides_0"] = 1
     config["strg_ub_agg_only_agg_write_sched_gen_0_sched_addr_gen_strides_1"] = 0
     config["strg_ub_agg_only_agg_write_sched_gen_0_sched_addr_gen_strides_2"] = 0
