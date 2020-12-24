@@ -1269,11 +1269,12 @@ def get_lake_dut(formal_module=None,
 
 if __name__ == "__main__":
     need_config_lift = True
-
+    module = ""
     # optional: to add generator cuts for formal module verilog + annotations
     # change this line for various module extractions: agg, sram, tb
     # comment out for no module extractions
-    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module("sram")
+    module = "tb"
+    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
 
     # normal generation
     # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
@@ -1283,6 +1284,6 @@ if __name__ == "__main__":
 
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     # generate verilog
-    verilog(lake_dut, filename="lake_top.sv",
+    verilog(lake_dut, filename=f"{module}lake_top.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
