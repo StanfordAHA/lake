@@ -116,7 +116,7 @@ def test_mult_lines_dim1(data_width=16,
 
     model_lt.set_config(new_config=new_config)
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      mem_depth=mem_depth,
@@ -355,7 +355,7 @@ def test_mult_lines_dim2(tb0_range_outer,
 
     model_lt.set_config(new_config=new_config)
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      mem_depth=mem_depth,
@@ -611,7 +611,7 @@ def test_chain_mult_tile(num_tiles=2,
     new_config["tile_0_strg_ub_app_ctrl_write_depth"] = 32
     new_config["tile_1_strg_ub_app_ctrl_write_depth"] = 32
 
-    ### DUT
+    # DUT
     lt_dut = LakeChain(num_tiles=num_tiles,
                        banks=banks,
                        interconnect_input_ports=interconnect_input_ports,
@@ -762,7 +762,7 @@ def test_chain_3porttile(num_tiles=2,
 
     new_config["tile_0_strg_ub_app_ctrl_write_depth"] = 32
     new_config["tile_1_strg_ub_app_ctrl_write_depth"] = 32
-    ### DUT
+    # DUT
     lt_dut = LakeChain(num_tiles=num_tiles,
                        banks=banks,
                        interconnect_input_ports=interconnect_input_ports,
@@ -971,7 +971,7 @@ def test_identity_stream(data_width=16,
 
     model_lt.set_config(new_config=new_config)
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      mem_depth=mem_depth,
@@ -1242,7 +1242,7 @@ def test_top(read_delay,
 
     model_lt.set_config(new_config=new_config)
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      mem_depth=mem_depth,
@@ -1488,7 +1488,7 @@ def test_config_storage(data_width=16,
 
     model_lt.set_config(new_config=new_config)
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      mem_depth=mem_depth,
@@ -1738,7 +1738,7 @@ def test_ports3_stride1(read_delay=1,
 
     model_lt.set_config(new_config=new_config)
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      mem_depth=mem_depth,
@@ -2007,7 +2007,7 @@ def test_2ports_idstream(data_width=16,
     new_config["strg_ub_sync_grp_sync_group_1"] = 1
     new_config["strg_ub_pre_fetch_1_input_latency"] = 4
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      banks=banks,
