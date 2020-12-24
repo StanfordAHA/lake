@@ -100,10 +100,12 @@ class StrgUBTBOnly(Generator):
                                   self.fetch_width),
                             packed=True,
                             explicit_array=True)
+
         self._tb_write_addr = self.var("tb_write_addr", 2 + max(1, clog2(self.tb_height)),
                                        size=self.interconnect_output_ports,
                                        packed=True,
                                        explicit_array=True)
+
         self._tb_read_addr = self.var("tb_read_addr", 2 + max(1, clog2(self.tb_height)),
                                       size=self.interconnect_output_ports,
                                       packed=True,
@@ -117,6 +119,8 @@ class StrgUBTBOnly(Generator):
         # Break out valids...
         self.wire(self._valid_out, self._tb_read)
 
+        # delayed input mux_sel and restart signals from sram read/tb write
+        # for loop and scheduling
         self._mux_sel_d1 = self.var("mux_sel_d1",
                                     kts.clog2(self.default_iterator_support),
                                     size=self.interconnect_output_ports,

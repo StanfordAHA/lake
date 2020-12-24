@@ -84,6 +84,7 @@ class StrgUBSRAMTBShared(Generator):
         ##################################################################################
         for i in range(self.interconnect_output_ports):
 
+            # for loop for sram reads, tb writes
             loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
                                     config_width=self.default_config_width)
 
@@ -96,6 +97,7 @@ class StrgUBSRAMTBShared(Generator):
             safe_wire(gen=self, w_to=self._loops_sram2tb_mux_sel[i], w_from=loops_sram2tb.ports.mux_sel_out)
             self.wire(self._loops_sram2tb_restart[i], loops_sram2tb.ports.restart)
 
+            # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
             self.add_child(f"output_sched_gen_{i}",
                            SchedGen(iterator_support=self.default_iterator_support,
                                     # config_width=self.default_config_width),
