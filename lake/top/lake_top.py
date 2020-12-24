@@ -1273,11 +1273,11 @@ if __name__ == "__main__":
     # optional: to add generator cuts for formal module verilog + annotations
     # change this line for various module extractions: agg, sram, tb
     # comment out for no module extractions
-    module = "tb"
-    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
+    # module = "sram"
+    # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
 
     # normal generation
-    # lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
+    lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
 
     # config lift happens in all possible cases by this point
     assert not need_config_lift
