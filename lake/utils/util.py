@@ -53,7 +53,7 @@ def get_size_str(port):
     size_dims = ""
     for dim in range(len(port.size)):
         if port.size[dim] > 1 or port.explicit_array:
-            size_dims += f"[{port.size[dim] - 1}:0] "
+            size_dims += f"[{port.size[dim] - 1}:0]"
     if port.width > 1:
         width_dim = f"[{port.width - 1}:0] "
     return size_dims + width_dim
