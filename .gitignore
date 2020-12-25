@@ -32,3 +32,6 @@ dump/
 *.vscode
 
 *.idea
+
+# local clone of clockwork
+clockwork

@@ -1,17 +1,18 @@
 import argparse
 import sys
 import tempfile
+import pytest
 
 from lake.utils.util import generate_lake_config_wrapper
 from lake.utils.util import check_env
-from test_lake import base_lake_tester
+from lake.utils.test_infra import base_lake_tester
 
 
 def get_lake_wrapper(config_path,
                      stencil_valid,
                      name,
-                     in_file_name="input",
-                     out_file_name="output",
+                     in_file_name="",
+                     out_file_name="",
                      in_ports=2,
                      out_ports=2):
 
@@ -32,6 +33,9 @@ def get_lake_wrapper(config_path,
 
 def wrapper(config_path_input, stencil_valid, name):
     lc, ls = check_env()
+    # we are in the process of transitioning to csvs being in this folder
+    # lc = <path to clockwork>/aha_garnet_design/
+
     config_path = lc + config_path_input
     get_lake_wrapper(config_path=config_path,
                      stencil_valid=stencil_valid,
@@ -41,6 +45,20 @@ def wrapper(config_path_input, stencil_valid, name):
 def error(usage):
     print(usage)
     sys.exit(2)
+
+
+# adding this test to ensure wrapper generation is not broken
+
+# have to skip this test for now because LAKE_CONTROLLERS will
+# be changing very soon in the future compared to the current
+# path as the compiler team changes directories (and eliminates
+# complicated csv file names)
+@pytest.mark.skip
+@pytest.mark.parametrize("stencil_valid", [True, False])
+@pytest.mark.parametrize("name", ["LakeWrapper", "LakeConv33"])
+def test_wrapper(stencil_valid,
+                 name):
+    wrapper(conv_3_3_wrapper_path, stencil_valid, name)
 
 
 if __name__ == "__main__":
