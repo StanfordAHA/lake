@@ -154,6 +154,9 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
 
         for key in pairings.keys():
             pairings[key] = pairings[key]["maps"]
+            for p in pairings[key]:
+                if "enable" in p:
+                    pairings[key].remove(p)
 
         print(pairings, file=fi)
 
