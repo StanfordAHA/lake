@@ -28,7 +28,8 @@ def base_lake_tester(config_path,
                                                   stencil_valid=stencil_valid)
 
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
-    configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
+    # prints out list of configs for compiler team, can comment back in to get the file
+    # configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
