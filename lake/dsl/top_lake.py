@@ -1,9 +1,9 @@
 import copy
 
-from lake.collateral2compiler.memory import mem_inst, port_to_info
-from lake.collateral2compiler.edge import edge_inst, get_full_edge_params
-from lake.collateral2compiler.helper import *
-from lake.collateral2compiler.hw_top_lake import TopLakeHW
+from lake.dsl.memory import mem_inst, port_to_info
+from lake.dsl.edge import edge_inst, get_full_edge_params
+from lake.dsl.helper import *
+from lake.dsl.hw_top_lake import TopLakeHW
 from lake.utils.sram_macro import SRAMMacroInfo
 from lake.passes.passes import change_sram_port_names
 from lake.modules.cfg_reg_wrapper import CFGRegWrapper
