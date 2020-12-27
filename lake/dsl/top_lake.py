@@ -86,6 +86,7 @@ class TopLake():
         assert self.memories[edge_params['from_signal']][from_key] == self.memories[edge_params['to_signal']][to_key]
         self.edges.append(edge_params)
 
+    # input and output edge functions
     def add_input_edge(self, port, mem_name, dim=6, max_range=65536, max_stride=65536):
         self.add_input_output_edge(port, mem_name, dim, max_range, max_stride, "input")
 
@@ -103,6 +104,7 @@ class TopLake():
         self.hw_memories = copy.deepcopy(self.memories)
         self.hw_edges = copy.deepcopy(self.edges)
 
+        # get all memories connected from and to each memory
         memories_from = {}
         memories_to = {}
         for mem in self.memories.keys():
@@ -124,20 +126,23 @@ class TopLake():
         self.add_to_hardware_edges(True, memories_from)
         self.add_to_hardware_edges(False, memories_to)
 
+        # make sure all memories are in lists
         for h in self.hardware_edges:
             for sig in ("to_signal", "from_signal"):
                 if not isinstance(h[sig], list):
                     h[sig] = [h[sig]]
 
+        # add remaining edges
         for e in self.edges:
-            add = 1
+            add = True
             for h in self.hardware_edges:
                 if e["from_signal"] in h["from_signal"] and e["to_signal"] in h["to_signal"]:
-                    add = 0
+                    add = False
                     break
-            if add == 1:
+            if add:
                 self.hardware_edges.append(e)
 
+        # merge memories for the compiler view
         self.merge_mems(memories_from, True)
         self.merge_mems(memories_to, False)
 
@@ -157,61 +162,42 @@ class TopLake():
     def merge_mems(self, mems_to_merge, is_from):
         for mem in mems_to_merge.keys():
             # print("MEMORY ", mem, " ", mems_to_merge[mem])
+            # number of memories is more than 1, so there are memories to merge
             if len(mems_to_merge[mem]) > 1:
+
+                # merged memory instance initialization
                 merged_mem = self.memories[mems_to_merge[mem][0]]
 
+                # merged memory parameter initialization
                 name = "merged_"
                 write_ports = []
                 read_ports = []
                 rw_ports = []
                 merged_cap = 0
+
                 for m in mems_to_merge[mem]:
                     mem_ = self.memories[m]
                     del self.merged_mems[m]
 
                     name += mem_["name"] + "_"
 
-                    # add mux connections for HW generation
-                    if is_from:
-                        check, not_check = "from", "to"
-                    else:
-                        check, not_check = "to", "from"
+                    # not currently used
+                    # self.get_hw_edges_muxes(is_from, mem_, mem)
 
-                    for e in self.hw_edges:
-                        if e[check + "_signal"] == mem_["name"]:
-                            while f"mux_{self.mux_count}" in self.hw_memories.keys():
-                                self.mux_count += 1
-                            e[not_check + "_signal"] = f"mux_{self.mux_count}"
-                            if f"mux_{self.mux_count}" not in self.muxes:
-                                self.muxes[f"mux_{self.mux_count}"] = [check, mem_["name"]]
-                            else:
-                                self.muxes[f"mux_{self.mux_count}"].append(mem_["name"])
+                    # get port information for merged memories
+                    def merged_port_info(mem_, port_name, port_list):
+                        port = mem_[port_name].copy()
+                        for p in port:
+                            p.set_addr_domain([merged_cap, merged_cap + mem_["capacity"] - 1])
+                        port_list += port
 
-                            break
+                    merged_port_info(mem_, "read_ports", read_ports)
+                    merged_port_info(mem_, "write_ports", write_ports)
+                    merged_port_info(mem_, "read_write_ports", rw_ports)
 
-                    to_edge = {check + "_signal": f"mux_{self.mux_count}",
-                               not_check + "_signal": mem}
-                    # TODO this should be based on min dim, range, and stride
-                    # from the original mems that are being muxed - TODO make this not
-                    # a limitation, perhaps with a port restriction?
-                    get_full_edge_params(to_edge)
-                    if to_edge not in self.hw_edges:
-                        self.hw_edges.append(to_edge)
-
-                    # get compiler related information for merged memories
-                    rport = mem_["read_ports"].copy()
-                    for r in rport:
-                        r.set_addr_domain([merged_cap, merged_cap + mem_["capacity"] - 1])
-                    read_ports += rport
-                    wport = mem_["write_ports"].copy()
-                    for w in wport:
-                        w.set_addr_domain([merged_cap, merged_cap + mem_["capacity"] - 1])
-                    rwport = mem_["read_write_ports"].copy()
-                    for rw in rwport:
-                        rw.set_addr_domain([merged_cap, merged_cap + mem_["capacity"] - 1])
-                    write_ports += wport
                     merged_cap += mem_["capacity"]
 
+                # merged memory parameters
                 merged_mem["name"] = name[:-1]
                 merged_mem["capacity"] = merged_cap
                 merged_mem["read_ports"] = read_ports
@@ -225,16 +211,38 @@ class TopLake():
                     # print("NOT IS FROM ", mem, merged_mem["name"])
                     self.merged_edges.append({"from_signal": mem, "to_signal": merged_mem["name"]})
 
-                self.get_addl_mem_params(merged_mem, write_ports, read_ports, [])
+                self.get_addl_mem_params(merged_mem, write_ports, read_ports, rw_ports)
 
                 # print(merged_mem)
                 self.merged_mems[name] = merged_mem
 
-            # need to handle case where memories are not merged
-            # else:
-                # self.merged_edges.append({"from_signal": mem, "to_signal": mems_to_merge[mem]})
-
             self.mux_count += 1
+
+    def get_hw_edges_muxes(self, is_from, mem_, mem):
+        # add mux connections for HW generation (not currently used)
+        check = "from" if is_from else "to"
+        not_check = "to" if is_from else "from"
+        for e in self.hw_edges:
+            if e[check + "_signal"] == mem_["name"]:
+                while f"mux_{self.mux_count}" in self.hw_memories.keys():
+                    self.mux_count += 1
+                e[not_check + "_signal"] = f"mux_{self.mux_count}"
+                if f"mux_{self.mux_count}" not in self.muxes:
+                    self.muxes[f"mux_{self.mux_count}"] = [check, mem_["name"]]
+                else:
+                    self.muxes[f"mux_{self.mux_count}"].append(mem_["name"])
+
+                break
+
+        to_edge = {f"{check}_signal": f"mux_{self.mux_count}",
+                   f"{not_check}_signal": mem}
+
+        # TODO this should be based on min dim, range, and stride
+        # from the original mems that are being muxed - TODO make this not
+        # a limitation, perhaps with a port restriction?
+        get_full_edge_params(to_edge)
+        if to_edge not in self.hw_edges:
+            self.hw_edges.append(to_edge)
 
     def get_compiler_json(self, filename="collateral2compiler.json"):
 
@@ -253,7 +261,7 @@ class TopLake():
     def generate_hardware(self, wrap_cfg=True):
         # print(self.hw_memories)
         # print()
-        print(self.hardware_edges)
+        # print(self.hardware_edges)
 
         hw = TopLakeHW(self.word_width,
                        self.input_ports,
