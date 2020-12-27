@@ -1,7 +1,7 @@
 from lake.dsl.lake_imports import *
 
 # weight buffer
-weights = TopLake(64, 1, 1)
+weights = Lake(64, 1, 1)
 
 port = MemPort(1, 0)
 

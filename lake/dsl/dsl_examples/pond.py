@@ -1,6 +1,6 @@
 from lake.dsl.lake_imports import *
 
-pond = TopLake(16, 1, 1)
+pond = Lake(16, 1, 1)
 
 read_port = MemPort(0, 0)
 write_port = MemPort(1, 0)

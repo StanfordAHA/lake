@@ -11,7 +11,7 @@ from lake.dsl.lake_imports import *
 # MEMORIES SHOULD BE INSTANTIATED BEFORE EDGES
 
 # word_width, input_ports, output_ports
-tile = TopLake(16, 2, 2)
+tile = Lake(16, 2, 2)
 
 # MemPort attributes are latency, initiation interval
 agg_write_port = MemPort(1, 0)

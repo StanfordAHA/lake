@@ -9,7 +9,7 @@ from lake.passes.passes import change_sram_port_names
 from lake.modules.cfg_reg_wrapper import CFGRegWrapper
 
 
-class TopLake():
+class Lake():
     def __init__(self,
                  word_width,
                  input_ports,

@@ -1,4 +1,3 @@
-from lake.top.lake_top import LakeTop
 import kratos as kts
 import fault
 import pytest
@@ -14,8 +13,6 @@ from lake.utils.parse_clkwork_config import *
 from lake.utils.util import get_configs_dict, set_configs_sv
 from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
-from lake.dsl.top_lake import TopLake
-from lake.dsl.mem_port import MemPort
 from lake.dsl.dsl_examples.memtile import *
 
 
