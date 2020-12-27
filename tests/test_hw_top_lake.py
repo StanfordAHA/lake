@@ -14,9 +14,9 @@ from lake.utils.parse_clkwork_config import *
 from lake.utils.util import get_configs_dict, set_configs_sv
 from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
-from lake.collateral2compiler.top_lake import TopLake
-from lake.collateral2compiler.mem_port import MemPort
-from lake.collateral2compiler.dsl_examples.memtile import *
+from lake.dsl.top_lake import TopLake
+from lake.dsl.mem_port import MemPort
+from lake.dsl.dsl_examples.memtile import *
 
 
 def base_lake_tester(config_path,

@@ -4,7 +4,7 @@ import random as rand
 import pytest
 import tempfile
 from lake.utils.util import transform_strides_and_ranges, generate_pond_api
-from lake.collateral2compiler.dsl_examples.pond import *
+from lake.dsl.dsl_examples.pond import *
 
 
 # setup for pond tests - only call once
