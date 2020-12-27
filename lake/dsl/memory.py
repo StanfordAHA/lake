@@ -11,11 +11,6 @@ from lake.modules.sram import SRAM
 def port_to_info(mem_params):
 
     port_types = ["write", "read", "read_write"]
-    for s_ in port_types:
-        s = s_ + "_ports"
-        if s not in mem_params.keys():
-            mem_params[s] = []
-
     all_ports = []
     for s_ in port_types:
         all_ports += mem_params[s_ + "_ports"]
@@ -26,13 +21,11 @@ def port_to_info(mem_params):
         if p.port_info["addr_domain"]["min"] == -1 and p.port_info["addr_domain"]["max"] == -1:
             p.set_addr_domain([0, mem_params["capacity"] - 1])
 
+    # ports are not JSON serializable, so just store
+    # port info instead of port obejcts
     for s_ in port_types:
         s = s_ + "_info"
-        mem_params[s] = [p.port_info for p in mem_params[s[:-4] + "ports"]]
-        mem_params["num_" + s_ + "_ports"] = len(mem_params[s])
-
-        # ports are not JSON serializable, so just store
-        # port info instead of port obejcts
+        mem_params[s] = [p.port_info for p in mem_params[s_ + "_ports"]]
         del mem_params[s_ + "_ports"]
 
     return mem_params
@@ -41,7 +34,7 @@ def port_to_info(mem_params):
 def mem_inst(mem_params, word_width, mem_collateral={}):
     # print(mem_params)
 
-    # get full memory parameters with port information
+    # get full memory parameters with port + addr domain information
     mem_params = port_to_info(mem_params)
     # create memory instance
     mem = Memory(mem_params, word_width)
@@ -332,6 +325,7 @@ class Memory(Generator):
                 self.memory[self.write_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
                     [self.write_addr[p][self.mem_size_bits - 1, 0]] = self.data_in[p]
 
+    # read latency 0
     @always_comb
     def read_data_latency_0_0(self):
         for p in range(self.num_read_ports):
@@ -343,6 +337,7 @@ class Memory(Generator):
             self.data_out[p] = self.memory[self.read_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
                 [self.read_addr[p][self.mem_size_bits - 1, 0]]
 
+    # read latency 1
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def read_data_latency_1_0(self):
         for p in range(self.num_read_ports):

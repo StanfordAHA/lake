@@ -34,7 +34,7 @@ class TopLake():
         self.hw_edges = []
         self.hardware_edges = []
 
-        # originally created for hardware, but not used
+        # mux info originally created for hardware, but not used
         # keeping here in case logic is useful for the future
         self.mux_count = 0
         self.muxes = {}
@@ -43,7 +43,6 @@ class TopLake():
     def add_memory(self, mem_params, write_ports=[], read_ports=[], read_write_ports=[]):
 
         mem_name = mem_params["name"]
-
         self.get_addl_mem_params(mem_params, write_ports, read_ports, read_write_ports)
 
         # mem = mem_inst(mem_params, self.mem_collateral)
@@ -63,7 +62,6 @@ class TopLake():
         mem_params["num_read_ports"] = len(read_ports)
         mem_params["num_read_write_ports"] = len(read_write_ports)
 
-    # TODO put the defaults here instead of the additional function
     def add_edge(self,
                  from_signal,
                  to_signal,
@@ -88,20 +86,19 @@ class TopLake():
         assert self.memories[edge_params['from_signal']][from_key] == self.memories[edge_params['to_signal']][to_key]
         self.edges.append(edge_params)
 
-    # TODO add to top_lake logic for merging input and output mems if multiple per port
     def add_input_edge(self, port, mem_name, dim=6, max_range=65536, max_stride=65536):
-        self.memories[mem_name]["input_edge_params"] = \
-            {"dim": dim, "max_range": max_range, "max_stride": max_stride}
-        self.memories[mem_name]["is_input"] = True
-        self.memories[mem_name]["input_port"] = port
+        self.add_input_output_edge(port, mem_name, dim, max_range, max_stride, "input")
 
     def add_output_edge(self, port, mem_name, dim=6, max_range=65536, max_stride=65536):
-        self.memories[mem_name]["output_edge_params"] = \
-            {"dim": dim, "max_range": max_range, "max_stride": max_stride}
-        self.memories[mem_name]["is_output"] = True
-        self.memories[mem_name]["output_port"] = port
+        self.add_input_output_edge(port, mem_name, dim, max_range, max_stride, "output")
 
-    # after all edges are added
+    def add_input_output_edge(self, port, mem_name, dim=6, max_range=65536, max_stride=65536, io="input"):
+        self.memories[mem_name][f"{io}_edge_params"] = \
+            {"dim": dim, "max_range": max_range, "max_stride": max_stride}
+        self.memories[mem_name][f"is_{io}"] = True
+        self.memories[mem_name][f"{io}_port"] = port
+
+    # called after all edges are added
     def banking(self):
         self.hw_memories = copy.deepcopy(self.memories)
         self.hw_edges = copy.deepcopy(self.edges)
@@ -158,6 +155,18 @@ class TopLake():
 
         self.merge_mems(memories_from, True)
         self.merge_mems(memories_to, False)
+
+    def add_to_hardware_edges(self, is_from, memories_):
+        prefix = "from" if is_from else "to"
+
+        for mem in memories_:
+            if len(memories_[mem]) > 1:
+                for e in self.edges:
+                    if e[f"{prefix}_signal"] == mem:
+                        x = copy.deepcopy(e)
+                        x[f"{prefix}_signal"] = memories_[mem]
+                        if x not in self.hardware_edges:
+                            self.hardware_edges.append(x)
 
     def merge_mems(self, mems_to_merge, is_from):
         for mem in mems_to_merge.keys():
