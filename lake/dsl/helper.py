@@ -7,15 +7,20 @@ def make_params(name,
                 read_port_width=0,
                 write_port_width=0,
                 read_write_port_width=0,
+                num_chain=1,
                 use_macro=False,
                 macro_name="SRAM_default_name",
                 rw_same_cycle=False):
+
+    assert num_chain >= 1, "Can chain 1 or more Lake objects"
 
     params_dict = {"name": name,
                    "capacity": capacity,
                    "use_macro": use_macro,
                    "rw_same_cycle": rw_same_cycle,
-                   "macro_name": macro_name}
+                   "macro_name": macro_name,
+                   "chaining": not (num_chain == 1),
+                   "num_chain": num_chain}
 
     if read_port_width != 0:
         params_dict["read_port_width"] = read_port_width

@@ -49,6 +49,20 @@ class TopLakeHW(Generator):
         self.clk_mem = self.clock("clk")
         self.clk_mem.add_attribute(FormalAttr(self.clk_mem.name, FormalSignalConstraint.CLK))
 
+        chain_supported = False
+        for mem in self.memories.keys():
+            if self.memories[mem]["chaining"]:
+                chain_supported = True
+                break
+
+        if chain_supported:
+            self.chain_en = self.input("chain_en", 1)
+            self.chain_en.add_attribute(ConfigRegAttr("Chaining enable"))
+            self.chain_en.add_attribute(FormalAttr(self.chain_en.name, FormalSignalConstraint.SET0))
+        else:
+            self.chain_en = self.var("chain_en", 1)
+            self.wire(self.chain_en, 0)
+
         # gate clock with tile_en
         gclk = self.var("gclk", 1)
         self.gclk = kts.util.clock(gclk)
@@ -113,7 +127,8 @@ class TopLakeHW(Generator):
                            clk=self.gclk,
                            rst_n=self.rst_n,
                            # put data out in memory data out list
-                           data_out=self.mem_data_outs[i])
+                           data_out=self.mem_data_outs[i],
+                           chain_en=self.chain_en)
             i += 1
 
         # get input and output memories
@@ -145,6 +160,10 @@ class TopLakeHW(Generator):
             safe_wire(self, self.mem_insts[in_mem].ports.data_in[0],
                       self.data_in[input_port_index])
 
+            self.wire(self.mem_insts[in_mem].ports.write, self.valid)
+            if self.memories[in_mem]["num_read_write_ports"] > 0:
+                self.mem_read_write_addrs[in_mem] = {"write": self.valid}
+
             forloop = ForLoop(iterator_support=input_dim,
                               config_width=max(1, clog2(input_range)))  # self.default_config_width)
             loop_itr = forloop.get_iter()
@@ -169,7 +188,8 @@ class TopLakeHW(Generator):
             if self.memories[in_mem]["num_read_write_ports"] == 0:
                 safe_wire(self, self.mem_insts[in_mem].ports.write_addr[0], newAG.ports.addr_out)
             else:
-                safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr[0], newAG.ports.addr_out)
+                self.mem_read_write_addrs[in_mem]["write_addr"] = newAG.ports.addr_out
+                # safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=input_dim,
                              config_width=self.cycle_count_width)
@@ -192,7 +212,8 @@ class TopLakeHW(Generator):
             output_port_index = self.memories[out_mem]["output_port"]
 
             self.wire(self.data_out[output_port_index],
-                      self.mem_data_outs[subscript_mems.index(out_mem)][0])
+                      self.mem_insts[out_mem].ports.data_out[0][0])
+            # self.mem_data_outs[subscript_mems.index(out_mem)][0])
 
             self.valid = self.var(f"{out_mem}2output_port{output_port_index}_accessor_valid", 1)
             if self.memories[out_mem]["rw_same_cycle"]:
@@ -222,7 +243,8 @@ class TopLakeHW(Generator):
             if self.memories[out_mem]["num_read_write_ports"] == 0:
                 safe_wire(self, self.mem_insts[out_mem].ports.read_addr[0], newAG.ports.addr_out)
             else:
-                safe_wire(self, self.mem_insts[out_mem].ports.read_write_addr[0], newAG.ports.addr_out)
+                self.mem_read_write_addrs[in_mem]["read_addr"] = newAG.ports.addr_out
+                # safe_wire(self, self.mem_insts[out_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=output_dim,
                              config_width=self.cycle_count_width)  # self.default_config_width)

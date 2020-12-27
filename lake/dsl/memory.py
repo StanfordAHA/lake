@@ -1,8 +1,11 @@
 from kratos import *
 from math import log
+from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.dsl.mem_port import MemPort
 from lake.utils.util import safe_wire
 from lake.dsl.helper import *
+from lake.modules.sram import SRAM
 
 
 def port_to_info(mem_params):
@@ -108,13 +111,27 @@ class Memory(Generator):
         self.mem_size_bits = max(1, clog2(self.mem_size))
         self.mem_last_dim_bits = max(1, clog2(self.mem_last_dim))
 
+        # chaining parameters and config regs
+        self.chaining = mem_params["chaining"]
+        self.num_chain = mem_params["num_chain"]
+        self.num_chain_bits = clog2(self.num_chain)
+        if self.chaining:
+            self.chain_index = self.var("chain_index", width=self.num_chain_bits)
+            self.chain_index.add_attribute(ConfigRegAttr("Chain index for chaining"))
+            self.chain_index.add_attribute(FormalAttr(self.chain_index.name, FormalSignalConstraint.SET0))
+
         # minimum required widths for address signals
-        if self.mem_size == self.write_width:
-            self.write_addr_width = self.mem_last_dim_bits
-            self.read_addr_width = self.mem_size_bits + self.mem_last_dim_bits
+        if self.mem_size == self.write_width and self.mem_size == self.read_width:
+            self.write_addr_width = self.mem_last_dim_bits + self.num_chain_bits
+            self.read_addr_width = self.mem_last_dim_bits + self.num_chain_bits
+        elif self.mem_size == self.write_width:
+            self.write_addr_width = self.mem_last_dim_bits + self.num_chain_bits
+            self.read_addr_width = self.mem_size_bits + self.mem_last_dim_bits + self.num_chain_bits
+        elif self.mem_size == self.read_width:
+            self.write_addr_width = self.mem_size_bits + self.mem_last_dim_bits + self.num_chain_bits
+            self.read_addr_width = self.mem_last_dim_bits + self.num_chain_bits
         else:
-            self.write_addr_width = self.mem_size_bits + self.mem_last_dim_bits
-            self.read_addr_width = self.mem_last_dim_bits
+            print("Error occurred! Memory size does not make sense.")
 
         ################################################################
         # I/O INTERFACE (WITHOUT ADDRESSING) + MEMORY
@@ -129,6 +146,8 @@ class Memory(Generator):
                                   explicit_array=True,
                                   packed=True)
 
+        self.chain_en = self.input("chain_en", 1)
+
         # write enable (high: write, low: read when rw_same_cycle = False, else
         # only indicates write)
         self.write = self.input("write",
@@ -141,6 +160,10 @@ class Memory(Generator):
                                     explicit_array=True,
                                     packed=True)
 
+        self.write_chain = self.var("write_chain",
+                                    width=1,
+                                    size=self.num_write_ports)
+
         if self.use_macro:
 
             self.read_write_addr = self.input("read_write_addr",
@@ -148,7 +171,7 @@ class Memory(Generator):
                                               size=self.num_read_write_ports,
                                               explicit_array=True)
 
-            sram = SRAM(False,
+            sram = SRAM(not self.use_macro,
                         self.macro_name,
                         word_width,
                         mem_params["read_write_port_width"],
@@ -165,10 +188,12 @@ class Memory(Generator):
                            mem_data_in_bank=self.data_in,
                            mem_data_out_bank=self.data_out,
                            mem_addr_in_bank=self.read_write_addr,
+                           # TODO adjust
                            mem_cen_in_bank=1,
-                           mem_wen_in_bank=self.write,
+                           mem_wen_in_bank=self.write_chain,
                            wtsel=0,
                            rtsel=1)
+
         else:
             # memory variable (not I/O)
             self.memory = self.var("memory",
@@ -210,7 +235,6 @@ class Memory(Generator):
 
                 assert self.write_info[0]["latency"] > 0, \
                     "Latency for write ports must be greater than 1 clock cycle."
-                self.add_write_data_block()
 
                 # reads
                 self.read_addr = self.input("read_addr",
@@ -220,7 +244,6 @@ class Memory(Generator):
 
                 # TODO for now assuming all read ports have same latency
                 # TODO also should add support for other latencies
-                self.add_read_data_block()
 
             # rw_same_cycle is not valid here because read/write share the same port
             elif self.num_read_write_ports != 0:
@@ -238,8 +261,6 @@ class Memory(Generator):
                 for p in range(self.num_read_write_ports):
                     safe_wire(gen=self, w_to=self.write_addr[p], w_from=self.read_write_addr[p])
 
-                self.add_write_data_block()
-
                 # reads
                 self.read_addr = self.var("read_addr",
                                           width=self.read_addr_width,
@@ -251,7 +272,25 @@ class Memory(Generator):
                 # TODO in self.read_write_info we should allow for different read
                 # and write latencies?
                 self.read_info = self.read_write_info
-                self.add_read_data_block()
+
+            # TODO just doing chaining for SRAM
+            if self.chaining and self.num_read_write_ports > 0:
+                self.wire(self.write_chain,
+                          # chaining not enabled
+                          (~self.chain_en |
+                           # chaining enabled
+                           (self.chain_en & (self.chain_index ==
+                                             self.read_write_addr[self.write_addr_width + self.num_chain_bits, self.write_addr_width]))) &
+                          self.write)
+                # chaining not supported
+            else:
+                self.wire(self.write_chain, self.write)
+
+            if self.use_macro:
+                self.wire(sram.ports.mem_wen_in_bank, self.write_chain)
+
+            self.add_write_data_block()
+            self.add_read_data_block()
 
     def add_write_data_block(self):
         if self.write_width == self.mem_size:
@@ -280,7 +319,7 @@ class Memory(Generator):
     @always_ff((posedge, "clk"))
     def write_data_latency_1_0(self):
         for p in range(self.num_write_ports):
-            if self.write[p]:
+            if self.write_chain[p]:
                 self.memory[self.write_addr[p][self.mem_last_dim_bits - 1, 0]] = self.data_in[p]
 
     # write width is less than innermost dimension of memory, so
@@ -289,7 +328,7 @@ class Memory(Generator):
     @always_ff((posedge, "clk"))
     def write_data_latency_1_1(self):
         for p in range(self.num_write_ports):
-            if self.write[p]:
+            if self.write_chain[p]:
                 self.memory[self.write_addr[p][self.mem_last_dim_bits - 1 + self.mem_size_bits, self.mem_size_bits]] \
                     [self.write_addr[p][self.mem_size_bits - 1, 0]] = self.data_in[p]
 
