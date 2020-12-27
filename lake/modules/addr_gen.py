@@ -39,6 +39,8 @@ class AddrGen(Generator):
 
         self._step = self.input("step", 1)
 
+        self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
+
         # OUTPUTS
         # TODO why is this config width instead of address width?
         self._addr_out = self.output("addr_out", self.config_width)
@@ -56,7 +58,6 @@ class AddrGen(Generator):
         # GENERATION LOGIC: begin
         self.wire(self._strt_addr, self._starting_addr)
         self.wire(self._addr_out, self._calc_addr)
-        self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
 
         self._current_addr = self.var("current_addr", self.config_width)
         # Calculate address by taking previous calculation and adding the muxed stride
