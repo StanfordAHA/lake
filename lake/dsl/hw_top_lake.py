@@ -292,7 +292,7 @@ class TopLakeHW(Generator):
                            step=self.valid,
                            mux_sel=forloop.ports.mux_sel_out,
                            restart=forloop.ports.restart)
-
+            print(edge["from_signal"])
             # assign read address to all from memories
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
                 # can assign same read addrs to all the memories

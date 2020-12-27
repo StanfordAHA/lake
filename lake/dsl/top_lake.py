@@ -121,23 +121,8 @@ class TopLake():
         # print()
         # print("MEMORIES TO ", memories_to)
 
-        for mem in memories_from:
-            if len(memories_from[mem]) > 1:
-                for e in self.edges:
-                    if e["to_signal"] == mem:
-                        x = copy.deepcopy(e)
-                        x["from_signal"] = memories_from[mem]
-                        if x not in self.hardware_edges:
-                            self.hardware_edges.append(x)
-
-        for mem in memories_to:
-            if len(memories_to[mem]) > 1:
-                for e in self.edges:
-                    if e["from_signal"] == mem:
-                        x = copy.deepcopy(e)
-                        x["to_signal"] = memories_to[mem]
-                        if x not in self.hardware_edges:
-                            self.hardware_edges.append(x)
+        self.add_to_hardware_edges(True, memories_from)
+        self.add_to_hardware_edges(False, memories_to)
 
         for h in self.hardware_edges:
             for sig in ("to_signal", "from_signal"):
@@ -158,11 +143,12 @@ class TopLake():
 
     def add_to_hardware_edges(self, is_from, memories_):
         prefix = "from" if is_from else "to"
+        oppo_prefix = "to" if is_from else "from"
 
         for mem in memories_:
             if len(memories_[mem]) > 1:
                 for e in self.edges:
-                    if e[f"{prefix}_signal"] == mem:
+                    if e[f"{oppo_prefix}_signal"] == mem:
                         x = copy.deepcopy(e)
                         x[f"{prefix}_signal"] = memories_[mem]
                         if x not in self.hardware_edges:
@@ -267,7 +253,7 @@ class TopLake():
     def generate_hardware(self, wrap_cfg=True):
         # print(self.hw_memories)
         # print()
-        # print(self.hardware_edges)
+        print(self.hardware_edges)
 
         hw = TopLakeHW(self.word_width,
                        self.input_ports,
