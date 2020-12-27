@@ -69,9 +69,23 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
     # mapping for which config regs the dimensionality config regs constrain
     pairings = {}
 
+    # get list of agg/sram shared and sram/tb shared config regs for
+    # formal config reg propagation for the sram formal subproblem
+    agg_sram_shared, sram_tb_shared = [], []
+
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
         for port_name in port_names:
+
+            # get list of agg/sram shared and sram/tb shared config regs for
+            # formal config reg propagation for the sram formal subproblem
+            if module_attr == "sram":
+                if "agg_sram_shared" in port_name:
+                    agg_sram_shared.append(port_name)
+                if "sram_tb_shared" in port_name:
+                    sram_tb_shared.append(port_name)
+
+            print(port_name)
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
 
@@ -159,6 +173,12 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
                     pairings[key].remove(p)
 
         print(pairings, file=fi)
+
+    # print list of agg/sram shared and sram/tb shared config regs for
+    # formal config reg propagation for the sram formal subproblem
+    if module_attr == "sram":
+        print(agg_sram_shared, file=open("agg_sram_shared.txt", "w+"))
+        print(sram_tb_shared, file=open("sram_tb_shared.txt", "w+"))
 
 
 def get_configs_dict(configs):
