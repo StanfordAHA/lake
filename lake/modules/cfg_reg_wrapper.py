@@ -5,10 +5,10 @@ from math import log
 
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
-from lake.collateral2compiler.edge import get_full_edge_params
-from lake.collateral2compiler.helper import *
-from lake.collateral2compiler.mem_port import MemPort
-from lake.collateral2compiler.memory import mem_inst
+from lake.dsl.edge import get_full_edge_params
+from lake.dsl.helper import *
+from lake.dsl.mem_port import MemPort
+from lake.dsl.memory import mem_inst
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
