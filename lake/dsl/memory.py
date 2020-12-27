@@ -82,7 +82,7 @@ class Memory(Generator):
         self.read_info = mem_params["read_info"]
         self.read_write_info = mem_params["read_write_info"]
 
-        # TO DO change - for now, we assume you cannot have read/write and read or write ports
+        # TODO change - for now, we assume you cannot have read/write and read or write ports
         # should be the max of write vs read_write and need to handle more general case
         if self.num_read_write_ports == 0:
             self.write_width = mem_params["write_port_width"]
@@ -200,7 +200,7 @@ class Memory(Generator):
                 for i in range(self.num_read_ports):
                     self.wire(self.read[i], 1)
 
-            # TO DO change later - same read/write or read and write assumption as above
+            # TODO change later - same read/write or read and write assumption as above
             if self.num_write_only_ports != 0 and self.num_read_only_ports != 0:
                 # writes
                 self.write_addr = self.input("write_addr",
@@ -218,8 +218,8 @@ class Memory(Generator):
                                             size=self.num_read_ports,
                                             explicit_array=True)
 
-                # TO DO for now assuming all read ports have same latency
-                # TO DO also should add support for other latencies
+                # TODO for now assuming all read ports have same latency
+                # TODO also should add support for other latencies
                 self.add_read_data_block()
 
             # rw_same_cycle is not valid here because read/write share the same port
@@ -248,7 +248,7 @@ class Memory(Generator):
                 for p in range(self.num_read_write_ports):
                     safe_wire(gen=self, w_to=self.read_addr[p], w_from=self.read_write_addr[p])
 
-                # TO DO in self.read_write_info we should allow for different read
+                # TODO in self.read_write_info we should allow for different read
                 # and write latencies?
                 self.read_info = self.read_write_info
                 self.add_read_data_block()

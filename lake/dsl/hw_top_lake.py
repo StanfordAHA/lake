@@ -125,7 +125,7 @@ class TopLakeHW(Generator):
             if mem["is_output"]:
                 is_output.append(mem_name)
 
-        # TO DO direct connection to write doesn't work??
+        # TODO direct connection to write doesn't work??
         self.low = self.var("low", 1)
         self.wire(self.low, 0)
 
@@ -293,14 +293,14 @@ class TopLakeHW(Generator):
 
                 comb_mux_from = self.combinational()
                 # for i in range(num_mux_from):
-                # TO DO add_fn_ln issue with switch stmt??
+                # TODO add_fn_ln issue with switch stmt??
                 if True:
                     if_mux_sel = IfStmt(self.mux_sel == 0)
                     for j in range(len(edge["to_signal"])):
                         # print("TO ", edge["to_signal"][j])
                         # print("FROM ", edge["from_signal"][i])
                         if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][0]].ports.data_out))
-                        # TO DO needed else to get rid of latch, but don't really want it...should really just use a switch statement here
+                        # TODO needed else to get rid of latch, but don't really want it...should really just use a switch statement here
                         if_mux_sel.else_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][1]].ports.data_out))
                     comb_mux_from.add_stmt(if_mux_sel)
 
@@ -331,8 +331,8 @@ class TopLakeHW(Generator):
                     self.mem_read_write_addrs[edge["to_signal"][i]] = {"write": self.valid, "write_addr": writeAG.ports.addr_out}
 
             # calculate necessary delay between from_signal to to_signal
-            # TO DO this may need to be more sophisticated and based on II as well
-            # TO DO just need to add for loops for all the ports
+            # TODO this may need to be more sophisticated and based on II as well
+            # TODO just need to add for loops for all the ports
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
                 self.delay = self.memories[edge["from_signal"][0]]["read_info"][0]["latency"]
             else:
@@ -428,7 +428,7 @@ class TopLakeHW(Generator):
                 mem_info = self.mem_read_write_addrs[mem_name]
                 if_write = IfStmt(mem_info["write"] == 1)
                 addr_width = self.mem_insts[mem_name].ports.read_write_addr[0].width
-                # TO DO this should be deleted once mem addressing changes
+                # TODO this should be deleted once mem addressing changes
                 if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0]))
                 if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0]))
                 read_write_addr_comb.add_stmt(if_write)

@@ -63,7 +63,7 @@ class TopLake():
         mem_params["num_read_ports"] = len(read_ports)
         mem_params["num_read_write_ports"] = len(read_write_ports)
 
-    # TO DO put the defaults here instead of the additional function
+    # TODO put the defaults here instead of the additional function
     def add_edge(self,
                  from_signal,
                  to_signal,
@@ -88,7 +88,7 @@ class TopLake():
         assert self.memories[edge_params['from_signal']][from_key] == self.memories[edge_params['to_signal']][to_key]
         self.edges.append(edge_params)
 
-    # TO DO add to top_lake logic for merging input and output mems if multiple per port
+    # TODO add to top_lake logic for merging input and output mems if multiple per port
     def add_input_edge(self, port, mem_name, dim=6, max_range=65536, max_stride=65536):
         self.memories[mem_name]["input_edge_params"] = \
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
@@ -196,8 +196,8 @@ class TopLake():
 
                     to_edge = {check + "_signal": f"mux_{self.mux_count}",
                                not_check + "_signal": mem}
-                    # TO DO this should be based on min dim, range, and stride
-                    # from the original mems that are being muxed - TO DO make this not
+                    # TODO this should be based on min dim, range, and stride
+                    # from the original mems that are being muxed - TODO make this not
                     # a limitation, perhaps with a port restriction?
                     get_full_edge_params(to_edge)
                     if to_edge not in self.hw_edges:
