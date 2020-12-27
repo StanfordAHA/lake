@@ -8,12 +8,14 @@ def make_params(name,
                 write_port_width=0,
                 read_write_port_width=0,
                 use_macro=False,
+                macro_name="SRAM_default_name",
                 rw_same_cycle=False):
 
     params_dict = {"name": name,
                    "capacity": capacity,
                    "use_macro": use_macro,
-                   "rw_same_cycle": rw_same_cycle}
+                   "rw_same_cycle": rw_same_cycle,
+                   "macro_name": macro_name}
 
     if read_port_width != 0:
         params_dict["read_port_width"] = read_port_width

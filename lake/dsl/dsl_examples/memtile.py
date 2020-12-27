@@ -27,7 +27,8 @@ tile.add_memory(agg1_params, [agg1_write_port], [agg1_read_port])
 tile.add_input_edge(1, "agg1")
 
 sram_write_read_port = MemPort(1, 0)
-sram_params = make_params("sram", 512, read_write_port_width=4)  # , use_macro=True)
+sram_params = make_params("sram", 512, read_write_port_width=4)
+# , use_macro=True, macro_name="SRAM_example_name")
 tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
 
 # these are defaults, so not specified for further edges

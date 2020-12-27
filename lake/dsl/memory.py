@@ -67,6 +67,8 @@ class Memory(Generator):
         self.mem_name = mem_params["name"]
         self.capacity = mem_params["capacity"]
         self.rw_same_cycle = mem_params["rw_same_cycle"]
+        self.use_macro = mem_params["use_macro"]
+        self.macro_name = mem_params["macro_name"]
 
         # number of port types
         self.num_read_write_ports = mem_params["num_read_write_ports"]
@@ -139,88 +141,117 @@ class Memory(Generator):
                                     explicit_array=True,
                                     packed=True)
 
-        # memory variable (not I/O)
-        self.memory = self.var("memory",
-                               width=self.word_width,
-                               size=(self.mem_last_dim, self.mem_size),
-                               explicit_array=True,
-                               packed=True)
+        if self.use_macro:
 
-        ################################################################
-        # ADDRESSING I/O AND SIGNALS
-        ################################################################
-
-        # I/O is different depending on whether we have read and write ports or
-        # read/write ports
-
-        # we keep address width at 16 to avoid unpacked
-        # safe_wire errors for addr in hw_top_lake - can change by changing
-        # default_config_width for those addr gens while accounting for muxing
-        # bits, but the extra bits are unused anyway
-
-        if self.rw_same_cycle:
-            self.read = self.input("read",
-                                   width=1,
-                                   size=self.num_read_ports)
-        else:
-            self.read = self.var("read",
-                                 width=1,
-                                 size=self.num_read_ports)
-            for i in range(self.num_read_ports):
-                self.wire(self.read[i], 1)
-
-        # TO DO change later - same read/write or read and write assumption as above
-        if self.num_write_only_ports != 0 and self.num_read_only_ports != 0:
-            # writes
-            self.write_addr = self.input("write_addr",
-                                         width=16,  # self.write_addr_width,
-                                         size=self.num_write_ports,
-                                         explicit_array=True)
-
-            assert self.write_info[0]["latency"] > 0, \
-                "Latency for write ports must be greater than 1 clock cycle."
-            self.add_write_data_block()
-
-            # reads
-            self.read_addr = self.input("read_addr",
-                                        width=16,  # self.read_addr_width,
-                                        size=self.num_read_ports,
-                                        explicit_array=True)
-
-            # TO DO for now assuming all read ports have same latency
-            # TO DO also should add support for other latencies
-            self.add_read_data_block()
-
-        # rw_same_cycle is not valid here because read/write share the same port
-        elif self.num_read_write_ports != 0:
             self.read_write_addr = self.input("read_write_addr",
-                                              width=16,  # max(self.read_addr_width, self.write_addr_width),
+                                              width=self.addr_width,
                                               size=self.num_read_write_ports,
                                               explicit_array=True)
 
-            # writes
-            self.write_addr = self.var("write_addr",
-                                       width=16,  # self.write_addr_width,
-                                       size=self.num_read_write_ports,
-                                       explicit_array=True)
+            sram = SRAM(False,
+                        self.macro_name,
+                        word_width,
+                        mem_params["read_write_port_width"],
+                        mem_params["capacity"],
+                        mem_params["num_read_write_ports"],
+                        mem_params["num_read_write_ports"],
+                        clog2(mem_params["capacity"]),
+                        0,
+                        1)
 
-            for p in range(self.num_read_write_ports):
-                safe_wire(gen=self, w_to=self.write_addr[p], w_from=self.read_write_addr[p])
+            self.add_child("SRAM_" + mem_params["name"], sram,
+                           clk=self.clk,
+                           clk_en=1,
+                           mem_data_in_bank=self.data_in,
+                           mem_data_out_bank=self.data_out,
+                           mem_addr_in_bank=self.read_write_addr,
+                           mem_cen_in_bank=1,
+                           mem_wen_in_bank=self.write,
+                           wtsel=0,
+                           rtsel=1)
+        else:
+            # memory variable (not I/O)
+            self.memory = self.var("memory",
+                                   width=self.word_width,
+                                   size=(self.mem_last_dim, self.mem_size),
+                                   explicit_array=True,
+                                   packed=True)
 
-            self.add_write_data_block()
+            ################################################################
+            # ADDRESSING I/O AND SIGNALS
+            ################################################################
 
-            # reads
-            self.read_addr = self.var("read_addr",
-                                      width=self.read_addr_width,
-                                      size=self.num_read_write_ports,
-                                      explicit_array=True)
-            for p in range(self.num_read_write_ports):
-                safe_wire(gen=self, w_to=self.read_addr[p], w_from=self.read_write_addr[p])
+            # I/O is different depending on whether we have read and write ports or
+            # read/write ports
 
-            # TO DO in self.read_write_info we should allow for different read
-            # and write latencies?
-            self.read_info = self.read_write_info
-            self.add_read_data_block()
+            # we keep address width at 16 to avoid unpacked
+            # safe_wire errors for addr in hw_top_lake - can change by changing
+            # default_config_width for those addr gens while accounting for muxing
+            # bits, but the extra bits are unused anyway
+
+            if self.rw_same_cycle:
+                self.read = self.input("read",
+                                       width=1,
+                                       size=self.num_read_ports)
+            else:
+                self.read = self.var("read",
+                                     width=1,
+                                     size=self.num_read_ports)
+                for i in range(self.num_read_ports):
+                    self.wire(self.read[i], 1)
+
+            # TO DO change later - same read/write or read and write assumption as above
+            if self.num_write_only_ports != 0 and self.num_read_only_ports != 0:
+                # writes
+                self.write_addr = self.input("write_addr",
+                                             width=16,  # self.write_addr_width,
+                                             size=self.num_write_ports,
+                                             explicit_array=True)
+
+                assert self.write_info[0]["latency"] > 0, \
+                    "Latency for write ports must be greater than 1 clock cycle."
+                self.add_write_data_block()
+
+                # reads
+                self.read_addr = self.input("read_addr",
+                                            width=16,  # self.read_addr_width,
+                                            size=self.num_read_ports,
+                                            explicit_array=True)
+
+                # TO DO for now assuming all read ports have same latency
+                # TO DO also should add support for other latencies
+                self.add_read_data_block()
+
+            # rw_same_cycle is not valid here because read/write share the same port
+            elif self.num_read_write_ports != 0:
+                self.read_write_addr = self.input("read_write_addr",
+                                                  width=16,  # max(self.read_addr_width, self.write_addr_width),
+                                                  size=self.num_read_write_ports,
+                                                  explicit_array=True)
+
+                # writes
+                self.write_addr = self.var("write_addr",
+                                           width=16,  # self.write_addr_width,
+                                           size=self.num_read_write_ports,
+                                           explicit_array=True)
+
+                for p in range(self.num_read_write_ports):
+                    safe_wire(gen=self, w_to=self.write_addr[p], w_from=self.read_write_addr[p])
+
+                self.add_write_data_block()
+
+                # reads
+                self.read_addr = self.var("read_addr",
+                                          width=self.read_addr_width,
+                                          size=self.num_read_write_ports,
+                                          explicit_array=True)
+                for p in range(self.num_read_write_ports):
+                    safe_wire(gen=self, w_to=self.read_addr[p], w_from=self.read_write_addr[p])
+
+                # TO DO in self.read_write_info we should allow for different read
+                # and write latencies?
+                self.read_info = self.read_write_info
+                self.add_read_data_block()
 
     def add_write_data_block(self):
         if self.write_width == self.mem_size:
