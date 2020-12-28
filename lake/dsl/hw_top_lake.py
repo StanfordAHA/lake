@@ -109,7 +109,9 @@ class TopLakeHW(Generator):
         # list of the data out from each memory
         self.mem_data_outs = [self.var(f"mem_data_out_{subscript_mems[i]}",
                                        width=self.word_width,
-                                       size=self.memories[subscript_mems[i]]["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]] else "read_write_port_width"],
+                                       size=self.memories[subscript_mems[i]]
+                                       ["read_port_width" if "read_port_width" in self.memories[subscript_mems[i]]
+                                        else "read_write_port_width"],
                                        explicit_array=True, packed=True) for i in range(num_mem)]
 
         # keep track of write, read_addr, and write_addr vars for read/write memories
@@ -141,30 +143,36 @@ class TopLakeHW(Generator):
             if mem["is_output"]:
                 is_output.append(mem_name)
 
-        # TODO direct connection to write doesn't work??
+        # TODO direct connection to write doesn't work (?), so have to do this...
         self.low = self.var("low", 1)
         self.wire(self.low, 0)
 
-        # wire input data to input memories
+        # TODO adding multiple ports to 1 memory after talking about mux with compiler team
+
+        # set up input memories
         for i in range(len(is_input)):
             in_mem = is_input[i]
 
+            # input addressor / accessor parameters
             input_dim = self.memories[in_mem]["input_edge_params"]["dim"]
             input_range = self.memories[in_mem]["input_edge_params"]["max_range"]
             input_stride = self.memories[in_mem]["input_edge_params"]["max_stride"]
+            # input port associated with memory
             input_port_index = self.memories[in_mem]["input_port"]
 
             self.valid = self.var(
                 f"input_port{input_port_index}_2{in_mem}_accessor_valid", 1)
             self.wire(self.mem_insts[in_mem].ports.write, self.valid)
 
+            # hook up data from the specified input port to the memory
             safe_wire(self, self.mem_insts[in_mem].ports.data_in[0],
                       self.data_in[input_port_index])
 
-            self.wire(self.mem_insts[in_mem].ports.write, self.valid)
             if self.memories[in_mem]["num_read_write_ports"] > 0:
                 self.mem_read_write_addrs[in_mem] = {"write": self.valid}
 
+            # create IteratorDomain, AddressGenerator, and ScheduleGenerator
+            # for writes to this input memory
             forloop = ForLoop(iterator_support=input_dim,
                               config_width=max(1, clog2(input_range)))  # self.default_config_width)
             loop_itr = forloop.get_iter()
@@ -190,7 +198,6 @@ class TopLakeHW(Generator):
                 safe_wire(self, self.mem_insts[in_mem].ports.write_addr[0], newAG.ports.addr_out)
             else:
                 self.mem_read_write_addrs[in_mem]["write_addr"] = newAG.ports.addr_out
-                # safe_wire(self, self.mem_insts[in_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=input_dim,
                              config_width=self.cycle_count_width)
@@ -203,15 +210,18 @@ class TopLakeHW(Generator):
                            cycle_count=self._cycle_count,
                            valid_output=self.valid)
 
-        # wire output data from output memories
+        # set up output memories
         for i in range(len(is_output)):
             out_mem = is_output[i]
 
+            # output addressor / accessor parameters
             output_dim = self.memories[out_mem]["output_edge_params"]["dim"]
             output_range = self.memories[out_mem]["output_edge_params"]["max_range"]
             output_stride = self.memories[out_mem]["output_edge_params"]["max_stride"]
+            # output port associated with memory
             output_port_index = self.memories[out_mem]["output_port"]
 
+            # hook up data from the memory to the specified output port
             self.wire(self.data_out[output_port_index],
                       self.mem_insts[out_mem].ports.data_out[0][0])
             # self.mem_data_outs[subscript_mems.index(out_mem)][0])
@@ -220,6 +230,8 @@ class TopLakeHW(Generator):
             if self.memories[out_mem]["rw_same_cycle"]:
                 self.wire(self.mem_insts[out_mem].ports.read, self.valid)
 
+            # create IteratorDomain, AddressGenerator, and ScheduleGenerator
+            # for reads from this output memory
             forloop = ForLoop(iterator_support=output_dim,
                               config_width=max(1, clog2(output_range)))  # self.default_config_width)
             loop_itr = forloop.get_iter()
@@ -245,7 +257,6 @@ class TopLakeHW(Generator):
                 safe_wire(self, self.mem_insts[out_mem].ports.read_addr[0], newAG.ports.addr_out)
             else:
                 self.mem_read_write_addrs[in_mem]["read_addr"] = newAG.ports.addr_out
-                # safe_wire(self, self.mem_insts[out_mem].ports.read_write_addr[0], newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=output_dim,
                              config_width=self.cycle_count_width)  # self.default_config_width)
@@ -258,6 +269,8 @@ class TopLakeHW(Generator):
                            cycle_count=self._cycle_count,
                            valid_output=self.valid)
 
+        # create shared IteratorDomains and accessors as well as
+        # read/write addressors for memories connected by each edge
         for edge in self.edges:
 
             # see how many signals need to be selected between for
@@ -285,7 +298,6 @@ class TopLakeHW(Generator):
             # create input addressor
             readAG = AddrGen(iterator_support=edge["dim"],
                              config_width=self.default_config_width)
-            # valid, mux_sel, restart are all delayed
             self.add_child(f"{edge_name}_read_addr_gen",
                            readAG,
                            clk=self.gclk,
@@ -293,7 +305,7 @@ class TopLakeHW(Generator):
                            step=self.valid,
                            mux_sel=forloop.ports.mux_sel_out,
                            restart=forloop.ports.restart)
-            print(edge["from_signal"])
+
             # assign read address to all from memories
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
                 # can assign same read addrs to all the memories
@@ -311,30 +323,32 @@ class TopLakeHW(Generator):
                                         width=num_mux_bits)
 
                 read_addr_width = max(1, clog2(self.memories[edge["from_signal"][0]]["capacity"]))
+                # decide which memory to get data from for to memory's data in
                 safe_wire(self, self.mux_sel,
                           readAG.ports.addr_out[read_addr_width + num_mux_from - 1, read_addr_width])
 
                 comb_mux_from = self.combinational()
                 # for i in range(num_mux_from):
-                # TODO add_fn_ln issue with switch stmt??
-                if True:
-                    if_mux_sel = IfStmt(self.mux_sel == 0)
-                    for j in range(len(edge["to_signal"])):
-                        # print("TO ", edge["to_signal"][j])
-                        # print("FROM ", edge["from_signal"][i])
-                        if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][0]].ports.data_out))
-                        # TODO needed else to get rid of latch, but don't really want it...should really just use a switch statement here
-                        if_mux_sel.else_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][1]].ports.data_out))
-                    comb_mux_from.add_stmt(if_mux_sel)
+                # TODO want to use a switch statement here, but get add_fn_ln issue
+                if_mux_sel = IfStmt(self.mux_sel == 0)
+                for j in range(len(edge["to_signal"])):
+                    # print("TO ", edge["to_signal"][j])
+                    # print("FROM ", edge["from_signal"][i])
+                    if_mux_sel.then_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][0]].ports.data_out))
+                    if_mux_sel.else_(self.mem_insts[edge["to_signal"][j]].ports.data_in.assign(self.mem_insts[edge["from_signal"][1]].ports.data_out))
+                comb_mux_from.add_stmt(if_mux_sel)
 
-            # no muxing from, data_out from the 1 from memory goes
-            # to all to memories (valid determines whether it is
+            # no muxing from, data_out from the one and only memory
+            # goes to all to memories (valid determines whether it is
             # actually written)
             else:
                 for j in range(len(edge["to_signal"])):
                     # print("TO ", edge["to_signal"][j])
                     # print("FROM ", edge["from_signal"][0])
-                    safe_wire(self, self.mem_insts[edge["to_signal"][j]].ports.data_in, self.mem_insts[edge["from_signal"][0]].ports.data_out)
+                    safe_wire(self,
+                              self.mem_insts[edge["to_signal"][j]].ports.data_in,
+                              # only one memory to read from
+                              self.mem_insts[edge["from_signal"][0]].ports.data_out)
 
             # create output addressor
             writeAG = AddrGen(iterator_support=edge["dim"],
@@ -362,6 +376,7 @@ class TopLakeHW(Generator):
                 self.delay = self.memories[edge["from_signal"][0]]["read_write_info"][0]["latency"]
 
             if self.delay > 0:
+                # signals that need to be delayed due to edge latency
                 self.delayed_writes = self.var(f"{edge_name}_delayed_writes",
                                                width=self.delay)
                 self.delayed_mux_sels = self.var(f"{edge_name}_delayed_mux_sels",
@@ -390,18 +405,20 @@ class TopLakeHW(Generator):
 
                 self.add_always(get_delayed_write)
 
-            # if we have a mux for the two memories, choose who to
-            # write to
+            # if we have a mux for the destination memories,
+            # choose which mux to write to
             if num_mux_to > 1:
                 num_mux_bits = clog2(num_mux_to)
                 self.mux_sel_to = self.var(f"{edge_name}_mux_sel_to",
                                            width=num_mux_bits)
 
                 write_addr_width = max(1, clog2(self.memories[edge["to_signal"][0]]["capacity"]))
-
+                # decide which destination memory gets written to
                 safe_wire(self, self.mux_sel_to,
                           writeAG.ports.addr_out[write_addr_width + num_mux_to - 1, write_addr_width])
 
+                # wire the write (or if needed, delayed write) signal to the selected destination memory
+                # and set write enable low for all other destination memories
                 comb_mux_to = self.combinational()
                 for i in range(num_mux_to):
                     if_mux_sel_to = IfStmt(self.mux_sel_to == i)
@@ -413,7 +430,7 @@ class TopLakeHW(Generator):
                     if_mux_sel_to.else_(self.mem_insts[edge["to_signal"][i]].ports.write.assign(self.low))
                     comb_mux_to.add_stmt(if_mux_sel_to)
 
-            # no muxing to, just write to the to memory
+            # no muxing to, just write to the one destination memory
             else:
                 if self.delay == 0:
                     self.wire(self.mem_insts[edge["to_signal"][0]].ports.write, self.valid)
@@ -444,18 +461,18 @@ class TopLakeHW(Generator):
                            valid_output=self.valid)
 
         # for read write memories, choose either read or write address based on whether
-        # we are writing to the memory
+        # we are writing to the memory (whether write enable is high)
         read_write_addr_comb = self.combinational()
         for mem_name in self.memories:
             if mem_name in self.mem_read_write_addrs:
                 mem_info = self.mem_read_write_addrs[mem_name]
                 if_write = IfStmt(mem_info["write"] == 1)
                 addr_width = self.mem_insts[mem_name].ports.read_write_addr[0].width
-                # TODO this should be deleted once mem addressing changes
                 if_write.then_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["write_addr"][addr_width - 1, 0]))
                 if_write.else_(self.mem_insts[mem_name].ports.read_write_addr[0].assign(mem_info["read_addr"][addr_width - 1, 0]))
                 read_write_addr_comb.add_stmt(if_write)
 
+        # clock enable and flush passes
         kts.passes.auto_insert_clock_enable(self.internal_generator)
         clk_en_port = self.internal_generator.get_port("clk_en")
         clk_en_port.add_attribute(FormalAttr(clk_en_port.name, FormalSignalConstraint.SET1))
@@ -464,10 +481,12 @@ class TopLakeHW(Generator):
         kts.passes.auto_insert_sync_reset(self.internal_generator)
         flush_port = self.internal_generator.get_port("flush")
 
+        # bring config registers up to top level
         lift_config_reg(self.internal_generator)
 
-        extract_formal_annotation_colat(self, "dsl_annotation.txt", subscript_mems, edges)
-        modular_formal_annotation(self, subscript_mems)
+        # formal subproblem annotations - uncomment to generate relevant files
+        # extract_formal_annotation_colat(self, "dsl_annotation.txt", subscript_mems, edges)
+        # modular_formal_annotation(self, subscript_mems)
 
     def get_static_bitstream(self,
                              config_path,
