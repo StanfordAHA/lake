@@ -41,7 +41,7 @@ class TopLakeHW(Generator):
         self.memories = memories
         self.edges = edges
 
-        # inputs
+        # tile enable and clock
         self.tile_en = self.input("tile_en", 1)
         self.tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
         self.tile_en.add_attribute(FormalAttr(self.tile_en.name, FormalSignalConstraint.SET1))
@@ -49,6 +49,7 @@ class TopLakeHW(Generator):
         self.clk_mem = self.clock("clk")
         self.clk_mem.add_attribute(FormalAttr(self.clk_mem.name, FormalSignalConstraint.CLK))
 
+        # chaining
         chain_supported = False
         for mem in self.memories.keys():
             if self.memories[mem]["chaining"]:
