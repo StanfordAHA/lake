@@ -27,14 +27,115 @@ def test_formal_sram():
 
     config = {}
 
+    config["strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_strides_0"] = 4
+    config["strg_ub_agg_sram_shared_loops_in2buf_autovec_write_1_dimensionality"] = 0
+    config["strg_ub_agg_sram_shared_loops_in2buf_autovec_write_0_dimensionality"] = 1
+    config["strg_ub_agg_sram_shared_agg_read_sched_gen_1_enable"] = 0
+    config["strg_ub_agg_sram_shared_agg_read_sched_gen_0_enable"] = 1
+    config["strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_starting_addr"] = 0
+    config["strg_ub_agg_sram_shared_loops_in2buf_autovec_write_0_ranges_0"] = 194
+    config["strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_starting_addr"] = 4
+
+    config["strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_0"] = 1
+    config["strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_starting_addr"] = 56
+    config["strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_0"] = 1
+    config["strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_1_strides_0"] = 1
+    config["strg_ub_tb_only_tb_read_addr_gen_1_strides_1"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_1_strides_2"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_1_strides_3"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_1_strides_4"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_1_strides_5"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_dimensionality"] = 1
+    config["strg_ub_sram_tb_shared_output_sched_gen_0_enable"] = 1
+    config["strg_ub_tb_only_loops_buf2out_read_1_dimensionality"] = 1
+    config["strg_ub_tb_only_loops_buf2out_read_1_ranges_0"] = 766
+    config["strg_ub_tb_only_loops_buf2out_read_1_ranges_1"] = 0
+    config["strg_ub_tb_only_loops_buf2out_read_1_ranges_2"] = 0
+    config["strg_ub_tb_only_loops_buf2out_read_1_ranges_3"] = 0
+    config["strg_ub_tb_only_loops_buf2out_read_1_ranges_4"] = 0
+    config["strg_ub_tb_only_loops_buf2out_read_1_ranges_5"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_0"] = 180
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_1"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_2"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_3"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_4"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_5"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_dimensionality"] = 1
+    config["strg_ub_tb_only_tb_write_addr_gen_0_strides_0"] = 3
+    config["strg_ub_tb_only_tb_write_addr_gen_0_strides_1"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_0_strides_2"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_0_strides_3"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_0_strides_4"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_0_strides_5"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_0_starting_addr"] = 2
+    config["strg_ub_tb_only_loops_buf2out_read_0_dimensionality"] = 1
+    config["strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_0"] = 4
+    config["strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_0"] = 180
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_1"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_2"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_3"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_4"] = 0
+    config["strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_5"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_starting_addr"] = 53
+    config["strg_ub_tb_only_tb_read_addr_gen_0_strides_0"] = 1
+    config["strg_ub_tb_only_tb_read_addr_gen_0_strides_1"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_0_strides_2"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_0_strides_3"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_0_strides_4"] = 0
+    config["strg_ub_tb_only_tb_read_addr_gen_0_strides_5"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_1_enable"] = 1
+    config["strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_starting_addr"] = 56
+    config["strg_ub_sram_tb_shared_output_sched_gen_1_enable"] = 1
+    config["strg_ub_tb_only_tb_read_addr_gen_0_starting_addr"] = 0
+    config["strg_ub_tb_only_tb_read_sched_gen_0_enable"] = 1
+    config["strg_ub_tb_only_tb_read_addr_gen_1_starting_addr"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_1_starting_addr"] = 2
+    config["strg_ub_tb_only_loops_buf2out_read_0_ranges_0"] = 766
+    config["strg_ub_tb_only_loops_buf2out_read_0_ranges_1"] = 0
+    config["strg_ub_tb_only_loops_buf2out_read_0_ranges_2"] = 0
+    config["strg_ub_tb_only_loops_buf2out_read_0_ranges_3"] = 0
+    config["strg_ub_tb_only_loops_buf2out_read_0_ranges_4"] = 0
+    config["strg_ub_tb_only_loops_buf2out_read_0_ranges_5"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_0"] = 4
+    config["strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_1"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_2"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_3"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_4"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_5"] = 0
+    config["strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_starting_addr"] = 51
+    config["strg_ub_tb_only_tb_write_addr_gen_1_strides_0"] = 3
+    config["strg_ub_tb_only_tb_write_addr_gen_1_strides_1"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_1_strides_2"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_1_strides_3"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_1_strides_4"] = 0
+    config["strg_ub_tb_only_tb_write_addr_gen_1_strides_5"] = 0
+
     for f1 in config:
         setattr(tester.circuit, f1, config[f1])
 
     counter = 0
+    curr = 4
     for i in range(785):
-        for i in range(4):
-            setattr(tester.circuit, f"agg_data_out_top_{i}", counter)
-            counter += 1
+        if i == curr:
+            curr += 4
+            for i in range(4):
+                setattr(tester.circuit, f"agg_data_out_top_0_{i}", counter)
+                counter += 1
 
         # check formal_mem_data at top level
 
@@ -42,9 +143,10 @@ def test_formal_sram():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "sram_formal"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":
