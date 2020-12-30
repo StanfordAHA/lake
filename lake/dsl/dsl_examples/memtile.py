@@ -3,9 +3,6 @@ from lake.dsl.lake_imports import *
 # example of DSL (makes current mem tile with 2 agg,
 # wide SRAM, 2 tb
 
-# mem_collateral is part of TopLake for collateral
-# to compiler, not exposed to user
-
 # LAKE OBJECT MUST BE FIRST INSTANTIATED
 # IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
 # MEMORIES SHOULD BE INSTANTIATED BEFORE EDGES
@@ -31,7 +28,6 @@ sram_params = make_params("sram", 512, read_write_port_width=4)  # , num_chain=2
 # , use_macro=True, macro_name="SRAM_example_name")
 tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
 
-# these are defaults, so not specified for further edges
 tile.add_edge("agg", "sram", 6, 65535, 512)
 tile.add_edge("agg1", "sram", 6, 65535, 512)
 
