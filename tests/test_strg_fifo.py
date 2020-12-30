@@ -44,7 +44,7 @@ def test_storage_fifo(mem_width,  # CGRA Params
                             width_mult=fw_int,
                             depth=depth)
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      mem_depth=mem_depth,

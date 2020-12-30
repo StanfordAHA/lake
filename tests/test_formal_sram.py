@@ -116,7 +116,6 @@ def test_formal_sram():
     config["strg_ub_sram_only_input_addr_gen_1_strides_4"] = 0
     config["strg_ub_sram_only_input_addr_gen_1_strides_5"] = 0
 
-
     for f1 in config:
         setattr(tester.circuit, f1, config[f1])
 
