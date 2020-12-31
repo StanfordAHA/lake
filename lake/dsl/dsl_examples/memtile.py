@@ -24,12 +24,13 @@ tile.add_memory(agg1_params, [agg1_write_port], [agg1_read_port])
 tile.add_input_edge(1, "agg1")
 
 sram_write_read_port = MemPort(1, 0)
-sram_params = make_params("sram", 512, read_write_port_width=4)  # , num_chain=2)
+sram_params = make_params("sram", 512, read_write_port_width=4)
 # , use_macro=True, macro_name="SRAM_example_name")
+# , num_chain=2)
 tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
 
-tile.add_edge("agg", "sram", 6, 65535, 512)
-tile.add_edge("agg1", "sram", 6, 65535, 512)
+tile.add_edge("agg", "sram")
+tile.add_edge("agg1", "sram")
 
 tb_write_port = MemPort(1, 0)
 tb_read_port = MemPort(0, 0)
@@ -43,8 +44,8 @@ tb1_params = make_params("tb1", 8, read_port_width=1, write_port_width=4)
 tile.add_memory(tb1_params, [tb1_write_port], [tb1_read_port])
 tile.add_output_edge(1, "tb1")
 
-tile.add_edge("sram", "tb", 6, 65535, 512)
-tile.add_edge("sram", "tb1", 6, 65535, 512)
+tile.add_edge("sram", "tb")
+tile.add_edge("sram", "tb1")
 
 # for both compiler collateral and HW generation
 # tile.construct_lake("memtile.sv")
