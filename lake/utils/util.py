@@ -139,9 +139,15 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
 
         for key in pairings.keys():
             pairing = pairings[key]
+            index = pairing["index"]
             if pairing["keyword"] in port_name and pairing["index"] in port_name:
                 pairing["maps"].append(port_name)
                 break
+            if module_attr == "sram" and "sram_only" in port_name:
+                if f"input_addr_gen{index}" in port_name and f"autovec_write{index}" in key:
+                    pairing["maps"].append(port_name)
+                elif f"output_addr_gen{index}" in port_name and f"autovec_read{index}" in key:
+                    pairing["maps"].append(port_name)
 
     # print just the mappings
     with open(f"mapping_{filepath}", "w+") as fi:
