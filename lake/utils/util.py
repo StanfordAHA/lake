@@ -219,7 +219,7 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
         print(sram_tb_shared, file=open("sram_tb_shared.txt", "w+"))
 
 
-def extract_formal_annotation_colat(generator, filepath, mem_names, edges):
+def extract_formal_annotation_collat(generator, filepath, mem_names, edges):
     # Get the port list and emit the annotation for each...
     int_gen = generator.internal_generator
 

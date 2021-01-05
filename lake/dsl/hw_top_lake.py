@@ -13,7 +13,7 @@ from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 from lake.passes.passes import lift_config_reg
 from lake.utils.util import safe_wire, trim_config_list
-from lake.utils.util import extract_formal_annotation_colat, modular_formal_annotation
+from lake.utils.util import extract_formal_annotation_collat, modular_formal_annotation
 from lake.utils.parse_clkwork_config import *
 
 
@@ -485,7 +485,7 @@ class TopLakeHW(Generator):
         lift_config_reg(self.internal_generator)
 
         # formal subproblem annotations - uncomment to generate relevant files
-        # extract_formal_annotation_colat(self, "dsl_annotation.txt", subscript_mems, edges)
+        # extract_formal_annotation_collat(self, "dsl_annotation.txt", subscript_mems, edges)
         # modular_formal_annotation(self, subscript_mems)
 
     def get_static_bitstream(self,
