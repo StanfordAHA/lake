@@ -45,7 +45,7 @@ def test_storage_ram(mem_width,  # CGRA Params
                            depth=mem_depth,
                            num_tiles=num_tiles)
 
-    ### DUT
+    # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
                      mem_depth=mem_depth,

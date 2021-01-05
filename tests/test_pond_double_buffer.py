@@ -20,7 +20,7 @@ def test_pond_double_buffer(data_width=16,  # CGRA Params
                             interconnect_input_ports=1,  # Connection to int
                             interconnect_output_ports=1):
 
-    ### DUT
+    # DUT
     pond_dut = Pond(data_width=data_width,  # CGRA Params
                     mem_depth=mem_depth,
                     default_iterator_support=default_iterator_support,

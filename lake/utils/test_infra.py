@@ -21,14 +21,17 @@ def base_lake_tester(config_path,
                      out_file_name,
                      in_ports,
                      out_ports,
-                     stencil_valid=False):
+                     stencil_valid=False,
+                     get_configs_list=False):
 
     lt_dut, need_config_lift, s, t = get_lake_dut(in_ports=in_ports,
                                                   out_ports=out_ports,
                                                   stencil_valid=stencil_valid)
 
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
-    configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
+    if get_configs_list:
+        # prints out list of configs for compiler team
+        configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -38,7 +41,10 @@ def base_lake_tester(config_path,
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
-    return lt_dut, configs, configs_list, magma_dut, tester
+    if get_configs_list:
+        return lt_dut, configs, configs_list, magma_dut, tester
+    else:
+        return lt_dut, configs, magma_dut, tester
 
 
 def gen_test_lake(config_path,
@@ -48,7 +54,7 @@ def gen_test_lake(config_path,
                   in_ports=2,
                   out_ports=2):
 
-    lt_dut, configs, configs_list, magma_dut, tester = \
+    lt_dut, configs, magma_dut, tester = \
         base_lake_tester(config_path,
                          in_file_name,
                          out_file_name,
