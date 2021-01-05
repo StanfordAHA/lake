@@ -49,13 +49,16 @@ def list_to_int(list_d, width):
 
 
 def get_size_str(port):
-    dim_1 = ""
-    dim_2 = ""
-    if port.size[0] > 1 or port.explicit_array:
-        dim_2 = f"[{port.size[0] - 1}:0] "
+    # format for formal team: no space between the size dims,
+    # but space between the size dims and width dim
+    width_dim = ""
+    size_dims = ""
+    for dim in range(len(port.size)):
+        if port.size[dim] > 1 or port.explicit_array:
+            size_dims += f"[{port.size[dim] - 1}:0]"
     if port.width > 1:
-        dim_1 = f"[{port.width - 1}:0] "
-    return dim_2 + dim_1
+        width_dim = f"[{port.width - 1}:0] "
+    return size_dims + " " + width_dim
 
 
 def modular_formal_annotation(gen, mem_names):
@@ -98,9 +101,23 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
     # mapping for which config regs the dimensionality config regs constrain
     pairings = {}
 
+    # get list of agg/sram shared and sram/tb shared config regs for
+    # formal config reg propagation for the sram formal subproblem
+    agg_sram_shared, sram_tb_shared = [], []
+
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
         for port_name in port_names:
+
+            # get list of agg/sram shared and sram/tb shared config regs for
+            # formal config reg propagation for the sram formal subproblem
+            if module_attr == "sram":
+                if "agg_sram_shared" in port_name:
+                    agg_sram_shared.append(port_name)
+                if "sram_tb_shared" in port_name:
+                    sram_tb_shared.append(port_name)
+
+            print(port_name)
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
 
@@ -154,9 +171,15 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
 
         for key in pairings.keys():
             pairing = pairings[key]
+            index = pairing["index"]
             if pairing["keyword"] in port_name and pairing["index"] in port_name:
                 pairing["maps"].append(port_name)
                 break
+            if module_attr == "sram" and "sram_only" in port_name:
+                if f"input_addr_gen{index}" in port_name and f"autovec_write{index}" in key:
+                    pairing["maps"].append(port_name)
+                elif f"output_addr_gen{index}" in port_name and f"autovec_read{index}" in key:
+                    pairing["maps"].append(port_name)
 
     # print just the mappings
     with open(f"mapping_{filepath}", "w+") as fi:
@@ -183,8 +206,17 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
 
         for key in pairings.keys():
             pairings[key] = pairings[key]["maps"]
+            for p in pairings[key]:
+                if "enable" in p:
+                    pairings[key].remove(p)
 
         print(pairings, file=fi)
+
+    # print list of agg/sram shared and sram/tb shared config regs for
+    # formal config reg propagation for the sram formal subproblem
+    if module_attr == "sram":
+        print(agg_sram_shared, file=open("agg_sram_shared.txt", "w+"))
+        print(sram_tb_shared, file=open("sram_tb_shared.txt", "w+"))
 
 
 def extract_formal_annotation_colat(generator, filepath, mem_names, edges):
