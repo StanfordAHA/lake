@@ -99,6 +99,8 @@ def lake_test_app_args(app):
         return conv_3_3_args()
     elif app == "separate":
         return separate_args()
+    elif app == "formal":
+        return formal_args()
     print(f"{app} is not supported.")
     sys.exit()
 
@@ -114,6 +116,14 @@ def conv_3_3_args():
 
 # This is a weird custom test path until we can get consistent paths
 def separate_args():
+    clkwrk_dir = os.getenv("CLOCKWORK_DIR")
+    config_path = clkwrk_dir + "/aha_garnet_design_new/conv_3_3/lake_collateral/ub_hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11"
+    stream_path = clkwrk_dir + "/aha_garnet_design/conv_3_3/lake_stream/hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11_ubuf_0_top_SMT.csv"
+    in_file_name = ""
+    out_file_name = ""
+    return config_path, stream_path, in_file_name, out_file_name
+
+def formal_args():
     clkwrk_dir = os.getenv("CLOCKWORK_DIR")
     config_path = clkwrk_dir + "/aha_garnet_design_new/conv_3_3/lake_collateral/ub_hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11"
     stream_path = clkwrk_dir + "/aha_garnet_design/conv_3_3/lake_stream/hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11_ubuf_0_top_SMT.csv"

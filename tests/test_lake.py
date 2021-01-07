@@ -13,5 +13,5 @@ def test_lake(args):
 
 if __name__ == "__main__":
     # separate accessors conv_3_3
-    conv33args = lake_test_app_args("separate")
+    conv33args = lake_test_app_args("formal")
     test_lake(conv33args)
