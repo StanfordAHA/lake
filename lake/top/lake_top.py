@@ -1270,8 +1270,7 @@ def get_lake_dut(formal_module=None,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='LakeTop')
     parser.add_argument("-f",
-                        help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for, default = agg",
-                        default="agg")
+                        help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for")
 
     args = parser.parse_args()
 
