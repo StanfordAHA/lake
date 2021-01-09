@@ -1,4 +1,5 @@
 import copy
+import sys
 
 from lake.dsl.memory import mem_inst, port_to_info
 from lake.dsl.edge import edge_inst, get_full_edge_params
@@ -7,6 +8,8 @@ from lake.dsl.hw_top_lake import TopLakeHW
 from lake.utils.sram_macro import SRAMMacroInfo
 from lake.passes.passes import change_sram_port_names
 from lake.modules.cfg_reg_wrapper import CFGRegWrapper
+
+from frail.verilog_printer import *
 
 
 class Lake():
@@ -33,6 +36,10 @@ class Lake():
         self.hw_memories = {}
         self.hw_edges = []
         self.hardware_edges = []
+
+        self.addressor_info = {"use_default": True,
+                               "addressor": None,
+                               "name": "top"}
 
         # mux info originally created for hardware, but not used
         # keeping here in case logic is useful for the future
@@ -98,6 +105,11 @@ class Lake():
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
         self.memories[mem_name][f"is_{io}"] = True
         self.memories[mem_name][f"{io}_port"] = port
+
+    def set_addressor(self, addressor=None, name="top"):
+        self.addressor_info = {"use_default": True if addressor is None else False,
+                               "addressor": addressor,
+                               "name": name}
 
     # called after all edges are added
     def banking(self):
@@ -267,7 +279,8 @@ class Lake():
                        self.input_ports,
                        self.output_ports,
                        self.hw_memories,
-                       self.hardware_edges)
+                       self.hardware_edges,
+                       self.addressor_info)
 
         # Wrap it if we need to...
         if wrap_cfg:
@@ -295,3 +308,12 @@ class Lake():
                 optimize_if=False,
                 check_flip_flop_always_ff=False,
                 additional_passes={"change sram port names": sram_port_pass})
+        
+        if not self.addressor_info["use_default"]:
+            with open(filename, "a") as fi:
+                orig_stdout = sys.stdout
+                sys.stdout = fi
+                print_verilog(self.addressor_info["addressor"],
+                         top_name=self.addressor_info["name"],
+                         add_step=True)
+                sys.stdout = orig_stdout

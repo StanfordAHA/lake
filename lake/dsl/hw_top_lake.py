@@ -23,7 +23,8 @@ class TopLakeHW(Generator):
                  input_ports,
                  output_ports,
                  memories,
-                 edges):
+                 edges,
+                 addressor):
 
         super().__init__("LakeTop", debug=True)
 

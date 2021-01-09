@@ -1,4 +1,5 @@
 from lake.dsl.lake_imports import *
+from frail.ast import *
 
 # example of DSL (makes current mem tile with 2 agg,
 # wide SRAM, 2 tb
@@ -7,8 +8,30 @@ from lake.dsl.lake_imports import *
 # IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
 # MEMORIES SHOULD BE INSTANTIATED BEFORE EDGES
 
+# addressor in frail
+
+# configuration registers
+x_max = var_f("x_max")
+y_max = var_f("y_max")
+x_stride = var_f("x_stride")
+y_stride = var_f("y_stride")
+offset = var_f("offset")
+
+# original addressor design
+def create_og_design():
+    x_unit_counter = scan_const_f(lambda z: if_f(eq_f(z, sub_f(x_max, int_f(1))), int_f(0), add_f(z, int_f(1))))
+    y_unit_counter = scan_const_f(lambda z: if_f(eq_f(x_unit_counter.get_seq(), sub_f(x_max, int_f(1))), add_f(z, int_f(1)), z))
+    x_counter = scan_const_f(lambda z: if_f(eq_f(x_unit_counter.get_seq(), sub_f(x_max, int_f(1))), int_f(0), add_f(z, x_stride)))
+    y_counter = scan_const_f(lambda z: if_f(eq_f(x_unit_counter.get_seq(), sub_f(x_max, int_f(1))), add_f(z, y_stride), z))
+    og_design = scan_const_f(lambda z: add_f(add_f(x_counter.get_seq(), y_counter.get_seq()), offset))
+    return og_design
+
+og_design = create_og_design()
+
 # word_width, input_ports, output_ports
 tile = Lake(16, 2, 2)
+
+tile.set_addressor(og_design, "og_design")
 
 # MemPort attributes are latency, initiation interval
 agg_write_port = MemPort(1, 0)
@@ -48,4 +71,4 @@ tile.add_edge("sram", "tb")
 tile.add_edge("sram", "tb1")
 
 # for both compiler collateral and HW generation
-# tile.construct_lake("memtile.sv")
+tile.construct_lake("memtile.sv")
