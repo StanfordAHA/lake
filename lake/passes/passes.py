@@ -20,6 +20,7 @@ def lift_config_reg(generator):
             IRVisitor.__init__(self)
 
         def visit(self, node):
+            # doesn't include external nodes...
             if isinstance(node, _kratos.Generator):
                 ports_ = node.get_port_names()
                 for port_name in ports_:
