@@ -15,9 +15,9 @@ from frail.ast import *
 def create_og_design6():
 
     # configuration registers
-    r0, r1, r2, r3, r4, r5 = var_f("range_0"), var_f("range_1"), var_f("range_2"), var_f("range_3"), var_f("range_4"), var_f("range_5")
-    s0, s1, s2, s3, s4, s5 = var_f("stride_0"), var_f("stride_1"), var_f("stride_2"), var_f("stride_3"), var_f("stride_4"), var_f("stride_5")
-    offset = var_f("offset")
+    r0, r1, r2, r3, r4, r5 = var_f("ranges_0"), var_f("ranges_1"), var_f("ranges_2"), var_f("ranges_3"), var_f("ranges_4"), var_f("ranges_5")
+    s0, s1, s2, s3, s4, s5 = var_f("strides_0"), var_f("strides_1"), var_f("strides_2"), var_f("strides_3"), var_f("strides_4"), var_f("strides_5")
+    offset = var_f("starting_addr")
 
     uc0 = scan_const_f(lambda z: if_f(eq_f(z, sub_f(r0, int_f(1))), int_f(0), add_f(z, int_f(1))))
     uc1 = scan_const_f(lambda z: if_f(eq_f(uc0.get_seq(), sub_f(r0, int_f(1))), add_f(z, int_f(1)), z))
@@ -81,4 +81,4 @@ tile.add_edge("sram", "tb")
 tile.add_edge("sram", "tb1")
 
 # for both compiler collateral and HW generation
-tile.construct_lake("memtile.sv")
+# tile.construct_lake("memtile.sv")
