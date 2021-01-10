@@ -23,9 +23,10 @@ def base_lake_tester(config_path,
                      in_ports,
                      out_ports,
                      lt_dut,
+                     use_default_addr=True,
                      stencil_valid=False):
 
-    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
+    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name, use_default_addr)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -53,7 +54,8 @@ def gen_test_lake(config_path,
                          out_file_name,
                          in_ports,
                          out_ports,
-                         lt_dut)
+                         lt_dut,
+                         tile.addressor_info["use_default"])
 
     tester.circuit.clk_en = 1
     tester.circuit.clk_mem = 0

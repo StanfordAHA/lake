@@ -203,11 +203,6 @@ class TopLakeHW(Generator):
                                mux_sel=forloop.ports.mux_sel_out,
                                restart=forloop.ports.restart)
 
-                if self.memories[in_mem]["num_read_write_ports"] == 0:
-                    safe_wire(self, self.mem_insts[in_mem].ports.write_addr[0], newAG.ports.addr_out)
-                else:
-                    self.mem_read_write_addrs[in_mem]["write_addr"] = newAG.ports.addr_out
-
             else:
                 newAG = AddressorWrapper(self.addressor_name)
                 self.add_child(f"input_port{input_port_index}_2{in_mem}_write_addr_gen",
@@ -215,10 +210,10 @@ class TopLakeHW(Generator):
                                clk=self.gclk,
                                step=self.valid)
 
-                if self.memories[in_mem]["num_read_write_ports"] == 0:
-                    safe_wire(self, self.mem_insts[in_mem].ports.write_addr[0], newAG.ports.addr)
-                else:
-                    self.mem_read_write_addrs[in_mem]["write_addr"] = newAG.ports.addr
+            if self.memories[in_mem]["num_read_write_ports"] == 0:
+                safe_wire(self, self.mem_insts[in_mem].ports.write_addr[0], newAG.ports.addr_out)
+            else:
+                self.mem_read_write_addrs[in_mem]["write_addr"] = newAG.ports.addr_out
 
             newSG = SchedGen(iterator_support=input_dim,
                              config_width=self.cycle_count_width)
@@ -264,16 +259,24 @@ class TopLakeHW(Generator):
                            rst_n=self.rst_n,
                            step=self.valid)
 
-            newAG = AddrGen(iterator_support=output_dim,
-                            config_width=max(1, clog2(output_stride)))  # self.default_config_width)
-            self.add_child(f"{out_mem}2output_port{output_port_index}_read_addr_gen",
-                           newAG,
-                           clk=self.gclk,
-                           rst_n=self.rst_n,
-                           step=self.valid,
-                           mux_sel=forloop.ports.mux_sel_out,
-                           restart=forloop.ports.restart)
+            if self.use_default_addr:
+                newAG = AddrGen(iterator_support=output_dim,
+                                config_width=max(1, clog2(output_stride)))  # self.default_config_width)
+                self.add_child(f"{out_mem}2output_port{output_port_index}_read_addr_gen",
+                            newAG,
+                            clk=self.gclk,
+                            rst_n=self.rst_n,
+                            step=self.valid,
+                            mux_sel=forloop.ports.mux_sel_out,
+                            restart=forloop.ports.restart)
 
+            else:
+                newAG = AddressorWrapper(self.addressor_name)
+                self.add_child(f"{out_mem}2output_port{output_port_index}_read_addr_gen",
+                               newAG,
+                               clk=self.gclk,
+                               step=self.valid)
+            
             if self.memories[out_mem]["num_read_write_ports"] == 0:
                 safe_wire(self, self.mem_insts[out_mem].ports.read_addr[0], newAG.ports.addr_out)
             else:
@@ -317,15 +320,22 @@ class TopLakeHW(Generator):
                            step=self.valid)
 
             # create input addressor
-            readAG = AddrGen(iterator_support=edge["dim"],
-                             config_width=self.default_config_width)
-            self.add_child(f"{edge_name}_read_addr_gen",
-                           readAG,
-                           clk=self.gclk,
-                           rst_n=self.rst_n,
-                           step=self.valid,
-                           mux_sel=forloop.ports.mux_sel_out,
-                           restart=forloop.ports.restart)
+            if self.use_default_addr:
+                readAG = AddrGen(iterator_support=edge["dim"],
+                                config_width=self.default_config_width)
+                self.add_child(f"{edge_name}_read_addr_gen",
+                            readAG,
+                            clk=self.gclk,
+                            rst_n=self.rst_n,
+                            step=self.valid,
+                            mux_sel=forloop.ports.mux_sel_out,
+                            restart=forloop.ports.restart)
+            else:
+                readAG = AddressorWrapper(self.addressor_name)
+                self.add_child(f"{edge_name}_read_addr_gen",
+                               readAG,
+                               clk=self.gclk,
+                               step=self.valid)
 
             # assign read address to all from memories
             if self.memories[edge["from_signal"][0]]["num_read_write_ports"] == 0:
@@ -372,13 +382,20 @@ class TopLakeHW(Generator):
                               self.mem_insts[edge["from_signal"][0]].ports.data_out)
 
             # create output addressor
-            writeAG = AddrGen(iterator_support=edge["dim"],
-                              config_width=self.default_config_width)
-            # step, mux_sel, restart may need delayed signals (assigned later)
-            self.add_child(f"{edge_name}_write_addr_gen",
-                           writeAG,
-                           clk=self.gclk,
-                           rst_n=self.rst_n)
+            if self.use_default_addr:
+                writeAG = AddrGen(iterator_support=edge["dim"],
+                                config_width=self.default_config_width)
+                # step, mux_sel, restart may need delayed signals (assigned later)
+                self.add_child(f"{edge_name}_write_addr_gen",
+                            writeAG,
+                            clk=self.gclk,
+                            rst_n=self.rst_n)
+            else:
+                writeAG = AddressorWrapper(self.addressor_name)
+                self.add_child(f"{edge_name}_write_addr_gen",
+                               writeAG,
+                               clk=self.gclk,
+                               step=self.valid)
 
             # set write addr for to memories
             if self.memories[edge["to_signal"][0]]["num_read_write_ports"] == 0:
@@ -461,12 +478,14 @@ class TopLakeHW(Generator):
             # assign delayed signals for write addressor if needed
             if self.delay == 0:
                 self.wire(writeAG.ports.step, self.valid)
-                self.wire(writeAG.ports.mux_sel, self.forloop.ports.mux_sel_out)
-                self.wire(writeAG.ports.restart, self.forloop.ports.restart)
+                if self.use_default_addr:
+                    self.wire(writeAG.ports.mux_sel, self.forloop.ports.mux_sel_out)
+                    self.wire(writeAG.ports.restart, self.forloop.ports.restart)
             else:
                 self.wire(writeAG.ports.step, self.delayed_writes[self.delay - 1])
-                self.wire(writeAG.ports.mux_sel, self.delayed_mux_sels[self.delay - 1])
-                self.wire(writeAG.ports.restart, self.delayed_restarts[self.delay - 1])
+                if self.use_default_addr:
+                    self.wire(writeAG.ports.mux_sel, self.delayed_mux_sels[self.delay - 1])
+                    self.wire(writeAG.ports.restart, self.delayed_restarts[self.delay - 1])
 
             # create accessor for edge
             newSG = SchedGen(iterator_support=edge["dim"],
@@ -513,7 +532,8 @@ class TopLakeHW(Generator):
     def get_static_bitstream(self,
                              config_path,
                              in_file_name,
-                             out_file_name):
+                             out_file_name,
+                             use_default_addr):
 
         input_ports = 1
         output_ports = 1
@@ -523,6 +543,13 @@ class TopLakeHW(Generator):
         sram2tb = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb")
         tb2out0 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0")
         tb2out1 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1")
+
+        if not use_default_addr:
+            in2aggnt = map_controller(extract_controller(config_path + '/' + in_file_name + '_in2agg_0.csv'), "in2agg", use_default_addr)
+            agg2sramnt = map_controller(extract_controller(config_path + '/' + in_file_name + '_agg2sram.csv'), "agg2sram", use_default_addr)
+            sram2tbnt = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb", use_default_addr)
+            tb2out0nt = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0", use_default_addr)
+            tb2out1nt = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1", use_default_addr)
 
         # Getting bitstreams is a little unweildy due to fault (or its underlying implementation) not
         # handling arrays in the interface.
@@ -596,35 +623,55 @@ class TopLakeHW(Generator):
 
         for i in range(in2agg.dim):
             config.append((f"input_port0_2agg_forloop_ranges_{i}", in2agg.extent[i]))
-            config.append((f"input_port0_2agg_write_addr_gen_strides_{i}", in2agg.in_data_stride[i]))
+            config.append((f"input_port0_2agg_write_addr_gen_strides_{i}", in2aggnt.in_data_stride[i]))
             config.append((f"input_port0_2agg_write_sched_gen_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
 
+            if not use_default_addr:
+                config.append((f"input_port0_2agg_write_addr_gen_ranges_{i}", in2aggnt.extent[i]))
+        
+        if not use_default_addr:
+            config.append((f"input_port0_2agg_write_addr_gen_dimensionality", in2aggnt.dim))
+
         for i in range(agg2sram.dim):
-            config.append((f"agg_agg1_sram_edge_read_addr_gen_strides_{i}", agg2sram.out_data_stride[i]))
+            config.append((f"agg_agg1_sram_edge_read_addr_gen_strides_{i}", agg2sramnt.out_data_stride[i]))
             config.append((f"agg_agg1_sram_edge_forloop_ranges_{i}", agg2sram.extent[i]))
-            config.append((f"agg_agg1_sram_edge_write_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
+            config.append((f"agg_agg1_sram_edge_write_addr_gen_strides_{i}", agg2sramnt.in_data_stride[i]))
             config.append((f"agg_agg1_sram_edge_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
+
+            if not use_default_addr:
+                config.append((f"agg_agg1_sram_edge_write_addr_gen_ranges_{i}", agg2sramnt.extent[i]))
 
         tbs = [tb2out0, tb2out1]
 
         for i in range(sram2tb.dim):
             config.append((f"sram_tb_tb1_edge_forloop_ranges_{i}", sram2tb.extent[i]))
-            config.append((f"sram_tb_tb1_edge_read_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
+            config.append((f"sram_tb_tb1_edge_read_addr_gen_strides_{i}", sram2tbnt.out_data_stride[i]))
             config.append((f"sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
-            config.append((f"sram_tb_tb1_edge_write_addr_gen_strides_{i}", sram2tb.in_data_stride[i]))
+            config.append((f"sram_tb_tb1_edge_write_addr_gen_strides_{i}", sram2tbnt.in_data_stride[i]))
+
+            if not use_default_addr:
+                config.append((f"sram_tb_tb1_edge_read_addr_gen_ranges_{i}", sram2tbnt.extent[i]))
 
         tbs = [tb2out0, tb2out1]
+        tbsnt = [tb2out0nt, tb2out1nt]
         for tb in range(len(tbs)):
             elem = tbs[tb]
+            elemnt = tbsnt[tb]
             for i in range(elem.dim):
                 if tb == 0:
-                    config.append((f"tb2output_port0_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
+                    config.append((f"tb2output_port0_read_addr_gen_strides_{i}", elemnt.out_data_stride[i]))
                     config.append((f"tb2output_port0_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
                     config.append((f"tb2output_port0_forloop_ranges_{i}", elem.extent[i]))
+
+                    if not use_default_addr:
+                        config.append((f"tb2output_port0_read_addr_gen_ranges_{i}", elemnt.extent[i]))
                 else:
-                    config.append((f"tb12output_port1_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
+                    config.append((f"tb12output_port1_read_addr_gen_strides_{i}", elemnt.out_data_stride[i]))
                     config.append((f"tb12output_port1_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
                     config.append((f"tb12output_port1_forloop_ranges_{i}", elem.extent[i]))
+
+                    if not use_default_addr:
+                        config.append((f"tb12output_port1_read_addr_gen_ranges_{i}", elemnt.extent[i]))
 
         return trim_config_list(flattened, config)
 
