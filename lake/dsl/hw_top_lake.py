@@ -641,6 +641,9 @@ class TopLakeHW(Generator):
             if not use_default_addr:
                 config.append((f"agg_agg1_sram_edge_write_addr_gen_ranges_{i}", agg2sramnt.extent[i]))
 
+        if not use_default_addr:
+            config.append((f"agg_agg1_sram_edge_write_addr_gen_dimensionality", agg2sramnt.dim))
+
         tbs = [tb2out0, tb2out1]
 
         for i in range(sram2tb.dim):
@@ -650,7 +653,12 @@ class TopLakeHW(Generator):
             config.append((f"sram_tb_tb1_edge_write_addr_gen_strides_{i}", sram2tbnt.in_data_stride[i]))
 
             if not use_default_addr:
-                config.append((f"sram_tb_tb1_edge_read_addr_gen_ranges_{i}", sram2tbnt.extent[i]))
+                config.append((f"sram_tb_tb1_edge_write_addr_gen_ranges_{i}", sram2tbnt.extent[i]))
+
+        if not use_default_addr:
+            config.append((f"sram_tb_tb1_edge_write_addr_gen_dimensionality", sram2tbnt.dim))
+            config.append((f"tb2output_port0_read_addr_gen_dimensionality", tb2out0nt.dim))
+            config.append((f"tb12output_port1_read_addr_gen_dimensionality", tb2out1nt.dim))
 
         tbs = [tb2out0, tb2out1]
         tbsnt = [tb2out0nt, tb2out1nt]
