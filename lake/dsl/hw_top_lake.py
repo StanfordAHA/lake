@@ -263,12 +263,12 @@ class TopLakeHW(Generator):
                 newAG = AddrGen(iterator_support=output_dim,
                                 config_width=max(1, clog2(output_stride)))  # self.default_config_width)
                 self.add_child(f"{out_mem}2output_port{output_port_index}_read_addr_gen",
-                            newAG,
-                            clk=self.gclk,
-                            rst_n=self.rst_n,
-                            step=self.valid,
-                            mux_sel=forloop.ports.mux_sel_out,
-                            restart=forloop.ports.restart)
+                               newAG,
+                               clk=self.gclk,
+                               rst_n=self.rst_n,
+                               step=self.valid,
+                               mux_sel=forloop.ports.mux_sel_out,
+                               restart=forloop.ports.restart)
 
             else:
                 newAG = AddressorWrapper(self.addressor_name)
@@ -276,7 +276,7 @@ class TopLakeHW(Generator):
                                newAG,
                                clk=self.gclk,
                                step=self.valid)
-            
+
             if self.memories[out_mem]["num_read_write_ports"] == 0:
                 safe_wire(self, self.mem_insts[out_mem].ports.read_addr[0], newAG.ports.addr_out)
             else:
@@ -322,14 +322,14 @@ class TopLakeHW(Generator):
             # create input addressor
             if self.use_default_addr:
                 readAG = AddrGen(iterator_support=edge["dim"],
-                                config_width=self.default_config_width)
+                                 config_width=self.default_config_width)
                 self.add_child(f"{edge_name}_read_addr_gen",
-                            readAG,
-                            clk=self.gclk,
-                            rst_n=self.rst_n,
-                            step=self.valid,
-                            mux_sel=forloop.ports.mux_sel_out,
-                            restart=forloop.ports.restart)
+                               readAG,
+                               clk=self.gclk,
+                               rst_n=self.rst_n,
+                               step=self.valid,
+                               mux_sel=forloop.ports.mux_sel_out,
+                               restart=forloop.ports.restart)
             else:
                 readAG = AddressorWrapper(self.addressor_name)
                 self.add_child(f"{edge_name}_read_addr_gen",
@@ -384,12 +384,12 @@ class TopLakeHW(Generator):
             # create output addressor
             if self.use_default_addr:
                 writeAG = AddrGen(iterator_support=edge["dim"],
-                                config_width=self.default_config_width)
+                                  config_width=self.default_config_width)
                 # step, mux_sel, restart may need delayed signals (assigned later)
                 self.add_child(f"{edge_name}_write_addr_gen",
-                            writeAG,
-                            clk=self.gclk,
-                            rst_n=self.rst_n)
+                               writeAG,
+                               clk=self.gclk,
+                               rst_n=self.rst_n)
             else:
                 writeAG = AddressorWrapper(self.addressor_name)
                 self.add_child(f"{edge_name}_write_addr_gen",
@@ -628,7 +628,7 @@ class TopLakeHW(Generator):
 
             if not use_default_addr:
                 config.append((f"input_port0_2agg_write_addr_gen_ranges_{i}", in2aggnt.extent[i]))
-        
+
         if not use_default_addr:
             config.append((f"input_port0_2agg_write_addr_gen_dimensionality", in2aggnt.dim))
 

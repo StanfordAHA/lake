@@ -51,6 +51,7 @@ tile.add_edge("sram", "tb1")
 # addressor in frail
 # original addressor design
 
+
 def create_og_design6():
 
     # configuration registers
@@ -60,17 +61,17 @@ def create_og_design6():
     offset = var_f("starting_addr")
 
     uc0 = scan_const_f(lambda z: if_f(eq_f(z, sub_f(r0, int_f(1))), int_f(0), add_f(z, int_f(1))))
-    #uc0 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(0)), int_f(0), uc0.get_seq()))
+    # uc0 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(0)), int_f(0), uc0.get_seq()))
     uc1 = scan_const_f(lambda z: if_f(eq_f(uc0.get_seq(), sub_f(r0, int_f(1))), add_f(z, int_f(1)), z))
-    #uc1 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(1)), int_f(0), uc1.get_seq()))
+    # uc1 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(1)), int_f(0), uc1.get_seq()))
     uc2 = scan_const_f(lambda z: if_f(eq_f(uc1.get_seq(), sub_f(r1, int_f(1))), add_f(z, int_f(1)), z))
-    #uc2 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(2)), int_f(0), uc2.get_seq()))
+    # uc2 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(2)), int_f(0), uc2.get_seq()))
     uc3 = scan_const_f(lambda z: if_f(eq_f(uc2.get_seq(), sub_f(r2, int_f(1))), add_f(z, int_f(1)), z))
-    #uc3 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(3)), int_f(0), uc3.get_seq()))
+    # uc3 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(3)), int_f(0), uc3.get_seq()))
     uc4 = scan_const_f(lambda z: if_f(eq_f(uc3.get_seq(), sub_f(r3, int_f(1))), add_f(z, int_f(1)), z))
-    #uc4 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(4)), int_f(0), uc4.get_seq()))
+    # uc4 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(4)), int_f(0), uc4.get_seq()))
     uc5 = scan_const_f(lambda z: if_f(eq_f(uc4.get_seq(), sub_f(r4, int_f(1))), add_f(z, int_f(1)), z))
-    #uc5 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(5)), int_f(0), uc5.get_seq()))
+    # uc5 = scan_const_f(lambda z: if_f(eq_f(dim, int_f(5)), int_f(0), uc5.get_seq()))
 
     c0 = scan_const_f(lambda z: if_f(eq_f(uc0.get_seq(), sub_f(r0, int_f(1))), int_f(0), add_f(z, s0)))
     c1 = scan_const_f(lambda z: if_f(eq_f(uc0.get_seq(), sub_f(r0, int_f(1))), add_f(z, s1), z))
@@ -80,6 +81,7 @@ def create_og_design6():
     c5 = scan_const_f(lambda z: if_f(eq_f(uc4.get_seq(), sub_f(r4, int_f(1))), add_f(z, s5), z))
 
     return scan_const_f(lambda z: add_f(offset, add_f(c0.get_seq(), add_f(c1.get_seq(), add_f(c2.get_seq(), add_f(c3.get_seq(), add_f(c4.get_seq(), c5.get_seq())))))))
+
 
 og_design6 = create_og_design6()
 # tile.set_addressor(og_design6, "og_design6")

@@ -317,7 +317,7 @@ class Lake():
                 optimize_if=False,
                 check_flip_flop_always_ff=False,
                 additional_passes={"change sram port names": sram_port_pass})
-        
+
         if not self.addressor_info["use_default"]:
             self.print_verilog_helper(filename, "a", True)
 
@@ -326,7 +326,7 @@ class Lake():
             orig_stdout = sys.stdout
             sys.stdout = fi
             print_verilog(self.addressor_info["addressor"],
-                        top_name=self.addressor_info["name"],
-                        add_step=True,
-                        get_verilog=get_verilog)
+                          top_name=self.addressor_info["name"],
+                          add_step=True,
+                          get_verilog=get_verilog)
             sys.stdout = orig_stdout
