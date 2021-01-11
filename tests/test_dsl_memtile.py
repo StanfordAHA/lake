@@ -96,7 +96,6 @@ def gen_test_lake(config_path,
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                flags=["-Wno-fatal"])
-                               # flags=["-Wno-fatal", "--trace"])
 
 
 def test_conv_3_3():
