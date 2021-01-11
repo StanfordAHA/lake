@@ -88,14 +88,15 @@ def gen_test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "hw"
+        # tempdir = "hw"
         if not tile.addressor_info["use_default"]:
             addr_verilog = tile.addressor_info["name"] + ".v"
             tile.print_verilog_helper(addr_verilog, "w+", True)
             shutil.copy(addr_verilog, tempdir)
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
+                               # flags=["-Wno-fatal", "--trace"])
 
 
 def test_conv_3_3():

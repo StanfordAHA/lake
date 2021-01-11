@@ -82,7 +82,7 @@ def create_og_design6():
     return scan_const_f(lambda z: add_f(offset, add_f(c0.get_seq(), add_f(c1.get_seq(), add_f(c2.get_seq(), add_f(c3.get_seq(), add_f(c4.get_seq(), c5.get_seq())))))))
 
 og_design6 = create_og_design6()
-tile.set_addressor(og_design6, "og_design6")
+# tile.set_addressor(og_design6, "og_design6")
 
 # for both compiler collateral and HW generation
 # tile.construct_lake("memtile.sv")
