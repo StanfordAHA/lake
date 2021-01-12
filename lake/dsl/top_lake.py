@@ -28,6 +28,8 @@ class Lake():
         self.compiler_mems = {}
         self.merged_mems = {}
         self.merged_edges = []
+        self.merged_input_edges = []
+        self.merged_output_edges = []
 
         # what hardware sees
         self.hw_memories = {}
@@ -174,6 +176,8 @@ class Lake():
                 read_ports = []
                 rw_ports = []
                 merged_cap = 0
+                inputs = []
+                outputs = []
 
                 for m in mems_to_merge[mem]:
                     mem_ = self.memories[m]
@@ -195,6 +199,20 @@ class Lake():
                     merged_port_info(mem_, "write_ports", write_ports)
                     merged_port_info(mem_, "read_write_ports", rw_ports)
 
+                    if mem_["is_input"]:
+                        inputs.append({"from_signal": f'input_port_{mem_["input_port"]}', 
+                            "dim": mem_["input_edge_params"]["dim"],
+                            "max_range": mem_["input_edge_params"]["max_range"],
+                            "max_stride": mem_["input_edge_params"]["max_stride"],
+                            "addr_domain": {"min": merged_cap, "max": merged_cap + mem_["capacity"]}})
+                    
+                    if mem_["is_output"]:
+                        outputs.append({"to_signal": f'output_port_{mem_["output_port"]}', 
+                            "dim": mem_["output_edge_params"]["dim"],
+                            "max_range": mem_["output_edge_params"]["max_range"],
+                            "max_stride": mem_["output_edge_params"]["max_stride"],
+                            "addr_domain": {"min": merged_cap, "max": merged_cap + mem_["capacity"]}})
+
                     merged_cap += mem_["capacity"]
 
                 # merged memory parameters
@@ -203,6 +221,14 @@ class Lake():
                 merged_mem["read_ports"] = read_ports
                 merged_mem["write_ports"] = write_ports
                 merged_mem["read_write_ports"] = rw_ports
+
+                for i in inputs:
+                    i["to_signal"] = merged_mem["name"]
+                    self.merged_input_edges.append(i)
+
+                for i in outputs:
+                    i["from_signal"] = merged_mem["name"]
+                    self.merged_output_edges.append(i)
 
                 if is_from:
                     # print("IS FROM ", merged_mem["name"], mem)
@@ -267,16 +293,8 @@ class Lake():
                 mem_info["num_write_ports"] += mem_info["num_read_write_ports"]
                 mem_info["rw_same_cycle"] = False
 
-                del mem_info["num_read_write_ports"]
-                del mem_info["read_write_info"]
-
-            if mem_info["is_input"]:
-                self.input_edges.append({"to_signal": mem,
-                                         "from_signal": f'input_port_{mem_info["input_port"]}'})
-
-            if mem_info["is_output"]:
-                self.output_edges.append({"from_signal": mem,
-                                          "to_signal": f'output_port_{mem_info["output_port"]}'})
+                for param in ("num_read_write_ports", "read_write_info"):
+                    del mem_info[param]
 
             for param in ("macro_name", "is_input", "is_output"):
                 del mem_info[param]
@@ -285,8 +303,8 @@ class Lake():
         # print(self.merged_edges)
         get_json(self.compiler_mems,
                  self.merged_edges,
-                 self.input_edges,
-                 self.output_edges,
+                 self.merged_input_edges,
+                 self.merged_output_edges,
                  f"{filename}_collateral2compiler.json")
 
     def generate_hardware(self, wrap_cfg=True):
