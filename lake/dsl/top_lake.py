@@ -272,22 +272,22 @@ class Lake():
 
             if mem_info["is_input"]:
                 self.input_edges.append({"to_signal": mem,
-                    "from_signal": f'input_port_{mem_info["input_port"]}'})
+                                         "from_signal": f'input_port_{mem_info["input_port"]}'})
 
             if mem_info["is_output"]:
                 self.output_edges.append({"from_signal": mem,
-                    "to_signal": f'output_port_{mem_info["output_port"]}'})
+                                          "to_signal": f'output_port_{mem_info["output_port"]}'})
 
             for param in ("macro_name", "is_input", "is_output"):
                 del mem_info[param]
 
-        print(self.compiler_mems)
+        # print(self.compiler_mems)
         # print(self.merged_edges)
-        get_json(self.compiler_mems, 
-        self.merged_edges, 
-        self.input_edges, 
-        self.output_edges, 
-        f"{filename}_collateral2compiler.json")
+        get_json(self.compiler_mems,
+                 self.merged_edges,
+                 self.input_edges,
+                 self.output_edges,
+                 f"{filename}_collateral2compiler.json")
 
     def generate_hardware(self, wrap_cfg=True):
         # print(self.hw_memories)

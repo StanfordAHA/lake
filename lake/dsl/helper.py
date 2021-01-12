@@ -50,11 +50,11 @@ def get_params(gen, collateral, name_id):
         collateral[gen_dict[name_id + "_name"]] = gen_dict
 
 
-def get_json(mem_collateral, 
-    edge_collateral, 
-    input_edge_collateral, 
-    output_edge_collateral, 
-    filename="collateral2compiler.json"):
+def get_json(mem_collateral,
+             edge_collateral,
+             input_edge_collateral,
+             output_edge_collateral,
+             filename="collateral2compiler.json"):
     all_collateral = {}
     all_collateral["memories"] = mem_collateral
     all_collateral["edges"] = edge_collateral
