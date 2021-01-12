@@ -259,11 +259,16 @@ class Lake():
             mem_info = self.compiler_mems[mem]
             mem_info["rw_same_cycle"] = True
             if mem_info["num_read_write_ports"] > 0:
-                mem_info["num_read_ports"] += mem_info["num_read_write_ports"]
+                for op in ("read", "write"):
+                    mem_info[f"num_{op}_ports"] += mem_info["num_read_write_ports"]
+                    for elem in mem_info["read_write_info"]:
+                        mem_info[f"{op}_info"].append(elem)
+
                 mem_info["num_write_ports"] += mem_info["num_read_write_ports"]
                 mem_info["rw_same_cycle"] = False
 
                 del mem_info["num_read_write_ports"]
+                del mem_info["read_write_info"]
 
             if mem_info["is_input"]:
                 self.input_edges.append({"to_signal": mem,
@@ -272,6 +277,9 @@ class Lake():
             if mem_info["is_output"]:
                 self.output_edges.append({"from_signal": mem,
                     "to_signal": f'output_port_{mem_info["output_port"]}'})
+
+            for param in ("macro_name", "is_input", "is_output"):
+                del mem_info[param]
 
         print(self.compiler_mems)
         # print(self.merged_edges)
