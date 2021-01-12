@@ -2,8 +2,8 @@ from lake.dsl.lake_imports import *
 
 pond = Lake(16, 1, 1)
 
-read_port = MemPort(0, 0)
-write_port = MemPort(1, 0)
+read_port = MemPort(0, 1)
+write_port = MemPort(1, 1)
 
 pond_params = make_params("pond", 32, 1, 1)
 pond.add_memory(pond_params, read_ports=[read_port], write_ports=[write_port])
