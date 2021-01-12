@@ -244,19 +244,42 @@ class Lake():
         if to_edge not in self.hw_edges:
             self.hw_edges.append(to_edge)
 
-    def get_compiler_json(self, filename="collateral2compiler.json"):
+    def get_compiler_json(self, filename="collateral2compiler"):
 
         # print(self.merged_mems)
         # print(self.merged_edges)
         # print(self.hw_edges)
         # print(self.muxes)
 
+        self.input_edges, self.output_edges = [], []
         for mem in self.merged_mems:
             params = port_to_info(self.merged_mems[mem])
             self.compiler_mems[mem] = params
 
-        # print(self.compiler_mems)
-        get_json(self.compiler_mems, self.merged_edges, filename)
+            mem_info = self.compiler_mems[mem]
+            mem_info["rw_same_cycle"] = True
+            if mem_info["num_read_write_ports"] > 0:
+                mem_info["num_read_ports"] += mem_info["num_read_write_ports"]
+                mem_info["num_write_ports"] += mem_info["num_read_write_ports"]
+                mem_info["rw_same_cycle"] = False
+
+                del mem_info["num_read_write_ports"]
+
+            if mem_info["is_input"]:
+                self.input_edges.append({"to_signal": mem,
+                    "from_signal": f'input_port_{mem_info["input_port"]}'})
+
+            if mem_info["is_output"]:
+                self.output_edges.append({"from_signal": mem,
+                    "to_signal": f'output_port_{mem_info["output_port"]}'})
+
+        print(self.compiler_mems)
+        # print(self.merged_edges)
+        get_json(self.compiler_mems, 
+        self.merged_edges, 
+        self.input_edges, 
+        self.output_edges, 
+        f"{filename}_collateral2compiler.json")
 
     def generate_hardware(self, wrap_cfg=True):
         # print(self.hw_memories)
@@ -275,22 +298,22 @@ class Lake():
 
         return hw
 
-    def test_magma_lake(self, wrap_cfg=False):
+    def test_magma_lake(self, wrap_cfg=False, filename="Lake_hw"):
         # prepare user input for compiler collateral and hardware
         self.banking()
         # generate compiler collateral
-        self.get_compiler_json()
+        self.get_compiler_json(filename)
         # generate RTL
         hw = self.generate_hardware(wrap_cfg)
 
         return hw
 
-    def construct_lake(self, filename="Lake_hw.sv", wrap_cfg=False):
-        hw = self.test_magma_lake(wrap_cfg)
+    def construct_lake(self, filename="Lake_hw", wrap_cfg=False):
+        hw = self.test_magma_lake(wrap_cfg, filename)
 
         tsmc_info = SRAMMacroInfo("tsmc_name")
         sram_port_pass = change_sram_port_names(use_sram_stub=False, sram_macro_info=tsmc_info)
-        verilog(hw, filename=filename,
+        verilog(hw, filename=f"{filename}.sv",
                 check_multiple_driver=False,
                 optimize_if=False,
                 check_flip_flop_always_ff=False,
