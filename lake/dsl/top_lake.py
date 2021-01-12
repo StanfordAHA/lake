@@ -8,6 +8,8 @@ from lake.utils.sram_macro import SRAMMacroInfo
 from lake.passes.passes import change_sram_port_names
 from lake.modules.cfg_reg_wrapper import CFGRegWrapper
 
+from math import log, ceil
+
 
 class Lake():
     def __init__(self,
@@ -200,18 +202,18 @@ class Lake():
                     merged_port_info(mem_, "read_write_ports", rw_ports)
 
                     if mem_["is_input"]:
-                        inputs.append({"from_signal": f'input_port_{mem_["input_port"]}', 
-                            "dim": mem_["input_edge_params"]["dim"],
-                            "max_range": mem_["input_edge_params"]["max_range"],
-                            "max_stride": mem_["input_edge_params"]["max_stride"],
-                            "addr_domain": {"min": merged_cap, "max": merged_cap + mem_["capacity"]}})
-                    
+                        inputs.append({"from_signal": f'input_port_{mem_["input_port"]}',
+                                       "dim": mem_["input_edge_params"]["dim"],
+                                       "max_range": mem_["input_edge_params"]["max_range"],
+                                       "max_stride": mem_["input_edge_params"]["max_stride"],
+                                       "addr_domain": {"min": merged_cap, "max": merged_cap + mem_["capacity"]}})
+
                     if mem_["is_output"]:
-                        outputs.append({"to_signal": f'output_port_{mem_["output_port"]}', 
-                            "dim": mem_["output_edge_params"]["dim"],
-                            "max_range": mem_["output_edge_params"]["max_range"],
-                            "max_stride": mem_["output_edge_params"]["max_stride"],
-                            "addr_domain": {"min": merged_cap, "max": merged_cap + mem_["capacity"]}})
+                        outputs.append({"to_signal": f'output_port_{mem_["output_port"]}',
+                                        "dim": mem_["output_edge_params"]["dim"],
+                                        "max_range": mem_["output_edge_params"]["max_range"],
+                                        "max_stride": mem_["output_edge_params"]["max_stride"],
+                                        "addr_domain": {"min": merged_cap, "max": merged_cap + mem_["capacity"]}})
 
                     merged_cap += mem_["capacity"]
 
@@ -289,8 +291,6 @@ class Lake():
                     mem_info[f"num_{op}_ports"] += mem_info["num_read_write_ports"]
                     for elem in mem_info["read_write_info"]:
                         mem_info[f"{op}_info"].append(elem)
-
-                mem_info["num_write_ports"] += mem_info["num_read_write_ports"]
                 mem_info["rw_same_cycle"] = False
 
                 for param in ("num_read_write_ports", "read_write_info"):
