@@ -289,11 +289,12 @@ class Lake():
             if mem_info["num_read_write_ports"] > 0:
                 for op in ("read", "write"):
                     mem_info[f"num_{op}_ports"] += mem_info["num_read_write_ports"]
+                    mem_info[f"{op}_port_width"] = mem_info["read_write_port_width"]
                     for elem in mem_info["read_write_info"]:
                         mem_info[f"{op}_info"].append(elem)
                 mem_info["rw_same_cycle"] = False
 
-                for param in ("num_read_write_ports", "read_write_info"):
+                for param in ("num_read_write_ports", "read_write_info", "read_write_port_width"):
                     del mem_info[param]
 
             for param in ("macro_name", "is_input", "is_output"):
