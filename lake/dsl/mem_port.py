@@ -12,12 +12,10 @@ class MemPort():
     def __init__(self,
                  latency,
                  II,
-                 port_type=PortType.WRITE,
                  addr_domain=[-1, -1]):
 
         self.port_info = {"latency": latency,
                           "initiation_interval": II,
-                          "port_type": port_type,
                           "addr_domain": {"min": addr_domain[0], "max": addr_domain[1]}}
 
     def set_addr_domain(self, addr_domain):

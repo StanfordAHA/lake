@@ -50,10 +50,16 @@ def get_params(gen, collateral, name_id):
         collateral[gen_dict[name_id + "_name"]] = gen_dict
 
 
-def get_json(mem_collateral, edge_collateral, filename="collateral2compiler.json"):  # will also include edge collateral to form Lake object
+def get_json(mem_collateral,
+             edge_collateral,
+             input_edge_collateral,
+             output_edge_collateral,
+             filename="collateral2compiler.json"):
     all_collateral = {}
     all_collateral["memories"] = mem_collateral
     all_collateral["edges"] = edge_collateral
+    all_collateral["input_edges"] = input_edge_collateral
+    all_collateral["output_edges"] = output_edge_collateral
 
     with open (filename, 'w') as outfile:
         json.dump(all_collateral, outfile, indent=4)
