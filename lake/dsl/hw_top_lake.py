@@ -532,8 +532,7 @@ class TopLakeHW(Generator):
     def get_static_bitstream(self,
                              config_path,
                              in_file_name,
-                             out_file_name,
-                             use_default_addr):
+                             out_file_name):
 
         input_ports = 1
         output_ports = 1
@@ -543,13 +542,6 @@ class TopLakeHW(Generator):
         sram2tb = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb")
         tb2out0 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0")
         tb2out1 = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1")
-
-        if not use_default_addr:
-            in2aggnt = map_controller(extract_controller(config_path + '/' + in_file_name + '_in2agg_0.csv'), "in2agg", use_default_addr)
-            agg2sramnt = map_controller(extract_controller(config_path + '/' + in_file_name + '_agg2sram.csv'), "agg2sram", use_default_addr)
-            sram2tbnt = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_sram2tb.csv'), "sram2tb", use_default_addr)
-            tb2out0nt = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_0.csv'), "tb2out0", use_default_addr)
-            tb2out1nt = map_controller(extract_controller(config_path + '/' + out_file_name + '_2_tb2out_1.csv'), "tb2out1", use_default_addr)
 
         # Getting bitstreams is a little unweildy due to fault (or its underlying implementation) not
         # handling arrays in the interface.
@@ -623,67 +615,35 @@ class TopLakeHW(Generator):
 
         for i in range(in2agg.dim):
             config.append((f"input_port0_2agg_forloop_ranges_{i}", in2agg.extent[i]))
-            config.append((f"input_port0_2agg_write_addr_gen_strides_{i}", in2aggnt.in_data_stride[i]))
+            config.append((f"input_port0_2agg_write_addr_gen_strides_{i}", in2agg.in_data_stride[i]))
             config.append((f"input_port0_2agg_write_sched_gen_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
 
-            if not use_default_addr:
-                config.append((f"input_port0_2agg_write_addr_gen_ranges_{i}", in2aggnt.extent[i]))
-
-        if not use_default_addr:
-            config.append((f"input_port0_2agg_write_addr_gen_dimensionality", in2aggnt.dim))
-
         for i in range(agg2sram.dim):
-            config.append((f"agg_agg1_sram_edge_read_addr_gen_strides_{i}", agg2sramnt.out_data_stride[i]))
+            config.append((f"agg_agg1_sram_edge_read_addr_gen_strides_{i}", agg2sram.out_data_stride[i]))
             config.append((f"agg_agg1_sram_edge_forloop_ranges_{i}", agg2sram.extent[i]))
-            config.append((f"agg_agg1_sram_edge_write_addr_gen_strides_{i}", agg2sramnt.in_data_stride[i]))
+            config.append((f"agg_agg1_sram_edge_write_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
             config.append((f"agg_agg1_sram_edge_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
-
-            if not use_default_addr:
-                config.append((f"agg_agg1_sram_edge_write_addr_gen_ranges_{i}", agg2sramnt.extent[i]))
-                config.append((f"agg_agg1_sram_edge_read_addr_gen_ranges_{i}", agg2sramnt.extent[i]))
-
-        if not use_default_addr:
-            config.append((f"agg_agg1_sram_edge_write_addr_gen_dimensionality", agg2sramnt.dim))
-            config.append((f"agg_agg1_sram_edge_read_addr_gen_dimensionality", agg2sramnt.dim))
 
         tbs = [tb2out0, tb2out1]
 
         for i in range(sram2tb.dim):
             config.append((f"sram_tb_tb1_edge_forloop_ranges_{i}", sram2tb.extent[i]))
-            config.append((f"sram_tb_tb1_edge_read_addr_gen_strides_{i}", sram2tbnt.out_data_stride[i]))
+            config.append((f"sram_tb_tb1_edge_read_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
             config.append((f"sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
-            config.append((f"sram_tb_tb1_edge_write_addr_gen_strides_{i}", sram2tbnt.in_data_stride[i]))
-
-            if not use_default_addr:
-                config.append((f"sram_tb_tb1_edge_write_addr_gen_ranges_{i}", sram2tbnt.extent[i]))
-                config.append((f"sram_tb_tb1_edge_read_addr_gen_ranges_{i}", sram2tbnt.extent[i]))
-
-        if not use_default_addr:
-            config.append((f"sram_tb_tb1_edge_write_addr_gen_dimensionality", sram2tbnt.dim))
-            config.append((f"sram_tb_tb1_edge_read_addr_gen_dimensionality", sram2tbnt.dim))
-            config.append((f"tb2output_port0_read_addr_gen_dimensionality", tb2out0nt.dim))
-            config.append((f"tb12output_port1_read_addr_gen_dimensionality", tb2out1nt.dim))
+            config.append((f"sram_tb_tb1_edge_write_addr_gen_strides_{i}", sram2tb.in_data_stride[i]))
 
         tbs = [tb2out0, tb2out1]
-        tbsnt = [tb2out0nt, tb2out1nt]
         for tb in range(len(tbs)):
             elem = tbs[tb]
-            elemnt = tbsnt[tb]
             for i in range(elem.dim):
                 if tb == 0:
-                    config.append((f"tb2output_port0_read_addr_gen_strides_{i}", elemnt.out_data_stride[i]))
+                    config.append((f"tb2output_port0_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
                     config.append((f"tb2output_port0_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
                     config.append((f"tb2output_port0_forloop_ranges_{i}", elem.extent[i]))
-
-                    if not use_default_addr:
-                        config.append((f"tb2output_port0_read_addr_gen_ranges_{i}", elemnt.extent[i]))
                 else:
-                    config.append((f"tb12output_port1_read_addr_gen_strides_{i}", elemnt.out_data_stride[i]))
+                    config.append((f"tb12output_port1_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
                     config.append((f"tb12output_port1_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
                     config.append((f"tb12output_port1_forloop_ranges_{i}", elem.extent[i]))
-
-                    if not use_default_addr:
-                        config.append((f"tb12output_port1_read_addr_gen_ranges_{i}", elemnt.extent[i]))
 
         return trim_config_list(flattened, config)
 
