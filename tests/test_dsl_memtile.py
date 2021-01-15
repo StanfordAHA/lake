@@ -3,6 +3,7 @@ import fault
 import pytest
 import tempfile
 import os
+import shutil
 
 from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
@@ -22,6 +23,7 @@ def base_lake_tester(config_path,
                      in_ports,
                      out_ports,
                      lt_dut,
+                     use_default_addr=True,
                      stencil_valid=False):
 
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
@@ -40,6 +42,7 @@ def base_lake_tester(config_path,
 def gen_test_lake(config_path,
                   stream_path,
                   lt_dut,
+                  tile,
                   in_file_name="input",
                   out_file_name="output",
                   in_ports=2,
@@ -51,7 +54,8 @@ def gen_test_lake(config_path,
                          out_file_name,
                          in_ports,
                          out_ports,
-                         lt_dut)
+                         lt_dut,
+                         tile.addressor_info["use_default"])
 
     tester.circuit.clk_en = 1
     tester.circuit.clk_mem = 0
@@ -84,10 +88,14 @@ def gen_test_lake(config_path,
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "hw"
+        # tempdir = "hw"
+        if not tile.addressor_info["use_default"]:
+            addr_verilog = tile.addressor_info["name"] + ".v"
+            tile.print_verilog_helper(addr_verilog, "w+", True)
+            shutil.copy(addr_verilog, tempdir)
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 def test_conv_3_3():
@@ -99,7 +107,8 @@ def test_conv_3_3():
 
     gen_test_lake(config_path=config_path,
                   stream_path=stream_path,
-                  lt_dut=lt_dut)
+                  lt_dut=lt_dut,
+                  tile=tile)
 
 
 if __name__ == "__main__":

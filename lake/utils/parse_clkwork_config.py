@@ -118,7 +118,7 @@ def extract_controller(file_path):
     return ctrl_info
 
 
-def map_controller(controller, name):
+def map_controller(controller, name, transform_data=True):
     ctrl_dim = controller.dim
     ctrl_ranges = controller.extent
     ctrl_cyc_strides = controller.cyc_stride
@@ -148,15 +148,24 @@ def map_controller(controller, name):
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
     tform_in_data_strides = None
     if ctrl_in_data_strt is not None:
-        (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
+        if transform_data:
+            (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
+        else:
+            tform_extent, tform_in_data_strides = ctrl_ranges, ctrl_in_data_strides
 
     tform_out_data_strides = None
     if ctrl_out_data_strt is not None:
-        (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
+        if transform_data:
+            (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
+        else:
+            tform_extent, tform_out_data_strides = ctrl_ranges, ctrl_out_data_strides
 
     tform_mux_data_strides = None
     if ctrl_mux_data_strt is not None:
-        (tform_extent, tform_mux_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_mux_data_strides, ctrl_dim)
+        if transform_data:
+            (tform_extent, tform_mux_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_mux_data_strides, ctrl_dim)
+        else:
+            tform_extent, tform_mux_data_strides = ctrl_ranges, ctrl_mux_data_strides
 
     # Basically give a starting margin for everything...
     garnet_delay = 0

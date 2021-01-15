@@ -1,4 +1,5 @@
 from lake.dsl.lake_imports import *
+from frail.ast import *
 
 # example of DSL (makes current mem tile with 2 agg,
 # wide SRAM, 2 tb
