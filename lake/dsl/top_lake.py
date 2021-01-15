@@ -242,7 +242,7 @@ class Lake():
                 self.get_addl_mem_params(merged_mem, write_ports, read_ports, rw_ports)
 
                 # print(merged_mem)
-                self.merged_mems[name] = merged_mem
+                self.merged_mems[merged_mem["name"]] = merged_mem
 
             self.mux_count += 1
 
@@ -297,8 +297,9 @@ class Lake():
                 for param in ("num_read_write_ports", "read_write_info", "read_write_port_width"):
                     del mem_info[param]
 
-            for param in ("macro_name", "is_input", "is_output"):
-                del mem_info[param]
+            for param in ("macro_name", "is_input", "is_output", "input_edge_params", "output_edge_params"):
+                if param in mem_info.keys():
+                    del mem_info[param]
 
         # print(self.compiler_mems)
         # print(self.merged_edges)
