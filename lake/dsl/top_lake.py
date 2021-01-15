@@ -232,7 +232,7 @@ class Lake():
                     self.merged_output_edges.append(i)
 
                 if is_from:
-                    # print("IS FROM ", mem, merged_mem["name"])
+                    # print("IS FROM ", merged_mem["name"], mem)
                     edge_dict = {"to_signal": mem, "from_signal": merged_mem["name"]}
                 else:
                     # print("NOT IS FROM ", mem, merged_mem["name"])
@@ -289,6 +289,7 @@ class Lake():
 
             mem_info = self.compiler_mems[mem]
             mem_info["rw_same_cycle"] = True
+            # put read/write ports into read ports and write ports for compiler
             if mem_info["num_read_write_ports"] > 0:
                 for op in ("read", "write"):
                     mem_info[f"num_{op}_ports"] += mem_info["num_read_write_ports"]
