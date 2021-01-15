@@ -109,19 +109,21 @@ class Lake():
         self.hw_edges = copy.deepcopy(self.edges)
 
         # get all memories connected from and to each memory
-        memories_from = {}
-        memories_to = {}
+        memories_from, memories_to = {}, {}
+        memories_from_edge_info, memories_to_edge_info = {}, {}
         for mem in self.memories.keys():
-            memories_from[mem] = []
-            memories_to[mem] = []
+            memories_from[mem], memories_to[mem] = [], []
+            memories_from_edge_info[mem], memories_to_edge_info[mem] = [], []
             self.merged_mems[mem] = self.memories[mem]
 
         for mem in self.memories.keys():
             for edge in self.edges:
                 if edge["from_signal"] == mem:
                     memories_to[mem].append(edge["to_signal"])
+                    memories_from_edge_info[mem] = edge
                 if edge["to_signal"] == mem:
                     memories_from[mem].append(edge["from_signal"])
+                    memories_to_edge_info[mem] = edge
 
         # print("MEMORIES FROM ", memories_from)
         # print()
@@ -147,8 +149,8 @@ class Lake():
                 self.hardware_edges.append(e)
 
         # merge memories for the compiler view
-        self.merge_mems(memories_from, True)
-        self.merge_mems(memories_to, False)
+        self.merge_mems(memories_from, memories_from_edge_info, True)
+        self.merge_mems(memories_to, memories_to_edge_info, False)
 
     def add_to_hardware_edges(self, is_from, memories_):
         prefix = "from" if is_from else "to"
@@ -163,7 +165,7 @@ class Lake():
                         if x not in self.hardware_edges:
                             self.hardware_edges.append(x)
 
-    def merge_mems(self, mems_to_merge, is_from):
+    def merge_mems(self, mems_to_merge, merge_edge_info, is_from):
         for mem in mems_to_merge.keys():
             # print("MEMORY ", mem, " ", mems_to_merge[mem])
             # number of memories is more than 1, so there are memories to merge
@@ -174,12 +176,9 @@ class Lake():
 
                 # merged memory parameter initialization
                 name = "merged_"
-                write_ports = []
-                read_ports = []
-                rw_ports = []
+                write_ports, read_ports, rw_ports = [], [], []
                 merged_cap = 0
-                inputs = []
-                outputs = []
+                inputs, outputs = [], []
 
                 for m in mems_to_merge[mem]:
                     mem_ = self.memories[m]
@@ -233,11 +232,15 @@ class Lake():
                     self.merged_output_edges.append(i)
 
                 if is_from:
-                    # print("IS FROM ", merged_mem["name"], mem)
-                    self.merged_edges.append({"to_signal": mem, "from_signal": merged_mem["name"]})
+                    # print("IS FROM ", mem, merged_mem["name"])
+                    edge_dict = {"to_signal": mem, "from_signal": merged_mem["name"]}
                 else:
                     # print("NOT IS FROM ", mem, merged_mem["name"])
-                    self.merged_edges.append({"from_signal": mem, "to_signal": merged_mem["name"]})
+                    edge_dict = {"from_signal": mem, "to_signal": merged_mem["name"]}
+
+                for info in ("max_range", "max_stride", "dim"):
+                    edge_dict[info] = merge_edge_info[mem][info]
+                self.merged_edges.append(edge_dict)
 
                 self.get_addl_mem_params(merged_mem, write_ports, read_ports, rw_ports)
 
