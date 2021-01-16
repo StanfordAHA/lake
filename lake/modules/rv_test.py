@@ -52,9 +52,9 @@ def main():
                 ready["tb"] = 1
             else:
                 ready["tb"] = 0
-# write buffer is ready whenever there is space in write buffer
-# valid if data in it
-# valid if write buffer is full
+            # write buffer is ready whenever there is space in write buffer
+            # valid if data in it
+            # valid if write buffer is full
             if valid["tb"] and ready["tb"]:
                 if not valid_tb[0]:
                     valid_tb[0] = True
