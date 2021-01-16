@@ -24,7 +24,6 @@ class FormalAttr(kts.Attribute):
         self.formalsig_cnst = formalsig_cnst
         self.module = module
         self.documentation = doc_string
-        self.annotation = f"{self.port_name}\t{self.formalsig_cnst.name}"
 
     def set_documentation(self, new_doc):
         self.documentation = new_doc
@@ -33,7 +32,9 @@ class FormalAttr(kts.Attribute):
         return self.documentation
 
     def get_annotation(self):
-        return self.annotation
+        # need annotation to be updated if port_name is updated
+        # after creation like during cut_generator pass
+        return f"{self.port_name}\t{self.formalsig_cnst.name}"
 
     def get_module(self):
         return self.module

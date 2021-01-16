@@ -49,13 +49,48 @@ def list_to_int(list_d, width):
 
 
 def get_size_str(port):
-    dim_1 = ""
-    dim_2 = ""
-    if port.size[0] > 1 or port.explicit_array:
-        dim_2 = f"[{port.size[0] - 1}:0] "
+    # format for formal team: no space between the size dims,
+    # but space between the size dims and width dim
+    width_dim = ""
+    size_dims = ""
+    for dim in range(len(port.size)):
+        if port.size[dim] > 1 or port.explicit_array:
+            size_dims += f"[{port.size[dim] - 1}:0]"
     if port.width > 1:
-        dim_1 = f"[{port.width - 1}:0] "
-    return dim_2 + dim_1
+        width_dim = f"[{port.width - 1}:0] "
+    return size_dims + " " + width_dim
+
+
+def modular_formal_annotation(gen, mem_names):
+    filepath = "mod_strg_ub_signals.txt"
+
+    int_gen = gen.internal_generator
+    mems = {}
+    for i in mem_names:
+        mems[i] = []
+
+    for var_name, var in gen.vars:
+
+        in_mem = False
+        for i in mem_names:
+            if i in var_name:
+                in_mem = True
+                curr_port = int_gen.get_port(var_name)
+                if curr_port is not None:
+                    attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
+                    if len(attrs) == 0:
+                        mems[i].append(var_name)
+                else:
+                    mems[i].append(var_name)
+
+        if not in_mem:
+            for i in mem_names:
+                mems[i].append(var_name)
+
+    for i in mem_names:
+        with open(i + filepath, "w+") as fi:
+            for a in mems[i]:
+                fi.write(a + "\n")
 
 
 def extract_formal_annotation(generator, filepath, module_attr="agg"):
@@ -66,9 +101,23 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
     # mapping for which config regs the dimensionality config regs constrain
     pairings = {}
 
+    # get list of agg/sram shared and sram/tb shared config regs for
+    # formal config reg propagation for the sram formal subproblem
+    agg_sram_shared, sram_tb_shared = [], []
+
     with open(filepath, "w+") as fi:
         # Now get the config registers from the top definition
         for port_name in port_names:
+
+            # get list of agg/sram shared and sram/tb shared config regs for
+            # formal config reg propagation for the sram formal subproblem
+            if module_attr == "sram":
+                if "agg_sram_shared" in port_name:
+                    agg_sram_shared.append(port_name)
+                if "sram_tb_shared" in port_name:
+                    sram_tb_shared.append(port_name)
+
+            print(port_name)
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
 
@@ -122,9 +171,15 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
 
         for key in pairings.keys():
             pairing = pairings[key]
+            index = pairing["index"]
             if pairing["keyword"] in port_name and pairing["index"] in port_name:
                 pairing["maps"].append(port_name)
                 break
+            if module_attr == "sram" and "sram_only" in port_name:
+                if f"input_addr_gen{index}" in port_name and f"autovec_write{index}" in key:
+                    pairing["maps"].append(port_name)
+                elif f"output_addr_gen{index}" in port_name and f"autovec_read{index}" in key:
+                    pairing["maps"].append(port_name)
 
     # print just the mappings
     with open(f"mapping_{filepath}", "w+") as fi:
@@ -151,8 +206,63 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
 
         for key in pairings.keys():
             pairings[key] = pairings[key]["maps"]
+            for p in pairings[key]:
+                if "enable" in p:
+                    pairings[key].remove(p)
 
         print(pairings, file=fi)
+
+    # print list of agg/sram shared and sram/tb shared config regs for
+    # formal config reg propagation for the sram formal subproblem
+    if module_attr == "sram":
+        print(agg_sram_shared, file=open("agg_sram_shared.txt", "w+"))
+        print(sram_tb_shared, file=open("sram_tb_shared.txt", "w+"))
+
+
+def extract_formal_annotation_collat(generator, filepath, mem_names, edges):
+    # Get the port list and emit the annotation for each...
+    int_gen = generator.internal_generator
+
+    mems = {}
+    for i in mem_names:
+        mems[i] = []
+
+    with open(filepath, "w+") as fi:
+        # Now get the config registers from the top definition
+        for port_name in int_gen.get_port_names():
+            curr_port = int_gen.get_port(port_name)
+            attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
+            pdir = "input"
+            if str(curr_port.port_direction) == "PortDirection.Out":
+                pdir = "output"
+            # If there are 0 or more than one attributes, let's just use the default X attribute
+            if len(attrs) != 1:
+                if pdir is "input":
+                    form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
+                else:
+                    form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
+
+            else:
+                form_attr = attrs[0]
+            size_str = get_size_str(curr_port)
+
+            out_string = f"{pdir} logic {size_str}" + form_attr.get_annotation() + "\n"
+            fi.write(out_string)
+
+            in_mem = False
+            for i in mem_names:
+                if i in form_attr.get_annotation():
+                    in_mem = True
+                    mems[i].append(out_string)
+
+            if not in_mem:
+                for i in mem_names:
+                    mems[i].append(out_string)
+
+    for i in mem_names:
+        with open(i + filepath, "w+") as fi:
+            for a in mems[i]:
+                fi.write(a)
 
 
 def get_configs_dict(configs):
@@ -313,7 +423,8 @@ def safe_wire(gen, w_to, w_from):
     '''
     # Only works in one dimension...
     if w_to.width != w_from.width:
-        print(f"SAFEWIRE: WIDTH MISMATCH: {w_to.name} width {w_to.width} <-> {w_from.name} width {w_from.width}")
+        if lake_util_verbose_trim:
+            print(f"SAFEWIRE: WIDTH MISMATCH: {w_to.name} width {w_to.width} <-> {w_from.name} width {w_from.width}")
         # w1 contains smaller width...
         if w_to.width < w_from.width:
             gen.wire(w_to, w_from[w_to.width - 1, 0])
@@ -376,7 +487,7 @@ def add_config_reg(generator, name, description, bitwidth, **kwargs):
 
 
 # Function for generating Pond API
-def generate_pond_api(ctrl_rd, ctrl_wr):
+def generate_pond_api(ctrl_rd, ctrl_wr, dsl=False):
     (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
     (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
 
@@ -385,29 +496,57 @@ def generate_pond_api(ctrl_rd, ctrl_wr):
 
     new_config = {}
 
-    new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
-    new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
-    new_config["rf_read_addr_0_strides_0"] = tform_strides_rd[0]
-    new_config["rf_read_addr_0_strides_1"] = tform_strides_rd[1]
-    new_config["rf_read_iter_0_ranges_0"] = tform_ranges_rd[0]
-    new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
+    if not dsl:
+        new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
+        new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
+        new_config["rf_read_addr_0_strides_0"] = tform_strides_rd[0]
+        new_config["rf_read_addr_0_strides_1"] = tform_strides_rd[1]
+        new_config["rf_read_iter_0_ranges_0"] = tform_ranges_rd[0]
+        new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
 
-    new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
-    new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
-    new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
-    new_config["rf_read_sched_0_enable"] = 1
+        new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
+        new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
+        new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
+        new_config["rf_read_sched_0_enable"] = 1
 
-    new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
-    new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
-    new_config["rf_write_addr_0_strides_0"] = tform_strides_wr[0]
-    new_config["rf_write_addr_0_strides_1"] = tform_strides_wr[1]
-    new_config["rf_write_iter_0_ranges_0"] = tform_ranges_wr[0]
-    new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
+        new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
+        new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
+        new_config["rf_write_addr_0_strides_0"] = tform_strides_wr[0]
+        new_config["rf_write_addr_0_strides_1"] = tform_strides_wr[1]
+        new_config["rf_write_iter_0_ranges_0"] = tform_ranges_wr[0]
+        new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
 
-    new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
-    new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
-    new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
-    new_config["rf_write_sched_0_enable"] = 1
+        new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
+        new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
+        new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
+        new_config["rf_write_sched_0_enable"] = 1
+
+    else:
+        new_config["input_port0_2pond_forloop_dimensionality"] = ctrl_wr[2]
+        new_config["input_port0_2pond_forloop_ranges_0"] = tform_ranges_wr[0]
+        new_config["input_port0_2pond_forloop_ranges_1"] = tform_ranges_wr[1]
+        new_config["input_port0_2pond_write_addr_gen_starting_addr"] = ctrl_wr[3]
+        new_config["input_port0_2pond_write_addr_gen_strides_0"] = tform_strides_wr[0]
+        new_config["input_port0_2pond_write_addr_gen_strides_1"] = tform_strides_wr[1]
+        new_config["input_port0_2pond_write_sched_gen_enable"] = 1
+        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_starting_addr"] = ctrl_wr[4]
+        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
+        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
+
+        new_config["pond2output_port0_forloop_dimensionality"] = ctrl_rd[2]
+        new_config["pond2output_port0_forloop_ranges_0"] = tform_ranges_rd[0]
+        new_config["pond2output_port0_forloop_ranges_1"] = tform_ranges_rd[1]
+        new_config["pond2output_port0_read_addr_gen_starting_addr"] = ctrl_rd[3]
+        new_config["pond2output_port0_read_addr_gen_strides_0"] = tform_strides_rd[0]
+        new_config["pond2output_port0_read_addr_gen_strides_1"] = tform_strides_rd[1]
+        new_config["pond2output_port0_read_sched_gen_enable"] = 1
+        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_starting_addr"] = ctrl_rd[4]
+        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
+        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
+
+        # general configs
+        new_config["tile_en"] = 1
+        new_config["clk_en"] = 1
 
     return new_config
 
