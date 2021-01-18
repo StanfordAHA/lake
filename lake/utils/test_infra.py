@@ -80,17 +80,17 @@ def gen_test_lake(config_path,
     tester.circuit.strg_ub_agg_sram_shared_agg_read_sched_gen_0_range_product = 16*64
     tester.circuit.strg_ub_agg_sram_shared_agg_read_sched_gen_0_starting_addr = 4
     
-    for i in range(100):#len(out_data[0])):
+    for i in range(len(out_data[0])):
         for j in range(len(in_data)):
             if i < len(in_data[j]):
                 setattr(tester.circuit, f"data_in_{j}", in_data[j][i])
 
         tester.eval()
 
-        """ for j in range(len(out_data)):
+        for j in range(len(out_data)):
             if i < len(out_data[j]):
                 if len(valids) != 0 and valids[i] == 1:
-                    getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i]) """
+                    getattr(tester.circuit, f"data_out_{j}").expect(out_data[j][i])
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:

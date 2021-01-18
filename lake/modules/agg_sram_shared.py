@@ -77,12 +77,10 @@ class StrgUBAggSRAMShared(Generator):
                                           packed=True)
 
         # The SRAM write is just the OR reduction of the aggregator reads
-        self._agg_read_out = self.output("agg_read_out", self.interconnect_input_ports)
-        self._agg_read = self.var("agg_read", self.interconnect_input_ports)
+        # self._agg_read_out = self.output("agg_read_out", self.interconnect_input_ports)
+        self._agg_read = self.input("agg_read", self.interconnect_input_ports)
 
-        self.wire(self._agg_read_out, self._agg_read)
-
-        self.sram_ready = self.var("sram_ready", self.interconnect_input_ports)
+        # self.wire(self._agg_read_out, self._agg_read)
         ##################################################################################
         # AGG PATHS
         ##################################################################################
@@ -105,7 +103,7 @@ class StrgUBAggSRAMShared(Generator):
             safe_wire(gen=self, w_to=self._floop_mux_sel[i], w_from=fl_ctr_sram_wr.ports.mux_sel_out)
             self.wire(self._floop_restart[i], fl_ctr_sram_wr.ports.restart)
 
-            self.add_child(f"agg_read_sched_gen_{i}",
+            """ self.add_child(f"agg_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.default_iterator_support,
                                     # config_width=self.mem_addr_width),
                                     config_width=16),
@@ -114,7 +112,7 @@ class StrgUBAggSRAMShared(Generator):
                            cycle_count=self._cycle_count,
                            mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
                            finished=fl_ctr_sram_wr.ports.restart,
-                           valid_output=self._agg_read[i])
+                           valid_output=self._agg_read[i]) """
 
             """ self.add_child(f"agg_read_sched_gen_{i}",
                             SchedGenRV(512, 6, 16, True, 4, 4),

@@ -217,7 +217,7 @@ class StrgUBVec(Generator):
                        accessor_output=self._valid_out,
                        data_out=self._data_out)
 
-        self.wire(agg_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
+        # self.wire(agg_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
         self.wire(agg_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(agg_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
 
@@ -225,7 +225,7 @@ class StrgUBVec(Generator):
         self.wire(sram_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
         self.wire(sram_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(sram_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
-        self.wire(sram_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
+        # self.wire(sram_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
         self.wire(sram_only.ports.t_read, sram_tb_shared.ports.t_read_out)
         self.wire(sram_only.ports.agg_data_out, agg_only.ports.agg_data_out)
 
@@ -268,6 +268,16 @@ class StrgUBVec(Generator):
 
         self.wire(agg_only.ports.agg_write[0], agg_sg.ports.write_out)
         self.wire(agg_only.ports.agg_write[1], 0)
+
+        self.agg_read = self.var("agg_read", 1)
+        self.wire(self.agg_read, agg_sg.ports.valid_out & sram_sg.ports.ready)
+        self.wire(agg_only.ports.agg_read[0], self.agg_read)
+        self.wire(agg_only.ports.agg_read[1], 0)
+        self.wire(agg_sram_shared.ports.agg_read[0], self.agg_read)
+        self.wire(agg_sram_shared.ports.agg_read[1], 0)
+
+        self.wire(sram_only.ports.agg_read[0], self.agg_read)
+        self.wire(sram_only.ports.agg_read[1], 0)
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,
