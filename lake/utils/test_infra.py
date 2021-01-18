@@ -80,7 +80,7 @@ def gen_test_lake(config_path,
     tester.circuit.strg_ub_agg_sram_shared_agg_read_sched_gen_0_range_product = 16*64
     tester.circuit.strg_ub_agg_sram_shared_agg_read_sched_gen_0_starting_addr = 4
     
-    for i in range(len(out_data[0])):
+    for i in range(100):#len(out_data[0])):
         for j in range(len(in_data)):
             if i < len(in_data[j]):
                 setattr(tester.circuit, f"data_in_{j}", in_data[j][i])

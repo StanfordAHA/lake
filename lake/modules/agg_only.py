@@ -154,17 +154,7 @@ class StrgUBAggOnly(Generator):
                            restart=forloop_ctr.ports.restart)
             safe_wire(gen=self, w_to=self._agg_write_addr[i], w_from=newAG.ports.addr_out)
 
-            newSG = SchedGenRV(4, 6, 16, True, 4, 1)
-
-            self.add_child(f"agg_write_sched_gen_{i}",
-                newSG,
-                clk=self._clk,
-                rst_n=self._rst_n,
-                cycle_counter=self._cycle_count,
-                valid_in=self._agg_ready[i],
-                ready=self._agg_ready[i],
-                valid_out=self._agg_write[i])
-            """ newSG = SchedGen(iterator_support=self.agg_iter_support,
+            newSG = SchedGen(iterator_support=self.agg_iter_support,
                              # config_width=self.agg_addr_width)
                              config_width=16)
 
@@ -175,7 +165,7 @@ class StrgUBAggOnly(Generator):
                            mux_sel=forloop_ctr.ports.mux_sel_out,
                            finished=forloop_ctr.ports.restart,
                            cycle_count=self._cycle_count,
-                           valid_output=self._agg_write[i]) """
+                           valid_output=self._agg_write[i])
 
             @always_ff((posedge, "clk"))
             def agg_ctrl():

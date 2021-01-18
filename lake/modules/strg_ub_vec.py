@@ -9,6 +9,7 @@ from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.modules.rv_schedgen import SchedGenRV
 from lake.modules.agg_only import StrgUBAggOnly
 from lake.modules.agg_sram_shared import StrgUBAggSRAMShared
 from lake.modules.sram_only import StrgUBSRAMOnly
@@ -233,6 +234,15 @@ class StrgUBVec(Generator):
         self.wire(tb_only.ports.t_read, sram_tb_shared.ports.t_read_out)
         self.wire(tb_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(tb_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
+
+        agg_sg = SchedGenRV(4, 6, 16, 4, 1)
+
+        self.add_child("agg_sg", agg_sg,
+            clk=self._clk,
+            rst_n=self._rst_n,
+            valid_in=1,
+            )
+        self.wire(agg_sg.ports.did_read, agg_sg.ports.valid_out)
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,
