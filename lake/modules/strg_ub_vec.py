@@ -235,14 +235,22 @@ class StrgUBVec(Generator):
         self.wire(tb_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(tb_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
 
-        agg_sg = SchedGenRV(4, 6, 16, 4, 1)
+        agg_sg = SchedGenRV(4, 6, 16, 1, 4, 4, 1)
+        sram_sg = SchedGenRV(512, 6, 16, 4, 4, 4, 4)
 
         self.add_child("agg_sg", agg_sg,
             clk=self._clk,
             rst_n=self._rst_n,
             valid_in=1,
             )
-        self.wire(agg_sg.ports.did_read, agg_sg.ports.valid_out)
+        self.wire(agg_sg.ports.did_read, agg_sg.ports.valid_out & sram_sg.ports.ready)
+
+        self.add_child("sram_sg", sram_sg,
+            clk=self._clk,
+            rst_n=self._rst_n,
+            )
+        self.wire(sram_sg.ports.valid_in, agg_sg.ports.valid_out)
+        self.wire(sram_sg.ports.did_read, sram_sg.ports.valid_out)
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,
