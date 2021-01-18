@@ -9,6 +9,7 @@ class SchedGen(Generator):
     '''
     Generate schedule
     '''
+
     def __init__(self,
                  iterator_support=6,
                  config_width=16):
@@ -32,18 +33,18 @@ class SchedGen(Generator):
 
         # config reg
         self.steady_state = self.input("steady_state",
-                width = self.config_width)
+                                       width=self.config_width)
 
         # use this config reg as update chunk size?
         # write addressor extent
         # self.write_ad_extent0 = self.input("write_ad_extent0",
         #         width=self.config_width)
         self.update_chunk_size = self.input("update_chunk_size",
-                width = self.config_width)
+                                            width=self.config_width)
         self.valid_in_count = self.var("valid_in_count",
-                width=self.config_width)
+                                       width=self.config_width)
         self.at_chunk_size = self.var("at_chunk_size", 1)
-        
+
         self.wire(self.valid_out, self.at_chunk_size)
 
         self.add_code(self.set_valid_in_count)
@@ -61,8 +62,6 @@ class SchedGen(Generator):
             self.valid_in_count = 0
         elif self.valid_in == 1:
             self.valid_in_count = self.valid_in_count + 1
-
-
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.modules.rv_schedgen import SchedGenRV
 from lake.utils.util import safe_wire, add_counter, decode
 import kratos as kts
 
@@ -104,6 +105,9 @@ class StrgUBAggOnly(Generator):
                              explicit_array=True)
 
         self._agg_write = self.var("agg_write", self.interconnect_input_ports)
+        self.agg_write_out = self.output("agg_write_out", self.interconnect_input_ports)
+        self.wire(self.agg_write_out, self._agg_write)
+        self._agg_ready = self.var("agg_ready", self.interconnect_input_ports)
         # Make this based on the size
         self._agg_write_addr = self.var("agg_write_addr", 2 + clog2(self.agg_height),
                                         size=self.interconnect_input_ports,
@@ -150,7 +154,17 @@ class StrgUBAggOnly(Generator):
                            restart=forloop_ctr.ports.restart)
             safe_wire(gen=self, w_to=self._agg_write_addr[i], w_from=newAG.ports.addr_out)
 
-            newSG = SchedGen(iterator_support=self.agg_iter_support,
+            newSG = SchedGenRV(4, 6, 16, True, 4, 1)
+
+            self.add_child(f"agg_write_sched_gen_{i}",
+                newSG,
+                clk=self._clk,
+                rst_n=self._rst_n,
+                cycle_counter=self._cycle_count,
+                valid_in=self._agg_ready[i],
+                ready=self._agg_ready[i],
+                valid_out=self._agg_write[i])
+            """ newSG = SchedGen(iterator_support=self.agg_iter_support,
                              # config_width=self.agg_addr_width)
                              config_width=16)
 
@@ -161,7 +175,7 @@ class StrgUBAggOnly(Generator):
                            mux_sel=forloop_ctr.ports.mux_sel_out,
                            finished=forloop_ctr.ports.restart,
                            cycle_count=self._cycle_count,
-                           valid_output=self._agg_write[i])
+                           valid_output=self._agg_write[i]) """
 
             @always_ff((posedge, "clk"))
             def agg_ctrl():

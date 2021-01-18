@@ -8,6 +8,7 @@ from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.modules.rv_schedgen import SchedGenRV
 from lake.utils.util import safe_wire, add_counter, decode
 import kratos as kts
 
@@ -81,6 +82,9 @@ class StrgUBAggSRAMShared(Generator):
 
         self.wire(self._agg_read_out, self._agg_read)
 
+
+        self.agg_write = self.input("agg_write", self.interconnect_input_ports)
+        self.sram_ready = self.var("sram_ready", self.interconnect_input_ports)
         ##################################################################################
         # AGG PATHS
         ##################################################################################
@@ -103,7 +107,6 @@ class StrgUBAggSRAMShared(Generator):
             safe_wire(gen=self, w_to=self._floop_mux_sel[i], w_from=fl_ctr_sram_wr.ports.mux_sel_out)
             self.wire(self._floop_restart[i], fl_ctr_sram_wr.ports.restart)
 
-            # scheduler modules
             self.add_child(f"agg_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.default_iterator_support,
                                     # config_width=self.mem_addr_width),
@@ -114,6 +117,15 @@ class StrgUBAggSRAMShared(Generator):
                            mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
                            finished=fl_ctr_sram_wr.ports.restart,
                            valid_output=self._agg_read[i])
+
+            """ self.add_child(f"agg_read_sched_gen_{i}",
+                            SchedGenRV(512, 6, 16, True, 4, 4),
+                            clk=self._clk,
+                            rst_n=self._rst_n,
+                            cycle_counter=self._cycle_count,
+                            valid_in=self.agg_write[i] & self.sram_ready[i],
+                            ready=self.sram_ready[i],
+                            valid_out=self._agg_read[i]) """
 
 
 if __name__ == "__main__":

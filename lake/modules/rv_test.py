@@ -3,7 +3,7 @@ def main():
     ready = {"agg": 1, "sram": 1, "tb": 0}
 
     # parameters from compiler team
-    cycles = 50 
+    cycles = 50
     steady_state = 16
 
     # hardware parameters
@@ -35,7 +35,7 @@ def main():
 
     valid_tb_cnt = 0
     min_tb_update_size = 1
-    max_tb_update_size = 2*8
+    max_tb_update_size = 2 * 8
     # simplify?
     # keep track of valid data in tb
     valid_tb = [False, False]
@@ -78,7 +78,7 @@ def main():
                     valid_tb_cycles[tb_index] = 0
                     valid_tb[tb_index] = False
                     tb_index = 1 - tb_index
-        
+
         if valid_tb_cnt == max_tb_update_size:
             valid_tb_cnt = 0
         if valid["tb"] == 1:
@@ -92,8 +92,8 @@ def main():
             ready["tb"] = 0
 
         if i > steady_state and \
-            valid_tb_cnt >= min_tb_update_size and valid_tb_cnt <= max_tb_update_size:
-                valid["valid_out"] = 1
+                valid_tb_cnt >= min_tb_update_size and valid_tb_cnt <= max_tb_update_size:
+            valid["valid_out"] = 1
         else:
             valid["valid_out"] = 0
 
@@ -102,7 +102,7 @@ def main():
             valid_sram_cnt = 0
         if valid["sram"] == 1:
             valid_sram_cnt += 1
-        
+
         if valid_sram_cnt <= sram_capacity:
             ready["sram"] = 1
         else:
@@ -138,7 +138,7 @@ def main():
         print("VALID: ", valid)
         print("READY: ", ready)
         print("WRITE: ", [valid[key] & ready[key] for key in ready])
-        
+
 
 if __name__ == "__main__":
     main()

@@ -220,6 +220,8 @@ class StrgUBVec(Generator):
         self.wire(agg_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(agg_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
 
+        self.wire(agg_sram_shared.ports.agg_write, agg_only.ports.agg_write_out)
+
         self.wire(sram_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(sram_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
         self.wire(sram_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
