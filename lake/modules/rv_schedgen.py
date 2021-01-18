@@ -49,7 +49,7 @@ class SchedGenRV(Generator):
         self.read_count = self.var("read_count", clog2(self.capacity)+1)
 
         self.add_code(self.set_valid_in_count)
-        self.add_code(self.set_read_count)
+        # self.add_code(self.set_read_count)
         self.add_code(self.set_ready)
         self.add_code(self.set_valid_out)
 
@@ -63,19 +63,19 @@ class SchedGenRV(Generator):
             elif self.write:
                 self.valid_in_count = self.valid_in_count + self.write_width
             elif self.did_read:
-                self.valid_in_count = self.valid_in_count - (self.read_width)
+                self.valid_in_count = self.valid_in_count - self.read_width
     
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    """ @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_read_count(self):
         if ~self.rst_n:
             self.read_count = 0
         elif self.read_count == self.read_width:
             if self.write:
-                self.read_count = 1
+                self.read_count = self.write_width
             else:
                 self.read_count = 0
         elif self.write:
-            self.read_count = self.read_count + 1
+            self.read_count = self.read_count + self.write_width """
 
     @always_comb
     def set_ready(self):
@@ -86,7 +86,12 @@ class SchedGenRV(Generator):
 
     @always_comb
     def set_valid_out(self):
-        if (self.data_out_width == self.read_width):
+        if self.valid_in_count >= self.read_width:
+            self.valid_out = 1
+        else:
+            self.valid_out = 0
+
+        """ if (self.data_out_width == self.read_width):
             if self.valid_in_count >= self.read_width:
                 self.valid_out = 1
             else:
@@ -94,7 +99,7 @@ class SchedGenRV(Generator):
         elif self.read_count == self.read_width:
             self.valid_out = 1
         else:
-            self.valid_out = 0
+            self.valid_out = 0 """
 
 
 if __name__ == "__main__":
