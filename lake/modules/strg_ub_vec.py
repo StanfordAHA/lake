@@ -221,8 +221,6 @@ class StrgUBVec(Generator):
         self.wire(agg_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(agg_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
 
-        self.wire(agg_sram_shared.ports.agg_write, agg_only.ports.agg_write_out)
-
         self.wire(sram_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
         self.wire(sram_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
         self.wire(sram_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
@@ -267,6 +265,9 @@ class StrgUBVec(Generator):
             )
         self.wire(tb1_sg.ports.valid_in, sram_sg.ports.valid_out)
         self.wire(tb1_sg.ports.did_read, tb1_sg.ports.valid_out)
+
+        self.wire(agg_only.ports.agg_write[0], agg_sg.ports.write_out)
+        self.wire(agg_only.ports.agg_write[1], 0)
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,

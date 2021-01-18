@@ -39,6 +39,10 @@ class SchedGenRV(Generator):
         self.did_read = self.input("did_read", 1)
         self.valid_out = self.output("valid_out", 1)
         self.ready = self.output("ready", 1)
+        self.write = self.var("write", 1)
+        self.write_out = self.output("write_out", 1)
+        self.wire(self.write, self.valid_in & self.ready)
+        self.wire(self.write_out, self.write)
 
         self.valid_in_count = self.var("valid_count", 16)
         self.write_count = self.var("write_count", clog2(self.capacity)+1)
@@ -54,9 +58,9 @@ class SchedGenRV(Generator):
         if ~self.rst_n:
             self.valid_in_count = 0
         else:
-            if self.valid_in & self.ready & self.did_read:
+            if self.write & self.did_read:
                 self.valid_in_count = self.valid_in_count + self.write_width - self.read_width
-            elif self.valid_in & self.ready:
+            elif self.write:
                 self.valid_in_count = self.valid_in_count + self.write_width
             elif self.did_read:
                 self.valid_in_count = self.valid_in_count - (self.read_width)
@@ -66,11 +70,11 @@ class SchedGenRV(Generator):
         if ~self.rst_n:
             self.read_count = 0
         elif self.read_count == self.read_width:
-            if self.valid_in & self.ready:
+            if self.write:
                 self.read_count = 1
             else:
                 self.read_count = 0
-        elif self.valid_in & self.ready:
+        elif self.write:
             self.read_count = self.read_count + 1
 
     @always_comb

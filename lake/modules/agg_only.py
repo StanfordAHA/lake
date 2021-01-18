@@ -104,9 +104,8 @@ class StrgUBAggOnly(Generator):
                              packed=True,
                              explicit_array=True)
 
-        self._agg_write = self.var("agg_write", self.interconnect_input_ports)
-        self.agg_write_out = self.output("agg_write_out", self.interconnect_input_ports)
-        self.wire(self.agg_write_out, self._agg_write)
+        self._agg_write = self.input("agg_write", self.interconnect_input_ports)
+
         self._agg_ready = self.var("agg_ready", self.interconnect_input_ports)
         # Make this based on the size
         self._agg_write_addr = self.var("agg_write_addr", 2 + clog2(self.agg_height),
@@ -154,7 +153,7 @@ class StrgUBAggOnly(Generator):
                            restart=forloop_ctr.ports.restart)
             safe_wire(gen=self, w_to=self._agg_write_addr[i], w_from=newAG.ports.addr_out)
 
-            newSG = SchedGen(iterator_support=self.agg_iter_support,
+            """ newSG = SchedGen(iterator_support=self.agg_iter_support,
                              # config_width=self.agg_addr_width)
                              config_width=16)
 
@@ -165,7 +164,7 @@ class StrgUBAggOnly(Generator):
                            mux_sel=forloop_ctr.ports.mux_sel_out,
                            finished=forloop_ctr.ports.restart,
                            cycle_count=self._cycle_count,
-                           valid_output=self._agg_write[i])
+                           valid_output=self._agg_write_[i]) """
 
             @always_ff((posedge, "clk"))
             def agg_ctrl():

@@ -82,8 +82,6 @@ class StrgUBAggSRAMShared(Generator):
 
         self.wire(self._agg_read_out, self._agg_read)
 
-
-        self.agg_write = self.input("agg_write", self.interconnect_input_ports)
         self.sram_ready = self.var("sram_ready", self.interconnect_input_ports)
         ##################################################################################
         # AGG PATHS
