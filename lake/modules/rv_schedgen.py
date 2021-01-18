@@ -77,7 +77,7 @@ class SchedGenRV(Generator):
 
     @always_comb
     def set_valid_out(self):
-        if (self.data_in_width == self.read_width):
+        if (self.data_out_width == self.read_width):
             if self.valid_in_count >= self.read_width:
                 self.valid_out = 1
             else:
