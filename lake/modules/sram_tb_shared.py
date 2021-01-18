@@ -75,9 +75,9 @@ class StrgUBSRAMTBShared(Generator):
                                                   explicit_array=True,
                                                   packed=True)
 
-        self._t_read_out = self.output("t_read_out", self.interconnect_output_ports)
-        self._t_read = self.var("t_read", self.interconnect_output_ports)
-        self.wire(self._t_read_out, self._t_read)
+        # self._t_read_out = self.output("t_read_out", self.interconnect_output_ports)
+        self._t_read = self.input("t_read", self.interconnect_output_ports)
+        # self.wire(self._t_read_out, self._t_read)
 
         ##################################################################################
         # TB PATHS
@@ -97,7 +97,7 @@ class StrgUBSRAMTBShared(Generator):
             safe_wire(gen=self, w_to=self._loops_sram2tb_mux_sel[i], w_from=loops_sram2tb.ports.mux_sel_out)
             self.wire(self._loops_sram2tb_restart[i], loops_sram2tb.ports.restart)
 
-            # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
+            """ # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
             self.add_child(f"output_sched_gen_{i}",
                            SchedGen(iterator_support=self.default_iterator_support,
                                     # config_width=self.default_config_width),
@@ -107,7 +107,7 @@ class StrgUBSRAMTBShared(Generator):
                            cycle_count=self._cycle_count,
                            mux_sel=loops_sram2tb.ports.mux_sel_out,
                            finished=loops_sram2tb.ports.restart,
-                           valid_output=self._t_read[i])
+                           valid_output=self._t_read[i]) """
 
 
 if __name__ == "__main__":

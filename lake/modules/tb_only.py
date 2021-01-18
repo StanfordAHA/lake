@@ -114,7 +114,7 @@ class StrgUBTBOnly(Generator):
         # write enable to tb, delayed 1 cycle from SRAM reads
         self._t_read_d1 = self.var("t_read_d1", self.interconnect_output_ports)
         # read enable for reads from tb
-        self._tb_read = self.var("tb_read", self.interconnect_output_ports)
+        self._tb_read = self.input("tb_read", self.interconnect_output_ports)
 
         # Break out valids...
         self.wire(self._valid_out, self._tb_read)
@@ -198,7 +198,7 @@ class StrgUBTBOnly(Generator):
                            restart=fl_ctr_tb_rd.ports.restart)
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
 
-            self.add_child(f"tb_read_sched_gen_{i}",
+            """ self.add_child(f"tb_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.tb_iter_support,
                                     # config_width=self.tb_addr_width),
                                     config_width=16),
@@ -207,7 +207,7 @@ class StrgUBTBOnly(Generator):
                            cycle_count=self._cycle_count,
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
                            finished=fl_ctr_tb_rd.ports.restart,
-                           valid_output=self._tb_read[i])
+                           valid_output=self._tb_read[i]) """
 
             @always_comb
             def tb_to_out():

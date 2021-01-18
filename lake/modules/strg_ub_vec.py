@@ -226,10 +226,10 @@ class StrgUBVec(Generator):
         self.wire(sram_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(sram_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
         # self.wire(sram_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
-        self.wire(sram_only.ports.t_read, sram_tb_shared.ports.t_read_out)
+        # self.wire(sram_only.ports.t_read, sram_tb_shared.ports.t_read_out)
         self.wire(sram_only.ports.agg_data_out, agg_only.ports.agg_data_out)
 
-        self.wire(tb_only.ports.t_read, sram_tb_shared.ports.t_read_out)
+        # self.wire(tb_only.ports.t_read, sram_tb_shared.ports.t_read_out)
         self.wire(tb_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(tb_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
 
@@ -250,7 +250,9 @@ class StrgUBVec(Generator):
             rst_n=self._rst_n,
             )
         self.wire(sram_sg.ports.valid_in, agg_sg.ports.valid_out)
-        self.wire(sram_sg.ports.did_read, sram_sg.ports.valid_out & tb_sg.ports.ready)
+        self.sram_did_read = self.var("sram_did_read", 1)
+        self.wire(self.sram_did_read, sram_sg.ports.valid_out & ~sram_sg.ports.write_out & (tb_sg.ports.ready | tb1_sg.ports.ready))
+        self.wire(sram_sg.ports.did_read, self.sram_did_read)
 
         self.add_child("tb_sg", tb_sg,
             clk=self._clk,
@@ -278,6 +280,41 @@ class StrgUBVec(Generator):
 
         self.wire(sram_only.ports.agg_read[0], self.agg_read)
         self.wire(sram_only.ports.agg_read[1], 0)
+
+        self.sram_read = self.var("sram_read", self.interconnect_output_ports)
+        # wait for when write and read requested at the same time
+        self.wire(self.sram_read[0], sram_sg.ports.valid_out & tb_sg.ports.ready & ~sram_sg.ports.write_out)
+        self.wire(self.sram_read[1], sram_sg.ports.valid_out & tb1_sg.ports.ready & ~sram_sg.ports.write_out)
+        
+        # wait for when number of destinations > source, round robin
+        self.sram_read_old = self.var("sram_read_old", self.interconnect_output_ports)
+        self.sram_read_inter = self.var("sram_read_inter", self.interconnect_output_ports)
+        @always_ff((posedge, "clk"))
+        def get_sram_read_old():
+            self.sram_read_old = self.sram_read
+
+        self.add_code(get_sram_read_old)
+
+        @always_comb
+        def get_t_read():
+            if self.sram_read == 3:
+                self.sram_read_inter = 1
+            elif self.sram_read_old == 3:
+                self.sram_read_inter = 2
+            else:
+                self.sram_read_inter = 0
+        
+        self.add_code(get_t_read)
+
+        self.wire(sram_tb_shared.ports.t_read, self.sram_read_inter)
+        self.wire(sram_only.ports.t_read, self.sram_read_inter)
+        self.wire(tb_only.ports.t_read, self.sram_read_inter)
+
+        self.wire(tb_only.ports.tb_read[0], tb_sg.ports.valid_out)
+        self.wire(tb_only.ports.tb_read[1], tb1_sg.ports.valid_out)
+
+        
+        
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,
