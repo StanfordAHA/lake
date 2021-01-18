@@ -54,17 +54,22 @@ class SchedGenRV(Generator):
         if ~self.rst_n:
             self.valid_in_count = 0
         else:
-            if self.valid_in & self.ready:
+            if self.valid_in & self.ready & self.did_read:
+                self.valid_in_count = self.valid_in_count + self.write_width - self.read_width
+            elif self.valid_in & self.ready:
                 self.valid_in_count = self.valid_in_count + self.write_width
-            if self.did_read:
-                self.valid_in_count = self.valid_in_count - (self.read_width - 1)
+            elif self.did_read:
+                self.valid_in_count = self.valid_in_count - (self.read_width)
     
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_read_count(self):
         if ~self.rst_n:
             self.read_count = 0
-        elif self.read_count == self.read_width - 1:
-            self.read_count = 0
+        elif self.read_count == self.read_width:
+            if self.valid_in & self.ready:
+                self.read_count = 1
+            else:
+                self.read_count = 0
         elif self.valid_in & self.ready:
             self.read_count = self.read_count + 1
 
@@ -82,7 +87,7 @@ class SchedGenRV(Generator):
                 self.valid_out = 1
             else:
                 self.valid_out = 0
-        elif self.read_count == self.read_width - 1:
+        elif self.read_count == self.read_width:
             self.valid_out = 1
         else:
             self.valid_out = 0

@@ -238,6 +238,7 @@ class StrgUBVec(Generator):
         agg_sg = SchedGenRV(8, 6, 16, 1, 4, 4, 1)
         sram_sg = SchedGenRV(512, 6, 16, 4, 4, 4, 4)
         tb_sg = SchedGenRV(8, 6, 16, 4, 1, 1, 4)
+        tb1_sg = SchedGenRV(8, 6, 16, 4, 1, 1, 4)
 
         self.add_child("agg_sg", agg_sg,
             clk=self._clk,
@@ -251,7 +252,7 @@ class StrgUBVec(Generator):
             rst_n=self._rst_n,
             )
         self.wire(sram_sg.ports.valid_in, agg_sg.ports.valid_out)
-        self.wire(sram_sg.ports.did_read, sram_sg.ports.valid_out)
+        self.wire(sram_sg.ports.did_read, sram_sg.ports.valid_out & tb_sg.ports.ready)
 
         self.add_child("tb_sg", tb_sg,
             clk=self._clk,
@@ -259,6 +260,13 @@ class StrgUBVec(Generator):
             )
         self.wire(tb_sg.ports.valid_in, sram_sg.ports.valid_out)
         self.wire(tb_sg.ports.did_read, tb_sg.ports.valid_out)
+
+        self.add_child("tb1_sg", tb1_sg,
+            clk=self._clk,
+            rst_n=self._rst_n,
+            )
+        self.wire(tb1_sg.ports.valid_in, sram_sg.ports.valid_out)
+        self.wire(tb1_sg.ports.did_read, tb1_sg.ports.valid_out)
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,
