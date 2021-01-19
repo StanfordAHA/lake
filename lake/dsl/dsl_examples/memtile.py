@@ -1,51 +1,46 @@
 from lake.dsl.lake_imports import *
 
-# example of DSL (makes current mem tile with 2 agg,
-# wide SRAM, 2 tb
-
-# LAKE OBJECT MUST BE FIRST INSTANTIATED
-# IMPORTANT: PORTS MUST BE INSTANTIATED BEFORE MEMORIES
-# MEMORIES SHOULD BE INSTANTIATED BEFORE EDGES
-
-# word_width, input_ports, output_ports
+# Amber memory tile: 2 aggs -> SRAM -> 2 tbs
 tile = Lake(16, 2, 2)
 
-# MemPort attributes are latency, initiation interval
-agg_write_port = MemPort(1, 1)
-agg_read_port = MemPort(0, 1)
-agg_params = make_params("agg", 4, read_port_width=4, write_port_width=1)
-tile.add_memory(agg_params, [agg_write_port], [agg_read_port])
-tile.add_input_edge(port=0, mem_name="agg")
+fw = 4  # fetch_width for SRAM
+num_aggs, num_tbs = 2, 2
 
-agg1_write_port = MemPort(1, 1)
-agg1_read_port = MemPort(0, 1)
-agg1_params = make_params("agg1", 4, read_port_width=4, write_port_width=1)
-tile.add_memory(agg1_params, [agg1_write_port], [agg1_read_port])
-tile.add_input_edge(1, "agg1")
+# wide fetch SRAM
+sram_port = MemPort(1, 1)
+sram_params = make_params("sram", 512, read_write_port_width=fw)
+tile.add_memory(sram_params, read_write_ports=[sram_port])
 
-sram_write_read_port = MemPort(1, 1)
-sram_params = make_params("sram", 512, read_write_port_width=4)
-# , use_macro=True, macro_name="SRAM_example_name")
-# , num_chain=2)
-tile.add_memory(sram_params, read_write_ports=[sram_write_read_port])
+# aggregators: serial to parallel converters before SRAM
+for i in range(num_aggs):
+    mem_name = f"agg{i}"
+    write_port, read_port = MemPort(1, 1), MemPort(0, 1)
+    agg_params = make_params(mem_name,
+                             fw,
+                             read_port_width=fw,
+                             write_port_width=1)
+    tile.add_memory(agg_params, [write_port], [read_port])
 
-tile.add_edge("agg", "sram")
-tile.add_edge("agg1", "sram")
+    tile.add_input_edge(i, mem_name)
+    tile.add_edge(mem_name,
+                  "sram",
+                  dim=6,
+                  max_range=65536)
 
-tb_write_port = MemPort(1, 1)
-tb_read_port = MemPort(0, 1)
-tb_params = make_params("tb", 8, read_port_width=1, write_port_width=4)
-tile.add_memory(tb_params, [tb_write_port], [tb_read_port])
-tile.add_output_edge(0, "tb")
+# transpose buffers: parallel to serial converters after SRAM
+for i in range(num_tbs):
+    mem_name = f"tb{i}"
+    write_port, read_port = MemPort(1, 1), MemPort(0, 1)
+    tb_params = make_params(mem_name,
+                            fw * 2,  # double buffer
+                            read_port_width=1,
+                            write_port_width=fw)
+    tile.add_memory(tb_params, [write_port], [read_port])
 
-tb1_write_port = MemPort(1, 1)
-tb1_read_port = MemPort(0, 1)
-tb1_params = make_params("tb1", 8, read_port_width=1, write_port_width=4)
-tile.add_memory(tb1_params, [tb1_write_port], [tb1_read_port])
-tile.add_output_edge(1, "tb1")
+    tile.add_output_edge(i, mem_name)
+    tile.add_edge("sram",
+                  mem_name,
+                  dim=6,
+                  max_range=65536)
 
-tile.add_edge("sram", "tb")
-tile.add_edge("sram", "tb1")
-
-# for both compiler collateral and HW generation
 # tile.construct_lake("memtile")
