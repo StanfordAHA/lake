@@ -1280,6 +1280,7 @@ if __name__ == "__main__":
     if args.f is None:
         prefix = ""
         lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
+        extract_formal_annotation(lake_dut, f"lake_top_annotation.txt", "full")
     # optional: to add generator cuts for formal module verilog + annotations
     else:
         module = args.f
