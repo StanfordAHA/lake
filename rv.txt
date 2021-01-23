@@ -1,0 +1,28 @@
++        self.sram_read_pend = self.var("sram_read_pend", self.interconnect_output_ports)^M
+         @always_ff((posedge, "clk"))
+         def get_sram_read_old():
+             self.sram_read_old = self.sram_read
+
+         self.add_code(get_sram_read_old)
+
+-        @always_comb
++        @always_ff((posedge, "clk"))^M
+         def get_t_read():
+-            if self.sram_read == 3:
+-                self.sram_read_inter = 1
+-            elif self.sram_read_old == 3:
++            if ~self.sram_did_read:^M
++                self.sram_read_pend = self.sram_read^M
++            elif (self.sram_read == 2) | (self.sram_read_pend == 2):^M
+                 self.sram_read_inter = 2
+-            else:
+-                self.sram_read_inter = 0
++                self.sram_read_pend = 0^M
++            elif (self.sram_read == 3) | (self.sram_read_pend == 3):^M
++                self.sram_read_inter = 1^M
++                self.sram_read_pend = 2^M
++            ^M
++            elif (self.sram_read == 1) | (self.sram_read_pend == 1):^M
++                self.sram_read_inter = 1^M
++                self.sram_read_pend = 0^M
+
