@@ -6,6 +6,7 @@ import fault
 import tempfile
 import kratos as k
 import random as rand
+import pytest
 
 
 @pytest.mark.skip
