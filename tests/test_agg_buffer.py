@@ -8,6 +8,7 @@ import kratos as k
 import random as rand
 
 
+@pytest.mark.skip
 def test_agg_buff_basic(agg_height=4,
                         data_width=16,
                         mem_width=64,

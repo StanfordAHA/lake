@@ -39,13 +39,6 @@ def test_sram_basic(data_width,
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
 
-    # initial reset
-    tester.circuit.clk = 0
-    tester.circuit.rst_n = 0
-    tester.step(2)
-    tester.circuit.rst_n = 1
-    tester.step(2)
-
     rand.seed(0)
 
     data = [0 for i in range(width_mult)]
