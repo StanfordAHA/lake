@@ -147,12 +147,11 @@ class TopLakeHW(Generator):
             if mem["is_output"]:
                 is_output.append(mem_name)
 
+
+        # note this is pretty basic integration for the simple RV module...
         if self.accessor == Accessor_Type.RDY_VLD:
-            self.mem_readys = {}
-            self.mem_valid_outs = {}
-            self.mem_valid_ins = {}
-            self.mem_did_reads = {}
-            self.mem_sgs = {}
+            self.mem_readys, self.mem_valid_outs, self.mem_valid_ins = {}, {}, {}
+            self.mem_did_reads, self.mem_writes = {}, {}
 
             # Lake object ready/valid
             self.valid_in = self.input("valid_in", self.input_ports)
@@ -172,7 +171,10 @@ class TopLakeHW(Generator):
                 self.mem_did_reads[subscript_mems[i]] = \
                     self.var(f"mem_did_read_{subscript_mems[i]}", width=1)
 
-            # ready/valid SchedGenRVs for each memory
+                self.mem_writes[subscript_mems[i]] = \
+                    self.var(f"mem_write_{subscript_mems[i]}", width=1)
+
+            # create SchedGenRV instances for each memory
             for mem in self.memories.keys():
                 memory = self.memories[mem]
                 if memory["num_read_write_ports"] == 0:
@@ -181,6 +183,7 @@ class TopLakeHW(Generator):
                 else:
                     write_width = memory["read_write_port_width"]
                     read_width = memory["read_write_port_width"]
+
                 sg = SchedGenRV(self.memories[mem]["capacity"],
                                 read_width,
                                 write_width)
@@ -192,10 +195,10 @@ class TopLakeHW(Generator):
                                valid_in=self.mem_valid_ins[mem],
                                did_read=self.mem_did_reads[mem],
                                ready=self.mem_readys[mem],
-                               valid_out=self.mem_valid_outs[mem])
+                               valid_out=self.mem_valid_outs[mem],
+                               write_out=self.mem_writes[mem])
 
-                self.mem_sgs[mem] = sg
-
+            # wire up SchedGenRV instances for each memory
             for mem in self.memories.keys():
                 memory = self.memories[mem]
                 if memory["is_input"]:
@@ -208,6 +211,7 @@ class TopLakeHW(Generator):
                         if mem in edge["to_signal"]:
                             for e in edge["from_signal"]:
                                 from_signals.append(e)
+                    # would be better to OR these instead
                     num_valid = self.mem_valid_outs[from_signals[0]]
                     for i in range(1, len(from_signals)):
                         num_valid = num_valid + self.mem_valid_outs[from_signals[i]]
@@ -227,6 +231,7 @@ class TopLakeHW(Generator):
                         if mem in edge["from_signal"]:
                             for e in edge["to_signal"]:
                                 to_signals.append(e)
+                    # would be better to OR these instead
                     num_valid = self.mem_readys[to_signals[0]]
                     for i in range(1, len(to_signals)):
                         num_valid = num_valid + self.mem_readys[to_signals[i]]
@@ -303,6 +308,10 @@ class TopLakeHW(Generator):
                                finished=forloop.ports.restart,
                                cycle_count=self._cycle_count,
                                valid_output=self.valid)
+            elif self.accessor == Accessor_Type.RDY_VLD:
+                self.wire(self.valid, self.mem_writes[in_mem])
+            else:
+                print("Please specify a valid accessor type using set_accessor.")
 
         # set up output memories
         for i in range(len(is_output)):
@@ -363,6 +372,11 @@ class TopLakeHW(Generator):
                                finished=forloop.ports.restart,
                                cycle_count=self._cycle_count,
                                valid_output=self.valid)
+            elif self.accessor == Accessor_Type.RDY_VLD:
+                # this should be AND'd with a tile level ready from some destination
+                self.wire(self.valid, self.mem_valid_outs[in_mem])
+            else:
+                print("Please specify a valid accessor type using set_accessor.")
 
         # create shared IteratorDomains and accessors as well as
         # read/write addressors for memories connected by each edge
@@ -555,6 +569,22 @@ class TopLakeHW(Generator):
                                finished=forloop.ports.restart,
                                cycle_count=self._cycle_count,
                                valid_output=self.valid)
+            elif self.accessor == Accessor_Type.RDY_VLD:
+                # should add a write priority if write and read happen at the same time for 
+                # memories that cannot support read and write at the same time
+                comb = self.combinational()
+                to_signals = edge["to_signal"]
+                # would be better to OR these instead
+                num_valid = self.mem_readys[to_signals[0]]
+                for i in range(1, len(to_signals)):
+                    num_valid = num_valid + self.mem_readys[to_signals[i]]
+
+                if_to_ready = IfStmt(num_valid > 0)
+                if_to_ready.then_(self.valid.assign(1))
+                if_to_ready.else_(self.valid.assign(0))
+                comb.add_stmt(if_to_ready)
+            else:
+                print("Please specify a valid accessor type using set_accessor.")
 
         # for read write memories, choose either read or write address based on whether
         # we are writing to the memory (whether write enable is high)
