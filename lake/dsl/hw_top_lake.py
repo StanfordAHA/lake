@@ -190,6 +190,7 @@ class TopLakeHW(Generator):
                                clk=self.gclk,
                                rst_n=self.rst_n,
                                valid_in=self.mem_valid_ins[mem],
+                               did_read=self.mem_did_reads[mem],
                                ready=self.mem_readys[mem],
                                valid_out=self.mem_valid_outs[mem])
 
@@ -209,7 +210,7 @@ class TopLakeHW(Generator):
                                 from_signals.append(e)
                     num_valid = self.mem_valid_outs[from_signals[0]]
                     for i in range(1, len(from_signals)):
-                        num_valid = num_valid = self.mem_valid_outs[from_signals[i]]
+                        num_valid = num_valid + self.mem_valid_outs[from_signals[i]]
 
                     if_valid_out = IfStmt(num_valid > 0)
                     if_valid_out.then_(self.mem_valid_ins[mem].assign(self.mem_readys[mem]))
@@ -228,7 +229,7 @@ class TopLakeHW(Generator):
                                 to_signals.append(e)
                     num_valid = self.mem_readys[to_signals[0]]
                     for i in range(1, len(to_signals)):
-                        num_valid = num_valid = self.mem_readys[to_signals[i]]
+                        num_valid = num_valid + self.mem_readys[to_signals[i]]
 
                     if_to_ready = IfStmt(num_valid > 0)
                     if_to_ready.then_(self.mem_did_reads[mem].assign(self.mem_valid_outs[mem]))
