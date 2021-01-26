@@ -539,12 +539,6 @@ class TopLakeHW(Generator):
             ("tb12output_port1_read_sched_gen_enable", 1),
             ("tb12output_port1_forloop_dimensionality", tb2out1.dim),
 
-            # Control Signals...
-            ("flush_reg_sel", 0),  # 1
-            ("flush_reg_value", 0),  # 1
-
-            # Set the mode and activate the tile...
-            ("mode", 0),  # 2
             ("tile_en", 1),  # 1
         ]
 
@@ -562,15 +556,6 @@ class TopLakeHW(Generator):
             else:
                 print("No configuration file provided for stencil valid...are you expecting one to exist?")
                 print(f"Bogus stencil valid path: {cfg_path}")
-
-        # TODO: Maybe need to check if size 1?
-        for i in range(input_ports):
-            config.append((f"ren_in_{i}_reg_sel", 1))
-            config.append((f"ren_in_{i}_reg_value", 0))
-
-        for i in range(output_ports):
-            config.append((f"wen_in_{i}_reg_sel", 1))
-            config.append((f"wen_in_{i}_reg_value", 0))
 
         for i in range(in2agg.dim):
             config.append((f"input_port0_2agg0_forloop_ranges_{i}", in2agg.extent[i]))
