@@ -11,6 +11,7 @@ import random as rand
 import pytest
 
 
+@pytest.mark.skip
 def test_tb_formal():
 
     tb_dut = TBFormal(data_width=16,  # CGRA Params

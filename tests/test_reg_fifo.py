@@ -62,7 +62,7 @@ def test_reg_fifo_basic(width_mult,
         tester.circuit.full.expect(full)
 
         mem_valid_data = rand.randint(0, 1)
-        tester.circuit.mem_valid_data = mem_valid_data
+        # tester.circuit.mem_valid_data = mem_valid_data
 
         (model_out, model_val, model_empty, model_full, model_mem_valid) = \
             model_rf.interact(push, pop, data_in, mem_valid_data)

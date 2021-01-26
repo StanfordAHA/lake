@@ -638,39 +638,33 @@ class TopLakeHW(Generator):
 
         # Set configuration...
         config = [
-            ("agg_agg1_sram_edge_read_addr_gen_starting_addr", agg2sram.out_data_strt),
-            ("agg_agg1_sram_edge_write_addr_gen_starting_addr", agg2sram.in_data_strt),
-            ("agg_agg1_sram_edge_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
-            ("agg_agg1_sram_edge_sched_gen_enable", 1),
-            ("agg_agg1_sram_edge_forloop_dimensionality", agg2sram.dim),
+            ("agg0_agg1_sram_edge_read_addr_gen_starting_addr", agg2sram.out_data_strt),
+            ("agg0_agg1_sram_edge_write_addr_gen_starting_addr", agg2sram.in_data_strt),
+            ("agg0_agg1_sram_edge_sched_gen_sched_addr_gen_starting_addr", agg2sram.cyc_strt),
+            ("agg0_agg1_sram_edge_sched_gen_enable", 1),
+            ("agg0_agg1_sram_edge_forloop_dimensionality", agg2sram.dim),
 
-            ("sram_tb_tb1_edge_read_addr_gen_starting_addr", sram2tb.out_data_strt),
-            ("sram_tb_tb1_edge_write_addr_gen_starting_addr", sram2tb.in_data_strt),
-            ("sram_tb_tb1_edge_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
-            ("sram_tb_tb1_edge_sched_gen_enable", 1),
-            ("sram_tb_tb1_edge_forloop_dimensionality", sram2tb.dim),
+            ("sram_tb0_tb1_edge_read_addr_gen_starting_addr", sram2tb.out_data_strt),
+            ("sram_tb0_tb1_edge_write_addr_gen_starting_addr", sram2tb.in_data_strt),
+            ("sram_tb0_tb1_edge_sched_gen_sched_addr_gen_starting_addr", sram2tb.cyc_strt),
+            ("sram_tb0_tb1_edge_sched_gen_enable", 1),
+            ("sram_tb0_tb1_edge_forloop_dimensionality", sram2tb.dim),
 
-            ("input_port0_2agg_write_addr_gen_starting_addr", in2agg.in_data_strt),
-            ("input_port0_2agg_write_sched_gen_sched_addr_gen_starting_addr", in2agg.cyc_strt),
-            ("input_port0_2agg_write_sched_gen_enable", 1),
-            ("input_port0_2agg_forloop_dimensionality", in2agg.dim),
+            ("input_port0_2agg0_write_addr_gen_starting_addr", in2agg.in_data_strt),
+            ("input_port0_2agg0_write_sched_gen_sched_addr_gen_starting_addr", in2agg.cyc_strt),
+            ("input_port0_2agg0_write_sched_gen_enable", 1),
+            ("input_port0_2agg0_forloop_dimensionality", in2agg.dim),
 
-            ("tb2output_port0_read_addr_gen_starting_addr", tb2out0.out_data_strt),
-            ("tb2output_port0_read_sched_gen_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
-            ("tb2output_port0_read_sched_gen_enable", 1),
-            ("tb2output_port0_forloop_dimensionality", tb2out0.dim),
+            ("tb02output_port0_read_addr_gen_starting_addr", tb2out0.out_data_strt),
+            ("tb02output_port0_read_sched_gen_sched_addr_gen_starting_addr", tb2out0.cyc_strt),
+            ("tb02output_port0_read_sched_gen_enable", 1),
+            ("tb02output_port0_forloop_dimensionality", tb2out0.dim),
 
             ("tb12output_port1_read_addr_gen_starting_addr", tb2out1.out_data_strt),
             ("tb12output_port1_read_sched_gen_sched_addr_gen_starting_addr", tb2out1.cyc_strt),
             ("tb12output_port1_read_sched_gen_enable", 1),
             ("tb12output_port1_forloop_dimensionality", tb2out1.dim),
 
-            # Control Signals...
-            ("flush_reg_sel", 0),  # 1
-            ("flush_reg_value", 0),  # 1
-
-            # Set the mode and activate the tile...
-            ("mode", 0),  # 2
             ("tile_en", 1),  # 1
         ]
 
@@ -689,42 +683,33 @@ class TopLakeHW(Generator):
                 print("No configuration file provided for stencil valid...are you expecting one to exist?")
                 print(f"Bogus stencil valid path: {cfg_path}")
 
-        # TODO: Maybe need to check if size 1?
-        for i in range(input_ports):
-            config.append((f"ren_in_{i}_reg_sel", 1))
-            config.append((f"ren_in_{i}_reg_value", 0))
-
-        for i in range(output_ports):
-            config.append((f"wen_in_{i}_reg_sel", 1))
-            config.append((f"wen_in_{i}_reg_value", 0))
-
         for i in range(in2agg.dim):
-            config.append((f"input_port0_2agg_forloop_ranges_{i}", in2agg.extent[i]))
-            config.append((f"input_port0_2agg_write_addr_gen_strides_{i}", in2agg.in_data_stride[i]))
-            config.append((f"input_port0_2agg_write_sched_gen_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
+            config.append((f"input_port0_2agg0_forloop_ranges_{i}", in2agg.extent[i]))
+            config.append((f"input_port0_2agg0_write_addr_gen_strides_{i}", in2agg.in_data_stride[i]))
+            config.append((f"input_port0_2agg0_write_sched_gen_sched_addr_gen_strides_{i}", in2agg.cyc_stride[i]))
 
         for i in range(agg2sram.dim):
-            config.append((f"agg_agg1_sram_edge_read_addr_gen_strides_{i}", agg2sram.out_data_stride[i]))
-            config.append((f"agg_agg1_sram_edge_forloop_ranges_{i}", agg2sram.extent[i]))
-            config.append((f"agg_agg1_sram_edge_write_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
-            config.append((f"agg_agg1_sram_edge_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
+            config.append((f"agg0_agg1_sram_edge_read_addr_gen_strides_{i}", agg2sram.out_data_stride[i]))
+            config.append((f"agg0_agg1_sram_edge_forloop_ranges_{i}", agg2sram.extent[i]))
+            config.append((f"agg0_agg1_sram_edge_write_addr_gen_strides_{i}", agg2sram.in_data_stride[i]))
+            config.append((f"agg0_agg1_sram_edge_sched_gen_sched_addr_gen_strides_{i}", agg2sram.cyc_stride[i]))
 
         tbs = [tb2out0, tb2out1]
 
         for i in range(sram2tb.dim):
-            config.append((f"sram_tb_tb1_edge_forloop_ranges_{i}", sram2tb.extent[i]))
-            config.append((f"sram_tb_tb1_edge_read_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
-            config.append((f"sram_tb_tb1_edge_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
-            config.append((f"sram_tb_tb1_edge_write_addr_gen_strides_{i}", sram2tb.in_data_stride[i]))
+            config.append((f"sram_tb0_tb1_edge_forloop_ranges_{i}", sram2tb.extent[i]))
+            config.append((f"sram_tb0_tb1_edge_read_addr_gen_strides_{i}", sram2tb.out_data_stride[i]))
+            config.append((f"sram_tb0_tb1_edge_sched_gen_sched_addr_gen_strides_{i}", sram2tb.cyc_stride[i]))
+            config.append((f"sram_tb0_tb1_edge_write_addr_gen_strides_{i}", sram2tb.in_data_stride[i]))
 
         tbs = [tb2out0, tb2out1]
         for tb in range(len(tbs)):
             elem = tbs[tb]
             for i in range(elem.dim):
                 if tb == 0:
-                    config.append((f"tb2output_port0_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
-                    config.append((f"tb2output_port0_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
-                    config.append((f"tb2output_port0_forloop_ranges_{i}", elem.extent[i]))
+                    config.append((f"tb02output_port0_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
+                    config.append((f"tb02output_port0_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))
+                    config.append((f"tb02output_port0_forloop_ranges_{i}", elem.extent[i]))
                 else:
                     config.append((f"tb12output_port1_read_addr_gen_strides_{i}", elem.out_data_stride[i]))
                     config.append((f"tb12output_port1_read_sched_gen_sched_addr_gen_strides_{i}", elem.cyc_stride[i]))

@@ -11,6 +11,7 @@ import random as rand
 import pytest
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("int_out_ports", [1, 2, 3])
 def test_sync_groups(int_out_ports,
                      fetch_width=32,
