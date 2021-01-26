@@ -38,6 +38,8 @@ class Lake():
         self.hw_edges = []
         self.hardware_edges = []
 
+        self.accessor = Accessor_Type.STATIC
+
         # mux info originally created for hardware, but not used
         # keeping here in case logic is useful for the future
         self.mux_count = 0
@@ -102,6 +104,9 @@ class Lake():
             {"dim": dim, "max_range": max_range, "max_stride": max_stride}
         self.memories[mem_name][f"is_{io}"] = True
         self.memories[mem_name][f"{io}_port"] = port
+
+    def set_accessor(self, accessor):
+        self.accessor = accessor
 
     # called after all edges are added
     def banking(self):
@@ -322,7 +327,8 @@ class Lake():
                        self.input_ports,
                        self.output_ports,
                        self.hw_memories,
-                       self.hardware_edges)
+                       self.hardware_edges,
+                       self.accessor)
 
         # Wrap it if we need to...
         if wrap_cfg:

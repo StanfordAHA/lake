@@ -12,20 +12,12 @@ class SchedGenRV(Generator):
 
     def __init__(self,
                  capacity=4,
-                 iterator_support=6,
-                 config_width=16,
-                 data_in_width=1,
-                 data_out_width=4,
                  read_width=4,
                  write_width=1):
 
-        super().__init__(f"sched_gen_{iterator_support}_{config_width}")
+        super().__init__(f"sched_gen_rv")
 
         self.capacity = capacity
-        self.iterator_support = iterator_support
-        self.config_width = config_width
-        self.data_in_width = data_in_width
-        self.data_out_width = data_out_width
         self.read_width = read_width
         self.write_width = write_width
 
@@ -36,17 +28,19 @@ class SchedGenRV(Generator):
 
         # ready and valids
         self.valid_in = self.input("valid_in", 1)
-        self.did_read = self.input("did_read", 1)
         self.valid_out = self.output("valid_out", 1)
         self.ready = self.output("ready", 1)
+
+        # read and write enables
+        self.did_read = self.input("did_read", 1)
         self.write = self.var("write", 1)
         self.write_out = self.output("write_out", 1)
         self.wire(self.write, self.valid_in & self.ready)
         self.wire(self.write_out, self.write)
 
         self.valid_in_count = self.var("valid_count", 16)
-        self.write_count = self.var("write_count", clog2(self.capacity)+1)
-        self.read_count = self.var("read_count", clog2(self.capacity)+1)
+        self.write_count = self.var("write_count", clog2(self.capacity) + 1)
+        self.read_count = self.var("read_count", clog2(self.capacity) + 1)
 
         self.add_code(self.set_valid_in_count)
         # self.add_code(self.set_read_count)
@@ -64,18 +58,6 @@ class SchedGenRV(Generator):
                 self.valid_in_count = self.valid_in_count + self.write_width
             elif self.did_read:
                 self.valid_in_count = self.valid_in_count - self.read_width
-    
-    """ @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def set_read_count(self):
-        if ~self.rst_n:
-            self.read_count = 0
-        elif self.read_count == self.read_width:
-            if self.write:
-                self.read_count = self.write_width
-            else:
-                self.read_count = 0
-        elif self.write:
-            self.read_count = self.read_count + self.write_width """
 
     @always_comb
     def set_ready(self):
@@ -90,16 +72,6 @@ class SchedGenRV(Generator):
             self.valid_out = 1
         else:
             self.valid_out = 0
-
-        """ if (self.data_out_width == self.read_width):
-            if self.valid_in_count >= self.read_width:
-                self.valid_out = 1
-            else:
-                self.valid_out = 0
-        elif self.read_count == self.read_width:
-            self.valid_out = 1
-        else:
-            self.valid_out = 0 """
 
 
 if __name__ == "__main__":

@@ -47,5 +47,6 @@ tile.add_output_edge(1, "tb1")
 tile.add_edge("sram", "tb")
 tile.add_edge("sram", "tb1")
 
+tile.set_accessor(Accessor_Type.RDY_VLD)
 # for both compiler collateral and HW generation
-# tile.construct_lake("memtile")
+tile.construct_lake("memtile")

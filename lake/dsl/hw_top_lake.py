@@ -11,6 +11,7 @@ from lake.dsl.memory import mem_inst
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.modules.rv_schedgen import SchedGenRV
 from lake.passes.passes import lift_config_reg
 from lake.utils.util import safe_wire, trim_config_list
 from lake.utils.util import extract_formal_annotation_collat, modular_formal_annotation
@@ -23,7 +24,8 @@ class TopLakeHW(Generator):
                  input_ports,
                  output_ports,
                  memories,
-                 edges):
+                 edges,
+                 accessor):
 
         super().__init__("LakeTop", debug=True)
 
@@ -40,6 +42,8 @@ class TopLakeHW(Generator):
         # objects
         self.memories = memories
         self.edges = edges
+
+        self.accessor = accessor
 
         # tile enable and clock
         self.tile_en = self.input("tile_en", 1)
@@ -143,6 +147,94 @@ class TopLakeHW(Generator):
             if mem["is_output"]:
                 is_output.append(mem_name)
 
+        if self.accessor == Accessor_Type.RDY_VLD:
+            self.mem_readys = {}
+            self.mem_valid_outs = {}
+            self.mem_valid_ins = {}
+            self.mem_did_reads = {}
+            self.mem_sgs = {}
+
+            # Lake object ready/valid
+            self.valid_in = self.input("valid_in", self.input_ports)
+            self.valid_out = self.output("valid_out", self.output_ports)
+            self.ready = self.output("ready", self.input_ports)
+
+            for i in range(num_mem):
+                self.mem_readys[subscript_mems[i]] = \
+                    self.var(f"mem_ready_{subscript_mems[i]}", width=1)
+
+                self.mem_valid_outs[subscript_mems[i]] = \
+                    self.var(f"mem_valid_out_{subscript_mems[i]}", width=1)
+
+                self.mem_valid_ins[subscript_mems[i]] = \
+                    self.var(f"mem_valid_in_{subscript_mems[i]}", width=1)
+
+                self.mem_did_reads[subscript_mems[i]] = \
+                    self.var(f"mem_did_read_{subscript_mems[i]}", width=1)
+
+            # ready/valid SchedGenRVs for each memory
+            for mem in self.memories.keys():
+                memory = self.memories[mem]
+                if memory["num_read_write_ports"] == 0:
+                    write_width = memory["write_port_width"]
+                    read_width = memory["read_port_width"]
+                else:
+                    write_width = memory["read_write_port_width"]
+                    read_width = memory["read_write_port_width"]
+                sg = SchedGenRV(self.memories[mem]["capacity"],
+                                read_width,
+                                write_width)
+
+                self.add_child(f"{mem}_SchedGenRV",
+                               sg,
+                               clk=self.gclk,
+                               rst_n=self.rst_n,
+                               valid_in=self.mem_valid_ins[mem],
+                               ready=self.mem_readys[mem],
+                               valid_out=self.mem_valid_outs[mem])
+
+                self.mem_sgs[mem] = sg
+
+            for mem in self.memories.keys():
+                memory = self.memories[mem]
+                if memory["is_input"]:
+                    self.wire(self.mem_valid_ins[mem], self.valid_in[memory["input_port"]])
+                    self.wire(self.ready[memory["input_port"]], self.mem_readys[mem])
+                else:
+                    comb = self.combinational()
+                    from_signals = []
+                    for edge in self.edges:
+                        if mem in edge["to_signal"]:
+                            for e in edge["from_signal"]:
+                                from_signals.append(e)
+                    num_valid = self.mem_valid_outs[from_signals[0]]
+                    for i in range(1, len(from_signals)):
+                        num_valid = num_valid = self.mem_valid_outs[from_signals[i]]
+
+                    if_valid_out = IfStmt(num_valid > 0)
+                    if_valid_out.then_(self.mem_valid_ins[mem].assign(self.mem_readys[mem]))
+                    if_valid_out.else_(self.mem_valid_ins[mem].assign(0))
+                    comb.add_stmt(if_valid_out)
+
+                if memory["is_output"]:
+                    self.wire(self.valid_out[memory["output_port"]], self.mem_valid_outs[mem])
+                    self.wire(self.mem_did_reads[mem], self.valid_out[memory["output_port"]] & self.mem_readys[mem])
+                else:
+                    comb = self.combinational()
+                    to_signals = []
+                    for edge in self.edges:
+                        if mem in edge["from_signal"]:
+                            for e in edge["to_signal"]:
+                                to_signals.append(e)
+                    num_valid = self.mem_readys[to_signals[0]]
+                    for i in range(1, len(to_signals)):
+                        num_valid = num_valid = self.mem_readys[to_signals[i]]
+
+                    if_to_ready = IfStmt(num_valid > 0)
+                    if_to_ready.then_(self.mem_did_reads[mem].assign(self.mem_valid_outs[mem]))
+                    if_to_ready.else_(self.mem_did_reads[mem].assign(0))
+                    comb.add_stmt(if_to_ready)
+
         # TODO direct connection to write doesn't work (?), so have to do this...
         self.low = self.var("low", 1)
         self.wire(self.low, 0)
@@ -199,16 +291,17 @@ class TopLakeHW(Generator):
             else:
                 self.mem_read_write_addrs[in_mem]["write_addr"] = newAG.ports.addr_out
 
-            newSG = SchedGen(iterator_support=input_dim,
-                             config_width=self.cycle_count_width)
-            self.add_child(f"input_port{input_port_index}_2{in_mem}_write_sched_gen",
-                           newSG,
-                           clk=self.gclk,
-                           rst_n=self.rst_n,
-                           mux_sel=forloop.ports.mux_sel_out,
-                           finished=forloop.ports.restart,
-                           cycle_count=self._cycle_count,
-                           valid_output=self.valid)
+            if self.accessor == Accessor_Type.STATIC:
+                newSG = SchedGen(iterator_support=input_dim,
+                                 config_width=self.cycle_count_width)
+                self.add_child(f"input_port{input_port_index}_2{in_mem}_write_sched_gen",
+                               newSG,
+                               clk=self.gclk,
+                               rst_n=self.rst_n,
+                               mux_sel=forloop.ports.mux_sel_out,
+                               finished=forloop.ports.restart,
+                               cycle_count=self._cycle_count,
+                               valid_output=self.valid)
 
         # set up output memories
         for i in range(len(is_output)):
@@ -258,16 +351,17 @@ class TopLakeHW(Generator):
             else:
                 self.mem_read_write_addrs[in_mem]["read_addr"] = newAG.ports.addr_out
 
-            newSG = SchedGen(iterator_support=output_dim,
-                             config_width=self.cycle_count_width)  # self.default_config_width)
-            self.add_child(f"{out_mem}2output_port{output_port_index}_read_sched_gen",
-                           newSG,
-                           clk=self.gclk,
-                           rst_n=self.rst_n,
-                           mux_sel=forloop.ports.mux_sel_out,
-                           finished=forloop.ports.restart,
-                           cycle_count=self._cycle_count,
-                           valid_output=self.valid)
+            if self.accessor == Accessor_Type.STATIC:
+                newSG = SchedGen(iterator_support=output_dim,
+                                 config_width=self.cycle_count_width)  # self.default_config_width)
+                self.add_child(f"{out_mem}2output_port{output_port_index}_read_sched_gen",
+                               newSG,
+                               clk=self.gclk,
+                               rst_n=self.rst_n,
+                               mux_sel=forloop.ports.mux_sel_out,
+                               finished=forloop.ports.restart,
+                               cycle_count=self._cycle_count,
+                               valid_output=self.valid)
 
         # create shared IteratorDomains and accessors as well as
         # read/write addressors for memories connected by each edge
@@ -447,18 +541,19 @@ class TopLakeHW(Generator):
                 self.wire(writeAG.ports.mux_sel, self.delayed_mux_sels[self.delay - 1])
                 self.wire(writeAG.ports.restart, self.delayed_restarts[self.delay - 1])
 
-            # create accessor for edge
-            newSG = SchedGen(iterator_support=edge["dim"],
-                             config_width=self.cycle_count_width)  # self.default_config_width)
+            if self.accessor == Accessor_Type.STATIC:
+                # create accessor for edge
+                newSG = SchedGen(iterator_support=edge["dim"],
+                                 config_width=self.cycle_count_width)  # self.default_config_width)
 
-            self.add_child(edge_name + "_sched_gen",
-                           newSG,
-                           clk=self.gclk,
-                           rst_n=self.rst_n,
-                           mux_sel=forloop.ports.mux_sel_out,
-                           finished=forloop.ports.restart,
-                           cycle_count=self._cycle_count,
-                           valid_output=self.valid)
+                self.add_child(edge_name + "_sched_gen",
+                               newSG,
+                               clk=self.gclk,
+                               rst_n=self.rst_n,
+                               mux_sel=forloop.ports.mux_sel_out,
+                               finished=forloop.ports.restart,
+                               cycle_count=self._cycle_count,
+                               valid_output=self.valid)
 
         # for read write memories, choose either read or write address based on whether
         # we are writing to the memory (whether write enable is high)

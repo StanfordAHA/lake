@@ -1,5 +1,11 @@
 from kratos import *
 import json
+from enum import IntEnum, auto
+
+
+class Accessor_Type(IntEnum):
+    STATIC = auto()
+    RDY_VLD = auto()
 
 
 def make_params(name,
