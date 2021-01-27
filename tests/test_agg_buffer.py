@@ -6,8 +6,10 @@ import fault
 import tempfile
 import kratos as k
 import random as rand
+import pytest
 
 
+@pytest.mark.skip
 def test_agg_buff_basic(agg_height=4,
                         data_width=16,
                         mem_width=64,

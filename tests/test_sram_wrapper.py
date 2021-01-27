@@ -63,13 +63,7 @@ def test_sram_wrapper(use_sram_stub=True,
     for key, value in new_config.items():
         setattr(tester.circuit, key, value)
 
-    tester.circuit.clk = 0
     tester.circuit.clk_en = 1
-    tester.circuit.rst_n = 1
-    tester.step(2)
-    tester.circuit.rst_n = 0
-    tester.step(2)
-    tester.circuit.rst_n = 1
 
     rand.seed(0)
 

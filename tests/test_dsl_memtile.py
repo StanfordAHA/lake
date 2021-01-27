@@ -54,7 +54,7 @@ def gen_test_lake(config_path,
                          lt_dut)
 
     tester.circuit.clk_en = 1
-    tester.circuit.clk_mem = 0
+    tester.circuit.clk = 0
     tester.circuit.rst_n = 0
     tester.step(2)
     tester.circuit.rst_n = 1

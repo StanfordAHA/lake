@@ -117,21 +117,35 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
                 if "sram_tb_shared" in port_name:
                     sram_tb_shared.append(port_name)
 
-            print(port_name)
+            # print(port_name)
             curr_port = int_gen.get_port(port_name)
             attrs = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
 
-            pdir = "input"
-            if str(curr_port.port_direction) == "PortDirection.Out":
-                pdir = "output"
+            pdir = "output" if str(curr_port.port_direction) == "PortDirection.Out" else "input"
+
+            def get_unlabeled_formal_attr(pdir, port_name):
+                if pdir is "input":
+                    return FormalAttr(port_name, FormalSignalConstraint.SET0)
+                else:
+                    return FormalAttr(port_name, FormalSignalConstraint.X)
+
             # If there are 0 or more than one attributes, let's just use the default X attribute
             # If there is 1 attribute, but it is not applied for this module or all modules,
             # use the default X attribute
-            if len(attrs) != 1 or attrs[0].get_module() not in ("all", module_attr):
-                if pdir is "input":
-                    form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
+
+            if len(attrs) != 1:
+                form_attr = get_unlabeled_formal_attr(pdir, port_name)
+            # len(attrs) == 1 for rest of the cases
+            elif attrs[0].get_module() not in ("all", module_attr):
+                # for full lake_top annotation, agg inputs and tb outputs
+                # should be in full lake_top annotation
+                port_module_attr = attrs[0].get_module()
+                if module_attr == "full" and \
+                    ((pdir == "input" and port_module_attr == "agg") or
+                     (pdir == "output" and port_module_attr == "tb")):
+                    form_attr = attrs[0]
                 else:
-                    form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
+                    form_attr = get_unlabeled_formal_attr(pdir, port_name)
             else:
                 form_attr = attrs[0]
 

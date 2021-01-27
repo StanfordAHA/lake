@@ -11,6 +11,7 @@ import random as rand
 import pytest
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("int_out_ports", [1, 2, 4])
 @pytest.mark.parametrize("fetch_width", [16, 32])
 @pytest.mark.parametrize("read_delay", [0, 1])
