@@ -9,7 +9,7 @@ import collections
 
 
 CFG_info = collections.namedtuple('CFG_info', 'port_name port_size port_width expl_arr')
-IO_info = collections.namedtuple('IO_info', 'port_name port_size port_width is_ctrl port_dir expl_arr')
+IO_info = collections.namedtuple('IO_info', 'port_name port_size port_width is_ctrl port_dir expl_arr full_bus')
 
 
 def extract_top_config(circuit_gen: kts.Generator):
@@ -46,7 +46,8 @@ def get_interface(circuit_gen: kts.Generator):
                                  port_width=curr_port.width,
                                  is_ctrl=cr_attr.get_control(),
                                  port_dir=str(curr_port.port_direction),
-                                 expl_arr=curr_port.explicit_array))
+                                 expl_arr=curr_port.explicit_array,
+                                 full_bus=cr_attr.get_full_bus()))
     return intf_sigs
 
 
