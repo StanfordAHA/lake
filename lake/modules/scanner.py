@@ -40,7 +40,7 @@ class Scanner(Generator):
         # Scanner interface will need
         # input data, input valid
         # output address, output valid
-        self._data_in = self.input("data_in", self.data_width)
+        self._data_in = self.input("data_in", self.data_width, explicit_array=True)
         self._data_in.add_attribute(ControlSignalAttr(is_control=False))
 
         self._valid_in = self.input("valid_in", 1)
@@ -49,7 +49,7 @@ class Scanner(Generator):
         self._ready_out = self.output("ready_out", 1)
         self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
         
-        self._data_out = self.output("data_out", self.data_width)
+        self._data_out = self.output("data_out", self.data_width, explicit_array=True)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False))
 
         self._valid_out = self.output("valid_out", 1)
@@ -58,7 +58,7 @@ class Scanner(Generator):
         self._ready_in = self.input("ready_in", 1)
         self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._addr_out = self.output("addr_out", self.data_width)
+        self._addr_out = self.output("addr_out", self.data_width, explicit_array=True)
         self._addr_out.add_attribute(ControlSignalAttr(is_control=False))
 
         self._eos_out = self.output("eos_out", 1)
