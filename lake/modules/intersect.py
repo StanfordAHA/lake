@@ -163,7 +163,8 @@ class Intersect(Generator):
         ITER.output(self._inc_pos_cnt[1], (self._all_valid & (self._coord_in[0] >= self._coord_in[1])) & ~self._fifo_full)
         ITER.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full)
         ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full)
-        ITER.output(self._fifo_push, self._all_valid & (self._coord_in[0] == self._coord_in[1]) & ~self._fifo_full)
+        # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
+        ITER.output(self._fifo_push, (self._any_eos | (self._all_valid & (self._coord_in[0] == self._coord_in[1]))) & ~self._fifo_full)
 
         self.intersect_fsm.set_start_state(IDLE)
 
@@ -174,30 +175,35 @@ class Intersect(Generator):
 # ===================================
 
         # Stupid convert -
-        self._data_in_packed = self.var("fifo_in_packed", 3 * self.data_width + 1, packed=True)
+        self._data_in_packed = self.var("fifo_in_packed", 3 * self.data_width + 2, packed=True)
+        self.wire(self._data_in_packed[3 * self.data_width + 1], self._all_valid)
         self.wire(self._data_in_packed[3 * self.data_width], self._any_eos)
         self.wire(self._data_in_packed[3 * self.data_width - 1, 2 * self.data_width], self._pos_cnt[1])
         self.wire(self._data_in_packed[2 * self.data_width - 1, 1 * self.data_width], self._pos_cnt[0])
         self.wire(self._data_in_packed[1 * self.data_width - 1, 0 * self.data_width], self._coord_in[0])
 
-        self._data_out_packed = self.var("fifo_out_packed", 3 * self.data_width + 1, packed=True)
+        self._data_out_packed = self.var("fifo_out_packed", 3 * self.data_width + 2, packed=True)
+        self.wire(self._valid_out, self._data_out_packed[3 * self.data_width + 1])
         self.wire(self._eos_out, self._data_out_packed[3 * self.data_width])
         self.wire(self._pos_out[1], self._data_out_packed[3 * self.data_width - 1, 2 * self.data_width])
         self.wire(self._pos_out[0], self._data_out_packed[2 * self.data_width - 1, 1 * self.data_width])
         self.wire(self._coord_out, self._data_out_packed[1 * self.data_width - 1, 0 * self.data_width])
 
-        self._rfifo = RegFIFO(data_width=3 * self.data_width + 1, width_mult=1, depth=16)
+        self._fifo_valid_entry = self.var("fifo_valid_entry", 1)
+
+        self._rfifo = RegFIFO(data_width=3 * self.data_width + 2, width_mult=1, depth=16)
         self.add_child(f"coordinate_fifo",
                        self._rfifo,
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._fifo_push,
-                       pop=(self._valid_out & self._ready_in),
+                       pop=(self._fifo_valid_entry & self._ready_in),
                        data_in=self._data_in_packed,
                        data_out=self._data_out_packed,
-                       valid=self._valid_out,
+                       valid=self._fifo_valid_entry,
                        full=self._fifo_full)
+
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
