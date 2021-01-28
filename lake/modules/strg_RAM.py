@@ -321,5 +321,8 @@ class StrgRAM(Generator):
 
 if __name__ == "__main__":
     stg_dut = StrgRAM()
+    stg_dut.add_attribute("sync-reset=flush")
+    kts.passes.auto_insert_sync_reset(stg_dut.internal_generator)
+    # flush_port = stg_dut.internal_generator.get_port("flush")
     verilog(stg_dut, filename="strg_ram.sv",
             additional_passes={"lift config regs": lift_config_reg})
