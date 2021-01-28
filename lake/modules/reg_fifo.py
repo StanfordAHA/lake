@@ -114,7 +114,7 @@ class RegFIFO(Generator):
             self.add_code(self.wr_ptr_ff)
             self.add_code(self.rd_ptr_ff)
         self.add_code(self.data_out_ff)
-        self.add_code(self.valid_ff)
+        self.add_code(self.valid_comb)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def rd_ptr_ff(self):
@@ -187,8 +187,9 @@ class RegFIFO(Generator):
             self._data_out = self._reg_array[self._rd_ptr]
 
     @always_comb
-    def valid_ff(self):
-        self._valid = self._pop & ((~self._empty) | self._passthru)
+    def valid_comb(self):
+        self._valid = ((~self._empty) | self._passthru)
+        # self._valid = self._pop & ((~self._empty) | self._passthru)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_num_items(self):

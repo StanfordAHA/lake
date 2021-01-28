@@ -114,7 +114,7 @@ class Scanner(Generator):
         self.wire(self._eos_out, self._data_out_packed[self.data_width])
         self.wire(self._data_out, self._data_out_packed[self.data_width - 1, 0])
 
-        self._rfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=16)
+        self._rfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
 
         # Gate ready after last read in the stream
         self._ready_gate = self.var("ready_gate", 1)
