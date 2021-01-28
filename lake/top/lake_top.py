@@ -866,6 +866,10 @@ class LakeTop(Generator):
         ########################
         ##### CLOCK ENABLE #####
         ########################
+
+        # Force FSM realization first so that flush gets added...
+        kts.passes.realize_fsm(self.internal_generator)
+
         if add_clk_enable:
             # self.clock_en("clk_en")
             kts.passes.auto_insert_clock_enable(self.internal_generator)

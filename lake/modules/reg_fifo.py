@@ -85,10 +85,13 @@ class RegFIFO(Generator):
         self._passthru = self.var("passthru", 1)
         self._empty = self.output("empty", 1)
         self._full = self.output("full", 1)
+        self._almost_full = self.output("almost_full", 1)
 
         self._num_items = self.var("num_items", clog2(self.depth) + 1)
         # self.wire(self._full, (self._wr_ptr + 1) == self._rd_ptr)
         self.wire(self._full, self._num_items == self.depth)
+        # Experiment to cover latency
+        self.wire(self._almost_full, self._num_items >= (self.depth - 2))
         # self.wire(self._empty, self._wr_ptr == self._rd_ptr)
         self.wire(self._empty, self._num_items == 0)
 

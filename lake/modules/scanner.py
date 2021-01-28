@@ -64,7 +64,7 @@ class Scanner(Generator):
         self._eos_out = self.output("eos_out", 1)
         self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        # Intermediates
+        # Intermediate for typing...
         self._ren = self.var("ren", 1)
 
 # ==========================================
@@ -81,17 +81,16 @@ class Scanner(Generator):
                         self.FIBER_READ_ITER,
                         clk=self._gclk,
                         rst_n=self._rst_n,
-                        step=self._valid_in)
+                        step=self._ren)
 
         # Whatever comes through here should hopefully just pipe through seamlessly
         # addressor modules
 
-        # finished=RF_WRITE_ITER.ports.restart,
         self.add_child(f"fiber_read_addr",
                         self.FIBER_READ_ADDR,
                         clk=self._gclk,
                         rst_n=self._rst_n,
-                        step=self._valid_in,
+                        step=self._ren,
                         mux_sel=self.FIBER_READ_ITER.ports.mux_sel_out,
                         restart=self.FIBER_READ_ITER.ports.restart)
         safe_wire(self, self._addr_out, self.FIBER_READ_ADDR.ports.addr_out)
@@ -136,7 +135,9 @@ class Scanner(Generator):
                        data_in=self._data_in_packed,
                        data_out=self._data_out_packed,
                        valid=self._valid_out)
-        self.wire(self._ready_out, ~self._rfifo.ports.full & ~self._ready_gate)
+
+        self.wire(self._ren, ~self._rfifo.ports.almost_full & ~self._ready_gate)
+        self.wire(self._ready_out, self._ren)
 
         self._fifo_full = self.var("fifo_full", 1)
         self.wire(self._fifo_full, self._rfifo.ports.full)
