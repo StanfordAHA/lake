@@ -176,7 +176,7 @@ class Intersect(Generator):
 
         # Stupid convert -
         self._data_in_packed = self.var("fifo_in_packed", 3 * self.data_width + 2, packed=True)
-        self.wire(self._data_in_packed[3 * self.data_width + 1], self._all_valid)
+        self.wire(self._data_in_packed[3 * self.data_width + 1], (self._all_valid & (self._coord_in[0] == self._coord_in[1])))
         self.wire(self._data_in_packed[3 * self.data_width], self._any_eos)
         self.wire(self._data_in_packed[3 * self.data_width - 1, 2 * self.data_width], self._pos_cnt[1])
         self.wire(self._data_in_packed[2 * self.data_width - 1, 1 * self.data_width], self._pos_cnt[0])
