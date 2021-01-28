@@ -11,6 +11,7 @@ from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 
+
 class Intersect(Generator):
     def __init__(self,
                  data_width=16):
@@ -45,9 +46,9 @@ class Intersect(Generator):
         # input data, input valid
         # output address, output valid
         self._coord_in = self.input("coord_in", self.data_width,
-                                              size=self.num_streams,
-                                              packed=True,
-                                              explicit_array=True)
+                                    size=self.num_streams,
+                                    packed=True,
+                                    explicit_array=True)
         self._coord_in.add_attribute(ControlSignalAttr(is_control=False))
 
         # Are incoming guys valid/eos?
@@ -69,9 +70,9 @@ class Intersect(Generator):
         self._coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         # but need to send two positions...
         self._pos_out = self.output("pos_out", self.data_width,
-                                               size=self.num_streams,
-                                               explicit_array=True,
-                                               packed=True)
+                                    size=self.num_streams,
+                                    explicit_array=True,
+                                    packed=True)
         self._pos_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Can broadcast the valid and eos out
@@ -83,9 +84,9 @@ class Intersect(Generator):
 
         # Intermediates
         self._pos_cnt = self.var("pos_cnt", self.data_width,
-                                            size=self.num_streams,
-                                            explicit_array=True,
-                                            packed=True)
+                                 size=self.num_streams,
+                                 explicit_array=True,
+                                 packed=True)
 
 # ==========================================
 # Generate FSM for Intersecting these streams...
@@ -102,7 +103,8 @@ class Intersect(Generator):
         self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
 
         for i in range(self.num_streams):
-            @always_ff((posedge, "clk"),(negedge, "rst_n"))
+
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
             def pos_cnt_ff():
                 if ~self._rst_n:
                     self._pos_cnt[i] = 0
@@ -137,7 +139,7 @@ class Intersect(Generator):
         IDLE.next(IDLE, self._fifo_full | (~self._all_valid))
         IDLE.next(ITER, self._all_valid)
 
-        # In ITER, we go back to idle when the fifo is full to avoid 
+        # In ITER, we go back to idle when the fifo is full to avoid
         # complexity, or if we are looking at one of the eos since we can make the last
         # move for the intersection now...
         ITER.next(IDLE, self._fifo_full | self._any_eos)
@@ -203,7 +205,6 @@ class Intersect(Generator):
                        data_out=self._data_out_packed,
                        valid=self._fifo_valid_entry,
                        full=self._fifo_full)
-
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)

@@ -10,6 +10,7 @@ from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 
+
 class Scanner(Generator):
     def __init__(self,
                  data_width=16):
@@ -51,7 +52,7 @@ class Scanner(Generator):
 
         self._ready_out = self.output("ready_out", 1)
         self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
-        
+
         self._data_out = self.output("data_out", self.data_width)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
@@ -73,26 +74,26 @@ class Scanner(Generator):
 
         # Create read address generator
         self.FIBER_READ_ITER = ForLoop(iterator_support=2,
-                                config_width=16)
+                                       config_width=16)
         self.FIBER_READ_ADDR = AddrGen(iterator_support=2,
-                                config_width=16)
+                                       config_width=16)
 
         self.add_child(f"fiber_read_iter",
-                        self.FIBER_READ_ITER,
-                        clk=self._gclk,
-                        rst_n=self._rst_n,
-                        step=self._ren)
+                       self.FIBER_READ_ITER,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       step=self._ren)
 
         # Whatever comes through here should hopefully just pipe through seamlessly
         # addressor modules
 
         self.add_child(f"fiber_read_addr",
-                        self.FIBER_READ_ADDR,
-                        clk=self._gclk,
-                        rst_n=self._rst_n,
-                        step=self._ren,
-                        mux_sel=self.FIBER_READ_ITER.ports.mux_sel_out,
-                        restart=self.FIBER_READ_ITER.ports.restart)
+                       self.FIBER_READ_ADDR,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       step=self._ren,
+                       mux_sel=self.FIBER_READ_ITER.ports.mux_sel_out,
+                       restart=self.FIBER_READ_ITER.ports.restart)
         safe_wire(self, self._addr_out, self.FIBER_READ_ADDR.ports.addr_out)
 
         self._iter_restart = self.var("iter_restart", 1)
@@ -117,6 +118,7 @@ class Scanner(Generator):
 
         # Gate ready after last read in the stream
         self._ready_gate = self.var("ready_gate", 1)
+
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def ready_gate_ff():
             if ~self._rst_n:
@@ -173,7 +175,7 @@ class Scanner(Generator):
         config = [("fiber_read_addr_starting_addr", 0),
                   ("fiber_read_iter_dimensionality", 1),
                   ("fiber_read_addr_strides_0", 1),
-                #   ("fiber_read_addr_strides_1", 0),
+                  ("fiber_read_addr_strides_1", 0),
                   ("fiber_read_iter_ranges_0", length - 2),
                   ("fiber_read_iter_ranges_1", 0),
                   ("stream_length", length - 1)
