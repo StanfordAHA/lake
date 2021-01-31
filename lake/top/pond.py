@@ -388,6 +388,29 @@ class Pond(Generator):
         return trim_config_list(flattened, config)
 
 
+def get_pond_dut(formal_module=None,
+                 in_ports=1,
+                 out_ports=1,
+                 # no stencil valid needed for formal problems
+                 stencil_valid=False,
+                 tsmc_info=SRAMMacroInfo("tsmc_name"),
+                 use_sram_stub=True,
+                 do_config_lift=True)
+
+    pond_dut = Pond(data_width=16,  # CGRA Params
+                    mem_depth=32,
+                    default_iterator_support=2,
+                    interconnect_input_ports=in_ports,  # Connection to int
+                    interconnect_output_ports=out_ports,
+                    cycle_count_width=16,
+                    add_clk_enable=True,
+                    add_flush=True)
+
+    #print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
+
+    # if do_config_lift, then do not need_config_lift later
+    return pond_dut, not do_config_lift, use_sram_stub, tsmc_info
+
 if __name__ == "__main__":
     pond_dut = Pond(data_width=16,  # CGRA Params
                     mem_depth=32,
