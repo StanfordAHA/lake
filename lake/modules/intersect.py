@@ -122,6 +122,7 @@ class Intersect(Generator):
         self.intersect_fsm = self.add_fsm("intersect_seq", reset_high=False)
         IDLE = self.intersect_fsm.add_state("IDLE")
         ITER = self.intersect_fsm.add_state("ITER")
+        DONE = self.intersect_fsm.add_state("DONE")
 
         self.intersect_fsm.output(self._inc_pos_cnt[0])
         self.intersect_fsm.output(self._inc_pos_cnt[1])
@@ -142,8 +143,13 @@ class Intersect(Generator):
         # In ITER, we go back to idle when the fifo is full to avoid
         # complexity, or if we are looking at one of the eos since we can make the last
         # move for the intersection now...
-        ITER.next(IDLE, self._fifo_full | self._any_eos)
+        # If we have eos and can push to the fifo, we are done
+        ITER.next(DONE, self._any_eos & ~self._fifo_full)
+        ITER.next(IDLE, self._fifo_full)
         ITER.next(ITER, kts.const(1, 1))
+
+        # Once done, we need another flush
+        DONE.next(DONE, kts.const(1, 1))
 
         ####################
         # FSM Output Logic
@@ -167,6 +173,12 @@ class Intersect(Generator):
         ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         ITER.output(self._fifo_push, (self._any_eos | (self._all_valid & (self._coord_in[0] == self._coord_in[1]))) & ~self._fifo_full)
+
+        DONE.output(self._inc_pos_cnt[0], 0)
+        DONE.output(self._inc_pos_cnt[1], 0)
+        DONE.output(self._rst_pos_cnt[0], 0)
+        DONE.output(self._rst_pos_cnt[1], 0)
+        DONE.output(self._fifo_push, 0)
 
         self.intersect_fsm.set_start_state(IDLE)
 
