@@ -348,14 +348,15 @@ def set_configs_sv(generator, filepath, configs_dict):
 def generate_lake_config_wrapper(configs_list,
                                  configs_file,
                                  lake_file,
-                                 module_name):
+                                 module_name,
+                                 flattened_name="LakeTop"):
 
     # get top level interface, minus config regs in not_configs
     with open(lake_file, 'r') as lake:
         start = False
         not_configs = []
         for line in lake:
-            if "module LakeTop_W (" in line:
+            if f"module {flattened_name}_W (" in line:
                 start = True
             elif start and ");" in line:
                 start = False
@@ -500,7 +501,6 @@ def add_config_reg(generator, name, description, bitwidth, **kwargs):
     return cfg_reg
 
 
-
 # Ranges, Strides, Dimensionality, Starting Addr
 # Starting Addr (schedule), Ranges (schedule)
 #ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
@@ -513,18 +513,17 @@ def get_pond_configs(config_file):
     #ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
     #ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
 
-    configs = {} 
+    configs = {}
     with open(config_file) as csvfile:
         config_data = csv.reader(csvfile, delimiter=',')
         for row in config_data:
             configs[row[0]] = int(row[1])
     ctrl_rd = [[configs["rf_read_iter_0_ranges_0"], configs["rf_read_iter_0_ranges_1"]],
                [configs["rf_read_addr_0_strides_0"], configs["rf_read_addr_0_strides_1"]],
-               configs["rf_read_iter_0_dimensionality"], 
+               configs["rf_read_iter_0_dimensionality"],
                configs["rf_read_addr_0_starting_addr"],
-               configs["rf_read_sched_0_sched_addr_gen_starting_addr"], 
+               configs["rf_read_sched_0_sched_addr_gen_starting_addr"],
                [configs["rf_read_sched_0_sched_addr_gen_strides_0"], configs["rf_read_sched_0_sched_addr_gen_strides_1"]]]
-            
 
     ctrl_wr = [[configs["rf_write_iter_0_ranges_0"], configs["rf_write_iter_0_ranges_1"]],
                [configs["rf_write_addr_0_strides_0"], configs["rf_write_addr_0_strides_1"]],
@@ -534,7 +533,7 @@ def get_pond_configs(config_file):
                [configs["rf_write_sched_0_sched_addr_gen_strides_0"], configs["rf_write_sched_0_sched_addr_gen_strides_1"]]]
 
     print(ctrl_rd, ctrl_wr)
-    return ctrl_rd, ctrl_wr 
+    return ctrl_rd, ctrl_wr
 
 
 # Function for generating Pond API
