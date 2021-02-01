@@ -15,7 +15,8 @@ from lake.utils.parse_clkwork_config import *
 from lake.utils.util import get_configs_dict, set_configs_sv
 from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
-from lake.utils.util import transform_strides_and_ranges, generate_pond_api
+from lake.utils.util import transform_strides_and_ranges
+from lake.utils.util import generate_pond_api, get_pond_configs
 
 def base_lake_tester(config_path,
                      in_file_name,
@@ -48,7 +49,8 @@ def base_lake_tester(config_path,
         return lt_dut, configs, magma_dut, tester
 
 
-def base_pond_tester(in_ports,
+def base_pond_tester(config_path,
+                     in_ports,
                      out_ports,
                      get_configs_list=False):
 
@@ -59,8 +61,10 @@ def base_pond_tester(in_ports,
     
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Ranges (schedule)
-    ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
-    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+    # ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
+    # ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+    
+    ctrl_rd, ctrl_wr = get_pond_configs(config_path)
     configs = generate_pond_api(ctrl_rd, ctrl_wr)
     
     if get_configs_list:
