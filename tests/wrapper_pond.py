@@ -17,10 +17,12 @@ def get_pond_wrapper(in_ports=1,
                          get_configs_list=True)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir = "build"
         tester.compile_and_run(target="verilator",
+                               directory=tempdir,
                                flags=["-Wno-fatal"])
 
-    generate_lake_config_wrapper(configs_list, "configs.sv", "build/LakeTop_W.v", "Pond")
+    generate_lake_config_wrapper(configs_list, "configs.sv", "build/pond_W.v", "Pond")
 
 
 def wrapper():
