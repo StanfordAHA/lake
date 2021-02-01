@@ -96,7 +96,11 @@ class Intersect(Generator):
         self.wire(self._all_valid, self._valid_in.r_and())
 
         self._any_eos = self.var("any_eos", 1)
-        self.wire(self._any_eos, self._eos_in.r_or())
+        self._gate_eos = self.var("gate_eos", 2)
+        # for i in range(self._gate_eos.width):
+        self.wire(self._gate_eos[0], self._eos_in[0] & (self._coord_in[0] <= self._coord_in[1]))
+        self.wire(self._gate_eos[1], self._eos_in[1] & (self._coord_in[0] >= self._coord_in[1]))
+        self.wire(self._any_eos, self._gate_eos.r_or())
 
         # Control Vars from FSM
         self._inc_pos_cnt = self.var("inc_pos_cnt", self.num_streams)
@@ -187,6 +191,7 @@ class Intersect(Generator):
 # ===================================
 # Dump metadata into fifo
 # ===================================
+        self._rfifo = RegFIFO(data_width=3 * self.data_width + 2, width_mult=1, depth=16)
 
         # Stupid convert -
         self._data_in_packed = self.var("fifo_in_packed", 3 * self.data_width + 2, packed=True)
@@ -197,7 +202,7 @@ class Intersect(Generator):
         self.wire(self._data_in_packed[1 * self.data_width - 1, 0 * self.data_width], self._coord_in[0])
 
         self._data_out_packed = self.var("fifo_out_packed", 3 * self.data_width + 2, packed=True)
-        self.wire(self._valid_out, self._data_out_packed[3 * self.data_width + 1])
+        self.wire(self._valid_out, self._data_out_packed[3 * self.data_width + 1] & (~self._rfifo.ports.empty))
         self.wire(self._eos_out, self._data_out_packed[3 * self.data_width])
         self.wire(self._pos_out[1], self._data_out_packed[3 * self.data_width - 1, 2 * self.data_width])
         self.wire(self._pos_out[0], self._data_out_packed[2 * self.data_width - 1, 1 * self.data_width])
@@ -205,7 +210,7 @@ class Intersect(Generator):
 
         self._fifo_valid_entry = self.var("fifo_valid_entry", 1)
 
-        self._rfifo = RegFIFO(data_width=3 * self.data_width + 2, width_mult=1, depth=16)
+
         self.add_child(f"coordinate_fifo",
                        self._rfifo,
                        clk=self._gclk,
