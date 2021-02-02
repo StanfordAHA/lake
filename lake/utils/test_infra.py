@@ -18,6 +18,7 @@ from lake.utils.util import check_env
 from lake.utils.util import transform_strides_and_ranges
 from lake.utils.util import generate_pond_api, get_pond_configs
 
+
 def base_lake_tester(config_path,
                      in_file_name,
                      out_file_name,
@@ -55,22 +56,18 @@ def base_pond_tester(config_path,
                      get_configs_list=False):
 
     pond_dut, need_config_lift, s, t = get_pond_dut(in_ports=in_ports,
-                                                  out_ports=out_ports)
+                                                    out_ports=out_ports)
 
-    #configs = pond_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
-    
+    configs = pond_dut.get_static_bitstream(config_path)
+
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Ranges (schedule)
     # ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
     # ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
-    
-    ctrl_rd, ctrl_wr = get_pond_configs(config_path)
-    configs = generate_pond_api(ctrl_rd, ctrl_wr)
-    
+
     if get_configs_list:
         # prints out list of configs for compiler team
-        #configs_list = set_configs_sv(pond_dut, "configs.sv", get_configs_dict(configs))
-        configs_list = set_configs_sv(pond_dut, "configs.sv", configs)
+        configs_list = set_configs_sv(pond_dut, "configs.sv", get_configs_dict(configs))
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,
@@ -83,7 +80,6 @@ def base_pond_tester(config_path,
         return pond_dut, configs, configs_list, magma_dut, tester
     else:
         return pond_dut, configs, magma_dut, tester
-
 
 
 def gen_test_lake(config_path,

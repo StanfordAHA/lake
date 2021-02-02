@@ -1,4 +1,6 @@
 import kratos as kts
+import os
+
 from kratos import *
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
@@ -10,7 +12,8 @@ from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.modules.storage_config_seq import StorageConfigSeq
-from lake.utils.parse_clkwork_config import extract_controller_json, map_controller
+from lake.utils.parse_clkwork_config import extract_controller_json, extract_controller
+from lake.utils.parse_clkwork_config import map_controller
 from lake.utils.parse_clkwork_config import ControllerInfo
 from lake.utils.sram_macro import SRAMMacroInfo
 from _kratos import create_wrapper_flatten
@@ -388,13 +391,68 @@ class Pond(Generator):
         # Trim the list
         return trim_config_list(flattened, config)
 
+    def get_static_bitstream(self,
+                             config_path):
+
+        controllers = ["in2regfile", "regfile2out"]
+        controller_objs = [None] * len(controllers)
+
+        for i in range(len(controllers)):
+            c = controllers[i]
+            path = config_path + '/' + c + '.csv'
+
+            if os.path.isfile(path):
+                print(path)
+                controller_objs[i] = map_controller(extract_controller(path), c)
+            else:
+                print(f"No {c} file provided. Is this expected?")
+
+        in2rf_ctrl, rf2out_ctrl = controller_objs
+
+        # Dummy variables to fill in later when compiler
+        # generates different collateral for different designs
+        flattened = create_wrapper_flatten(self.internal_generator.clone(),
+                                           self.name + "_W")
+
+        # Store all configurations here
+        config = []
+        # Configure registers based on controller data...
+        config.append(("rf_write_iter_0_dimensionality", in2rf_ctrl.dim))
+        config.append(("rf_write_addr_0_starting_addr", in2rf_ctrl.in_data_strt))
+        config.append(("rf_write_sched_0_sched_addr_gen_starting_addr", in2rf_ctrl.cyc_strt))
+        config.append(("rf_write_sched_0_enable", 1))
+        for i in range(in2rf_ctrl.dim):
+            config.append((f"rf_write_addr_0_strides_{i}", in2rf_ctrl.in_data_stride[i]))
+            config.append((f"rf_write_iter_0_ranges_{i}", in2rf_ctrl.extent[i]))
+            config.append((f"rf_write_sched_0_sched_addr_gen_strides_{i}", in2rf_ctrl.cyc_stride[i]))
+
+        config.append(("rf_read_iter_0_dimensionality", rf2out_ctrl.dim))
+        config.append(("rf_read_addr_0_starting_addr", rf2out_ctrl.out_data_strt))
+        config.append(("rf_read_sched_0_sched_addr_gen_starting_addr", rf2out_ctrl.cyc_strt))
+        config.append(("rf_read_sched_0_enable", 1))
+
+        for i in range(rf2out_ctrl.dim):
+            config.append((f"rf_read_addr_0_strides_{i}", rf2out_ctrl.out_data_stride[i]))
+            config.append((f"rf_read_iter_0_ranges_{i}", rf2out_ctrl.extent[i]))
+            config.append((f"rf_read_sched_0_sched_addr_gen_strides_{i}", rf2out_ctrl.cyc_stride[i]))
+
+        # Handle control registers... (should really be done in garnet TODO)
+        config.append(("flush_reg_sel", 0))  # 1
+        config.append(("flush_reg_value", 0))  # 1
+        # Activate the tile...
+        config.append(("tile_en", 1))  # 1
+
+        # Trim the list
+        return trim_config_list(flattened, config)
+
+
 def get_pond_dut(in_ports=1,
                  out_ports=1,
                  tsmc_info=SRAMMacroInfo("tsmc_name"),
                  use_sram_stub=True,
                  do_config_lift=True):
 
-        pond_dut = Pond(data_width=16,  # CGRA Params
+    pond_dut = Pond(data_width=16,  # CGRA Params
                     mem_depth=32,
                     default_iterator_support=2,
                     interconnect_input_ports=in_ports,  # Connection to int
@@ -405,10 +463,11 @@ def get_pond_dut(in_ports=1,
                     add_clk_enable=True,
                     add_flush=True)
 
-        #print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
+    # print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
 
-        # if do_config_lift, then do not need_config_lift later
-        return pond_dut, not do_config_lift, use_sram_stub, tsmc_info
+    # if do_config_lift, then do not need_config_lift later
+    return pond_dut, not do_config_lift, use_sram_stub, tsmc_info
+
 
 if __name__ == "__main__":
     pond_dut = Pond(data_width=16,  # CGRA Params

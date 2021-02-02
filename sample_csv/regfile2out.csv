@@ -1,7 +1,7 @@
 "dimensionality", 2, 0
 "read_data_starting_addr", 16, 0
-"read_stride_0", 1, 0
-"read_stride_1", 1, 0
+"read_data_stride_0", 1, 0
+"read_data_stride_1", 1, 0
 "extent_0", 16, 0
 "extent_1", 1, 0
 "cycle_starting_addr", 0, 0

@@ -503,15 +503,15 @@ def add_config_reg(generator, name, description, bitwidth, **kwargs):
 
 # Ranges, Strides, Dimensionality, Starting Addr
 # Starting Addr (schedule), Ranges (schedule)
-#ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
-#ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+# ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
+# ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
 
 def get_pond_configs(config_file):
 
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Ranges (schedule)
-    #ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
-    #ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+    # ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
+    # ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
 
     configs = {}
     with open(config_file) as csvfile:
