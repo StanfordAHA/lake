@@ -67,7 +67,7 @@ def base_pond_tester(config_path,
 
     if get_configs_list:
         # prints out list of configs for compiler team
-        configs_list = set_configs_sv(pond_dut, "configs.sv", get_configs_dict(configs))
+        configs_list = set_configs_sv(pond_dut, "configs.sv", get_configs_dict(configs), 2)
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
                                   check_multiple_driver=False,

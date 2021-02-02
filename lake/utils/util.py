@@ -286,7 +286,7 @@ def get_configs_dict(configs):
     return configs_dict
 
 
-def set_configs_sv(generator, filepath, configs_dict):
+def set_configs_sv(generator, filepath, configs_dict, iterator_support):
     int_gen = generator.internal_generator
     ports = int_gen.get_port_names()
     configs_list = []
@@ -301,7 +301,7 @@ def set_configs_sv(generator, filepath, configs_dict):
         # find config regs
         if len(curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))) == 1:
             if ("strides" in port) or ("ranges" in port):
-                for i in range(6):
+                for i in range(iterator_support):
                     remain.append(port + f"_{i}")
             else:
                 remain.append(port)
