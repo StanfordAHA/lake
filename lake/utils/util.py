@@ -465,6 +465,38 @@ def trim_config_list(flat_gen, config_list):
     return config
 
 
+def intercept_cfg(generator, port):
+    int_gen = generator.internal_generator
+    actual_port = int_gen.get_port(port)
+    # Remove the attribute
+    attrs = actual_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
+    if len(attrs) == 0:
+        print("Trying to intercept normal port, doing nothing...")
+    elif len(attrs) != 1:
+        print("No clue what you're trying to intercept...doing nothing...")
+    else:
+        cr_attr = attrs[0]
+        cr_attr.set_intercepted(True)
+    return generator.ports[port]
+
+
+def register(generator, signal):
+    ''' Pass a generator and a signal to create a registered
+        version of any signal easily.
+    '''
+    reg = generator.var(signal.name + "_d1", signal.width)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def reg_code():
+        if ~generator._rst_n:
+            reg = 0
+        else:
+            reg = signal
+
+    generator.add_code(reg_code)
+    return reg
+
+
 # Add a simple counter to a design and return the signal
 def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
     ctr = generator.var(name, bitwidth)

@@ -34,6 +34,11 @@ def lift_config_reg(generator):
 
                     cr_attr = attrs[0]
                     doc = cr_attr.get_documentation()
+
+                    # If the config reg has been intercepted, just stop
+                    if cr_attr.get_intercepted():
+                        continue
+
                     # need to wire it to the instances parent and up
                     gen = node
                     parent_gen = gen.parent_generator()

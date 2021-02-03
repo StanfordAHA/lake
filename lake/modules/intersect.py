@@ -210,7 +210,6 @@ class Intersect(Generator):
 
         self._fifo_valid_entry = self.var("fifo_valid_entry", 1)
 
-
         self.add_child(f"coordinate_fifo",
                        self._rfifo,
                        clk=self._gclk,
