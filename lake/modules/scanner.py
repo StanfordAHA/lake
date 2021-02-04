@@ -179,7 +179,7 @@ class Scanner(Generator):
         self._last_valid_accepting = self.var("last_valid_accepting", 1)
         self._fifo_full = self.var("fifo_full", 1)
         # Gate ready after last read in the stream
-        self._ready_gate = self.var("ready_gate", 1)
+        # self._ready_gate = self.var("ready_gate", 1)
 
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
@@ -352,7 +352,7 @@ class Scanner(Generator):
         # SEQ_ITER
         #############
         SEQ_ITER.output(self._valid_inc, self._valid_in & (~self._fifo_full))
-        SEQ_ITER.output(self._ren, (~self._rfifo.ports.almost_full & ~self._ready_gate))
+        SEQ_ITER.output(self._ren, ~self._rfifo.ports.almost_full)
         SEQ_ITER.output(self._fifo_push, self._valid_in & (~self._fifo_full))
         SEQ_ITER.output(self._tag_valid_data, self._valid_in)
         SEQ_ITER.output(self._tag_eos, self._last_valid_accepting)
@@ -361,7 +361,7 @@ class Scanner(Generator):
         SEQ_ITER.output(self._addr_out, self._agen_addr)
         SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
         SEQ_ITER.output(self._update_seq_state, 0)
-        SEQ_ITER.output(self._step_agen, (~self._rfifo.ports.almost_full & ~self._ready_gate))
+        SEQ_ITER.output(self._step_agen, ~self._rfifo.ports.almost_full)
         SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._valid_in))
 
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
