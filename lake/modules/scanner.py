@@ -118,7 +118,7 @@ class Scanner(Generator):
             if ~self._rst_n:
                 self._valid_cnt = 0
             elif self._valid_rst = 1:
-                self._valid_cnt = 0
+                self._valid_cnt == 0
             elif self._valid_inc:
                 self._valid_cnt = self._valid_cnt + 1
 
