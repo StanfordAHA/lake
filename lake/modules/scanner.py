@@ -111,7 +111,18 @@ class Scanner(Generator):
         self._addr_offset = intercept_cfg(self.FIBER_READ_ADDR, "starting_addr")
 
         self._valid_inc = self.var("valid_inc", 1)
-        self._valid_cnt = add_counter(self, "valid_count", 16, self._valid_inc)
+        self._valid_rst = self.var("valid_rst", 1)
+        self._valid_cnt = self.var("valid_cnt", 16)
+        @always_ff((posedge, "clk"),(negedge, "rst_n"))
+        def valid_cnt():
+            if ~self._rst_n:
+                self._valid_cnt = 0
+            elif self._valid_rst = 1:
+                self._valid_cnt = 0
+            elif self._valid_inc:
+                self._valid_cnt = self._valid_cnt + 1
+
+        # self._valid_cnt = add_counter(self, "valid_count", 16, self._valid_inc)
 
         self._inner_dim_offset = self.input("inner_dim_offset", 16)
         self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the offset..."))
@@ -196,6 +207,7 @@ class Scanner(Generator):
         DONE = self.scan_fsm.add_state("DONE")
 
         self.scan_fsm.output(self._valid_inc)
+        self.scan_fsm.output(self._valid_rst)
         self.scan_fsm.output(self._ren)
         self.scan_fsm.output(self._fifo_push)
         self.scan_fsm.output(self._tag_valid_data)
@@ -255,6 +267,7 @@ class Scanner(Generator):
         # START - TODO - Generate general hardware...
         #######
         START.output(self._valid_inc, 0)
+        START.output(self._valid_rst, 0)
         START.output(self._ren, 0)
         START.output(self._step_agen, 0)
         START.output(self._fifo_push, 0)
@@ -271,6 +284,7 @@ class Scanner(Generator):
         # ISSUE_STRM - TODO - Generate general hardware...
         #######
         ISSUE_STRM.output(self._valid_inc, 0)
+        ISSUE_STRM.output(self._valid_rst, 0)
         ISSUE_STRM.output(self._ren, 0)
         ISSUE_STRM.output(self._fifo_push, 0)
         ISSUE_STRM.output(self._tag_valid_data, 0)
@@ -287,6 +301,7 @@ class Scanner(Generator):
         # READ_0 - TODO - Generate general hardware...
         #######
         READ_0.output(self._valid_inc, 0)
+        READ_0.output(self._valid_rst, 0)
         READ_0.output(self._ren, 1)
         READ_0.output(self._fifo_push, 0)
         READ_0.output(self._tag_valid_data, 0)
@@ -303,6 +318,7 @@ class Scanner(Generator):
         # READ_1 - TODO - Generate general hardware...
         #######
         READ_1.output(self._valid_inc, 0)
+        READ_1.output(self._valid_rst, 0)
         READ_1.output(self._ren, self._coord_in <= self._out_dim_x)
         READ_1.output(self._fifo_push, 0)
         READ_1.output(self._tag_valid_data, 0)
@@ -319,6 +335,7 @@ class Scanner(Generator):
         # READ_2 - TODO - Generate general hardware...
         #######
         READ_2.output(self._valid_inc, 0)
+        READ_2.output(self._valid_rst, 0)
         READ_2.output(self._ren, 0)
         READ_2.output(self._fifo_push, 0)
         READ_2.output(self._tag_valid_data, 0)
@@ -334,6 +351,7 @@ class Scanner(Generator):
         #######
         # SEQ_START - TODO - Generate general hardware...
         #######
+        SEQ_START.output(self._valid_rst, 0)
         SEQ_START.output(self._valid_inc, 0)
         SEQ_START.output(self._ren, 0)
         SEQ_START.output(self._fifo_push, self._seq_length == kts.const(2 ** 16 - 1, 16))
@@ -352,6 +370,7 @@ class Scanner(Generator):
         # SEQ_ITER
         #############
         SEQ_ITER.output(self._valid_inc, self._valid_in & (~self._fifo_full))
+        SEQ_ITER.output(self._valid_rst, 0)
         SEQ_ITER.output(self._ren, ~self._rfifo.ports.almost_full)
         SEQ_ITER.output(self._fifo_push, self._valid_in & (~self._fifo_full))
         SEQ_ITER.output(self._tag_valid_data, self._valid_in)
@@ -370,6 +389,7 @@ class Scanner(Generator):
         # SEQ_DONE
         #############
         SEQ_DONE.output(self._valid_inc, 0)
+        SEQ_DONE.output(self._valid_rst, 1)
         SEQ_DONE.output(self._ren, 0)
         SEQ_DONE.output(self._fifo_push, 0)
         SEQ_DONE.output(self._tag_valid_data, 0)
@@ -386,6 +406,7 @@ class Scanner(Generator):
         # DONE
         #############
         DONE.output(self._valid_inc, 0)
+        DONE.output(self._valid_rst, 0)
         DONE.output(self._ren, 0)
         DONE.output(self._fifo_push, 0)
         DONE.output(self._tag_valid_data, 0)
