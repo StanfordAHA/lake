@@ -385,7 +385,7 @@ def generate_lake_config_wrapper(configs_list,
 
         # instantiate LakeTop_W module with
         # full interface, first with nonconfigs
-        wrapper.write("LakeTop_W LakeTop_W (\n")
+        wrapper.write(f"{flattened_name}_W {flattened_name}_W (\n")
         for i in range(len(not_configs)):
             not_config = not_configs[i]
             try_name = not_config.split("]")
