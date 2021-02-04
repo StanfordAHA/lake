@@ -286,7 +286,7 @@ def get_configs_dict(configs):
     return configs_dict
 
 
-def set_configs_sv(generator, filepath, configs_dict, iterator_support):
+def set_configs_sv(generator, filepath, configs_dict, iterator_support=6):
     int_gen = generator.internal_generator
     ports = int_gen.get_port_names()
     configs_list = []

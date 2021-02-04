@@ -31,7 +31,7 @@ def base_lake_tester(config_path,
                                                   out_ports=out_ports,
                                                   stencil_valid=stencil_valid)
 
-    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
+    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name, 6)
     if get_configs_list:
         # prints out list of configs for compiler team
         configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
