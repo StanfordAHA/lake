@@ -118,7 +118,7 @@ class Scanner(Generator):
             if ~self._rst_n:
                 self._valid_cnt = 0
             elif self._valid_rst = 1:
-                self._valid_cnt == 0
+                self._valid_cnt = 0
             elif self._valid_inc:
                 self._valid_cnt = self._valid_cnt + 1
 
@@ -237,7 +237,7 @@ class Scanner(Generator):
         # If you're not at the right coordinate yet, go straight to SEQ_START and emit length 0 sequence
         READ_1.next(SEQ_START, self._coord_in > self._out_dim_x)
         # Otherwise, proceed
-        READ_1.next(READ_2, kts.const(1, 1))
+        READ_1.next(READ_2, self._coord_in <= self._out_dim_x)
 
         # Go to this state to see the length, will also have EOS?
         READ_2.next(SEQ_START, kts.const(1, 1))
@@ -371,7 +371,7 @@ class Scanner(Generator):
         #############
         SEQ_ITER.output(self._valid_inc, self._valid_in & (~self._fifo_full))
         SEQ_ITER.output(self._valid_rst, 0)
-        SEQ_ITER.output(self._ren, ~self._rfifo.ports.almost_full)
+        SEQ_ITER.output(self._ren, ~self._rfifo.ports.almost_full & ~self._ready_gate)
         SEQ_ITER.output(self._fifo_push, self._valid_in & (~self._fifo_full))
         SEQ_ITER.output(self._tag_valid_data, self._valid_in)
         SEQ_ITER.output(self._tag_eos, self._last_valid_accepting)
@@ -380,7 +380,7 @@ class Scanner(Generator):
         SEQ_ITER.output(self._addr_out, self._agen_addr)
         SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
         SEQ_ITER.output(self._update_seq_state, 0)
-        SEQ_ITER.output(self._step_agen, ~self._rfifo.ports.almost_full)
+        SEQ_ITER.output(self._step_agen, ~self._rfifo.ports.almost_full & ~self._ready_gate)
         SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._valid_in))
 
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
@@ -441,13 +441,13 @@ class Scanner(Generator):
 
         self._fifo_valid_entry = self.var("fifo_valid_entry", 1)
 
-        # @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        # def ready_gate_ff():
-        #     if ~self._rst_n:
-        #         self._ready_gate = 0
-        #     elif self._iter_restart:
-        #         self._ready_gate = 1
-        # self.add_code(ready_gate_ff)
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def ready_gate_ff():
+            if ~self._rst_n:
+                self._ready_gate = 0
+            elif self._iter_restart:
+                self._ready_gate = 1
+        self.add_code(ready_gate_ff)
 
         self.add_child(f"coordinate_fifo",
                        self._rfifo,
