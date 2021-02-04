@@ -203,6 +203,7 @@ class Scanner(Generator):
         self.scan_fsm.output(self._next_seq_length)
         self.scan_fsm.output(self._update_seq_state)
         self.scan_fsm.output(self._step_agen)
+        self.scan_fsm.output(self._last_valid_accepting)
 
         ####################
         # Next State Logic
@@ -261,6 +262,7 @@ class Scanner(Generator):
         START.output(self._addr_out, kts.const(0, 16))
         START.output(self._next_seq_length, kts.const(0, 16))
         START.output(self._update_seq_state, 0)
+        START.output(self._last_valid_accepting, 0)
 
         #######
         # ISSUE_STRM - TODO - Generate general hardware...
@@ -276,6 +278,7 @@ class Scanner(Generator):
         ISSUE_STRM.output(self._next_seq_length, kts.const(0, 16))
         ISSUE_STRM.output(self._update_seq_state, 0)
         ISSUE_STRM.output(self._step_agen, 0)
+        ISSUE_STRM.output(self._last_valid_accepting, 0)
 
         #######
         # READ_0 - TODO - Generate general hardware...
@@ -291,6 +294,7 @@ class Scanner(Generator):
         READ_0.output(self._next_seq_length, kts.const(0, 16))
         READ_0.output(self._update_seq_state, 0)
         READ_0.output(self._step_agen, 0)
+        READ_0.output(self._last_valid_accepting, 0)
 
         #######
         # READ_1 - TODO - Generate general hardware...
@@ -306,6 +310,7 @@ class Scanner(Generator):
         READ_1.output(self._next_seq_length, kts.const(2 ** 16 - 1, 16))
         READ_1.output(self._update_seq_state, (self._coord_in > self._out_dim_x)[0])
         READ_1.output(self._step_agen, 0)
+        READ_1.output(self._last_valid_accepting, 0)
 
         #######
         # READ_2 - TODO - Generate general hardware...
@@ -321,6 +326,7 @@ class Scanner(Generator):
         READ_2.output(self._next_seq_length, self._seq_length_ptr_math)
         READ_2.output(self._update_seq_state, 1)
         READ_2.output(self._step_agen, 0)
+        READ_2.output(self._last_valid_accepting, 0)
 
         #######
         # SEQ_START - TODO - Generate general hardware...
@@ -336,6 +342,7 @@ class Scanner(Generator):
         SEQ_START.output(self._next_seq_length, kts.const(0, 16))
         SEQ_START.output(self._update_seq_state, 0)
         SEQ_START.output(self._step_agen, 0)
+        SEQ_START.output(self._last_valid_accepting, 0)
         # Clear the agen on the way in to start fresh
 
         #############
@@ -352,6 +359,7 @@ class Scanner(Generator):
         SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
         SEQ_ITER.output(self._update_seq_state, 0)
         SEQ_ITER.output(self._step_agen, (~self._rfifo.ports.almost_full & ~self._ready_gate))
+        SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._valid_in))
 
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
 
@@ -369,6 +377,7 @@ class Scanner(Generator):
         SEQ_DONE.output(self._next_seq_length, kts.const(0, 16))
         SEQ_DONE.output(self._update_seq_state, 0)
         SEQ_DONE.output(self._step_agen, 0)
+        SEQ_DONE.output(self._last_valid_accepting, 0)
 
         #############
         # DONE
@@ -384,6 +393,7 @@ class Scanner(Generator):
         DONE.output(self._next_seq_length, kts.const(0, 16))
         DONE.output(self._update_seq_state, 0)
         DONE.output(self._step_agen, 0)
+        DONE.output(self._last_valid_accepting, 0)
 
         self.scan_fsm.set_start_state(START)
 
@@ -432,10 +442,11 @@ class Scanner(Generator):
         # Increment valid count when we receive a valid we can actually push in the FIFO
         self._valid_cnt = add_counter(self, "valid_count", 16, self._valid_inc)
 
-        @always_comb
-        def eos_comparison():
-            self._last_valid_accepting = (self._valid_cnt == self._seq_length) & (self._valid_in)
-        self.add_code(eos_comparison)
+        # @always_comb
+        # def eos_comparison():
+        #     self._last_valid_accepting = (self._valid_cnt == self._seq_length) & (self._valid_in)
+        #     self._last_valid_accepting = (self._valid_cnt == self._seq_length) & (self._valid_in)
+        # self.add_code(eos_comparison)
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
