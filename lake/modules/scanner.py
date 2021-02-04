@@ -99,8 +99,8 @@ class Scanner(Generator):
         self._agen_addr = self.var("agen_addr", 16)
         safe_wire(self, self._agen_addr, self.FIBER_READ_ADDR.ports.addr_out)
 
-        self._iter_restart = self.var("iter_restart", 1)
-        self.wire(self._iter_restart, self.FIBER_READ_ITER.ports.restart)
+        # self._iter_restart = self.var("iter_restart", 1)
+        # self.wire(self._iter_restart, self.FIBER_READ_ITER.ports.restart)
 # =============================
 # SCAN FSM
 # =============================
@@ -420,13 +420,13 @@ class Scanner(Generator):
 
         self._fifo_valid_entry = self.var("fifo_valid_entry", 1)
 
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def ready_gate_ff():
-            if ~self._rst_n:
-                self._ready_gate = 0
-            elif self._iter_restart:
-                self._ready_gate = 1
-        self.add_code(ready_gate_ff)
+        # @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        # def ready_gate_ff():
+        #     if ~self._rst_n:
+        #         self._ready_gate = 0
+        #     elif self._iter_restart:
+        #         self._ready_gate = 1
+        # self.add_code(ready_gate_ff)
 
         self.add_child(f"coordinate_fifo",
                        self._rfifo,
