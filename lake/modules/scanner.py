@@ -72,6 +72,8 @@ class Scanner(Generator):
 # Generate addresses to scan over fiber...
 # ==========================================
 
+        self._step_agen = self.var("step_agen", 1)
+
         # Create read address generator
         self.FIBER_READ_ITER = ForLoop(iterator_support=2,
                                        config_width=16)
@@ -82,7 +84,7 @@ class Scanner(Generator):
                        self.FIBER_READ_ITER,
                        clk=self._gclk,
                        rst_n=self._rst_n,
-                       step=self._ren)
+                       step=self._step_agen)
 
         # Whatever comes through here should hopefully just pipe through seamlessly
         # addressor modules
@@ -91,7 +93,7 @@ class Scanner(Generator):
                        self.FIBER_READ_ADDR,
                        clk=self._gclk,
                        rst_n=self._rst_n,
-                       step=self._ren,
+                       step=self._step_agen,
                        mux_sel=self.FIBER_READ_ITER.ports.mux_sel_out,
                        restart=self.FIBER_READ_ITER.ports.restart)
         self._agen_addr = self.var("agen_addr", 16)
@@ -123,7 +125,6 @@ class Scanner(Generator):
         self._update_seq_state = self.var("update_seq_state", 1)
         self._seq_length = self.var("seq_length", 16)
         self._seq_addr = self.var("seq_addr", 16)
-        # self._seq_length.add_attribute(ConfigRegAttr("How long is the stream..."))
         self._next_seq_length = self.var("next_seq_length", 16)
         self._next_seq_addr = self.var("next_seq_addr", 16)
 
@@ -201,6 +202,7 @@ class Scanner(Generator):
         self.scan_fsm.output(self._addr_out)
         self.scan_fsm.output(self._next_seq_length)
         self.scan_fsm.output(self._update_seq_state)
+        self.scan_fsm.output(self._step_agen)
 
         ####################
         # Next State Logic
@@ -250,6 +252,7 @@ class Scanner(Generator):
         #######
         START.output(self._valid_inc, 0)
         START.output(self._ren, 0)
+        START.output(self._step_agen, 0)
         START.output(self._fifo_push, 0)
         START.output(self._tag_valid_data, 0)
         START.output(self._tag_eos, 0)
@@ -272,6 +275,7 @@ class Scanner(Generator):
         ISSUE_STRM.output(self._addr_out, kts.const(0, 16))
         ISSUE_STRM.output(self._next_seq_length, kts.const(0, 16))
         ISSUE_STRM.output(self._update_seq_state, 0)
+        ISSUE_STRM.output(self._step_agen, 0)
 
         #######
         # READ_0 - TODO - Generate general hardware...
@@ -286,6 +290,7 @@ class Scanner(Generator):
         READ_0.output(self._addr_out, self._out_dim_addr)
         READ_0.output(self._next_seq_length, kts.const(0, 16))
         READ_0.output(self._update_seq_state, 0)
+        READ_0.output(self._step_agen, 0)
 
         #######
         # READ_1 - TODO - Generate general hardware...
@@ -297,9 +302,10 @@ class Scanner(Generator):
         READ_1.output(self._tag_eos, 0)
         READ_1.output(self._inc_out_dim_x, 0)
         READ_1.output(self._inc_out_dim_addr, 0)
-        READ_1.output(self._addr_out, kts.const(0, 16))
+        READ_1.output(self._addr_out, self._out_dim_addr + 1)
         READ_1.output(self._next_seq_length, kts.const(2 ** 16 - 1, 16))
         READ_1.output(self._update_seq_state, (self._coord_in > self._out_dim_x)[0])
+        READ_1.output(self._step_agen, 0)
 
         #######
         # READ_2 - TODO - Generate general hardware...
@@ -311,9 +317,10 @@ class Scanner(Generator):
         READ_2.output(self._tag_eos, 0)
         READ_2.output(self._inc_out_dim_x, 0)
         READ_2.output(self._inc_out_dim_addr, 1)
-        READ_2.output(self._addr_out, self._out_dim_addr + 1)
+        READ_2.output(self._addr_out, kts.const(0, 16))
         READ_2.output(self._next_seq_length, self._seq_length_ptr_math)
         READ_2.output(self._update_seq_state, 1)
+        READ_2.output(self._step_agen, 0)
 
         #######
         # SEQ_START - TODO - Generate general hardware...
@@ -328,6 +335,7 @@ class Scanner(Generator):
         SEQ_START.output(self._addr_out, kts.const(0, 16))
         SEQ_START.output(self._next_seq_length, kts.const(0, 16))
         SEQ_START.output(self._update_seq_state, 0)
+        SEQ_START.output(self._step_agen, 0)
         # Clear the agen on the way in to start fresh
 
         #############
@@ -343,6 +351,7 @@ class Scanner(Generator):
         SEQ_ITER.output(self._addr_out, self._agen_addr)
         SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
         SEQ_ITER.output(self._update_seq_state, 0)
+        SEQ_ITER.output(self._step_agen, (~self._rfifo.ports.almost_full & ~self._ready_gate))
 
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
 
@@ -359,6 +368,7 @@ class Scanner(Generator):
         SEQ_DONE.output(self._addr_out, kts.const(0, 16))
         SEQ_DONE.output(self._next_seq_length, kts.const(0, 16))
         SEQ_DONE.output(self._update_seq_state, 0)
+        SEQ_DONE.output(self._step_agen, 0)
 
         #############
         # DONE
@@ -373,6 +383,7 @@ class Scanner(Generator):
         DONE.output(self._addr_out, kts.const(0, 16))
         DONE.output(self._next_seq_length, kts.const(0, 16))
         DONE.output(self._update_seq_state, 0)
+        DONE.output(self._step_agen, 0)
 
         self.scan_fsm.set_start_state(START)
 
@@ -444,23 +455,11 @@ class Scanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, length):
+    def get_bitstream(self, inner_offset, max_out):
 
         # Store all configurations here
-        config = [("fiber_read_addr_starting_addr", 0),
-                  ("fiber_read_iter_dimensionality", 1),
-                  ("fiber_read_addr_strides_0", 1),
-                  ("fiber_read_addr_strides_1", 0),
-                  ("fiber_read_iter_ranges_0", length - 2),
-                  ("fiber_read_iter_ranges_1", 0)]
-        #   ("stream_length", length - 1)
-        # Dummy variables to fill in later when compiler
-        # generates different collateral for different designs
-        # flattened = create_wrapper_flatten(self.internal_generator.clone(),
-        #                                    self.name + "_W")
-
-        # # Trim the list
-        # return trim_config_list(flattened, config)
+        config = [("inner_dim_offset", inner_offset),
+                  ("max_outer_dim", max_out)]
         return config
 
 
