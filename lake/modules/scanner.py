@@ -138,7 +138,7 @@ class Scanner(Generator):
 
         self._seq_length_ptr_math = self.var("seq_length_ptr_math", 16)
         self.wire(self._seq_length_ptr_math[7, 0], self._ptr_in - self._ptr_reg - 1)
-        self.wire(self._seq_length_ptr_math[15, 8], self._ptr_in - self._ptr_reg - 1)
+        self.wire(self._seq_length_ptr_math[15, 8], 0)
 
         # On the first read, we locate the base offset addr, then on the
         # second we get the length as the subtraction of the pointers
