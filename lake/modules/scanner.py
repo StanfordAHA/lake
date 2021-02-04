@@ -117,10 +117,11 @@ class Scanner(Generator):
         def valid_cnt():
             if ~self._rst_n:
                 self._valid_cnt = 0
-            elif self._valid_rst = 1:
+            elif self._valid_rst == 1:
                 self._valid_cnt = 0
             elif self._valid_inc:
                 self._valid_cnt = self._valid_cnt + 1
+        self.add_code(valid_cnt)
 
         # self._valid_cnt = add_counter(self, "valid_count", 16, self._valid_inc)
 
