@@ -110,6 +110,9 @@ class Scanner(Generator):
         self._addr_strides = intercept_cfg(self.FIBER_READ_ADDR, "strides")
         self._addr_offset = intercept_cfg(self.FIBER_READ_ADDR, "starting_addr")
 
+        self._valid_inc = self.var("valid_inc", 1)
+        self._valid_cnt = add_counter(self, "valid_count", 16, self._valid_inc)
+
         self._inner_dim_offset = self.input("inner_dim_offset", 16)
         self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the offset..."))
         self._coord_in = self.var("coord_in", 8)
@@ -169,7 +172,7 @@ class Scanner(Generator):
         # self._out_dim_ptr = add_counter(self, )
 
         self._rfifo = RegFIFO(data_width=self.data_width + 2, width_mult=1, depth=8)
-        self._valid_inc = self.var("valid_inc", 1)
+
         self._fifo_push = self.var("fifo_push", 1)
         self._tag_valid_data = self.var("tag_valid_data", 1)
         self._tag_eos = self.var("tag_eos", 1)
@@ -440,7 +443,6 @@ class Scanner(Generator):
         self.wire(self._ready_out, self._ren)
         self.wire(self._fifo_full, self._rfifo.ports.full)
         # Increment valid count when we receive a valid we can actually push in the FIFO
-        self._valid_cnt = add_counter(self, "valid_count", 16, self._valid_inc)
 
         # @always_comb
         # def eos_comparison():
