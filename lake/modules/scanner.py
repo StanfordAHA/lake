@@ -447,6 +447,8 @@ class Scanner(Generator):
                 self._ready_gate = 0
             elif self._iter_restart:
                 self._ready_gate = 1
+            elif self._inc_out_dim_x:
+                self._ready_gate = 0
         self.add_code(ready_gate_ff)
 
         self.add_child(f"coordinate_fifo",
