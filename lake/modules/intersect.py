@@ -191,8 +191,8 @@ class Intersect(Generator):
         # IDLE - TODO - Generate general hardware...
         #######
         # Can detect empty here
-        IDLE.output(self._inc_pos_cnt[0], 0)
-        IDLE.output(self._inc_pos_cnt[1], 0)
+        IDLE.output(self._inc_pos_cnt[0], self._gate_eos[0])
+        IDLE.output(self._inc_pos_cnt[1], self._gate_eos[1])
         IDLE.output(self._rst_pos_cnt[0], 0)
         IDLE.output(self._rst_pos_cnt[1], 0)
         IDLE.output(self._fifo_push, self._any_eos)
