@@ -215,7 +215,7 @@ class Intersect(Generator):
         # DRAIN
         #######
         DRAIN.output(self._inc_pos_cnt[0], ~self._eos_seen[0])
-        DRAIN.output(self._inc_pos_cnt[1], self._eos_seen[1])
+        DRAIN.output(self._inc_pos_cnt[1], ~self._eos_seen[1])
         DRAIN.output(self._rst_pos_cnt[0], self._all_eos_seen)
         DRAIN.output(self._rst_pos_cnt[1], self._all_eos_seen)
         DRAIN.output(self._fifo_push, 0)
