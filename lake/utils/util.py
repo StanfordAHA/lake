@@ -498,17 +498,28 @@ def register(generator, signal):
 
 
 # Add a simple counter to a design and return the signal
-def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
+def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None):
+
     ctr = generator.var(name, bitwidth)
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def ctr_inc_code():
-        if ~generator._rst_n:
-            ctr = 0
-        elif increment:
-            ctr = ctr + 1
-
-    generator.add_code(ctr_inc_code)
+    if clear is not None:
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def ctr_inc_clr_code():
+            if ~generator._rst_n:
+                ctr = 0
+            elif clear:
+                ctr = 0
+            elif increment:
+                ctr = ctr + 1
+        generator.add_code(ctr_inc_clr_code)
+    else:
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def ctr_inc_code():
+            if ~generator._rst_n:
+                ctr = 0
+            elif increment:
+                ctr = ctr + 1
+        generator.add_code(ctr_inc_code)
     return ctr
 
 

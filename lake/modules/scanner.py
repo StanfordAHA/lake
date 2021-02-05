@@ -99,8 +99,8 @@ class Scanner(Generator):
         self._agen_addr = self.var("agen_addr", 16)
         safe_wire(self, self._agen_addr, self.FIBER_READ_ADDR.ports.addr_out)
 
-        # self._iter_restart = self.var("iter_restart", 1)
-        # self.wire(self._iter_restart, self.FIBER_READ_ITER.ports.restart)
+        self._iter_restart = self.var("iter_restart", 1)
+        self.wire(self._iter_restart, self.FIBER_READ_ITER.ports.restart)
 # =============================
 # SCAN FSM
 # =============================
@@ -113,17 +113,16 @@ class Scanner(Generator):
         self._valid_inc = self.var("valid_inc", 1)
         self._valid_rst = self.var("valid_rst", 1)
         self._valid_cnt = self.var("valid_cnt", 16)
-        @always_ff((posedge, "clk"),(negedge, "rst_n"))
+
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def valid_cnt():
             if ~self._rst_n:
                 self._valid_cnt = 0
-            elif self._valid_rst == 1:
+            elif self._valid_rst:
                 self._valid_cnt = 0
             elif self._valid_inc:
                 self._valid_cnt = self._valid_cnt + 1
         self.add_code(valid_cnt)
-
-        # self._valid_cnt = add_counter(self, "valid_count", 16, self._valid_inc)
 
         self._inner_dim_offset = self.input("inner_dim_offset", 16)
         self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the offset..."))
@@ -191,7 +190,7 @@ class Scanner(Generator):
         self._last_valid_accepting = self.var("last_valid_accepting", 1)
         self._fifo_full = self.var("fifo_full", 1)
         # Gate ready after last read in the stream
-        # self._ready_gate = self.var("ready_gate", 1)
+        self._ready_gate = self.var("ready_gate", 1)
 
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
@@ -448,6 +447,8 @@ class Scanner(Generator):
                 self._ready_gate = 0
             elif self._iter_restart:
                 self._ready_gate = 1
+            elif self._inc_out_dim_x:
+                self._ready_gate = 0
         self.add_code(ready_gate_ff)
 
         self.add_child(f"coordinate_fifo",
