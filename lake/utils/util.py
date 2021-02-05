@@ -391,7 +391,11 @@ def generate_lake_config_wrapper(configs_list,
             try_name = not_config.split("]")
             if len(try_name) == 1:
                 try_name = not_config.split("logic")
-            name = try_name[1].split(",")[0]
+            if "," in not_config:
+                try_name = try_name[-1].split(",")[-2]
+            else:
+                try_name = try_name[-1][:-1]
+            name = try_name
             # if there are no config regs, this is the last
             # signal in the interface
             if (i == len(not_configs) - 1) and (len(configs_list) == 0):
