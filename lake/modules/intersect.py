@@ -99,8 +99,8 @@ class Intersect(Generator):
         self._gate_eos = self.var("gate_eos", 2)
         # for i in range(self._gate_eos.width):
         # TODO: Deal with stream of length 0
-        self.wire(self._gate_eos[0], self._eos_in[0] & ((self._coord_in[0] <= self._coord_in[1])))
-        self.wire(self._gate_eos[1], self._eos_in[1] & (self._coord_in[0] >= self._coord_in[1]))
+        self.wire(self._gate_eos[0], self._eos_in[0] & ((self._coord_in[0] <= self._coord_in[1]) | ~self._valid_in[0]))
+        self.wire(self._gate_eos[1], self._eos_in[1] & ((self._coord_in[0] >= self._coord_in[1]) | ~self._valid_in[1]))
         self.wire(self._any_eos, self._gate_eos.r_or())
 
         # Check if we have seen both eos to drain both inputs and start again
@@ -164,6 +164,8 @@ class Intersect(Generator):
         # In IDLE we stay if the fifo is full, otherwise wait
         # until we have two valids...
         IDLE.next(IDLE, self._fifo_full | (~self._all_valid))
+        # If either stream is empty, we can skip to drain right away
+        IDLE.next(DRAIN, self._any_eos)
         IDLE.next(ITER, self._all_valid)
 
         # In ITER, we go back to idle when the fifo is full to avoid
@@ -188,13 +190,14 @@ class Intersect(Generator):
         #######
         # IDLE - TODO - Generate general hardware...
         #######
+        # Can detect empty here
         IDLE.output(self._inc_pos_cnt[0], 0)
         IDLE.output(self._inc_pos_cnt[1], 0)
         IDLE.output(self._rst_pos_cnt[0], 0)
         IDLE.output(self._rst_pos_cnt[1], 0)
-        IDLE.output(self._fifo_push, 0)
-        IDLE.output(self._eos_seen_set[0], 0)
-        IDLE.output(self._eos_seen_set[1], 0)
+        IDLE.output(self._fifo_push, self._any_eos)
+        IDLE.output(self._eos_seen_set[0], self._gate_eos[0])
+        IDLE.output(self._eos_seen_set[1], self._gate_eos[1])
         IDLE.output(self._eos_seen_clr[0], 0)
         IDLE.output(self._eos_seen_clr[1], 0)
 
