@@ -23,7 +23,7 @@ class Pond(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_depth=32,
-                 default_iterator_support=2,
+                 default_iterator_support=3,
                  interconnect_input_ports=1,  # Connection to int
                  interconnect_output_ports=1,
                  config_data_width=32,
@@ -454,7 +454,7 @@ def get_pond_dut(in_ports=1,
 
     pond_dut = Pond(data_width=16,  # CGRA Params
                     mem_depth=32,
-                    default_iterator_support=2,
+                    default_iterator_support=3,
                     interconnect_input_ports=in_ports,  # Connection to int
                     interconnect_output_ports=out_ports,
                     config_data_width=32,
