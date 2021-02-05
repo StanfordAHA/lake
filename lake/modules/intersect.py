@@ -4,7 +4,7 @@ from kratos import *
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
-from lake.utils.util import safe_wire, trim_config_list
+from lake.utils.util import trim_config_list, add_counter
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -98,16 +98,33 @@ class Intersect(Generator):
         self._any_eos = self.var("any_eos", 1)
         self._gate_eos = self.var("gate_eos", 2)
         # for i in range(self._gate_eos.width):
-        self.wire(self._gate_eos[0], self._eos_in[0] & (self._coord_in[0] <= self._coord_in[1]))
+        # TODO: Deal with stream of length 0
+        self.wire(self._gate_eos[0], self._eos_in[0] & ((self._coord_in[0] <= self._coord_in[1])))
         self.wire(self._gate_eos[1], self._eos_in[1] & (self._coord_in[0] >= self._coord_in[1]))
         self.wire(self._any_eos, self._gate_eos.r_or())
+
+        # Check if we have seen both eos to drain both inputs and start again
+        self._eos_seen = self.var("eos_seen", self.num_streams)
+        self._eos_seen_set = self.var("eos_seen_set", self.num_streams)
+        self._eos_seen_clr = self.var("eos_seen_clr", self.num_streams)
+        for i in range(self.num_streams):
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
+            def eos_seen_ff():
+                if ~self._rst_n:
+                    self._eos_seen[i] = 0
+                elif self._eos_seen_clr[i]:
+                    self._eos_seen[i] = 0
+                elif self._eos_seen_set[i]:
+                    self._eos_seen[i] = 1
+            self.add_code(eos_seen_ff)
+        self._all_eos_seen = self.var("all_eos_seen", 1)
+        self.wire(self._all_eos_seen, self._eos_seen.r_and())
 
         # Control Vars from FSM
         self._inc_pos_cnt = self.var("inc_pos_cnt", self.num_streams)
         self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
 
         for i in range(self.num_streams):
-
             @always_ff((posedge, "clk"), (negedge, "rst_n"))
             def pos_cnt_ff():
                 if ~self._rst_n:
@@ -126,6 +143,7 @@ class Intersect(Generator):
         self.intersect_fsm = self.add_fsm("intersect_seq", reset_high=False)
         IDLE = self.intersect_fsm.add_state("IDLE")
         ITER = self.intersect_fsm.add_state("ITER")
+        DRAIN = self.intersect_fsm.add_state("DRAIN")
         DONE = self.intersect_fsm.add_state("DONE")
 
         self.intersect_fsm.output(self._inc_pos_cnt[0])
@@ -134,6 +152,10 @@ class Intersect(Generator):
         self.intersect_fsm.output(self._rst_pos_cnt[1])
         # self.intersect_fsm.output(self._ready_out)
         self.intersect_fsm.output(self._fifo_push)
+        self.intersect_fsm.output(self._eos_seen_set[0])
+        self.intersect_fsm.output(self._eos_seen_set[1])
+        self.intersect_fsm.output(self._eos_seen_clr[0])
+        self.intersect_fsm.output(self._eos_seen_clr[1])
 
         ####################
         # Next State Logic
@@ -147,10 +169,13 @@ class Intersect(Generator):
         # In ITER, we go back to idle when the fifo is full to avoid
         # complexity, or if we are looking at one of the eos since we can make the last
         # move for the intersection now...
-        # If we have eos and can push to the fifo, we are done
-        ITER.next(DONE, self._any_eos & ~self._fifo_full)
-        ITER.next(IDLE, self._fifo_full)
+        # If we have eos and can push it to the fifo, we are done with this stream
+        ITER.next(DRAIN, self._any_eos & ~self._fifo_full)
+        # ITER.next(IDLE, self._fifo_full)
         ITER.next(ITER, kts.const(1, 1))
+
+        DRAIN.next(DONE, self._all_eos_seen)
+        DRAIN.next(DRAIN, ~self._all_eos_seen)
 
         # Once done, we need another flush
         DONE.next(DONE, kts.const(1, 1))
@@ -167,6 +192,10 @@ class Intersect(Generator):
         IDLE.output(self._rst_pos_cnt[0], 0)
         IDLE.output(self._rst_pos_cnt[1], 0)
         IDLE.output(self._fifo_push, 0)
+        IDLE.output(self._eos_seen_set[0], 0)
+        IDLE.output(self._eos_seen_set[1], 0)
+        IDLE.output(self._eos_seen_clr[0], 0)
+        IDLE.output(self._eos_seen_clr[1], 0)
 
         #######
         # ITER
@@ -177,12 +206,36 @@ class Intersect(Generator):
         ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         ITER.output(self._fifo_push, (self._any_eos | (self._all_valid & (self._coord_in[0] == self._coord_in[1]))) & ~self._fifo_full)
+        ITER.output(self._eos_seen_set[0], self._gate_eos[0])
+        ITER.output(self._eos_seen_set[1], self._gate_eos[1])
+        ITER.output(self._eos_seen_clr[0], 0)
+        ITER.output(self._eos_seen_clr[1], 0)
 
+        #######
+        # DRAIN
+        #######
+        DRAIN.output(self._inc_pos_cnt[0], ~self._eos_seen[0])
+        DRAIN.output(self._inc_pos_cnt[1], self._eos_seen[1])
+        DRAIN.output(self._rst_pos_cnt[0], self._all_eos_seen)
+        DRAIN.output(self._rst_pos_cnt[1], self._all_eos_seen)
+        DRAIN.output(self._fifo_push, 0)
+        DRAIN.output(self._eos_seen_set[0], self._eos_in[0])
+        DRAIN.output(self._eos_seen_set[1], self._eos_in[1])
+        DRAIN.output(self._eos_seen_clr[0], self._all_eos_seen)
+        DRAIN.output(self._eos_seen_clr[1], self._all_eos_seen)
+
+        #######
+        # DONE
+        #######
         DONE.output(self._inc_pos_cnt[0], 0)
         DONE.output(self._inc_pos_cnt[1], 0)
         DONE.output(self._rst_pos_cnt[0], 0)
         DONE.output(self._rst_pos_cnt[1], 0)
         DONE.output(self._fifo_push, 0)
+        DONE.output(self._eos_seen_set[0], 0)
+        DONE.output(self._eos_seen_set[1], 0)
+        DONE.output(self._eos_seen_clr[0], 0)
+        DONE.output(self._eos_seen_clr[1], 0)
 
         self.intersect_fsm.set_start_state(IDLE)
 

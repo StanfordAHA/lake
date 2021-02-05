@@ -35,3 +35,8 @@ dump/
 
 # local clone of clockwork
 clockwork
+
+######################
+# Everything else... #
+######################
+*
