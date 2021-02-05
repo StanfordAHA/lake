@@ -178,7 +178,8 @@ class Intersect(Generator):
         DRAIN.next(DRAIN, ~self._all_eos_seen)
 
         # Once done, we need another flush
-        DONE.next(DONE, kts.const(1, 1))
+        # Just go back to beginning
+        DONE.next(IDLE, kts.const(1, 1))
 
         ####################
         # FSM Output Logic
