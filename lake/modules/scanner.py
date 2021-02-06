@@ -70,7 +70,7 @@ class Scanner(Generator):
 
         # Point to the row in storage for data recovery
         self._payload_ptr = self.output("payload_ptr", 16)
-        self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False))
+        self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
 # ==========================================
 # Generate addresses to scan over fiber...
