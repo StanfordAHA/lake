@@ -201,6 +201,11 @@ class Scanner(Generator):
         # The memory address is the pointer offset + base register
         self.wire(self._next_seq_addr, self._ptr_reg + self._inner_dim_offset)
 
+        self._outer_length_one = self.var("outer_length_one", 1)
+        self.wire(self._outer_length_one,
+                  ((self.FIBER_OUTER_ITER.ports.dimensionality == 1) &
+                   (self.FIBER_OUTER_ITER.ports.ranges[0] == kts.const(2 ** 16 - 1, 16))))
+
         # Hold state for iterator - just length
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def update_seq_state_ff():
@@ -297,7 +302,7 @@ class Scanner(Generator):
         SEQ_ITER.next(SEQ_ITER, kts.const(1, 1))
 
         # Once done, we need another flush
-        SEQ_DONE.next(DONE, self._outer_restart)
+        SEQ_DONE.next(DONE, self._outer_restart | self._outer_length_one)
         SEQ_DONE.next(ISSUE_STRM, ~self._outer_restart)
 
         # DONE
