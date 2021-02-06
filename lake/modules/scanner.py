@@ -68,6 +68,10 @@ class Scanner(Generator):
         # Intermediate for typing...
         self._ren = self.var("ren", 1)
 
+        # Point to the row in storage for data recovery
+        self._payload_ptr = self.output("payload_ptr", 16)
+        self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False))
+
 # ==========================================
 # Generate addresses to scan over fiber...
 # ==========================================
@@ -101,6 +105,43 @@ class Scanner(Generator):
 
         self._iter_restart = self.var("iter_restart", 1)
         self.wire(self._iter_restart, self.FIBER_READ_ITER.ports.restart)
+
+
+# ==========================================
+# Generate addresses to scan over outer coordinates...
+# ==========================================
+
+        self._step_outer = self.var("step_outer", 1)
+
+        # Create read address generator
+        self.FIBER_OUTER_ITER = ForLoop(iterator_support=2,
+                                        config_width=16)
+        self.FIBER_OUTER_ADDR = AddrGen(iterator_support=2,
+                                        config_width=16)
+
+        self.add_child(f"fiber_outer_iter",
+                       self.FIBER_OUTER_ITER,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       step=self._step_outer)
+
+        # Whatever comes through here should hopefully just pipe through seamlessly
+        # addressor modules
+
+        self.add_child(f"fiber_outer_addr",
+                       self.FIBER_OUTER_ADDR,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       step=self._step_outer,
+                       mux_sel=self.FIBER_OUTER_ITER.ports.mux_sel_out,
+                       restart=self.FIBER_OUTER_ITER.ports.restart)
+        self._outer_addr = self.var("outer_addr", 16)
+        safe_wire(self, self._outer_addr, self.FIBER_OUTER_ADDR.ports.addr_out)
+
+        self._outer_restart = self.var("outer_restart", 1)
+        self.wire(self._outer_restart, self.FIBER_OUTER_ITER.ports.restart)
+
+
 # =============================
 # SCAN FSM
 # =============================
@@ -166,9 +207,13 @@ class Scanner(Generator):
             if ~self._rst_n:
                 self._seq_length = 0
                 self._seq_addr = 0
+                self._payload_ptr = 0
             elif self._update_seq_state:
                 self._seq_length = self._next_seq_length
                 self._seq_addr = self._next_seq_addr
+                # Output this for use in the intersection engine
+                self._payload_ptr[7, 0] = self._ptr_reg
+                self._payload_ptr[15, 8] = 0
         self.add_code(update_seq_state_ff)
 
         self._inc_out_dim_addr = self.var("inc_out_dim_addr", 1)
@@ -177,10 +222,7 @@ class Scanner(Generator):
         self._inc_out_dim_x = self.var("inc_out_dim_x", 1)
         self._out_dim_x = add_counter(self, "out_dim_x", 16, self._inc_out_dim_x)
         self._max_outer_dim = self.input("max_outer_dim", 16)
-        # self._out_dim_ptr = add_counter(self, "out_dim_ptr", 16, self._inc_out_dim_x)
         self._max_outer_dim.add_attribute(ConfigRegAttr("How long is the matrix..."))
-        # self._inc_out_dim_x = self.var(self, "inc_out_dim_x", 1)
-        # self._out_dim_ptr = add_counter(self, )
 
         self._rfifo = RegFIFO(data_width=self.data_width + 2, width_mult=1, depth=8)
 
@@ -219,6 +261,7 @@ class Scanner(Generator):
         self.scan_fsm.output(self._update_seq_state)
         self.scan_fsm.output(self._step_agen)
         self.scan_fsm.output(self._last_valid_accepting)
+        self.scan_fsm.output(self._step_outer)
 
         ####################
         # Next State Logic
@@ -228,16 +271,16 @@ class Scanner(Generator):
         START.next(ISSUE_STRM, kts.const(1, 1))
 
         # Completely done at this point
-        ISSUE_STRM.next(DONE, self._out_dim_x == self._max_outer_dim)
+        # ISSUE_STRM.next(DONE, self._out_dim_x == self._max_outer_dim)
         # If not done, we have to issue more streams
         ISSUE_STRM.next(READ_0, kts.const(1, 1))
 
         READ_0.next(READ_1, kts.const(1, 1))
 
         # If you're not at the right coordinate yet, go straight to SEQ_START and emit length 0 sequence
-        READ_1.next(SEQ_START, self._coord_in > self._out_dim_x)
+        READ_1.next(SEQ_START, self._coord_in > self._outer_addr)
         # Otherwise, proceed
-        READ_1.next(READ_2, self._coord_in <= self._out_dim_x)
+        READ_1.next(READ_2, self._coord_in <= self._outer_addr)
 
         # Go to this state to see the length, will also have EOS?
         READ_2.next(SEQ_START, kts.const(1, 1))
@@ -254,7 +297,8 @@ class Scanner(Generator):
         SEQ_ITER.next(SEQ_ITER, kts.const(1, 1))
 
         # Once done, we need another flush
-        SEQ_DONE.next(ISSUE_STRM, kts.const(1, 1))
+        SEQ_DONE.next(DONE, self._outer_restart)
+        SEQ_DONE.next(ISSUE_STRM, ~self._outer_restart)
 
         # DONE
         DONE.next(DONE, kts.const(1, 1))
@@ -279,6 +323,7 @@ class Scanner(Generator):
         START.output(self._next_seq_length, kts.const(0, 16))
         START.output(self._update_seq_state, 0)
         START.output(self._last_valid_accepting, 0)
+        START.output(self._step_outer, 0)
 
         #######
         # ISSUE_STRM - TODO - Generate general hardware...
@@ -296,6 +341,7 @@ class Scanner(Generator):
         ISSUE_STRM.output(self._update_seq_state, 0)
         ISSUE_STRM.output(self._step_agen, 0)
         ISSUE_STRM.output(self._last_valid_accepting, 0)
+        ISSUE_STRM.output(self._step_outer, 0)
 
         #######
         # READ_0 - TODO - Generate general hardware...
@@ -313,13 +359,14 @@ class Scanner(Generator):
         READ_0.output(self._update_seq_state, 0)
         READ_0.output(self._step_agen, 0)
         READ_0.output(self._last_valid_accepting, 0)
+        READ_0.output(self._step_outer, 0)
 
         #######
         # READ_1 - TODO - Generate general hardware...
         #######
         READ_1.output(self._valid_inc, 0)
         READ_1.output(self._valid_rst, 0)
-        READ_1.output(self._ren, self._coord_in <= self._out_dim_x)
+        READ_1.output(self._ren, self._coord_in <= self._outer_addr)
         READ_1.output(self._fifo_push, 0)
         READ_1.output(self._tag_valid_data, 0)
         READ_1.output(self._tag_eos, 0)
@@ -327,9 +374,10 @@ class Scanner(Generator):
         READ_1.output(self._inc_out_dim_addr, 0)
         READ_1.output(self._addr_out, self._out_dim_addr + 1)
         READ_1.output(self._next_seq_length, kts.const(2 ** 16 - 1, 16))
-        READ_1.output(self._update_seq_state, (self._coord_in > self._out_dim_x)[0])
+        READ_1.output(self._update_seq_state, (self._coord_in > self._outer_addr)[0])
         READ_1.output(self._step_agen, 0)
         READ_1.output(self._last_valid_accepting, 0)
+        READ_1.output(self._step_outer, 0)
 
         #######
         # READ_2 - TODO - Generate general hardware...
@@ -347,6 +395,7 @@ class Scanner(Generator):
         READ_2.output(self._update_seq_state, 1)
         READ_2.output(self._step_agen, 0)
         READ_2.output(self._last_valid_accepting, 0)
+        READ_2.output(self._step_outer, 0)
 
         #######
         # SEQ_START - TODO - Generate general hardware...
@@ -364,7 +413,7 @@ class Scanner(Generator):
         SEQ_START.output(self._update_seq_state, 0)
         SEQ_START.output(self._step_agen, 0)
         SEQ_START.output(self._last_valid_accepting, 0)
-        # Clear the agen on the way in to start fresh
+        SEQ_START.output(self._step_outer, 0)
 
         #############
         # SEQ_ITER
@@ -382,6 +431,7 @@ class Scanner(Generator):
         SEQ_ITER.output(self._update_seq_state, 0)
         SEQ_ITER.output(self._step_agen, ~self._rfifo.ports.almost_full & ~self._ready_gate)
         SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._valid_in))
+        SEQ_ITER.output(self._step_outer, 0)
 
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
 
@@ -401,6 +451,7 @@ class Scanner(Generator):
         SEQ_DONE.output(self._update_seq_state, 0)
         SEQ_DONE.output(self._step_agen, 0)
         SEQ_DONE.output(self._last_valid_accepting, 0)
+        SEQ_DONE.output(self._step_outer, 1)
 
         #############
         # DONE
@@ -418,6 +469,7 @@ class Scanner(Generator):
         DONE.output(self._update_seq_state, 0)
         DONE.output(self._step_agen, 0)
         DONE.output(self._last_valid_accepting, 0)
+        DONE.output(self._step_outer, 0)
 
         self.scan_fsm.set_start_state(START)
 
@@ -491,11 +543,15 @@ class Scanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, max_out):
+    def get_bitstream(self, inner_offset, max_out, outer_stride, outer_range):
 
         # Store all configurations here
         config = [("inner_dim_offset", inner_offset),
-                  ("max_outer_dim", max_out)]
+                  ("max_outer_dim", max_out),
+                  ("fiber_outer_iter_dimensionality", 1),
+                  ("fiber_outer_iter_ranges_0", outer_range - 2),
+                  ("fiber_outer_addr_strides_0", outer_stride),
+                  ("fiber_outer_addr_starting_addr", 0)]
         return config
 
 
