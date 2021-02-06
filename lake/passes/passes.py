@@ -45,11 +45,20 @@ def lift_config_reg(generator):
                     child_port = curr_port
                     child_gen = gen
                     top_lvl_cfg = parent_gen is None
+
                     while parent_gen is not None:
                         # create a port based on the target's definition
                         new_name = child_gen.instance_name + "_" + child_port.name
                         p = parent_gen.port(child_port, new_name, False)
                         parent_gen.wire(child_port, p)
+
+                        # Now we can check if any other signals in the parent generator
+                        # are observing this signal
+                        observers = cr_attr.get_observers(parent_gen)
+                        for obs_port_name in observers:
+                            obs_port = parent_gen.get_var(obs_port_name)
+                            parent_gen.wire(obs_port, p)
+
                         # move up the hierarchy
                         child_port = p
                         child_gen = parent_gen

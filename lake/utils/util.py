@@ -480,6 +480,20 @@ def intercept_cfg(generator, port):
     return generator.ports[port]
 
 
+def observe_cfg(generator, port, other_gen, cfg_reg_port):
+    int_gen = other_gen.internal_generator
+    actual_port = int_gen.get_port(cfg_reg_port)
+    # Remove the attribute
+    attrs = actual_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
+    if len(attrs) == 0:
+        print("Trying to intercept normal port, doing nothing...")
+    elif len(attrs) != 1:
+        print("No clue what you're trying to intercept...doing nothing...")
+    else:
+        cr_attr = attrs[0]
+        cr_attr.add_observer(generator, port)
+
+
 def register(generator, signal):
     ''' Pass a generator and a signal to create a registered
         version of any signal easily.

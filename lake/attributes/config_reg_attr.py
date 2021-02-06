@@ -9,6 +9,7 @@ class ConfigRegAttr(kts.Attribute):
         self.value = "config_reg"
         self.documentation = doc_string
         self.intercepted = False
+        self.observers = []
 
     def set_documentation(self, new_doc):
         self.documentation = new_doc
@@ -21,3 +22,11 @@ class ConfigRegAttr(kts.Attribute):
 
     def set_intercepted(self, new_intercepted):
         self.intercepted = new_intercepted
+
+    def add_observer(self, generator, port):
+        self.observers.append((generator, port))
+
+    # Get the observer variables of this config reg in
+    # the generator <generator>
+    def get_observers(self, generator):
+        return [port for (gen, port) in self.observers if gen.internal_generator == generator]

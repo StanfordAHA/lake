@@ -3,7 +3,7 @@ from kratos import *
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
-from lake.utils.util import add_counter, safe_wire, register, intercept_cfg
+from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -202,9 +202,19 @@ class Scanner(Generator):
         self.wire(self._next_seq_addr, self._ptr_reg + self._inner_dim_offset)
 
         self._outer_length_one = self.var("outer_length_one", 1)
+
+        self._outer_dim = self.var("outer_dim", self.FIBER_OUTER_ITER.ports.dimensionality.width)
+        self._outer_range = self.var("outer_range", self.FIBER_OUTER_ITER.ports.ranges[0].width,
+                                     size=2,
+                                     explicit_array=True,
+                                     packed=True)
+
+        observe_cfg(self, self._outer_dim.name, self.FIBER_OUTER_ITER, "dimensionality")
+        observe_cfg(self, self._outer_range.name, self.FIBER_OUTER_ITER, "ranges")
+
         self.wire(self._outer_length_one,
-                  ((self.FIBER_OUTER_ITER.ports.dimensionality == 1) &
-                   (self.FIBER_OUTER_ITER.ports.ranges[0] == kts.const(2 ** 16 - 1, 16))))
+                  ((self._outer_dim == 1) &
+                   (self._outer_range[0] == kts.const(2 ** 16 - 1, 16))))
 
         # Hold state for iterator - just length
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
