@@ -15,7 +15,7 @@ class Reg(Generator):
     def __init__(self,
                  data_width=16):
 
-        super().__init__("scanner", debug=True)
+        super().__init__("reg_cr", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
