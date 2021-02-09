@@ -292,7 +292,7 @@ class Scanner(Generator):
         self.scan_fsm.output(self._last_valid_accepting)
         self.scan_fsm.output(self._step_outer)
         self.scan_fsm.output(self._update_previous_outer)
-        
+
         ####################
         # Next State Logic
         ####################

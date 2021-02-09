@@ -50,9 +50,15 @@ class Reg(Generator):
         self._data_out = self.output("data_out", self.data_width)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
+        self._valid_out = self.output("valid_out", 1)
+        self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
+
 # =============================
 # SCAN FSM
 # =============================
+
+        self._data_written = self.var("data_written", 1)
+        self.wire(self._valid_out, self._data_written | self._write_en)
 
         self._reg_d_out = self.var("reg_d_out", self.data_width)
         self.wire(self._data_out, self._reg_d_out)
@@ -61,8 +67,10 @@ class Reg(Generator):
         def reg_ff():
             if ~self._rst_n:
                 self._reg_d_out = 0
+                self._data_written = 0
             elif self._write_en:
                 self._reg_d_out = self._data_in
+                self._data_written = 1
         self.add_code(reg_ff)
 
         # Force FSM realization first so that flush gets added...
@@ -83,15 +91,11 @@ class Reg(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, max_out, outer_stride, outer_range):
+    # No actual config at this level
+    def get_bitstream(self):
 
         # Store all configurations here
-        config = [("inner_dim_offset", inner_offset),
-                  ("max_outer_dim", max_out),
-                  ("fiber_outer_iter_dimensionality", 1),
-                  ("fiber_outer_iter_ranges_0", outer_range - 2),
-                  ("fiber_outer_addr_strides_0", outer_stride),
-                  ("fiber_outer_addr_starting_addr", 0)]
+        config = []
         return config
 
 
