@@ -8,7 +8,7 @@ num_aggs, num_tbs = 2, 2
 
 # wide fetch SRAM
 sram_port = MemPort(1, 1)
-sram_params = make_params("sram", 512, read_write_port_width=fw)
+sram_params = make_params("sram", 512, read_write_port_width=fw, use_macro=True, macro_name="TS1N16FFCLLSBLVTC512X32M8S")
 tile.add_memory(sram_params, read_write_ports=[sram_port])
 
 # aggregators: serial to parallel converters before SRAM
@@ -43,4 +43,4 @@ for i in range(num_tbs):
                   dim=6,
                   max_range=65536)
 
-# tile.construct_lake("memtile")
+tile.construct_lake("memtile")

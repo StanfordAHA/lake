@@ -15,7 +15,7 @@ class ReverseFlatten(Generator):
         self.in_ = self.input("input_array", width=total_dims)
         self.out_ = self.output("output_array",
                                 width=array_width,
-                                size=array_size,
+                                size=array_size[::-1],
                                 packed=True,
                                 explicit_array=True)
 

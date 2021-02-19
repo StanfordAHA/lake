@@ -109,7 +109,7 @@ class Memory(Generator):
         self.num_chain = mem_params["num_chain"]
         self.num_chain_bits = clog2(self.num_chain)
         if self.chaining:
-            self.chain_index = self.var("chain_index", width=self.num_chain_bits)
+            self.chain_index = self.input("chain_index", width=self.num_chain_bits)
             self.chain_index.add_attribute(ConfigRegAttr("Chain index for chaining"))
             self.chain_index.add_attribute(FormalAttr(self.chain_index.name, FormalSignalConstraint.SET0))
 
@@ -159,8 +159,9 @@ class Memory(Generator):
 
         if self.use_macro:
 
+            addr_width = clog2(mem_params["capacity"])
             self.read_write_addr = self.input("read_write_addr",
-                                              width=self.addr_width,
+                                              width=addr_width,
                                               size=self.num_read_write_ports,
                                               explicit_array=True)
 
@@ -171,7 +172,7 @@ class Memory(Generator):
                         mem_params["capacity"],
                         mem_params["num_read_write_ports"],
                         mem_params["num_read_write_ports"],
-                        clog2(mem_params["capacity"]),
+                        addr_width,
                         0,
                         1)
 

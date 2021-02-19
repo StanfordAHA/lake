@@ -14,8 +14,8 @@ class FlattenND(Generator):
 
         self.in_ = self.input("input_array",
                               width=array_width,
-                              size=array_size,
-                              packed=True,
+                              size=array_size[::-1],
+#                              packed=True,
                               explicit_array=True)
 
         self.out_ = self.output("output_array", width=total_dims)

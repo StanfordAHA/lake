@@ -52,7 +52,7 @@ class SRAMWrapper(Generator):
             self._mem_data_in_bank = self.input("mem_data_in_bank",
                                                 self.data_width,
                                                 size=self.fw_int,
-                                                packed=True,
+                                                #packed=True,
                                                 explicit_array=True)
 
             self._mem_data_out_bank = self.output("mem_data_out_bank",
