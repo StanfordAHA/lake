@@ -446,14 +446,15 @@ class Pond(Generator):
         return trim_config_list(flattened, config)
 
 
-def get_pond_dut(in_ports=1,
+def get_pond_dut(depth=32,
+                 in_ports=1,
                  out_ports=1,
                  tsmc_info=SRAMMacroInfo("tsmc_name"),
                  use_sram_stub=True,
                  do_config_lift=True):
 
     pond_dut = Pond(data_width=16,  # CGRA Params
-                    mem_depth=32,
+                    mem_depth=depth,
                     default_iterator_support=3,
                     interconnect_input_ports=in_ports,  # Connection to int
                     interconnect_output_ports=out_ports,

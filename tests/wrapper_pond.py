@@ -10,11 +10,13 @@ from lake.utils.test_infra import base_pond_tester
 
 def get_pond_wrapper(config_path,
                      name,
+                     depth,
                      in_ports=1,
                      out_ports=1):  # 1R/1W pond
 
     pond_dut, configs, configs_list, magma_dut, tester = \
         base_pond_tester(config_path,
+                         depth,
                          in_ports,
                          out_ports,
                          get_configs_list=True)
@@ -28,13 +30,13 @@ def get_pond_wrapper(config_path,
     generate_lake_config_wrapper(configs_list, "configs.sv", "build/pond_W.v", name, "pond")
 
 
-def wrapper(config_path_input, name):
+def wrapper(config_path_input, name, pond_depth):
     lc, ls = check_env()
     # we are in the process of transitioning to csvs being in this folder
     # lc = <path to clockwork>/aha_garnet_design/
 
-    #config_path = lc + config_path_input
-    get_pond_wrapper(config_path=config_path_input, name=name)
+    # config_path = lc + config_path_input
+    get_pond_wrapper(config_path=config_path_input, name=name, depth=pond_depth)
 
 
 def error(usage):
@@ -57,6 +59,10 @@ if __name__ == "__main__":
                         type=str,
                         help="optional: module name for LakeWrapper module (default: LakeWrapper)",
                         default="LakeWrapper")
+    parser.add_argument("-d",
+                        type=int,
+                        help="optional: depth for Pond memory",
+                        default=32)
 
     args = parser.parse_args()
 
@@ -66,7 +72,7 @@ if __name__ == "__main__":
     # if args.c is None:
     #    error(usage)
 
-    wrapper(args.c, args.n)
+    wrapper(args.c, args.n, args.d)
 
     # Example usage:
     # python tests/wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
