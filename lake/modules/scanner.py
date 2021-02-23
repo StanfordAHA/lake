@@ -470,7 +470,6 @@ class Scanner(Generator):
         START.output(self._last_valid_accepting, 0)
         START.output(self._step_outer, 0)
         START.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         #######
         # ISSUE_STRM - TODO - Generate general hardware...
@@ -491,7 +490,6 @@ class Scanner(Generator):
         ISSUE_STRM.output(self._last_valid_accepting, 0)
         ISSUE_STRM.output(self._step_outer, 0)
         ISSUE_STRM.output(self._update_previous_outer, 1)
-        # START.output(self._input_fifo_pop, 0)
 
         #######
         # ISSUE_STRM_NR
@@ -512,7 +510,6 @@ class Scanner(Generator):
         ISSUE_STRM_NR.output(self._last_valid_accepting, 0)
         ISSUE_STRM_NR.output(self._step_outer, self._infifo_eos_in & ~self._infifo_valid_in)
         ISSUE_STRM_NR.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         #######
         # READ_0 - TODO - Generate general hardware...
@@ -533,31 +530,25 @@ class Scanner(Generator):
         READ_0.output(self._last_valid_accepting, 0)
         READ_0.output(self._step_outer, 0)
         READ_0.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         #######
         # READ_1 - TODO - Generate general hardware...
         #######
         READ_1.output(self._valid_inc, 0)
         READ_1.output(self._valid_rst, 0)
-        # READ_1.output(self._ren, self._coord_in <= self._outer_addr)
         READ_1.output(self._ren, 1)
         READ_1.output(self._fifo_push, 0)
         READ_1.output(self._tag_valid_data, 0)
         READ_1.output(self._tag_eos, 0)
         READ_1.output(self._inc_out_dim_x, 0)
         READ_1.output(self._inc_out_dim_addr, 0)
-        # READ_1.output(self._addr_out, self._out_dim_addr + 1)
         READ_1.output(self._addr_out, self._pos_addr + 1)
         READ_1.output(self._next_seq_length, kts.const(2 ** 16 - 1, 16))
-        # READ_1.output(self._update_seq_state, (self._coord_in > self._outer_addr)[0])
         READ_1.output(self._update_seq_state, 0)
         READ_1.output(self._step_agen, 0)
         READ_1.output(self._last_valid_accepting, 0)
-        # READ_1.output(self._step_outer, (~self._root) & (self._coord_in < self._infifo_pos_in))
         READ_1.output(self._step_outer, 0)
         READ_1.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         #######
         # READ_2 - TODO - Generate general hardware...
@@ -578,7 +569,6 @@ class Scanner(Generator):
         READ_2.output(self._last_valid_accepting, 0)
         READ_2.output(self._step_outer, 0)
         READ_2.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         #######
         # SEQ_START - TODO - Generate general hardware...
@@ -598,7 +588,6 @@ class Scanner(Generator):
         SEQ_START.output(self._last_valid_accepting, 0)
         SEQ_START.output(self._step_outer, 0)
         SEQ_START.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         #############
         # SEQ_ITER
@@ -618,7 +607,6 @@ class Scanner(Generator):
         SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._valid_in))
         SEQ_ITER.output(self._step_outer, 0)
         SEQ_ITER.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
 
@@ -640,7 +628,6 @@ class Scanner(Generator):
         SEQ_DONE.output(self._last_valid_accepting, 0)
         SEQ_DONE.output(self._step_outer, 1)
         SEQ_DONE.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         #############
         # DONE
@@ -660,7 +647,6 @@ class Scanner(Generator):
         DONE.output(self._last_valid_accepting, 0)
         DONE.output(self._step_outer, 0)
         DONE.output(self._update_previous_outer, 0)
-        # START.output(self._input_fifo_pop, 0)
 
         self.scan_fsm.set_start_state(START)
 
