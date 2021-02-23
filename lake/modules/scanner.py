@@ -230,7 +230,6 @@ class Scanner(Generator):
                        pop=self._step_outer,
                        data_in=self._pos_in_us_packed,
                        data_out=self._data_out_us_packed)
-                    #    valid=self._fifo_us_valid_entry)
 
         # self.wire(self._ren, (~self._rfifo.ports.almost_full & ~self._ready_gate) )
         self.wire(self._fifo_us_full, self._infifo.ports.full)
@@ -240,7 +239,7 @@ class Scanner(Generator):
         def eos_seen_ff():
             if ~self._rst_n:
                 self._eos_in_seen = 0
-            elif self._upstream_eos_in:
+            elif self._infifo_eos_in:
                 self._eos_in_seen = 1
         self.add_code(eos_seen_ff)
 
@@ -443,7 +442,8 @@ class Scanner(Generator):
 
         # Once done, we need another flush
         SEQ_DONE.next(DONE, ((self._outer_restart | self._outer_length_one) & self._root) | (self._eos_in_seen))
-        SEQ_DONE.next(ISSUE_STRM, ~self._outer_restart)
+        SEQ_DONE.next(ISSUE_STRM, ~self._outer_restart & self._root)
+        SEQ_DONE.next(ISSUE_STRM_NR, ~self._outer_restart & ~self._root)
 
         # DONE
         DONE.next(DONE, kts.const(1, 1))
@@ -492,7 +492,6 @@ class Scanner(Generator):
         ISSUE_STRM.output(self._step_outer, 0)
         ISSUE_STRM.output(self._update_previous_outer, 1)
         # START.output(self._input_fifo_pop, 0)
-
 
         #######
         # ISSUE_STRM_NR
