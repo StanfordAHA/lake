@@ -51,6 +51,12 @@ class Intersect(Generator):
                                     explicit_array=True)
         self._coord_in.add_attribute(ControlSignalAttr(is_control=False))
 
+        self._o_coord_in = self.input("o_coord_in", self.data_width,
+                                      size=self.num_streams,
+                                      packed=True,
+                                      explicit_array=True)
+        self._o_coord_in.add_attribute(ControlSignalAttr(is_control=False))
+
         # Need offsets for memory access
         self._payload_ptr = self.input("payload_ptr", 16,
                                        size=self.num_streams,
@@ -81,6 +87,12 @@ class Intersect(Generator):
                                     explicit_array=True,
                                     packed=True)
         self._pos_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._o_coord_out = self.output("o_coord_out", self.data_width,
+                                        size=self.num_streams,
+                                        explicit_array=True,
+                                        packed=True)
+        self._o_coord_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Can broadcast the valid and eos out
         self._valid_out = self.output("valid_out", 1)
@@ -255,17 +267,21 @@ class Intersect(Generator):
 # ===================================
 # Dump metadata into fifo
 # ===================================
-        self._rfifo = RegFIFO(data_width=3 * self.data_width + 2, width_mult=1, depth=16)
+        self._rfifo = RegFIFO(data_width=5 * self.data_width + 2, width_mult=1, depth=16)
 
         # Stupid convert -
-        self._data_in_packed = self.var("fifo_in_packed", 3 * self.data_width + 2, packed=True)
+        self._data_in_packed = self.var("fifo_in_packed", 5 * self.data_width + 2, packed=True)
+        self.wire(self._data_in_packed[5 * self.data_width + 2 - 1, 4 * self.data_width + 2], self._o_coord_in[1])
+        self.wire(self._data_in_packed[4 * self.data_width + 2 - 1, 3 * self.data_width + 2], self._o_coord_in[0])
         self.wire(self._data_in_packed[3 * self.data_width + 1], (self._all_valid & (self._coord_in[0] == self._coord_in[1])))
         self.wire(self._data_in_packed[3 * self.data_width], self._any_eos)
         self.wire(self._data_in_packed[3 * self.data_width - 1, 2 * self.data_width], self._pos_cnt[1] + self._payload_ptr[1])
         self.wire(self._data_in_packed[2 * self.data_width - 1, 1 * self.data_width], self._pos_cnt[0] + self._payload_ptr[0])
         self.wire(self._data_in_packed[1 * self.data_width - 1, 0 * self.data_width], self._coord_in[0])
 
-        self._data_out_packed = self.var("fifo_out_packed", 3 * self.data_width + 2, packed=True)
+        self._data_out_packed = self.var("fifo_out_packed", 5 * self.data_width + 2, packed=True)
+        self.wire(self._o_coord_out[1], self._data_out_packed[5 * self.data_width + 2 - 1, 4 * self.data_width + 2])
+        self.wire(self._o_coord_out[0], self._data_out_packed[4 * self.data_width + 2 - 1, 3 * self.data_width + 2])
         self.wire(self._valid_out, self._data_out_packed[3 * self.data_width + 1] & (~self._rfifo.ports.empty))
         self.wire(self._eos_out, self._data_out_packed[3 * self.data_width])
         self.wire(self._pos_out[1], self._data_out_packed[3 * self.data_width - 1, 2 * self.data_width])
