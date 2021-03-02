@@ -1,3 +1,4 @@
+from lake.utils.tile_builder import TileBase
 from math import e
 import kratos as kts
 from kratos import *
@@ -12,11 +13,13 @@ from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 
 
-class Intersect(Generator):
+class Intersect(TileBase):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 use_merger=False):
 
-        super().__init__("intersect_unit", debug=True)
+        name_str = f"intersect_unit{'_w_merger' if use_merger else ''}"
+        super().__init__(name=name_str, debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
@@ -302,6 +305,10 @@ class Intersect(Generator):
                        valid=self._fifo_valid_entry,
                        full=self._fifo_full)
 
+        # Build in the merging logic.
+        if use_merger:
+            self.add_merging_logic()
+
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
 
@@ -332,9 +339,97 @@ class Intersect(Generator):
         # Trim the list
         return trim_config_list(flattened, config)
 
+    def add_merging_logic(self):
+
+        num_levels = 4
+        self._num_levels_used = self.add_cfg_reg(name="num_levels_used",
+                                                 description="How many coordinate levels this unit is synchronizing",
+                                                 width=kts.clog2(num_levels))
+
+        # Interface to downstream
+        self._cmrg_ready_in = self.input("cmrg_ready_in", 1)
+        self._cmrg_ready_in.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._cmrg_valid_out = self.output("cmrg_valid_out", 1)
+        self._cmrg_valid_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._cmrg_eos_out = self.output("cmrg_eos_out", 1)
+        self._cmrg_eos_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._cmrg_ready_out = self.output("cmrg_ready_out", 1)
+        self._cmrg_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._cmrg_coord_out = [self.output(f"cmrg_coord_out_{x}", self.data_width) for x in range(num_levels)]
+        for i in range(num_levels):
+            self._cmrg_coord_out[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        # Coords in
+        self._cmrg_coord_in = [self.input(f"cmrg_coord_in_{x}", self.data_width) for x in range(num_levels)]
+        for i in range(num_levels):
+            self._cmrg_coord_in[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._cmrg_valid_in = self.input("cmrg_valid_in", num_levels)
+        self._cmrg_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._cmrg_eos_in = self.input("cmrg_eos_in", num_levels)
+        self._cmrg_eos_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._cmrg_fifo_push = self.input("cmrg_fifo_push", num_levels)
+        self._cmrg_fifo_push.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._cmrg_fifo_pop = self.var("cmrg_fifo_pop", num_levels)
+
+        self._of_valid_out = self.var("of_valid_out", num_levels)
+        self._of_eos_out = self.var("of_eos_out", num_levels)
+        self._of_entry_valid = self.var("of_entry_valid", num_levels)
+
+        # Create a bunch of fifos
+        fifo_kwargs = {
+            "data_width": self.data_width + 2,
+            "width_mult": 1,
+            "depth": 16
+        }
+
+        for i in range(num_levels):
+            int_fifo = RegFIFO(**fifo_kwargs)
+            # Stupid convert -
+            tmp_coord_mrg_in = self.var(f"coord_mrg_fifo_in_{i}", self.data_width + 2, packed=True)
+            self.wire(tmp_coord_mrg_in[self.data_width - 1, 0], self._cmrg_coord_in[i])
+            self.wire(tmp_coord_mrg_in[self.data_width], self._cmrg_valid_in[i])
+            self.wire(tmp_coord_mrg_in[self.data_width + 1], self._cmrg_eos_in[i])
+
+            tmp_coord_mrg_out = self.var(f"coord_mrg_fifo_out_{i}", self.data_width + 2, packed=True)
+            self.wire(self._cmrg_coord_out[i], tmp_coord_mrg_out[self.data_width - 1, 0])
+            self.wire(self._of_valid_out[i], tmp_coord_mrg_out[self.data_width])
+            self.wire(self._of_eos_out[i], tmp_coord_mrg_out[self.data_width + 1])
+
+            self.add_child(f"coord_mrg_fifo_{i}",
+                           int_fifo,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           clk_en=self._clk_en,
+                           push=self._cmrg_fifo_push[i],
+                           pop=self._cmrg_fifo_pop[i],
+                           data_in=tmp_coord_mrg_in,
+                           data_out=tmp_coord_mrg_out,
+                           valid=self._of_entry_valid[i])
+
+            # The actual valid/ready/eos out will be determined by the lowest level FIFO
+            # which will have the most data by virtue of the tree structure
+            if i == 0:
+                self.wire(self._cmrg_ready_out, ~int_fifo.ports.full)
+                self.wire(self._cmrg_valid_out, self._of_valid_out[i])
+                self.wire(self._cmrg_eos_out, self._of_eos_out[i])
+                # Pop the bottom based on the input ready,
+                self.wire(self._cmrg_fifo_pop[i], self._cmrg_ready_in & (self._num_levels_used != 0)[0])
+            # In the other case, we want to pop if the level down is eos and popping
+            else:
+                self.wire(self._cmrg_fifo_pop[i], (self._cmrg_fifo_pop[i - 1] & self._of_eos_out[i - 1]) & (i < self._num_levels_used)[0])
+
 
 if __name__ == "__main__":
-    intersect_dut = Intersect(data_width=16)
+    intersect_dut = Intersect(data_width=16,
+                              use_merger=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
