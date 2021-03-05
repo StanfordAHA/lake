@@ -12,13 +12,15 @@ def get_pond_wrapper(config_path,
                      name,
                      depth,
                      in_ports=1,
-                     out_ports=1):  # 1R/1W pond
+                     out_ports=2,
+                     mem_out_ports=1):  # 1R/1W pond
 
     pond_dut, configs, configs_list, magma_dut, tester = \
         base_pond_tester(config_path,
                          depth,
                          in_ports,
                          out_ports,
+                         mem_out_ports,
                          get_configs_list=True)
 
     with tempfile.TemporaryDirectory() as tempdir:

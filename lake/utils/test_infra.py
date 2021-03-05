@@ -54,10 +54,12 @@ def base_pond_tester(config_path,
                      depth,
                      in_ports,
                      out_ports,
+                     mem_out_ports,
                      get_configs_list=False):
 
     pond_dut, need_config_lift, s, t = get_pond_dut(depth=depth,
                                                     in_ports=in_ports,
+                                                    mem_out_ports=mem_out_ports,
                                                     out_ports=out_ports)
 
     configs = pond_dut.get_static_bitstream(config_path)
