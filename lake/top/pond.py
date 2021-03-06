@@ -435,7 +435,7 @@ class Pond(Generator):
     def get_static_bitstream(self,
                              config_path):
 
-        controllers = ["in2regfile", "regfile2out"]
+        controllers = ["in2regfile_1", "in2regfile_2",  "regfile2out_1", "regfile2out_2"]
         controller_objs = [None] * len(controllers)
 
         for i in range(len(controllers)):
@@ -448,7 +448,7 @@ class Pond(Generator):
             else:
                 print(f"No {c} file provided. Is this expected?")
 
-        in2rf_ctrl, rf2out_ctrl = controller_objs
+        in2rf_ctrl_1, in2rf_ctrl_2, rf2out_ctrl_1, rf2out_ctrl_2 = controller_objs
 
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
@@ -458,29 +458,45 @@ class Pond(Generator):
         # Store all configurations here
         config = []
         # Configure registers based on controller data...
-        for i in range(self.interconnect_input_ports):
-            config.append(("rf_write_iter_{i}_dimensionality", in2rf_ctrl.dim))
-            config.append(("rf_write_addr_{i}_starting_addr", in2rf_ctrl.in_data_strt))
-            config.append(("rf_write_sched_{i}_sched_addr_gen_starting_addr", in2rf_ctrl.cyc_strt))
-            config.append(("rf_write_sched_{i}_enable", 1))
-        for j in range(self.interconnect_input_ports):
-            for i in range(in2rf_ctrl.dim):
-                config.append((f"rf_write_addr_{j}_strides_{i}", in2rf_ctrl.in_data_stride[i]))
-                config.append((f"rf_write_iter_{j}_ranges_{i}", in2rf_ctrl.extent[i]))
-                config.append((f"rf_write_sched_{j}_sched_addr_gen_strides_{i}", in2rf_ctrl.cyc_stride[i]))
+        config.append(("rf_write_iter_0_dimensionality", in2rf_ctrl_1.dim))
+        config.append(("rf_write_addr_0_starting_addr", in2rf_ctrl_1.in_data_strt))
+        config.append(("rf_write_sched_0_sched_addr_gen_starting_addr", in2rf_ctrl_1.cyc_strt))
+        config.append(("rf_write_sched_0_enable", 1))
+        for i in range(in2rf_ctrl_1.dim):
+            config.append((f"rf_write_addr_0_strides_{i}", in2rf_ctrl_1.in_data_stride[i]))
+            config.append((f"rf_write_iter_0_ranges_{i}", in2rf_ctrl_1.extent[i]))
+            config.append((f"rf_write_sched_0_sched_addr_gen_strides_{i}", in2rf_ctrl_1.cyc_stride[i]))
 
-        for i in range(self.interconnect_output_ports):
-            config.append(("rf_read_iter_{i}_dimensionality", rf2out_ctrl.dim))
-            config.append(("rf_read_addr_{i}_starting_addr", rf2out_ctrl.out_data_strt))
-            config.append(("rf_read_sched_{i}_sched_addr_gen_starting_addr", rf2out_ctrl.cyc_strt))
-            config.append(("rf_read_sched_{i}_enable", 1))
+        config.append(("rf_read_iter_0_dimensionality", rf2out_ctrl_1.dim))
+        config.append(("rf_read_addr_0_starting_addr", rf2out_ctrl_1.out_data_strt))
+        config.append(("rf_read_sched_0_sched_addr_gen_starting_addr", rf2out_ctrl_1.cyc_strt))
+        config.append(("rf_read_sched_0_enable", 1))
 
-        for j in range(self.interconnect_output_ports):
-            for i in range(rf2out_ctrl.dim):
-                config.append((f"rf_read_addr_{j}_strides_{i}", rf2out_ctrl.out_data_stride[i]))
-                config.append((f"rf_read_iter_{j}_ranges_{i}", rf2out_ctrl.extent[i]))
-                config.append((f"rf_read_sched_{j}_sched_addr_gen_strides_{i}", rf2out_ctrl.cyc_stride[i]))
+        for i in range(rf2out_ctrl_1.dim):
+            config.append((f"rf_read_addr_0_strides_{i}", rf2out_ctrl_1.out_data_stride[i]))
+            config.append((f"rf_read_iter_0_ranges_{i}", rf2out_ctrl_1.extent[i]))
+            config.append((f"rf_read_sched_0_sched_addr_gen_strides_{i}", rf2out_ctrl_1.cyc_stride[i]))
 
+        
+        config.append(("rf_write_iter_1_dimensionality", in2rf_ctrl_2.dim))
+        config.append(("rf_write_addr_1_starting_addr", in2rf_ctrl_2.in_data_strt))
+        config.append(("rf_write_sched_1_sched_addr_gen_starting_addr", in2rf_ctrl_2.cyc_strt))
+        config.append(("rf_write_sched_1_enable", 1))
+        for i in range(in2rf_ctrl_2.dim):
+            config.append((f"rf_write_addr_1_strides_{i}", in2rf_ctrl_2.in_data_stride[i]))
+            config.append((f"rf_write_iter_1_ranges_{i}", in2rf_ctrl_2.extent[i]))
+            config.append((f"rf_write_sched_1_sched_addr_gen_strides_{i}", in2rf_ctrl_2.cyc_stride[i]))
+
+        config.append(("rf_read_iter_1_dimensionality", rf2out_ctrl_2.dim))
+        config.append(("rf_read_addr_1_starting_addr", rf2out_ctrl_2.out_data_strt))
+        config.append(("rf_read_sched_1_sched_addr_gen_starting_addr", rf2out_ctrl_2.cyc_strt))
+        config.append(("rf_read_sched_1_enable", 1))
+
+        for i in range(rf2out_ctrl_2.dim):
+            config.append((f"rf_read_addr_1_strides_{i}", rf2out_ctrl_2.out_data_stride[i]))
+            config.append((f"rf_read_iter_1_ranges_{i}", rf2out_ctrl_2.extent[i]))
+            config.append((f"rf_read_sched_1_sched_addr_gen_strides_{i}", rf2out_ctrl_2.cyc_stride[i]))
+ 
         # Handle control registers... (should really be done in garnet TODO)
         config.append(("flush_reg_sel", 0))  # 1
         config.append(("flush_reg_value", 0))  # 1
@@ -492,8 +508,9 @@ class Pond(Generator):
 
 
 def get_pond_dut(depth=32,
-                 in_ports=1,
+                 in_ports=2,
                  out_ports=2,
+                 mem_in_ports=1,
                  mem_out_ports=1,
                  tsmc_info=SRAMMacroInfo("tsmc_name"),
                  use_sram_stub=True,
