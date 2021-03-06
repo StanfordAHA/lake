@@ -24,8 +24,9 @@ class Pond(Generator):
                  data_width=16,  # CGRA Params
                  mem_depth=32,
                  default_iterator_support=3,
-                 interconnect_input_ports=1,  # Connection to int
+                 interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
+                 mem_input_ports=1,
                  mem_output_ports=1,
                  config_data_width=32,
                  config_addr_width=8,
@@ -36,6 +37,7 @@ class Pond(Generator):
 
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
+        self.mem_input_ports = mem_input_ports
         self.mem_output_ports = mem_output_ports
         self.mem_depth = mem_depth
         self.data_width = data_width
@@ -65,12 +67,12 @@ class Pond(Generator):
 
         # Create write enable + addr, same for read.
         # self._write = self.input("write", self.interconnect_input_ports)
-        self._write = self.var("write", self.interconnect_input_ports)
+        self._write = self.var("write", self.mem_input_ports)
         # self._write.add_attribute(ControlSignalAttr(is_control=True))
 
         self._write_addr = self.var("write_addr",
                                     kts.clog2(self.mem_depth),
-                                    size=self.interconnect_input_ports,
+                                    size=self.mem_input_ports,
                                     explicit_array=True,
                                     packed=True)
 
@@ -84,6 +86,7 @@ class Pond(Generator):
 
         self._read = self.var("read", self.mem_output_ports)
         #TODO
+        self._t_write = self.var("t_write", self.interconnect_input_ports)
         self._t_read = self.var("t_read", self.interconnect_output_ports)
         # self._read.add_attribute(ControlSignalAttr(is_control=True))
 
@@ -98,6 +101,14 @@ class Pond(Generator):
                                    size=self.interconnect_output_ports,
                                    explicit_array=True,
                                    packed=True)
+        
+        self._s_write_addr = self.var("s_write_addr",                                       
+                                   kts.clog2(self.mem_depth),                             
+                                   size=self.interconnect_input_ports,                   
+                                   explicit_array=True,
+                                   packed=True)
+
+        
         self._data_out = self.output("data_out_pond", self.data_width,
                                      size=self.interconnect_output_ports,
                                      explicit_array=True,
@@ -114,8 +125,14 @@ class Pond(Generator):
                                       explicit_array=True,
                                       packed=True)
 
-        self._mem_data_in = self.var("mem_data_in", self.data_width,
+        
+        self._s_mem_data_in = self.var("s_mem_data_in", self.data_width,
                                      size=self.interconnect_input_ports,
+                                     explicit_array=True,
+                                     packed=True)
+
+        self._mem_data_in = self.var("mem_data_in", self.data_width,
+                                     size=self.mem_input_ports,
                                      explicit_array=True,
                                      packed=True)
 
@@ -127,7 +144,7 @@ class Pond(Generator):
 
         self._mem_read_addr = self.var("mem_read_addr",
                                        kts.clog2(self.mem_depth),
-                                       size=self.interconnect_output_ports,
+                                       size=self.mem_output_ports,
                                        explicit_array=True,
                                        packed=True)
 
@@ -152,17 +169,17 @@ class Pond(Generator):
                            RF_WRITE_ITER,
                            clk=self._gclk,
                            rst_n=self._rst_n,
-                           step=self._write[wr_port])
+                           step=self._t_write[wr_port])
             # Whatever comes through here should hopefully just pipe through seamlessly
             # addressor modules
             self.add_child(f"rf_write_addr_{wr_port}",
                            RF_WRITE_ADDR,
                            clk=self._gclk,
                            rst_n=self._rst_n,
-                           step=self._write[wr_port],
+                           step=self._t_write[wr_port],
                            mux_sel=RF_WRITE_ITER.ports.mux_sel_out,
                            restart=RF_WRITE_ITER.ports.restart)
-            safe_wire(self, self._write_addr[wr_port], RF_WRITE_ADDR.ports.addr_out)
+            safe_wire(self, self._s_write_addr[wr_port], RF_WRITE_ADDR.ports.addr_out)
 
             self.add_child(f"rf_write_sched_{wr_port}",
                            RF_WRITE_SCHED,
@@ -171,7 +188,7 @@ class Pond(Generator):
                            mux_sel=RF_WRITE_ITER.ports.mux_sel_out,
                            finished=RF_WRITE_ITER.ports.restart,
                            cycle_count=self._cycle_count,
-                           valid_output=self._write[wr_port])
+                           valid_output=self._t_write[wr_port])
 
         # Create read addressors
         for rd_port in range(self.interconnect_output_ports):
@@ -207,6 +224,13 @@ class Pond(Generator):
                            finished=RF_READ_ITER.ports.restart,
                            cycle_count=self._cycle_count,
                            valid_output=self._t_read[rd_port])
+
+        
+        self.wire(self._write, self._t_write.r_or())
+        self._write_addr = decode(self, self._t_write, self._s_write_addr)
+       
+        self.wire(self._mem_data_in[0], decode(self, self._t_write, self._s_mem_data_in))
+
 
         self.wire(self._read, self._t_read.r_or())
         self._read_addr = decode(self, self._t_read, self._s_read_addr)
@@ -296,7 +320,7 @@ class Pond(Generator):
             self.wire(stg_cfg_seq.ports.rd_data_stg[0], self._mem_data_out[0])
 
         self.RF_GEN = RegisterFile(data_width=self.data_width,
-                                   write_ports=self.interconnect_input_ports,
+                                   write_ports=self.mem_input_ports,
                                    read_ports=self.mem_output_ports,
                                    width_mult=1,
                                    depth=self.mem_depth,
@@ -310,28 +334,31 @@ class Pond(Generator):
                        data_out=self._mem_data_out)
 
         # Opt in for config_write
-        self._write_rf = self.var("write_rf", self.interconnect_input_ports)
+        # TODO: ankita (range is mem or interconnect input ports)
+        self._write_rf = self.var("write_rf", self.mem_input_ports)
         self.wire(self._write_rf[0], kts.ternary(self._config_en.r_or(), self._config_write, self._write[0]))
-        for i in range(self.interconnect_input_ports - 1):
+        for i in range(self.mem_input_ports - 1):
             self.wire(self._write_rf[i + 1], kts.ternary(self._config_en.r_or(), kts.const(0, 1), self._write[i + 1]))
         self.wire(self.RF_GEN.ports.wen, self._write_rf)
 
         # Opt in for config_data_in
-        self.wire(self._mem_data_in[0], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[0]))
-        for i in range(self.interconnect_input_ports - 1):
-            self.wire(self._mem_data_in[i + 1], self._data_in[i + 1])
+        self.wire(self._s_mem_data_in[0], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[0]))
+        self.wire(self._s_mem_data_in[1], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[1]))
+        #for i in range(self.interconnect_input_ports - 1):
+        #    self.wire(self._s_mem_data_in[i], self._data_in[i]) #TODO: ankita self._data_in[i + 1])
         self.wire(self.RF_GEN.ports.data_in, self._mem_data_in)
 
         # Opt in for config_addr
         self.wire(self._mem_write_addr[0], kts.ternary(self._config_en.r_or(),
                                                        self._mem_addr_cfg,
                                                        self._write_addr[0]))
-        for i in range(self.interconnect_input_ports - 1):
+        for i in range(self.mem_input_ports - 1):
             self.wire(self._mem_write_addr[i + 1], self._write_addr[i + 1])
         if self.interconnect_input_ports == 1:
             self.wire(self.RF_GEN.ports.wr_addr, self._mem_write_addr[0])
         else:
-            self.wire(self.RF_GEN.ports.wr_addr, self._mem_write_addr)
+            #TODO: ankita
+            self.wire(self.RF_GEN.ports.wr_addr, self._mem_write_addr[0])
 
         self.wire(self._mem_read_addr[0], kts.ternary(self._config_en.r_or(),
                                                       self._mem_addr_cfg,
@@ -431,14 +458,16 @@ class Pond(Generator):
         # Store all configurations here
         config = []
         # Configure registers based on controller data...
-        config.append(("rf_write_iter_0_dimensionality", in2rf_ctrl.dim))
-        config.append(("rf_write_addr_0_starting_addr", in2rf_ctrl.in_data_strt))
-        config.append(("rf_write_sched_0_sched_addr_gen_starting_addr", in2rf_ctrl.cyc_strt))
-        config.append(("rf_write_sched_0_enable", 1))
-        for i in range(in2rf_ctrl.dim):
-            config.append((f"rf_write_addr_0_strides_{i}", in2rf_ctrl.in_data_stride[i]))
-            config.append((f"rf_write_iter_0_ranges_{i}", in2rf_ctrl.extent[i]))
-            config.append((f"rf_write_sched_0_sched_addr_gen_strides_{i}", in2rf_ctrl.cyc_stride[i]))
+        for i in range(self.interconnect_input_ports):
+            config.append(("rf_write_iter_{i}_dimensionality", in2rf_ctrl.dim))
+            config.append(("rf_write_addr_{i}_starting_addr", in2rf_ctrl.in_data_strt))
+            config.append(("rf_write_sched_{i}_sched_addr_gen_starting_addr", in2rf_ctrl.cyc_strt))
+            config.append(("rf_write_sched_{i}_enable", 1))
+        for j in range(self.interconnect_input_ports):
+            for i in range(in2rf_ctrl.dim):
+                config.append((f"rf_write_addr_{j}_strides_{i}", in2rf_ctrl.in_data_stride[i]))
+                config.append((f"rf_write_iter_{j}_ranges_{i}", in2rf_ctrl.extent[i]))
+                config.append((f"rf_write_sched_{j}_sched_addr_gen_strides_{i}", in2rf_ctrl.cyc_stride[i]))
 
         for i in range(self.interconnect_output_ports):
             config.append(("rf_read_iter_{i}_dimensionality", rf2out_ctrl.dim))
@@ -492,8 +521,9 @@ if __name__ == "__main__":
     pond_dut = Pond(data_width=16,  # CGRA Params
                     mem_depth=32,
                     default_iterator_support=2,
-                    interconnect_input_ports=1,  # Connection to int
+                    interconnect_input_ports=2,  # Connection to int
                     interconnect_output_ports=2,
+                    mem_input_ports=1,
                     mem_output_ports=1,
                     cycle_count_width=16,
                     add_clk_enable=True,
