@@ -481,7 +481,6 @@ class Pond(Generator):
                 config.append((f"rf_read_iter_0_ranges_{i}", rf2out_ctrl_1.extent[i]))
                 config.append((f"rf_read_sched_0_sched_addr_gen_strides_{i}", rf2out_ctrl_1.cyc_stride[i]))
 
-
         if in2rf_ctrl_2:
             config.append(("rf_write_iter_1_dimensionality", in2rf_ctrl_2.dim))
             config.append(("rf_write_addr_1_starting_addr", in2rf_ctrl_2.in_data_strt))
@@ -491,6 +490,15 @@ class Pond(Generator):
                 config.append((f"rf_write_addr_1_strides_{i}", in2rf_ctrl_2.in_data_stride[i]))
                 config.append((f"rf_write_iter_1_ranges_{i}", in2rf_ctrl_2.extent[i]))
                 config.append((f"rf_write_sched_1_sched_addr_gen_strides_{i}", in2rf_ctrl_2.cyc_stride[i]))
+        else :
+            config.append(("rf_write_iter_1_dimensionality", 1))
+            config.append(("rf_write_addr_1_starting_addr", 0))
+            config.append(("rf_write_sched_1_sched_addr_gen_starting_addr", 0))
+            config.append(("rf_write_sched_1_enable", 0))
+            for i in range(3):
+                config.append((f"rf_write_addr_1_strides_{i}", 0))
+                config.append((f"rf_write_iter_1_ranges_{i}", 0))
+                config.append((f"rf_write_sched_1_sched_addr_gen_strides_{i}", 0))
 
         if rf2out_ctrl_2:
             config.append(("rf_read_iter_1_dimensionality", rf2out_ctrl_2.dim))
@@ -502,6 +510,16 @@ class Pond(Generator):
                 config.append((f"rf_read_addr_1_strides_{i}", rf2out_ctrl_2.out_data_stride[i]))
                 config.append((f"rf_read_iter_1_ranges_{i}", rf2out_ctrl_2.extent[i]))
                 config.append((f"rf_read_sched_1_sched_addr_gen_strides_{i}", rf2out_ctrl_2.cyc_stride[i]))
+        else:
+            config.append(("rf_read_iter_1_dimensionality", 1))
+            config.append(("rf_read_addr_1_starting_addr", 0))
+            config.append(("rf_read_sched_1_sched_addr_gen_starting_addr", 0))
+            config.append(("rf_read_sched_1_enable", 0))
+            for i in range(3):
+                config.append((f"rf_read_addr_1_strides_{i}", 0))
+                config.append((f"rf_read_iter_1_ranges_{i}", 0))
+                config.append((f"rf_read_sched_1_sched_addr_gen_strides_{i}", 3))
+
 
         # Handle control registers... (should really be done in garnet TODO)
         config.append(("flush_reg_sel", 0))  # 1
