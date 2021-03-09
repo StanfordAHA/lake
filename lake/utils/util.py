@@ -548,38 +548,32 @@ def generate_pond_api(ctrl_rd, ctrl_wr, dsl=False):
     (tform_ranges_rd_sched, tform_strides_rd_sched) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[5], ctrl_rd[2])
     (tform_ranges_wr_sched, tform_strides_wr_sched) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[5], ctrl_wr[2])
 
+    dim_rd = ctrl_rd[2]
+    dim_wr = ctrl_wr[2]
+
     new_config = {}
 
     if not dsl:
         new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
         new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
-        new_config["rf_read_addr_0_strides_0"] = tform_strides_rd[0]
-        new_config["rf_read_addr_0_strides_1"] = tform_strides_rd[1]
-        new_config["rf_read_addr_0_strides_2"] = tform_strides_rd[2]
-        new_config["rf_read_iter_0_ranges_0"] = tform_ranges_rd[0]
-        new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
-        new_config["rf_read_iter_0_ranges_2"] = tform_ranges_rd[2]
-
         new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
-        new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
-        new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
-        new_config["rf_read_sched_0_sched_addr_gen_strides_2"] = tform_strides_rd_sched[2]
         new_config["rf_read_sched_0_enable"] = 1
+
+        print("DIMRD", dim_rd, tform_strides_rd, tform_ranges_rd)
+        for i in range(dim_rd):
+            new_config[f"rf_read_addr_0_strides_{i}"] = tform_strides_rd[i]
+            new_config[f"rf_read_iter_0_ranges_{i}"] = tform_ranges_rd[i]
+            new_config[f"rf_read_sched_0_sched_addr_gen_strides_{i}"] = tform_strides_rd_sched[i]
 
         new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
         new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
-        new_config["rf_write_addr_0_strides_0"] = tform_strides_wr[0]
-        new_config["rf_write_addr_0_strides_1"] = tform_strides_wr[1]
-        new_config["rf_write_addr_0_strides_2"] = tform_strides_wr[2]
-        new_config["rf_write_iter_0_ranges_0"] = tform_ranges_wr[0]
-        new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
-        new_config["rf_write_iter_0_ranges_2"] = tform_ranges_wr[2]
-
         new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
-        new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
-        new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
-        new_config["rf_write_sched_0_sched_addr_gen_strides_2"] = tform_strides_wr_sched[2]
         new_config["rf_write_sched_0_enable"] = 1
+
+        for i in range(dim_wr):
+            new_config[f"rf_write_addr_0_strides_{i}"] = tform_strides_wr[i]
+            new_config[f"rf_write_iter_0_ranges_{i}"] = tform_ranges_wr[i]
+            new_config[f"rf_write_sched_0_sched_addr_gen_strides_{i}"] = tform_strides_wr_sched[i]
 
     else:
         new_config["input_port0_2pond_forloop_dimensionality"] = ctrl_wr[2]
@@ -612,7 +606,7 @@ def generate_pond_api(ctrl_rd, ctrl_wr, dsl=False):
         # general configs
         new_config["tile_en"] = 1
         new_config["clk_en"] = 1
-
+    print("NEW CONFIG", new_config) 
     return new_config
 
 
