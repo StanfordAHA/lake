@@ -92,7 +92,7 @@ class Pond(Generator):
 
         self._read_addr = self.var("read_addr",
                                    kts.clog2(self.mem_depth),
-                                   size=self.mem_output_ports,
+                                   size=self.interconnect_output_ports,
                                    explicit_array=True,
                                    packed=True)
 
@@ -223,7 +223,10 @@ class Pond(Generator):
                            step=self._t_read[rd_port],
                            mux_sel=RF_READ_ITER.ports.mux_sel_out,
                            restart=RF_READ_ITER.ports.restart)
-            safe_wire(self, self._read_addr[rd_port], RF_READ_ADDR.ports.addr_out)
+            if self.interconnect_output_ports > 1:
+                safe_wire(self, self._read_addr[0][rd_port], RF_READ_ADDR.ports.addr_out[0]) 
+            else:    
+                safe_wire(self, self._read_addr[rd_port], RF_READ_ADDR.ports.addr_out)
 
             self.add_child(f"rf_read_sched_{rd_port}",
                            RF_READ_SCHED,
@@ -373,7 +376,7 @@ class Pond(Generator):
         #    #TODO: ankita
         #    self.wire(self.RF_GEN.ports.wr_addr, self._mem_write_addr[0])
 
-        for i in range(self.interconnect_input_ports):
+        for i in range(self.interconnect_output_ports):
             self.wire(self._s_mem_read_addr[i], kts.ternary(self._config_en.r_or(),
                                                       self._mem_addr_cfg,
                                                       self._read_addr[i]))
