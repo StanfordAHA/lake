@@ -224,7 +224,7 @@ class Pond(Generator):
                            mux_sel=RF_READ_ITER.ports.mux_sel_out,
                            restart=RF_READ_ITER.ports.restart)
             if self.interconnect_output_ports > 1:
-                safe_wire(self, self._read_addr[0][rd_port], RF_READ_ADDR.ports.addr_out[0]) 
+                safe_wire(self, self._read_addr[rd_port], RF_READ_ADDR.ports.addr_out) 
             else:    
                 safe_wire(self, self._read_addr[rd_port], RF_READ_ADDR.ports.addr_out)
 
