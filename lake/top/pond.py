@@ -148,8 +148,11 @@ class Pond(Generator):
                                        explicit_array=True,
                                        packed=True)
 
-        self.wire(self._data_out[1], self._mem_data_out[0])
-        self.wire(self._data_out[0], self._mem_data_out[0])
+        if self.interconnect_output_ports == 1:
+           self.wire(self._data_out[0], self._mem_data_out[0])
+        else:
+           for i in range(self.interconnect_output_ports):
+               self.wire(self._data_out[i], self._mem_data_out[0])    
 
         # Valid out is simply passing the read signal through...
         self.wire(self._valid_out, self._t_read)
@@ -342,8 +345,9 @@ class Pond(Generator):
         self.wire(self.RF_GEN.ports.wen, self._write_rf)
 
         # Opt in for config_data_in
-        self.wire(self._s_mem_data_in[0], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[0]))
-        self.wire(self._s_mem_data_in[1], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[1]))
+        for i in range(self.interconnect_input_ports):
+            self.wire(self._s_mem_data_in[i], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[i]))
+            #self.wire(self._s_mem_data_in[1], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[1]))
         #for i in range(self.interconnect_input_ports - 1):
         #    self.wire(self._s_mem_data_in[i], self._data_in[i]) #TODO: ankita self._data_in[i + 1])
         self.wire(self.RF_GEN.ports.data_in, self._mem_data_in)
