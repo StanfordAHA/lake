@@ -17,6 +17,8 @@ def test_pond_basic(data_width=16,  # CGRA Params
                     cycle_count_width=16,
                     add_clk_enable=True,
                     add_flush=True,
+                    mem_input_ports=1,
+                    mem_output_ports=1,
                     interconnect_input_ports=1,  # Connection to int
                     interconnect_output_ports=1):
 
@@ -71,18 +73,21 @@ def test_pond_basic(data_width=16,  # CGRA Params
                 setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
 
         if i >= 16:
-            tester.circuit.data_out_pond.expect(i - 15)
-
+            if interconnect_output_ports > 1:
+                tester.circuit.data_out_pond_0.expect(i - 15)
+            else:
+                tester.circuit.data_out_pond.expect(i - 15)
         tester.eval()
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
+        tempdir="NEW"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
-
+"""
 def test_pond_strided_read(data_width=16,  # CGRA Params
                            mem_depth=32,
                            default_iterator_support=2,
@@ -230,6 +235,6 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
-
+"""
 if __name__ == "__main__":
-    test_pond_strided_read()
+    test_pond_basic()
