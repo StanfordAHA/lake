@@ -541,39 +541,54 @@ def get_pond_configs(config_file):
 
 
 # Function for generating Pond API
-def generate_pond_api(ctrl_rd, ctrl_wr, dsl=False):
-    (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
-    (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
+def generate_pond_api(ctrl_rd, ctrl_wr, num_acc=1, dsl=False):
+    print(ctrl_rd, ctrl_wr) 
+    tform_ranges_rd = [0] * num_acc
+    tform_strides_rd = [0] * num_acc
+    tform_ranges_rd_sched = [0] * num_acc
+    tform_strides_rd_sched = [0] * num_acc
+    tform_ranges_wr = [0] * num_acc
+    tform_strides_wr = [0] * num_acc
+    tform_ranges_wr_sched = [0] * num_acc
+    tform_strides_wr_sched = [0] * num_acc
+    dim_rd = [0] * num_acc
+    dim_wr = [0] * num_acc
 
-    (tform_ranges_rd_sched, tform_strides_rd_sched) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[5], ctrl_rd[2])
-    (tform_ranges_wr_sched, tform_strides_wr_sched) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[5], ctrl_wr[2])
+    for i in range(num_acc):
+        (tform_ranges_rd[i], tform_strides_rd[i]) = transform_strides_and_ranges(ctrl_rd[i][0], ctrl_rd[i][1], ctrl_rd[i][2])
+        (tform_ranges_wr[i], tform_strides_wr[i]) = transform_strides_and_ranges(ctrl_wr[i][0], ctrl_wr[i][1], ctrl_wr[i][2])
 
-    dim_rd = ctrl_rd[2]
-    dim_wr = ctrl_wr[2]
+        (tform_ranges_rd_sched[i], tform_strides_rd_sched[i]) = transform_strides_and_ranges(ctrl_rd[i][0], ctrl_rd[i][5], ctrl_rd[i][2])
+        (tform_ranges_wr_sched[i], tform_strides_wr_sched[i]) = transform_strides_and_ranges(ctrl_wr[i][0], ctrl_wr[i][5], ctrl_wr[i][2])
+
+        dim_rd[i] = ctrl_rd[i][2]
+        dim_wr[i] = ctrl_wr[i][2]
 
     new_config = {}
 
     if not dsl:
-        new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
-        new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
-        new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
-        new_config["rf_read_sched_0_enable"] = 1
+        
+        for i in range(num_acc):
+            new_config[f"rf_read_iter_{i}_dimensionality"] = ctrl_rd[i][2]
+            new_config[f"rf_read_addr_{i}_starting_addr"] = ctrl_rd[i][3]
+            new_config[f"rf_read_sched_{i}_sched_addr_gen_starting_addr"] = ctrl_rd[i][4]
+            new_config[f"rf_read_sched_{i}_enable"] = 1
 
-        print("DIMRD", dim_rd, tform_strides_rd, tform_ranges_rd)
-        for i in range(dim_rd):
-            new_config[f"rf_read_addr_0_strides_{i}"] = tform_strides_rd[i]
-            new_config[f"rf_read_iter_0_ranges_{i}"] = tform_ranges_rd[i]
-            new_config[f"rf_read_sched_0_sched_addr_gen_strides_{i}"] = tform_strides_rd_sched[i]
+            for j in range(dim_rd[i]):
+                new_config[f"rf_read_addr_{i}_strides_{j}"] = tform_strides_rd[i][j]
+                new_config[f"rf_read_iter_{i}_ranges_{j}"] = tform_ranges_rd[i][j]
+                new_config[f"rf_read_sched_{i}_sched_addr_gen_strides_{j}"] = tform_strides_rd_sched[i][j]
 
-        new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
-        new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
-        new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
-        new_config["rf_write_sched_0_enable"] = 1
+            new_config[f"rf_write_iter_{i}_dimensionality"] = ctrl_wr[i][2]
+            new_config[f"rf_write_addr_{i}_starting_addr"] = ctrl_wr[i][3]
+            new_config[f"rf_write_sched_{i}_sched_addr_gen_starting_addr"] = ctrl_wr[i][4]
+            new_config[f"rf_write_sched_{i}_enable"] = 1
 
-        for i in range(dim_wr):
-            new_config[f"rf_write_addr_0_strides_{i}"] = tform_strides_wr[i]
-            new_config[f"rf_write_iter_0_ranges_{i}"] = tform_ranges_wr[i]
-            new_config[f"rf_write_sched_0_sched_addr_gen_strides_{i}"] = tform_strides_wr_sched[i]
+            for j in range(dim_wr[i]):
+                print("ENTERED")
+                new_config[f"rf_write_addr_{i}_strides_{j}"] = tform_strides_wr[i][j]
+                new_config[f"rf_write_iter_{i}_ranges_{j}"] = tform_ranges_wr[i][j]
+                new_config[f"rf_write_sched_{i}_sched_addr_gen_strides_{j}"] = tform_strides_wr_sched[i][j]
 
     else:
         new_config["input_port0_2pond_forloop_dimensionality"] = ctrl_wr[2]
