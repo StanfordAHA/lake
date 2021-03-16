@@ -24,6 +24,7 @@ class Intersect(TileBase):
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.use_merger = use_merger
 
         # For compatibility with tile integration...
         self.total_sets = 0
@@ -327,10 +328,13 @@ class Intersect(TileBase):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self):
+    def get_bitstream(self, numlevels=0):
 
         # Store all configurations here
-        config = []
+        config = [("tile_en", 1)]
+
+        if self.use_merger:
+            config += ("num_levels_used", numlevels)
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
         flattened = create_wrapper_flatten(self.internal_generator.clone(),

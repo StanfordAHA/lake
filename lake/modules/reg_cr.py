@@ -13,13 +13,18 @@ from lake.modules.reg_fifo import RegFIFO
 
 class Reg(Generator):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 add_dispatcher=False,
+                 dispatcher_size=2):
 
         super().__init__("reg_cr", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+
+        self.add_dispatcher = add_dispatcher
+        self.dispatcher_size = dispatcher_size
 
         self.total_sets = 0
 
@@ -44,8 +49,14 @@ class Reg(Generator):
         self._data_in = self.input("data_in", self.data_width)
         self._data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._write_en = self.input("write_en", 1)
-        self._write_en.add_attribute(ControlSignalAttr(is_control=True))
+        self._valid_in = self.input("valid_in", 1)
+        self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._ready_out = self.output("ready_out", 1)
+        self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._eos_in = self.input("eos_in", 1)
+        self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
         self._data_out = self.output("data_out", self.data_width)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -53,25 +64,203 @@ class Reg(Generator):
         self._valid_out = self.output("valid_out", 1)
         self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
+        self._ready_in = self.input("ready_in", 1)
+        self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        # Declare the accum reg
+        self._accum_reg = self.var("accum_reg", self.data_width)
+
+# ==============================
+# INPUT FIFO
+# ==============================
+        self._infifo = RegFIFO(data_width=self.data_width + 2, width_mult=1, depth=8)
+
+        # Ready is just a function of having room in the FIFO
+        self.wire(self._ready_out, ~self._infifo.ports.full)
+
+        # Convert to packed
+        self._infifo_in_packed = self.var("infifo_in_packed", self.data_width + 2, packed=True)
+        self._infifo_out_packed = self.var("infifo_out_packed", self.data_width + 2, packed=True)
+
+        self._infifo_out_eos = self.var("infifo_out_eos", 1)
+        self._infifo_out_valid = self.var("infifo_out_valid", 1)
+        self._infifo_out_data = self.var("infifo_out_data", self.data_width)
+
+        # indicate valid data as well
+        self.wire(self._infifo_in_packed[self.data_width + 1], self._eos_in)
+        self.wire(self._infifo_in_packed[self.data_width], self._valid_in)
+        self.wire(self._infifo_in_packed[self.data_width - 1, 0], self._data_in)
+
+        self.wire(self._infifo_out_eos, self._infifo_out_packed[self.data_width + 1])
+        self.wire(self._infifo_out_valid, self._infifo_out_packed[self.data_width])
+        self.wire(self._infifo_out_data, self._infifo_out_packed[self.data_width - 1, 0])
+
+        self._infifo_valid_entry = self.var("infifo_valid_entry", 1)
+
+        # Push when there's incoming transaction and room to accept it
+        self._infifo_push = self.var("infifo_push", 1)
+        self.wire(self._infifo_push, (self._valid_in | self._eos_in) & (~self._infifo.ports.full))
+
+        # Pop when ready to accum more streams
+        self._infifo_pop = self.var("infifo_pop", 1)
+
+        self.add_child(f"input_fifo",
+                       self._infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._infifo_push,
+                       pop=self._infifo_pop,
+                       data_in=self._infifo_in_packed,
+                       data_out=self._infifo_out_packed,
+                       valid=self._infifo_valid_entry)
+
+# ==============================
+# OUTPUT FIFO
+# ==============================
+        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
+
+        # Convert to packed
+        self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1, packed=True)
+        self._outfifo_out_packed = self.var("outfifo_out_packed", self.data_width + 1, packed=True)
+
+        # self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
+        # self._outfifo_in_valid = self.var("outfifo_in_valid", 1)
+        # self._outfifo_in_data = self.var("outfifo_in_data", self.data_width)
+
+        # indicate valid data as well
+        # self.wire(self._outfifo_in_packed[self.data_width + 1], self._outfifo_in_eos)
+        # self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_valid)
+        self.wire(self._outfifo_in_packed[self.data_width], kts.const(1, 1))
+        self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._accum_reg)
+
+        # self.wire(self._outfifo_out_valid, self._outfifo_out_packed[self.data_width + 1])
+        self.wire(self._valid_out, self._outfifo_out_packed[self.data_width])
+        self.wire(self._data_out, self._outfifo_out_packed[self.data_width - 1, 0])
+
+        self._outfifo_valid_entry = self.var("outfifo_valid_entry", 1)
+
+        # Push when there's incoming transaction and room to accept it
+        self._outfifo_push = self.var("outfifo_push", 1)
+
+        # Pop when ready to accum more streams
+        self._outfifo_pop = self.var("outfifo_pop", 1)
+        self._outfifo_full = self.var("outfifo_full", 1)
+        self._outfifo_empty = self.var("outfifo_empty", 1)
+
+        self.add_child(f"output_fifo",
+                       self._outfifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._outfifo_push,
+                       pop=self._outfifo_pop,
+                       data_in=self._outfifo_in_packed,
+                       data_out=self._outfifo_out_packed,
+                       valid=self._outfifo_valid_entry)
+
+        self.wire(self._outfifo_pop, self._ready_in & ~self._outfifo_empty)
+        self.wire(self._outfifo_full, self._outfifo.ports.full)
+        self.wire(self._outfifo_empty, self._outfifo.ports.empty)
 # =============================
-# SCAN FSM
+# ACCUM FSM
 # =============================
 
-        self._data_written = self.var("data_written", 1)
-        self.wire(self._valid_out, self._data_written | self._write_en)
-
-        self._reg_d_out = self.var("reg_d_out", self.data_width)
-        self.wire(self._data_out, self._reg_d_out)
+        self._reg_clr = self.var("reg_clr", 1)
+        self._reg_accum = self.var("reg_accum", 1)
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def reg_ff():
+        def accum_reg_ff():
             if ~self._rst_n:
-                self._reg_d_out = 0
-                self._data_written = 0
-            elif self._write_en:
-                self._reg_d_out = self._data_in
-                self._data_written = 1
-        self.add_code(reg_ff)
+                self._accum_reg = 0
+            elif self._reg_clr:
+                self._accum_reg = 0
+            elif self._reg_accum:
+                self._accum_reg = self._accum_reg + self._infifo_out_data
+        self.add_code(accum_reg_ff)
+
+        # Create FSM
+        self.accum_fsm = self.add_fsm("accum_seq", reset_high=False)
+        START = self.accum_fsm.add_state("START")
+        self.accum_fsm.set_start_state(START)
+        ACCUM = self.accum_fsm.add_state("ACCUM")
+        OUTPUT = self.accum_fsm.add_state("OUTPUT")
+        OUTPUT_BLCK = self.accum_fsm.add_state("OUTPUT_BLCK")
+
+        self.accum_fsm.output(self._infifo_pop)
+        self.accum_fsm.output(self._outfifo_push)
+        self.accum_fsm.output(self._reg_clr)
+        self.accum_fsm.output(self._reg_accum)
+
+        # State Transitions
+
+        # In START, we are looking for some valid data, otherwise this accum is empty
+        START.next(START, ~self._infifo_out_valid)
+        START.next(ACCUM, self._infifo_out_valid)
+        # START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
+
+        # In ACCUM, we are just accumulating data as long as we have valids
+        ACCUM.next(ACCUM, ~self._infifo_out_eos)
+        ACCUM.next(OUTPUT, self._infifo_out_eos)
+
+        OUTPUT.next(OUTPUT_BLCK, self._outfifo_full)
+        OUTPUT.next(START, ~self._outfifo_full)
+
+        OUTPUT_BLCK.next(OUTPUT_BLCK, self._outfifo_full)
+        OUTPUT_BLCK.next(START, ~self._outfifo_full)
+
+        #############
+        # START
+        #############
+        # When in START, if we see just eos but not valid, then that was a blank stream and we should pop it...
+        START.output(self._infifo_pop, self._infifo_out_eos & ~self._infifo_out_valid)
+        START.output(self._outfifo_push, kts.const(0, 1))
+        START.output(self._reg_clr, kts.const(0, 1))
+        START.output(self._reg_accum, kts.const(0, 1))
+
+        #############
+        # ACCUM
+        #############
+        # Always pop...
+        ACCUM.output(self._infifo_pop, kts.const(1, 1))
+        ACCUM.output(self._outfifo_push, kts.const(0, 1))
+        ACCUM.output(self._reg_clr, kts.const(0, 1))
+        ACCUM.output(self._reg_accum, self._infifo_out_valid)
+
+        #############
+        # OUTPUT
+        #############
+        OUTPUT.output(self._infifo_pop, kts.const(0, 1))
+        OUTPUT.output(self._outfifo_push, ~self._outfifo_full)
+        OUTPUT.output(self._reg_clr, kts.const(1, 1))
+        OUTPUT.output(self._reg_accum, kts.const(0, 1))
+
+        #############
+        # OUTPUT BLOCKED - Deal with full output...
+        #############
+        OUTPUT_BLCK.output(self._infifo_pop, kts.const(0, 1))
+        OUTPUT_BLCK.output(self._outfifo_push, ~self._outfifo_full)
+        OUTPUT_BLCK.output(self._reg_clr, kts.const(0, 1))
+        OUTPUT_BLCK.output(self._reg_accum, kts.const(0, 1))
+
+        # self._data_written = self.var("data_written", 1)
+        # self.wire(self._valid_out, self._data_written | self._write_en)
+
+        # self._reg_d_out = self.var("reg_d_out", self.data_width)
+        # self.wire(self._data_out, self._reg_d_out)
+
+        # @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        # def reg_ff():
+        #     if ~self._rst_n:
+        #         self._reg_d_out = 0
+        #         self._data_written = 0
+        #     elif self._write_en:
+        #         self._reg_d_out = self._data_in
+        #         self._data_written = 1
+        # self.add_code(reg_ff)
+
+        if self.add_dispatcher:
+            self.add_dispatch_logic()
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
@@ -91,15 +280,97 @@ class Reg(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
+    def add_dispatch_logic(self):
+
+        self.f_iters = []
+        self.f_coords = []
+        self.f_sms = []
+
+        # Need an addr out + read enable, then data incoming
+        addr_out = []
+        dsp_data_in = []
+        read_out = []
+        for i in range(self.dispatcher_size):
+            new_addr_out = self.output(f"addr_out_{i}", self.data_width)
+            new_addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            addr_out.append(new_addr_out)
+
+            new_data_in = self.input(f"dsp_data_in_{i}", self.data_width)
+            new_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            dsp_data_in.append(new_data_in)
+
+            new_ren = self.output(f"dsp_ren_out_{i}", 1)
+            new_ren.add_attribute(ControlSignalAttr(is_control=False))
+            read_out.append(new_ren)
+
+        # Basically want a set of iterators for each dispatcher
+        for i in range(self.dispatcher_size):
+            # Create read address generator
+            FIBER_ITER = ForLoop(iterator_support=2,
+                                 config_width=16)
+            FIBER_COORD = AddrGen(iterator_support=2,
+                                  config_width=16)
+
+            self.f_iters.append(FIBER_ITER)
+            self.f_coords.append(FIBER_COORD)
+
+            self.add_child(f"fiber_iter_{i}",
+                           FIBER_ITER,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           step=self._step_outer)
+
+            # Whatever comes through here should hopefully just pipe through seamlessly
+            # addressor modules
+
+            self.add_child(f"fiber_coord_{i}",
+                           FIBER_COORD,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           step=self._step_outer,
+                           mux_sel=FIBER_ITER.ports.mux_sel_out,
+                           restart=FIBER_ITER.ports.restart)
+
+            self._outer_addr = self.var("outer_addr", 16)
+            safe_wire(self, self._outer_addr, self.FIBER_OUTER_ADDR.ports.addr_out)
+
+            self._outer_restart = self.var("outer_restart", 1)
+            self.wire(self._outer_restart, self.FIBER_OUTER_ITER.ports.restart)
+
+            # Create the SM
+            DISPATCH_FSM = self.add_fsm(f"dispatch_fsm_{i}", reset_high=False)
+            START = DISPATCH_FSM.add_state("START")
+            DISPATCH = DISPATCH_FSM.add_state("DISPATCH")
+            SRCH_LKUP_R = DISPATCH_FSM.add_state("SRCH_LKUP_R")
+            SRCH_LKUP_CHK = DISPATCH_FSM.add_state("SRCH_LKUP_CHK")
+            SYNC_RESULT = DISPATCH_FSM.add_state("SYNC_RESULT")
+            DONE = DISPATCH_FSM.add_state("DONE")
+
+            # Set restart state
+            DISPATCH_FSM.set_start_state(START)
+
+            # Define state outputs
+            DISPATCH_FSM.output(addr_out[i])
+            DISPATCH_FSM.output(read_out[i])
+
+            ####################
+            # Next State Logic
+            ####################
+
+            # Dummy state for eventual filling block.
+            START.next(ISSUE_STRM, self._root)
+            START.next(ISSUE_STRM_NR, ~self._root)
+
     # No actual config at this level
     def get_bitstream(self):
 
         # Store all configurations here
-        config = []
+        config = [("tile_en", 1)]
         return config
 
 
 if __name__ == "__main__":
+
     reg_dut = Reg(data_width=16)
 
     # Lift config regs and generate annotation

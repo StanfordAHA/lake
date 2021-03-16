@@ -3,7 +3,7 @@ from kratos import *
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
-from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg
+from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg, transform_strides_and_ranges
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -737,15 +737,24 @@ class Scanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, max_out, outer_stride, outer_range):
+    def get_bitstream(self, inner_offset, max_out, ranges, strides, root):
 
         # Store all configurations here
-        config = [("inner_dim_offset", inner_offset),
-                  ("max_outer_dim", max_out),
-                  ("fiber_outer_iter_dimensionality", 1),
-                  ("fiber_outer_iter_ranges_0", outer_range - 2),
-                  ("fiber_outer_addr_strides_0", outer_stride),
-                  ("fiber_outer_addr_starting_addr", 0)]
+        config = [
+            ("inner_dim_offset", inner_offset),
+            ("max_outer_dim", max_out)]
+
+        if root:
+            dim = len(ranges)
+            tform_ranges, tform_strides = transform_strides_and_ranges(ranges=ranges,
+                                                                       strides=strides,
+                                                                       dimensionality=dim)
+            for i in range(dim):
+                config += [("fiber_outer_iter_dimensionality", dim)]
+                config += [(f"fiber_outer_iter_ranges_{i}", tform_ranges[i])]
+                config += [(f"fiber_outer_addr_strides_{i}", tform_strides[i])]
+                config += [("fiber_outer_addr_starting_addr", 0)]
+
         return config
 
 
