@@ -3,10 +3,11 @@ import sys
 import tempfile
 import pytest
 
-from lake.utils.util import generate_lake_config_wrapper
-from lake.utils.util import check_env
+from lake.utils.util import *
 from lake.utils.test_infra import base_lake_tester
+from lake.top.lake_top import get_lake_dut
 
+from _kratos import create_wrapper_flatten
 
 def get_lake_wrapper(config_path,
                      stencil_valid,
@@ -16,20 +17,21 @@ def get_lake_wrapper(config_path,
                      in_ports=2,
                      out_ports=2):
 
-    lt_dut, configs, configs_list, magma_dut, tester = \
-        base_lake_tester(config_path,
-                         in_file_name,
-                         out_file_name,
-                         in_ports,
-                         out_ports,
-                         stencil_valid,
-                         get_configs_list=True)
+    lt_dut, need_config_lift, s, t = get_lake_dut(in_ports=in_ports,
+                                                  out_ports=out_ports,
+                                                  stencil_valid=stencil_valid)
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        tester.compile_and_run(target="verilator",
-                               flags=["-Wno-fatal"])
+    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
+    # prints out list of configs for compiler team
+    configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 
-    generate_lake_config_wrapper(configs_list, "configs.sv", "build/LakeTop_W.v", name)
+    flattened = create_wrapper_flatten(lt_dut.internal_generator.clone(),
+                                       "LakeTop_W")
+    inst = Generator("LakeTop_W",
+                     internal_generator=flattened)
+    verilog(inst, filename="LakeTop_W.v")
+    
+    generate_lake_config_wrapper(configs_list, "configs.sv", "LakeTop_W.v", name)
 
 
 def wrapper(config_path_input, stencil_valid, name):
