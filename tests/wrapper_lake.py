@@ -25,11 +25,20 @@ def get_lake_wrapper(config_path,
     # prints out list of configs for compiler team
     configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 
+    # get flattened module
     flattened = create_wrapper_flatten(lt_dut.internal_generator.clone(),
                                        "LakeTop_W")
     inst = Generator("LakeTop_W",
                      internal_generator=flattened)
     verilog(inst, filename="LakeTop_W.v")
+
+    # get original verilog
+    verilog(lt_dut, filename="lt_dut.v")
+    # prepend wrapper module to original verilog file
+    with open("LakeTop_W.v", "a") as with_flatten:
+        with open("lt_dut.v", "r") as lt_dut_file:
+            for line in lt_dut_file:
+                with_flatten.write(line)
     
     generate_lake_config_wrapper(configs_list, "configs.sv", "LakeTop_W.v", name)
 
