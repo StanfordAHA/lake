@@ -11,18 +11,20 @@ from lake.utils.test_infra import base_lake_tester
 def get_lake_wrapper(config_path,
                      stencil_valid,
                      name,
+                     fw,
                      in_file_name="",
                      out_file_name="",
                      in_ports=2,
                      out_ports=2):
 
     lt_dut, configs, configs_list, magma_dut, tester = \
-        base_lake_tester(config_path,
-                         in_file_name,
-                         out_file_name,
-                         in_ports,
-                         out_ports,
-                         stencil_valid,
+        base_lake_tester(config_path=config_path,
+                         in_file_name=in_file_name,
+                         out_file_name=out_file_name,
+                         in_ports=in_ports,
+                         out_ports=out_ports,
+                         fetch_width=fw,
+                         stencil_valid=stencil_valid,
                          get_configs_list=True)
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -32,7 +34,7 @@ def get_lake_wrapper(config_path,
     generate_lake_config_wrapper(configs_list, "configs.sv", "build/LakeTop_W.v", name)
 
 
-def wrapper(config_path_input, stencil_valid, name):
+def wrapper(config_path_input, stencil_valid, name, fw):
     lc, ls = check_env()
     # we are in the process of transitioning to csvs being in this folder
     # lc = <path to clockwork>/aha_garnet_design/
@@ -40,7 +42,8 @@ def wrapper(config_path_input, stencil_valid, name):
     config_path = lc + config_path_input
     get_lake_wrapper(config_path=config_path,
                      stencil_valid=stencil_valid,
-                     name=name)
+                     name=name,
+                     fw=fw)
 
 
 def error(usage):
@@ -75,6 +78,10 @@ if __name__ == "__main__":
                         type=str,
                         help="optional: module name for LakeWrapper module (default: LakeWrapper)",
                         default="LakeWrapper")
+    parser.add_argument("-fw",
+                        type=str,
+                        help="optional: module name for LakeWrapper module (default: LakeWrapper)",
+                        default="4")
 
     args = parser.parse_args()
 
@@ -92,7 +99,8 @@ if __name__ == "__main__":
     if args.c is None:
         error(usage)
 
-    wrapper(args.c, stencil_valid, args.n)
+    fw = int(args.fw)
+    wrapper(args.c, stencil_valid, args.n, fw)
 
     # Example usage:
     # python tests/wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
