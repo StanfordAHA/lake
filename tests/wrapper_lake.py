@@ -9,6 +9,7 @@ from lake.top.lake_top import get_lake_dut
 
 from _kratos import create_wrapper_flatten
 
+
 def get_lake_wrapper(config_path,
                      stencil_valid,
                      name,
@@ -39,7 +40,7 @@ def get_lake_wrapper(config_path,
         with open("lt_dut.v", "r") as lt_dut_file:
             for line in lt_dut_file:
                 with_flatten.write(line)
-    
+
     generate_lake_config_wrapper(configs_list, "configs.sv", "LakeTop_W.v", name)
 
 
