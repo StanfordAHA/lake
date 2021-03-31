@@ -533,6 +533,7 @@ class Pond(Generator):
 
 
 def get_pond_dut(depth=32,
+                 iterator_support=3,
                  in_ports=2,
                  out_ports=2,
                  mem_in_ports=1,
@@ -543,9 +544,10 @@ def get_pond_dut(depth=32,
 
     pond_dut = Pond(data_width=16,  # CGRA Params
                     mem_depth=depth,
-                    default_iterator_support=3,
+                    default_iterator_support=iterator_support,
                     interconnect_input_ports=in_ports,  # Connection to int
                     interconnect_output_ports=out_ports,
+                    mem_input_ports=mem_in_ports,
                     mem_output_ports=mem_out_ports,
                     config_data_width=32,
                     config_addr_width=8,
@@ -563,8 +565,8 @@ if __name__ == "__main__":
     pond_dut = Pond(data_width=16,  # CGRA Params
                     mem_depth=32,
                     default_iterator_support=2,
-                    interconnect_input_ports=1,  # Connection to int
-                    interconnect_output_ports=1,
+                    interconnect_input_ports=2,  # Connection to int
+                    interconnect_output_ports=2,
                     mem_input_ports=1,
                     mem_output_ports=1,
                     cycle_count_width=16,

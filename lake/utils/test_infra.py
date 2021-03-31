@@ -52,6 +52,7 @@ def base_lake_tester(config_path,
 
 def base_pond_tester(config_path,
                      depth,
+                     iterator_support, 
                      in_ports,
                      out_ports,
                      mem_in_ports,
@@ -59,6 +60,7 @@ def base_pond_tester(config_path,
                      get_configs_list=False):
 
     pond_dut, need_config_lift, s, t = get_pond_dut(depth=depth,
+                                                    iterator_support=iterator_support,
                                                     in_ports=in_ports,
                                                     mem_in_ports=mem_in_ports,
                                                     mem_out_ports=mem_out_ports,

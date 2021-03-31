@@ -11,6 +11,7 @@ from lake.utils.test_infra import base_pond_tester
 def get_pond_wrapper(config_path,
                      name,
                      depth,
+                     iterator_support,
                      in_ports=2,
                      out_ports=2,
                      mem_in_ports=1,
@@ -19,6 +20,7 @@ def get_pond_wrapper(config_path,
     pond_dut, configs, configs_list, magma_dut, tester = \
         base_pond_tester(config_path,
                          depth,
+                         iterator_support,
                          in_ports,
                          out_ports,
                          mem_in_ports,
@@ -34,13 +36,13 @@ def get_pond_wrapper(config_path,
     generate_lake_config_wrapper(configs_list, "configs.sv", "build/pond_W.v", name, "pond")
 
 
-def wrapper(config_path_input, name, pond_depth):
+def wrapper(config_path_input, name, pond_depth, iterator_support):
     lc, ls = check_env()
     # we are in the process of transitioning to csvs being in this folder
     # lc = <path to clockwork>/aha_garnet_design/
 
     # config_path = lc + config_path_input
-    get_pond_wrapper(config_path=config_path_input, name=name, depth=pond_depth)
+    get_pond_wrapper(config_path=config_path_input, name=name, depth=pond_depth, iterator_support=iterator_support)
 
 
 def error(usage):
@@ -68,6 +70,10 @@ if __name__ == "__main__":
                         help="optional: depth for Pond memory",
                         default=32)
 
+    parser.add_argument("-l",
+                        type=int,
+                        help="optional: iterator support for Pond memory",
+                        default=3) 
     args = parser.parse_args()
 
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
@@ -76,7 +82,7 @@ if __name__ == "__main__":
     # if args.c is None:
     #    error(usage)
 
-    wrapper(args.c, args.n, args.d)
+    wrapper(args.c, args.n, args.d, args.l)
 
     # Example usage:
     # python tests/wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
