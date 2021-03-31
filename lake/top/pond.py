@@ -355,8 +355,8 @@ class Pond(Generator):
         # Opt in for config_addr
         for i in range(self.interconnect_input_ports):
             self.wire(self._s_mem_write_addr[i], kts.ternary(self._config_en.r_or(),
-                                                       self._mem_addr_cfg,
-                                                       self._write_addr[i]))
+                                                             self._mem_addr_cfg,
+                                                             self._write_addr[i]))
 
         self.wire(self.RF_GEN.ports.wr_addr, self._mem_write_addr[0])
 

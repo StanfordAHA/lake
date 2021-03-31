@@ -542,7 +542,7 @@ def get_pond_configs(config_file):
 
 # Function for generating Pond API
 def generate_pond_api(ctrl_rd, ctrl_wr, num_acc=1, dsl=False):
-    print(ctrl_rd, ctrl_wr) 
+    print(ctrl_rd, ctrl_wr)
     tform_ranges_rd = [0] * num_acc
     tform_strides_rd = [0] * num_acc
     tform_ranges_rd_sched = [0] * num_acc
@@ -567,7 +567,7 @@ def generate_pond_api(ctrl_rd, ctrl_wr, num_acc=1, dsl=False):
     new_config = {}
 
     if not dsl:
-        
+ 
         for i in range(num_acc):
             new_config[f"rf_read_iter_{i}_dimensionality"] = ctrl_rd[i][2]
             new_config[f"rf_read_addr_{i}_starting_addr"] = ctrl_rd[i][3]
@@ -621,7 +621,6 @@ def generate_pond_api(ctrl_rd, ctrl_wr, num_acc=1, dsl=False):
         # general configs
         new_config["tile_en"] = 1
         new_config["clk_en"] = 1
-    print("NEW CONFIG", new_config) 
     return new_config
 
 

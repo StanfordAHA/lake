@@ -52,7 +52,7 @@ def base_lake_tester(config_path,
 
 def base_pond_tester(config_path,
                      depth,
-                     iterator_support, 
+                     iterator_support,
                      in_ports,
                      out_ports,
                      mem_in_ports,
