@@ -159,7 +159,6 @@ def test_pond_acc(data_width=16,  # CGRA Params
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir="NEW3"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
@@ -328,7 +327,7 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
                                flags=["-Wno-fatal"])
 
 
-    def test_pond_basic_2addressors(data_width=16,  # CGRA Params
+def test_pond_basic_2addressors(data_width=16,  # CGRA Params
                                 mem_depth=32,
                                 default_iterator_support=2,
                                 config_data_width=32,
