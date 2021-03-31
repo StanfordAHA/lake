@@ -8,6 +8,7 @@ import tempfile
 from lake.models.lake_top_model import LakeTopModel
 from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 
+
 def test_pond_basic(data_width=16,  # CGRA Params
                     mem_depth=32,
                     default_iterator_support=2,
@@ -86,17 +87,17 @@ def test_pond_basic(data_width=16,  # CGRA Params
 
 
 def test_pond_acc(data_width=16,  # CGRA Params
-                    mem_depth=32,
-                    default_iterator_support=2,
-                    config_data_width=32,
-                    config_addr_width=8,
-                    cycle_count_width=16,
-                    add_clk_enable=True,
-                    add_flush=True,
-                    mem_input_ports=1,
-                    mem_output_ports=1,
-                    interconnect_input_ports=2,  # Connection to int
-                    interconnect_output_ports=2):
+                  mem_depth=32,
+                  default_iterator_support=2,
+                  config_data_width=32,
+                  config_addr_width=8,
+                  cycle_count_width=16,
+                  add_clk_enable=True,
+                  add_flush=True,
+                  mem_input_ports=1,
+                  mem_output_ports=1,
+                  interconnect_input_ports=2,  # Connection to int
+                  interconnect_output_ports=2):
 
     # DUT
     pond_dut = Pond(data_width=data_width,  # CGRA Params
@@ -139,7 +140,7 @@ def test_pond_acc(data_width=16,  # CGRA Params
 
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
-    
+
     for i in range(16):
         # Incrementing Data
         data_in_pond[0] = data_in_pond[0] + 1
@@ -156,7 +157,7 @@ def test_pond_acc(data_width=16,  # CGRA Params
             tester.circuit.data_out_pond.expect(i)
         tester.eval()
         tester.step(2)
-    
+
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir="NEW3"
         tester.compile_and_run(target="verilator",
@@ -233,7 +234,7 @@ def test_pond_strided_read(data_width=16,  # CGRA Params
         if i >= 16:
             if interconnect_output_ports == 1:
                 tester.circuit.data_out_pond.expect((i - 16) * 2 + 1)
-            else:    
+            else:
                 tester.circuit.data_out_pond_0.expect((i - 16) * 2 + 1)
 
         tester.eval()
@@ -314,7 +315,7 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
         if i >= 16:
             if interconnect_output_ports == 1:
                 tester.circuit.data_out_pond.expect(((i - 16) % 16) + 1)
-            else:    
+            else:
                 tester.circuit.data_out_pond_0.expect(((i - 16) % 16) + 1)
 
         tester.eval()
@@ -326,18 +327,19 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
-def test_pond_basic_2addressors(data_width=16,  # CGRA Params
-                    mem_depth=32,
-                    default_iterator_support=2,
-                    config_data_width=32,
-                    config_addr_width=8,
-                    cycle_count_width=16,
-                    add_clk_enable=True,
-                    add_flush=True,
-                    mem_input_ports=1,
-                    mem_output_ports=1,
-                    interconnect_input_ports=2,  # Connection to int
-                    interconnect_output_ports=2):
+
+    def test_pond_basic_2addressors(data_width=16,  # CGRA Params
+                                mem_depth=32,
+                                default_iterator_support=2,
+                                config_data_width=32,
+                                config_addr_width=8,
+                                cycle_count_width=16,
+                                add_clk_enable=True,
+                                add_flush=True,
+                                mem_input_ports=1,
+                                mem_output_ports=1,
+                                interconnect_input_ports=2,  # Connection to int
+                                interconnect_output_ports=2):
 
     # DUT
     pond_dut = Pond(data_width=data_width,  # CGRA Params
@@ -364,7 +366,7 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
     # Starting Addr (schedule),  (schedule)
     ctrl_rd_0 = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
     ctrl_wr_0 = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
-    
+
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Strides (schedule)
     ctrl_rd_1 = [[16, 1], [1, 1], 2, 0, 32, [1, 1]]
@@ -375,12 +377,12 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
 
     ctrl_rd.append(ctrl_rd_0)
     ctrl_rd.append(ctrl_rd_1)
-    
+
     ctrl_wr.append(ctrl_wr_0)
     ctrl_wr.append(ctrl_wr_1)
 
     pond_config = generate_pond_api(ctrl_rd, ctrl_wr, 2)
-      
+
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
 
@@ -400,12 +402,12 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
         # Incrementing Data
         print("I is", i)
         data_in_pond[0] = data_in_pond[0] + 1
-        #data_in_pond[1] = data_in_pond[1] + 1
+        # data_in_pond[1] = data_in_pond[1] + 1
 
         if interconnect_input_ports == 1:
             tester.circuit.data_in_pond = data_in_pond[0]
         else:
-            #for j in range(interconnect_input_ports):
+            # for j in range(interconnect_input_ports):
             print("I is #2", i)
             setattr(tester.circuit, f"data_in_pond_0", data_in_pond[0])
 
@@ -413,10 +415,9 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
             data_in_pond[1] = data_in_pond[1] + 1
             setattr(tester.circuit, f"data_in_pond_1", data_in_pond[1])
             tester.circuit.data_out_pond_0.expect(i - 15)
-           
 
         if i >= 32:
-            tester.circuit.data_out_pond_1.expect(i - 31) 
+            tester.circuit.data_out_pond_1.expect(i - 31)
 
         tester.eval()
         tester.step(2)
@@ -427,7 +428,6 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
-
 
 
 if __name__ == "__main__":

@@ -73,7 +73,7 @@ if __name__ == "__main__":
     parser.add_argument("-l",
                         type=int,
                         help="optional: iterator support for Pond memory",
-                        default=3) 
+                        default=3)
     args = parser.parse_args()
 
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
