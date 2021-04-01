@@ -27,13 +27,13 @@ def wrapper(config_path_input,
     if pond:
         dut, need_config_lift, s, t = \
             get_pond_dut(depth=depth,
-                        iterator_support=iterator_support,
-                        in_ports=in_ports,
-                        in_ports=2,
-                        out_ports=2,
-                        mem_in_ports=1,
-                        mem_out_ports=1,
-                        out_ports=out_ports)
+                         iterator_support=iterator_support,
+                         in_ports=in_ports,
+                         in_ports=2,
+                         out_ports=2,
+                         mem_in_ports=1,
+                         mem_out_ports=1,
+                         out_ports=out_ports)
         module_name = "pond"
     else:
         dut, need_config_lift, s, t = \
@@ -41,7 +41,7 @@ def wrapper(config_path_input,
                         out_ports=2,
                         stencil_valid=stencil_valid)
         module_name = "LakeTop"
-    
+
     configs = dut.get_static_bitstream(config_path)
     # prints out list of configs for compiler team
     configs_list = set_configs_sv(dut, "configs.sv", get_configs_dict(configs))
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     stencil_valid = True if args.s == "True" else False
     pond = False if args.s == "False" else True
-    
+
     if args.c is None:
         error(usage)
 
