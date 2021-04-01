@@ -8,7 +8,7 @@ import tempfile
 from lake.models.lake_top_model import LakeTopModel
 from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 
-
+@pytest.mark.skip
 def test_pond_double_buffer(data_width=16,  # CGRA Params
                             mem_depth=32,
                             default_iterator_support=2,
