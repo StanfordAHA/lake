@@ -86,6 +86,7 @@ def test_pond_basic(interconnect_input_ports,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
+
 @pytest.mark.parametrize("interconnect_input_ports", [1, 2])
 @pytest.mark.parametrize("interconnect_output_ports", [1, 2])
 def test_pond_acc(interconnect_input_ports,
@@ -165,6 +166,7 @@ def test_pond_acc(interconnect_input_ports,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
 
 @pytest.mark.parametrize("interconnect_input_ports", [1, 2])
 @pytest.mark.parametrize("interconnect_output_ports", [1, 2])
@@ -248,6 +250,7 @@ def test_pond_strided_read(interconnect_input_ports,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
+
 @pytest.mark.parametrize("interconnect_input_ports", [1, 2])
 @pytest.mark.parametrize("interconnect_output_ports", [1, 2])
 def test_pond_b2b_read(interconnect_input_ports,
@@ -329,6 +332,7 @@ def test_pond_b2b_read(interconnect_input_ports,
                                directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
+
 
 def test_pond_basic_2addressors(data_width=16,  # CGRA Params
                                 mem_depth=32,
