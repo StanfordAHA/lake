@@ -17,7 +17,6 @@ magma_dut = kts.util.to_magma(hw,
 
 tester = fault.Tester(magma_dut, magma_dut.clk)
 
-@pytest.mark.skip
 def test_pond_basic(data_width=16,  # CGRA Params
                     mem_depth=32,
                     default_iterator_support=2,
@@ -72,7 +71,6 @@ def test_pond_basic(data_width=16,  # CGRA Params
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
-@pytest.mark.skip
 def test_pond_strided_read(data_width=16,  # CGRA Params
                            mem_depth=32,
                            default_iterator_support=2,
@@ -126,7 +124,6 @@ def test_pond_strided_read(data_width=16,  # CGRA Params
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
-@pytest.mark.skip
 def test_pond_b2b_read(data_width=16,  # CGRA Params
                        mem_depth=32,
                        default_iterator_support=2,
@@ -181,7 +178,6 @@ def test_pond_b2b_read(data_width=16,  # CGRA Params
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
-@pytest.mark.skip
 def test_pond_double_buffer(data_width=16,  # CGRA Params
                             mem_depth=32,
                             default_iterator_support=2,
