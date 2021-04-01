@@ -45,6 +45,7 @@ def get_lake_wrapper(config_path,
     generate_lake_config_wrapper(configs_list, "configs.sv", "LakeTop_W.v", name)
 """
 
+
 def get_pond_wrapper(config_path,
                      name,
                      depth,
@@ -64,7 +65,6 @@ def get_pond_wrapper(config_path,
                          mem_out_ports,
                          get_configs_list=True)
 
-    
     # get flattened module
     flattened = create_wrapper_flatten(pond_dut.internal_generator.clone(),
                                        "pond_W")
@@ -80,17 +80,17 @@ def get_pond_wrapper(config_path,
             for line in pond_dut_file:
                 with_flatten.write(line)
 
-    generate_lake_config_wrapper(configs_list, "configs.sv", "build/pond_W.v", name, "pond")
+    generate_lake_config_wrapper(configs_list, "configs.sv", "build/pond_W.v", name)
 
 
 def get_pond_wrapper_orig(config_path,
-                     name,
-                     depth,
-                     iterator_support,
-                     in_ports=2,
-                     out_ports=2,
-                     mem_in_ports=1,
-                     mem_out_ports=1):  # 1R/1W pond
+                          name,
+                          depth,
+                          iterator_support,
+                          in_ports=2,
+                          out_ports=2,
+                          mem_in_ports=1,
+                          mem_out_ports=1):  # 1R/1W pond
 
     pond_dut, configs, configs_list, magma_dut, tester = \
         base_pond_tester(config_path,
@@ -109,6 +109,7 @@ def get_pond_wrapper_orig(config_path,
                                flags=["-Wno-fatal"])
 
     generate_lake_config_wrapper(configs_list, "configs.sv", "build/pond_W.v", name, "pond")
+
 
 def wrapper(config_path_input, name, pond_depth, iterator_support):
     lc, ls = check_env()
