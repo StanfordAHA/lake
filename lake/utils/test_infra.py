@@ -50,46 +50,6 @@ def base_lake_tester(config_path,
         return lt_dut, configs, magma_dut, tester
 
 
-def base_pond_tester(config_path,
-                     depth,
-                     iterator_support,
-                     in_ports,
-                     out_ports,
-                     mem_in_ports,
-                     mem_out_ports,
-                     get_configs_list=False):
-
-    pond_dut, need_config_lift, s, t = get_pond_dut(depth=depth,
-                                                    iterator_support=iterator_support,
-                                                    in_ports=in_ports,
-                                                    mem_in_ports=mem_in_ports,
-                                                    mem_out_ports=mem_out_ports,
-                                                    out_ports=out_ports)
-
-    configs = pond_dut.get_static_bitstream(config_path)
-
-    # Ranges, Strides, Dimensionality, Starting Addr
-    # Starting Addr (schedule), Ranges (schedule)
-    # ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
-    # ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
-
-    if get_configs_list:
-        # prints out list of configs for compiler team
-        configs_list = set_configs_sv(pond_dut, "configs.sv", get_configs_dict(configs), 2)
-    magma_dut = kts.util.to_magma(pond_dut,
-                                  flatten_array=True,
-                                  check_multiple_driver=False,
-                                  optimize_if=False,
-                                  check_flip_flop_always_ff=False)
-
-    tester = fault.Tester(magma_dut, magma_dut.clk)
-
-    if get_configs_list:
-        return pond_dut, configs, configs_list, magma_dut, tester
-    else:
-        return pond_dut, configs, magma_dut, tester
-
-
 def gen_test_lake(config_path,
                   stream_path,
                   in_file_name="input",
