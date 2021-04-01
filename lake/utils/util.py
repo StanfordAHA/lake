@@ -590,32 +590,30 @@ def generate_pond_api(ctrl_rd, ctrl_wr, num_acc=1, dsl=False):
                 new_config[f"rf_write_sched_{i}_sched_addr_gen_strides_{j}"] = tform_strides_wr_sched[i][j]
 
     else:
+        ctrl_wr, tform_ranges_wr, tform_strides_wr = ctrl_wr[0], tform_ranges_wr[0], tform_strides_wr[0]
+        tform_strides_wr_sched,  tform_strides_rd_sched = tform_strides_wr_sched[0],  tform_strides_rd_sched[0]
+        ctrl_rd, tform_ranges_rd, tform_strides_rd = ctrl_rd[0], tform_ranges_rd[0], tform_strides_rd[0]
+
         new_config["input_port0_2pond_forloop_dimensionality"] = ctrl_wr[2]
-        new_config["input_port0_2pond_forloop_ranges_0"] = tform_ranges_wr[0]
-        new_config["input_port0_2pond_forloop_ranges_1"] = tform_ranges_wr[1]
-        new_config["input_port0_2pond_forloop_ranges_2"] = tform_ranges_wr[2]
+        for i in range(len(tform_ranges_wr)):
+            new_config[f"input_port0_2pond_forloop_ranges_{i}"] = tform_ranges_wr[i]
         new_config["input_port0_2pond_write_addr_gen_starting_addr"] = ctrl_wr[3]
-        new_config["input_port0_2pond_write_addr_gen_strides_0"] = tform_strides_wr[0]
-        new_config["input_port0_2pond_write_addr_gen_strides_1"] = tform_strides_wr[1]
-        new_config["input_port0_2pond_write_addr_gen_strides_2"] = tform_strides_wr[2]
+        for i in range(len(tform_strides_wr)):
+            new_config[f"input_port0_2pond_write_addr_gen_strides_{i}"] = tform_strides_wr[i]
         new_config["input_port0_2pond_write_sched_gen_enable"] = 1
         new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_starting_addr"] = ctrl_wr[4]
-        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
-        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
-        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_strides_2"] = tform_strides_wr_sched[2]
+        for i in range(len(tform_strides_wr_sched)):
+            new_config[f"input_port0_2pond_write_sched_gen_sched_addr_gen_strides_{i}"] = tform_strides_wr_sched[i]
         new_config["pond2output_port0_forloop_dimensionality"] = ctrl_rd[2]
-        new_config["pond2output_port0_forloop_ranges_0"] = tform_ranges_rd[0]
-        new_config["pond2output_port0_forloop_ranges_1"] = tform_ranges_rd[1]
-        new_config["pond2output_port0_forloop_ranges_2"] = tform_ranges_rd[2]
+        for i in range(len(tform_ranges_rd)):
+            new_config[f"pond2output_port0_forloop_ranges_{i}"] = tform_ranges_rd[i]
         new_config["pond2output_port0_read_addr_gen_starting_addr"] = ctrl_rd[3]
-        new_config["pond2output_port0_read_addr_gen_strides_0"] = tform_strides_rd[0]
-        new_config["pond2output_port0_read_addr_gen_strides_1"] = tform_strides_rd[1]
-        new_config["pond2output_port0_read_addr_gen_strides_2"] = tform_strides_rd[2]
+        for i in range(len(tform_strides_rd)):
+            new_config[f"pond2output_port0_read_addr_gen_strides_{i}"] = tform_strides_rd[i]
         new_config["pond2output_port0_read_sched_gen_enable"] = 1
         new_config["pond2output_port0_read_sched_gen_sched_addr_gen_starting_addr"] = ctrl_rd[4]
-        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
-        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
-        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_strides_2"] = tform_strides_rd_sched[2]
+        for i in range(len(tform_strides_rd_sched)):
+            new_config[f"pond2output_port0_read_sched_gen_sched_addr_gen_strides_{i}"] = tform_strides_rd_sched[i]
 
         # general configs
         new_config["tile_en"] = 1
