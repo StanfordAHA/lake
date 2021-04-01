@@ -35,3 +35,5 @@ dump/
 
 # local clone of clockwork
 clockwork
+
+*egg-info*
