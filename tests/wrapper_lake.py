@@ -38,8 +38,8 @@ def wrapper(config_path_input,
     else:
         dut, need_config_lift, s, t = \
             get_lake_dut(in_ports=2,
-                        out_ports=2,
-                        stencil_valid=stencil_valid)
+                         out_ports=2,
+                         stencil_valid=stencil_valid)
         module_name = "LakeTop"
 
     configs = dut.get_static_bitstream(config_path)
