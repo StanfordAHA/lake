@@ -591,7 +591,7 @@ def generate_pond_api(ctrl_rd, ctrl_wr, num_acc=1, dsl=False):
 
     else:
         ctrl_wr, tform_ranges_wr, tform_strides_wr = ctrl_wr[0], tform_ranges_wr[0], tform_strides_wr[0]
-        tform_strides_wr_sched,  tform_strides_rd_sched = tform_strides_wr_sched[0],  tform_strides_rd_sched[0]
+        tform_strides_wr_sched, tform_strides_rd_sched = tform_strides_wr_sched[0], tform_strides_rd_sched[0]
         ctrl_rd, tform_ranges_rd, tform_strides_rd = ctrl_rd[0], tform_ranges_rd[0], tform_strides_rd[0]
 
         new_config["input_port0_2pond_forloop_dimensionality"] = ctrl_wr[2]

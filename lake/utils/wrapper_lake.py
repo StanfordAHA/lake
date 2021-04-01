@@ -32,7 +32,7 @@ def wrapper(config_path_input,
                          out_ports=2,
                          mem_in_ports=1,
                          mem_out_ports=1)
-        module_name = "pond"
+        module_name = "Pond"
     else:
         dut, need_config_lift, s, t = \
             get_lake_dut(in_ports=2,
@@ -59,7 +59,7 @@ def wrapper(config_path_input,
             for line in dut_file:
                 with_flatten.write(line)
 
-    generate_lake_config_wrapper(configs_list, "configs.sv", f"{module_name}_W.v", name)
+    generate_lake_config_wrapper(configs_list, "configs.sv", f"{module_name}_W.v", name, module_name)
 
 
 def error(usage):
