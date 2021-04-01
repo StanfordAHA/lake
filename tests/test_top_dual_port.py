@@ -8,6 +8,7 @@ import argparse as argparse
 
 
 def test_gen_dual_port():
+
     pass
 
     lake_gen_kwargs = {
@@ -22,6 +23,7 @@ def test_gen_dual_port():
     lt_dut, need_config_lift, s, t = get_lake_dut(**lake_gen_kwargs)
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
     configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='LakeTop')
