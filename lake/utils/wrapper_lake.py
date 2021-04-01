@@ -34,6 +34,7 @@ def wrapper(config_path_input,
                          mem_out_ports=1)
         module_name = "Pond"
     else:
+        pl = 6
         dut, need_config_lift, s, t = \
             get_lake_dut(in_ports=2,
                          out_ports=2,
@@ -42,7 +43,7 @@ def wrapper(config_path_input,
 
     configs = dut.get_static_bitstream(config_path)
     # prints out list of configs for compiler team
-    configs_list = set_configs_sv(dut, "configs.sv", get_configs_dict(configs))
+    configs_list = set_configs_sv(dut, "configs.sv", get_configs_dict(configs), pl)
 
     # get flattened module
     flattened = create_wrapper_flatten(dut.internal_generator.clone(),
