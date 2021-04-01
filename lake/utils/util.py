@@ -124,7 +124,7 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
             pdir = "output" if str(curr_port.port_direction) == "PortDirection.Out" else "input"
 
             def get_unlabeled_formal_attr(pdir, port_name):
-                if pdir is "input":
+                if pdir == "input":
                     return FormalAttr(port_name, FormalSignalConstraint.SET0)
                 else:
                     return FormalAttr(port_name, FormalSignalConstraint.X)
@@ -251,7 +251,7 @@ def extract_formal_annotation_collat(generator, filepath, mem_names, edges):
                 pdir = "output"
             # If there are 0 or more than one attributes, let's just use the default X attribute
             if len(attrs) != 1:
-                if pdir is "input":
+                if pdir == "input":
                     form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
                 else:
                     form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
