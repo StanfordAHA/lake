@@ -1,64 +1,6 @@
 import argparse
-import sys
-import tempfile
+from lake.utils.wrapper import error, wrapper
 import pytest
-
-from lake.utils.util import *
-from lake.utils.test_infra import base_lake_tester
-from lake.top.lake_top import get_lake_dut
-
-from _kratos import create_wrapper_flatten
-
-
-def get_lake_wrapper(config_path,
-                     stencil_valid,
-                     name,
-                     in_file_name="",
-                     out_file_name="",
-                     in_ports=2,
-                     out_ports=2):
-
-    lt_dut, need_config_lift, s, t = get_lake_dut(in_ports=in_ports,
-                                                  out_ports=out_ports,
-                                                  stencil_valid=stencil_valid)
-
-    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
-    # prints out list of configs for compiler team
-    configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
-
-    # get flattened module
-    flattened = create_wrapper_flatten(lt_dut.internal_generator.clone(),
-                                       "LakeTop_W")
-    inst = Generator("LakeTop_W",
-                     internal_generator=flattened)
-    verilog(inst, filename="LakeTop_W.v")
-
-    # get original verilog
-    verilog(lt_dut, filename="lt_dut.v")
-    # prepend wrapper module to original verilog file
-    with open("LakeTop_W.v", "a") as with_flatten:
-        with open("lt_dut.v", "r") as lt_dut_file:
-            for line in lt_dut_file:
-                with_flatten.write(line)
-
-    generate_lake_config_wrapper(configs_list, "configs.sv", "LakeTop_W.v", name)
-
-
-def wrapper(config_path_input, stencil_valid, name):
-    lc, ls = check_env()
-    # we are in the process of transitioning to csvs being in this folder
-    # lc = <path to clockwork>/aha_garnet_design/
-
-    config_path = lc + config_path_input
-    get_lake_wrapper(config_path=config_path,
-                     stencil_valid=stencil_valid,
-                     name=name)
-
-
-def error(usage):
-    print(usage)
-    sys.exit(2)
-
 
 # adding this test to ensure wrapper generation is not broken
 

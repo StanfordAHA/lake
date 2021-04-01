@@ -1239,8 +1239,6 @@ def get_formal_module(module):
 
 
 def get_lake_dut(formal_module=None,
-                 in_ports=2,
-                 out_ports=2,
                  # no stencil valid needed for formal problems
                  stencil_valid=False,
                  tsmc_info=SRAMMacroInfo("tsmc_name"),
@@ -1279,8 +1277,6 @@ def get_lake_dut(formal_module=None,
     #          do_config_lift=True):
 
     lake_dut = LakeTop(mem_width=mem_width,
-                       interconnect_input_ports=in_ports,
-                       interconnect_output_ports=out_ports,
                        sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,
                        add_clk_enable=True,
