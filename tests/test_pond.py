@@ -7,32 +7,48 @@ import pytest
 import tempfile
 from lake.models.lake_top_model import LakeTopModel
 from lake.utils.util import transform_strides_and_ranges, generate_pond_api
+from lake.dsl.dsl_examples.pond import *
 
 
-@pytest.mark.parametrize("interconnect_input_ports", [1, 2])
-@pytest.mark.parametrize("interconnect_output_ports", [1, 2])
-def test_pond_basic(interconnect_input_ports,
-                    interconnect_output_ports,
-                    data_width=16,  # CGRA Params
-                    mem_depth=32,
-                    default_iterator_support=2,
-                    config_data_width=32,
-                    config_addr_width=8,
-                    cycle_count_width=16,
-                    add_clk_enable=True,
-                    add_flush=True):
+hw = pond.test_magma_lake()
 
-    # DUT
-    pond_dut = Pond(data_width=data_width,  # CGRA Params
-                    mem_depth=mem_depth,
-                    default_iterator_support=default_iterator_support,
-                    interconnect_input_ports=interconnect_input_ports,  # Connection to int
-                    interconnect_output_ports=interconnect_output_ports,
-                    config_data_width=config_data_width,
-                    config_addr_width=config_addr_width,
-                    cycle_count_width=cycle_count_width,
-                    add_clk_enable=add_clk_enable,
-                    add_flush=add_flush)
+data_width = 16  # CGRA Params
+mem_depth = 32
+default_iterator_support = 2
+config_data_width = 32
+config_addr_width = 8
+cycle_count_width = 16
+add_clk_enable = True
+add_flush = True
+
+basic_1 = Pond(data_width=data_width,  # CGRA Params
+               mem_depth=mem_depth,
+               default_iterator_support=default_iterator_support,
+               interconnect_input_ports=1,  # Connection to int
+               interconnect_output_ports=1,
+               config_data_width=config_data_width,
+               config_addr_width=config_addr_width,
+               cycle_count_width=cycle_count_width,
+               add_clk_enable=add_clk_enable,
+               add_flush=add_flush)
+
+basic_2 = Pond(data_width=data_width,  # CGRA Params
+               mem_depth=mem_depth,
+               default_iterator_support=default_iterator_support,
+               interconnect_input_ports=2,  # Connection to int
+               interconnect_output_ports=2,
+               config_data_width=config_data_width,
+               config_addr_width=config_addr_width,
+               cycle_count_width=cycle_count_width,
+               add_clk_enable=add_clk_enable,
+               add_flush=add_flush)
+
+
+@pytest.mark.parametrize("pond_dut_info", [[hw, True, 1], [basic_1, False, 1], [basic_2, False, 2]])
+def test_pond_basic(pond_dut_info):
+
+    pond_dut, dsl, interconnect_input_ports = pond_dut_info
+    interconnect_output_ports = interconnect_input_ports
 
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
@@ -45,7 +61,7 @@ def test_pond_basic(interconnect_input_ports,
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[16, 1], [1, 1], 2, 0, 16, [1, 1]]]
     ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=dsl)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -67,14 +83,23 @@ def test_pond_basic(interconnect_input_ports,
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            tester.circuit.data_in_pond = data_in_pond[0]
+            if dsl:
+                tester.circuit.data_in = data_in_pond[0]
+            else:
+                tester.circuit.data_in_pond = data_in_pond[0]
         else:
             for j in range(interconnect_input_ports):
-                setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
+                if dsl:
+                    setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
+                else:
+                    setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
 
         if i >= 16:
             if interconnect_output_ports == 1:
-                tester.circuit.data_out_pond.expect(i - 15)
+                if dsl:
+                    tester.circuit.data_out.expect(i - 15)
+                else:
+                    tester.circuit.data_out_pond.expect(i - 15)
             else:
                 tester.circuit.data_out_pond_0.expect(i - 15)
         tester.eval()
@@ -168,34 +193,11 @@ def test_pond_acc(interconnect_input_ports,
                                flags=["-Wno-fatal"])
 
 
-@pytest.mark.parametrize("interconnect_input_ports", [1, 2])
-@pytest.mark.parametrize("interconnect_output_ports", [1, 2])
-def test_pond_strided_read(interconnect_input_ports,
-                           interconnect_output_ports,
-                           data_width=16,  # CGRA Params
-                           mem_depth=32,
-                           default_iterator_support=2,
-                           config_data_width=32,
-                           config_addr_width=8,
-                           cycle_count_width=16,
-                           add_clk_enable=True,
-                           add_flush=True,
-                           mem_input_ports=1,
-                           mem_output_ports=1):
+@pytest.mark.parametrize("pond_dut_info", [[hw, True, 1], [basic_1, False, 1], [basic_2, False, 2]])
+def test_pond_strided_read(pond_dut_info):
 
-    # DUT
-    pond_dut = Pond(data_width=data_width,  # CGRA Params
-                    mem_depth=mem_depth,
-                    default_iterator_support=default_iterator_support,
-                    interconnect_input_ports=interconnect_input_ports,  # Connection to int
-                    interconnect_output_ports=interconnect_output_ports,
-                    mem_input_ports=mem_input_ports,
-                    mem_output_ports=mem_output_ports,
-                    config_data_width=config_data_width,
-                    config_addr_width=config_addr_width,
-                    cycle_count_width=cycle_count_width,
-                    add_clk_enable=add_clk_enable,
-                    add_flush=add_flush)
+    pond_dut, dsl, interconnect_input_ports = pond_dut_info
+    interconnect_output_ports = interconnect_input_ports
 
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
@@ -209,7 +211,7 @@ def test_pond_strided_read(interconnect_input_ports,
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[8, 1], [2, 0], 1, 0, 16, [1, 0]]]
     ctrl_wr = [[[16, 1], [1, 1], 1, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=dsl)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -231,13 +233,23 @@ def test_pond_strided_read(interconnect_input_ports,
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            tester.circuit.data_in_pond = data_in_pond[0]
+            if dsl:
+                tester.circuit.data_in = data_in_pond[0]
+            else:
+                tester.circuit.data_in_pond = data_in_pond[0]
         else:
             for j in range(interconnect_input_ports):
-                setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
+                if dsl:
+                    setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
+                else:
+                    setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
+
         if i >= 16:
             if interconnect_output_ports == 1:
-                tester.circuit.data_out_pond.expect((i - 16) * 2 + 1)
+                if dsl:
+                    tester.circuit.data_out.expect((i - 16) * 2 + 1)
+                else:
+                    tester.circuit.data_out_pond.expect((i - 16) * 2 + 1)
             else:
                 tester.circuit.data_out_pond_0.expect((i - 16) * 2 + 1)
 
@@ -251,34 +263,11 @@ def test_pond_strided_read(interconnect_input_ports,
                                flags=["-Wno-fatal"])
 
 
-@pytest.mark.parametrize("interconnect_input_ports", [1, 2])
-@pytest.mark.parametrize("interconnect_output_ports", [1, 2])
-def test_pond_b2b_read(interconnect_input_ports,
-                       interconnect_output_ports,
-                       data_width=16,  # CGRA Params
-                       mem_depth=32,
-                       default_iterator_support=2,
-                       config_data_width=32,
-                       config_addr_width=8,
-                       cycle_count_width=16,
-                       add_clk_enable=True,
-                       add_flush=True,
-                       mem_input_ports=1,
-                       mem_output_ports=1):
+@pytest.mark.parametrize("pond_dut_info", [[hw, True, 1], [basic_1, False, 1], [basic_2, False, 2]])
+def test_pond_b2b_read(pond_dut_info):
 
-    # DUT
-    pond_dut = Pond(data_width=data_width,  # CGRA Params
-                    mem_depth=mem_depth,
-                    default_iterator_support=default_iterator_support,
-                    mem_input_ports=mem_input_ports,
-                    mem_output_ports=mem_output_ports,
-                    interconnect_input_ports=interconnect_input_ports,  # Connection to int
-                    interconnect_output_ports=interconnect_output_ports,
-                    config_data_width=config_data_width,
-                    config_addr_width=config_addr_width,
-                    cycle_count_width=cycle_count_width,
-                    add_clk_enable=add_clk_enable,
-                    add_flush=add_flush)
+    pond_dut, dsl, interconnect_input_ports = pond_dut_info
+    interconnect_output_ports = interconnect_input_ports
 
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
@@ -291,7 +280,7 @@ def test_pond_b2b_read(interconnect_input_ports,
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[16, 10], [1, 0], 2, 0, 16, [1, 16]]]
     ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=dsl)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -313,14 +302,23 @@ def test_pond_b2b_read(interconnect_input_ports,
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            tester.circuit.data_in_pond = data_in_pond[0]
+            if dsl:
+                tester.circuit.data_in = data_in_pond[0]
+            else:
+                tester.circuit.data_in_pond = data_in_pond[0]
         else:
             for j in range(interconnect_input_ports):
-                setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
+                if dsl:
+                    setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
+                else:
+                    setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
 
         if i >= 16:
             if interconnect_output_ports == 1:
-                tester.circuit.data_out_pond.expect(((i - 16) % 16) + 1)
+                if dsl:
+                    tester.circuit.data_out.expect(((i - 16) % 16) + 1)
+                else:
+                    tester.circuit.data_out_pond.expect(((i - 16) % 16) + 1)
             else:
                 tester.circuit.data_out_pond_0.expect(((i - 16) % 16) + 1)
 
