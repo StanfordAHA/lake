@@ -26,14 +26,12 @@ def wrapper(config_path_input,
 
     if pond:
         dut, need_config_lift, s, t = \
-            get_pond_dut(depth=depth,
-                         iterator_support=iterator_support,
-                         in_ports=in_ports,
+            get_pond_dut(depth=pd,
+                         iterator_support=pl,
                          in_ports=2,
                          out_ports=2,
                          mem_in_ports=1,
-                         mem_out_ports=1,
-                         out_ports=out_ports)
+                         mem_out_ports=1)
         module_name = "pond"
     else:
         dut, need_config_lift, s, t = \
@@ -116,7 +114,7 @@ if __name__ == "__main__":
     usage += " [-n] [module name for LakeWrapper module (default: LakeWrapper)]"
 
     stencil_valid = True if args.s == "True" else False
-    pond = False if args.s == "False" else True
+    pond = False if args.p == "False" else True
 
     if args.c is None:
         error(usage)
