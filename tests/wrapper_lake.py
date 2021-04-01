@@ -4,8 +4,8 @@ import tempfile
 import pytest
 
 from lake.utils.util import *
-from lake.utils.test_infra import base_lake_tester
 from lake.top.lake_top import get_lake_dut
+from lake.top.pond import get_pond_dut
 
 from _kratos import create_wrapper_flatten
 
