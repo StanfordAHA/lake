@@ -10,40 +10,6 @@ from lake.top.lake_top import get_lake_dut
 from _kratos import create_wrapper_flatten
 
 
-def get_lake_wrapper(config_path,
-                     stencil_valid,
-                     name,
-                     in_file_name="",
-                     out_file_name="",
-                     in_ports=2,
-                     out_ports=2):
-
-    lt_dut, need_config_lift, s, t = get_lake_dut(in_ports=in_ports,
-                                                  out_ports=out_ports,
-                                                  stencil_valid=stencil_valid)
-
-    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
-    # prints out list of configs for compiler team
-    configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
-
-    # get flattened module
-    flattened = create_wrapper_flatten(lt_dut.internal_generator.clone(),
-                                       "LakeTop_W")
-    inst = Generator("LakeTop_W",
-                     internal_generator=flattened)
-    verilog(inst, filename="LakeTop_W.v")
-
-    # get original verilog
-    verilog(lt_dut, filename="lt_dut.v")
-    # prepend wrapper module to original verilog file
-    with open("LakeTop_W.v", "a") as with_flatten:
-        with open("lt_dut.v", "r") as lt_dut_file:
-            for line in lt_dut_file:
-                with_flatten.write(line)
-
-    generate_lake_config_wrapper(configs_list, "configs.sv", "LakeTop_W.v", name)
-
-
 def wrapper(config_path_input,
             stencil_valid,
             name,
@@ -61,21 +27,21 @@ def wrapper(config_path_input,
     if pond:
         dut, need_config_lift, s, t = \
             get_pond_dut(depth=depth,
-                         iterator_support=iterator_support,
-                         in_ports=in_ports,
-                         in_ports=2,
-                         out_ports=2,
-                         mem_in_ports=1,
-                         mem_out_ports=1,
-                         out_ports=out_ports)
+                        iterator_support=iterator_support,
+                        in_ports=in_ports,
+                        in_ports=2,
+                        out_ports=2,
+                        mem_in_ports=1,
+                        mem_out_ports=1,
+                        out_ports=out_ports)
         module_name = "pond"
     else:
         dut, need_config_lift, s, t = \
             get_lake_dut(in_ports=2,
-                         out_ports=2,
-                         stencil_valid=stencil_valid)
+                        out_ports=2,
+                        stencil_valid=stencil_valid)
         module_name = "LakeTop"
-
+    
     configs = dut.get_static_bitstream(config_path)
     # prints out list of configs for compiler team
     configs_list = set_configs_sv(dut, "configs.sv", get_configs_dict(configs))
@@ -151,7 +117,7 @@ if __name__ == "__main__":
 
     stencil_valid = True if args.s == "True" else False
     pond = False if args.s == "False" else True
-
+    
     if args.c is None:
         error(usage)
 
