@@ -1,6 +1,6 @@
 import pytest
 from magma import clear_cachedFunctions
-import magma.backend.coreir_ as coreir_
+# import magma.backend.coreir_ as coreir_
 from kratos import clear_context
 
 collect_ignore = [
@@ -10,7 +10,7 @@ collect_ignore = [
 @pytest.fixture(autouse=True)
 def kratos_test():
     clear_cachedFunctions()
-    coreir_.CoreIRContextSingleton().reset_instance()
+    # coreir_.CoreIRContextSingleton().reset_instance()
     clear_context()
 
 def pytest_addoption(parser):
