@@ -8,6 +8,7 @@ import argparse as argparse
 
 
 def test_gen_dual_port():
+    pass
 
     lake_gen_kwargs = {
         "read_delay": 1,
