@@ -122,4 +122,4 @@ if __name__ == "__main__":
     wrapper(args.c, stencil_valid, args.n, pond, args.pd, args.pl)
 
     # Example usage:
-    # python tests/wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
+    # python wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
