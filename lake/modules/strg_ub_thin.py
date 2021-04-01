@@ -1,3 +1,4 @@
+from lake.utils.util import get_priority_encode
 from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
@@ -101,109 +102,126 @@ class StrgUBThin(Generator):
         self.add_code(self.increment_cycle_count)
 
         # local variables
-        self._write = self.var("write", 1)
+        self._write = self.var("write", self.interconnect_input_ports)
         self._read = self.var("read", self.interconnect_output_ports)
         self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
         self.wire(self._accessor_output, self._read)
 
-        self._valid_out = self.output("valid_out", 1)
+        self._valid_out = self.output("valid_out", self.interconnect_output_ports)
         if self.read_delay == 1:
-            self._read_d1 = self.var("read_d1", 1)
+            self._read_d1 = self.var("read_d1", self.interconnect_output_ports)
             self.add_code(self.delay_read)
             self.wire(self._valid_out, self._read_d1)
         else:
             self.wire(self._valid_out, self._read)
 
-        self._write_addr = self.var("write_addr", self.config_width)
-        self._read_addr = self.var("read_addr", self.config_width)
+        self._write_addr = self.var("write_addr", self.config_width, size=self.interconnect_input_ports)
+        self._read_addr = self.var("read_addr", self.config_width, size=self.interconnect_output_ports)
         self._addr = self.var("addr", clog2(self.mem_depth))
 
-        # Create for loop counters that can be shared across the input port selection and SRAM write
-        fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,
+        # Set up addr/cycle gens for input side
+        for i in range(self.interconnect_input_ports):
+
+            FOR_LOOP_WRITE = ForLoop(iterator_support=self.default_iterator_support,
+                                     config_width=self.default_config_width)
+
+            ADDR_WRITE = AddrGen(iterator_support=self.default_iterator_support,
                                  config_width=self.default_config_width)
-        loop_itr = fl_ctr_sram_wr.get_iter()
-        loop_wth = fl_ctr_sram_wr.get_cfg_width()
+            SCHED_WRITE = SchedGen(iterator_support=self.default_iterator_support,
+                                   config_width=self.default_config_width)
 
-        self.add_child(f"sram_write_loops",
-                       fl_ctr_sram_wr,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._write)
+            self.add_child(f"write_for_loop_{i}",
+                           FOR_LOOP_WRITE,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._write[i])
 
-        # Whatever comes through here should hopefully just pipe through seamlessly
-        # addressor modules
-        self.add_child(f"sram_write_addr_gen",
-                       AddrGen(iterator_support=self.default_iterator_support,
-                               config_width=self.default_config_width),
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._write,
-                       mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
-                       restart=fl_ctr_sram_wr.ports.restart,
-                       addr_out=self._write_addr)
+            # Whatever comes through here should hopefully just pipe through seamlessly
+            # addressor modules
+            self.add_child(f"write_addr_gen_{i}",
+                           ADDR_WRITE,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._write[i],
+                           mux_sel=FOR_LOOP_WRITE.ports.mux_sel_out,
+                           restart=FOR_LOOP_WRITE.ports.restart,
+                           addr_out=self._write_addr[i])
 
-        # scheduler modules
-        self.add_child(f"sram_write_sched_gen",
-                       SchedGen(iterator_support=self.default_iterator_support,
-                                config_width=self.default_config_width),
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       cycle_count=self._cycle_count,
-                       mux_sel=fl_ctr_sram_wr.ports.mux_sel_out,
-                       finished=fl_ctr_sram_wr.ports.restart,
-                       valid_output=self._write)
+            # scheduler modules
+            self.add_child(f"write_sched_gen_{i}",
+                           SCHED_WRITE,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           cycle_count=self._cycle_count,
+                           mux_sel=FOR_LOOP_WRITE.ports.mux_sel_out,
+                           finished=FOR_LOOP_WRITE.ports.restart,
+                           valid_output=self._write[i])
 
+        # Set up addr/cycle gens for output side
+        for i in range(self.interconnect_output_ports):
+
+            FOR_LOOP_READ = ForLoop(iterator_support=self.default_iterator_support,
+                                    config_width=self.default_config_width)
+
+            ADDR_READ = AddrGen(iterator_support=self.default_iterator_support,
+                                config_width=self.default_config_width)
+            SCHED_READ = SchedGen(iterator_support=self.default_iterator_support,
+                                  config_width=self.default_config_width)
+
+            self.add_child(f"read_for_loop_{i}",
+                           FOR_LOOP_READ,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._read[i])
+
+            self.add_child(f"read_addr_gen_{i}",
+                           ADDR_READ,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           step=self._read[i],
+                           mux_sel=FOR_LOOP_READ.ports.mux_sel_out,
+                           restart=FOR_LOOP_READ.ports.restart,
+                           addr_out=self._read_addr[i])
+
+            self.add_child(f"read_sched_gen_{i}",
+                           SCHED_READ,
+                           clk=self._clk,
+                           rst_n=self._rst_n,
+                           cycle_count=self._cycle_count,
+                           mux_sel=FOR_LOOP_READ.ports.mux_sel_out,
+                           finished=FOR_LOOP_READ.ports.restart,
+                           valid_output=self._read[i])
         # -------------------------------- Delineate new group -------------------------------
-        fl_ctr_sram_rd = ForLoop(iterator_support=self.default_iterator_support,
-                                 config_width=self.default_config_width)
-        loop_itr = fl_ctr_sram_rd.get_iter()
-        loop_wth = fl_ctr_sram_rd.get_cfg_width()
-
-        self.add_child(f"sram_read_loops",
-                       fl_ctr_sram_rd,
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._read)
-
-        self.add_child(f"sram_read_addr_gen",
-                       AddrGen(iterator_support=self.default_iterator_support,
-                               config_width=self.default_config_width),
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       step=self._read,
-                       mux_sel=fl_ctr_sram_rd.ports.mux_sel_out,
-                       restart=fl_ctr_sram_rd.ports.restart,
-                       addr_out=self._read_addr)
-
-        self.add_child(f"sram_read_sched_gen",
-                       SchedGen(iterator_support=self.default_iterator_support,
-                                config_width=self.default_config_width),
-                       clk=self._clk,
-                       rst_n=self._rst_n,
-                       cycle_count=self._cycle_count,
-                       mux_sel=fl_ctr_sram_rd.ports.mux_sel_out,
-                       finished=fl_ctr_sram_rd.ports.restart,
-                       valid_output=self._read)
 
         # Now deal with dual_port/single_port madness...
         self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
         self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
         self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
-        self.wire(self._cen_to_sram, self._write | self._read)
-        self.wire(self._wen_to_sram, self._write)
-        self.wire(self._ren_to_sram, self._read)
-        self.wire(self._data_out, self._data_from_sram)
-        self.wire(self._data_in, self._data_to_sram)
+        self.wire(self._cen_to_sram, self._write.r_or() | self._read.r_or())
+        self.wire(self._wen_to_sram, self._write.r_or())
+        self.wire(self._ren_to_sram, self._read.r_or())
+
+        for i in range(self.interconnect_output_ports):
+            self.wire(self._data_out[i], self._data_from_sram)
 
         if self.rw_same_cycle:
             # If we can read and write the same cycle we
             # can pretty safeuly assume we have separate read/write ports...
+
+            # Handle write side....
+            # Send the address/data based on the lowest writer on the port
             self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
+            pri_enc_wr = get_priority_encode(self, self._write)
+            self.wire(self._wr_addr_to_sram, self._write_addr[pri_enc_wr][clog2(self.mem_depth) - 1, 0])
+            self.wire(self._data_to_sram, self._data_in[pri_enc_wr])
+
+            # Read side...
+            pri_enc_rd = get_priority_encode(self, self._read)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
-            self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
-            self.wire(self._rd_addr_to_sram, self._read_addr[clog2(self.mem_depth) - 1, 0])
+            self.wire(self._rd_addr_to_sram, self._read_addr[pri_enc_rd][clog2(self.mem_depth) - 1, 0])
         else:
             self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
+            self.wire(self._data_to_sram, self._data_in[0])
             self.wire(self._addr_to_sram, self._addr)
             self.add_code(self.set_sram_addr)
 

@@ -1245,21 +1245,50 @@ def get_lake_dut(formal_module=None,
                  stencil_valid=False,
                  tsmc_info=SRAMMacroInfo("tsmc_name"),
                  use_sram_stub=True,
-                 fifo_mode=True,
                  mem_width=64,
-                 do_config_lift=True):
+                 do_config_lift=True,
+                 **kwargs):
+
+    #  data_width=16,  # CGRA Params
+    #          mem_width=64,
+    #          mem_depth=512,
+    #          banks=1,
+    #          input_iterator_support=6,  # Addr Controllers
+    #          output_iterator_support=6,
+    #          input_config_width=16,
+    #          output_config_width=16,
+    #          interconnect_input_ports=2,  # Connection to int
+    #          interconnect_output_ports=2,
+    #          mem_input_ports=1,
+    #          mem_output_ports=1,
+    #          use_sram_stub=True,
+    #          sram_macro_info=SRAMMacroInfo("tsmc_name"),
+    #          read_delay=1,  # Cycle delay in read (SRAM vs Register File)
+    #          rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+    #          agg_height=4,
+    #          config_data_width=32,
+    #          config_addr_width=8,
+    #          num_tiles=1,
+    #          fifo_mode=True,
+    #          add_clk_enable=True,
+    #          add_flush=True,
+    #          name="LakeTop",
+    #          gen_addr=True,
+    #          stencil_valid=True,
+    #          formal_module=None,
+    #          do_config_lift=True):
 
     lake_dut = LakeTop(mem_width=mem_width,
                        interconnect_input_ports=in_ports,
                        interconnect_output_ports=out_ports,
                        sram_macro_info=tsmc_info,
                        use_sram_stub=use_sram_stub,
-                       fifo_mode=fifo_mode,
                        add_clk_enable=True,
                        add_flush=True,
                        stencil_valid=stencil_valid,
                        formal_module=formal_module,
-                       do_config_lift=do_config_lift)
+                       do_config_lift=do_config_lift,
+                       **kwargs)
 
     print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
 

@@ -643,5 +643,44 @@ def decode(generator, sel, signals):
     return ret
 
 
+def get_priority_encode(generator, signal):
+    assert generator is not None
+    assert signal is not None
+    sig_width = signal.width
+    new_sig = None
+    if sig_width == 1:
+        new_sig = generator.var(f"{signal.name}_pri_enc", 1)
+        generator.wire(new_sig, kts.const(0, 1))
+    else:
+        # In the case of a multibit signal, create the encoded signal and then create the assignment
+        new_sig = generator.var(f"{signal.name}_pri_enc", kts.clog2(sig_width))
+        encode_comb = generator.combinational()
+        # create the ifs
+        prev_if = None
+        for i in range(sig_width):
+            first = i == 0
+            last = i == sig_width - 1
+            new_if = None
+            if first:
+                # Create the if chain first
+                new_if = encode_comb.if_(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if = new_if
+            elif last:
+                # At the end, apply the final else as well
+                new_if = IfStmt(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if.else_(new_if)
+                new_if.else_(new_sig.assign(0))
+            else:
+                # In the middle, create new if and chain with the previous
+                new_if = IfStmt(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if.else_(new_if)
+                prev_if = new_if
+
+    return new_sig
+
+
 if __name__ == "__main__":
     increment_csv("sequence.csv", "inced_csv.csv", [])
