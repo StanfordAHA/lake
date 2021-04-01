@@ -76,6 +76,8 @@ def test_pond_basic(pond_dut_info):
     tester.step(1)
     tester.circuit.clk_en = 1
 
+    data_append = "" if dsl else "_pond"
+
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     for i in range(32):
@@ -83,25 +85,17 @@ def test_pond_basic(pond_dut_info):
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            if dsl:
-                tester.circuit.data_in = data_in_pond[0]
-            else:
-                tester.circuit.data_in_pond = data_in_pond[0]
+            setattr(tester.circuit, f"data_in{data_append}", data_in_pond[0])
         else:
             for j in range(interconnect_input_ports):
-                if dsl:
-                    setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
-                else:
-                    setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
+                setattr(tester.circuit, f"data_in{data_append}_{j}", data_in_pond[j])
 
         if i >= 16:
             if interconnect_output_ports == 1:
-                if dsl:
-                    tester.circuit.data_out.expect(i - 15)
-                else:
-                    tester.circuit.data_out_pond.expect(i - 15)
+                getattr(tester.circuit, f"data_out{data_append}").expect(i - 15)
             else:
                 tester.circuit.data_out_pond_0.expect(i - 15)
+
         tester.eval()
         tester.step(2)
 
@@ -226,6 +220,8 @@ def test_pond_strided_read(pond_dut_info):
     tester.step(1)
     tester.circuit.clk_en = 1
 
+    data_append = "" if dsl else "_pond"
+
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     for i in range(24):
@@ -233,23 +229,14 @@ def test_pond_strided_read(pond_dut_info):
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            if dsl:
-                tester.circuit.data_in = data_in_pond[0]
-            else:
-                tester.circuit.data_in_pond = data_in_pond[0]
+            setattr(tester.circuit, f"data_in{data_append}", data_in_pond[0])
         else:
             for j in range(interconnect_input_ports):
-                if dsl:
-                    setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
-                else:
-                    setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
+                setattr(tester.circuit, f"data_in{data_append}_{j}", data_in_pond[j])
 
         if i >= 16:
             if interconnect_output_ports == 1:
-                if dsl:
-                    tester.circuit.data_out.expect((i - 16) * 2 + 1)
-                else:
-                    tester.circuit.data_out_pond.expect((i - 16) * 2 + 1)
+                getattr(tester.circuit, f"data_out{data_append}").expect((i - 16) * 2 + 1)
             else:
                 tester.circuit.data_out_pond_0.expect((i - 16) * 2 + 1)
 
@@ -295,6 +282,8 @@ def test_pond_b2b_read(pond_dut_info):
     tester.step(1)
     tester.circuit.clk_en = 1
 
+    data_append = "" if dsl else "_pond"
+
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     for i in range(16 * 11):
@@ -302,23 +291,14 @@ def test_pond_b2b_read(pond_dut_info):
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            if dsl:
-                tester.circuit.data_in = data_in_pond[0]
-            else:
-                tester.circuit.data_in_pond = data_in_pond[0]
+            setattr(tester.circuit, f"data_in{data_append}", data_in_pond[0])
         else:
             for j in range(interconnect_input_ports):
-                if dsl:
-                    setattr(tester.circuit, f"data_in_{j}", data_in_pond[j])
-                else:
-                    setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
+                setattr(tester.circuit, f"data_in{data_append}_{j}", data_in_pond[j])
 
         if i >= 16:
             if interconnect_output_ports == 1:
-                if dsl:
-                    tester.circuit.data_out.expect(((i - 16) % 16) + 1)
-                else:
-                    tester.circuit.data_out_pond.expect(((i - 16) % 16) + 1)
+                getattr(tester.circuit, f"data_out{data_append}").expect(((i - 16) % 16) + 1)
             else:
                 tester.circuit.data_out_pond_0.expect(((i - 16) % 16) + 1)
 
