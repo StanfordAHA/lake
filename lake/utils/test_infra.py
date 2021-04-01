@@ -1,5 +1,4 @@
 from lake.top.lake_top import get_lake_dut
-from lake.top.pond import get_pond_dut
 import kratos as kts
 import fault
 import tempfile
@@ -16,7 +15,6 @@ from lake.utils.util import get_configs_dict, set_configs_sv
 from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
 from lake.utils.util import transform_strides_and_ranges
-from lake.utils.util import generate_pond_api, get_pond_configs
 
 
 def base_lake_tester(config_path,
