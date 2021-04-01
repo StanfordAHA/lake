@@ -92,11 +92,11 @@ if __name__ == "__main__":
                         default="LakeWrapper")
     parser.add_argument("-s",
                         type=str,
-                        help="optional: True or False indicating whether or not to generate hardware with stencil_valid (default: True)",
+                        help="optional: True or False indicating whether or not to generate memtile with stencil_valid (default: True)",
                         default="True")
     parser.add_argument("-p",
                         type=str,
-                        help="True for pond wrapper. False for memtile wrapper.",
+                        help="True for pond wrapper. False for memtile wrapper. (default: False)",
                         default="False")
     parser.add_argument("-pd",
                         type=int,
@@ -122,4 +122,4 @@ if __name__ == "__main__":
     wrapper(args.c, stencil_valid, args.n, pond, args.pd, args.pl)
 
     # Example usage:
-    # python tests/wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
+    # python wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
