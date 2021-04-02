@@ -166,7 +166,6 @@ def test_pond_acc(interconnect_input_ports,
     for i in range(16):
         # Incrementing Data
         data_in_pond[0] = data_in_pond[0] + 1
-        print(data_in_pond[0])
         if interconnect_input_ports == 1:
             tester.circuit.data_in_pond = data_in_pond[0]
         else:
@@ -384,7 +383,6 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
     valid_in = [0] * interconnect_input_ports
     for i in range(48):
         # Incrementing Data
-        print("I is", i)
         data_in_pond[0] = data_in_pond[0] + 1
         # data_in_pond[1] = data_in_pond[1] + 1
 
@@ -392,7 +390,6 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
             tester.circuit.data_in_pond = data_in_pond[0]
         else:
             # for j in range(interconnect_input_ports):
-            print("I is #2", i)
             setattr(tester.circuit, f"data_in_pond_0", data_in_pond[0])
 
         if i >= 16 and i < 32:
