@@ -250,15 +250,17 @@ class StrgUBThin(Generator):
         config = []
         in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
         out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
-        controllers = in_ctrls + out_ctrls
         controller_objs = {}
-        for c in controllers:
-            # Default in path
+        for c in in_ctrls:
             in_path = config_path + '/' + in_file_name + c + '.csv'
-            out_path = config_path + '/' + out_file_name + c + '.csv'
             if os.path.isfile(in_path):
                 controller_objs[c] = (map_controller(extract_controller(in_path), c), 0)
-            elif os.path.isfile(out_path):
+            else:
+                controller_objs[c] = None
+                print(f"No {c} file provided. Is this expected?")
+        for c in out_ctrls:
+            out_path = config_path + '/' + out_file_name + c + '.csv'
+            if os.path.isfile(out_path):
                 controller_objs[c] = (map_controller(extract_controller(out_path), c), 1)
             else:
                 controller_objs[c] = None
