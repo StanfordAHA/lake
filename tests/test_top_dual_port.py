@@ -15,7 +15,7 @@ def test_gen_dual_port():
         "name": "JoeysWorld",
         "rw_same_cycle": True,
         "fifo_mode": False,
-        "stencil_valid": False,
+        "stencil_valid": True,
         "mem_width": 16
     }
 

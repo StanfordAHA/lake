@@ -215,16 +215,18 @@ class StrgUBThin(Generator):
             self.wire(self._rd_addr_to_sram, self._read_addr[pri_enc_rd][clog2(self.mem_depth) - 1, 0])
         else:
             self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
+            pri_enc_wr = get_priority_encode(self, self._write)
+            pri_enc_rd = get_priority_encode(self, self._read)
             self.wire(self._data_to_sram, self._data_in[0])
             self.wire(self._addr_to_sram, self._addr)
-            self.add_code(self.set_sram_addr)
 
-    @always_comb
-    def set_sram_addr(self):
-        if self._write:
-            self._addr = self._write_addr[clog2(self.mem_depth) - 1, 0]
-        else:
-            self._addr = self._read_addr[clog2(self.mem_depth) - 1, 0]
+            @always_comb
+            def set_sram_addr():
+                if self._write:
+                    self._addr = self._write_addr[pri_enc_wr][clog2(self.mem_depth) - 1, 0]
+                else:
+                    self._addr = self._read_addr[pri_enc_rd][clog2(self.mem_depth) - 1, 0]
+            self.add_code(set_sram_addr)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def delay_read(self):
