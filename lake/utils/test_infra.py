@@ -19,14 +19,10 @@ from lake.utils.util import check_env
 def base_lake_tester(config_path,
                      in_file_name,
                      out_file_name,
-                     in_ports,
-                     out_ports,
                      stencil_valid=False,
                      get_configs_list=False):
 
-    lt_dut, need_config_lift, s, t = get_lake_dut(in_ports=in_ports,
-                                                  out_ports=out_ports,
-                                                  stencil_valid=stencil_valid)
+    lt_dut, need_config_lift, s, t = get_lake_dut(stencil_valid=stencil_valid)
 
     configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
     if get_configs_list:
@@ -51,15 +47,21 @@ def gen_test_lake(config_path,
                   stream_path,
                   in_file_name="input",
                   out_file_name="output",
-                  in_ports=2,
-                  out_ports=2):
+                  **lake_dut_kwargs):
 
     lt_dut, configs, magma_dut, tester = \
         base_lake_tester(config_path,
                          in_file_name,
                          out_file_name,
-                         in_ports,
-                         out_ports)
+                         **lake_dut_kwargs)
+
+    in_ports = 2
+    out_ports = 2
+
+    if "interconnect_input_ports" in lake_dut_kwargs.keys():
+        in_ports = lake_dut_kwargs["interconnect_input_ports"]
+    if "interconnect_output_ports" in lake_dut_kwargs.keys():
+        out_ports = lake_dut_kwargs["interconnect_output_ports"]
 
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
