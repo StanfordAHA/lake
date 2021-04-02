@@ -2,11 +2,7 @@ import argparse
 from lake.utils.wrapper import error, wrapper
 import pytest
 
-# adding this test to ensure wrapper generation is not broken
-# have to skip this test for now because LAKE_CONTROLLERS will
-# be changing very soon in the future compared to the current
-# path as the compiler team changes directories (and eliminates
-# complicated csv file names)
+
 @pytest.mark.skip
 @pytest.mark.parametrize("stencil_valid", [True, False])
 @pytest.mark.parametrize("name", ["LakeWrapper", "LakeConv33"])
