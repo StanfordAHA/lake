@@ -29,6 +29,9 @@ class StrgUBThin(Generator):
 
         assert mem_width == data_width, f"This module should only be used when the fetch width is 1!"
 
+        self.ctrl_in = "in2regfile"
+        self.ctrl_out = "regfile2out"
+
         self.fetch_width = mem_width // data_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
@@ -124,7 +127,7 @@ class StrgUBThin(Generator):
             SCHED_WRITE = SchedGen(iterator_support=self.default_iterator_support,
                                    config_width=self.default_config_width)
 
-            self.add_child(f"in2sram_{i}_for_loop",
+            self.add_child(f"{self.ctrl_in}_{i}_for_loop",
                            FOR_LOOP_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -132,7 +135,7 @@ class StrgUBThin(Generator):
 
             # Whatever comes through here should hopefully just pipe through seamlessly
             # addressor modules
-            self.add_child(f"in2sram_{i}_addr_gen",
+            self.add_child(f"{self.ctrl_in}_{i}_addr_gen",
                            ADDR_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -142,7 +145,7 @@ class StrgUBThin(Generator):
                            addr_out=self._write_addr[i])
 
             # scheduler modules
-            self.add_child(f"in2sram_{i}_sched_gen",
+            self.add_child(f"{self.ctrl_in}_{i}_sched_gen",
                            SCHED_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -162,13 +165,13 @@ class StrgUBThin(Generator):
             SCHED_READ = SchedGen(iterator_support=self.default_iterator_support,
                                   config_width=self.default_config_width)
 
-            self.add_child(f"sram2out_{i}_for_loop",
+            self.add_child(f"{self.ctrl_out}_{i}_for_loop",
                            FOR_LOOP_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._read[i])
 
-            self.add_child(f"sram2out_{i}_addr_gen",
+            self.add_child(f"{self.ctrl_out}_{i}_addr_gen",
                            ADDR_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -177,7 +180,7 @@ class StrgUBThin(Generator):
                            restart=FOR_LOOP_READ.ports.restart,
                            addr_out=self._read_addr[i])
 
-            self.add_child(f"sram2out_{i}_sched_gen",
+            self.add_child(f"{self.ctrl_out}_{i}_sched_gen",
                            SCHED_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -245,8 +248,8 @@ class StrgUBThin(Generator):
     def get_static_bitstream(self, config_path, in_file_name, out_file_name):
 
         config = []
-        in_ctrls = [f"in2sram_{i}" for i in range(self.interconnect_input_ports)]
-        out_ctrls = [f"sram2out_{i}" for i in range(self.interconnect_output_ports)]
+        in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
+        out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
         controllers = in_ctrls + out_ctrls
         controller_objs = {}
         for c in controllers:
