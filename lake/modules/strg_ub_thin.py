@@ -257,9 +257,9 @@ class StrgUBThin(Generator):
             in_path = config_path + '/' + in_file_name + c + '.csv'
             out_path = config_path + '/' + out_file_name + c + '.csv'
             if os.path.isfile(in_path):
-                controller_objs[c] = map_controller(extract_controller(in_path), c)
+                controller_objs[c] = (map_controller(extract_controller(in_path), c), 0)
             elif os.path.isfile(out_path):
-                controller_objs[c] = map_controller(extract_controller(out_path), c)
+                controller_objs[c] = (map_controller(extract_controller(out_path), c), 1)
             else:
                 controller_objs[c] = None
                 print(f"No {c} file provided. Is this expected?")

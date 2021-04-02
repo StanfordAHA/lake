@@ -188,15 +188,28 @@ def configure_controller(prefix, name, controller):
     """
     config = []
 
-    if controller is not None:
+    mapped_ctrl, out_n_in = controller
+
+    if mapped_ctrl is not None:
         expand_name = prefix + name
+        strt_addr = 0
+        if out_n_in == 1:
+            strt_addr = mapped_ctrl.out_data_strt
+        else:
+            strt_addr = mapped_ctrl.in_data_strt
+
         config.append((f"{expand_name}_addr_gen_enable", 1))
-        config.append((f"{expand_name}_addr_gen_starting_addr", controller.in_data_strt))
-        config.append((f"{expand_name}_addr_gen_sched_addr_gen_starting_addr", controller.cyc_strt))
-        config.append((f"{expand_name}_addr_gen_dimensionality", controller.dim))
-        for i in range(controller.dim):
-            config.append((f"{expand_name}_addr_gen_ranges_{i}", controller.extent[i]))
-            config.append((f"{expand_name}_addr_gen_strides_{i}", controller.in_data_stride[i]))
-            config.append((f"{expand_name}_addr_gen_sched_addr_gen_strides_{i}", controller.cyc_stride[i]))
+        config.append((f"{expand_name}_addr_gen_dimensionality", mapped_ctrl.dim))
+        config.append((f"{expand_name}_addr_gen_sched_addr_gen_starting_addr", mapped_ctrl.cyc_strt))
+        config.append((f"{expand_name}_addr_gen_starting_addr", strt_addr))
+        for i in range(mapped_ctrl.dim):
+            addr_stride = 0
+            if out_n_in == 1:
+                addr_stride = mapped_ctrl.out_data_stride[i]
+            else:
+                addr_stride = mapped_ctrl.in_data_stride[i]
+            config.append((f"{expand_name}_addr_gen_strides_{i}", addr_stride))
+            config.append((f"{expand_name}_addr_gen_ranges_{i}", mapped_ctrl.extent[i]))
+            config.append((f"{expand_name}_addr_gen_sched_addr_gen_strides_{i}", mapped_ctrl.cyc_stride[i]))
 
     return config
