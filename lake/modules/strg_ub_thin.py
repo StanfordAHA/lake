@@ -17,7 +17,6 @@ class StrgUBThin(Generator):
                  data_width=16,  # CGRA Params
                  mem_width=16,
                  mem_depth=512,
-                 banks=1,
                  input_addr_iterator_support=6,
                  input_sched_iterator_support=6,
                  output_addr_iterator_support=6,
@@ -25,8 +24,6 @@ class StrgUBThin(Generator):
                  interconnect_input_ports=1,  # Connection to int
                  interconnect_output_ports=1,
                  config_width=16,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=True,
                  gen_addr=True):
@@ -130,7 +127,7 @@ class StrgUBThin(Generator):
             SCHED_WRITE = SchedGen(iterator_support=self.default_iterator_support,
                                    config_width=self.default_config_width)
 
-            self.add_child(f"write_for_loop_{i}",
+            self.add_child(f"in2sram_for_loop_{i}",
                            FOR_LOOP_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -138,7 +135,7 @@ class StrgUBThin(Generator):
 
             # Whatever comes through here should hopefully just pipe through seamlessly
             # addressor modules
-            self.add_child(f"write_addr_gen_{i}",
+            self.add_child(f"in2sram_addr_gen_{i}",
                            ADDR_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -148,7 +145,7 @@ class StrgUBThin(Generator):
                            addr_out=self._write_addr[i])
 
             # scheduler modules
-            self.add_child(f"write_sched_gen_{i}",
+            self.add_child(f"in2sram_sched_gen_{i}",
                            SCHED_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -168,13 +165,13 @@ class StrgUBThin(Generator):
             SCHED_READ = SchedGen(iterator_support=self.default_iterator_support,
                                   config_width=self.default_config_width)
 
-            self.add_child(f"read_for_loop_{i}",
+            self.add_child(f"sram2out_for_loop_{i}",
                            FOR_LOOP_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._read[i])
 
-            self.add_child(f"read_addr_gen_{i}",
+            self.add_child(f"sram2out_addr_gen_{i}",
                            ADDR_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -183,7 +180,7 @@ class StrgUBThin(Generator):
                            restart=FOR_LOOP_READ.ports.restart,
                            addr_out=self._read_addr[i])
 
-            self.add_child(f"read_sched_gen_{i}",
+            self.add_child(f"sram2out_sched_gen_{i}",
                            SCHED_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
