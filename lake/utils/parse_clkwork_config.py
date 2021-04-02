@@ -173,3 +173,30 @@ def map_controller(controller, name):
                                  mux_data_stride=tform_mux_data_strides)
 
     return mapped_ctrl
+
+
+def configure_controller(prefix, name, controller):
+    """[summary]
+
+    Args:
+        prefix ([string]): [prefix string used for prepending hierarchy]
+        name ([string]): [name of the controller to map]
+        controller ([string]): [controller to map]
+
+    Returns:
+        [list]: [list of tuples of the form (config_variable, value)]
+    """
+    config = []
+
+    if controller is not None:
+        expand_name = prefix + name
+        config.append((f"{expand_name}_addr_gen_enable", 1))
+        config.append((f"{expand_name}_addr_gen_starting_addr", controller.in_data_strt))
+        config.append((f"{expand_name}_addr_gen_sched_addr_gen_starting_addr", controller.cyc_strt))
+        config.append((f"{expand_name}_addr_gen_dimensionality", controller.dim))
+        for i in range(controller.dim):
+            config.append((f"{expand_name}_addr_gen_ranges_{i}", controller.extent[i]))
+            config.append((f"{expand_name}_addr_gen_strides_{i}", controller.in_data_stride[i]))
+            config.append((f"{expand_name}_addr_gen_sched_addr_gen_strides_{i}", controller.cyc_stride[i]))
+
+    return config

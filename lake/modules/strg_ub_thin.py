@@ -1,15 +1,12 @@
+from lake.utils.parse_clkwork_config import configure_controller, extract_controller, map_controller
 from lake.utils.util import get_priority_encode
 from kratos import *
 from lake.modules.passthru import *
-from lake.modules.register_file import RegisterFile
-from lake.attributes.config_reg_attr import ConfigRegAttr
-from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
-from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
-import kratos as kts
+import os
 
 
 class StrgUBThin(Generator):
@@ -127,7 +124,7 @@ class StrgUBThin(Generator):
             SCHED_WRITE = SchedGen(iterator_support=self.default_iterator_support,
                                    config_width=self.default_config_width)
 
-            self.add_child(f"in2sram_for_loop_{i}",
+            self.add_child(f"in2sram_{i}_for_loop",
                            FOR_LOOP_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -135,7 +132,7 @@ class StrgUBThin(Generator):
 
             # Whatever comes through here should hopefully just pipe through seamlessly
             # addressor modules
-            self.add_child(f"in2sram_addr_gen_{i}",
+            self.add_child(f"in2sram_{i}_addr_gen",
                            ADDR_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -145,7 +142,7 @@ class StrgUBThin(Generator):
                            addr_out=self._write_addr[i])
 
             # scheduler modules
-            self.add_child(f"in2sram_sched_gen_{i}",
+            self.add_child(f"in2sram_{i}_sched_gen",
                            SCHED_WRITE,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -165,13 +162,13 @@ class StrgUBThin(Generator):
             SCHED_READ = SchedGen(iterator_support=self.default_iterator_support,
                                   config_width=self.default_config_width)
 
-            self.add_child(f"sram2out_for_loop_{i}",
+            self.add_child(f"sram2out_{i}_for_loop",
                            FOR_LOOP_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._read[i])
 
-            self.add_child(f"sram2out_addr_gen_{i}",
+            self.add_child(f"sram2out_{i}_addr_gen",
                            ADDR_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -180,7 +177,7 @@ class StrgUBThin(Generator):
                            restart=FOR_LOOP_READ.ports.restart,
                            addr_out=self._read_addr[i])
 
-            self.add_child(f"sram2out_sched_gen_{i}",
+            self.add_child(f"sram2out_{i}_sched_gen",
                            SCHED_READ,
                            clk=self._clk,
                            rst_n=self._rst_n,
@@ -242,6 +239,33 @@ class StrgUBThin(Generator):
             self._cycle_count = 0
         else:
             self._cycle_count = self._cycle_count + 1
+
+    def get_static_bitstream(self, config_path, in_file_name, out_file_name):
+
+        config = []
+        in_ctrls = [f"in2sram_{i}" for i in range(self.interconnect_input_ports)]
+        out_ctrls = [f"sram2out_{i}" for i in range(self.interconnect_output_ports)]
+        controllers = in_ctrls + out_ctrls
+        controller_objs = {}
+        for c in controllers:
+            # Default in path
+            in_path = config_path + '/' + in_file_name + c + '.csv'
+            out_path = config_path + '/' + out_file_name + c + '.csv'
+            if os.path.isfile(in_path):
+                controller_objs[c] = map_controller(extract_controller(in_path), c)
+            elif os.path.isfile(out_path):
+                controller_objs[c] = map_controller(extract_controller(out_path), c)
+            else:
+                controller_objs[c] = None
+                print(f"No {c} file provided. Is this expected?")
+
+        for c_name, c_conf in controller_objs.items():
+            print(f"name: {c_name}, controller: {c_conf}")
+            config += configure_controller(prefix="strg_ub_",
+                                           name=c_name,
+                                           controller=c_conf)
+
+        return config
 
 
 if __name__ == "__main__":

@@ -1,21 +1,15 @@
+from lake.utils.parse_clkwork_config import extract_controller, map_controller
 from kratos import *
 from lake.modules.passthru import *
-from lake.modules.register_file import RegisterFile
-from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.formal_attr import *
-from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
-from lake.modules.sram_stub import SRAMStub
-from lake.modules.for_loop import ForLoop
-from lake.modules.addr_gen import AddrGen
-from lake.modules.spec.sched_gen import SchedGen
 from lake.modules.agg_only import StrgUBAggOnly
 from lake.modules.agg_sram_shared import StrgUBAggSRAMShared
 from lake.modules.sram_only import StrgUBSRAMOnly
 from lake.modules.sram_tb_shared import StrgUBSRAMTBShared
 from lake.modules.tb_only import StrgUBTBOnly
-from lake.utils.util import safe_wire, add_counter, decode
-import kratos as kts
+from lake.utils.util import add_counter, decode
+import os
 
 
 class StrgUBVec(Generator):
@@ -239,6 +233,125 @@ class StrgUBVec(Generator):
                                              packed=True,
                                              explicit_array=True)
             self.wire(self._agg_data_out, agg_only.ports.agg_data_out)
+
+    def get_static_bitstream(self, config_path, in_file_name, out_file_name):
+
+        config = []
+        controllers = ["in2agg_0",
+                       "in2agg_1",
+                       "agg2sram_0",
+                       "agg2sram_1",
+                       "sram2tb_0",
+                       "sram2tb_1",
+                       "tb2out_0",
+                       "tb2out_1"]
+
+        controller_objs = [None] * len(controllers)
+        for i in range(len(controllers)):
+            c = controllers[i]
+            in_path = config_path + '/' + in_file_name + c + '.csv'
+            out_path = config_path + '/' + out_file_name + c + '.csv'
+
+            if os.path.isfile(in_path):
+                controller_objs[i] = map_controller(extract_controller(in_path), c)
+            elif os.path.isfile(out_path):
+                controller_objs[i] = map_controller(extract_controller(out_path), c)
+            else:
+                print(f"No {c} file provided. Is this expected?")
+
+        in2agg_0, in2agg_1, agg2sram_0, agg2sram_1, \
+            sram2tb_0, sram2tb_1, tb2out_0, tb2out_1 = \
+            controller_objs
+
+        if in2agg_0 is not None:
+            config.append(("strg_ub_agg_only_agg_write_addr_gen_0_starting_addr", in2agg_0.in_data_strt))
+            config.append(("strg_ub_agg_only_agg_write_sched_gen_0_enable", 1))
+            config.append(("strg_ub_agg_only_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg_0.cyc_strt))
+            config.append(("strg_ub_agg_only_loops_in2buf_0_dimensionality", in2agg_0.dim))
+            for i in range(in2agg_0.dim):
+                config.append((f"strg_ub_agg_only_loops_in2buf_0_ranges_{i}", in2agg_0.extent[i]))
+                config.append((f"strg_ub_agg_only_agg_write_addr_gen_0_strides_{i}", in2agg_0.in_data_stride[i]))
+                config.append((f"strg_ub_agg_only_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg_0.cyc_stride[i]))
+
+        if in2agg_1 is not None:
+            config.append(("strg_ub_agg_only_agg_write_addr_gen_1_starting_addr", in2agg_1.in_data_strt))
+            config.append(("strg_ub_agg_only_agg_write_sched_gen_1_enable", 1))
+            config.append(("strg_ub_agg_only_agg_write_sched_gen_1_sched_addr_gen_starting_addr", in2agg_1.cyc_strt))
+            config.append(("strg_ub_agg_only_loops_in2buf_1_dimensionality", in2agg_1.dim))
+            for i in range(in2agg_1.dim):
+                config.append((f"strg_ub_agg_only_loops_in2buf_1_ranges_{i}", in2agg_1.extent[i]))
+                config.append((f"strg_ub_agg_only_agg_write_addr_gen_1_strides_{i}", in2agg_1.in_data_stride[i]))
+                config.append((f"strg_ub_agg_only_agg_write_sched_gen_1_sched_addr_gen_strides_{i}", in2agg_1.cyc_stride[i]))
+
+        if agg2sram_0 is not None:
+            config.append(("strg_ub_agg_sram_shared_loops_in2buf_autovec_write_0_dimensionality", agg2sram_0.dim))
+            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_enable", 1))
+            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_starting_addr", agg2sram_0.cyc_strt))
+            config.append(("strg_ub_agg_only_agg_read_addr_gen_0_starting_addr", agg2sram_0.out_data_strt))
+            config.append(("strg_ub_sram_only_input_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
+            for i in range(agg2sram_0.dim):
+                config.append((f"strg_ub_agg_only_agg_read_addr_gen_0_strides_{i}", agg2sram_0.out_data_stride[i]))
+                config.append((f"strg_ub_agg_sram_shared_loops_in2buf_autovec_write_0_ranges_{i}", agg2sram_0.extent[i]))
+                config.append((f"strg_ub_sram_only_input_addr_gen_0_strides_{i}", agg2sram_0.in_data_stride[i]))
+                config.append((f"strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_strides_{i}", agg2sram_0.cyc_stride[i]))
+
+        if agg2sram_1 is not None:
+            config.append(("strg_ub_agg_sram_shared_loops_in2buf_autovec_write_1_dimensionality", agg2sram_1.dim))
+            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_enable", 1))
+            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_starting_addr", agg2sram_1.cyc_strt))
+            config.append(("strg_ub_agg_only_agg_read_addr_gen_1_starting_addr", agg2sram_1.out_data_strt))
+            config.append(("strg_ub_sram_only_input_addr_gen_1_starting_addr", agg2sram_1.in_data_strt))
+            for i in range(agg2sram_1.dim):
+                config.append((f"strg_ub_agg_only_agg_read_addr_gen_1_strides_{i}", agg2sram_1.out_data_stride[i]))
+                config.append((f"strg_ub_agg_sram_shared_loops_in2buf_autovec_write_1_ranges_{i}", agg2sram_1.extent[i]))
+                config.append((f"strg_ub_sram_only_input_addr_gen_1_strides_{i}", agg2sram_1.in_data_stride[i]))
+                config.append((f"strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_strides_{i}", agg2sram_1.cyc_stride[i]))
+
+        if sram2tb_0 is not None:
+            config.append(("strg_ub_sram_only_output_addr_gen_0_starting_addr", sram2tb_0.out_data_strt))
+            config.append(("strg_ub_tb_only_tb_write_addr_gen_0_starting_addr", sram2tb_0.in_data_strt))
+            config.append(("strg_ub_sram_tb_shared_output_sched_gen_0_enable", 1))
+            config.append(("strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_starting_addr", sram2tb_0.cyc_strt))
+            config.append(("strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_dimensionality", sram2tb_0.dim))
+            for i in range(sram2tb_0.dim):
+                config.append((f"strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_{i}", sram2tb_0.extent[i]))
+                config.append((f"strg_ub_sram_only_output_addr_gen_0_strides_{i}", sram2tb_0.out_data_stride[i]))
+                config.append((f"strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_{i}", sram2tb_0.cyc_stride[i]))
+                config.append((f"strg_ub_tb_only_tb_write_addr_gen_0_strides_{i}", sram2tb_0.in_data_stride[i]))
+
+        if sram2tb_1 is not None:
+            config.append(("strg_ub_sram_only_output_addr_gen_1_starting_addr", sram2tb_1.out_data_strt))
+            config.append(("strg_ub_tb_only_tb_write_addr_gen_1_starting_addr", sram2tb_1.in_data_strt))
+            config.append(("strg_ub_sram_tb_shared_output_sched_gen_1_enable", 1))
+            config.append(("strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_starting_addr", sram2tb_1.cyc_strt))
+            config.append(("strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_dimensionality", sram2tb_1.dim))
+            for i in range(sram2tb_1.dim):
+                config.append((f"strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_{i}", sram2tb_1.extent[i]))
+                config.append((f"strg_ub_sram_only_output_addr_gen_1_strides_{i}", sram2tb_1.out_data_stride[i]))
+                config.append((f"strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_{i}", sram2tb_1.cyc_stride[i]))
+                config.append((f"strg_ub_tb_only_tb_write_addr_gen_1_strides_{i}", sram2tb_1.in_data_stride[i]))
+
+        if tb2out_0 is not None:
+            config.append((f"strg_ub_tb_only_tb_read_addr_gen_0_starting_addr", tb2out_0.out_data_strt))
+            config.append((f"strg_ub_tb_only_tb_read_sched_gen_0_enable", 1))
+            config.append((f"strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out_0.cyc_strt))
+            config.append((f"strg_ub_tb_only_loops_buf2out_read_0_dimensionality", tb2out_0.dim))
+            for i in range(tb2out_0.dim):
+                config.append((f"strg_ub_tb_only_loops_buf2out_read_0_ranges_{i}", tb2out_0.extent[i]))
+                config.append((f"strg_ub_tb_only_tb_read_addr_gen_0_strides_{i}", tb2out_0.out_data_stride[i]))
+                config.append((f"strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_{i}", tb2out_0.cyc_stride[i]))
+
+        if tb2out_1 is not None:
+            config.append((f"strg_ub_tb_only_tb_read_addr_gen_1_starting_addr", tb2out_1.out_data_strt))
+            config.append((f"strg_ub_tb_only_tb_read_sched_gen_1_enable", 1))
+            config.append((f"strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out_1.cyc_strt))
+            config.append((f"strg_ub_tb_only_loops_buf2out_read_1_dimensionality", tb2out_1.dim))
+            for i in range(tb2out_1.dim):
+                config.append((f"strg_ub_tb_only_loops_buf2out_read_1_ranges_{i}", tb2out_1.extent[i]))
+                config.append((f"strg_ub_tb_only_tb_read_addr_gen_1_strides_{i}", tb2out_1.out_data_stride[i]))
+                config.append((f"strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_{i}", tb2out_1.cyc_stride[i]))
+
+        return config
 
 
 if __name__ == "__main__":
