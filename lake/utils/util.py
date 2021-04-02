@@ -335,7 +335,7 @@ def set_configs_sv(generator, filepath, configs_dict, iterator_support=6):
             if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
                 port_name = "_".join(port_split[:-1])
             port = int_gen.get_port(port_name)
-            if port is None and if lake_util_verbose_trim:
+            if port is None and lake_util_verbose_trim:
                 print("No port: ", port_name)
             if port is not None:
                 fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
