@@ -382,7 +382,6 @@ class Pond(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-
     def get_pond_configs(config_file):
 
         # Ranges, Strides, Dimensionality, Starting Addr
@@ -410,7 +409,6 @@ class Pond(Generator):
                    [configs["rf_write_sched_0_sched_addr_gen_strides_0"], configs["rf_write_sched_0_sched_addr_gen_strides_1"], configs["rf_write_sched_0_sched_addr_gen_strides_2"]]]
 
         return ctrl_rd, ctrl_wr
-
 
     def get_static_bitstream_json(self,
                                   root_node):
