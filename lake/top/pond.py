@@ -382,6 +382,36 @@ class Pond(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
+
+    def get_pond_configs(config_file):
+
+        # Ranges, Strides, Dimensionality, Starting Addr
+        # Starting Addr (schedule), Ranges (schedule)
+        # ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
+        # ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+
+        configs = {}
+        with open(config_file) as csvfile:
+            config_data = csv.reader(csvfile, delimiter=',')
+            for row in config_data:
+                configs[row[0]] = int(row[1])
+        ctrl_rd = [[configs["rf_read_iter_0_ranges_0"], configs["rf_read_iter_0_ranges_1"], configs["rf_read_iter_0_ranges_2"]],
+                   [configs["rf_read_addr_0_strides_0"], configs["rf_read_addr_0_strides_1"], configs["rf_read_addr_0_strides_2"]],
+                   configs["rf_read_iter_0_dimensionality"],
+                   configs["rf_read_addr_0_starting_addr"],
+                   configs["rf_read_sched_0_sched_addr_gen_starting_addr"],
+                   [configs["rf_read_sched_0_sched_addr_gen_strides_0"], configs["rf_read_sched_0_sched_addr_gen_strides_1"], configs["rf_read_sched_0_sched_addr_gen_strides_2"]]]
+
+        ctrl_wr = [[configs["rf_write_iter_0_ranges_0"], configs["rf_write_iter_0_ranges_1"], configs["rf_write_iter_0_ranges_2"]],
+                   [configs["rf_write_addr_0_strides_0"], configs["rf_write_addr_0_strides_1"], configs["rf_write_addr_0_strides_2"]],
+                   configs["rf_write_iter_0_dimensionality"],
+                   configs["rf_write_addr_0_starting_addr"],
+                   configs["rf_write_sched_0_sched_addr_gen_starting_addr"],
+                   [configs["rf_write_sched_0_sched_addr_gen_strides_0"], configs["rf_write_sched_0_sched_addr_gen_strides_1"], configs["rf_write_sched_0_sched_addr_gen_strides_2"]]]
+
+        return ctrl_rd, ctrl_wr
+
+
     def get_static_bitstream_json(self,
                                   root_node):
 
