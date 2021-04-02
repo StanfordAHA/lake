@@ -198,9 +198,9 @@ def configure_controller(prefix, name, controller):
             else:
                 strt_addr = mapped_ctrl.in_data_strt
 
-            config.append((f"{expand_name}_addr_gen_enable", 1))
-            config.append((f"{expand_name}_addr_gen_dimensionality", mapped_ctrl.dim))
-            config.append((f"{expand_name}_addr_gen_sched_addr_gen_starting_addr", mapped_ctrl.cyc_strt))
+            config.append((f"{expand_name}_sched_gen_enable", 1))
+            config.append((f"{expand_name}_for_loop_dimensionality", mapped_ctrl.dim))
+            config.append((f"{expand_name}_sched_gen_sched_addr_gen_starting_addr", mapped_ctrl.cyc_strt))
             config.append((f"{expand_name}_addr_gen_starting_addr", strt_addr))
             for i in range(mapped_ctrl.dim):
                 addr_stride = 0
@@ -209,7 +209,7 @@ def configure_controller(prefix, name, controller):
                 else:
                     addr_stride = mapped_ctrl.in_data_stride[i]
                 config.append((f"{expand_name}_addr_gen_strides_{i}", addr_stride))
-                config.append((f"{expand_name}_addr_gen_ranges_{i}", mapped_ctrl.extent[i]))
-                config.append((f"{expand_name}_addr_gen_sched_addr_gen_strides_{i}", mapped_ctrl.cyc_stride[i]))
+                config.append((f"{expand_name}_for_loop_ranges_{i}", mapped_ctrl.extent[i]))
+                config.append((f"{expand_name}_sched_gen_sched_addr_gen_strides_{i}", mapped_ctrl.cyc_stride[i]))
 
     return config
