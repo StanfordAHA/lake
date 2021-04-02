@@ -9,13 +9,13 @@ import argparse as argparse
 def test_gen_dual_port():
 
     lake_gen_kwargs = {
-        "interconnect_input_ports": 2,
-        "interconnect_output_ports": 2,
+        "interconnect_input_ports": 1,
+        "interconnect_output_ports": 1,
         "read_delay": 1,
         "name": "JoeysWorld",
         "rw_same_cycle": True,
         "fifo_mode": False,
-        "stencil_valid": True,
+        "stencil_valid": False,
         "mem_width": 16
     }
 

@@ -112,8 +112,8 @@ class StrgUBThin(Generator):
         else:
             self.wire(self._valid_out, self._read)
 
-        self._write_addr = self.var("write_addr", self.config_width, size=self.interconnect_input_ports)
-        self._read_addr = self.var("read_addr", self.config_width, size=self.interconnect_output_ports)
+        self._write_addr = self.var("write_addr", self.config_width, size=self.interconnect_input_ports, explicit_array=True)
+        self._read_addr = self.var("read_addr", self.config_width, size=self.interconnect_output_ports, explicit_array=True)
         self._addr = self.var("addr", clog2(self.mem_depth))
 
         # Set up addr/cycle gens for input side
