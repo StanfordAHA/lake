@@ -335,8 +335,8 @@ def set_configs_sv(generator, filepath, configs_dict, iterator_support=6):
             if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
                 port_name = "_".join(port_split[:-1])
             port = int_gen.get_port(port_name)
-            if port is None:
-                print(port_name)
+            if port is None and if lake_util_verbose_trim:
+                print("No port: ", port_name)
             if port is not None:
                 fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
                 configs_list.append(remaining)
@@ -536,13 +536,11 @@ def get_pond_configs(config_file):
                configs["rf_write_sched_0_sched_addr_gen_starting_addr"],
                [configs["rf_write_sched_0_sched_addr_gen_strides_0"], configs["rf_write_sched_0_sched_addr_gen_strides_1"], configs["rf_write_sched_0_sched_addr_gen_strides_2"]]]
 
-    print(ctrl_rd, ctrl_wr)
     return ctrl_rd, ctrl_wr
 
 
 # Function for generating Pond API
 def generate_pond_api(ctrl_rd, ctrl_wr, num_acc=1, dsl=False):
-    print(ctrl_rd, ctrl_wr)
     tform_ranges_rd = [0] * num_acc
     tform_strides_rd = [0] * num_acc
     tform_ranges_rd_sched = [0] * num_acc
@@ -584,7 +582,6 @@ def generate_pond_api(ctrl_rd, ctrl_wr, num_acc=1, dsl=False):
             new_config[f"rf_write_sched_{i}_enable"] = 1
 
             for j in range(dim_wr[i]):
-                print("ENTERED")
                 new_config[f"rf_write_addr_{i}_strides_{j}"] = tform_strides_wr[i][j]
                 new_config[f"rf_write_iter_{i}_ranges_{j}"] = tform_ranges_wr[i][j]
                 new_config[f"rf_write_sched_{i}_sched_addr_gen_strides_{j}"] = tform_strides_wr_sched[i][j]
