@@ -3,7 +3,6 @@ from lake.utils.wrapper import error, wrapper
 import pytest
 
 # adding this test to ensure wrapper generation is not broken
-
 # have to skip this test for now because LAKE_CONTROLLERS will
 # be changing very soon in the future compared to the current
 # path as the compiler team changes directories (and eliminates
