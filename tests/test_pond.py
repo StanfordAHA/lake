@@ -20,6 +20,7 @@ cycle_count_width = 16
 add_clk_enable = True
 add_flush = True
 
+
 @pytest.mark.parametrize("num_ports", [1, 2])
 def test_pond_b2b_read(num_ports):
 
@@ -27,15 +28,15 @@ def test_pond_b2b_read(num_ports):
     dsl = False
 
     pond_dut = Pond(data_width=data_width,  # CGRA Params
-               mem_depth=mem_depth,
-               default_iterator_support=default_iterator_support,
-               interconnect_input_ports=num_ports,  # Connection to int
-               interconnect_output_ports=num_ports,
-               config_data_width=config_data_width,
-               config_addr_width=config_addr_width,
-               cycle_count_width=cycle_count_width,
-               add_clk_enable=add_clk_enable,
-               add_flush=add_flush)
+                    mem_depth=mem_depth,
+                    default_iterator_support=default_iterator_support,
+                    interconnect_input_ports=num_ports,  # Connection to int
+                    interconnect_output_ports=num_ports,
+                    config_data_width=config_data_width,
+                    config_addr_width=config_addr_width,
+                    cycle_count_width=cycle_count_width,
+                    add_clk_enable=add_clk_enable,
+                    add_flush=add_flush)
 
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
@@ -180,15 +181,15 @@ def test_pond_strided_read(num_ports):
     dsl = False
 
     pond_dut = Pond(data_width=data_width,  # CGRA Params
-               mem_depth=mem_depth,
-               default_iterator_support=default_iterator_support,
-               interconnect_input_ports=num_ports,  # Connection to int
-               interconnect_output_ports=num_ports,
-               config_data_width=config_data_width,
-               config_addr_width=config_addr_width,
-               cycle_count_width=cycle_count_width,
-               add_clk_enable=add_clk_enable,
-               add_flush=add_flush)
+                    mem_depth=mem_depth,
+                    default_iterator_support=default_iterator_support,
+                    interconnect_input_ports=num_ports,  # Connection to int
+                    interconnect_output_ports=num_ports,
+                    config_data_width=config_data_width,
+                    config_addr_width=config_addr_width,
+                    cycle_count_width=cycle_count_width,
+                    add_clk_enable=add_clk_enable,
+                    add_flush=add_flush)
 
     interconnect_input_ports, interconnect_output_ports = num_ports, num_ports
 
@@ -256,15 +257,15 @@ def test_pond_b2b_read(num_ports):
     dsl = False
 
     pond_dut = Pond(data_width=data_width,  # CGRA Params
-               mem_depth=mem_depth,
-               default_iterator_support=default_iterator_support,
-               interconnect_input_ports=num_ports,  # Connection to int
-               interconnect_output_ports=num_ports,
-               config_data_width=config_data_width,
-               config_addr_width=config_addr_width,
-               cycle_count_width=cycle_count_width,
-               add_clk_enable=add_clk_enable,
-               add_flush=add_flush)
+                    mem_depth=mem_depth,
+                    default_iterator_support=default_iterator_support,
+                    interconnect_input_ports=num_ports,  # Connection to int
+                    interconnect_output_ports=num_ports,
+                    config_data_width=config_data_width,
+                    config_addr_width=config_addr_width,
+                    cycle_count_width=cycle_count_width,
+                    add_clk_enable=add_clk_enable,
+                    add_flush=add_flush)
 
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
