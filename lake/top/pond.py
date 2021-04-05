@@ -488,7 +488,6 @@ class Pond(Generator):
             new_config["clk_en"] = 1
         return new_config
 
-
     def get_static_bitstream_json(self,
                                   root_node):
 
