@@ -11,7 +11,6 @@ from lake.dsl.dsl_examples.pond import *
 
 
 hw = pond.test_magma_lake()
-
 data_width = 16  # CGRA Params
 mem_depth = 32
 default_iterator_support = 2
@@ -21,34 +20,22 @@ cycle_count_width = 16
 add_clk_enable = True
 add_flush = True
 
-basic_1 = Pond(data_width=data_width,  # CGRA Params
+@pytest.mark.parametrize("num_ports", [1, 2])
+def test_pond_b2b_read(num_ports):
+
+    interconnect_input_ports, interconnect_output_ports = num_ports, num_ports
+    dsl = False
+
+    pond_dut = Pond(data_width=data_width,  # CGRA Params
                mem_depth=mem_depth,
                default_iterator_support=default_iterator_support,
-               interconnect_input_ports=1,  # Connection to int
-               interconnect_output_ports=1,
+               interconnect_input_ports=num_ports,  # Connection to int
+               interconnect_output_ports=num_ports,
                config_data_width=config_data_width,
                config_addr_width=config_addr_width,
                cycle_count_width=cycle_count_width,
                add_clk_enable=add_clk_enable,
                add_flush=add_flush)
-
-basic_2 = Pond(data_width=data_width,  # CGRA Params
-               mem_depth=mem_depth,
-               default_iterator_support=default_iterator_support,
-               interconnect_input_ports=2,  # Connection to int
-               interconnect_output_ports=2,
-               config_data_width=config_data_width,
-               config_addr_width=config_addr_width,
-               cycle_count_width=cycle_count_width,
-               add_clk_enable=add_clk_enable,
-               add_flush=add_flush)
-
-
-@pytest.mark.parametrize("pond_dut_info", [[hw, True, 1], [basic_1, False, 1], [basic_2, False, 2]])
-def test_pond_basic(pond_dut_info):
-
-    pond_dut, dsl, interconnect_input_ports = pond_dut_info
-    interconnect_output_ports = interconnect_input_ports
 
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
@@ -61,7 +48,7 @@ def test_pond_basic(pond_dut_info):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[16, 1], [1, 1], 2, 0, 16, [1, 1]]]
     ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=dsl)
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -186,11 +173,24 @@ def test_pond_acc(interconnect_input_ports,
                                flags=["-Wno-fatal"])
 
 
-@pytest.mark.parametrize("pond_dut_info", [[hw, True, 1], [basic_1, False, 1], [basic_2, False, 2]])
-def test_pond_strided_read(pond_dut_info):
+@pytest.mark.parametrize("num_ports", [1, 2])
+def test_pond_strided_read(num_ports):
 
-    pond_dut, dsl, interconnect_input_ports = pond_dut_info
-    interconnect_output_ports = interconnect_input_ports
+    interconnect_input_ports, interconnect_output_ports = num_ports, num_ports
+    dsl = False
+
+    pond_dut = Pond(data_width=data_width,  # CGRA Params
+               mem_depth=mem_depth,
+               default_iterator_support=default_iterator_support,
+               interconnect_input_ports=num_ports,  # Connection to int
+               interconnect_output_ports=num_ports,
+               config_data_width=config_data_width,
+               config_addr_width=config_addr_width,
+               cycle_count_width=cycle_count_width,
+               add_clk_enable=add_clk_enable,
+               add_flush=add_flush)
+
+    interconnect_input_ports, interconnect_output_ports = num_ports, num_ports
 
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
@@ -204,7 +204,7 @@ def test_pond_strided_read(pond_dut_info):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[8, 1], [2, 0], 1, 0, 16, [1, 0]]]
     ctrl_wr = [[[16, 1], [1, 1], 1, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=dsl)
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -249,11 +249,22 @@ def test_pond_strided_read(pond_dut_info):
                                flags=["-Wno-fatal"])
 
 
-@pytest.mark.parametrize("pond_dut_info", [[hw, True, 1], [basic_1, False, 1], [basic_2, False, 2]])
-def test_pond_b2b_read(pond_dut_info):
+@pytest.mark.parametrize("num_ports", [1, 2])
+def test_pond_b2b_read(num_ports):
 
-    pond_dut, dsl, interconnect_input_ports = pond_dut_info
-    interconnect_output_ports = interconnect_input_ports
+    interconnect_input_ports, interconnect_output_ports = num_ports, num_ports
+    dsl = False
+
+    pond_dut = Pond(data_width=data_width,  # CGRA Params
+               mem_depth=mem_depth,
+               default_iterator_support=default_iterator_support,
+               interconnect_input_ports=num_ports,  # Connection to int
+               interconnect_output_ports=num_ports,
+               config_data_width=config_data_width,
+               config_addr_width=config_addr_width,
+               cycle_count_width=cycle_count_width,
+               add_clk_enable=add_clk_enable,
+               add_flush=add_flush)
 
     magma_dut = kts.util.to_magma(pond_dut,
                                   flatten_array=True,
@@ -266,7 +277,7 @@ def test_pond_b2b_read(pond_dut_info):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[16, 10], [1, 0], 2, 0, 16, [1, 16]]]
     ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=dsl)
+    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
