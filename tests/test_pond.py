@@ -48,7 +48,7 @@ def test_pond_b2b_read(num_ports):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[16, 1], [1, 1], 2, 0, 16, [1, 1]]]
     ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
+    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -132,7 +132,7 @@ def test_pond_acc(interconnect_input_ports,
     ctrl_rd = [[[16, 1], [0, 1], 2, 8, 0, [1, 0]]]
     ctrl_wr = [[[16, 1], [0, 1], 2, 8, 0, [1, 0]]]
 
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr)
+    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -204,7 +204,7 @@ def test_pond_strided_read(num_ports):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[8, 1], [2, 0], 1, 0, 16, [1, 0]]]
     ctrl_wr = [[[16, 1], [1, 1], 1, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
+    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -277,7 +277,7 @@ def test_pond_b2b_read(num_ports):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[16, 10], [1, 0], 2, 0, 16, [1, 16]]]
     ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
+    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -375,7 +375,7 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
     ctrl_wr.append(ctrl_wr_0)
     ctrl_wr.append(ctrl_wr_1)
 
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, 2)
+    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr, 2)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
