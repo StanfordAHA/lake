@@ -1,16 +1,16 @@
 from lake.utils.wrapper import get_lake_wrapper
-from lake.passes.passes import change_sram_port_names
-from lake.utils.util import extract_formal_annotation, get_configs_dict, set_configs_sv
-from lake.top.lake_top import get_formal_module, get_lake_dut
+from lake.utils.util import get_configs_dict, set_configs_sv
+from lake.top.lake_top import get_lake_dut
 from kratos import *
-import argparse as argparse
+import pytest
 
 
+@pytest.mark.skip
 def test_gen_dual_port():
 
-    config_path = "/nobackup/joeyliu/aha/poly/clockwork/aha_garnet_design_pond/three_level_pond_rolled/lake_collateral/ub_hw_input_stencil_BANK_0"
-    in_file_name = "in2regfile_0.csv"
-    out_file_name = "regfile2out_0.csv"
+    config_path = "/nobackup/joeyliu/aha/poly/clockwork/aha_garnet_design_pond/three_level_pond_rolled/lake_collateral/ub_hw_input_stencil_BANK_0/"
+    in_file_name = ""
+    out_file_name = ""
 
     lake_gen_kwargs = {
         "interconnect_input_ports": 2,
@@ -23,10 +23,10 @@ def test_gen_dual_port():
         "mem_width": 16
     }
 
-    get_lake_wrapper(config_path="",
+    get_lake_wrapper(config_path=config_path,
                      gen_name="mek",
-                     in_file_name="",
-                     out_file_name="",
+                     in_file_name=in_file_name,
+                     out_file_name=out_file_name,
                      **lake_gen_kwargs)
 
     prefix = ""
