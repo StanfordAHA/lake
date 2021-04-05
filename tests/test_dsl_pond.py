@@ -45,10 +45,10 @@ def test_pond_basic():
         # Incrementing Data
         data_in_pond[0] = data_in_pond[0] + 1
 
-        setattr(tester.circuit, f"data_in", data_in_pond[0])
+        tester.circuit.data_in = data_in_pond[0]
 
         if i >= 16:
-            getattr(tester.circuit, f"data_out").expect(i - 15)
+            tester.circuit.data_out.expect(i - 15)
 
         tester.eval()
         tester.step(2)
@@ -87,10 +87,10 @@ def test_pond_strided_read():
         # Incrementing Data
         data_in_pond[0] = data_in_pond[0] + 1
 
-        setattr(tester.circuit, f"data_in", data_in_pond[0])
+        tester.circuit.data_in = data_in_pond[0]
 
         if i >= 16:
-            getattr(tester.circuit, f"data_out").expect((i - 16) * 2 + 1)
+            tester.circuit.data_out.expect((i - 16) * 2 + 1)
 
         tester.eval()
         tester.step(2)
@@ -129,10 +129,10 @@ def test_pond_b2b_read():
         # Incrementing Data
         data_in_pond[0] = data_in_pond[0] + 1
 
-        setattr(tester.circuit, f"data_in", data_in_pond[0])
+        tester.circuit.data_in = data_in_pond[0]
 
         if i >= 16:
-            getattr(tester.circuit, f"data_out").expect(i - 15)
+            tester.circuit.data_out.expect(i - 15)
 
         tester.eval()
         tester.step(2)

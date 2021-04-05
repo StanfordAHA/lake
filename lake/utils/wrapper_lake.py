@@ -10,20 +10,7 @@ from lake.top.pond import get_pond_dut
 from _kratos import create_wrapper_flatten
 
 
-def wrapper(config_path_input,
-            stencil_valid,
-            name,
-            pond,
-            pd,
-            pl,
-            in_file_name="",
-            out_file_name=""):
-    lc, ls = check_env()
-    # we are in the process of transitioning to csvs being in this folder
-    # lc = <path to clockwork>/aha_garnet_design/
-
-    config_path = lc + config_path_input
-
+def get_dut(pond, pd, pl, stencil_valid):
     if pond:
         dut, need_config_lift, s, t = \
             get_pond_dut(depth=pd,
@@ -33,17 +20,34 @@ def wrapper(config_path_input,
                          mem_in_ports=1,
                          mem_out_ports=1)
         module_name = "Pond"
+        iterator_support = pl
     else:
-        pl = 6
         dut, need_config_lift, s, t = \
             get_lake_dut(in_ports=2,
                          out_ports=2,
                          stencil_valid=stencil_valid)
         module_name = "LakeTop"
+        iterator_support = 6
+
+    return dut, module_name, iterator_support
+
+
+def wrapper(dut,
+            module_name,
+            iterator_support,
+            config_path_input,
+            name,
+            in_file_name="",
+            out_file_name=""):
+    lc, ls = check_env()
+    # we are in the process of transitioning to csvs being in this folder
+    # lc = <path to clockwork>/aha_garnet_design/
+
+    config_path = lc + config_path_input
 
     configs = dut.get_static_bitstream(config_path)
     # prints out list of configs for compiler team
-    configs_list = set_configs_sv(dut, "configs.sv", get_configs_dict(configs), pl)
+    configs_list = set_configs_sv(dut, "configs.sv", get_configs_dict(configs), iterator_support)
 
     # get flattened module
     flattened = create_wrapper_flatten(dut.internal_generator.clone(),
@@ -120,7 +124,8 @@ if __name__ == "__main__":
     if args.c is None:
         error(usage)
 
-    wrapper(args.c, stencil_valid, args.n, pond, args.pd, args.pl)
+    dut, module_name, iterator_support = get_dut(pond, args.pd, args.pl, stencil_valid)
+    wrapper(dut, module_name, iterator_support, args.c, args.n)
 
     # Example usage:
     # python wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
