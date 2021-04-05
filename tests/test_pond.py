@@ -10,7 +10,6 @@ from lake.utils.util import transform_strides_and_ranges, generate_pond_api
 from lake.dsl.dsl_examples.pond import *
 
 
-hw = pond.test_magma_lake()
 data_width = 16  # CGRA Params
 mem_depth = 32
 default_iterator_support = 2
