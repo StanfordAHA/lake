@@ -591,6 +591,46 @@ class TopLakeHW(Generator):
 
         return trim_config_list(flattened, config)
 
+    # Function for generating Pond API
+    def generate_pond_api(self, ctrl_rd, ctrl_wr):
+
+        (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
+        (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
+
+        (tform_ranges_rd_sched, tform_strides_rd_sched) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[5], ctrl_rd[2])
+        (tform_ranges_wr_sched, tform_strides_wr_sched) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[5], ctrl_wr[2])
+
+        dim_rd = ctrl_rd[2]
+        dim_wr = ctrl_wr[2]
+
+        new_config = {}
+
+        new_config["input_port0_2pond_forloop_dimensionality"] = ctrl_wr[2]
+        for i in range(len(tform_ranges_wr)):
+            new_config[f"input_port0_2pond_forloop_ranges_{i}"] = tform_ranges_wr[i]
+        new_config["input_port0_2pond_write_addr_gen_starting_addr"] = ctrl_wr[3]
+        for i in range(len(tform_strides_wr)):
+            new_config[f"input_port0_2pond_write_addr_gen_strides_{i}"] = tform_strides_wr[i]
+        new_config["input_port0_2pond_write_sched_gen_enable"] = 1
+        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_starting_addr"] = ctrl_wr[4]
+        for i in range(len(tform_strides_wr_sched)):
+            new_config[f"input_port0_2pond_write_sched_gen_sched_addr_gen_strides_{i}"] = tform_strides_wr_sched[i]
+        new_config["pond2output_port0_forloop_dimensionality"] = ctrl_rd[2]
+        for i in range(len(tform_ranges_rd)):
+            new_config[f"pond2output_port0_forloop_ranges_{i}"] = tform_ranges_rd[i]
+        new_config["pond2output_port0_read_addr_gen_starting_addr"] = ctrl_rd[3]
+        for i in range(len(tform_strides_rd)):
+            new_config[f"pond2output_port0_read_addr_gen_strides_{i}"] = tform_strides_rd[i]
+        new_config["pond2output_port0_read_sched_gen_enable"] = 1
+        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_starting_addr"] = ctrl_rd[4]
+        for i in range(len(tform_strides_rd_sched)):
+            new_config[f"pond2output_port0_read_sched_gen_sched_addr_gen_strides_{i}"] = tform_strides_rd_sched[i]
+
+        # general configs
+        new_config["tile_en"] = 1
+        new_config["clk_en"] = 1
+        return new_config
+
 
 if __name__ == "__main__":
     # this is auto generated after top_lake pre-processing for inputs

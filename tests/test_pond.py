@@ -6,8 +6,7 @@ import random as rand
 import pytest
 import tempfile
 from lake.models.lake_top_model import LakeTopModel
-from lake.utils.util import transform_strides_and_ranges, generate_pond_api
-from lake.dsl.dsl_examples.pond import *
+from lake.utils.util import transform_strides_and_ranges
 
 
 data_width = 16  # CGRA Params
@@ -24,7 +23,6 @@ add_flush = True
 def test_pond_b2b_read(num_ports):
 
     interconnect_input_ports, interconnect_output_ports = num_ports, num_ports
-    dsl = False
 
     pond_dut = Pond(data_width=data_width,  # CGRA Params
                     mem_depth=mem_depth,
@@ -48,7 +46,7 @@ def test_pond_b2b_read(num_ports):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[16, 1], [1, 1], 2, 0, 16, [1, 1]]]
     ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
+    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -63,8 +61,6 @@ def test_pond_b2b_read(num_ports):
     tester.step(1)
     tester.circuit.clk_en = 1
 
-    data_append = "" if dsl else "_pond"
-
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     for i in range(32):
@@ -72,14 +68,14 @@ def test_pond_b2b_read(num_ports):
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            setattr(tester.circuit, f"data_in{data_append}", data_in_pond[0])
+            setattr(tester.circuit, f"data_in_pond", data_in_pond[0])
         else:
             for j in range(interconnect_input_ports):
-                setattr(tester.circuit, f"data_in{data_append}_{j}", data_in_pond[j])
+                setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
 
         if i >= 16:
             if interconnect_output_ports == 1:
-                getattr(tester.circuit, f"data_out{data_append}").expect(i - 15)
+                getattr(tester.circuit, f"data_out_pond").expect(i - 15)
             else:
                 tester.circuit.data_out_pond_0.expect(i - 15)
 
@@ -177,7 +173,6 @@ def test_pond_acc(interconnect_input_ports,
 def test_pond_strided_read(num_ports):
 
     interconnect_input_ports, interconnect_output_ports = num_ports, num_ports
-    dsl = False
 
     pond_dut = Pond(data_width=data_width,  # CGRA Params
                     mem_depth=mem_depth,
@@ -204,7 +199,7 @@ def test_pond_strided_read(num_ports):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[8, 1], [2, 0], 1, 0, 16, [1, 0]]]
     ctrl_wr = [[[16, 1], [1, 1], 1, 0, 0, [1, 1]]]
-    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
+    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -219,8 +214,6 @@ def test_pond_strided_read(num_ports):
     tester.step(1)
     tester.circuit.clk_en = 1
 
-    data_append = "" if dsl else "_pond"
-
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     for i in range(24):
@@ -228,14 +221,14 @@ def test_pond_strided_read(num_ports):
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            setattr(tester.circuit, f"data_in{data_append}", data_in_pond[0])
+            setattr(tester.circuit, f"data_in_pond", data_in_pond[0])
         else:
             for j in range(interconnect_input_ports):
-                setattr(tester.circuit, f"data_in{data_append}_{j}", data_in_pond[j])
+                setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
 
         if i >= 16:
             if interconnect_output_ports == 1:
-                getattr(tester.circuit, f"data_out{data_append}").expect((i - 16) * 2 + 1)
+                getattr(tester.circuit, f"data_out_pond").expect((i - 16) * 2 + 1)
             else:
                 tester.circuit.data_out_pond_0.expect((i - 16) * 2 + 1)
 
@@ -253,7 +246,6 @@ def test_pond_strided_read(num_ports):
 def test_pond_b2b_read(num_ports):
 
     interconnect_input_ports, interconnect_output_ports = num_ports, num_ports
-    dsl = False
 
     pond_dut = Pond(data_width=data_width,  # CGRA Params
                     mem_depth=mem_depth,
@@ -277,7 +269,7 @@ def test_pond_b2b_read(num_ports):
     # Starting Addr (schedule), Ranges (schedule)
     ctrl_rd = [[[16, 10], [1, 0], 2, 0, 16, [1, 16]]]
     ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr, dsl=False)
+    pond_config = pond_dut.generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -292,8 +284,6 @@ def test_pond_b2b_read(num_ports):
     tester.step(1)
     tester.circuit.clk_en = 1
 
-    data_append = "" if dsl else "_pond"
-
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     for i in range(16 * 11):
@@ -301,14 +291,14 @@ def test_pond_b2b_read(num_ports):
         data_in_pond[0] = data_in_pond[0] + 1
 
         if interconnect_input_ports == 1:
-            setattr(tester.circuit, f"data_in{data_append}", data_in_pond[0])
+            setattr(tester.circuit, f"data_in_pond", data_in_pond[0])
         else:
             for j in range(interconnect_input_ports):
-                setattr(tester.circuit, f"data_in{data_append}_{j}", data_in_pond[j])
+                setattr(tester.circuit, f"data_in_pond_{j}", data_in_pond[j])
 
         if i >= 16:
             if interconnect_output_ports == 1:
-                getattr(tester.circuit, f"data_out{data_append}").expect(((i - 16) % 16) + 1)
+                getattr(tester.circuit, f"data_out_pond").expect(((i - 16) % 16) + 1)
             else:
                 tester.circuit.data_out_pond_0.expect(((i - 16) % 16) + 1)
 

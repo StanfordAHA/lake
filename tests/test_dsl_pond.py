@@ -3,7 +3,7 @@ import fault
 import random as rand
 import pytest
 import tempfile
-from lake.utils.util import transform_strides_and_ranges, generate_pond_api
+from lake.utils.util import transform_strides_and_ranges
 from lake.dsl.dsl_examples.pond import *
 
 
@@ -22,9 +22,9 @@ def test_pond_basic():
 
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Ranges (schedule)
-    ctrl_rd = [[[16, 1], [1, 1], 2, 0, 16, [1, 1]]]
-    ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=True)
+    ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
+    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+    pond_config = hw.generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -64,9 +64,9 @@ def test_pond_strided_read():
 
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Ranges (schedule)
-    ctrl_rd = [[[8, 1], [2, 0], 1, 0, 16, [1, 0]]]
-    ctrl_wr = [[[16, 1], [1, 1], 1, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=True)
+    ctrl_rd = [[8, 1], [2, 0], 1, 0, 16, [1, 0]]
+    ctrl_wr = [[16, 1], [1, 1], 1, 0, 0, [1, 1]]
+    pond_config = hw.generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
@@ -106,9 +106,9 @@ def test_pond_b2b_read():
 
     # Ranges, Strides, Dimensionality, Starting Addr
     # Starting Addr (schedule), Ranges (schedule)
-    ctrl_rd = [[[16, 1], [1, 1], 2, 0, 16, [1, 1]]]
-    ctrl_wr = [[[16, 1], [1, 1], 2, 0, 0, [1, 1]]]
-    pond_config = generate_pond_api(ctrl_rd, ctrl_wr, dsl=True)
+    ctrl_rd = [[16, 1], [1, 1], 2, 0, 16, [1, 1]]
+    ctrl_wr = [[16, 1], [1, 1], 2, 0, 0, [1, 1]]
+    pond_config = hw.generate_pond_api(ctrl_rd, ctrl_wr)
 
     for key, value in pond_config.items():
         setattr(tester.circuit, key, value)
