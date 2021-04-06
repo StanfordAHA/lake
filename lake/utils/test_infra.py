@@ -14,6 +14,7 @@ from lake.utils.parse_clkwork_config import *
 from lake.utils.util import get_configs_dict, set_configs_sv
 from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
+from lake.utils.util import transform_strides_and_ranges
 
 
 def base_lake_tester(config_path,

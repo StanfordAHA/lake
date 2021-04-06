@@ -1045,8 +1045,8 @@ class LakeTop(Generator):
 
     def get_static_bitstream(self,
                              config_path,
-                             in_file_name,
-                             out_file_name):
+                             in_file_name="",
+                             out_file_name=""):
 
         input_ports = 1
         output_ports = 1
