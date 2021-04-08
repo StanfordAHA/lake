@@ -5,7 +5,7 @@ import math
 import os as os
 from enum import Enum
 from lake.attributes.formal_attr import *
-
+import csv
 
 lake_util_verbose_trim = False
 
@@ -286,7 +286,7 @@ def get_configs_dict(configs):
     return configs_dict
 
 
-def set_configs_sv(generator, filepath, configs_dict):
+def set_configs_sv(generator, filepath, configs_dict, iterator_support=6):
     int_gen = generator.internal_generator
     ports = int_gen.get_port_names()
     configs_list = []
@@ -301,7 +301,7 @@ def set_configs_sv(generator, filepath, configs_dict):
         # find config regs
         if len(curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))) == 1:
             if ("strides" in port) or ("ranges" in port):
-                for i in range(6):
+                for i in range(iterator_support):
                     remain.append(port + f"_{i}")
             else:
                 remain.append(port)
@@ -335,8 +335,8 @@ def set_configs_sv(generator, filepath, configs_dict):
             if not (("dimensionality" in remaining) or ("starting_addr" in remaining)):
                 port_name = "_".join(port_split[:-1])
             port = int_gen.get_port(port_name)
-            if port is None:
-                print(port_name)
+            if port is None and lake_util_verbose_trim:
+                print("No port: ", port_name)
             if port is not None:
                 fi.write("wire [" + str(port_width - 1) + ":0] " + remaining + " = 0;\n")
                 configs_list.append(remaining)
@@ -348,14 +348,15 @@ def set_configs_sv(generator, filepath, configs_dict):
 def generate_lake_config_wrapper(configs_list,
                                  configs_file,
                                  lake_file,
-                                 module_name):
+                                 module_name,
+                                 flattened_name="LakeTop"):
 
     # get top level interface, minus config regs in not_configs
     with open(lake_file, 'r') as lake:
         start = False
         not_configs = []
         for line in lake:
-            if "module LakeTop_W (" in line:
+            if f"module {flattened_name}_W (" in line:
                 start = True
             elif start and ");" in line:
                 start = False
@@ -384,13 +385,17 @@ def generate_lake_config_wrapper(configs_list,
 
         # instantiate LakeTop_W module with
         # full interface, first with nonconfigs
-        wrapper.write("LakeTop_W LakeTop_W (\n")
+        wrapper.write(f"{flattened_name}_W {flattened_name}_W (\n")
         for i in range(len(not_configs)):
             not_config = not_configs[i]
             try_name = not_config.split("]")
             if len(try_name) == 1:
                 try_name = not_config.split("logic")
-            name = try_name[1].split(",")[0]
+            if "," in not_config:
+                try_name = try_name[-1].split(",")[-2]
+            else:
+                try_name = try_name[-1][:-1]
+            name = try_name
             # if there are no config regs, this is the last
             # signal in the interface
             if (i == len(not_configs) - 1) and (len(configs_list) == 0):
@@ -498,71 +503,6 @@ def add_config_reg(generator, name, description, bitwidth, **kwargs):
     cfg_reg = generator.input(name, bitwidth, **kwargs)
     cfg_reg.add_attribute(ConfigRegAttr(description))
     return cfg_reg
-
-
-# Function for generating Pond API
-def generate_pond_api(ctrl_rd, ctrl_wr, dsl=False):
-    (tform_ranges_rd, tform_strides_rd) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[1], ctrl_rd[2])
-    (tform_ranges_wr, tform_strides_wr) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[1], ctrl_wr[2])
-
-    (tform_ranges_rd_sched, tform_strides_rd_sched) = transform_strides_and_ranges(ctrl_rd[0], ctrl_rd[5], ctrl_rd[2])
-    (tform_ranges_wr_sched, tform_strides_wr_sched) = transform_strides_and_ranges(ctrl_wr[0], ctrl_wr[5], ctrl_wr[2])
-
-    new_config = {}
-
-    if not dsl:
-        new_config["rf_read_iter_0_dimensionality"] = ctrl_rd[2]
-        new_config["rf_read_addr_0_starting_addr"] = ctrl_rd[3]
-        new_config["rf_read_addr_0_strides_0"] = tform_strides_rd[0]
-        new_config["rf_read_addr_0_strides_1"] = tform_strides_rd[1]
-        new_config["rf_read_iter_0_ranges_0"] = tform_ranges_rd[0]
-        new_config["rf_read_iter_0_ranges_1"] = tform_ranges_rd[1]
-
-        new_config["rf_read_sched_0_sched_addr_gen_starting_addr"] = ctrl_rd[4]
-        new_config["rf_read_sched_0_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
-        new_config["rf_read_sched_0_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
-        new_config["rf_read_sched_0_enable"] = 1
-
-        new_config["rf_write_iter_0_dimensionality"] = ctrl_wr[2]
-        new_config["rf_write_addr_0_starting_addr"] = ctrl_wr[3]
-        new_config["rf_write_addr_0_strides_0"] = tform_strides_wr[0]
-        new_config["rf_write_addr_0_strides_1"] = tform_strides_wr[1]
-        new_config["rf_write_iter_0_ranges_0"] = tform_ranges_wr[0]
-        new_config["rf_write_iter_0_ranges_1"] = tform_ranges_wr[1]
-
-        new_config["rf_write_sched_0_sched_addr_gen_starting_addr"] = ctrl_wr[4]
-        new_config["rf_write_sched_0_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
-        new_config["rf_write_sched_0_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
-        new_config["rf_write_sched_0_enable"] = 1
-
-    else:
-        new_config["input_port0_2pond_forloop_dimensionality"] = ctrl_wr[2]
-        new_config["input_port0_2pond_forloop_ranges_0"] = tform_ranges_wr[0]
-        new_config["input_port0_2pond_forloop_ranges_1"] = tform_ranges_wr[1]
-        new_config["input_port0_2pond_write_addr_gen_starting_addr"] = ctrl_wr[3]
-        new_config["input_port0_2pond_write_addr_gen_strides_0"] = tform_strides_wr[0]
-        new_config["input_port0_2pond_write_addr_gen_strides_1"] = tform_strides_wr[1]
-        new_config["input_port0_2pond_write_sched_gen_enable"] = 1
-        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_starting_addr"] = ctrl_wr[4]
-        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_strides_0"] = tform_strides_wr_sched[0]
-        new_config["input_port0_2pond_write_sched_gen_sched_addr_gen_strides_1"] = tform_strides_wr_sched[1]
-
-        new_config["pond2output_port0_forloop_dimensionality"] = ctrl_rd[2]
-        new_config["pond2output_port0_forloop_ranges_0"] = tform_ranges_rd[0]
-        new_config["pond2output_port0_forloop_ranges_1"] = tform_ranges_rd[1]
-        new_config["pond2output_port0_read_addr_gen_starting_addr"] = ctrl_rd[3]
-        new_config["pond2output_port0_read_addr_gen_strides_0"] = tform_strides_rd[0]
-        new_config["pond2output_port0_read_addr_gen_strides_1"] = tform_strides_rd[1]
-        new_config["pond2output_port0_read_sched_gen_enable"] = 1
-        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_starting_addr"] = ctrl_rd[4]
-        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_strides_0"] = tform_strides_rd_sched[0]
-        new_config["pond2output_port0_read_sched_gen_sched_addr_gen_strides_1"] = tform_strides_rd_sched[1]
-
-        # general configs
-        new_config["tile_en"] = 1
-        new_config["clk_en"] = 1
-
-    return new_config
 
 
 def process_line(item):

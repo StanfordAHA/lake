@@ -1047,8 +1047,8 @@ class LakeTop(Generator):
 
     def get_static_bitstream(self,
                              config_path,
-                             in_file_name,
-                             out_file_name):
+                             in_file_name="",
+                             out_file_name=""):
 
         # Getting bitstreams is a little unwieldy due to fault (or its underlying implementation) not
         # handling arrays in the interface.
