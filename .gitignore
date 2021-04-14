@@ -38,12 +38,3 @@ dump/
 clockwork
 
 *egg-info*
-
-
-what is hard/what have we spent our time thinking about?
-plasticine/spatial/
-people have made ASIC, but don't have our flexibility
-everyone choosees a particular mechanism for synch, how do we do distributed control?
-tradeoffs between static schedule and full dynamic?
-ready/valid for kernel
-
