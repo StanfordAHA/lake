@@ -469,10 +469,10 @@ class Pond(Generator):
         config = []
 
         # Get controllers from json node...
-        assert "in2regfile" in root_node
-        assert "regfile2out" in root_node
-        in2rf_ctrl = map_controller(extract_controller_json(root_node["in2regfile"]), "in2regfile")
-        rf2out_ctrl = map_controller(extract_controller_json(root_node["regfile2out"]), "regfile2out")
+        assert "in2regfile_0" in root_node
+        assert "regfile2out_0" in root_node
+        in2rf_ctrl = map_controller(extract_controller_json(root_node["in2regfile_0"]), "in2regfile")
+        rf2out_ctrl = map_controller(extract_controller_json(root_node["regfile2out_0"]), "regfile2out")
 
         # Configure registers based on controller data...
         config.append(("rf_write_iter_0_dimensionality", in2rf_ctrl.dim))
