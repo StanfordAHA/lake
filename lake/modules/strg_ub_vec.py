@@ -100,15 +100,10 @@ class StrgUBVec(Generator):
         agg_only = StrgUBAggOnly(data_width=self.data_width,
                                  mem_width=self.mem_width,
                                  mem_depth=self.mem_depth,
-                                 banks=self.banks,
                                  input_addr_iterator_support=self.input_iterator_support,
-                                 output_addr_iterator_support=self.output_iterator_support,
                                  input_sched_iterator_support=self.input_iterator_support,
-                                 output_sched_iterator_support=self.output_iterator_support,
                                  interconnect_input_ports=self.interconnect_input_ports,
                                  interconnect_output_ports=self.interconnect_output_ports,
-                                 read_delay=self.read_delay,
-                                 rw_same_cycle=self.rw_same_cycle,
                                  agg_height=self.agg_height,
                                  config_width=self.input_config_width)
 
