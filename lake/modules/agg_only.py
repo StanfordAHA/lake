@@ -1,16 +1,11 @@
 from kratos import *
 from lake.modules.passthru import *
-from lake.modules.register_file import RegisterFile
-from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.formal_attr import *
-from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
-from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
-from lake.utils.util import safe_wire, add_counter, decode
-import kratos as kts
+from lake.utils.util import safe_wire
 
 
 class StrgUBAggOnly(Generator):
@@ -18,23 +13,19 @@ class StrgUBAggOnly(Generator):
                  data_width=16,  # CGRA Params
                  mem_width=64,
                  mem_depth=512,
-                 banks=1,
                  input_addr_iterator_support=6,
-                 output_addr_iterator_support=6,
                  input_sched_iterator_support=6,
-                 output_sched_iterator_support=6,
                  config_width=16,
                  #  output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
-                 read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
                  tb_height=2):
 
         super().__init__("strg_ub_agg_only")
+
+        assert mem_width > data_width, \
+            f"Aggregator only should be used when mem_width is power of 2 times data_width"
 
         ##################################################################################
         # Capture constructor parameter...
@@ -105,7 +96,7 @@ class StrgUBAggOnly(Generator):
 
         self._agg_write = self.var("agg_write", self.interconnect_input_ports)
         # Make this based on the size
-        self._agg_write_addr = self.var("agg_write_addr", 2 + clog2(self.agg_height),
+        self._agg_write_addr = self.var("agg_write_addr", clog2(self.fetch_width) + clog2(self.agg_height),
                                         size=self.interconnect_input_ports,
                                         packed=True,
                                         explicit_array=True)
