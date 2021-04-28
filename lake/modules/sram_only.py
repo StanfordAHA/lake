@@ -18,11 +18,8 @@ class StrgUBSRAMOnly(Generator):
                  data_width=16,  # CGRA Params
                  mem_width=64,
                  mem_depth=512,
-                 banks=1,
                  input_addr_iterator_support=6,
-                 output_addr_iterator_support=6,
                  input_sched_iterator_support=6,
-                 output_sched_iterator_support=6,
                  config_width=16,
                  #  output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
@@ -50,7 +47,8 @@ class StrgUBSRAMOnly(Generator):
         self.data_width = data_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
-
+        self.rw_same_cycle = rw_same_cycle
+        
         self.default_iterator_support = 6
         self.default_config_width = 16
         self.sram_iterator_support = 6
@@ -103,8 +101,16 @@ class StrgUBSRAMOnly(Generator):
         # sram attribute for data_in, comes from cut gen of agg_only for agg_data_out_top
 
         self._wen_to_sram = self.output("wen_to_sram", 1, packed=True)
-        self._cen_to_sram = self.output("cen_to_sram", 1, packed=True)
-        self._addr_to_sram = self.output("addr_to_sram", clog2(self.mem_depth), packed=True)
+
+        # Guard for dual port - should probably just be the same signal name
+        if self.rw_same_cycle:
+            self._ren_to_sram = self.output("ren_to_sram", 1, packed=True)
+            self._wr_addr_to_sram = self.output("wr_addr_to_sram", clog2(self.mem_depth), packed=True)
+            self._rd_addr_to_sram = self.output("rd_addr_to_sram", clog2(self.mem_depth), packed=True)
+        else:
+            self._cen_to_sram = self.output("cen_to_sram", 1, packed=True)
+            self._addr_to_sram = self.output("addr_to_sram", clog2(self.mem_depth), packed=True)
+
         self._data_to_sram = self.output("data_to_sram", self.data_width,
                                          size=self.fetch_width,
                                          packed=True)
@@ -168,19 +174,26 @@ class StrgUBSRAMOnly(Generator):
         # WIRE TO SRAM INTERFACE
         ##################################################################################
         # Now select the write address as a decode of the underlying enables
-        self.wire(self._addr_to_sram, self._addr)
         self.wire(self._data_to_sram, self._sram_write_data)
         self.wire(self._wen_to_sram, self._write)
-        self.wire(self._cen_to_sram, self._write | self._read)
+
+        self._write_addr = decode(self, self._agg_read, self._s_write_addr)
+        self._read_addr = decode(self, self._t_read, self._s_read_addr)
+
+        if self.rw_same_cycle:
+            self.wire(self._ren_to_sram, self._read)
+            self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
+            self.wire(self._rd_addr_to_sram, self._read_addr[clog2(self.mem_depth) - 1, 0])
+        else:
+            self.wire(self._cen_to_sram, self._write | self._read)
+            self.wire(self._addr_to_sram, self._addr)
+            self.add_code(self.set_sram_addr)
 
         self.wire(self._write, self._agg_read.r_or())
         self.wire(self._read, self._t_read.r_or())
 
         self.wire(self._sram_write_data, decode(self, self._agg_read, self._agg_data_out))
 
-        self._write_addr = decode(self, self._agg_read, self._s_write_addr)
-        self._read_addr = decode(self, self._t_read, self._s_read_addr)
-        self.add_code(self.set_sram_addr)
 
     @always_comb
     def set_sram_addr(self):

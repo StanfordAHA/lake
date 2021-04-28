@@ -19,15 +19,11 @@ class StrgUBVec(Generator):
                  mem_depth=512,
                  banks=1,
                  input_addr_iterator_support=6,
-                 output_addr_iterator_support=6,
                  input_sched_iterator_support=6,
-                 output_sched_iterator_support=6,
                  config_width=16,
                  #  output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
-                 mem_input_ports=1,
-                 mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
@@ -76,10 +72,17 @@ class StrgUBVec(Generator):
         self._data_from_sram = self.input("data_from_strg", self.data_width,
                                           size=self.fetch_width,
                                           packed=True)
+        # The interface is slightly different when dealing with a dual port SRAM
+        # This could be abstracted away, but for now it's slightly easier to handle this
+        if self.rw_same_cycle:
+            self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
+            self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
+            self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
+        else:
+            self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
+            self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
 
         self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
-        self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
-        self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
         self._data_to_sram = self.output("data_to_strg", self.data_width,
                                          size=self.fetch_width,
                                          packed=True)
@@ -125,11 +128,11 @@ class StrgUBVec(Generator):
         sram_only = StrgUBSRAMOnly(data_width=self.data_width,
                                    mem_width=self.mem_width,
                                    mem_depth=self.mem_depth,
-                                   banks=self.banks,
+                                #    banks=self.banks,
                                    input_addr_iterator_support=self.input_iterator_support,
-                                   output_addr_iterator_support=self.output_iterator_support,
+                                #    output_addr_iterator_support=self.output_iterator_support,
                                    input_sched_iterator_support=self.input_iterator_support,
-                                   output_sched_iterator_support=self.output_iterator_support,
+                                #    output_sched_iterator_support=self.output_iterator_support,
                                    interconnect_input_ports=self.interconnect_input_ports,
                                    interconnect_output_ports=self.interconnect_output_ports,
                                    read_delay=self.read_delay,
@@ -186,9 +189,17 @@ class StrgUBVec(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        wen_to_sram=self._wen_to_sram,
-                       cen_to_sram=self._cen_to_sram,
-                       addr_to_sram=self._addr_to_sram,
+                    #    addr_to_sram=self._addr_to_sram,
                        data_to_sram=self._data_to_sram)
+
+        # Dual port/single port guard.
+        if self.rw_same_cycle:
+            self.wire(sram_only.ports.ren_to_sram, self._ren_to_sram)
+            self.wire(sram_only.ports.wr_addr_to_sram, self._wr_addr_to_sram)
+            self.wire(sram_only.ports.rd_addr_to_sram, self._rd_addr_to_sram)
+        else:
+            self.wire(sram_only.ports.cen_to_sram, self._cen_to_sram)
+            self.wire(sram_only.ports.addr_to_sram, self._addr_to_sram)
 
         self.add_child("sram_tb_shared",
                        sram_tb_shared,

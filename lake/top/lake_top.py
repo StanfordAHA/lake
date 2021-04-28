@@ -28,8 +28,8 @@ import argparse
 class LakeTop(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
-                 mem_width=64,
-                 mem_depth=512,
+                 mem_width=32,
+                 mem_depth=256,
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
@@ -42,12 +42,12 @@ class LakeTop(Generator):
                  use_sram_stub=True,
                  sram_macro_info=SRAMMacroInfo("tsmc_name"),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
-                 fifo_mode=True,
+                 fifo_mode=False,
                  add_clk_enable=True,
                  add_flush=True,
                  name="LakeTop",
@@ -484,15 +484,13 @@ class LakeTop(Generator):
             strg_ub = StrgUBVec(data_width=self.data_width,
                                 mem_width=self.mem_width,
                                 mem_depth=self.mem_depth,
-                                banks=self.banks,
+                                # banks=self.banks,
                                 input_addr_iterator_support=self.input_iterator_support,
-                                output_addr_iterator_support=self.output_iterator_support,
                                 input_sched_iterator_support=self.input_iterator_support,
-                                output_sched_iterator_support=self.output_iterator_support,
                                 interconnect_input_ports=self.interconnect_input_ports,
                                 interconnect_output_ports=self.interconnect_output_ports,
-                                mem_input_ports=self.mem_input_ports,
-                                mem_output_ports=self.mem_output_ports,
+                                # mem_input_ports=self.mem_input_ports,
+                                # mem_output_ports=self.mem_output_ports,
                                 read_delay=self.read_delay,
                                 rw_same_cycle=self.rw_same_cycle,
                                 agg_height=self.agg_height,
