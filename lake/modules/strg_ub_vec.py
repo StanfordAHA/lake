@@ -128,11 +128,11 @@ class StrgUBVec(Generator):
         sram_only = StrgUBSRAMOnly(data_width=self.data_width,
                                    mem_width=self.mem_width,
                                    mem_depth=self.mem_depth,
-                                #    banks=self.banks,
+                                   #    banks=self.banks,
                                    input_addr_iterator_support=self.input_iterator_support,
-                                #    output_addr_iterator_support=self.output_iterator_support,
+                                   #    output_addr_iterator_support=self.output_iterator_support,
                                    input_sched_iterator_support=self.input_iterator_support,
-                                #    output_sched_iterator_support=self.output_iterator_support,
+                                   #    output_sched_iterator_support=self.output_iterator_support,
                                    interconnect_input_ports=self.interconnect_input_ports,
                                    interconnect_output_ports=self.interconnect_output_ports,
                                    read_delay=self.read_delay,
@@ -189,7 +189,7 @@ class StrgUBVec(Generator):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        wen_to_sram=self._wen_to_sram,
-                    #    addr_to_sram=self._addr_to_sram,
+                       #    addr_to_sram=self._addr_to_sram,
                        data_to_sram=self._data_to_sram)
 
         # Dual port/single port guard.

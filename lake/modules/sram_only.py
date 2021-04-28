@@ -48,7 +48,7 @@ class StrgUBSRAMOnly(Generator):
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
         self.rw_same_cycle = rw_same_cycle
-        
+
         self.default_iterator_support = 6
         self.default_config_width = 16
         self.sram_iterator_support = 6
@@ -193,7 +193,6 @@ class StrgUBSRAMOnly(Generator):
         self.wire(self._read, self._t_read.r_or())
 
         self.wire(self._sram_write_data, decode(self, self._agg_read, self._agg_data_out))
-
 
     @always_comb
     def set_sram_addr(self):

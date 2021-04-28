@@ -796,6 +796,7 @@ class LakeTop(Generator):
                 self.wire(self._mem_addr_dp, self._ub_addr_to_mem)
 
             for i in range(self.banks):
+                print(self.fw_int)
                 rfile = RegisterFile(data_width=self.data_width,
                                      write_ports=self.mem_input_ports,
                                      read_ports=self.mem_output_ports,
@@ -1168,6 +1169,6 @@ if __name__ == "__main__":
 
     sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
     # generate verilog
-    verilog(lake_dut, filename=f"{prefix}lake_top.sv",
+    verilog(lake_dut, filename=f"{prefix}lake_top_pohan.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
