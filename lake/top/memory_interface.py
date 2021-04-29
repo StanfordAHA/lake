@@ -116,3 +116,9 @@ class MemoryInterface(kts.Generator):
 
     def create_physical_memory(self):
         pass
+
+    def get_mem_width(self):
+        return self.mem_width
+
+    def get_mem_depth(self):
+        return self.mem_depth

@@ -1,3 +1,4 @@
+from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.attributes.formal_attr import *
 import os
 from kratos import *
@@ -23,9 +24,10 @@ from lake.modules.spec.sched_gen import SchedGen
 import kratos as kts
 from _kratos import create_wrapper_flatten
 import argparse
+from lake.top.memtile_builder import MemoryTileBuilder
 
 
-class LakeTop(Generator):
+class Top():
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_width=32,
@@ -91,590 +93,68 @@ class LakeTop(Generator):
         self.sets_per_macro = max(1, int(self.mem_depth / self.data_words_per_set))
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
-        # phases = [] TODO
+        # Create a MemoryTileBuilder
+        self.mlb = MemoryTileBuilder()
 
-        # CLK and RST
-        self._clk = self.clock("clk")
-        self._clk.add_attribute(FormalAttr(self._clk.name, FormalSignalConstraint.CLK))
-        self._rst_n = self.reset("rst_n")
-        self._rst_n.add_attribute(FormalAttr(self._rst_n.name, FormalSignalConstraint.RSTN))
+        # For our current implementation, we are just using 1 bank of SRAM
+        mem_banks = 1
+        self.mlb.set_banks(mem_banks)
 
-        # chain data in
-        self._chain_data_in = self.input("chain_data_in",
-                                         self.data_width,
-                                         size=self.interconnect_output_ports,
-                                         packed=True,
-                                         explicit_array=True)
-        self._chain_data_in.add_attribute(ControlSignalAttr(False))
-        self._chain_data_in.add_attribute(FormalAttr(self._chain_data_in.name, FormalSignalConstraint.SET0))
+        # Declare and inject the memory interface for this memory into the MLB
+        mem_width = 64
+        mem_depth = 512
+        memory_params = {
+            'mem_width': mem_width,
+            'mem_depth': mem_depth
+        }
+        one_p_sram = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
 
-        # MAIN Inputs
-        self._data_in = self.input("data_in",
-                                   self.data_width,
-                                   size=self.interconnect_input_ports,
-                                   packed=True,
-                                   explicit_array=True)
-        self._data_in.add_attribute(ControlSignalAttr(False))
-        self._data_in.add_attribute(FormalAttr(self._data_in.name, FormalSignalConstraint.SEQUENCE, "agg"))
+        self.mlb.set_memory_interface(name_prefix="sram_idk",
+                                      mem_params=memory_params,
+                                      ports=one_p_sram,
+                                      sim_macro_n=True,
+                                      tech_map=None)
 
-        if self.rw_same_cycle:
-            self._wr_addr_in = self.input("waddr",
-                                          self.data_width,
-                                          size=self.interconnect_input_ports,
-                                          packed=True,
-                                          explicit_array=True)
-            self._wr_addr_in.add_attribute(ControlSignalAttr(False))
-            self._wr_addr_in.add_attribute(FormalAttr(self._wr_addr_in.name, FormalSignalConstraint.SET0))
-            self._rd_addr_in = self.input("raddr",
-                                          self.data_width,
-                                          size=self.interconnect_input_ports,
-                                          packed=True,
-                                          explicit_array=True)
-            self._rd_addr_in.add_attribute(ControlSignalAttr(False))
-            self._rd_addr_in.add_attribute(FormalAttr(self._rd_addr_in.name, FormalSignalConstraint.SET0))
-        else:
-            self._addr_in = self.input("addr_in",
-                                       self.data_width,
-                                       size=self.interconnect_input_ports,
-                                       packed=True,
-                                       explicit_array=True)
-            self._addr_in.add_attribute(ControlSignalAttr(False))
-            self._addr_in.add_attribute(FormalAttr(self._addr_in.name, FormalSignalConstraint.SET0))
-
-        self._wen = self.input("wen_in", self.interconnect_input_ports)
-        self._wen.add_attribute(ControlSignalAttr(True))
-        self._wen.add_attribute(FormalAttr(self._wen.name, FormalSignalConstraint.SET0))
-
-        self._ren = self.input("ren_in", self.interconnect_output_ports)
-        self._ren.add_attribute(ControlSignalAttr(True))
-        self._ren.add_attribute(FormalAttr(self._ren.name, FormalSignalConstraint.SET0))
-
-        self._config_data_in = self.input("config_data_in",
-                                          self.config_data_width)
-        self._config_data_in.add_attribute(ControlSignalAttr(False))
-        self._config_data_in.add_attribute(FormalAttr(self._ren.name, FormalSignalConstraint.SET0))
-
-        self._config_data_in_shrt = self.var("config_data_in_shrt",
-                                             self.data_width)
-
-        self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
-
-        self._cycle_count = self.var("cycle_count", 16)
-        self.add_code(self.cycle_count_inc)
-
-        if self.stencil_valid:
-
-            self.stencil_valid_width = 16
-
-            self._stencil_valid = self.output("stencil_valid", 1)
-            self._stencil_valid.add_attribute(ControlSignalAttr(False))
-            self._loops_stencil_valid = ForLoop(iterator_support=6,
-                                                config_width=16)
-            self._stencil_valid_int = self.var("stencil_valid_internal", 1)
-
-            # Loop Iterators for stencil valid...
-            self.add_child(f"loops_stencil_valid",
-                           self._loops_stencil_valid,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           step=self._stencil_valid_int)
-            # Schedule Generator for stencil valid...
-            self.add_child(f"stencil_valid_sched_gen",
-                           SchedGen(iterator_support=6,
-                                    config_width=16),
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           cycle_count=self._cycle_count,
-                           mux_sel=self._loops_stencil_valid.ports.mux_sel_out,
-                           finished=self._loops_stencil_valid.ports.restart,
-                           valid_output=self._stencil_valid_int)
-            # Wire out internal wire
-            # self.wire(self._stencil_valid, self._stencil_valid_int & self._stencil_valid_gate & self._use_stencil_valid)
-            self.wire(self._stencil_valid, self._stencil_valid_int)
-
-        self._config_addr_in = self.input("config_addr_in",
-                                          self.config_addr_width)
-        self._config_addr_in.add_attribute(ControlSignalAttr(False))
-
-        self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width,
-                                              size=self.total_sets,
-                                              explicit_array=True,
-                                              packed=True)
-
-        self._config_data_out = self.output("config_data_out", self.config_data_width,
-                                            size=self.total_sets,
-                                            explicit_array=True,
-                                            packed=True)
-        self._config_data_out.add_attribute(ControlSignalAttr(False))
-
-        self._clk_en = self.clock_en("clk_en", 1)
-
-        for i in range(self.total_sets):
-            self.wire(self._config_data_out[i],
-                      self._config_data_out_shrt[i].extend(self.config_data_width))
-
-        self._config_read = self.input("config_read", 1)
-        self._config_read.add_attribute(ControlSignalAttr(False))
-
-        self._config_write = self.input("config_write", 1)
-        self._config_write.add_attribute(ControlSignalAttr(False))
-
-        self._config_en = self.input("config_en", self.total_sets)
-        self._config_en.add_attribute(ControlSignalAttr(False))
-
-        self._data_out = self.output("data_out",
-                                     self.data_width,
-                                     size=self.interconnect_output_ports,
-                                     packed=True,
-                                     explicit_array=True)
-        self._data_out.add_attribute(ControlSignalAttr(False))
-        self._data_out.add_attribute(FormalAttr(self._data_out.name, FormalSignalConstraint.SEQUENCE, "tb"))
-
-        # self._valid_out = self.output("valid_out",
-        #                               self.interconnect_output_ports)
-        # self._valid_out.add_attribute(ControlSignalAttr(False))
-
-        self._data_out_tile = self.var("data_out_tile",
-                                       self.data_width,
-                                       size=self.interconnect_output_ports,
-                                       packed=True,
-                                       explicit_array=True)
-
-        self._valid_out_tile = self.output("valid_out",
-                                           self.interconnect_output_ports)
-        self._valid_out_tile.add_attribute(ControlSignalAttr(False))
-
-        self.address_width = clog2(self.num_tiles * self.mem_depth)
-
-        # Add tile enable!
-        self._tile_en = self.input("tile_en", 1)
-        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
-        self._tile_en.add_attribute(FormalAttr(self._tile_en.name, FormalSignalConstraint.SET1))
-
-        # either normal or fifo mode rn...
-        self.num_modes = 3
-        self._mode = self.input("mode", max(1, clog2(self.num_modes)))
-        self._mode.add_attribute(ConfigRegAttr("MODE!"))
-        self._mode.add_attribute(FormalAttr(self._mode.name, FormalSignalConstraint.SET0))
-
-        # Currenlt mode = 0 is UB, mode = 1 is FIFO
-        gclk = self.var("gclk", 1)
-        self._gclk = kts.util.clock(gclk)
-        self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
-
-        self._mem_data_out = self.var("mem_data_out",
-                                      self.data_width,
-                                      size=(self.banks,
-                                            self.mem_output_ports,
-                                            self.fw_int),
-                                      packed=True,
-                                      explicit_array=True)
-
-        if self.formal_module == "sram":
-            self._formal_mem_data = self.output("formal_mem_data",
-                                                self.data_width,
-                                                size=(self.banks,
-                                                      self.mem_output_ports,
-                                                      self.fw_int),
-                                                packed=True,
-                                                explicit_array=True)
-            self._formal_mem_data.add_attribute(
-                FormalAttr(self._formal_mem_data.name, FormalSignalConstraint.SEQUENCE, self.formal_module))
-
-            self.wire(self._formal_mem_data, self._mem_data_out)
-        elif formal_module == "tb":
-            self._formal_mem_data = self.input("formal_mem_data",
-                                               self.data_width,
-                                               size=(self.banks,
-                                                     self.mem_output_ports,
-                                                     self.fw_int),
-                                               packed=True,
-                                               explicit_array=True)
-            self._formal_mem_data.add_attribute(
-                FormalAttr(self._formal_mem_data.name, FormalSignalConstraint.SEQUENCE, self.formal_module))
-
-            self.wire(self._mem_data_out, self._formal_mem_data)
-
-        self._mem_data_low_pt = self.var("mem_data_low_pt",
-                                         self.data_width,
-                                         size=(self.banks,
-                                               self.fw_int),
-                                         packed=True,
-                                         explicit_array=True)
-
-        for i in range(self.banks):
-            self.wire(self._mem_data_low_pt[i], self._mem_data_out[i][0])
-
-        self._mem_data_in = self.var("mem_data_in",
-                                     self.data_width,
-                                     size=(self.banks,
-                                           self.mem_input_ports,
-                                           self.fw_int),
-                                     packed=True,
-                                     explicit_array=True)
-
-        self._mem_data_dp = self.var("mem_data_dp",
-                                     self.data_width,
-                                     size=(self.banks,
-                                           self.mem_input_ports,
-                                           self.fw_int),
-                                     packed=True,
-                                     explicit_array=True)
-
-        self._mem_data_cfg = self.var("mem_data_cfg",
-                                      self.data_width,
-                                      size=self.fw_int,
-                                      packed=True,
-                                      explicit_array=True)
-
-        if self.rw_same_cycle:
-            self._wr_mem_addr_dp = self.var("wr_mem_addr_dp",
-                                            self.address_width,
-                                            size=(self.banks,
-                                                  self.mem_input_ports),
-                                            explicit_array=True,
-                                            packed=True)
-            self._wr_mem_addr_in = self.var("wr_mem_addr_in",
-                                            self.address_width,
-                                            size=(self.banks,
-                                                  self.mem_input_ports),
-                                            explicit_array=True,
-                                            packed=True)
-            self._rd_mem_addr_dp = self.var("rd_mem_addr_dp",
-                                            self.address_width,
-                                            size=(self.banks,
-                                                  self.mem_output_ports),
-                                            explicit_array=True,
-                                            packed=True)
-            self._rd_mem_addr_in = self.var("rd_mem_addr_in",
-                                            self.address_width,
-                                            size=(self.banks,
-                                                  self.mem_output_ports),
-                                            explicit_array=True,
-                                            packed=True)
-
-        else:
-            self._mem_addr_dp = self.var("mem_addr_dp",
-                                         self.address_width,
-                                         size=(self.banks,
-                                               self.mem_input_ports),
-                                         packed=True,
-                                         explicit_array=True)
-            self._mem_addr_in = self.var("mem_addr_in",
-                                         self.address_width,
-                                         size=(self.banks,
-                                               self.mem_input_ports),
-                                         packed=True,
-                                         explicit_array=True)
-
-        self._mem_addr_cfg = self.var("mem_addr_cfg", self.address_width)
-
-        self._mem_ren_cfg = self.var("mem_ren_cfg", self.banks)
-        self._mem_wen_cfg = self.var("mem_wen_cfg", self.banks)
-
-        self._mem_cen_dp = self.var("mem_cen_dp", self.mem_output_ports,
-                                    size=self.banks,
-                                    explicit_array=True,
-                                    packed=True)
-
-        self._mem_wen_dp = self.var("mem_wen_dp", self.mem_input_ports,
-                                    size=self.banks,
-                                    explicit_array=True,
-                                    packed=True)
-        self._mem_cen_in = self.var("mem_cen_in", self.mem_output_ports,
-                                    size=self.banks,
-                                    explicit_array=True,
-                                    packed=True)
-
-        self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
-                                    size=self.banks,
-                                    explicit_array=True,
-                                    packed=True)
-
-        ####################################
-        ##### DEMUX WRITE/SRAM WRAPPER #####
-        ####################################
-
-        stg_cfg_seq = StorageConfigSeq(data_width=self.data_width,
-                                       config_addr_width=self.config_addr_width,
-                                       addr_width=self.address_width,
-                                       fetch_width=self.mem_width,
-                                       total_sets=self.total_sets,
-                                       sets_per_macro=self.sets_per_macro)
-
-        # The clock to config sequencer needs to be the normal clock or
-        # if the tile is off, we bring the clock back in based on config_en
-        cfg_seq_clk = self.var("cfg_seq_clk", 1)
-        self._cfg_seq_clk = kts.util.clock(cfg_seq_clk)
-        # self.wire(cfg_seq_clk, kts.util.clock(self._gclk | (self._clk & self._config_en.r_or())))
-        self.wire(cfg_seq_clk, kts.util.clock(self._gclk))
-
-        self.add_child(f"config_seq", stg_cfg_seq,
-                       clk=self._cfg_seq_clk,
-                       rst_n=self._rst_n,
-                       clk_en=self._clk_en | self._config_en.r_or(),
-                       config_data_in=self._config_data_in_shrt,
-                       config_addr_in=self._config_addr_in,
-                       config_wr=self._config_write,
-                       config_rd=self._config_read,
-                       config_en=self._config_en,
-                       rd_data_stg=self._mem_data_low_pt,
-                       wr_data=self._mem_data_cfg,
-                       rd_data_out=self._config_data_out_shrt,
-                       addr_out=self._mem_addr_cfg,
-                       wen_out=self._mem_wen_cfg,
-                       ren_out=self._mem_ren_cfg)
-
-        for i in range(self.banks):
-            # If we are not sharing the ports...
-            if self.rw_same_cycle:
-                self.wire(self._mem_wen_in[i][0], ternary(self._config_en.r_or(),
-                                                          self._mem_wen_cfg[i],
-                                                          self._mem_wen_dp[i][0]))
-                # Treat cen as ren for all intents and purpose
-                self.wire(self._mem_cen_in[i][0], ternary(self._config_en.r_or(),
-                                                          self._mem_ren_cfg[i],
-                                                          self._mem_cen_dp[i][0]))
-                self.wire(self._wr_mem_addr_in[i][0], ternary(self._config_en.r_or(),
-                                                              self._mem_addr_cfg,
-                                                              self._wr_mem_addr_dp[i][0]))
-                self.wire(self._rd_mem_addr_in[i][0], ternary(self._config_en.r_or(),
-                                                              self._mem_addr_cfg,
-                                                              self._rd_mem_addr_dp[i][0]))
-                self.wire(self._mem_data_in[i][0], ternary(self._config_en.r_or(),
-                                                           self._mem_data_cfg,
-                                                           self._mem_data_dp[i][0]))
-                # Don't route the config to any but the first port
-                for j in range(self.mem_input_ports - 1):
-                    self.wire(self._mem_wen_in[i][j + 1], self._mem_wen_dp[i][j + 1])
-                    self.wire(self._wr_mem_addr_in[i][j + 1], self._wr_mem_addr_dp[i][j + 1])
-                    self.wire(self._mem_data_in[i][j + 1], self._mem_data_dp[i][j + 1])
-                for j in range(self.mem_output_ports - 1):
-                    self.wire(self._mem_cen_in[i][j + 1], self._mem_cen_dp[i][j + 1])
-                    self.wire(self._rd_mem_addr_in[i][j + 1], self._rd_mem_addr_dp[i][j + 1])
-            else:
-                self.wire(self._mem_wen_in[i][0], ternary(self._config_en.r_or(),
-                                                          self._mem_wen_cfg[i],
-                                                          self._mem_wen_dp[i][0]))
-                self.wire(self._mem_cen_in[i][0], ternary(self._config_en.r_or(),
-                                                          self._mem_wen_cfg[i] | self._mem_ren_cfg[i],
-                                                          self._mem_cen_dp[i][0]))
-                self.wire(self._mem_addr_in[i][0], ternary(self._config_en.r_or(),
-                                                           self._mem_addr_cfg,
-                                                           self._mem_addr_dp[i][0]))
-                self.wire(self._mem_data_in[i][0], ternary(self._config_en.r_or(),
-                                                           self._mem_data_cfg,
-                                                           self._mem_data_dp[i][0]))
-                # Don't route the config to any but the first port
-                for j in range(self.mem_input_ports - 1):
-                    self.wire(self._mem_wen_in[i][j + 1], self._mem_wen_dp[i][j + 1])
-                    self.wire(self._mem_cen_in[i][j + 1], self._mem_cen_dp[i][j + 1])
-                    self.wire(self._mem_addr_in[i][j + 1], self._mem_addr_dp[i][j + 1])
-                    self.wire(self._mem_data_in[i][j + 1], self._mem_data_dp[i][j + 1])
-
-        self._mem_data_ub = self.var("mem_data_ub",
-                                     self.data_width,
-                                     size=(self.banks,
-                                           self.mem_input_ports,
-                                           self.fw_int),
-                                     packed=True,
-                                     explicit_array=True)
+        # Now add the controllers in...
+        controllers = []
 
         if self.fw_int > 1:
-            strg_ub = StrgUBVec(data_width=self.data_width,
-                                mem_width=self.mem_width,
-                                mem_depth=self.mem_depth,
-                                # banks=self.banks,
-                                input_addr_iterator_support=self.input_iterator_support,
-                                input_sched_iterator_support=self.input_iterator_support,
-                                interconnect_input_ports=self.interconnect_input_ports,
-                                interconnect_output_ports=self.interconnect_output_ports,
-                                # mem_input_ports=self.mem_input_ports,
-                                # mem_output_ports=self.mem_output_ports,
-                                read_delay=self.read_delay,
-                                rw_same_cycle=self.rw_same_cycle,
-                                agg_height=self.agg_height,
-                                config_width=self.input_config_width,
-                                agg_data_top=(self.formal_module == "agg"))
-
+            controllers += StrgUBVec(data_width=self.data_width,
+                                     mem_width=self.mem_width,
+                                     mem_depth=self.mem_depth,
+                                     input_addr_iterator_support=self.input_iterator_support,
+                                     input_sched_iterator_support=self.input_iterator_support,
+                                     interconnect_input_ports=self.interconnect_input_ports,
+                                     interconnect_output_ports=self.interconnect_output_ports,
+                                     read_delay=self.read_delay,
+                                     rw_same_cycle=self.rw_same_cycle,
+                                     agg_height=self.agg_height,
+                                     config_width=self.input_config_width,
+                                     agg_data_top=(self.formal_module == "agg"))
         else:
+            controllers += StrgUBThin(data_width=self.data_width,
+                                      mem_width=self.mem_width,
+                                      mem_depth=self.mem_depth,
+                                      input_addr_iterator_support=self.input_iterator_support,
+                                      input_sched_iterator_support=self.input_iterator_support,
+                                      output_addr_iterator_support=self.output_iterator_support,
+                                      output_sched_iterator_support=self.output_iterator_support,
+                                      interconnect_input_ports=self.interconnect_input_ports,
+                                      interconnect_output_ports=self.interconnect_output_ports,
+                                      config_width=self.input_config_width,
+                                      read_delay=self.read_delay,
+                                      rw_same_cycle=self.rw_same_cycle,
+                                      gen_addr=self.gen_addr)
 
-            strg_ub = StrgUBThin(data_width=self.data_width,
-                                 mem_width=self.mem_width,
-                                 mem_depth=self.mem_depth,
-                                 #  banks=self.banks,
-                                 input_addr_iterator_support=self.input_iterator_support,
-                                 input_sched_iterator_support=self.input_iterator_support,
-                                 output_addr_iterator_support=self.output_iterator_support,
-                                 output_sched_iterator_support=self.output_iterator_support,
-                                 interconnect_input_ports=self.interconnect_input_ports,
-                                 interconnect_output_ports=self.interconnect_output_ports,
-                                 config_width=self.input_config_width,
-                                 #  mem_input_ports=self.mem_input_ports,
-                                 #  mem_output_ports=self.mem_output_ports,
-                                 read_delay=self.read_delay,
-                                 rw_same_cycle=self.rw_same_cycle,
-                                 gen_addr=self.gen_addr)
+        if self.fifo_mode:
+            controllers += StrgFIFO(data_width=self.data_width,
+                                    banks=self.banks,
+                                    memory_width=self.mem_width,
+                                    rw_same_cycle=False,
+                                    read_delay=self.read_delay,
+                                    addr_width=self.address_width)
 
-        self.strg_ub = strg_ub
-
-        self._ub_data_to_mem = self.var("ub_data_to_mem",
-                                        self.data_width,
-                                        size=(self.banks,
-                                              self.mem_input_ports,
-                                              self.fw_int),
-                                        packed=True,
-                                        explicit_array=True)
-
-        self._ub_data_out = self.var("ub_data_out",
-                                     self.data_width,
-                                     size=self.interconnect_output_ports,
-                                     packed=True,
-                                     explicit_array=True)
-
-        self._ub_valid_out = self.var("ub_valid_out",
-                                      self.interconnect_output_ports)
-
-        self._ub_wen_to_mem = self.var("ub_wen_to_mem", self.mem_output_ports,
-                                       size=self.banks,
-                                       explicit_array=True,
-                                       packed=True)
-        self._ub_cen_to_mem = self.var("ub_cen_to_mem", self.mem_input_ports,
-                                       size=self.banks,
-                                       explicit_array=True,
-                                       packed=True)
-
-        if self.rw_same_cycle:
-            self._ub_wr_addr_to_mem = self.var("ub_wr_addr_to_mem",
-                                               self.address_width,
-                                               size=(self.banks,
-                                                     self.mem_input_ports),
-                                               explicit_array=True,
-                                               packed=True)
-            self._ub_rd_addr_to_mem = self.var("ub_rd_addr_to_mem",
-                                               self.address_width,
-                                               size=(self.banks,
-                                                     self.mem_output_ports),
-                                               explicit_array=True,
-                                               packed=True)
-        else:
-            self._ub_addr_to_mem = self.var("ub_addr_to_mem",
-                                            self.address_width,
-                                            size=(self.banks,
-                                                  self.mem_input_ports),
-                                            packed=True,
-                                            explicit_array=True)
-
-        self._accessor_output = self.var("accessor_output", self.interconnect_output_ports)
-
-        self.add_child("strg_ub", strg_ub,
-                       # clk + rst
-                       clk=self._gclk,
-                       rst_n=self._rst_n,
-                       # inputs
-                       data_in=self._data_in,
-                       data_from_strg=self._mem_data_out,
-                       # outputs
-                       data_out=self._ub_data_out,
-                       data_to_strg=self._ub_data_to_mem,
-                       wen_to_strg=self._ub_wen_to_mem,
-                       accessor_output=self._accessor_output)
-
-        if self.formal_module == "agg":
-            self._formal_agg_data_out = self.output("formal_agg_data_out", self.data_width,
-                                                    size=(self.interconnect_input_ports,
-                                                          self.fw_int),
-                                                    packed=True,
-                                                    explicit_array=True)
-            self._formal_agg_data_out.add_attribute(
-                FormalAttr(self._formal_agg_data_out.name, FormalSignalConstraint.SEQUENCE, "agg"))
-
-            self.wire(self._formal_agg_data_out, strg_ub.ports.strg_ub_agg_data_out)
-        # Handle different names - sorry
-        if self.rw_same_cycle:
-            self.wire(strg_ub.ports.ren_to_strg, self._ub_cen_to_mem)
-        else:
-            self.wire(strg_ub.ports.cen_to_strg, self._ub_cen_to_mem)
-
-        # Wire addrs
-        if self.rw_same_cycle:
-            self.wire(self._ub_wr_addr_to_mem, strg_ub.ports.wr_addr_out)
-            self.wire(self._ub_rd_addr_to_mem, strg_ub.ports.rd_addr_out)
-        # wire single addr
-        else:
-            self.wire(self._ub_addr_to_mem, strg_ub.ports.addr_out)
-
-        if self.gen_addr is False:
-            self.wire(strg_ub.ports.read_addr, self._rd_addr_in[0])
-            self.wire(strg_ub.ports.write_addr, self._wr_addr_in[0])
-            self.wire(strg_ub.ports.wen_in, self._wen)
-            self.wire(strg_ub.ports.ren_in, self._ren)
-
-        # Wrap sram_stub
-        if self.read_delay == 1 and self.rw_same_cycle is False:
-
-            self._all_data_to_mem = self.var("all_data_to_mem", self.data_width,
-                                             size=(self.num_modes,
-                                                   self.banks,
-                                                   self.fw_int),
-                                             explicit_array=True,
-                                             packed=True)
-            self._all_wen_to_mem = self.var("all_wen_to_mem", self.mem_input_ports,
-                                            size=(self.num_modes,
-                                                  self.banks),
-                                            explicit_array=True,
-                                            packed=True)
-            self._all_ren_to_mem = self.var("all_ren_to_mem", self.mem_output_ports,
-                                            size=(self.num_modes,
-                                                  self.banks),
-                                            explicit_array=True,
-                                            packed=True)
-
-            self._all_addr_to_mem = self.var("all_addr_to_mem", self.address_width,
-                                             size=(self.num_modes,
-                                                   self.banks),
-                                             explicit_array=True,
-                                             packed=True)
-
-            self._fifo_data_out = self.var("fifo_data_out", self.data_width)
-            self._fifo_valid_out = self.var("fifo_valid_out", 1)
-            self._fifo_empty = self.var("fifo_empty", 1)
-            self._fifo_full = self.var("fifo_full", 1)
-            self._fifo_data_to_mem = self.var("fifo_data_to_mem", self.data_width,
-                                              size=(self.banks,
-                                                    self.fw_int),
-                                              explicit_array=True,
-                                              packed=True)
-            self._fifo_wen_to_mem = self.var("fifo_wen_to_mem", self.banks)
-            self._fifo_ren_to_mem = self.var("fifo_ren_to_mem", self.banks)
-
-            self._fifo_addr_to_mem = self.var("fifo_addr_to_mem", self.address_width,
-                                              size=self.banks,
-                                              explicit_array=True,
-                                              packed=True)
-
-            self._sram_data_out = self.var("sram_data_out", self.data_width)
-            self._sram_valid_out = self.var("sram_valid_out", 1)
-            self._sram_empty = self.var("sram_empty", 1)
-            self._sram_full = self.var("sram_full", 1)
-            self._sram_data_to_mem = self.var("sram_data_to_mem", self.data_width,
-                                              size=(self.banks,
-                                                    self.fw_int),
-                                              explicit_array=True,
-                                              packed=True)
-            self._sram_wen_to_mem = self.var("sram_wen_to_mem", self.banks)
-            self._sram_ren_to_mem = self.var("sram_ren_to_mem", self.banks)
-
-            self._sram_addr_to_mem = self.var("sram_addr_to_mem", self.address_width,
-                                              size=self.banks,
-                                              explicit_array=True,
-                                              packed=True)
-
-            if self.fw_int > 1:
-                self._sram_ready_out = self.output("sram_ready_out", 1)
-                self._sram_ready_out.add_attribute(ControlSignalAttr(False))
-
-            strg_ram = StrgRAM(data_width=self.data_width,
+        controllers += StrgRAM(data_width=self.data_width,
                                banks=self.banks,
                                memory_width=self.mem_width,
                                memory_depth=self.mem_depth,
@@ -684,185 +164,785 @@ class LakeTop(Generator):
                                addr_width=16,
                                prioritize_write=True)
 
-            self.add_child("sram_ctrl", strg_ram,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           wen=self._wen[0],
-                           ren=self._ren[0],
-                           data_in=self._data_in[0],
-                           wr_addr_in=self._addr_in[0],
-                           rd_addr_in=self._addr_in[0],
-                           data_from_strg=self._mem_data_out,
-                           data_out=self._sram_data_out,
-                           valid_out=self._sram_valid_out,
-                           data_to_strg=self._sram_data_to_mem,
-                           wen_to_strg=self._sram_wen_to_mem,
-                           ren_to_strg=self._sram_ren_to_mem,
-                           addr_out=self._sram_addr_to_mem)
+        # Finalize number of controllers (so we know how many bits to give the mode register)
+        self.mlb.finalize_controllers()
 
-            if self.fw_int > 1:
-                self.wire(self._sram_ready_out, strg_ram.ports.ready)
+        # Then add the config hooks...
+        self.mlb.add_config_hooks(config_data_width=self.config_data_width,
+                                  config_addr_width=self.config_addr_width)
 
-            # If we have the fifo mode enabled -
-            # Instantiate a FIFO first off...
-            stfo = StrgFIFO(data_width=self.data_width,
-                            banks=self.banks,
-                            memory_width=self.mem_width,
-                            rw_same_cycle=False,
-                            read_delay=self.read_delay,
-                            addr_width=self.address_width)
-            self.add_child("fifo_ctrl", stfo,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           data_in=self._data_in[0],
-                           push=self._wen[0],
-                           pop=self._ren[0],
-                           data_from_strg=self._mem_data_out,
-                           data_out=self._fifo_data_out,
-                           valid_out=self._fifo_valid_out,
-                           empty=self._fifo_empty,
-                           full=self._fifo_full,
-                           data_to_strg=self._fifo_data_to_mem,
-                           wen_to_strg=self._fifo_wen_to_mem,
-                           ren_to_strg=self._fifo_ren_to_mem,
-                           addr_out=self._fifo_addr_to_mem)
+        # And realize the hardware
 
-            self._empty = self.output("empty", 1)
-            self._empty.add_attribute(ControlSignalAttr(False))
+        # # CLK and RST
+        # self._clk = self.clock("clk")
+        # self._clk.add_attribute(FormalAttr(self._clk.name, FormalSignalConstraint.CLK))
+        # self._rst_n = self.reset("rst_n")
+        # self._rst_n.add_attribute(FormalAttr(self._rst_n.name, FormalSignalConstraint.RSTN))
 
-            self._full = self.output("full", 1)
-            self._full.add_attribute(ControlSignalAttr(False))
+        # # chain data in
+        # self._chain_data_in = self.input("chain_data_in",
+        #                                  self.data_width,
+        #                                  size=self.interconnect_output_ports,
+        #                                  packed=True,
+        #                                  explicit_array=True)
+        # self._chain_data_in.add_attribute(ControlSignalAttr(False))
+        # self._chain_data_in.add_attribute(FormalAttr(self._chain_data_in.name, FormalSignalConstraint.SET0))
 
-            self.wire(self._empty, self._fifo_empty)
-            self.wire(self._full, self._fifo_full)
+        # # MAIN Inputs
+        # self._data_in = self.input("data_in",
+        #                            self.data_width,
+        #                            size=self.interconnect_input_ports,
+        #                            packed=True,
+        #                            explicit_array=True)
+        # self._data_in.add_attribute(ControlSignalAttr(False))
+        # self._data_in.add_attribute(FormalAttr(self._data_in.name, FormalSignalConstraint.SEQUENCE, "agg"))
 
-            self.wire(self._all_data_to_mem[0], self._ub_data_to_mem)
-            self.wire(self._all_wen_to_mem[0], self._ub_wen_to_mem)
-            self.wire(self._all_ren_to_mem[0], self._ub_cen_to_mem)
-            self.wire(self._all_addr_to_mem[0], self._ub_addr_to_mem)
+        # if self.rw_same_cycle:
+        #     self._wr_addr_in = self.input("waddr",
+        #                                   self.data_width,
+        #                                   size=self.interconnect_input_ports,
+        #                                   packed=True,
+        #                                   explicit_array=True)
+        #     self._wr_addr_in.add_attribute(ControlSignalAttr(False))
+        #     self._wr_addr_in.add_attribute(FormalAttr(self._wr_addr_in.name, FormalSignalConstraint.SET0))
+        #     self._rd_addr_in = self.input("raddr",
+        #                                   self.data_width,
+        #                                   size=self.interconnect_input_ports,
+        #                                   packed=True,
+        #                                   explicit_array=True)
+        #     self._rd_addr_in.add_attribute(ControlSignalAttr(False))
+        #     self._rd_addr_in.add_attribute(FormalAttr(self._rd_addr_in.name, FormalSignalConstraint.SET0))
+        # else:
+        #     self._addr_in = self.input("addr_in",
+        #                                self.data_width,
+        #                                size=self.interconnect_input_ports,
+        #                                packed=True,
+        #                                explicit_array=True)
+        #     self._addr_in.add_attribute(ControlSignalAttr(False))
+        #     self._addr_in.add_attribute(FormalAttr(self._addr_in.name, FormalSignalConstraint.SET0))
 
-            self.wire(self._all_data_to_mem[1], self._fifo_data_to_mem)
-            for i in range(self.banks):
-                self.wire(self._all_wen_to_mem[1][i], self._fifo_wen_to_mem[i])
-                self.wire(self._all_ren_to_mem[1][i], self._fifo_ren_to_mem[i])
-                self.wire(self._all_addr_to_mem[1][i], self._fifo_addr_to_mem[i])
+        # self._wen = self.input("wen_in", self.interconnect_input_ports)
+        # self._wen.add_attribute(ControlSignalAttr(True))
+        # self._wen.add_attribute(FormalAttr(self._wen.name, FormalSignalConstraint.SET0))
 
-            self.wire(self._all_data_to_mem[2], self._sram_data_to_mem)
-            for i in range(self.banks):
-                self.wire(self._all_wen_to_mem[2][i], self._sram_wen_to_mem[i])
-                self.wire(self._all_ren_to_mem[2][i], self._sram_ren_to_mem[i])
-                self.wire(self._all_addr_to_mem[2][i], self._sram_addr_to_mem[i])
+        # self._ren = self.input("ren_in", self.interconnect_output_ports)
+        # self._ren.add_attribute(ControlSignalAttr(True))
+        # self._ren.add_attribute(FormalAttr(self._ren.name, FormalSignalConstraint.SET0))
 
-            # Mux all of these signals when in FIFO mode
-            self.wire(self._mem_data_dp, self._all_data_to_mem[self._mode])
-            self.wire(self._mem_cen_dp, self._all_ren_to_mem[self._mode] | self._all_wen_to_mem[self._mode])
-            self.wire(self._mem_wen_dp, self._all_wen_to_mem[self._mode])
-            self.wire(self._mem_addr_dp, self._all_addr_to_mem[self._mode])
+        # self._config_data_in = self.input("config_data_in",
+        #                                   self.config_data_width)
+        # self._config_data_in.add_attribute(ControlSignalAttr(False))
+        # self._config_data_in.add_attribute(FormalAttr(self._ren.name, FormalSignalConstraint.SET0))
 
-            # have SRAM when not doing formal module generation or when generating
-            # SRAM modular problem for formal team
-            if self.formal_module is None or self.formal_module == "sram":
-                for i in range(self.banks):
-                    mbank = SRAM(use_sram_stub=self.use_sram_stub,
-                                 sram_name=self.sram_macro_info.name,
-                                 data_width=self.data_width,
-                                 fw_int=self.fw_int,
-                                 mem_depth=self.mem_depth,
-                                 mem_input_ports=self.mem_input_ports,
-                                 mem_output_ports=self.mem_output_ports,
-                                 address_width=self.address_width,
-                                 bank_num=i,
-                                 num_tiles=self.num_tiles)
+        # self._config_data_in_shrt = self.var("config_data_in_shrt",
+        #                                      self.data_width)
 
-                    self.add_child(f"mem_{i}", mbank,
-                                   clk=self._gclk,
-                                   clk_en=self._clk_en | self._config_en.r_or(),
-                                   mem_data_in_bank=self._mem_data_in[i],
-                                   mem_data_out_bank=self._mem_data_out[i],
-                                   mem_addr_in_bank=self._mem_addr_in[i],
-                                   mem_cen_in_bank=self._mem_cen_in[i],
-                                   mem_wen_in_bank=self._mem_wen_in[i],
-                                   wtsel=self.sram_macro_info.wtsel_value,
-                                   rtsel=self.sram_macro_info.rtsel_value)
-        else:
+        # self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
 
-            self.wire(self._mem_data_dp, self._ub_data_to_mem)
-            self.wire(self._mem_wen_dp, self._ub_wen_to_mem)
-            self.wire(self._mem_cen_dp, self._ub_cen_to_mem)
-            if self.rw_same_cycle:
-                self.wire(self._wr_mem_addr_dp, self._ub_wr_addr_to_mem)
-                self.wire(self._rd_mem_addr_dp, self._ub_rd_addr_to_mem)
-            else:
-                self.wire(self._mem_addr_dp, self._ub_addr_to_mem)
+        # self._cycle_count = self.var("cycle_count", 16)
+        # self.add_code(self.cycle_count_inc)
 
-            for i in range(self.banks):
-                print(self.fw_int)
-                rfile = RegisterFile(data_width=self.data_width,
-                                     write_ports=self.mem_input_ports,
-                                     read_ports=self.mem_output_ports,
-                                     width_mult=self.fw_int,
-                                     depth=self.mem_depth,
-                                     read_delay=self.read_delay)
-                if self.rw_same_cycle:
-                    self.add_child(f"rf_{i}", rfile,
-                                   clk=self._gclk,
-                                   rst_n=self._rst_n,
-                                   wen=self._mem_wen_in[i],
-                                   wr_addr=self._wr_mem_addr_in[i],
-                                   rd_addr=self._rd_mem_addr_in[i],
-                                   data_in=self._mem_data_in[i],
-                                   data_out=self._mem_data_out[i])
-                else:
-                    self.add_child(f"rf_{i}", rfile,
-                                   clk=self._gclk,
-                                   rst_n=self._rst_n,
-                                   wen=self._mem_wen_in[i],
-                                   wr_addr=self._mem_addr_in[i],
-                                   rd_addr=self._mem_addr_in[i],
-                                   data_in=self._mem_data_in[i],
-                                   data_out=self._mem_data_out[i])
-                if self.read_delay == 1:
-                    self.wire(rfile.ports.ren, self._mem_cen_dp[0])
+        # if self.stencil_valid:
 
-        if self.fifo_mode:
-            self._all_data_out = self.var("all_data_out", self.data_width,
-                                          size=self.num_modes,
-                                          explicit_array=True,
-                                          packed=True)
-            self._all_valid_out = self.var("all_valid_out", self.num_modes)
+        #     self.stencil_valid_width = 16
 
-            self.wire(self._all_data_out[0], self._ub_data_out[0])
-            self.wire(self._all_valid_out[0], self._ub_valid_out[0])
+        #     self._stencil_valid = self.output("stencil_valid", 1)
+        #     self._stencil_valid.add_attribute(ControlSignalAttr(False))
+        #     self._loops_stencil_valid = ForLoop(iterator_support=6,
+        #                                         config_width=16)
+        #     self._stencil_valid_int = self.var("stencil_valid_internal", 1)
 
-            self.wire(self._all_data_out[1], self._fifo_data_out)
-            self.wire(self._all_valid_out[1], self._fifo_valid_out)
+        #     # Loop Iterators for stencil valid...
+        #     self.add_child(f"loops_stencil_valid",
+        #                    self._loops_stencil_valid,
+        #                    clk=self._clk,
+        #                    rst_n=self._rst_n,
+        #                    step=self._stencil_valid_int)
+        #     # Schedule Generator for stencil valid...
+        #     self.add_child(f"stencil_valid_sched_gen",
+        #                    SchedGen(iterator_support=6,
+        #                             config_width=16),
+        #                    clk=self._clk,
+        #                    rst_n=self._rst_n,
+        #                    cycle_count=self._cycle_count,
+        #                    mux_sel=self._loops_stencil_valid.ports.mux_sel_out,
+        #                    finished=self._loops_stencil_valid.ports.restart,
+        #                    valid_output=self._stencil_valid_int)
+        #     # Wire out internal wire
+        #     # self.wire(self._stencil_valid, self._stencil_valid_int & self._stencil_valid_gate & self._use_stencil_valid)
+        #     self.wire(self._stencil_valid, self._stencil_valid_int)
 
-            self.wire(self._all_data_out[2], self._sram_data_out)
-            self.wire(self._all_valid_out[2], self._sram_valid_out)
+        # self._config_addr_in = self.input("config_addr_in",
+        #                                   self.config_addr_width)
+        # self._config_addr_in.add_attribute(ControlSignalAttr(False))
 
-            self.wire(self._data_out_tile[0], self._all_data_out[self._mode])
-            self.wire(self._valid_out_tile[0], self._all_valid_out[self._mode])
-        else:
-            self.wire(self._data_out_tile[0], self._ub_data_out[0])
-            self.wire(self._valid_out_tile[0], self._ub_valid_out[0])
+        # self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width,
+        #                                       size=self.total_sets,
+        #                                       explicit_array=True,
+        #                                       packed=True)
 
-        for i in range(self.interconnect_output_ports - 1):
-            self.wire(self._data_out_tile[i + 1], self._ub_data_out[i + 1])
-            self.wire(self._valid_out_tile[i + 1], self._ub_valid_out[i + 1])
+        # self._config_data_out = self.output("config_data_out", self.config_data_width,
+        #                                     size=self.total_sets,
+        #                                     explicit_array=True,
+        #                                     packed=True)
+        # self._config_data_out.add_attribute(ControlSignalAttr(False))
 
-        chaining = ChainAccessor(data_width=self.data_width,
-                                 interconnect_output_ports=self.interconnect_output_ports)
+        # self._clk_en = self.clock_en("clk_en", 1)
 
-        self._mode_mask = self.var("mode_mask", self._accessor_output.width)
-        self.wire(self._mode_mask[0], self._mode.r_or())
-        for i in range(self._accessor_output.width - 1):
-            self.wire(self._mode_mask[i + 1], kts.const(0, 1))
+        # for i in range(self.total_sets):
+        #     self.wire(self._config_data_out[i],
+        #               self._config_data_out_shrt[i].extend(self.config_data_width))
 
-        self.add_child(f"chain", chaining,
-                       curr_tile_data_out=self._data_out_tile,
-                       chain_data_in=self._chain_data_in,
-                       accessor_output=(self._accessor_output | self._mode_mask),
-                       data_out_tile=self._data_out)
+        # self._config_read = self.input("config_read", 1)
+        # self._config_read.add_attribute(ControlSignalAttr(False))
+
+        # self._config_write = self.input("config_write", 1)
+        # self._config_write.add_attribute(ControlSignalAttr(False))
+
+        # self._config_en = self.input("config_en", self.total_sets)
+        # self._config_en.add_attribute(ControlSignalAttr(False))
+
+        # self._data_out = self.output("data_out",
+        #                              self.data_width,
+        #                              size=self.interconnect_output_ports,
+        #                              packed=True,
+        #                              explicit_array=True)
+        # self._data_out.add_attribute(ControlSignalAttr(False))
+        # self._data_out.add_attribute(FormalAttr(self._data_out.name, FormalSignalConstraint.SEQUENCE, "tb"))
+
+        # # self._valid_out = self.output("valid_out",
+        # #                               self.interconnect_output_ports)
+        # # self._valid_out.add_attribute(ControlSignalAttr(False))
+
+        # self._data_out_tile = self.var("data_out_tile",
+        #                                self.data_width,
+        #                                size=self.interconnect_output_ports,
+        #                                packed=True,
+        #                                explicit_array=True)
+
+        # self._valid_out_tile = self.output("valid_out",
+        #                                    self.interconnect_output_ports)
+        # self._valid_out_tile.add_attribute(ControlSignalAttr(False))
+
+        # self.address_width = clog2(self.num_tiles * self.mem_depth)
+
+        # # Add tile enable!
+        # self._tile_en = self.input("tile_en", 1)
+        # self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        # self._tile_en.add_attribute(FormalAttr(self._tile_en.name, FormalSignalConstraint.SET1))
+
+        # # either normal or fifo mode rn...
+        # self.num_modes = 3
+        # self._mode = self.input("mode", max(1, clog2(self.num_modes)))
+        # self._mode.add_attribute(ConfigRegAttr("MODE!"))
+        # self._mode.add_attribute(FormalAttr(self._mode.name, FormalSignalConstraint.SET0))
+
+        # # Currenlt mode = 0 is UB, mode = 1 is FIFO
+        # gclk = self.var("gclk", 1)
+        # self._gclk = kts.util.clock(gclk)
+        # self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
+
+        # self._mem_data_out = self.var("mem_data_out",
+        #                               self.data_width,
+        #                               size=(self.banks,
+        #                                     self.mem_output_ports,
+        #                                     self.fw_int),
+        #                               packed=True,
+        #                               explicit_array=True)
+
+        # if self.formal_module == "sram":
+        #     self._formal_mem_data = self.output("formal_mem_data",
+        #                                         self.data_width,
+        #                                         size=(self.banks,
+        #                                               self.mem_output_ports,
+        #                                               self.fw_int),
+        #                                         packed=True,
+        #                                         explicit_array=True)
+        #     self._formal_mem_data.add_attribute(
+        #         FormalAttr(self._formal_mem_data.name, FormalSignalConstraint.SEQUENCE, self.formal_module))
+
+        #     self.wire(self._formal_mem_data, self._mem_data_out)
+        # elif formal_module == "tb":
+        #     self._formal_mem_data = self.input("formal_mem_data",
+        #                                        self.data_width,
+        #                                        size=(self.banks,
+        #                                              self.mem_output_ports,
+        #                                              self.fw_int),
+        #                                        packed=True,
+        #                                        explicit_array=True)
+        #     self._formal_mem_data.add_attribute(
+        #         FormalAttr(self._formal_mem_data.name, FormalSignalConstraint.SEQUENCE, self.formal_module))
+
+        #     self.wire(self._mem_data_out, self._formal_mem_data)
+
+        # self._mem_data_low_pt = self.var("mem_data_low_pt",
+        #                                  self.data_width,
+        #                                  size=(self.banks,
+        #                                        self.fw_int),
+        #                                  packed=True,
+        #                                  explicit_array=True)
+
+        # for i in range(self.banks):
+        #     self.wire(self._mem_data_low_pt[i], self._mem_data_out[i][0])
+
+        # self._mem_data_in = self.var("mem_data_in",
+        #                              self.data_width,
+        #                              size=(self.banks,
+        #                                    self.mem_input_ports,
+        #                                    self.fw_int),
+        #                              packed=True,
+        #                              explicit_array=True)
+
+        # self._mem_data_dp = self.var("mem_data_dp",
+        #                              self.data_width,
+        #                              size=(self.banks,
+        #                                    self.mem_input_ports,
+        #                                    self.fw_int),
+        #                              packed=True,
+        #                              explicit_array=True)
+
+        # self._mem_data_cfg = self.var("mem_data_cfg",
+        #                               self.data_width,
+        #                               size=self.fw_int,
+        #                               packed=True,
+        #                               explicit_array=True)
+
+        # if self.rw_same_cycle:
+        #     self._wr_mem_addr_dp = self.var("wr_mem_addr_dp",
+        #                                     self.address_width,
+        #                                     size=(self.banks,
+        #                                           self.mem_input_ports),
+        #                                     explicit_array=True,
+        #                                     packed=True)
+        #     self._wr_mem_addr_in = self.var("wr_mem_addr_in",
+        #                                     self.address_width,
+        #                                     size=(self.banks,
+        #                                           self.mem_input_ports),
+        #                                     explicit_array=True,
+        #                                     packed=True)
+        #     self._rd_mem_addr_dp = self.var("rd_mem_addr_dp",
+        #                                     self.address_width,
+        #                                     size=(self.banks,
+        #                                           self.mem_output_ports),
+        #                                     explicit_array=True,
+        #                                     packed=True)
+        #     self._rd_mem_addr_in = self.var("rd_mem_addr_in",
+        #                                     self.address_width,
+        #                                     size=(self.banks,
+        #                                           self.mem_output_ports),
+        #                                     explicit_array=True,
+        #                                     packed=True)
+
+        # else:
+        #     self._mem_addr_dp = self.var("mem_addr_dp",
+        #                                  self.address_width,
+        #                                  size=(self.banks,
+        #                                        self.mem_input_ports),
+        #                                  packed=True,
+        #                                  explicit_array=True)
+        #     self._mem_addr_in = self.var("mem_addr_in",
+        #                                  self.address_width,
+        #                                  size=(self.banks,
+        #                                        self.mem_input_ports),
+        #                                  packed=True,
+        #                                  explicit_array=True)
+
+        # self._mem_addr_cfg = self.var("mem_addr_cfg", self.address_width)
+
+        # self._mem_ren_cfg = self.var("mem_ren_cfg", self.banks)
+        # self._mem_wen_cfg = self.var("mem_wen_cfg", self.banks)
+
+        # self._mem_cen_dp = self.var("mem_cen_dp", self.mem_output_ports,
+        #                             size=self.banks,
+        #                             explicit_array=True,
+        #                             packed=True)
+
+        # self._mem_wen_dp = self.var("mem_wen_dp", self.mem_input_ports,
+        #                             size=self.banks,
+        #                             explicit_array=True,
+        #                             packed=True)
+        # self._mem_cen_in = self.var("mem_cen_in", self.mem_output_ports,
+        #                             size=self.banks,
+        #                             explicit_array=True,
+        #                             packed=True)
+
+        # self._mem_wen_in = self.var("mem_wen_in", self.mem_input_ports,
+        #                             size=self.banks,
+        #                             explicit_array=True,
+        #                             packed=True)
+
+        # ####################################
+        # ##### DEMUX WRITE/SRAM WRAPPER #####
+        # ####################################
+
+        # stg_cfg_seq = StorageConfigSeq(data_width=self.data_width,
+        #                                config_addr_width=self.config_addr_width,
+        #                                addr_width=self.address_width,
+        #                                fetch_width=self.mem_width,
+        #                                total_sets=self.total_sets,
+        #                                sets_per_macro=self.sets_per_macro)
+
+        # # The clock to config sequencer needs to be the normal clock or
+        # # if the tile is off, we bring the clock back in based on config_en
+        # cfg_seq_clk = self.var("cfg_seq_clk", 1)
+        # self._cfg_seq_clk = kts.util.clock(cfg_seq_clk)
+        # # self.wire(cfg_seq_clk, kts.util.clock(self._gclk | (self._clk & self._config_en.r_or())))
+        # self.wire(cfg_seq_clk, kts.util.clock(self._gclk))
+
+        # self.add_child(f"config_seq", stg_cfg_seq,
+        #                clk=self._cfg_seq_clk,
+        #                rst_n=self._rst_n,
+        #                clk_en=self._clk_en | self._config_en.r_or(),
+        #                config_data_in=self._config_data_in_shrt,
+        #                config_addr_in=self._config_addr_in,
+        #                config_wr=self._config_write,
+        #                config_rd=self._config_read,
+        #                config_en=self._config_en,
+        #                rd_data_stg=self._mem_data_low_pt,
+        #                wr_data=self._mem_data_cfg,
+        #                rd_data_out=self._config_data_out_shrt,
+        #                addr_out=self._mem_addr_cfg,
+        #                wen_out=self._mem_wen_cfg,
+        #                ren_out=self._mem_ren_cfg)
+
+        # for i in range(self.banks):
+        #     # If we are not sharing the ports...
+        #     if self.rw_same_cycle:
+        #         self.wire(self._mem_wen_in[i][0], ternary(self._config_en.r_or(),
+        #                                                   self._mem_wen_cfg[i],
+        #                                                   self._mem_wen_dp[i][0]))
+        #         # Treat cen as ren for all intents and purpose
+        #         self.wire(self._mem_cen_in[i][0], ternary(self._config_en.r_or(),
+        #                                                   self._mem_ren_cfg[i],
+        #                                                   self._mem_cen_dp[i][0]))
+        #         self.wire(self._wr_mem_addr_in[i][0], ternary(self._config_en.r_or(),
+        #                                                       self._mem_addr_cfg,
+        #                                                       self._wr_mem_addr_dp[i][0]))
+        #         self.wire(self._rd_mem_addr_in[i][0], ternary(self._config_en.r_or(),
+        #                                                       self._mem_addr_cfg,
+        #                                                       self._rd_mem_addr_dp[i][0]))
+        #         self.wire(self._mem_data_in[i][0], ternary(self._config_en.r_or(),
+        #                                                    self._mem_data_cfg,
+        #                                                    self._mem_data_dp[i][0]))
+        #         # Don't route the config to any but the first port
+        #         for j in range(self.mem_input_ports - 1):
+        #             self.wire(self._mem_wen_in[i][j + 1], self._mem_wen_dp[i][j + 1])
+        #             self.wire(self._wr_mem_addr_in[i][j + 1], self._wr_mem_addr_dp[i][j + 1])
+        #             self.wire(self._mem_data_in[i][j + 1], self._mem_data_dp[i][j + 1])
+        #         for j in range(self.mem_output_ports - 1):
+        #             self.wire(self._mem_cen_in[i][j + 1], self._mem_cen_dp[i][j + 1])
+        #             self.wire(self._rd_mem_addr_in[i][j + 1], self._rd_mem_addr_dp[i][j + 1])
+        #     else:
+        #         self.wire(self._mem_wen_in[i][0], ternary(self._config_en.r_or(),
+        #                                                   self._mem_wen_cfg[i],
+        #                                                   self._mem_wen_dp[i][0]))
+        #         self.wire(self._mem_cen_in[i][0], ternary(self._config_en.r_or(),
+        #                                                   self._mem_wen_cfg[i] | self._mem_ren_cfg[i],
+        #                                                   self._mem_cen_dp[i][0]))
+        #         self.wire(self._mem_addr_in[i][0], ternary(self._config_en.r_or(),
+        #                                                    self._mem_addr_cfg,
+        #                                                    self._mem_addr_dp[i][0]))
+        #         self.wire(self._mem_data_in[i][0], ternary(self._config_en.r_or(),
+        #                                                    self._mem_data_cfg,
+        #                                                    self._mem_data_dp[i][0]))
+        #         # Don't route the config to any but the first port
+        #         for j in range(self.mem_input_ports - 1):
+        #             self.wire(self._mem_wen_in[i][j + 1], self._mem_wen_dp[i][j + 1])
+        #             self.wire(self._mem_cen_in[i][j + 1], self._mem_cen_dp[i][j + 1])
+        #             self.wire(self._mem_addr_in[i][j + 1], self._mem_addr_dp[i][j + 1])
+        #             self.wire(self._mem_data_in[i][j + 1], self._mem_data_dp[i][j + 1])
+
+        # self._mem_data_ub = self.var("mem_data_ub",
+        #                              self.data_width,
+        #                              size=(self.banks,
+        #                                    self.mem_input_ports,
+        #                                    self.fw_int),
+        #                              packed=True,
+        #                              explicit_array=True)
+
+        # if self.fw_int > 1:
+        #     strg_ub = StrgUBVec(data_width=self.data_width,
+        #                         mem_width=self.mem_width,
+        #                         mem_depth=self.mem_depth,
+        #                         # banks=self.banks,
+        #                         input_addr_iterator_support=self.input_iterator_support,
+        #                         input_sched_iterator_support=self.input_iterator_support,
+        #                         interconnect_input_ports=self.interconnect_input_ports,
+        #                         interconnect_output_ports=self.interconnect_output_ports,
+        #                         # mem_input_ports=self.mem_input_ports,
+        #                         # mem_output_ports=self.mem_output_ports,
+        #                         read_delay=self.read_delay,
+        #                         rw_same_cycle=self.rw_same_cycle,
+        #                         agg_height=self.agg_height,
+        #                         config_width=self.input_config_width,
+        #                         agg_data_top=(self.formal_module == "agg"))
+
+        # else:
+
+        #     strg_ub = StrgUBThin(data_width=self.data_width,
+        #                          mem_width=self.mem_width,
+        #                          mem_depth=self.mem_depth,
+        #                          #  banks=self.banks,
+        #                          input_addr_iterator_support=self.input_iterator_support,
+        #                          input_sched_iterator_support=self.input_iterator_support,
+        #                          output_addr_iterator_support=self.output_iterator_support,
+        #                          output_sched_iterator_support=self.output_iterator_support,
+        #                          interconnect_input_ports=self.interconnect_input_ports,
+        #                          interconnect_output_ports=self.interconnect_output_ports,
+        #                          config_width=self.input_config_width,
+        #                          #  mem_input_ports=self.mem_input_ports,
+        #                          #  mem_output_ports=self.mem_output_ports,
+        #                          read_delay=self.read_delay,
+        #                          rw_same_cycle=self.rw_same_cycle,
+        #                          gen_addr=self.gen_addr)
+
+        # self.strg_ub = strg_ub
+
+        # self._ub_data_to_mem = self.var("ub_data_to_mem",
+        #                                 self.data_width,
+        #                                 size=(self.banks,
+        #                                       self.mem_input_ports,
+        #                                       self.fw_int),
+        #                                 packed=True,
+        #                                 explicit_array=True)
+
+        # self._ub_data_out = self.var("ub_data_out",
+        #                              self.data_width,
+        #                              size=self.interconnect_output_ports,
+        #                              packed=True,
+        #                              explicit_array=True)
+
+        # self._ub_valid_out = self.var("ub_valid_out",
+        #                               self.interconnect_output_ports)
+
+        # self._ub_wen_to_mem = self.var("ub_wen_to_mem", self.mem_output_ports,
+        #                                size=self.banks,
+        #                                explicit_array=True,
+        #                                packed=True)
+        # self._ub_cen_to_mem = self.var("ub_cen_to_mem", self.mem_input_ports,
+        #                                size=self.banks,
+        #                                explicit_array=True,
+        #                                packed=True)
+
+        # if self.rw_same_cycle:
+        #     self._ub_wr_addr_to_mem = self.var("ub_wr_addr_to_mem",
+        #                                        self.address_width,
+        #                                        size=(self.banks,
+        #                                              self.mem_input_ports),
+        #                                        explicit_array=True,
+        #                                        packed=True)
+        #     self._ub_rd_addr_to_mem = self.var("ub_rd_addr_to_mem",
+        #                                        self.address_width,
+        #                                        size=(self.banks,
+        #                                              self.mem_output_ports),
+        #                                        explicit_array=True,
+        #                                        packed=True)
+        # else:
+        #     self._ub_addr_to_mem = self.var("ub_addr_to_mem",
+        #                                     self.address_width,
+        #                                     size=(self.banks,
+        #                                           self.mem_input_ports),
+        #                                     packed=True,
+        #                                     explicit_array=True)
+
+        # self._accessor_output = self.var("accessor_output", self.interconnect_output_ports)
+
+        # self.add_child("strg_ub", strg_ub,
+        #                # clk + rst
+        #                clk=self._gclk,
+        #                rst_n=self._rst_n,
+        #                # inputs
+        #                data_in=self._data_in,
+        #                data_from_strg=self._mem_data_out,
+        #                # outputs
+        #                data_out=self._ub_data_out,
+        #                data_to_strg=self._ub_data_to_mem,
+        #                wen_to_strg=self._ub_wen_to_mem,
+        #                accessor_output=self._accessor_output)
+
+        # if self.formal_module == "agg":
+        #     self._formal_agg_data_out = self.output("formal_agg_data_out", self.data_width,
+        #                                             size=(self.interconnect_input_ports,
+        #                                                   self.fw_int),
+        #                                             packed=True,
+        #                                             explicit_array=True)
+        #     self._formal_agg_data_out.add_attribute(
+        #         FormalAttr(self._formal_agg_data_out.name, FormalSignalConstraint.SEQUENCE, "agg"))
+
+        #     self.wire(self._formal_agg_data_out, strg_ub.ports.strg_ub_agg_data_out)
+        # # Handle different names - sorry
+        # if self.rw_same_cycle:
+        #     self.wire(strg_ub.ports.ren_to_strg, self._ub_cen_to_mem)
+        # else:
+        #     self.wire(strg_ub.ports.cen_to_strg, self._ub_cen_to_mem)
+
+        # # Wire addrs
+        # if self.rw_same_cycle:
+        #     self.wire(self._ub_wr_addr_to_mem, strg_ub.ports.wr_addr_out)
+        #     self.wire(self._ub_rd_addr_to_mem, strg_ub.ports.rd_addr_out)
+        # # wire single addr
+        # else:
+        #     self.wire(self._ub_addr_to_mem, strg_ub.ports.addr_out)
+
+        # if self.gen_addr is False:
+        #     self.wire(strg_ub.ports.read_addr, self._rd_addr_in[0])
+        #     self.wire(strg_ub.ports.write_addr, self._wr_addr_in[0])
+        #     self.wire(strg_ub.ports.wen_in, self._wen)
+        #     self.wire(strg_ub.ports.ren_in, self._ren)
+
+        # # Wrap sram_stub
+        # if self.read_delay == 1 and self.rw_same_cycle is False:
+
+        #     self._all_data_to_mem = self.var("all_data_to_mem", self.data_width,
+        #                                      size=(self.num_modes,
+        #                                            self.banks,
+        #                                            self.fw_int),
+        #                                      explicit_array=True,
+        #                                      packed=True)
+        #     self._all_wen_to_mem = self.var("all_wen_to_mem", self.mem_input_ports,
+        #                                     size=(self.num_modes,
+        #                                           self.banks),
+        #                                     explicit_array=True,
+        #                                     packed=True)
+        #     self._all_ren_to_mem = self.var("all_ren_to_mem", self.mem_output_ports,
+        #                                     size=(self.num_modes,
+        #                                           self.banks),
+        #                                     explicit_array=True,
+        #                                     packed=True)
+
+        #     self._all_addr_to_mem = self.var("all_addr_to_mem", self.address_width,
+        #                                      size=(self.num_modes,
+        #                                            self.banks),
+        #                                      explicit_array=True,
+        #                                      packed=True)
+
+        #     self._fifo_data_out = self.var("fifo_data_out", self.data_width)
+        #     self._fifo_valid_out = self.var("fifo_valid_out", 1)
+        #     self._fifo_empty = self.var("fifo_empty", 1)
+        #     self._fifo_full = self.var("fifo_full", 1)
+        #     self._fifo_data_to_mem = self.var("fifo_data_to_mem", self.data_width,
+        #                                       size=(self.banks,
+        #                                             self.fw_int),
+        #                                       explicit_array=True,
+        #                                       packed=True)
+        #     self._fifo_wen_to_mem = self.var("fifo_wen_to_mem", self.banks)
+        #     self._fifo_ren_to_mem = self.var("fifo_ren_to_mem", self.banks)
+
+        #     self._fifo_addr_to_mem = self.var("fifo_addr_to_mem", self.address_width,
+        #                                       size=self.banks,
+        #                                       explicit_array=True,
+        #                                       packed=True)
+
+        #     self._sram_data_out = self.var("sram_data_out", self.data_width)
+        #     self._sram_valid_out = self.var("sram_valid_out", 1)
+        #     self._sram_empty = self.var("sram_empty", 1)
+        #     self._sram_full = self.var("sram_full", 1)
+        #     self._sram_data_to_mem = self.var("sram_data_to_mem", self.data_width,
+        #                                       size=(self.banks,
+        #                                             self.fw_int),
+        #                                       explicit_array=True,
+        #                                       packed=True)
+        #     self._sram_wen_to_mem = self.var("sram_wen_to_mem", self.banks)
+        #     self._sram_ren_to_mem = self.var("sram_ren_to_mem", self.banks)
+
+        #     self._sram_addr_to_mem = self.var("sram_addr_to_mem", self.address_width,
+        #                                       size=self.banks,
+        #                                       explicit_array=True,
+        #                                       packed=True)
+
+        #     if self.fw_int > 1:
+        #         self._sram_ready_out = self.output("sram_ready_out", 1)
+        #         self._sram_ready_out.add_attribute(ControlSignalAttr(False))
+
+        #     strg_ram = StrgRAM(data_width=self.data_width,
+        #                        banks=self.banks,
+        #                        memory_width=self.mem_width,
+        #                        memory_depth=self.mem_depth,
+        #                        num_tiles=self.num_tiles,
+        #                        rw_same_cycle=self.rw_same_cycle,
+        #                        read_delay=self.read_delay,
+        #                        addr_width=16,
+        #                        prioritize_write=True)
+
+        #     self.add_child("sram_ctrl", strg_ram,
+        #                    clk=self._gclk,
+        #                    rst_n=self._rst_n,
+        #                    wen=self._wen[0],
+        #                    ren=self._ren[0],
+        #                    data_in=self._data_in[0],
+        #                    wr_addr_in=self._addr_in[0],
+        #                    rd_addr_in=self._addr_in[0],
+        #                    data_from_strg=self._mem_data_out,
+        #                    data_out=self._sram_data_out,
+        #                    valid_out=self._sram_valid_out,
+        #                    data_to_strg=self._sram_data_to_mem,
+        #                    wen_to_strg=self._sram_wen_to_mem,
+        #                    ren_to_strg=self._sram_ren_to_mem,
+        #                    addr_out=self._sram_addr_to_mem)
+
+        #     if self.fw_int > 1:
+        #         self.wire(self._sram_ready_out, strg_ram.ports.ready)
+
+        #     # If we have the fifo mode enabled -
+        #     # Instantiate a FIFO first off...
+        #     stfo = StrgFIFO(data_width=self.data_width,
+        #                     banks=self.banks,
+        #                     memory_width=self.mem_width,
+        #                     rw_same_cycle=False,
+        #                     read_delay=self.read_delay,
+        #                     addr_width=self.address_width)
+        #     self.add_child("fifo_ctrl", stfo,
+        #                    clk=self._gclk,
+        #                    rst_n=self._rst_n,
+        #                    data_in=self._data_in[0],
+        #                    push=self._wen[0],
+        #                    pop=self._ren[0],
+        #                    data_from_strg=self._mem_data_out,
+        #                    data_out=self._fifo_data_out,
+        #                    valid_out=self._fifo_valid_out,
+        #                    empty=self._fifo_empty,
+        #                    full=self._fifo_full,
+        #                    data_to_strg=self._fifo_data_to_mem,
+        #                    wen_to_strg=self._fifo_wen_to_mem,
+        #                    ren_to_strg=self._fifo_ren_to_mem,
+        #                    addr_out=self._fifo_addr_to_mem)
+
+        #     self._empty = self.output("empty", 1)
+        #     self._empty.add_attribute(ControlSignalAttr(False))
+
+        #     self._full = self.output("full", 1)
+        #     self._full.add_attribute(ControlSignalAttr(False))
+
+        #     self.wire(self._empty, self._fifo_empty)
+        #     self.wire(self._full, self._fifo_full)
+
+        #     self.wire(self._all_data_to_mem[0], self._ub_data_to_mem)
+        #     self.wire(self._all_wen_to_mem[0], self._ub_wen_to_mem)
+        #     self.wire(self._all_ren_to_mem[0], self._ub_cen_to_mem)
+        #     self.wire(self._all_addr_to_mem[0], self._ub_addr_to_mem)
+
+        #     self.wire(self._all_data_to_mem[1], self._fifo_data_to_mem)
+        #     for i in range(self.banks):
+        #         self.wire(self._all_wen_to_mem[1][i], self._fifo_wen_to_mem[i])
+        #         self.wire(self._all_ren_to_mem[1][i], self._fifo_ren_to_mem[i])
+        #         self.wire(self._all_addr_to_mem[1][i], self._fifo_addr_to_mem[i])
+
+        #     self.wire(self._all_data_to_mem[2], self._sram_data_to_mem)
+        #     for i in range(self.banks):
+        #         self.wire(self._all_wen_to_mem[2][i], self._sram_wen_to_mem[i])
+        #         self.wire(self._all_ren_to_mem[2][i], self._sram_ren_to_mem[i])
+        #         self.wire(self._all_addr_to_mem[2][i], self._sram_addr_to_mem[i])
+
+        #     # Mux all of these signals when in FIFO mode
+        #     self.wire(self._mem_data_dp, self._all_data_to_mem[self._mode])
+        #     self.wire(self._mem_cen_dp, self._all_ren_to_mem[self._mode] | self._all_wen_to_mem[self._mode])
+        #     self.wire(self._mem_wen_dp, self._all_wen_to_mem[self._mode])
+        #     self.wire(self._mem_addr_dp, self._all_addr_to_mem[self._mode])
+
+        #     # have SRAM when not doing formal module generation or when generating
+        #     # SRAM modular problem for formal team
+        #     if self.formal_module is None or self.formal_module == "sram":
+        #         for i in range(self.banks):
+        #             mbank = SRAM(use_sram_stub=self.use_sram_stub,
+        #                          sram_name=self.sram_macro_info.name,
+        #                          data_width=self.data_width,
+        #                          fw_int=self.fw_int,
+        #                          mem_depth=self.mem_depth,
+        #                          mem_input_ports=self.mem_input_ports,
+        #                          mem_output_ports=self.mem_output_ports,
+        #                          address_width=self.address_width,
+        #                          bank_num=i,
+        #                          num_tiles=self.num_tiles)
+
+        #             self.add_child(f"mem_{i}", mbank,
+        #                            clk=self._gclk,
+        #                            clk_en=self._clk_en | self._config_en.r_or(),
+        #                            mem_data_in_bank=self._mem_data_in[i],
+        #                            mem_data_out_bank=self._mem_data_out[i],
+        #                            mem_addr_in_bank=self._mem_addr_in[i],
+        #                            mem_cen_in_bank=self._mem_cen_in[i],
+        #                            mem_wen_in_bank=self._mem_wen_in[i],
+        #                            wtsel=self.sram_macro_info.wtsel_value,
+        #                            rtsel=self.sram_macro_info.rtsel_value)
+        # else:
+
+        #     self.wire(self._mem_data_dp, self._ub_data_to_mem)
+        #     self.wire(self._mem_wen_dp, self._ub_wen_to_mem)
+        #     self.wire(self._mem_cen_dp, self._ub_cen_to_mem)
+        #     if self.rw_same_cycle:
+        #         self.wire(self._wr_mem_addr_dp, self._ub_wr_addr_to_mem)
+        #         self.wire(self._rd_mem_addr_dp, self._ub_rd_addr_to_mem)
+        #     else:
+        #         self.wire(self._mem_addr_dp, self._ub_addr_to_mem)
+
+        #     for i in range(self.banks):
+        #         print(self.fw_int)
+        #         rfile = RegisterFile(data_width=self.data_width,
+        #                              write_ports=self.mem_input_ports,
+        #                              read_ports=self.mem_output_ports,
+        #                              width_mult=self.fw_int,
+        #                              depth=self.mem_depth,
+        #                              read_delay=self.read_delay)
+        #         if self.rw_same_cycle:
+        #             self.add_child(f"rf_{i}", rfile,
+        #                            clk=self._gclk,
+        #                            rst_n=self._rst_n,
+        #                            wen=self._mem_wen_in[i],
+        #                            wr_addr=self._wr_mem_addr_in[i],
+        #                            rd_addr=self._rd_mem_addr_in[i],
+        #                            data_in=self._mem_data_in[i],
+        #                            data_out=self._mem_data_out[i])
+        #         else:
+        #             self.add_child(f"rf_{i}", rfile,
+        #                            clk=self._gclk,
+        #                            rst_n=self._rst_n,
+        #                            wen=self._mem_wen_in[i],
+        #                            wr_addr=self._mem_addr_in[i],
+        #                            rd_addr=self._mem_addr_in[i],
+        #                            data_in=self._mem_data_in[i],
+        #                            data_out=self._mem_data_out[i])
+        #         if self.read_delay == 1:
+        #             self.wire(rfile.ports.ren, self._mem_cen_dp[0])
+
+        # if self.fifo_mode:
+        #     self._all_data_out = self.var("all_data_out", self.data_width,
+        #                                   size=self.num_modes,
+        #                                   explicit_array=True,
+        #                                   packed=True)
+        #     self._all_valid_out = self.var("all_valid_out", self.num_modes)
+
+        #     self.wire(self._all_data_out[0], self._ub_data_out[0])
+        #     self.wire(self._all_valid_out[0], self._ub_valid_out[0])
+
+        #     self.wire(self._all_data_out[1], self._fifo_data_out)
+        #     self.wire(self._all_valid_out[1], self._fifo_valid_out)
+
+        #     self.wire(self._all_data_out[2], self._sram_data_out)
+        #     self.wire(self._all_valid_out[2], self._sram_valid_out)
+
+        #     self.wire(self._data_out_tile[0], self._all_data_out[self._mode])
+        #     self.wire(self._valid_out_tile[0], self._all_valid_out[self._mode])
+        # else:
+        #     self.wire(self._data_out_tile[0], self._ub_data_out[0])
+        #     self.wire(self._valid_out_tile[0], self._ub_valid_out[0])
+
+        # for i in range(self.interconnect_output_ports - 1):
+        #     self.wire(self._data_out_tile[i + 1], self._ub_data_out[i + 1])
+        #     self.wire(self._valid_out_tile[i + 1], self._ub_valid_out[i + 1])
+
+        # chaining = ChainAccessor(data_width=self.data_width,
+        #                          interconnect_output_ports=self.interconnect_output_ports)
+
+        # self._mode_mask = self.var("mode_mask", self._accessor_output.width)
+        # self.wire(self._mode_mask[0], self._mode.r_or())
+        # for i in range(self._accessor_output.width - 1):
+        #     self.wire(self._mode_mask[i + 1], kts.const(0, 1))
+
+        # self.add_child(f"chain", chaining,
+        #                curr_tile_data_out=self._data_out_tile,
+        #                chain_data_in=self._chain_data_in,
+        #                accessor_output=(self._accessor_output | self._mode_mask),
+        #                data_out_tile=self._data_out)
 
         ########################
         ##### CLOCK ENABLE #####

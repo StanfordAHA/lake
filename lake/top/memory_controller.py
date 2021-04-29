@@ -32,3 +32,7 @@ class MemoryController(ABC):
         Use this method to indicate what memory ports this controller has
         '''
         pass
+
+    @abstractmethod
+    def __str__(self):
+        pass
