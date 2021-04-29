@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class MemoryController(ABC):
     '''
     Provides the utilities to interface a memory controller with a memory interface

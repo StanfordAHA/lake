@@ -1,10 +1,12 @@
 import kratos as kts
 from enum import Enum
 
+
 class MemoryPortType(Enum):
     READ = 0
     WRITE = 1
     READWRITE = 2
+
 
 class MemoryPort():
     def __init__(self, mpt: MemoryPortType, delay=1, active_read=True) -> None:
@@ -48,6 +50,7 @@ class MemoryPort():
             return False
         else:
             return self.active_read
+
 
 class MemoryInterface(kts.Generator):
     '''
@@ -96,7 +99,6 @@ class MemoryInterface(kts.Generator):
                 port_intf['data_in'] = self.output(f"data_in_p{pnum}", self.mem_width)
                 port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_width))
                 port_intf['write_enable'] = self.input(f"write_enable_p{pnum}", 1)
-
 
     def set_tech_map(self, tech_map):
         assert tech_map is not None, f"Need to provide valid tech map"
