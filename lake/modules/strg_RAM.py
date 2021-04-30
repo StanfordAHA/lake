@@ -1,3 +1,4 @@
+from lake.top.memory_controller import MemoryController
 from kratos import *
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
@@ -5,7 +6,7 @@ from lake.modules.reg_fifo import RegFIFO
 import kratos as kts
 
 
-class StrgRAM(Generator):
+class StrgRAM(MemoryController):
     '''
     Storage RAM
         Does ROM/RAM from storage
@@ -317,6 +318,24 @@ class StrgRAM(Generator):
         # Otherwise keep the data
         else:
             self._data_combined[idx] = self._data_from_strg[self._rd_bank][idx]
+
+    def get_memory_ports(self):
+        return [[None]]
+
+    def get_inputs(self):
+        pnames = self.internal_generator.get_port_names()
+        # print(pnames)
+        inlist = [(pname, 16) for pname in pnames]
+        return inlist
+
+    def get_outputs(self):
+        pnames = self.internal_generator.get_port_names()
+        # print(pnames)
+        inlist = [(pname, 16) for pname in pnames]
+        return inlist
+
+    def __str__(self):
+        return self.name
 
 
 if __name__ == "__main__":

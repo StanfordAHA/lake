@@ -51,6 +51,12 @@ class MemoryPort():
         else:
             return self.active_read
 
+    def __str__(self):
+        conn_str = ""
+        for (name, conn) in self.port_interface.items():
+            conn_str += f"conn: {name}, {conn.name}\n"
+        return f"Port: Type: {self.get_port_type()}, conns:\n{conn_str}"
+
 
 class MemoryInterface(kts.Generator):
     '''
@@ -110,6 +116,12 @@ class MemoryInterface(kts.Generator):
         else:
             assert self.tech_map_provided, f"Need to provide tech map for macro realization"
             self.create_physical_memory()
+
+    def get_ports(self):
+        return self.mem_ports
+
+    def get_num_ports(self):
+        return len(self.mem_ports)
 
     def create_simulatable_memory(self):
         pass

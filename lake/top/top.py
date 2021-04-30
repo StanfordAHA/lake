@@ -57,7 +57,6 @@ class Top():
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=True):
-        super().__init__(name, debug=True)
 
         self.data_width = data_width
         self.mem_width = mem_width
@@ -94,11 +93,11 @@ class Top():
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
         # Create a MemoryTileBuilder
-        self.mlb = MemoryTileBuilder()
+        MTB = MemoryTileBuilder("laketop_mtb", True)
 
         # For our current implementation, we are just using 1 bank of SRAM
         mem_banks = 1
-        self.mlb.set_banks(mem_banks)
+        MTB.set_banks(mem_banks)
 
         # Declare and inject the memory interface for this memory into the MLB
         mem_width = 64
@@ -109,67 +108,73 @@ class Top():
         }
         one_p_sram = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
 
-        self.mlb.set_memory_interface(name_prefix="sram_idk",
-                                      mem_params=memory_params,
-                                      ports=one_p_sram,
-                                      sim_macro_n=True,
-                                      tech_map=None)
+        MTB.set_memory_interface(name_prefix="sram_idk",
+                                 mem_params=memory_params,
+                                 ports=one_p_sram,
+                                 sim_macro_n=True,
+                                 tech_map=None)
 
         # Now add the controllers in...
         controllers = []
 
         if self.fw_int > 1:
-            controllers += StrgUBVec(data_width=self.data_width,
-                                     mem_width=self.mem_width,
-                                     mem_depth=self.mem_depth,
-                                     input_addr_iterator_support=self.input_iterator_support,
-                                     input_sched_iterator_support=self.input_iterator_support,
-                                     interconnect_input_ports=self.interconnect_input_ports,
-                                     interconnect_output_ports=self.interconnect_output_ports,
-                                     read_delay=self.read_delay,
-                                     rw_same_cycle=self.rw_same_cycle,
-                                     agg_height=self.agg_height,
-                                     config_width=self.input_config_width,
-                                     agg_data_top=(self.formal_module == "agg"))
+            controllers.append(StrgUBVec(data_width=self.data_width,
+                                         mem_width=self.mem_width,
+                                         mem_depth=self.mem_depth,
+                                         input_addr_iterator_support=self.input_iterator_support,
+                                         input_sched_iterator_support=self.input_iterator_support,
+                                         interconnect_input_ports=self.interconnect_input_ports,
+                                         interconnect_output_ports=self.interconnect_output_ports,
+                                         read_delay=self.read_delay,
+                                         rw_same_cycle=self.rw_same_cycle,
+                                         agg_height=self.agg_height,
+                                         config_width=self.input_config_width,
+                                         agg_data_top=(self.formal_module == "agg")))
         else:
-            controllers += StrgUBThin(data_width=self.data_width,
-                                      mem_width=self.mem_width,
-                                      mem_depth=self.mem_depth,
-                                      input_addr_iterator_support=self.input_iterator_support,
-                                      input_sched_iterator_support=self.input_iterator_support,
-                                      output_addr_iterator_support=self.output_iterator_support,
-                                      output_sched_iterator_support=self.output_iterator_support,
-                                      interconnect_input_ports=self.interconnect_input_ports,
-                                      interconnect_output_ports=self.interconnect_output_ports,
-                                      config_width=self.input_config_width,
-                                      read_delay=self.read_delay,
-                                      rw_same_cycle=self.rw_same_cycle,
-                                      gen_addr=self.gen_addr)
+            controllers.append(StrgUBThin(data_width=self.data_width,
+                                          mem_width=self.mem_width,
+                                          mem_depth=self.mem_depth,
+                                          input_addr_iterator_support=self.input_iterator_support,
+                                          input_sched_iterator_support=self.input_iterator_support,
+                                          output_addr_iterator_support=self.output_iterator_support,
+                                          output_sched_iterator_support=self.output_iterator_support,
+                                          interconnect_input_ports=self.interconnect_input_ports,
+                                          interconnect_output_ports=self.interconnect_output_ports,
+                                          config_width=self.input_config_width,
+                                          read_delay=self.read_delay,
+                                          rw_same_cycle=self.rw_same_cycle,
+                                          gen_addr=self.gen_addr))
 
-        if self.fifo_mode:
-            controllers += StrgFIFO(data_width=self.data_width,
-                                    banks=self.banks,
-                                    memory_width=self.mem_width,
-                                    rw_same_cycle=False,
-                                    read_delay=self.read_delay,
-                                    addr_width=self.address_width)
+        # if self.fifo_mode:
+        #     controllers.append(StrgFIFO(data_width=self.data_width,
+        #                             banks=self.banks,
+        #                             memory_width=self.mem_width,
+        #                             rw_same_cycle=False,
+        #                             read_delay=self.read_delay,
+        #                             addr_width=self.address_width))
 
-        controllers += StrgRAM(data_width=self.data_width,
-                               banks=self.banks,
-                               memory_width=self.mem_width,
-                               memory_depth=self.mem_depth,
-                               num_tiles=self.num_tiles,
-                               rw_same_cycle=self.rw_same_cycle,
-                               read_delay=self.read_delay,
-                               addr_width=16,
-                               prioritize_write=True)
+        # controllers.append(StrgRAM(data_width=self.data_width,
+        #                        banks=self.banks,
+        #                        memory_width=self.mem_width,
+        #                        memory_depth=self.mem_depth,
+        #                        num_tiles=self.num_tiles,
+        #                        rw_same_cycle=self.rw_same_cycle,
+        #                        read_delay=self.read_delay,
+        #                        addr_width=16,
+        #                        prioritize_write=True))
 
+        for ctrl in controllers:
+            MTB.add_memory_controller(ctrl)
         # Finalize number of controllers (so we know how many bits to give the mode register)
-        self.mlb.finalize_controllers()
+        MTB.finalize_controllers()
 
         # Then add the config hooks...
-        self.mlb.add_config_hooks(config_data_width=self.config_data_width,
-                                  config_addr_width=self.config_addr_width)
+        MTB.add_config_hooks(config_data_width=self.config_data_width,
+                             config_addr_width=self.config_addr_width)
+
+        print(MTB)
+
+        return
 
         # And realize the hardware
 
@@ -647,7 +652,7 @@ class Top():
 
         # self._accessor_output = self.var("accessor_output", self.interconnect_output_ports)
 
-        # self.add_child("strg_ub", strg_ub,
+        # self.add_child("strg_ub", strg_ub,controllers
         #                # clk + rst
         #                clk=self._gclk,
         #                rst_n=self._rst_n,
@@ -1198,26 +1203,6 @@ def get_formal_module(module):
 
     return lake_dut, need_config_lift, use_sram_stub, tsmc_info
 
-
-def get_lake_dut(formal_module=None,
-                 # no stencil valid needed for formal problems
-                 stencil_valid=False,
-                 tsmc_info=SRAMMacroInfo("tsmc_name"),
-                 use_sram_stub=True,
-                 mem_width=64,
-                 do_config_lift=True,
-                 **kwargs):
-
-    lake_dut = LakeTop(mem_width=mem_width,
-                       sram_macro_info=tsmc_info,
-                       use_sram_stub=use_sram_stub,
-                       add_clk_enable=True,
-                       add_flush=True,
-                       stencil_valid=stencil_valid,
-                       formal_module=formal_module,
-                       do_config_lift=do_config_lift,
-                       **kwargs)
-
     print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
 
     # if do_config_lift, then do not need_config_lift later
@@ -1225,30 +1210,33 @@ def get_lake_dut(formal_module=None,
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='LakeTop')
-    parser.add_argument("-f",
-                        help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for")
 
-    args = parser.parse_args()
+    top = Top()
 
-    need_config_lift = True
+    # parser = argparse.ArgumentParser(description='LakeTop')
+    # parser.add_argument("-f",
+    #                     help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for")
 
-    # normal generation
-    if args.f is None:
-        prefix = ""
-        lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut(mem_width=64)
-        extract_formal_annotation(lake_dut, f"lake_top_annotation.txt", "full")
-    # optional: to add generator cuts for formal module verilog + annotations
-    else:
-        module = args.f
-        lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
-        prefix = f"{module}_"
+    # args = parser.parse_args()
 
-    # config lift happens in all possible cases by this point
-    assert not need_config_lift
+    # need_config_lift = True
 
-    sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
-    # generate verilog
-    verilog(lake_dut, filename=f"{prefix}lake_top_pohan.sv",
-            optimize_if=False,
-            additional_passes={"change sram port names": sram_port_pass})
+    # # normal generation
+    # if args.f is None:
+    #     prefix = ""
+    #     lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut(mem_width=64)
+    #     extract_formal_annotation(lake_dut, f"lake_top_annotation.txt", "full")
+    # # optional: to add generator cuts for formal module verilog + annotations
+    # else:
+    #     module = args.f
+    #     lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
+    #     prefix = f"{module}_"
+
+    # # config lift happens in all possible cases by this point
+    # assert not need_config_lift
+
+    # sram_port_pass = change_sram_port_names(use_sram_stub=use_sram_stub, sram_macro_info=tsmc_info)
+    # # generate verilog
+    # verilog(lake_dut, filename=f"{prefix}lake_top_pohan.sv",
+    #         optimize_if=False,
+    #         additional_passes={"change sram port names": sram_port_pass})

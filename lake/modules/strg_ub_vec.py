@@ -1,3 +1,5 @@
+from lake.top.memory_interface import MemoryPort, MemoryPortType
+from lake.top.memory_controller import MemoryController
 from lake.utils.parse_clkwork_config import extract_controller, map_controller
 from kratos import *
 from lake.modules.passthru import *
@@ -12,7 +14,7 @@ from lake.utils.util import add_counter, decode
 import os
 
 
-class StrgUBVec(Generator):
+class StrgUBVec(MemoryController):
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_width=64,
@@ -358,6 +360,35 @@ class StrgUBVec(Generator):
                 config.append((f"strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_{i}", tb2out_1.cyc_stride[i]))
 
         return config
+
+    def get_memory_ports(self):
+        base_ports = [[None]]
+        rw_port = MemoryPort(MemoryPortType.READWRITE)
+        rw_port_intf = rw_port.get_port_interface()
+        rw_port_intf['data_in'] = self._data_to_sram
+        rw_port_intf['data_out'] = self._data_from_sram
+        rw_port_intf['write_addr'] = self._wr_addr_to_sram
+        rw_port_intf['write_enable'] = self._wen_to_sram
+        rw_port_intf['read_addr'] = self._rd_addr_to_sram
+        rw_port_intf['read_enable'] = self._ren_to_sram
+
+        base_ports[0][0] = rw_port
+        return base_ports
+
+    def get_inputs(self):
+        pnames = self.internal_generator.get_port_names()
+        # print(pnames)
+        inlist = [(pname, 16) for pname in pnames]
+        return inlist
+
+    def get_outputs(self):
+        pnames = self.internal_generator.get_port_names()
+        # print(pnames)
+        inlist = [(pname, 16) for pname in pnames]
+        return inlist
+
+    def __str__(self):
+        return self.name
 
 
 if __name__ == "__main__":
