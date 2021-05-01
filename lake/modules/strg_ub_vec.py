@@ -1,3 +1,4 @@
+from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.top.memory_interface import MemoryPort, MemoryPortType
 from lake.top.memory_controller import MemoryController
 from lake.utils.parse_clkwork_config import extract_controller, map_controller
@@ -11,6 +12,7 @@ from lake.modules.sram_only import StrgUBSRAMOnly
 from lake.modules.sram_tb_shared import StrgUBSRAMTBShared
 from lake.modules.tb_only import StrgUBTBOnly
 from lake.utils.util import add_counter, decode
+from lake.attributes.control_signal_attr import ControlSignalAttr
 import os
 
 
@@ -242,6 +244,18 @@ class StrgUBVec(MemoryController):
                                              explicit_array=True)
             self.wire(self._agg_data_out, agg_only.ports.agg_data_out)
 
+        self.base_ports = [[None]]
+        rw_port = MemoryPort(MemoryPortType.READWRITE)
+        rw_port_intf = rw_port.get_port_interface()
+        rw_port_intf['data_in'] = self._data_to_sram
+        rw_port_intf['data_out'] = self._data_from_sram
+        rw_port_intf['write_addr'] = self._wr_addr_to_sram
+        rw_port_intf['write_enable'] = self._wen_to_sram
+        rw_port_intf['read_addr'] = self._rd_addr_to_sram
+        rw_port_intf['read_enable'] = self._ren_to_sram
+        rw_port.annotate_port_signals()
+        self.base_ports[0][0] = rw_port
+
     def get_static_bitstream(self, config_path, in_file_name, out_file_name):
 
         config = []
@@ -362,30 +376,13 @@ class StrgUBVec(MemoryController):
         return config
 
     def get_memory_ports(self):
-        base_ports = [[None]]
-        rw_port = MemoryPort(MemoryPortType.READWRITE)
-        rw_port_intf = rw_port.get_port_interface()
-        rw_port_intf['data_in'] = self._data_to_sram
-        rw_port_intf['data_out'] = self._data_from_sram
-        rw_port_intf['write_addr'] = self._wr_addr_to_sram
-        rw_port_intf['write_enable'] = self._wen_to_sram
-        rw_port_intf['read_addr'] = self._rd_addr_to_sram
-        rw_port_intf['read_enable'] = self._ren_to_sram
-
-        base_ports[0][0] = rw_port
-        return base_ports
+        return self.base_ports
 
     def get_inputs(self):
-        pnames = self.internal_generator.get_port_names()
-        # print(pnames)
-        inlist = [(pname, 16) for pname in pnames]
-        return inlist
+        return super().get_inputs()
 
     def get_outputs(self):
-        pnames = self.internal_generator.get_port_names()
-        # print(pnames)
-        inlist = [(pname, 16) for pname in pnames]
-        return inlist
+        return super().get_outputs()
 
     def __str__(self):
         return self.name

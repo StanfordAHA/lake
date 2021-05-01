@@ -174,6 +174,8 @@ class Top():
 
         print(MTB)
 
+        MTB.realize_hw()
+
         return
 
         # And realize the hardware

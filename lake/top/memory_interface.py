@@ -2,6 +2,11 @@ import kratos as kts
 from enum import Enum
 
 
+class MemoryPortExclusionAttr(kts.Attribute):
+    def __init__(self):
+        super().__init__()
+
+
 class MemoryPortType(Enum):
     READ = 0
     WRITE = 1
@@ -50,6 +55,15 @@ class MemoryPort():
             return False
         else:
             return self.active_read
+
+    def annotate_port_signals(self):
+        '''
+        This function adds a MemoryPortExclusionAttr to all signals -
+        this helps filter them out during collection passes
+        '''
+        for (name, signal) in self.port_interface.items():
+            if signal is not None:
+                signal.add_attribute(MemoryPortExclusionAttr())
 
     def __str__(self):
         conn_str = ""

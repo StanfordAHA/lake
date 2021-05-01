@@ -1,3 +1,4 @@
+from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.top.memory_interface import *
 from lake.top.memory_controller import *
@@ -9,6 +10,11 @@ class MemoryTileBuilder(kts.Generator):
     '''
     This class provides utilities to add memories and memory controllers and automagically generate the hardware
     '''
+
+    # Need to provide legal widths for top level signals - inputs/outputs - for compatibility
+    # with the standard routing network on the AHA CGRA
+    legal_widths = [16, 1]
+
     def __init__(self, name, debug, memory_interface: MemoryInterface = None, memory_banks=1, controllers=[]):
 
         super().__init__(name, debug)
@@ -16,6 +22,14 @@ class MemoryTileBuilder(kts.Generator):
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
         self.controllers = controllers
+        self.controllers_flat = []
+        self.controllers_dict = {}
+        self.controllers_flat_dict = {}
+        for mem_ctrl in self.controllers:
+            self.controllers_dict[mem_ctrl.name] = mem_ctrl
+            flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=MemoryTileBuilder.legal_widths)
+            self.controllers_flat_dict[flat_wrap.name] = flat_wrap
+            self.controllers_flat.append(flat_wrap)
         self.num_modes = 0
 
         self.memories = []
@@ -111,7 +125,7 @@ class MemoryTileBuilder(kts.Generator):
         # Go through each controller and get all the inputs - figure out maximum of each size
         # and indicate in which mode which input goes to which port in the controllers
         # Go through controllers
-        for mem_ctrl in self.controllers:
+        for mem_ctrl in self.controllers_flat:
             ctrl_name = str(mem_ctrl)
             ctrl_ins = mem_ctrl.get_inputs()
             # Create a dict from port width to a list of signals with that width
@@ -126,7 +140,7 @@ class MemoryTileBuilder(kts.Generator):
         # Go through each controller and get all the inputs - figure out maximum of each size
         # and indicate in which mode which input goes to which port in the controllers
         # Go through controllers
-        for mem_ctrl in self.controllers:
+        for mem_ctrl in self.controllers_flat:
             ctrl_name = str(mem_ctrl)
             ctrl_outs = mem_ctrl.get_outputs()
             # Create a dict from port width to a list of signals with that width
@@ -155,17 +169,69 @@ class MemoryTileBuilder(kts.Generator):
                 # print(f"merged_dict_{i}: {merged_dict}")
 
     def add_memory_controller(self, mem_ctrl: MemoryController):
+        # When we add a memory controller, we really create a flattened wrapper
+        # so that we can use it easily after the fact
         if not self.controllers_finalized:
             self.controllers.append(mem_ctrl)
+            self.controllers_dict[mem_ctrl.name] = mem_ctrl
+            flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=MemoryTileBuilder.legal_widths)
+            self.controllers_flat_dict[flat_wrap.name] = flat_wrap
+            self.controllers_flat.append(flat_wrap)
         else:
             print(f"Controllers finalized - {mem_ctrl} isn't being added...")
 
     def add_config_hooks(self, config_data_width=32, config_addr_width=8):
         pass
 
+    def realize_hw(self):
+        '''
+        Go through the motions of finally creating the hardware
+        '''
+        assert self.controllers_finalized, f"Controllers need to be finalized before realizing HW"
+        # To realize the hardware, we basically need to create each input and output in the dictionaries
+        # Then, wire up the memory ports with muxes + mode as select signal, then realize the underlying memory
+        # Need to flatten stuff...
+        self.realize_controllers()
+        self.realize_inputs()
+        self.realize_outputs()
+        self.realize_mem_connections()
+        for mem in self.memories:
+            mem.realize_hw()
+
+    def realize_controllers(self):
+        for (ctrl_name, ctrl) in self.controllers_flat_dict.items():
+            self.add_child(f'mem_ctrl_{ctrl_name}', ctrl)
+
+    def realize_inputs(self):
+        '''
+        This function creates the inputs to the tile, tags them, and wires them to the ports of the controllers
+        '''
+        for (input_width, signal_dicts) in self.inputs_dict.items():
+            for (i, signal_dict) in enumerate(signal_dicts):
+                new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width)
+                isctrl = input_width == 1
+                new_input.add_attribute(ControlSignalAttr(isctrl))
+                for (ctrl_name, port) in signal_dict.items():
+                    print(self.controllers_flat_dict)
+                    self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
+
+    def realize_outputs(self):
+        '''
+        This function creates the outputs from the tile, tags them, and wires them to the ports of the controllers
+        '''
+        for (output_width, signal_dicts) in self.outputs_dict.items():
+            for (i, signal_dict) in enumerate(signal_dicts):
+                new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width)
+                new_output.add_attribute(ControlSignalAttr(False))
+                for (ctrl_name, port) in signal_dict.items():
+                    self.wire(new_output, self.controllers_flat_dict[ctrl_name].ports[port])
+
+    def realize_mem_connections(self):
+        pass
+
     def __str__(self):
         rep_str = "=====MEMORY TILE BUILDER=====\n===CONTROLLERS===\n"
-        rep_str += f"{self.controllers}\n===INPUTS===\n{self.inputs_dict}\n"
+        rep_str += f"{self.controllers_flat}\n===INPUTS===\n{self.inputs_dict}\n"
         rep_str += f"===OUTPUTS===\n{self.outputs_dict}\n===MEMPORTS===\n"
         for i in range(self.memory_banks):
             for j in range(self.memory_interface.get_num_ports()):
