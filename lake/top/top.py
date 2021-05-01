@@ -100,11 +100,9 @@ class Top():
         MTB.set_banks(mem_banks)
 
         # Declare and inject the memory interface for this memory into the MLB
-        mem_width = 64
-        mem_depth = 512
         memory_params = {
-            'mem_width': mem_width,
-            'mem_depth': mem_depth
+            'mem_width': self.mem_width,
+            'mem_depth': self.mem_depth
         }
         one_p_sram = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
 
@@ -175,6 +173,10 @@ class Top():
         print(MTB)
 
         MTB.realize_hw()
+
+        verilog(MTB, filename="top_mtb.sv",
+                optimize_if=False,
+                additional_passes={"lift config regs": lift_config_reg})
 
         return
 

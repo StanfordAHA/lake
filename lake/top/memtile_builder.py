@@ -194,13 +194,17 @@ class MemoryTileBuilder(kts.Generator):
         self.realize_controllers()
         self.realize_inputs()
         self.realize_outputs()
-        self.realize_mem_connections()
-        for mem in self.memories:
+        for (idx, mem) in enumerate(self.memories):
             mem.realize_hw()
+            self.add_child(f"memory_{idx}", mem)
+        self.realize_mem_connections()
 
     def realize_controllers(self):
         for (ctrl_name, ctrl) in self.controllers_flat_dict.items():
             self.add_child(f'mem_ctrl_{ctrl_name}', ctrl)
+            # Wire clk and rst....making some decent assumptions here
+            self.wire(self._clk, ctrl.ports['clk'])
+            self.wire(self._rst_n, ctrl.ports['rst_n'])
 
     def realize_inputs(self):
         '''
@@ -212,7 +216,6 @@ class MemoryTileBuilder(kts.Generator):
                 isctrl = input_width == 1
                 new_input.add_attribute(ControlSignalAttr(isctrl))
                 for (ctrl_name, port) in signal_dict.items():
-                    print(self.controllers_flat_dict)
                     self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
 
     def realize_outputs(self):
@@ -226,8 +229,46 @@ class MemoryTileBuilder(kts.Generator):
                 for (ctrl_name, port) in signal_dict.items():
                     self.wire(new_output, self.controllers_flat_dict[ctrl_name].ports[port])
 
+    def add_mem_port_connection(self, local_port, ctrl_ports):
+        '''
+        This function handles building the mux to the memory port given the local
+        port in the interface and a dict of all controller ports attempting to connect
+        '''
+        local_intf = local_port.get_port_interface()
+        print(local_port)
+        print(ctrl_ports)
+        mux_size = len(ctrl_ports)
+        print(f"mux size: {mux_size}")
+        if mux_size == 0:
+            # Nothing to connect to this port - wire to 0
+            for (name, port) in local_intf.items():
+                tmp_0 = kts.const(0, width=port.width)
+                self.wire(port, tmp_0)
+        elif mux_size == 1:
+            # Just hook up the one port directly
+            print("dont need a mux")
+            ctrl_intf = {}
+            for (ctrl_name, ctrl_port) in ctrl_ports.items():
+                ctrl_intf = ctrl_port.get_port_interface()
+            for (name, port) in local_intf.items():
+                print(f"local: {port}, controller: {ctrl_intf[name]}")
+                self.wire(port, ctrl_intf[name])
+        else:
+            # Now we procedurally produce an always_comb block to choose between controllers
+            raise NotImplementedError
+
     def realize_mem_connections(self):
-        pass
+        # For each port in the memory system, mux between the different controllers
+        # based on the mode
+        for bank in range(self.memory_banks):
+            for port in range(self.memory_interface.get_num_ports()):
+                print(f"bank: {bank}, port: {port}")
+                print(self.memories)
+                self.add_mem_port_connection(self.memories[bank].get_ports()[port], self.mem_conn[bank][port])
+                # for (idx, (ctrl, ctrl_port)) in enumerate(self.mem_conn[bank][port].items()):
+                #     # Now we basically want to add in the connections
+                #     self.add_mem_port_connection(local_port=self.memories[bank][port],
+                #                                  ctrl_port=ctrl_port, idx=idx)
 
     def __str__(self):
         rep_str = "=====MEMORY TILE BUILDER=====\n===CONTROLLERS===\n"
