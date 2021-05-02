@@ -232,28 +232,22 @@ class MemoryTileBuilder(kts.Generator):
                 new_output.add_attribute(ControlSignalAttr(False))
                 # We need to choose which output is hooked up based on the mode...
                 mux_size = len(signal_dict.keys())
-                # print(f"Mux size: {mux_size}")
                 mux_comb = self.combinational()
                 prev_stmt = None
                 # Default assign 0 to prevent latches.
-                # mux_comb.add_stmt(new_output.assign(0))
+                mux_comb.add_stmt(new_output.assign(0))
                 for (idx, (ctrl_name, port)) in enumerate(signal_dict.items()):
                     if mux_size == 1:
                         mux_comb.add_stmt(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
                     else:
                         if idx == 0:
                             first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
-                            # first_if.then_(new_output.assign(0))
                             first_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
-                            # print(port_to_assign)
                             print(self.controllers_flat_dict[ctrl_name].ports[port])
                             prev_stmt = first_if
                         else:
                             chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
                             chain_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
-                            # chain_if.then_(new_output.assign(0))
-                            # print(self.controllers_flat_dict[ctrl_name].ports)
-                            # print(self.controllers_flat_dict[ctrl_name].ports[port])
                             prev_stmt.else_(chain_if)
                             prev_stmt = chain_if
 
