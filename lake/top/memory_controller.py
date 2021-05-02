@@ -166,13 +166,11 @@ class MemoryControllerFlatWrapper(MemoryController):
     def flatten_inputs(self):
         child_ins = self.mem_ctrl.get_inputs()
         for (inp, width) in child_ins:
-            print(f"{inp}, {width}, {inp.size}")
             self.flatten_port(inp, in_outn=True, name=inp.name)
 
     def flatten_outputs(self):
         child_outs = self.mem_ctrl.get_outputs()
         for (outp, width) in child_outs:
-            print(f"{outp}, {width}, {outp.size}")
             self.flatten_port(outp, in_outn=False, name=outp.name)
 
     def lift_memory_port(self, mem_prt: MemoryPort):
@@ -181,18 +179,24 @@ class MemoryControllerFlatWrapper(MemoryController):
         # These interfaces should match directly...
         for (name, sig) in mem_prt.get_port_interface().items():
             # These should all comply anyway, so just need to recreate them
-            lifted_port = self.port_from_def(sig, name=f"{sig}_lifted")
-            new_mem_prt_intf[name] = lifted_port
-            self.wire(lifted_port, sig)
-            for attr in sig.attributes:
-                lifted_port.add_attribute(attr)
+            try:
+                lifted_port = self.port_from_def(sig, name=f"{sig}_lifted")
+                new_mem_prt_intf[name] = lifted_port
+                self.wire(lifted_port, sig)
+                for attr in sig.attributes:
+                    lifted_port.add_attribute(attr)
+            except kts.VarException:
+                print("Port already exists...copying into MemoryPort")
+                new_mem_prt_intf['read_addr'] = new_mem_prt_intf['write_addr']
         return new_mem_prt
+
+    def handle_duplicate_address(self):
+        pass
 
     def lift_memory_ports(self):
         child_mem_ports = self.mem_ctrl.get_memory_ports()
         # Get a deep copy so we have the correct dimensions
         self.mem_ports = child_mem_ports.copy()
-        print(self.mem_ports)
         for bank in range(len(child_mem_ports)):
             for port in range(len(child_mem_ports[0])):
                 if child_mem_ports[bank][port] is not None:

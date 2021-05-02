@@ -7,6 +7,10 @@ from lake.attributes.formal_attr import *
 import kratos as kts
 
 
+class MemoryTileFinalizedException(Exception):
+    pass
+
+
 class MemoryTileBuilder(kts.Generator):
     '''
     This class provides utilities to add memories and memory controllers and automagically generate the hardware
@@ -165,9 +169,7 @@ class MemoryTileBuilder(kts.Generator):
                     merged_dict[width].append({})
             # Now we can add each signal to the dictionary mapped from each port
             for i in range(num_sigs_needed):
-                # print(f'signal_list[i] = {signal_list[i]}')
                 merged_dict[width][i][str(mem_ctrl)] = str(signal_list[i])
-                # print(f"merged_dict_{i}: {merged_dict}")
 
     def add_memory_controller(self, mem_ctrl: MemoryController):
         # When we add a memory controller, we really create a flattened wrapper
@@ -179,7 +181,7 @@ class MemoryTileBuilder(kts.Generator):
             self.controllers_flat_dict[flat_wrap.name] = flat_wrap
             self.controllers_flat.append(flat_wrap)
         else:
-            print(f"Controllers finalized - {mem_ctrl} isn't being added...")
+            raise MemoryTileFinalizedException(f"Controllers finalized - {mem_ctrl} isn't being added...")
 
     def add_config_hooks(self, config_data_width=32, config_addr_width=8):
         pass
@@ -223,12 +225,34 @@ class MemoryTileBuilder(kts.Generator):
         '''
         This function creates the outputs from the tile, tags them, and wires them to the ports of the controllers
         '''
+        print(self.controllers_flat_dict)
         for (output_width, signal_dicts) in self.outputs_dict.items():
             for (i, signal_dict) in enumerate(signal_dicts):
                 new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width)
                 new_output.add_attribute(ControlSignalAttr(False))
-                for (ctrl_name, port) in signal_dict.items():
-                    self.wire(new_output, self.controllers_flat_dict[ctrl_name].ports[port])
+                # We need to choose which output is hooked up based on the mode...
+                mux_size = len(signal_dict.keys())
+                print(f"Mux size: {mux_size}")
+                mux_comb = self.combinational()
+                prev_stmt = None
+                # Default assign 0 to prevent latches.
+                mux_comb.add_stmt(new_output.assign(0))
+                for (idx, (ctrl_name, port)) in enumerate(signal_dict.items()):
+                    if mux_size == 1:
+                        mux_comb.add_stmt(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                    else:
+                        if idx == 0:
+                            first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
+                            first_if.then_(new_output.assign(0))
+                            # first_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                            print(self.controllers_flat_dict[ctrl_name].ports[port])
+                            prev_stmt = first_if
+                        else:
+                            chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
+                            # chain_if.then_(new_output.assign(0))
+                            chain_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                            prev_stmt.else_(chain_if)
+                            prev_stmt = chain_if
 
     def add_mem_port_connection(self, local_port, ctrl_ports):
         '''
@@ -236,10 +260,7 @@ class MemoryTileBuilder(kts.Generator):
         port in the interface and a dict of all controller ports attempting to connect
         '''
         local_intf = local_port.get_port_interface()
-        print(local_port)
-        print(ctrl_ports)
         mux_size = len(ctrl_ports)
-        print(f"mux size: {mux_size}")
         if mux_size == 0:
             # Nothing to connect to this port - wire to 0
             for (name, port) in local_intf.items():
@@ -251,29 +272,37 @@ class MemoryTileBuilder(kts.Generator):
             for (ctrl_name, ctrl_port) in ctrl_ports.items():
                 ctrl_intf = ctrl_port.get_port_interface()
             for (name, port) in local_intf.items():
-                # print(f"local: {port}, controller: {ctrl_intf[name]}")
                 self.wire(port, ctrl_intf[name])
         else:
             # Now we procedurally produce an always_comb block to choose between controllers
             mux_comb = self.combinational()
+
+            # First, add default 0's for the memory input...
+            for (name, port) in local_intf.items():
+                if 'out' not in name:
+                    mux_comb.add_stmt(port.assign(0))
+
             prev_stmt = None
             ctrl_intf = {}
+
             # Go through each controller
             for (i, (ctrl_name, ctrl_port)) in enumerate(ctrl_ports.items()):
                 ctrl_intf = ctrl_port.get_port_interface()
                 # Grab the interface and then add it into an if statement against
                 # the memory port.
                 for (name, port) in local_intf.items():
-                    print(f"local: {port}, controller: {ctrl_intf[name]}")
-                    if i == 0:
-                        first_if = mux_comb.if_(self._mode == kts.const(i), width=self._mode.width)
-                        first_if.then_(port.assign(ctrl_intf[name]))
-                        prev_stmt = first_if
+                    if 'out' in name:
+                        mux_comb.add_stmt(ctrl_intf[name].assign(port))
                     else:
-                        chain_if = IfStmt(self._mode == kts.const(i, width=self._mode.width))
-                        chain_if.then_(port.assign(ctrl_intf[name]))
-                        prev_stmt.else_(chain_if)
-                        prev_stmt = chain_if
+                        if i == 0:
+                            first_if = mux_comb.if_(self._mode == kts.const(i, width=self._mode.width))
+                            first_if.then_(port.assign(ctrl_intf[name]))
+                            prev_stmt = first_if
+                        else:
+                            chain_if = IfStmt(self._mode == kts.const(i, width=self._mode.width))
+                            chain_if.then_(port.assign(ctrl_intf[name]))
+                            prev_stmt.else_(chain_if)
+                            prev_stmt = chain_if
 
     def realize_mem_connections(self):
         # For each port in the memory system, mux between the different controllers
@@ -291,4 +320,4 @@ class MemoryTileBuilder(kts.Generator):
                 rep_str += f"BANK: {i}\t PORT: {j}\n"
                 for (k, (ctrl, port)) in enumerate(self.mem_conn[i][j].items()):
                     rep_str += f"CONN {k}\tCONTROLLER: {ctrl}\tPORT: {port}\n"
-        return rep_str
+        return rep_str[:-1]

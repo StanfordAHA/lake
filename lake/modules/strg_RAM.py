@@ -1,3 +1,4 @@
+from lake.top.memory_interface import MemoryPort, MemoryPortType
 from lake.top.memory_controller import MemoryController
 from kratos import *
 from lake.attributes.config_reg_attr import ConfigRegAttr
@@ -97,15 +98,15 @@ class StrgRAM(MemoryController):
 
         self._addr_out = self.output("addr_out", self.mem_addr_width,
                                      size=self.banks,
-                                     explicit_array=True,
-                                     packed=True)
+                                     # packed=True)
+                                     explicit_array=True)
 
         self._rd_bank = self.var("rd_bank", max(1, clog2(self.banks)))
         self.set_read_bank()
-        self._rd_valid = self.var("rd_valid", 1)
-        self.set_read_valid()
-        if self.fw_int == 1:
-            self.wire(self._valid_out, self._rd_valid)
+        # self._rd_valid = self.var("rd_valid", 1)
+        # self.set_read_valid()
+        # if self.fw_int == 1:
+        #     self.wire(self._valid_out, self._rd_valid)
 
         # Fetch width of 1 is simpler...
         if self.fw_int == 1:
@@ -216,6 +217,18 @@ class StrgRAM(MemoryController):
                 self.add_code(self.set_data_combined, idx=i)
         # If read delay is 0, we can rmw in the same cycle (TIMING?)
 
+        self.base_ports = [[None]]
+        rw_port = MemoryPort(MemoryPortType.READWRITE)
+        rw_port_intf = rw_port.get_port_interface()
+        rw_port_intf['data_in'] = self._data_to_strg
+        rw_port_intf['data_out'] = self._data_from_strg
+        rw_port_intf['write_addr'] = self._addr_out
+        rw_port_intf['write_enable'] = self._wen_to_strg
+        rw_port_intf['read_addr'] = self._addr_out
+        rw_port_intf['read_enable'] = self._ren_to_strg
+        rw_port.annotate_port_signals()
+        self.base_ports[0][0] = rw_port
+
     def set_read_bank(self):
         if self.banks == 1:
             self.wire(self._rd_bank, kts.const(0, 1))
@@ -320,7 +333,7 @@ class StrgRAM(MemoryController):
             self._data_combined[idx] = self._data_from_strg[self._rd_bank][idx]
 
     def get_memory_ports(self):
-        return [[None]]
+        return self.base_ports
 
 
 if __name__ == "__main__":
