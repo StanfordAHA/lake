@@ -322,21 +322,6 @@ class StrgRAM(MemoryController):
     def get_memory_ports(self):
         return [[None]]
 
-    def get_inputs(self):
-        pnames = self.internal_generator.get_port_names()
-        # print(pnames)
-        inlist = [(pname, 16) for pname in pnames]
-        return inlist
-
-    def get_outputs(self):
-        pnames = self.internal_generator.get_port_names()
-        # print(pnames)
-        inlist = [(pname, 16) for pname in pnames]
-        return inlist
-
-    def __str__(self):
-        return self.name
-
 
 if __name__ == "__main__":
     stg_dut = StrgRAM()

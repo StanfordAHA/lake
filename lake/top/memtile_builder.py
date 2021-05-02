@@ -1,3 +1,4 @@
+from kratos.stmts import IfStmt
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.top.memory_interface import *
@@ -246,29 +247,40 @@ class MemoryTileBuilder(kts.Generator):
                 self.wire(port, tmp_0)
         elif mux_size == 1:
             # Just hook up the one port directly
-            print("dont need a mux")
             ctrl_intf = {}
             for (ctrl_name, ctrl_port) in ctrl_ports.items():
                 ctrl_intf = ctrl_port.get_port_interface()
             for (name, port) in local_intf.items():
-                print(f"local: {port}, controller: {ctrl_intf[name]}")
+                # print(f"local: {port}, controller: {ctrl_intf[name]}")
                 self.wire(port, ctrl_intf[name])
         else:
             # Now we procedurally produce an always_comb block to choose between controllers
-            raise NotImplementedError
+            mux_comb = self.combinational()
+            prev_stmt = None
+            ctrl_intf = {}
+            # Go through each controller
+            for (i, (ctrl_name, ctrl_port)) in enumerate(ctrl_ports.items()):
+                ctrl_intf = ctrl_port.get_port_interface()
+                # Grab the interface and then add it into an if statement against
+                # the memory port.
+                for (name, port) in local_intf.items():
+                    print(f"local: {port}, controller: {ctrl_intf[name]}")
+                    if i == 0:
+                        first_if = mux_comb.if_(self._mode == kts.const(i), width=self._mode.width)
+                        first_if.then_(port.assign(ctrl_intf[name]))
+                        prev_stmt = first_if
+                    else:
+                        chain_if = IfStmt(self._mode == kts.const(i, width=self._mode.width))
+                        chain_if.then_(port.assign(ctrl_intf[name]))
+                        prev_stmt.else_(chain_if)
+                        prev_stmt = chain_if
 
     def realize_mem_connections(self):
         # For each port in the memory system, mux between the different controllers
         # based on the mode
         for bank in range(self.memory_banks):
             for port in range(self.memory_interface.get_num_ports()):
-                print(f"bank: {bank}, port: {port}")
-                print(self.memories)
                 self.add_mem_port_connection(self.memories[bank].get_ports()[port], self.mem_conn[bank][port])
-                # for (idx, (ctrl, ctrl_port)) in enumerate(self.mem_conn[bank][port].items()):
-                #     # Now we basically want to add in the connections
-                #     self.add_mem_port_connection(local_port=self.memories[bank][port],
-                #                                  ctrl_port=ctrl_port, idx=idx)
 
     def __str__(self):
         rep_str = "=====MEMORY TILE BUILDER=====\n===CONTROLLERS===\n"

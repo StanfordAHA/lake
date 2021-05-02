@@ -151,15 +151,15 @@ class Top():
         #                             read_delay=self.read_delay,
         #                             addr_width=self.address_width))
 
-        # controllers.append(StrgRAM(data_width=self.data_width,
-        #                        banks=self.banks,
-        #                        memory_width=self.mem_width,
-        #                        memory_depth=self.mem_depth,
-        #                        num_tiles=self.num_tiles,
-        #                        rw_same_cycle=self.rw_same_cycle,
-        #                        read_delay=self.read_delay,
-        #                        addr_width=16,
-        #                        prioritize_write=True))
+        controllers.append(StrgRAM(data_width=self.data_width,
+                                   banks=self.banks,
+                                   memory_width=self.mem_width,
+                                   memory_depth=self.mem_depth,
+                                   num_tiles=self.num_tiles,
+                                   rw_same_cycle=self.rw_same_cycle,
+                                   read_delay=self.read_delay,
+                                   addr_width=16,
+                                   prioritize_write=True))
 
         for ctrl in controllers:
             MTB.add_memory_controller(ctrl)

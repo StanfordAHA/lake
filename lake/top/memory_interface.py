@@ -96,7 +96,6 @@ class MemoryInterface(kts.Generator):
         self.mem_depth = MemoryInterface.mem_depth_dflt if 'mem_depth' not in mem_params else mem_params['mem_depth']
 
         self.create_interface()
-        self.realize_hw()
 
     def create_interface(self):
         # Loop through the memory ports and create the proper signals - only need a few signals
@@ -105,18 +104,18 @@ class MemoryInterface(kts.Generator):
             port_intf = port.get_port_interface()
             if port_type == MemoryPortType.READ:
                 # Read port has data out, address, and ren
-                port_intf['data_out'] = self.output(f"data_out_p{pnum}", self.mem_width)
+                port_intf['data_out'] = self.output(f"data_out_p{pnum}", self.mem_width, packed=True)
                 port_intf['read_addr'] = self.input(f"read_addr_p{pnum}", kts.clog2(self.mem_depth))
                 port_intf['read_enable'] = self.input(f"read_enable_p{pnum}", 1)
             elif port_type == MemoryPortType.WRITE:
-                port_intf['data_in'] = self.input(f"data_in_p{pnum}", self.mem_width)
+                port_intf['data_in'] = self.input(f"data_in_p{pnum}", self.mem_width, packed=True)
                 port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_width))
                 port_intf['write_enable'] = self.input(f"write_enable_p{pnum}", 1)
             elif port_type == MemoryPortType.READWRITE:
-                port_intf['data_out'] = self.output(f"data_out_p{pnum}", self.mem_width)
+                port_intf['data_out'] = self.output(f"data_out_p{pnum}", self.mem_width, packed=True)
                 port_intf['read_addr'] = self.input(f"read_addr_p{pnum}", kts.clog2(self.mem_depth))
                 port_intf['read_enable'] = self.input(f"read_enable_p{pnum}", 1)
-                port_intf['data_in'] = self.input(f"data_in_p{pnum}", self.mem_width)
+                port_intf['data_in'] = self.input(f"data_in_p{pnum}", self.mem_width, packed=True)
                 port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_depth))
                 port_intf['write_enable'] = self.input(f"write_enable_p{pnum}", 1)
 
@@ -138,9 +137,23 @@ class MemoryInterface(kts.Generator):
         return len(self.mem_ports)
 
     def create_simulatable_memory(self):
-        pass
+        '''
+        Based on the ports within the memory
+        '''
+        # First create the data array...
+        self._data_array = self.var("data_array", width=self.mem_width, size=self.mem_depth)
+        # Now add in the logic for the ports.
+        for port in self.get_ports():
+            pintf = port.get_port_interface()
+            if 'data_out' in pintf:
+                self.wire(pintf['data_out'], kts.const(0, width=self.mem_width))
 
     def create_physical_memory(self):
+        '''
+        Creating the physical memory is really just passing the ports through
+        to the physical macro provided from some memory compiler + adding in logic
+        for active low signals + chip enable
+        '''
         pass
 
     def get_mem_width(self):
