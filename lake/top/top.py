@@ -172,7 +172,7 @@ class Top():
 
         print(MTB)
 
-        MTB.realize_hw()
+        MTB.realize_hw(clock_gate=True, flush=True)
 
         verilog(MTB, filename="top_mtb.sv",
                 optimize_if=False,

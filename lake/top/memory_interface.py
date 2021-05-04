@@ -1,5 +1,6 @@
 import kratos as kts
 from enum import Enum
+from kratos.stmts import *
 
 
 class MemoryPortExclusionAttr(kts.Attribute):
@@ -80,7 +81,7 @@ class MemoryInterface(kts.Generator):
     mem_width_dflt = 32
     mem_depth_dflt = 256
 
-    def __init__(self, name: str, mem_params: dict, ports: list = [], sim_macro_n: bool = True, tech_map=None):
+    def __init__(self, name: str, mem_params: dict, ports: list = [], sim_macro_n: bool = True, tech_map=None, reset_in_sim=False):
         super().__init__(name, debug=True)
 
         self.tech_map_provided = False
@@ -88,6 +89,10 @@ class MemoryInterface(kts.Generator):
         self.sim_macro_n = sim_macro_n
         self.mem_params = mem_params
         self.mem_ports = ports
+        self.reset_in_sim = reset_in_sim
+
+        self._clk = None
+        self._rst_n = None
 
         if self.tech_map is not None:
             self.tech_map_provided = True
@@ -96,6 +101,18 @@ class MemoryInterface(kts.Generator):
         self.mem_depth = MemoryInterface.mem_depth_dflt if 'mem_depth' not in mem_params else mem_params['mem_depth']
 
         self.create_interface()
+
+    def has_reset(self):
+        return self.reset_in_sim
+
+    def get_clock(self):
+        return self._clk
+
+    def get_reset(self):
+        if self.has_reset():
+            return self._rst_n
+        else:
+            return None
 
     def create_interface(self):
         # Loop through the memory ports and create the proper signals - only need a few signals
@@ -130,6 +147,12 @@ class MemoryInterface(kts.Generator):
             assert self.tech_map_provided, f"Need to provide tech map for macro realization"
             self.create_physical_memory()
 
+        # Probably need to resolve address conflicts?
+        self.resolve_addr_conflicts()
+
+    def resolve_addr_conflicts(self):
+        pass
+
     def get_ports(self):
         return self.mem_ports
 
@@ -141,12 +164,55 @@ class MemoryInterface(kts.Generator):
         Based on the ports within the memory
         '''
         # First create the data array...
+        self._clk = self.clock("clk")
+        if self.reset_in_sim:
+            self._rst_n = self.reset("rst_n")
         self._data_array = self.var("data_array", width=self.mem_width, size=self.mem_depth)
         # Now add in the logic for the ports.
         for port in self.get_ports():
-            pintf = port.get_port_interface()
-            if 'data_out' in pintf:
-                self.wire(pintf['data_out'], kts.const(0, width=self.mem_width))
+            port_type = port.get_port_type()
+            if port_type == MemoryPortType.READ:
+                self.realize_read_port(port)
+            elif port_type == MemoryPortType.READWRITE:
+                self.realize_readwrite_port(port)
+            elif port_type == MemoryPortType.WRITE:
+                self.realize_write_port(port)
+
+    def realize_read_port(self, port: MemoryPort):
+        pintf = port.get_port_interface()
+        new_read = None
+        # Standalone read ports may be comb (register file),
+        # or they may be sequential if requiring an active read...
+        seq_comb_n = port.get_active_read()
+        if seq_comb_n:
+            # Gen sequential read...
+            sens_lst = [(kts.posedge, self._clk)]
+            new_read = self.sequential(*sens_lst)
+            new_rd_if = new_read.if_(pintf['read_enable'] == 1)
+            new_rd_if.then_(pintf['data_out'].assign(self._data_array[pintf['read_addr']]))
+        else:
+            # Gen combinational read...
+            new_read = self.combinational()
+            new_read.add_stmt(pintf['data_out'].assign(self._data_array[pintf['read_addr']]))
+
+    def realize_readwrite_port(self, port: MemoryPort):
+        # In reality, a read/write port has to have a read delay,
+        # otherwise it would be a separate port - so we only handle this case...
+        pintf = port.get_port_interface()
+        sens_lst = [(kts.posedge, self._clk)]
+        new_write = self.sequential(*sens_lst)
+        new_wr_if = new_write.if_(pintf['write_enable'] == 1)
+        new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
+        read_if = IfStmt(pintf['read_enable'])
+        read_if.then_(pintf['data_out'].assign(self._data_array[pintf['read_addr']]))
+        new_wr_if.else_(read_if)
+
+    def realize_write_port(self, port: MemoryPort):
+        pintf = port.get_port_interface()
+        sens_lst = [(kts.posedge, self._clk)]
+        new_write = self.sequential(*sens_lst)
+        new_wr_if = new_write.if_(pintf['write_enable'] == 1)
+        new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
 
     def create_physical_memory(self):
         '''
@@ -154,6 +220,7 @@ class MemoryInterface(kts.Generator):
         to the physical macro provided from some memory compiler + adding in logic
         for active low signals + chip enable
         '''
+        # TODO
         pass
 
     def get_mem_width(self):

@@ -54,6 +54,23 @@ class MemoryTileBuilder(kts.Generator):
         self._rst_n = self.reset("rst_n")
         self._rst_n.add_attribute(FormalAttr(self._rst_n.name, FormalSignalConstraint.RSTN))
 
+    def add_clock_gate(self):
+        # Check if clk_en has already been defined...
+        clk_en_port = self.internal_generator.get_port("clk_en")
+        if clk_en_port is None:
+            clk_en_port = self.clock_en("clk_en")
+        # Add input attr and formal attr...
+        clk_en_port.add_attribute(ControlSignalAttr(False))
+        clk_en_port.add_attribute(FormalAttr(clk_en_port.name, FormalSignalConstraint.SET1))
+
+        kts.passes.auto_insert_clock_enable(self.internal_generator)
+
+    def add_flush(self):
+        self.add_attribute("sync-reset=flush")
+        kts.passes.auto_insert_sync_reset(self.internal_generator)
+        flush_port = self.internal_generator.get_port("flush")
+        flush_port.add_attribute(ControlSignalAttr(True))
+
     def allocate_mem_conn(self):
         self.mem_conn = [[{}] * len(self.memory_interface.get_ports())] * self.memory_banks
 
@@ -184,9 +201,19 @@ class MemoryTileBuilder(kts.Generator):
             raise MemoryTileFinalizedException(f"Controllers finalized - {mem_ctrl} isn't being added...")
 
     def add_config_hooks(self, config_data_width=32, config_addr_width=8):
-        pass
+        self.config_data_width = config_data_width
+        self.config_addr_width = config_addr_width
 
-    def realize_hw(self):
+    def add_tile_enable(self):
+        # Add tile enable...
+        self._tile_en = self.input("tile_en", 1)
+        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        self._tile_en.add_attribute(FormalAttr(self._tile_en.name, FormalSignalConstraint.SET1))
+        gclk = self.var("gclk", 1)
+        self._gclk = kts.util.clock(gclk)
+        self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
+
+    def realize_hw(self, clock_gate=False, flush=False):
         '''
         Go through the motions of finally creating the hardware
         '''
@@ -194,6 +221,7 @@ class MemoryTileBuilder(kts.Generator):
         # To realize the hardware, we basically need to create each input and output in the dictionaries
         # Then, wire up the memory ports with muxes + mode as select signal, then realize the underlying memory
         # Need to flatten stuff...
+        self.add_tile_enable()
         self.realize_controllers()
         self.realize_inputs()
         self.realize_outputs()
@@ -202,11 +230,22 @@ class MemoryTileBuilder(kts.Generator):
             self.add_child(f"memory_{idx}", mem)
         self.realize_mem_connections()
 
+        if clock_gate:
+            self.add_clock_gate()
+        if flush:
+            self.add_flush()
+
     def realize_controllers(self):
-        for (ctrl_name, ctrl) in self.controllers_flat_dict.items():
+        for (idx, (ctrl_name, ctrl)) in enumerate(self.controllers_flat_dict.items()):
             self.add_child(f'mem_ctrl_{ctrl_name}', ctrl)
             # Wire clk and rst....making some decent assumptions here
-            self.wire(self._clk, ctrl.ports['clk'])
+            # We actually use the tile enabled clock (Which should have been swapped in)
+            # and additionally make sure the mode matches to make sure we minimize power.
+            clk_var = self.var(f"gclk_{ctrl_name}", 1)
+            clk_clk = kts.util.clock(clk_var)
+            self.wire(ctrl.ports['clk'], kts.util.clock(self._gclk & (self._mode == idx)))
+            # self.wire(clk_clk, ctrl.ports['clk'])
+            gated_with_mode = kts.util.clock
             self.wire(self._rst_n, ctrl.ports['rst_n'])
 
     def realize_inputs(self):
@@ -309,6 +348,10 @@ class MemoryTileBuilder(kts.Generator):
         # based on the mode
         for bank in range(self.memory_banks):
             for port in range(self.memory_interface.get_num_ports()):
+                # Wire clock and reset...
+                self.wire(self._clk, self.memories[bank].get_clock())
+                if self.memories[bank].has_reset():
+                    self.wire(self._rst_n, self.memories[bank].get_reset())
                 self.add_mem_port_connection(self.memories[bank].get_ports()[port], self.mem_conn[bank][port])
 
     def __str__(self):
