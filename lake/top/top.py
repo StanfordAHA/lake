@@ -1,3 +1,4 @@
+from lake.top.tech_maps import TSMC_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.attributes.formal_attr import *
 import os
@@ -106,11 +107,14 @@ class Top():
         }
         one_p_sram = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
 
+        sim = True
+        tech_map = TSMC_Tech_Map()
+
         MTB.set_memory_interface(name_prefix="sram_idk",
                                  mem_params=memory_params,
                                  ports=one_p_sram,
-                                 sim_macro_n=True,
-                                 tech_map=None)
+                                 sim_macro_n=sim,
+                                 tech_map=tech_map)
 
         # Now add the controllers in...
         controllers = []
