@@ -1,11 +1,10 @@
+from lake.top.memory_controller import MemoryController
 from kratos import *
-from lake.modules.aggregator import Aggregator
-from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
 import kratos as kts
 
 
-class StorageConfigSeq(Generator):
+class StorageConfigSeq(MemoryController):
     '''
     Sequence the reads and writes to the storage unit - if dealing with
     a storage unit that has multiple r/w, should only use one of the ports
@@ -33,6 +32,7 @@ class StorageConfigSeq(Generator):
 
         self.set_addr_width = clog2(total_sets)
 
+        self.base_ports = [[None]]
         # self.storage_addr_width = self.
 
         # Clock and Reset
@@ -205,6 +205,12 @@ class StorageConfigSeq(Generator):
         # that the sequencing is correct from app level!
         elif self._config_wr & (self._cnt < self.fw_int - 1):
             self._data_wr_reg[self._cnt] = self._config_data_in
+
+    def get_memory_ports(self):
+        # Assume for now that there is always an available
+        # READWRITE port in each bank...will deal with more complexity later
+        # TODO: Find ports based on memory system
+        pass
 
 
 if __name__ == "__main__":

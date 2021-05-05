@@ -1,3 +1,4 @@
+from lake.modules.storage_config_seq import StorageConfigSeq
 from kratos.stmts import IfStmt
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
@@ -43,6 +44,8 @@ class MemoryTileBuilder(kts.Generator):
 
         self.inputs_dict = {}
         self.outputs_dict = {}
+
+        self.mem_port_code = {}
 
         self.mem_conn = None
         if memory_interface is not None:
@@ -91,7 +94,7 @@ class MemoryTileBuilder(kts.Generator):
         # Clear and reallocate the new memory port mappings
         self.allocate_mem_conn()
 
-    def get_memory_interface(self, mem: MemoryInterface):
+    def get_memory_interface(self):
         return self.memory_interface
 
     def finalize_controllers(self):
@@ -213,7 +216,7 @@ class MemoryTileBuilder(kts.Generator):
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
-    def realize_hw(self, clock_gate=False, flush=False):
+    def realize_hw(self, clock_gate=False, flush=False, mem_config=False):
         '''
         Go through the motions of finally creating the hardware
         '''
@@ -230,10 +233,101 @@ class MemoryTileBuilder(kts.Generator):
             self.add_child(f"memory_{idx}", mem)
         self.realize_mem_connections()
 
+        # Optionally add in these features to the hardware
+        if mem_config:
+            self.realize_mem_config()
         if clock_gate:
             self.add_clock_gate()
         if flush:
             self.add_flush()
+
+    def realize_mem_config(self):
+        '''
+        This function adds in some hooks in to directly read and write the
+        memory banks from the configuration bus - only need a read and write or read/write
+        port on each
+
+        This is actually really nasty in general because it needs to comply with CGRA
+        '''
+
+        # Need to parameterize this
+        self.data_width = 16
+
+        # Ascertain all the information used in creating the config bus
+        mem_width = self.memory_interface.get_mem_width()
+        mem_depth = self.memory_interface.get_mem_depth()
+        address_width = kts.clog2(mem_depth)
+        fw_int = int(mem_width / self.data_width)
+        self.data_words_per_set = 2 ** self.config_addr_width
+        self.sets = int((fw_int * mem_depth) / self.data_words_per_set)
+        self.sets_per_macro = max(1, int(mem_depth / self.data_words_per_set))
+        self.total_sets = max(1, self.memory_banks * self.sets_per_macro)
+
+        self._config_addr_in = self.input("config_addr_in", self.config_addr_width)
+        self._config_addr_in.add_attribute(ControlSignalAttr(False))
+
+        self._config_data_out_shrt = self.var("config_data_out_shrt", self.data_width, size=self.total_sets,
+                                              explicit_array=True,
+                                              packed=True)
+
+        self._config_data_out = self.output("config_data_out", self.config_data_width, size=self.total_sets,
+                                            explicit_array=True,
+                                            packed=True)
+        self._config_data_out.add_attribute(ControlSignalAttr(False))
+
+        self._config_data_in = self.input("config_data_in", self.config_data_width)
+        self._config_data_in.add_attribute(ControlSignalAttr(False))
+
+        self._config_data_in_shrt = self.var("config_data_in_shrt", self.data_width)
+        self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
+
+        # Extend config_data_out, which is created for each set as a new feature in the CGRA
+        for i in range(self.total_sets):
+            self.wire(self._config_data_out[i],
+                      self._config_data_out_shrt[i].extend(self.config_data_width))
+
+        self._config_read = self.input("config_read", 1)
+        self._config_read.add_attribute(ControlSignalAttr(False))
+        self._config_write = self.input("config_write", 1)
+        self._config_write.add_attribute(ControlSignalAttr(False))
+        self._config_en = self.input("config_en", self.total_sets)
+        self._config_en.add_attribute(ControlSignalAttr(False))
+
+        stg_cfg_seq = StorageConfigSeq(data_width=self.data_width,
+                                       config_addr_width=self.config_addr_width,
+                                       addr_width=address_width,
+                                       fetch_width=mem_width,
+                                       total_sets=self.total_sets,
+                                       sets_per_macro=self.sets_per_macro)
+
+        self.add_child(f"config_seq", stg_cfg_seq,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       config_data_in=self._config_data_in_shrt,
+                       config_addr_in=self._config_addr_in,
+                       config_wr=self._config_write,
+                       config_rd=self._config_read,
+                       config_en=self._config_en,
+                       rd_data_out=self._config_data_out_shrt,
+                       )
+
+        # Wire in the clock enable
+        clk_en_port = self.internal_generator.get_port("clk_en")
+        if clk_en_port is not None:
+            self.wire(stg_cfg_seq.ports['clk_en'], clk_en_port | self._config_en.r_or())
+        else:
+            self.wire(stg_cfg_seq.ports['clk_en'], self._config_en.r_or())
+
+        mem_ports_to_override = stg_cfg_seq.get_memory_ports()
+        # Now we need to find a Read and Write or ReadWrite port on each memory bank,
+        # set up the MemoryPort
+
+        #    rd_data_stg=self._mem_data_low_pt,
+        #    wr_data=self._mem_data_cfg,
+
+        #    addr_out=self._mem_addr_cfg,
+        #    wen_out=self._mem_wen_cfg,
+        #    ren_out=self._mem_ren_cfg)
 
     def realize_controllers(self):
         for (idx, (ctrl_name, ctrl)) in enumerate(self.controllers_flat_dict.items()):
@@ -313,6 +407,8 @@ class MemoryTileBuilder(kts.Generator):
             # Now we procedurally produce an always_comb block to choose between controllers
             mux_comb = self.combinational()
             bc_comb = self.combinational()
+
+            self.mem_port_code[local_port] = (mux_comb, bc_comb)
 
             # First, add default 0's for the memory input...
             mux_list = [name for name in local_intf.keys() if 'out' not in name]

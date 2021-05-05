@@ -28,8 +28,8 @@ import argparse
 class LakeTop(Generator):
     def __init__(self,
                  data_width=16,  # CGRA Params
-                 mem_width=32,
-                 mem_depth=256,
+                 mem_width=64,
+                 mem_depth=512,
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
