@@ -1,3 +1,4 @@
+from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.top.memory_controller import MemoryController
 from kratos import *
 from lake.passes.passes import lift_config_reg
@@ -18,7 +19,8 @@ class StorageConfigSeq(MemoryController):
                  addr_width,
                  fetch_width,
                  total_sets,
-                 sets_per_macro):
+                 sets_per_macro,
+                 memory_interface: MemoryInterface = None):
         super().__init__("storage_config_seq")
 
         self.data_width = data_width
@@ -30,9 +32,20 @@ class StorageConfigSeq(MemoryController):
         self.sets_per_macro = sets_per_macro
         self.banks = int(self.total_sets / self.sets_per_macro)
 
+        self.memory_interface = memory_interface
+
         self.set_addr_width = clog2(total_sets)
 
-        self.base_ports = [[None]]
+        self.base_ports = []
+        for bank in range(self.banks):
+            self.base_ports.append[]
+            for port in range(self.memory_interface.get_num_ports()):
+                self.base_ports[bank].append(None)
+
+        # Search for the proper memory ports on each bank for
+        # attaching to the eventual tile
+        self.find_mem_ports()
+
         # self.storage_addr_width = self.
 
         # Clock and Reset
@@ -210,6 +223,50 @@ class StorageConfigSeq(MemoryController):
         # Assume for now that there is always an available
         # READWRITE port in each bank...will deal with more complexity later
         # TODO: Find ports based on memory system
+        self.base_ports = [[None]]
+        rw_port = MemoryPort(MemoryPortType.READWRITE)
+        rw_port_intf = rw_port.get_port_interface()
+        rw_port_intf['data_in'] = self._wr_data
+        rw_port_intf['data_out'] = self._rd_data_stg
+        rw_port_intf['write_addr'] = self._addr_out
+        rw_port_intf['write_enable'] = self._wen_out
+        rw_port_intf['read_addr'] = self._addr_out
+        rw_port_intf['read_enable'] = self._ren_out
+        self.base_ports[0][0] = rw_port
+        return self.base_ports
+
+    def find_mem_ports(self):
+        '''
+        This function just searches for either a READ and WRITE port
+        or READWRITE port...
+        '''
+        if self.memory_interface is None:
+            return
+
+        use_RW = True
+        RW = None
+        R = None
+        W = None
+
+        for (idx, port) in enumerate(self.memory_interface.get_ports()):
+            if port.get_port_type() == MemoryPortType.READ:
+                R = idx
+            elif port.get_port_type() == MemoryPortType.WRITE:
+                W = idx
+            elif port.get_port_type() == MemoryPortType.READWRITE:
+                RW = idx
+
+        if RW is None:
+            # R and W better be defined...
+            assert R is not None and W is not None, f"Couldn't find proper ports..."
+            self.hook_up_R_and_W(R, W)
+        else:
+            self.hook_up_RW(RW)
+
+    def hook_up_R_and_W(self, R_idx, W_idx):
+        pass
+
+    def hook_up_RW(self, RW_idx):
         pass
 
 

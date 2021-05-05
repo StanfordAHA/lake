@@ -298,7 +298,8 @@ class MemoryTileBuilder(kts.Generator):
                                        addr_width=address_width,
                                        fetch_width=mem_width,
                                        total_sets=self.total_sets,
-                                       sets_per_macro=self.sets_per_macro)
+                                       sets_per_macro=self.sets_per_macro,
+                                       memory_interface=self.memory_interface)
 
         self.add_child(f"config_seq", stg_cfg_seq,
                        clk=self._gclk,
@@ -318,7 +319,17 @@ class MemoryTileBuilder(kts.Generator):
         else:
             self.wire(stg_cfg_seq.ports['clk_en'], self._config_en.r_or())
 
+        # Now go through the memory port requests of the configuration module
+        # and inject the override if condition into the code
         mem_ports_to_override = stg_cfg_seq.get_memory_ports()
+        for bank in range(self.memory_banks):
+            for port in range(self.memory_interface.get_num_ports()):
+                override = mem_ports_to_override[bank][port]
+                # Finally inject the config override in here...
+                if override is not None:
+                    self.inject_config_override(bank, port, override)
+
+    def inject_config_override(self, bank, port, override_port):
         # Now we need to find a Read and Write or ReadWrite port on each memory bank,
         # set up the MemoryPort
 
@@ -328,6 +339,7 @@ class MemoryTileBuilder(kts.Generator):
         #    addr_out=self._mem_addr_cfg,
         #    wen_out=self._mem_wen_cfg,
         #    ren_out=self._mem_ren_cfg)
+        pass
 
     def realize_controllers(self):
         for (idx, (ctrl_name, ctrl)) in enumerate(self.controllers_flat_dict.items()):
