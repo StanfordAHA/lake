@@ -918,7 +918,7 @@ class LakeTop(Generator):
             in2agg_0 = map_controller(extract_controller_json(root_node["in2agg_0"]), "in2agg_0")
             config.append(("strg_ub_agg_only_agg_write_addr_gen_0_starting_addr", in2agg_0.in_data_strt))
             config.append(("strg_ub_agg_only_agg_write_sched_gen_0_enable", 1))
-            config.append(("strg_ub_agg_only_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg_0.cyc_strt))
+            config.append(("strg_ub_agg_ only_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg_0.cyc_strt))
             config.append(("strg_ub_agg_only_loops_in2buf_0_dimensionality", in2agg_0.dim))
             for i in range(in2agg_0.dim):
                 config.append((f"strg_ub_agg_only_loops_in2buf_0_ranges_{i}", in2agg_0.extent[i]))

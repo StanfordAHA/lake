@@ -38,7 +38,7 @@ class StorageConfigSeq(MemoryController):
 
         self.base_ports = []
         for bank in range(self.banks):
-            self.base_ports.append[]
+            self.base_ports.append([])
             for port in range(self.memory_interface.get_num_ports()):
                 self.base_ports[bank].append(None)
 

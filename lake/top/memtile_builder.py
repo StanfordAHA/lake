@@ -1,3 +1,4 @@
+from lake.top.cgra_tile_builder import CGRATileBuilder
 from lake.modules.storage_config_seq import StorageConfigSeq
 from kratos.stmts import IfStmt
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -12,7 +13,7 @@ class MemoryTileFinalizedException(Exception):
     pass
 
 
-class MemoryTileBuilder(kts.Generator):
+class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     '''
     This class provides utilities to add memories and memory controllers and automagically generate the hardware
     '''
@@ -46,6 +47,7 @@ class MemoryTileBuilder(kts.Generator):
         self.outputs_dict = {}
 
         self.mem_port_code = {}
+        self.mem_port_mux_if = {}
 
         self.mem_conn = None
         if memory_interface is not None:
@@ -105,6 +107,10 @@ class MemoryTileBuilder(kts.Generator):
         if self.num_modes > 1:
             self._mode = self.input("mode", kts.clog2(self.num_modes))
             self._mode.add_attribute(ConfigRegAttr("MODE!"))
+        else:
+            self._mode = self.var("mode", 1)
+            tmp0 = kts.const(0, 1)
+            self.wire(self._mode, tmp0)
 
         self.resolve_memports()
         self.resolve_inputs()
@@ -330,16 +336,25 @@ class MemoryTileBuilder(kts.Generator):
                     self.inject_config_override(bank, port, override)
 
     def inject_config_override(self, bank, port, override_port):
-        # Now we need to find a Read and Write or ReadWrite port on each memory bank,
-        # set up the MemoryPort
-
-        #    rd_data_stg=self._mem_data_low_pt,
-        #    wr_data=self._mem_data_cfg,
-
-        #    addr_out=self._mem_addr_cfg,
-        #    wen_out=self._mem_wen_cfg,
-        #    ren_out=self._mem_ren_cfg)
-        pass
+        # Get local information about the code structure
+        local_port = self.memories[bank].get_ports()[port]
+        over_intf = override_port.get_port_interface()
+        local_intf = local_port.get_port_interface()
+        (mux_comb, bc_comb) = self.mem_port_code[local_port]
+        first_if = self.mem_port_mux_if[local_port]
+        # First, add default 0's for the memory input...
+        mux_list = [name for name in local_intf.keys() if 'out' not in name]
+        bc_list = [name for name in local_intf.keys() if 'out' in name]
+        # Just add in the outputs
+        for bc_sign in bc_list:
+            bc_comb.add_stmt(over_intf[bc_sign].assign(local_intf[bc_sign]))
+        # Now hijack the original muxes and add priority override...
+        ass_stmt = [local_intf[name].assign(over_intf[name]) for name in mux_list]
+        mux_comb.remove_stmt(first_if)
+        override_if = IfStmt(self._config_en.r_or())
+        override_if.then_(*ass_stmt)
+        override_if.else_(first_if)
+        mux_comb.add_stmt(override_if)
 
     def realize_controllers(self):
         for (idx, (ctrl_name, ctrl)) in enumerate(self.controllers_flat_dict.items()):
@@ -349,9 +364,10 @@ class MemoryTileBuilder(kts.Generator):
             # and additionally make sure the mode matches to make sure we minimize power.
             clk_var = self.var(f"gclk_{ctrl_name}", 1)
             clk_clk = kts.util.clock(clk_var)
-            self.wire(ctrl.ports['clk'], kts.util.clock(self._gclk & (self._mode == idx)))
-            # self.wire(clk_clk, ctrl.ports['clk'])
-            gated_with_mode = kts.util.clock
+            if len(self.controllers) > 1:
+                self.wire(ctrl.ports['clk'], kts.util.clock(self._gclk & (self._mode == idx)))
+            else:
+                self.wire(ctrl.ports['clk'], kts.util.clock(self._gclk))
             self.wire(self._rst_n, ctrl.ports['rst_n'])
 
     def realize_inputs(self):
@@ -388,7 +404,6 @@ class MemoryTileBuilder(kts.Generator):
                         if idx == 0:
                             first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
                             first_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
-                            print(self.controllers_flat_dict[ctrl_name].ports[port])
                             prev_stmt = first_if
                         else:
                             chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
@@ -403,33 +418,25 @@ class MemoryTileBuilder(kts.Generator):
         '''
         local_intf = local_port.get_port_interface()
         mux_size = len(ctrl_ports)
-        if mux_size == 0:
-            # Nothing to connect to this port - wire to 0
-            for (name, port) in local_intf.items():
-                tmp_0 = kts.const(0, width=port.width)
-                self.wire(port, tmp_0)
-        elif mux_size == 1:
-            # Just hook up the one port directly
-            ctrl_intf = {}
-            for (ctrl_name, ctrl_port) in ctrl_ports.items():
-                ctrl_intf = ctrl_port.get_port_interface()
-            for (name, port) in local_intf.items():
-                self.wire(port, ctrl_intf[name])
-        else:
-            # Now we procedurally produce an always_comb block to choose between controllers
-            mux_comb = self.combinational()
-            bc_comb = self.combinational()
 
-            self.mem_port_code[local_port] = (mux_comb, bc_comb)
+        # Add a comb/seq block out here...
+        # Now we procedurally produce an always_comb block to choose between controllers
+        mux_comb = self.combinational()
+        bc_comb = self.combinational()
 
-            # First, add default 0's for the memory input...
-            mux_list = [name for name in local_intf.keys() if 'out' not in name]
-            bc_list = [name for name in local_intf.keys() if 'out' in name]
+        self.mem_port_code[local_port] = (mux_comb, bc_comb)
+        self.mem_port_mux_if[local_port] = None
 
-            for (name, port) in local_intf.items():
-                if 'out' not in name:
-                    mux_comb.add_stmt(port.assign(0))
+        # First, add default 0's for the memory input...
+        mux_list = [name for name in local_intf.keys() if 'out' not in name]
+        bc_list = [name for name in local_intf.keys() if 'out' in name]
 
+        # Default assign to 0 to prevent latches/handle no connections
+        for (name, port) in local_intf.items():
+            if 'out' not in name:
+                mux_comb.add_stmt(port.assign(0))
+
+        if mux_size > 0:
             prev_stmt = None
             ctrl_intf = {}
 
@@ -442,14 +449,17 @@ class MemoryTileBuilder(kts.Generator):
                 ass_stmt = [local_intf[name].assign(ctrl_intf[name]) for name in mux_list]
                 # Mux in the inputs
                 if idx == 0:
+                    # first_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
                     first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
                     first_if.then_(*ass_stmt)
+                    self.mem_port_mux_if[local_port] = first_if
                     prev_stmt = first_if
                 else:
                     chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
                     chain_if.then_(*ass_stmt)
                     prev_stmt.else_(chain_if)
                     prev_stmt = chain_if
+            # mux_comb.add_stmt(first_if)
 
     def realize_mem_connections(self):
         # For each port in the memory system, mux between the different controllers
@@ -461,6 +471,29 @@ class MemoryTileBuilder(kts.Generator):
                 if self.memories[bank].has_reset():
                     self.wire(self._rst_n, self.memories[bank].get_reset())
                 self.add_mem_port_connection(self.memories[bank].get_ports()[port], self.mem_conn[bank][port])
+
+    def get_mode_map(self):
+        '''
+        Sort of hardcoded/hacky way to refer to specific controller types
+        '''
+        self.mode_map = {}
+        for memctrl in self.controllers:
+            self.mode_map[memctrl.get_config_mode_str()] = memctrl
+
+        return self.mode_map
+
+    def get_bitstream(self, config_json):
+        '''
+        At this level, we can take in the json and figure out which mode we are using
+        '''
+        config = []
+
+        if 'init' in config_json:
+            pass
+        mode_used = config_json['mode']
+        ctrl_to_conf = self.get_mode_map()[mode_used]
+        config += ctrl_to_conf.get_bitstream()
+        return config
 
     def __str__(self):
         rep_str = "=====MEMORY TILE BUILDER=====\n===CONTROLLERS===\n"

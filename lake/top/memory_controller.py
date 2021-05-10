@@ -71,6 +71,19 @@ class MemoryController(kts.Generator):
         '''
         raise NotImplementedError
 
+    def get_bitstream(self, config_json):
+        '''
+        Pass in a config-related json to return a list of
+        (config_reg, value) tuples
+        '''
+
+    def get_config_mode_str(self):
+        '''
+        Use this function to define a unique name for the controller type
+        - useful when referring through the CoreIR JSON
+        '''
+        raise NotImplementedError
+
     def __str__(self):
         return self.name
 
