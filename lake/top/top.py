@@ -173,7 +173,7 @@ class Top():
 
         addit_passes = {}
         if do_config_lift:
-            addit_passes['lift config regs': lift_config_reg]
+            addit_passes['lift config regs'] = lift_config_reg
 
         verilog(MTB, filename="top_mtb.sv",
                 optimize_if=False,
