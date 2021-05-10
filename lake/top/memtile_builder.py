@@ -7,6 +7,7 @@ from lake.top.memory_interface import *
 from lake.top.memory_controller import *
 from lake.attributes.formal_attr import *
 import kratos as kts
+from lake.passes.passes import lift_config_reg
 
 
 class MemoryTileFinalizedException(Exception):
@@ -222,7 +223,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
-    def realize_hw(self, clock_gate=False, flush=False, mem_config=False):
+    def realize_hw(self, clock_gate=False, flush=False, mem_config=False, do_lift_config=False):
         '''
         Go through the motions of finally creating the hardware
         '''
@@ -246,6 +247,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             self.add_clock_gate()
         if flush:
             self.add_flush()
+        if do_lift_config:
+            lift_config_reg(self.internal_generator)
 
     def realize_mem_config(self):
         '''

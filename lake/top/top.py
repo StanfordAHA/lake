@@ -7,15 +7,7 @@ from lake.modules.passthru import *
 from lake.modules.strg_ub_vec import StrgUBVec
 from lake.modules.strg_ub_thin import StrgUBThin
 from lake.modules.strg_RAM import StrgRAM
-from lake.passes.passes import lift_config_reg, change_sram_port_names
-from lake.passes.cut_generator import cut_generator
 from lake.utils.sram_macro import SRAMMacroInfo
-from lake.utils.util import trim_config_list, extract_formal_annotation
-from lake.utils.parse_clkwork_config import map_controller, extract_controller
-from lake.utils.parse_clkwork_config import extract_controller_json
-from lake.modules.for_loop import ForLoop
-from lake.modules.spec.sched_gen import SchedGen
-import kratos as kts
 from _kratos import create_wrapper_flatten
 import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
@@ -24,8 +16,8 @@ from lake.top.memtile_builder import MemoryTileBuilder
 class Top():
     def __init__(self,
                  data_width=16,  # CGRA Params
-                 mem_width=32,
-                 mem_depth=256,
+                 mem_width=64,
+                 mem_depth=512,
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
@@ -38,7 +30,7 @@ class Top():
                  use_sram_stub=True,
                  sram_macro_info=SRAMMacroInfo("tsmc_name"),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
-                 rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
+                 rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
                  config_data_width=32,
                  config_addr_width=8,
@@ -102,7 +94,6 @@ class Top():
 
         sim = True
         tech_map = TSMC_Tech_Map()
-
         MTB.set_memory_interface(name_prefix="sram_idk",
                                  mem_params=memory_params,
                                  ports=one_p_sram,
@@ -169,17 +160,22 @@ class Top():
 
         print(MTB)
 
-        MTB.realize_hw(clock_gate=add_clk_enable, flush=add_flush, mem_config=True)
+        MTB.realize_hw(clock_gate=add_clk_enable,
+                       flush=add_flush,
+                       mem_config=True,
+                       do_lift_config=do_config_lift)
 
-        addit_passes = {}
-        if do_config_lift:
-            addit_passes['lift config regs'] = lift_config_reg
+        self.dut = MTB
 
-        verilog(MTB, filename="top_mtb.sv",
+        return
+
+    def get_verilog(self, filename="dut_mtb.sv", addit_passes={}):
+        verilog(self.dut, filename=filename,
                 optimize_if=False,
                 additional_passes=addit_passes)
 
-        return
+    def get_dut_object(self):
+        return self.dut
 
     def supports(self, prop):
         attr = getattr(self, prop)
