@@ -246,6 +246,16 @@ class StrgUBVec(MemoryController):
             self.wire(self._agg_data_out, agg_only.ports.agg_data_out)
 
         self.base_ports = [[None]]
+        rw_port = MemoryPort(MemoryPortType.READWRITE)
+        rw_port_intf = rw_port.get_port_interface()
+        rw_port_intf['data_in'] = self._data_to_sram
+        rw_port_intf['data_out'] = self._data_from_sram
+        rw_port_intf['write_addr'] = self._wr_addr_to_sram
+        rw_port_intf['write_enable'] = self._wen_to_sram
+        rw_port_intf['read_addr'] = self._rd_addr_to_sram
+        rw_port_intf['read_enable'] = self._ren_to_sram
+        rw_port.annotate_port_signals()
+        self.base_ports[0][0] = rw_port
 
     def get_static_bitstream(self, config_path, in_file_name, out_file_name):
 
@@ -367,16 +377,6 @@ class StrgUBVec(MemoryController):
         return config
 
     def get_memory_ports(self):
-        rw_port = MemoryPort(MemoryPortType.READWRITE)
-        rw_port_intf = rw_port.get_port_interface()
-        rw_port_intf['data_in'] = self._data_to_sram
-        rw_port_intf['data_out'] = self._data_from_sram
-        rw_port_intf['write_addr'] = self._wr_addr_to_sram
-        rw_port_intf['write_enable'] = self._wen_to_sram
-        rw_port_intf['read_addr'] = self._rd_addr_to_sram
-        rw_port_intf['read_enable'] = self._ren_to_sram
-        rw_port.annotate_port_signals()
-        self.base_ports[0][0] = rw_port
         return self.base_ports
 
     def get_inputs(self):
