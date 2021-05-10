@@ -479,20 +479,28 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.mode_map = {}
         for memctrl in self.controllers:
             self.mode_map[memctrl.get_config_mode_str()] = memctrl
-
         return self.mode_map
 
     def get_bitstream(self, config_json):
         '''
         At this level, we can take in the json and figure out which mode we are using
         '''
+        # Create blank config - turn the tile on
         config = []
-
+        config.append(("tile_en", 1))
+        # Extract the mode to set the mode config reg (if there is more than one mode)
+        mode_used = config_json['mode']
+        if self.num_modes > 1:
+            # Locate the controller in the list...
+            for idx, ctrl in enumerate(self.controllers):
+                if mode_used == ctrl.get_config_mode_str():
+                    print(f"Found ctrl: {mode_used}")
+                    config.append(("mode", idx))
+                    break
         if 'init' in config_json:
             pass
-        mode_used = config_json['mode']
         ctrl_to_conf = self.get_mode_map()[mode_used]
-        config += ctrl_to_conf.get_bitstream()
+        config += ctrl_to_conf.get_bitstream(config_json['config'])
         return config
 
     def __str__(self):

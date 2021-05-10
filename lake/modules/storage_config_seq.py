@@ -37,10 +37,11 @@ class StorageConfigSeq(MemoryController):
         self.set_addr_width = clog2(total_sets)
 
         self.base_ports = []
-        for bank in range(self.banks):
-            self.base_ports.append([])
-            for port in range(self.memory_interface.get_num_ports()):
-                self.base_ports[bank].append(None)
+        if memory_interface is not None:
+            for bank in range(self.banks):
+                self.base_ports.append([])
+                for port in range(self.memory_interface.get_num_ports()):
+                    self.base_ports[bank].append(None)
 
         # Search for the proper memory ports on each bank for
         # attaching to the eventual tile

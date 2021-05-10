@@ -76,6 +76,7 @@ class MemoryController(kts.Generator):
         Pass in a config-related json to return a list of
         (config_reg, value) tuples
         '''
+        raise NotImplementedError
 
     def get_config_mode_str(self):
         '''

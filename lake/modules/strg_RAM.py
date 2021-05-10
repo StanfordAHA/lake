@@ -335,6 +335,12 @@ class StrgRAM(MemoryController):
     def get_memory_ports(self):
         return self.base_ports
 
+    def get_bitstream(self, config_json):
+        raise NotImplementedError
+
+    def get_config_mode_str(self):
+        return "ROM"
+
 
 if __name__ == "__main__":
     stg_dut = StrgRAM()
