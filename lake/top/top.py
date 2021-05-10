@@ -171,9 +171,13 @@ class Top():
 
         MTB.realize_hw(clock_gate=add_clk_enable, flush=add_flush, mem_config=True)
 
+        addit_passes = {}
+        if do_config_lift:
+            addit_passes['lift config regs': lift_config_reg]
+
         verilog(MTB, filename="top_mtb.sv",
                 optimize_if=False,
-                additional_passes={"lift config regs": lift_config_reg})
+                additional_passes=addit_passes)
 
         return
 
