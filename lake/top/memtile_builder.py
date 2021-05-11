@@ -395,7 +395,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # print(self.controllers_flat_dict)
         for (output_width, signal_dicts) in self.outputs_dict.items():
             for (i, signal_dict) in enumerate(signal_dicts):
-                new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width)
+                if output_width != 1:
+                    new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width, explicit_array=True)
+                else:
+                    new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width)
                 new_output.add_attribute(ControlSignalAttr(False))
                 # We need to choose which output is hooked up based on the mode...
                 mux_size = len(signal_dict.keys())
