@@ -84,7 +84,8 @@ class StrgUBVec(MemoryController):
             self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
         else:
-            self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
+            # self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
+            self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
             self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
 
         self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
@@ -197,15 +198,6 @@ class StrgUBVec(MemoryController):
                        #    addr_to_sram=self._addr_to_sram,
                        data_to_sram=self._data_to_sram)
 
-        # Dual port/single port guard.
-        if self.rw_same_cycle:
-            self.wire(sram_only.ports.ren_to_sram, self._ren_to_sram)
-            self.wire(sram_only.ports.wr_addr_to_sram, self._wr_addr_to_sram)
-            self.wire(sram_only.ports.rd_addr_to_sram, self._rd_addr_to_sram)
-        else:
-            self.wire(sram_only.ports.cen_to_sram, self._cen_to_sram)
-            self.wire(sram_only.ports.addr_to_sram, self._addr_to_sram)
-
         self.add_child("sram_tb_shared",
                        sram_tb_shared,
                        clk=self._clk,
@@ -236,6 +228,16 @@ class StrgUBVec(MemoryController):
         self.wire(tb_only.ports.t_read, sram_tb_shared.ports.t_read_out)
         self.wire(tb_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(tb_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
+
+        # Dual port/single port guard.
+        if self.rw_same_cycle:
+            self.wire(sram_only.ports.ren_to_sram, self._ren_to_sram)
+            self.wire(sram_only.ports.wr_addr_to_sram, self._wr_addr_to_sram)
+            self.wire(sram_only.ports.rd_addr_to_sram, self._rd_addr_to_sram)
+        else:
+            self.wire(self._ren_to_sram, sram_tb_shared.ports.t_read_out.r_or())
+            # self.wire(sram_only.ports.cen_to_sram, self._cen_to_sram)
+            self.wire(sram_only.ports.addr_to_sram, self._addr_to_sram)
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,

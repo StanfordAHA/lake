@@ -38,7 +38,7 @@ class Top():
                  fifo_mode=False,
                  add_clk_enable=True,
                  add_flush=True,
-                 name="LakeTop",
+                 name="mek",
                  gen_addr=True,
                  stencil_valid=True,
                  formal_module=None,
@@ -188,6 +188,7 @@ class Top():
 if __name__ == "__main__":
 
     top = Top()
+    top.get_verilog()
 
     # parser = argparse.ArgumentParser(description='LakeTop')
     # parser.add_argument("-f",
