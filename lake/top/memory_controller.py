@@ -145,9 +145,24 @@ class MemoryControllerFlatWrapper(MemoryController):
                     # Correct size - copy it
                     elif legal_width == port_width:
                         if in_outn:
-                            tmp_port = self.input(f"{name}_f_{suffix}", port_width)
+                            if port_width != 1:
+                                # If it is not packed, wire it into a 1D packed deal
+                                if not port.is_packed:
+                                    intercept = self.var(f"{name}_f_{suffix}_intercept", port_width, explicit_array=True, packed=True)
+                                    self.wire(intercept[0], port)
+                                    port = intercept
+                                tmp_port = self.input(f"{name}_f_{suffix}", port_width, explicit_array=True, packed=True)
+                            else:
+                                tmp_port = self.input(f"{name}_f_{suffix}", port_width)
                         else:
-                            tmp_port = self.output(f"{name}_f_{suffix}", port_width)
+                            if port_width != 1:
+                                if not port.is_packed:
+                                    intercept = self.var(f"{name}_f_{suffix}_intercept", port_width, explicit_array=True, packed=True)
+                                    self.wire(intercept[0], port)
+                                    port = intercept
+                                tmp_port = self.output(f"{name}_f_{suffix}", port_width, explicit_array=True, packed=True)
+                            else:
+                                tmp_port = self.output(f"{name}_f_{suffix}", port_width)
                         self.wire(tmp_port, port)
                         break
                     # Still a mismatch

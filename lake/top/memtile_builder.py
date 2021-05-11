@@ -380,7 +380,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for (input_width, signal_dicts) in self.inputs_dict.items():
             for (i, signal_dict) in enumerate(signal_dicts):
                 if input_width != 1:
-                    new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width, explicit_array=True)
+                    new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
                 else:
                     new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width)
                 isctrl = input_width == 1
@@ -396,7 +396,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for (output_width, signal_dicts) in self.outputs_dict.items():
             for (i, signal_dict) in enumerate(signal_dicts):
                 if output_width != 1:
-                    new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width, explicit_array=True)
+                    new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width, explicit_array=True, packed=True)
                 else:
                     new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width)
                 new_output.add_attribute(ControlSignalAttr(False))
