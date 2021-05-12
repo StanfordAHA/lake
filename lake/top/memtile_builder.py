@@ -132,6 +132,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             if width not in s_to_p:
                 s_to_p[width] = []
             s_to_p[width].append(signal)
+
+        def sort_ports(p):
+            return p.name
+        for width in s_to_p.keys():
+            s_to_p[width].sort(key=sort_ports)
+
         return s_to_p
 
     def resolve_memports(self):
@@ -174,7 +180,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     shr.append((inp, width))
             # Create a dict from port width to a list of signals with that width
             stop_in = self.size_to_port(shr)
-            print(stop_in)
             self.merge_io_dicts(to_merge=stop_in, merged_dict=self.inputs_dict, mem_ctrl=mem_ctrl)
             # Now add in dedicated ports
             stop_ded = self.size_to_port(ded)
@@ -201,7 +206,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     shr.append((inp, width))
             stop_out = self.size_to_port(shr)
             self.merge_io_dicts(to_merge=stop_out, merged_dict=self.outputs_dict, mem_ctrl=mem_ctrl)
-            print(stop_out)
             # Now add in dedicated ports
             stop_ded = self.size_to_port(ded)
             self.add_io_dict(to_add=stop_ded, merged_dict=self.outputs_dict, mem_ctrl=mem_ctrl)
