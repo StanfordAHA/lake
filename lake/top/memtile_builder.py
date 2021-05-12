@@ -285,10 +285,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.realize_mem_connections()
 
         # Optionally add in these features to the hardware
-        if mem_config:
-            self.realize_mem_config()
         if clock_gate:
             self.add_clock_gate()
+        if mem_config:
+            self.realize_mem_config()
         if flush:
             self.add_flush()
         if do_lift_config:
@@ -369,6 +369,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         clk_en_port = self.internal_generator.get_port("clk_en")
         if clk_en_port is not None:
             self.wire(stg_cfg_seq.ports['clk_en'], clk_en_port | self._config_en.r_or())
+            # Make sure to wire this in if it's in the memory as well
+            clk_en_memory = self.memories[0].internal_generator.get_port("clk_en")
+            if clk_en_memory is not None:
+                self.wire(clk_en_memory, clk_en_port | self._config_en.r_or())
         else:
             self.wire(stg_cfg_seq.ports['clk_en'], self._config_en.r_or())
 
