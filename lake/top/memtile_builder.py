@@ -536,24 +536,26 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         config = []
         config.append(("tile_en", 1))
         # Extract the mode to set the mode config reg (if there is more than one mode)
-        mode_used = config_json['mode']
-        if self.num_modes > 1:
-            # Locate the controller in the list...
-            for idx, ctrl in enumerate(self.controllers):
-                if mode_used == ctrl.get_config_mode_str():
-                    print(f"Found ctrl: {mode_used}")
-                    config.append(("mode", idx))
-                    break
+        mode_map = self.get_mode_map()
         if 'init' in config_json:
             pass
 
-        mode_map = self.get_mode_map()
         # Check for stencil valid
         if 'stencil_valid' in config_json and 'stencil_valid' in mode_map:
             config += mode_map['stencil_valid'].get_bitstream(config_json['stencil_valid'])
 
-        ctrl_to_conf = mode_map[mode_used]
-        config += ctrl_to_conf.get_bitstream(config_json['config'])
+        if 'mode' in config_json:
+            mode_used = config_json['mode']
+            if self.num_modes > 1:
+                # Locate the controller in the list...
+                for idx, ctrl in enumerate(self.controllers):
+                    if mode_used == ctrl.get_config_mode_str():
+                        print(f"Found ctrl: {mode_used}")
+                        config.append(("mode", idx))
+                        break
+
+            ctrl_to_conf = mode_map[mode_used]
+            config += ctrl_to_conf.get_bitstream(config_json['config'])
         return config
 
     def __str__(self):

@@ -1,3 +1,4 @@
+from typing import List
 from lake.modules.spec.sched_gen import SchedGen
 from lake.modules.for_loop import ForLoop
 from lake.attributes.dedicated_port import DedicatedPortAttribute
@@ -75,6 +76,7 @@ class StencilValid(MemoryController):
         for i in range(stencil_valid.dim):
             config.append((f"loops_stencil_valid_ranges_{i}", stencil_valid.extent[i]))
             config.append((f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stencil_valid.cyc_stride[i]))
+        return config
 
     def get_config_mode_str(self):
         return "stencil_valid"
