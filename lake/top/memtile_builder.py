@@ -405,7 +405,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # Wire clk and rst....making some decent assumptions here
             # We actually use the tile enabled clock (Which should have been swapped in)
             # and additionally make sure the mode matches to make sure we minimize power.
-            if len(self.controllers) > 1:
+            if ctrl.get_dedicated_clock():
+                # A controller with a dedicated clock should be excluded from the mode gating - dedicated logic basically.
+                self.wire(ctrl.ports['clk'], kts.util.clock(self._gclk))
+            elif len(self.controllers) > 1:
                 self.wire(ctrl.ports['clk'], kts.util.clock(self._gclk & (self._mode == idx)))
             else:
                 self.wire(ctrl.ports['clk'], kts.util.clock(self._gclk))

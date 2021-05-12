@@ -85,6 +85,9 @@ class MemoryController(kts.Generator):
         '''
         raise NotImplementedError
 
+    def get_dedicated_clock(self):
+        return False
+
     def __str__(self):
         return self.name
 
@@ -241,3 +244,6 @@ class MemoryControllerFlatWrapper(MemoryController):
 
     def get_memory_ports(self):
         return self.mem_ports
+
+    def get_dedicated_clock(self):
+        return self.mem_ctrl.get_dedicated_clock()

@@ -67,7 +67,6 @@ class StencilValid(MemoryController):
         Pass in a config-related json to return a list of
         (config_reg, value) tuples
         '''
-        print("CONFIG STENCIL VALID")
         config = []
         stencil_valid = map_controller(extract_controller_json(config_json), "stencil_valid")
         config.append((f"stencil_valid_sched_gen_enable", 1))
@@ -80,3 +79,6 @@ class StencilValid(MemoryController):
 
     def get_config_mode_str(self):
         return "stencil_valid"
+
+    def get_dedicated_clock(self):
+        return True
