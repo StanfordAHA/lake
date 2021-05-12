@@ -98,7 +98,7 @@ class StrgRAM(MemoryController):
 
         self._addr_out = self.output("addr_out", self.mem_addr_width,
                                      size=self.banks,
-                                     # packed=True)
+                                     packed=True,
                                      explicit_array=True)
 
         self._rd_bank = self.var("rd_bank", max(1, clog2(self.banks)))

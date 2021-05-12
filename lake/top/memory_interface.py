@@ -162,12 +162,12 @@ class PhysicalMemoryStub(kts.Generator):
             if port_type == MemoryPortType.READ:
                 # Read port has data out, address, and ren
                 port_intf['data_out'] = self.output(port_intf['data_out'], self.mem_width, packed=True)
-                port_intf['read_addr'] = self.input(port_intf['read_addr'], kts.clog2(self.mem_depth))
+                port_intf['read_addr'] = self.input(port_intf['read_addr'], kts.clog2(self.mem_depth), packed=True)
                 port_intf['cen'] = self.input(port_intf['cen'], 1)
                 port_intf['clk'] = self.clock(port_intf['clk'])
             elif port_type == MemoryPortType.WRITE:
                 port_intf['data_in'] = self.input(port_intf['data_in'], self.mem_width, packed=True)
-                port_intf['write_addr'] = self.input(port_intf['write_addr'], kts.clog2(self.mem_width))
+                port_intf['write_addr'] = self.input(port_intf['write_addr'], kts.clog2(self.mem_width), packed=True)
                 port_intf['write_enable'] = self.input(port_intf['write_enable'], 1)
                 port_intf['cen'] = self.input(port_intf['cen'], 1)
                 port_intf['clk'] = self.clock(port_intf['clk'])
@@ -175,7 +175,7 @@ class PhysicalMemoryStub(kts.Generator):
                 port_intf['data_in'] = self.input(port_intf['data_in'], self.mem_width, packed=True)
                 port_intf['data_out'] = self.output(port_intf['data_out'], self.mem_width, packed=True)
                 port_intf['write_enable'] = self.input(port_intf['write_enable'], 1)
-                port_intf['addr'] = self.input(port_intf['addr'], kts.clog2(self.mem_depth))
+                port_intf['addr'] = self.input(port_intf['addr'], kts.clog2(self.mem_depth), packed=True)
                 port_intf['cen'] = self.input(port_intf['cen'], 1)
                 port_intf['clk'] = self.clock(port_intf['clk'])
             # For now, assume the alt sigs are all inputs
@@ -238,18 +238,18 @@ class MemoryInterface(kts.Generator):
             if port_type == MemoryPortType.READ:
                 # Read port has data out, address, and ren
                 port_intf['data_out'] = self.output(f"data_out_p{pnum}", self.mem_width, packed=True)
-                port_intf['read_addr'] = self.input(f"read_addr_p{pnum}", kts.clog2(self.mem_depth))
+                port_intf['read_addr'] = self.input(f"read_addr_p{pnum}", kts.clog2(self.mem_depth), packed=True)
                 port_intf['read_enable'] = self.input(f"read_enable_p{pnum}", 1)
             elif port_type == MemoryPortType.WRITE:
                 port_intf['data_in'] = self.input(f"data_in_p{pnum}", self.mem_width, packed=True)
-                port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_width))
+                port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_width), packed=True)
                 port_intf['write_enable'] = self.input(f"write_enable_p{pnum}", 1)
             elif port_type == MemoryPortType.READWRITE:
                 port_intf['data_out'] = self.output(f"data_out_p{pnum}", self.mem_width, packed=True)
-                port_intf['read_addr'] = self.input(f"read_addr_p{pnum}", kts.clog2(self.mem_depth))
+                port_intf['read_addr'] = self.input(f"read_addr_p{pnum}", kts.clog2(self.mem_depth), packed=True)
                 port_intf['read_enable'] = self.input(f"read_enable_p{pnum}", 1)
                 port_intf['data_in'] = self.input(f"data_in_p{pnum}", self.mem_width, packed=True)
-                port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_depth))
+                port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_depth), packed=True)
                 port_intf['write_enable'] = self.input(f"write_enable_p{pnum}", 1)
 
     def set_tech_map(self, tech_map):
