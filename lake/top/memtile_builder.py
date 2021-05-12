@@ -8,6 +8,7 @@ from lake.top.memory_controller import *
 from lake.attributes.formal_attr import *
 import kratos as kts
 from lake.passes.passes import lift_config_reg
+from lake.attributes.dedicated_port import DedicatedPortAttribute
 
 
 class MemoryTileFinalizedException(Exception):
@@ -46,6 +47,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         self.inputs_dict = {}
         self.outputs_dict = {}
+
+        self.dedicated_inputs = {}
+        self.dedicated_outputs = {}
 
         self.mem_port_code = {}
         self.mem_port_mux_if = {}
@@ -158,11 +162,23 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # and indicate in which mode which input goes to which port in the controllers
         # Go through controllers
         for mem_ctrl in self.controllers_flat:
-            ctrl_name = str(mem_ctrl)
             ctrl_ins = mem_ctrl.get_inputs()
+            # Separate into dedicated and shared...
+            ded = []
+            shr = []
+            for (inp, width) in ctrl_ins:
+                dedicated_attr = inp.find_attribute(lambda a: isinstance(a, MemoryPortExclusionAttr))
+                if len(dedicated_attr) > 0:
+                    ded.append((inp, width))
+                else:
+                    shr.append((inp, width))
             # Create a dict from port width to a list of signals with that width
-            stop_in = self.size_to_port(ctrl_ins)
+            stop_in = self.size_to_port(shr)
+            print(stop_in)
             self.merge_io_dicts(to_merge=stop_in, merged_dict=self.inputs_dict, mem_ctrl=mem_ctrl)
+            # Now add in dedicated ports
+            stop_ded = self.size_to_port(ded)
+            self.add_io_dict(to_add=stop_ded, merged_dict=self.inputs_dict, mem_ctrl=mem_ctrl)
 
     def resolve_outputs(self):
         '''
@@ -173,11 +189,35 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # and indicate in which mode which input goes to which port in the controllers
         # Go through controllers
         for mem_ctrl in self.controllers_flat:
-            ctrl_name = str(mem_ctrl)
             ctrl_outs = mem_ctrl.get_outputs()
             # Create a dict from port width to a list of signals with that width
-            stop_out = self.size_to_port(ctrl_outs)
+            ded = []
+            shr = []
+            for (inp, width) in ctrl_outs:
+                dedicated_attr = inp.find_attribute(lambda a: isinstance(a, DedicatedPortAttribute))
+                if len(dedicated_attr) > 0:
+                    ded.append((inp, width))
+                else:
+                    shr.append((inp, width))
+            stop_out = self.size_to_port(shr)
             self.merge_io_dicts(to_merge=stop_out, merged_dict=self.outputs_dict, mem_ctrl=mem_ctrl)
+            print(stop_out)
+            # Now add in dedicated ports
+            stop_ded = self.size_to_port(ded)
+            self.add_io_dict(to_add=stop_ded, merged_dict=self.outputs_dict, mem_ctrl=mem_ctrl)
+
+    def add_io_dict(self, to_add, merged_dict, mem_ctrl):
+        """This function adds in dedicated signals to the dict without merging them
+
+        Args:
+            to_add (dict): New dict of width: [signal list] key,value pairs
+            merged_dict (dict): The local dictionary to add to
+            mem_ctrl (MemoryController): Memory controller that contains the signals
+        """
+        for (width, signal_list) in to_add.items():
+            # Just go through and add new signals
+            for idx in range(len(signal_list)):
+                merged_dict[width].append({str(mem_ctrl): str(signal_list[idx])})
 
     def merge_io_dicts(self, to_merge, merged_dict, mem_ctrl):
         '''
@@ -365,8 +405,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # Wire clk and rst....making some decent assumptions here
             # We actually use the tile enabled clock (Which should have been swapped in)
             # and additionally make sure the mode matches to make sure we minimize power.
-            clk_var = self.var(f"gclk_{ctrl_name}", 1)
-            clk_clk = kts.util.clock(clk_var)
             if len(self.controllers) > 1:
                 self.wire(ctrl.ports['clk'], kts.util.clock(self._gclk & (self._mode == idx)))
             else:

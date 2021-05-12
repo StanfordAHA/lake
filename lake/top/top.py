@@ -1,3 +1,4 @@
+from lake.modules.stencil_valid import StencilValid
 from lake.top.tech_maps import TSMC_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.attributes.formal_attr import *
@@ -148,6 +149,8 @@ class Top():
                                    read_delay=self.read_delay,
                                    addr_width=16,
                                    prioritize_write=True))
+
+        controllers.append(StencilValid())
 
         for ctrl in controllers:
             MTB.add_memory_controller(ctrl)

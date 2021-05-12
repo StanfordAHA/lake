@@ -164,6 +164,8 @@ class MemoryControllerFlatWrapper(MemoryController):
                             else:
                                 tmp_port = self.output(f"{name}_f_{suffix}", port_width)
                         self.wire(tmp_port, port)
+                        # Copy attributes
+                        self.copy_attributes(copy_to=tmp_port, copy_from=port)
                         break
                     # Still a mismatch
                     elif legal_width < port_width and legal_width != 1:
@@ -179,6 +181,8 @@ class MemoryControllerFlatWrapper(MemoryController):
                             else:
                                 tmp_bit = self.output(f"{name}_f_{alt_suffix}b_{bit}", 1)
                             self.wire(tmp_bit, port[bit])
+                            # Copy attributes
+                            self.copy_attributes(copy_to=tmp_bit, copy_from=port)
                         break
             # This is a 2D signal
             elif port.size[0] > 1 and port_dim == 1:
@@ -191,6 +195,10 @@ class MemoryControllerFlatWrapper(MemoryController):
                 raise NotImplementedError
         else:
             print(f"Cannot flatten this port...{port.name}, {port.width}, {port.size}")
+
+    def copy_attributes(self, copy_to, copy_from):
+        for attr in copy_from.attributes:
+            copy_to.add_attribute(attr)
 
     def flatten_inputs(self):
         child_ins = self.mem_ctrl.get_inputs()
