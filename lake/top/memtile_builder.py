@@ -372,7 +372,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # Make sure to wire this in if it's in the memory as well
             clk_en_memory = self.memories[0].internal_generator.get_port("clk_en")
             if clk_en_memory is not None:
-                self.wire(clk_en_memory, clk_en_port | self._config_en.r_or())
+                self.internal_generator.unwire(clk_en_memory, clk_en_port)
+                self.wire(clk_en_memory, kts.clock_en(clk_en_port | self._config_en.r_or()))
         else:
             self.wire(stg_cfg_seq.ports['clk_en'], self._config_en.r_or())
 
@@ -525,7 +526,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for bank in range(self.memory_banks):
             for port in range(self.memory_interface.get_num_ports()):
                 # Wire clock and reset...
-                self.wire(self._clk, self.memories[bank].get_clock())
+                # self.wire(self._clk, self.memories[bank].get_clock())
+                self.wire(self._gclk, self.memories[bank].get_clock())
                 if self.memories[bank].has_reset():
                     self.wire(self._rst_n, self.memories[bank].get_reset())
                 self.add_mem_port_connection(self.memories[bank].get_ports()[port], self.mem_conn[bank][port])
