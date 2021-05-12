@@ -509,17 +509,6 @@ class StrgUBVec(MemoryController):
                 config.append((f"strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_{i}", sram2tb_1.cyc_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_write_addr_gen_1_strides_{i}", sram2tb_1.in_data_stride[i]))
 
-        if "stencil_valid" in config_json:
-            stencil_valid = map_controller(extract_controller_json(config_json["stencil_valid"]), "stencil_valid")
-            # Check actual stencil valid property of hardware before programming
-            if self.stencil_valid:
-                config.append((f"stencil_valid_sched_gen_enable", 1))
-                config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stencil_valid.cyc_strt))
-                config.append((f"loops_stencil_valid_dimensionality", stencil_valid.dim))
-                for i in range(stencil_valid.dim):
-                    config.append((f"loops_stencil_valid_ranges_{i}", stencil_valid.extent[i]))
-                    config.append((f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stencil_valid.cyc_stride[i]))
-
         # Control Signals...
         # Set the mode and activate the tile...
         config.append(("flush_reg_sel", 0))  # 1

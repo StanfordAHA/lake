@@ -555,7 +555,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         break
 
             ctrl_to_conf = mode_map[mode_used]
-            ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'])
+            # Have some guard to see if config is in there or not...
+            if 'config' in config_json:
+                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'])
+            else:
+                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json)
 
         for (ctrl, conf_for_ctrl) in ctrl_config.items():
             # Go through each config and prepend the string
