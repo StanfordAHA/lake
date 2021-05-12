@@ -509,20 +509,6 @@ class StrgUBVec(MemoryController):
                 config.append((f"strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_{i}", sram2tb_1.cyc_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_write_addr_gen_1_strides_{i}", sram2tb_1.in_data_stride[i]))
 
-        # Control Signals...
-        # Set the mode and activate the tile...
-        config.append(("flush_reg_sel", 0))  # 1
-        config.append(("flush_reg_value", 0))  # 1
-
-        # TODO: Maybe need to check if size 1?
-        for i in range(input_ports):
-            config.append((f"ren_in_{i}_reg_sel", 1))
-            config.append((f"ren_in_{i}_reg_value", 0))
-
-        for i in range(output_ports):
-            config.append((f"wen_in_{i}_reg_sel", 1))
-            config.append((f"wen_in_{i}_reg_value", 0))
-
         return trim_config_list(flattened, config)
 
     def get_config_mode_str(self):
