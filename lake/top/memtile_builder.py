@@ -546,7 +546,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     break
         if 'init' in config_json:
             pass
-        ctrl_to_conf = self.get_mode_map()[mode_used]
+
+        mode_map = self.get_mode_map()
+        # Check for stencil valid
+        if 'stencil_valid' in config_json and 'stencil_valid' in mode_map:
+            config += mode_map['stencil_valid'].get_bitstream(config_json['stencil_valid'])
+
+        ctrl_to_conf = mode_map[mode_used]
         config += ctrl_to_conf.get_bitstream(config_json['config'])
         return config
 
