@@ -539,10 +539,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         mode_map = self.get_mode_map()
         if 'init' in config_json:
             pass
-
+        ctrl_config = {}
         # Check for stencil valid
         if 'stencil_valid' in config_json and 'stencil_valid' in mode_map:
-            config += mode_map['stencil_valid'].get_bitstream(config_json['stencil_valid'])
+            ctrl_config['stencil_valid'] = mode_map['stencil_valid'].get_bitstream(config_json['stencil_valid'])
 
         if 'mode' in config_json:
             mode_used = config_json['mode']
@@ -555,7 +555,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         break
 
             ctrl_to_conf = mode_map[mode_used]
-            config += ctrl_to_conf.get_bitstream(config_json['config'])
+            ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'])
+
+        for (ctrl, conf_for_ctrl) in ctrl_config.items():
+            # Go through each config and prepend the string
+            prepend_string = f"mem_ctrl_{ctrl}_flat_{ctrl}_inst_"
+            for cfg_reg, val in conf_for_ctrl:
+                config.append((prepend_string + cfg_reg, val))
         return config
 
     def __str__(self):
