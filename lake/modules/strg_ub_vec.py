@@ -1,3 +1,4 @@
+from lake.modules.chain_accessor import ChainAccessor
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.top.memory_interface import MemoryPort, MemoryPortType
 from lake.top.memory_controller import MemoryController
@@ -94,10 +95,16 @@ class StrgUBVec(MemoryController):
                                          packed=True)
 
         self._valid_out = self.output("accessor_output", self.interconnect_output_ports)
+        self._valid_out_int = self.var("accessor_output_int", self.interconnect_output_ports)
         self._data_out = self.output("data_out", self.data_width,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
+
+        self._data_out_int = self.var("data_out_int", self.data_width,
+                                      size=self.interconnect_output_ports,
+                                      packed=True,
+                                      explicit_array=True)
 
         ##################################################################################
         # CYCLE COUNTER
@@ -210,8 +217,8 @@ class StrgUBVec(MemoryController):
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
                        sram_read_data=self._data_from_sram,
-                       accessor_output=self._valid_out,
-                       data_out=self._data_out)
+                       accessor_output=self._valid_out_int,
+                       data_out=self._data_out_int)
 
         self.wire(agg_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
         self.wire(agg_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
@@ -260,6 +267,32 @@ class StrgUBVec(MemoryController):
         rw_port_intf['read_enable'] = self._ren_to_sram
         rw_port.annotate_port_signals()
         self.base_ports[0][0] = rw_port
+
+        # Add chaining in here... since we only use in the UB case...
+
+        # chain data in
+        self._chain_data_in = self.input("chain_data_in",
+                                         self.data_width,
+                                         size=self.interconnect_output_ports,
+                                         packed=True,
+                                         explicit_array=True)
+
+        chaining = ChainAccessor(data_width=self.data_width,
+                                 interconnect_output_ports=self.interconnect_output_ports)
+
+        # self._mode_mask = self.var("mode_mask", self._accessor_output.width)
+        # self.wire(self._mode_mask[0], self._mode.r_or())
+        # for i in range(self._accessor_output.width - 1):
+        #     self.wire(self._mode_mask[i + 1], kts.const(0, 1))
+
+        self.add_child(f"chain", chaining,
+                       curr_tile_data_out=self._data_out_int,
+                       chain_data_in=self._chain_data_in,
+                       #    accessor_output=(self._accessor_output | self._mode_mask),
+                       accessor_output=self._valid_out_int,
+                       data_out_tile=self._data_out)
+
+        self.wire(self._valid_out, self._valid_out_int)
 
     def get_static_bitstream(self, config_path, in_file_name, out_file_name):
 

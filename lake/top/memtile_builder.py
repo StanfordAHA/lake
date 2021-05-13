@@ -1,3 +1,4 @@
+from lake.modules.chain_accessor import ChainAccessor
 from lake.top.cgra_tile_builder import CGRATileBuilder
 from lake.modules.storage_config_seq import StorageConfigSeq
 from kratos.stmts import IfStmt
@@ -53,6 +54,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         self.mem_port_code = {}
         self.mem_port_mux_if = {}
+
+        self.supports_chaining = True
 
         self.mem_conn = None
         if memory_interface is not None:
