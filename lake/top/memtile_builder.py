@@ -533,9 +533,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # For each port in the memory system, mux between the different controllers
         # based on the mode
         for bank in range(self.memory_banks):
+            self.wire(self._gclk, self.memories[bank].get_clock())
             for port in range(self.memory_interface.get_num_ports()):
                 # Wire clock and reset...
-                self.wire(self._gclk, self.memories[bank].get_clock())
+                # self.wire(self._gclk, self.memories[bank].get_clock())
                 if self.memories[bank].has_reset():
                     self.wire(self._rst_n, self.memories[bank].get_reset())
                 self.add_mem_port_connection(self.memories[bank].get_ports()[port], self.mem_conn[bank][port])
