@@ -85,7 +85,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         flush_port.add_attribute(ControlSignalAttr(True))
 
     def allocate_mem_conn(self):
-        self.mem_conn = [[{}] * len(self.memory_interface.get_ports())] * self.memory_banks
+        # self.mem_conn = [[{}] * len(self.memory_interface.get_ports())] * self.memory_banks
+        # self.mem_conn = [[[]] * len(self.memory_interface.get_ports())] * self.memory_banks
+        self.mem_conn = []
+        for i in range(self.memory_banks):
+            # Each bank has its own list of ports
+            self.mem_conn.append([])
+            for j in range(self.memory_interface.get_num_ports()):
+                self.mem_conn[i].append({})
 
     def set_banks(self, banks):
         self.memory_banks = banks
@@ -150,7 +157,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         '''
         # TODO: Eventually want to add heuristics for resolving the memory ports if a designer
         # doesn't want to know ahead of time - for static scheduling, however, it's crucial
-
         for mem_ctrl in self.controllers:
             ctrl_name = str(mem_ctrl)
             # Now get the port request - controllers should only request ports
@@ -383,8 +389,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Now go through the memory port requests of the configuration module
         # and inject the override if condition into the code
         mem_ports_to_override = stg_cfg_seq.get_memory_ports()
-        for bank in range(self.memory_banks):
-            for port in range(self.memory_interface.get_num_ports()):
+        for bank in range(len(mem_ports_to_override)):
+            for port in range(len(mem_ports_to_override[0])):
                 override = mem_ports_to_override[bank][port]
                 # Finally inject the config override in here...
                 if override is not None:
@@ -445,7 +451,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         '''
         This function creates the outputs from the tile, tags them, and wires them to the ports of the controllers
         '''
-        # print(self.controllers_flat_dict)
         for (output_width, signal_dicts) in self.outputs_dict.items():
             for (i, signal_dict) in enumerate(signal_dicts):
                 if output_width != 1:
@@ -507,7 +512,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 ctrl_intf = ctrl_port.get_port_interface()
                 # Broadcast the outputs
                 for bc_sign in bc_list:
-                    bc_comb.add_stmt(ctrl_intf[bc_sign].assign(local_intf[bc_sign]))
+                    if ctrl_intf[bc_sign] is not None:
+                        bc_comb.add_stmt(ctrl_intf[bc_sign].assign(local_intf[bc_sign]))
                 ass_stmt = [local_intf[name].assign(ctrl_intf[name]) for name in mux_list]
                 # Mux in the inputs
                 if idx == 0:
@@ -589,9 +595,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         rep_str += f"===OUTPUTS===\n{self.outputs_dict}\n===MEMPORTS===\n"
         for i in range(self.memory_banks):
             for j in range(self.memory_interface.get_num_ports()):
-                for pp in self.memories[i].get_ports():
-                    print("MEK")
-                    print(pp.get_port_type())
                 rep_str += f"BANK: {i}\t PORT: {j}\n"
                 for (k, (ctrl, port)) in enumerate(self.mem_conn[i][j].items()):
                     rep_str += f"CONN {k}\tCONTROLLER: {ctrl}\tPORT: {port}\n"

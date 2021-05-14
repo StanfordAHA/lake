@@ -76,7 +76,10 @@ class MemoryPort():
     def __str__(self):
         conn_str = ""
         for (name, conn) in self.port_interface.items():
-            conn_str += f"conn: {name}, {conn.name}\n"
+            if conn is None:
+                conn_str += f"conn: {name}, DISCONNECTED\n"
+            else:
+                conn_str += f"conn: {name}, {conn.name}\n"
         return f"Port: Type: {self.get_port_type()}, conns:\n{conn_str}"
 
 

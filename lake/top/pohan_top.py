@@ -1,5 +1,5 @@
 from lake.modules.stencil_valid import StencilValid
-from lake.top.tech_maps import TSMC_Tech_Map
+from lake.top.tech_maps import SKY_Tech_Map, TSMC_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.attributes.formal_attr import *
 import os
@@ -25,7 +25,7 @@ class PohanTop():
                  output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
-                 use_sram_stub=True,
+                 use_sim_sram=False,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
@@ -50,7 +50,7 @@ class PohanTop():
         self.output_config_width = output_config_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
-        self.use_sram_stub = use_sram_stub
+        self.use_sim_sram = use_sim_sram
         self.agg_height = agg_height
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
         assert self.mem_width >= self.data_width, "Data width needs to be smaller than mem"
@@ -77,17 +77,14 @@ class PohanTop():
         }
 
         # Create the logical memory interface to the skywater memory...
-        # sky_sram = [MemoryPort(MemoryPortType.READ, delay=1, active_read=True),
-        #             MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
         sky_sram = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True),
                     MemoryPort(MemoryPortType.READ, delay=1, active_read=True)]
 
-        sim = True
-        tech_map = TSMC_Tech_Map()
+        tech_map = SKY_Tech_Map()
         MTB.set_memory_interface(name_prefix="sram_idk",
                                  mem_params=memory_params,
                                  ports=sky_sram,
-                                 sim_macro_n=sim,
+                                 sim_macro_n=use_sim_sram,
                                  tech_map=tech_map)
 
         # Now add the controllers in...
@@ -106,17 +103,17 @@ class PohanTop():
                                      config_width=self.input_config_width,
                                      agg_data_top=(self.formal_module == "agg")))
 
-        # controllers.append(StrgRAM(data_width=self.data_width,
-        #                            banks=self.banks,
-        #                            memory_width=self.mem_width,
-        #                            memory_depth=self.mem_depth,
-        #                            num_tiles=self.num_tiles,
-        #                            rw_same_cycle=self.rw_same_cycle,
-        #                            read_delay=self.read_delay,
-        #                            addr_width=16,
-        #                            prioritize_write=True))
+        controllers.append(StrgRAM(data_width=self.data_width,
+                                   banks=self.banks,
+                                   memory_width=self.mem_width,
+                                   memory_depth=self.mem_depth,
+                                   num_tiles=self.num_tiles,
+                                   rw_same_cycle=self.rw_same_cycle,
+                                   read_delay=self.read_delay,
+                                   addr_width=16,
+                                   prioritize_write=True))
 
-        # controllers.append(StencilValid())
+        controllers.append(StencilValid())
 
         for ctrl in controllers:
             MTB.add_memory_controller(ctrl)
@@ -126,8 +123,6 @@ class PohanTop():
         # Then add the config hooks...
         MTB.add_config_hooks(config_data_width=self.config_data_width,
                              config_addr_width=self.config_addr_width)
-
-        print(MTB)
 
         MTB.realize_hw(clock_gate=add_clk_enable,
                        flush=add_flush,
@@ -153,7 +148,11 @@ class PohanTop():
         else:
             return False
 
+    def __str__(self):
+        return str(self.dut)
+
 
 if __name__ == "__main__":
     top = PohanTop()
+    print(top)
     top.get_verilog(filename="pohan_dut.sv")
