@@ -25,7 +25,7 @@ class PohanTop():
                  output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
-                 use_sim_sram=False,
+                 use_sim_sram=True,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
