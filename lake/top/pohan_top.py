@@ -153,6 +153,6 @@ class PohanTop():
 
 
 if __name__ == "__main__":
-    top = PohanTop()
+    top = PohanTop(use_sim_sram=True)
     print(top)
     top.get_verilog(filename="pohan_dut.sv")
