@@ -236,15 +236,57 @@ class StrgUBVec(MemoryController):
         self.wire(tb_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(tb_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
 
+        self.base_ports = [[None]]
+
         # Dual port/single port guard.
         if self.rw_same_cycle:
             self.wire(sram_only.ports.ren_to_sram, self._ren_to_sram)
             self.wire(sram_only.ports.wr_addr_to_sram, self._wr_addr_to_sram)
             self.wire(sram_only.ports.rd_addr_to_sram, self._rd_addr_to_sram)
+            self.base_ports = [[None, None]]
+            tmp0_rdaddr = self.output("tmp0_rdaddr", width=self._rd_addr_to_sram.width)
+            tmp0_rden = self.output("tmp0_rden", width=self._ren_to_sram.width)
+            self.wire(tmp0_rdaddr, kts.const(0, width=self._rd_addr_to_sram.width))
+            self.wire(tmp0_rden, kts.const(0, width=self._ren_to_sram.width))
+            # Use first port as just W
+            rw_port = MemoryPort(MemoryPortType.READWRITE)
+            rw_port_intf = rw_port.get_port_interface()
+            rw_port_intf['data_in'] = self._data_to_sram
+            rw_port_intf['data_out'] = None
+            rw_port_intf['write_addr'] = self._wr_addr_to_sram
+            rw_port_intf['write_enable'] = self._wen_to_sram
+            rw_port_intf['read_addr'] = tmp0_rdaddr
+            rw_port_intf['read_enable'] = tmp0_rden
+            rw_port.annotate_port_signals()
+            self.base_ports[0][0] = rw_port
+            # Populate second port as just R
+            r_port = MemoryPort(MemoryPortType.READ)
+            r_port_intf = r_port.get_port_interface()
+            r_port_intf['data_out'] = self._data_from_sram
+            r_port_intf['read_addr'] = self._rd_addr_to_sram
+            r_port_intf['read_enable'] = self._ren_to_sram
+            r_port.annotate_port_signals()
+            self.base_ports[0][1] = r_port
         else:
+            self.base_ports = [[None]]
             self.wire(self._ren_to_sram, sram_tb_shared.ports.t_read_out.r_or())
             # self.wire(sram_only.ports.cen_to_sram, self._cen_to_sram)
             self.wire(sram_only.ports.addr_to_sram, self._addr_to_sram)
+            # Assume a single RW Port
+            # TODO - have the memory interface automatically find ports
+            # in the interface.
+            rw_port = MemoryPort(MemoryPortType.READWRITE)
+            rw_port_intf = rw_port.get_port_interface()
+            rw_port_intf['data_in'] = self._data_to_sram
+            rw_port_intf['data_out'] = self._data_from_sram
+            rw_port_intf['write_addr'] = self._addr_to_sram
+            # rw_port_intf['write_addr'] = self._wr_addr_to_sram
+            rw_port_intf['write_enable'] = self._wen_to_sram
+            rw_port_intf['read_addr'] = self._addr_to_sram
+            # rw_port_intf['read_addr'] = self._rd_addr_to_sram
+            rw_port_intf['read_enable'] = self._ren_to_sram
+            rw_port.annotate_port_signals()
+            self.base_ports[0][0] = rw_port
 
         if agg_data_top:
             self._agg_data_out = self.output(f"strg_ub_agg_data_out", self.data_width,
@@ -254,23 +296,7 @@ class StrgUBVec(MemoryController):
                                              explicit_array=True)
             self.wire(self._agg_data_out, agg_only.ports.agg_data_out)
 
-        self.base_ports = [[None]]
-        rw_port = MemoryPort(MemoryPortType.READWRITE)
-        rw_port_intf = rw_port.get_port_interface()
-        rw_port_intf['data_in'] = self._data_to_sram
-        rw_port_intf['data_out'] = self._data_from_sram
-        rw_port_intf['write_addr'] = self._addr_to_sram
-        # rw_port_intf['write_addr'] = self._wr_addr_to_sram
-        rw_port_intf['write_enable'] = self._wen_to_sram
-        rw_port_intf['read_addr'] = self._addr_to_sram
-        # rw_port_intf['read_addr'] = self._rd_addr_to_sram
-        rw_port_intf['read_enable'] = self._ren_to_sram
-        rw_port.annotate_port_signals()
-        self.base_ports[0][0] = rw_port
-
         # Add chaining in here... since we only use in the UB case...
-
-        # chain data in
         self._chain_data_in = self.input("chain_data_in",
                                          self.data_width,
                                          size=self.interconnect_output_ports,
@@ -280,15 +306,9 @@ class StrgUBVec(MemoryController):
         chaining = ChainAccessor(data_width=self.data_width,
                                  interconnect_output_ports=self.interconnect_output_ports)
 
-        # self._mode_mask = self.var("mode_mask", self._accessor_output.width)
-        # self.wire(self._mode_mask[0], self._mode.r_or())
-        # for i in range(self._accessor_output.width - 1):
-        #     self.wire(self._mode_mask[i + 1], kts.const(0, 1))
-
         self.add_child(f"chain", chaining,
                        curr_tile_data_out=self._data_out_int,
                        chain_data_in=self._chain_data_in,
-                       #    accessor_output=(self._accessor_output | self._mode_mask),
                        accessor_output=self._valid_out_int,
                        data_out_tile=self._data_out)
 

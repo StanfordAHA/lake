@@ -529,7 +529,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for bank in range(self.memory_banks):
             for port in range(self.memory_interface.get_num_ports()):
                 # Wire clock and reset...
-                # self.wire(self._clk, self.memories[bank].get_clock())
                 self.wire(self._gclk, self.memories[bank].get_clock())
                 if self.memories[bank].has_reset():
                     self.wire(self._rst_n, self.memories[bank].get_reset())
@@ -590,6 +589,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         rep_str += f"===OUTPUTS===\n{self.outputs_dict}\n===MEMPORTS===\n"
         for i in range(self.memory_banks):
             for j in range(self.memory_interface.get_num_ports()):
+                for pp in self.memories[i].get_ports():
+                    print("MEK")
+                    print(pp.get_port_type())
                 rep_str += f"BANK: {i}\t PORT: {j}\n"
                 for (k, (ctrl, port)) in enumerate(self.mem_conn[i][j].items()):
                     rep_str += f"CONN {k}\tCONTROLLER: {ctrl}\tPORT: {port}\n"

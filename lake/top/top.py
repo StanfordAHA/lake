@@ -9,8 +9,6 @@ from lake.modules.strg_ub_vec import StrgUBVec
 from lake.modules.strg_ub_thin import StrgUBThin
 from lake.modules.strg_RAM import StrgRAM
 from lake.utils.sram_macro import SRAMMacroInfo
-from _kratos import create_wrapper_flatten
-import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
 
 

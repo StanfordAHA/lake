@@ -220,6 +220,8 @@ class MemoryControllerFlatWrapper(MemoryController):
         for (name, sig) in mem_prt.get_port_interface().items():
             # These should all comply anyway, so just need to recreate them
             try:
+                if sig is None:
+                    continue
                 lifted_port = self.port_from_def(sig, name=f"{sig}_lifted")
                 new_mem_prt_intf[name] = lifted_port
                 self.wire(lifted_port, sig)
