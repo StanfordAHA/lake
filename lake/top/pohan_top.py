@@ -21,14 +21,12 @@ class PohanTop():
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
-                 input_config_width=16,
-                 output_config_width=16,
+                 config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
                  use_sim_sram=True,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=True,  # Does the memory allow r+w in same cycle?
-                 agg_height=4,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
@@ -46,12 +44,11 @@ class PohanTop():
         self.banks = banks
         self.input_iterator_support = input_iterator_support
         self.output_iterator_support = output_iterator_support
-        self.input_config_width = input_config_width
-        self.output_config_width = output_config_width
+        self.config_width = config_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.use_sim_sram = use_sim_sram
-        self.agg_height = agg_height
+        self.agg_height = 4
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
         assert self.mem_width >= self.data_width, "Data width needs to be smaller than mem"
         self.fw_int = int(self.mem_width / self.data_width)
@@ -100,7 +97,7 @@ class PohanTop():
                                      read_delay=self.read_delay,
                                      rw_same_cycle=self.rw_same_cycle,
                                      agg_height=self.agg_height,
-                                     config_width=self.input_config_width,
+                                     config_width=self.config_width,
                                      agg_data_top=(self.formal_module == "agg")))
 
         controllers.append(StrgRAM(data_width=self.data_width,
@@ -113,7 +110,8 @@ class PohanTop():
                                    addr_width=16,
                                    prioritize_write=True))
 
-        controllers.append(StencilValid())
+        if self.stencil_valid:
+            controllers.append(StencilValid())
 
         for ctrl in controllers:
             MTB.add_memory_controller(ctrl)

@@ -28,14 +28,14 @@ class Top():
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
-                 fifo_mode=False,
                  add_clk_enable=True,
                  add_flush=True,
                  name="mek",
                  gen_addr=True,
                  stencil_valid=True,
                  formal_module=None,
-                 do_config_lift=True):
+                 do_config_lift=True,
+                 fifo_mode=False):
 
         self.data_width = data_width
         self.mem_width = mem_width
