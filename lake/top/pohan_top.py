@@ -1,3 +1,4 @@
+from lake.utils.util import check_env, generate_lake_config_wrapper, get_configs_dict, set_configs_sv
 from lake.modules.stencil_valid import StencilValid
 from lake.top.tech_maps import SKY_Tech_Map, TSMC_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
@@ -148,6 +149,38 @@ class PohanTop():
 
     def __str__(self):
         return str(self.dut)
+
+    def form_json(self, config_path):
+        return config_path
+
+    def wrapper(self,
+                module_name,
+                config_path,
+                name="pohan_wrapper"):
+
+        # Load the JSON and manipulate before sending under to MTB
+        config_json = self.form_json(config_path=config_path)
+
+        configs = self.dut.get_bitstream(config_json=config_json)
+        # prints out list of configs for compiler team
+        configs_list = set_configs_sv(self.dut, "configs.sv", get_configs_dict(configs))
+
+        # get flattened module
+        flattened = create_wrapper_flatten(self.dut.internal_generator.clone(),
+                                           f"{module_name}_W")
+        inst = Generator(f"{module_name}_W",
+                         internal_generator=flattened)
+        verilog(inst, filename=f"{module_name}_W.v")
+
+        # get original verilog
+        verilog(self.dut, filename=f"{module_name}_dut.v")
+        # prepend wrapper module to original verilog file
+        with open(f"{module_name}_W.v", "a") as with_flatten:
+            with open(f"{module_name}_dut.v", "r") as dut_file:
+                for line in dut_file:
+                    with_flatten.write(line)
+
+        generate_lake_config_wrapper(configs_list, "configs.sv", f"{module_name}_W.v", name, module_name)
 
 
 if __name__ == "__main__":
