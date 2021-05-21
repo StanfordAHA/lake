@@ -152,9 +152,9 @@ class PohanTop():
         return str(self.dut)
 
     def form_json(self, config_path):
-        loaded_json = json.load(config_path)
-        print("Forming JSON")
-        print(loaded_json)
+        config_file = open(config_path, "r")
+        loaded_json = json.load(config_file)
+        loaded_json["mode"] = "UB"
         return loaded_json
 
     def wrapper(self,
