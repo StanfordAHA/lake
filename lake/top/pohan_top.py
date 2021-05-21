@@ -12,6 +12,7 @@ from lake.modules.strg_RAM import StrgRAM
 from _kratos import create_wrapper_flatten
 import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
+import json
 
 
 class PohanTop():
@@ -151,7 +152,10 @@ class PohanTop():
         return str(self.dut)
 
     def form_json(self, config_path):
-        return config_path
+        loaded_json = json.load(config_path)
+        print("Forming JSON")
+        print(loaded_json)
+        return loaded_json
 
     def wrapper(self,
                 module_name,
