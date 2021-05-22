@@ -9,9 +9,8 @@ def test_gen_dual_port(config_path="/aha/config.json", name="cfg_wrapper"):
 
     print(f"Using configuration file at: {config_path}")
     pohan_top = PohanTop()
-    pohan_top_wrapper = pohan_top.wrapper(module_name="pohan_dut",
-                                          config_path=config_path,
-                                          name=name)
+    pohan_top_wrapper = pohan_top.wrapper(vlog_filename=name,
+                                          config_path=config_path)
     return pohan_top_wrapper
 
 

@@ -85,8 +85,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         flush_port.add_attribute(ControlSignalAttr(True))
 
     def allocate_mem_conn(self):
-        # self.mem_conn = [[{}] * len(self.memory_interface.get_ports())] * self.memory_banks
-        # self.mem_conn = [[[]] * len(self.memory_interface.get_ports())] * self.memory_banks
         self.mem_conn = []
         for i in range(self.memory_banks):
             # Each bank has its own list of ports
@@ -589,6 +587,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for cfg_reg, val in conf_for_ctrl:
                 config.append((prepend_string + cfg_reg, val))
         return config
+
+    def get_inputs_map(self):
+        """Return the mapping from input ports to controller ports
+        """
+        return self.inputs_dict
+
+    def get_outputs_map(self):
+        """Return the mapping from output ports to controller ports
+        """
+        return self.outputs_dict
 
     def __str__(self):
         rep_str = "=====MEMORY TILE BUILDER=====\n===CONTROLLERS===\n"
