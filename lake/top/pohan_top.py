@@ -138,6 +138,20 @@ class PohanTop():
                 optimize_if=False,
                 additional_passes=addit_passes)
 
+    def get_flat_verilog(self, filename="dut_mtb_flat.sv", addit_passes={}):
+        """Get the verilog for the flattened design + original design
+
+        Args:
+            filename (str, optional): [description]. Defaults to "dut_mtb_flat.sv".
+            addit_passes (dict, optional): [description]. Defaults to {}.
+        """
+        flattened = create_wrapper_flatten(self.dut.internal_generator,
+                                           f"{self.dut.name}_flat")
+        flattened_gen = Generator(f"{self.dut.name}_flat", internal_generator=flattened)
+        verilog(flattened_gen, filename=filename,
+                optimize_if=False,
+                additional_passes=addit_passes)
+
     def get_dut_object(self):
         return self.dut
 
@@ -172,6 +186,7 @@ class PohanTop():
             "output_width_1_num_2": "stencil_valid",
         }
 
+        # Set the child to external so that it isn't duplicated
         tw_int_gen = to_wrap.internal_generator
         wrap_name = f"{tw_int_gen.name}_W"
         new_gen = Generator(name=wrap_name)
@@ -211,7 +226,9 @@ class PohanTop():
                 new_gen.wire(np, port)
         return new_gen
 
-    def wrapper(self, vlog_filename="default_wrapper", config_path="/aha/config.json"):
+    def wrapper(self, base_vlog_filename="default_wrapper",
+                wrapper_vlog_filename="default_wrapper",
+                config_path="/aha/config.json"):
         """Create a verilog wrapper for the dut with configurations specified in the json file
 
         Args:
@@ -231,8 +248,16 @@ class PohanTop():
                                            f"{self.dut.name}_flat")
         flattened_gen = Generator(f"{self.dut.name}_flat", internal_generator=flattened)
         # Create another level of wrapping...
+
+        # Set the current dut and flattened dut to external for sharing
+        flattened_gen.external = True
+        self.dut.external = True
+
         wrapper = self.make_wrapper(to_wrap=flattened_gen, mode=mode, cfg_dict=cfg_dict)
-        verilog(wrapper, filename=f"{vlog_filename}.sv")
+        verilog(wrapper, filename=f"{wrapper_vlog_filename}.sv")
+
+        # Restore the external state
+        self.dut.external = False
 
 
 if __name__ == "__main__":
