@@ -11,6 +11,7 @@ def test_gen_dual_port(config_path="/aha/config.json", name="cfg_wrapper"):
     pohan_top = PohanTop()
     pohan_top_wrapper = pohan_top.wrapper(vlog_filename=name,
                                           config_path=config_path)
+    print(f"Generated verilog file : {name}.sv")
     return pohan_top_wrapper
 
 
