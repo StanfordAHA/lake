@@ -7,15 +7,16 @@ import argparse
 @pytest.mark.skip
 def test_gen_dual_port(config_path="/aha/config.json",
                        base_vlog_filename="default_base",
-                       wrapper_vlog_filename="default_wrapper"):
+                       wrapper_vlog_filename="default_wrapper",
+                       vlog_extension="v"):
 
     print(f"Using configuration file at: {config_path}")
     pohan_top = PohanTop()
-    pohan_top.get_flat_verilog(filename=f"{base_vlog_filename}.sv")
-    pohan_top_wrapper = pohan_top.wrapper(base_vlog_filename=base_vlog_filename,
-                                          wrapper_vlog_filename=wrapper_vlog_filename,
+    pohan_top.get_flat_verilog(filename=f"{base_vlog_filename}.{vlog_extension}")
+    pohan_top_wrapper = pohan_top.wrapper(wrapper_vlog_filename=wrapper_vlog_filename,
+                                          vlog_extension=vlog_extension,
                                           config_path=config_path)
-    print(f"Generated verilog file : {wrapper_vlog_filename}.sv")
+    print(f"Generated verilog file : {wrapper_vlog_filename}.{vlog_extension}")
     return pohan_top_wrapper
 
 
@@ -33,8 +34,14 @@ if __name__ == "__main__":
                     type=str,
                     help="wrapper verilog filename",
                     default="default_wrapper")
+    ap.add_argument("-e",
+                    type=str,
+                    help="verilog extension (v or sv)",
+                    default="v")
+
     args = ap.parse_args()
 
     test_gen_dual_port(config_path=args.f,
                        base_vlog_filename=args.b,
-                       wrapper_vlog_filename=args.w)
+                       wrapper_vlog_filename=args.w,
+                       vlog_extension=args.e)

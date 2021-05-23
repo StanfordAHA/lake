@@ -171,7 +171,7 @@ class PohanTop():
         loaded_json["mode"] = "UB"
         return loaded_json
 
-    def make_wrapper(self, to_wrap, mode="UB", cfg_dict={}):
+    def make_wrapper(self, to_wrap, mode="UB", cfg_dict={}, wrapper_name="default_wrapper"):
 
         replace_ins = {
             "input_width_16_num_0": "chain_data_in_0",
@@ -188,8 +188,7 @@ class PohanTop():
 
         # Set the child to external so that it isn't duplicated
         tw_int_gen = to_wrap.internal_generator
-        wrap_name = f"{tw_int_gen.name}_W"
-        new_gen = Generator(name=wrap_name)
+        new_gen = Generator(name=wrapper_name)
         new_gen.add_child(f"{tw_int_gen.name}_inst", to_wrap)
         for port_name in tw_int_gen.get_port_names():
 
@@ -226,8 +225,8 @@ class PohanTop():
                 new_gen.wire(np, port)
         return new_gen
 
-    def wrapper(self, base_vlog_filename="default_wrapper",
-                wrapper_vlog_filename="default_wrapper",
+    def wrapper(self, wrapper_vlog_filename="default_wrapper",
+                vlog_extension="v",
                 config_path="/aha/config.json"):
         """Create a verilog wrapper for the dut with configurations specified in the json file
 
@@ -253,8 +252,9 @@ class PohanTop():
         flattened_gen.external = True
         self.dut.external = True
 
-        wrapper = self.make_wrapper(to_wrap=flattened_gen, mode=mode, cfg_dict=cfg_dict)
-        verilog(wrapper, filename=f"{wrapper_vlog_filename}.sv")
+        wrapper = self.make_wrapper(to_wrap=flattened_gen, mode=mode, cfg_dict=cfg_dict,
+                                    wrapper_name=wrapper_vlog_filename)
+        verilog(wrapper, filename=f"{wrapper_vlog_filename}.{vlog_extension}")
 
         # Restore the external state
         self.dut.external = False
