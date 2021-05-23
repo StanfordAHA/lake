@@ -11,11 +11,11 @@ def test_gen_dual_port(config_path="/aha/config.json",
 
     print(f"Using configuration file at: {config_path}")
     pohan_top = PohanTop()
-    pohan_top.get_flat_verilog(filename=f"{base_vlog_filename}.sv")
+    pohan_top.get_flat_verilog(filename=f"{base_vlog_filename}.v")
     pohan_top_wrapper = pohan_top.wrapper(base_vlog_filename=base_vlog_filename,
                                           wrapper_vlog_filename=wrapper_vlog_filename,
                                           config_path=config_path)
-    print(f"Generated verilog file : {wrapper_vlog_filename}.sv")
+    print(f"Generated verilog file : {wrapper_vlog_filename}.v")
     return pohan_top_wrapper
 
 
