@@ -16,7 +16,8 @@ class SchedGen(Generator):
     def __init__(self,
                  iterator_support=6,
                  config_width=16,
-                 use_enable=True):
+                 use_enable=True,
+                 optimization_lvl=2):
 
         super().__init__(f"sched_gen_{iterator_support}_{config_width}")
 
@@ -36,7 +37,7 @@ class SchedGen(Generator):
         # VARS
         self._valid_out = self.var("valid_out", 1)
         self._cycle_count = self.input("cycle_count", self.config_width)
-        self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
+        # self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
         self._addr_out = self.var("addr_out", self.config_width)
 
         # Receive signal on last iteration of looping structure and
@@ -71,16 +72,34 @@ class SchedGen(Generator):
 
         # PORT DEFS: end
 
+        addit_args = {}
+
+        if optimization_lvl == 0:
+            self._dim_counter_in = self.input("dim_counter_in", self.config_width,
+                                              size=self.iterator_support,
+                                              packed=True,
+                                              explicit_array=True)
+            addit_args = {"dim_counter_in": self._dim_counter_in}
+        elif optimization_lvl == 1:
+            self._inc_in = self.input("inc_in", self.iterator_support)
+            self._clr_in = self.input("clr_in", self.iterator_support)
+            addit_args = {"inc_in": self._inc_in,
+                          "clr_in": self._clr_in}
+        elif optimization_lvl == 2:
+            self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
+            addit_args = {"mux_sel": self._mux_sel}
+
         self.add_child(f"sched_addr_gen",
                        AddrGen(iterator_support=self.iterator_support,
-                               config_width=self.config_width),
+                               config_width=self.config_width,
+                               optimization_lvl=optimization_lvl),
 
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._valid_out,
-                       mux_sel=self._mux_sel,
                        addr_out=self._addr_out,
-                       restart=const(0, 1))
+                       restart=const(0, 1),
+                       **addit_args)
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
@@ -95,7 +114,9 @@ class SchedGen(Generator):
 
 
 if __name__ == "__main__":
-    db_dut = SchedGen(iterator_support=6)
-    verilog(db_dut,
-            filename="sched_gen.sv",
-            additional_passes={"lift config regs": lift_config_reg})
+
+    for opt_level in range(3):
+        db_dut = SchedGen(iterator_support=6, optimization_lvl=opt_level)
+        verilog(db_dut,
+                filename=f"sched_gen_{opt_level}.sv",
+                additional_passes={"lift config regs": lift_config_reg})

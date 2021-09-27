@@ -80,5 +80,8 @@ def test_addr_gen_basic(depth=512,
                                flags=["-Wno-fatal"])
 
 
+def test_optimize_0():
+    
+
 if __name__ == "__main__":
     test_addr_gen_basic()

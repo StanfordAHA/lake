@@ -11,7 +11,8 @@ class ForLoop(Generator):
     '''
     def __init__(self,
                  iterator_support=6,
-                 config_width=16):
+                 config_width=16,
+                 optimization_lvl=2):
 
         super().__init__(f"for_loop_{iterator_support}_{config_width}", debug=True)
 
@@ -40,8 +41,6 @@ class ForLoop(Generator):
         self._step = self.input("step", 1)
         # OUTPUTS
 
-        # PORT DEFS: end
-
         # LOCAL VARIABLES: begin
         self._dim_counter = self.var("dim_counter", self.config_width,
                                      size=self.iterator_support,
@@ -51,7 +50,6 @@ class ForLoop(Generator):
         self._strt_addr = self.var("strt_addr", self.config_width)
 
         self._counter_update = self.var("counter_update", 1)
-        self._calc_addr = self.var("calc_addr", self.config_width)
 
         self._max_value = self.var("max_value", self.iterator_support)
         self._mux_sel = self.var("mux_sel", max(clog2(self.iterator_support), 1))
@@ -80,6 +78,22 @@ class ForLoop(Generator):
 
         self._restart = self.output("restart", 1)
         self.wire(self._restart, self._step & (~self._done))
+
+        # The only difference between optimization 0 and 1,2 is breaking out the dim_counter outputs
+        if optimization_lvl == 0:
+            # LOCAL VARIABLES: begin
+            self._dim_counter_out = self.output("dim_counter_out", self.config_width,
+                                                size=self.iterator_support,
+                                                packed=True,
+                                                explicit_array=True)
+            self.wire(self._dim_counter_out, self._dim_counter)
+        elif optimization_lvl == 1:
+            # In optimization level 1, need to send over clear and increment signals to addr_gen
+            self._inc_out = self.output("inc_out", self._inc.width)
+            self.wire(self._inc_out, self._inc)
+
+            self._clr_out = self.output("clr_out", self._clear.width)
+            self.wire(self._clr_out, self._clear)
 
     @always_comb
     # Find lowest ready
