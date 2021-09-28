@@ -1,0 +1,11 @@
+name: rtl
+
+outputs:
+    - design.v
+
+parameters:
+    opt_lvl: 0
+
+commands:
+    - bash run_gen_vlog.sh
+
