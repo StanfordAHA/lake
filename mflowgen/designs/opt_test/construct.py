@@ -50,6 +50,8 @@ def construct():
         g.connect_by_name(adk, dc)
         g.connect_by_name(constraints, dc)
 
+        g.param_space(rtl, 'opt_lvl', [0, 1, 2])
+
         g.update_params(parameters)
 
         return g
