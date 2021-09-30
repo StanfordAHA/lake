@@ -62,7 +62,7 @@ class StrgUBAggOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.config_width)
 
         self._data_in = self.input("data_in", self.data_width,
                                    size=self.interconnect_input_ports,
@@ -128,10 +128,7 @@ class StrgUBAggOnly(Generator):
             self.agg_range_width = 16
 
             forloop_ctr = ForLoop(iterator_support=self.agg_iter_support,
-                                  # config_width=self.default_config_width)
-                                  config_width=self.agg_range_width)
-            loop_itr = forloop_ctr.get_iter()
-            loop_wth = forloop_ctr.get_cfg_width()
+                                  config_width=self.default_config_width)
 
             self.add_child(f"loops_in2buf_{i}",
                            forloop_ctr,
@@ -151,8 +148,7 @@ class StrgUBAggOnly(Generator):
             safe_wire(gen=self, w_to=self._agg_write_addr[i], w_from=newAG.ports.addr_out)
 
             newSG = SchedGen(iterator_support=self.agg_iter_support,
-                             # config_width=self.agg_addr_width)
-                             config_width=16)
+                             config_width=self.config_width)
 
             self.add_child(f"agg_write_sched_gen_{i}",
                            newSG,

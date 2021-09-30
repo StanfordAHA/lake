@@ -61,7 +61,7 @@ class StrgUBTBOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.config_width)
 
         # data from SRAM
         self._sram_read_data = self.input("sram_read_data", self.data_width,
@@ -178,7 +178,7 @@ class StrgUBTBOnly(Generator):
             # READ FROM TB
 
             fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
-                                   config_width=self.tb_range_width)
+                                   config_width=self.default_config_width)
 
             self.add_child(f"loops_buf2out_read_{i}",
                            fl_ctr_tb_rd,
@@ -200,8 +200,7 @@ class StrgUBTBOnly(Generator):
 
             self.add_child(f"tb_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.tb_iter_support,
-                                    # config_width=self.tb_addr_width),
-                                    config_width=16),
+                                    config_width=self.config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,

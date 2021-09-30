@@ -33,8 +33,7 @@ class LakeTop(Generator):
                  banks=1,
                  input_iterator_support=6,  # Addr Controllers
                  output_iterator_support=6,
-                 input_config_width=16,
-                 output_config_width=16,
+                 cycle_config_width=24,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
                  mem_input_ports=1,
@@ -63,8 +62,7 @@ class LakeTop(Generator):
         self.banks = banks
         self.input_iterator_support = input_iterator_support
         self.output_iterator_support = output_iterator_support
-        self.input_config_width = input_config_width
-        self.output_config_width = output_config_width
+        self.cycle_config_width = cycle_config_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_input_ports = mem_input_ports
@@ -159,7 +157,7 @@ class LakeTop(Generator):
 
         self.wire(self._config_data_in_shrt, self._config_data_in[self.data_width - 1, 0])
 
-        self._cycle_count = self.var("cycle_count", 16)
+        self._cycle_count = self.var("cycle_count", self.cycle_config_width)
         self.add_code(self.cycle_count_inc)
 
         if self.stencil_valid:
@@ -169,7 +167,7 @@ class LakeTop(Generator):
             self._stencil_valid = self.output("stencil_valid", 1)
             self._stencil_valid.add_attribute(ControlSignalAttr(False))
             self._loops_stencil_valid = ForLoop(iterator_support=6,
-                                                config_width=16)
+                                                config_width=self.cycle_config_width)
             self._stencil_valid_int = self.var("stencil_valid_internal", 1)
 
             # Loop Iterators for stencil valid...
@@ -181,7 +179,7 @@ class LakeTop(Generator):
             # Schedule Generator for stencil valid...
             self.add_child(f"stencil_valid_sched_gen",
                            SchedGen(iterator_support=6,
-                                    config_width=16),
+                                    config_width=self.cycle_config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,
@@ -496,7 +494,7 @@ class LakeTop(Generator):
                                 read_delay=self.read_delay,
                                 rw_same_cycle=self.rw_same_cycle,
                                 agg_height=self.agg_height,
-                                config_width=self.input_config_width,
+                                config_width=self.cycle_config_width,
                                 agg_data_top=(self.formal_module == "agg"))
 
         else:
@@ -511,7 +509,7 @@ class LakeTop(Generator):
                                  output_sched_iterator_support=self.output_iterator_support,
                                  interconnect_input_ports=self.interconnect_input_ports,
                                  interconnect_output_ports=self.interconnect_output_ports,
-                                 config_width=self.input_config_width,
+                                 config_width=self.cycle_config_width,
                                  mem_input_ports=self.mem_input_ports,
                                  mem_output_ports=self.mem_output_ports,
                                  read_delay=self.read_delay,
@@ -1247,7 +1245,8 @@ def get_lake_dut(formal_module=None,
                  use_sram_stub=True,
                  fifo_mode=True,
                  mem_width=64,
-                 do_config_lift=True):
+                 do_config_lift=True,
+                 **kargs):
 
     lake_dut = LakeTop(mem_width=mem_width,
                        interconnect_input_ports=in_ports,
@@ -1259,7 +1258,9 @@ def get_lake_dut(formal_module=None,
                        add_flush=True,
                        stencil_valid=stencil_valid,
                        formal_module=formal_module,
-                       do_config_lift=do_config_lift)
+                       do_config_lift=do_config_lift,
+                       **kargs
+                       )
 
     print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
 
@@ -1271,20 +1272,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='LakeTop')
     parser.add_argument("-f",
                         help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for")
+    parser.add_argument("-c", "--cfg_width", default=16, type=int)
 
     args = parser.parse_args()
 
     need_config_lift = True
 
+    cycle_cfg_width = args.cfg_width
+
+    kargs = {'cycle_config_width': cycle_cfg_width}
+
     # normal generation
     if args.f is None:
         prefix = ""
-        lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
+        lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut(**kargs)
         extract_formal_annotation(lake_dut, f"lake_top_annotation.txt", "full")
     # optional: to add generator cuts for formal module verilog + annotations
     else:
         module = args.f
-        lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module)
+        lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_formal_module(module, **kargs)
         prefix = f"{module}_"
 
     # config lift happens in all possible cases by this point

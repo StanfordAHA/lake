@@ -1,16 +1,9 @@
 from kratos import *
 from lake.modules.passthru import *
-from lake.modules.register_file import RegisterFile
-from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.formal_attr import *
-from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
-from lake.modules.sram_stub import SRAMStub
-from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
-from lake.modules.spec.sched_gen import SchedGen
-from lake.utils.util import safe_wire, add_counter, decode
-import kratos as kts
+from lake.utils.util import safe_wire, decode
 
 
 class StrgUBSRAMOnly(Generator):
@@ -61,8 +54,6 @@ class StrgUBSRAMOnly(Generator):
         ##################################################################################
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
-
-        self._cycle_count = self.input("cycle_count", 16)
 
         # agg to sram for loop
         self._floop_mux_sel = self.input("floop_mux_sel",

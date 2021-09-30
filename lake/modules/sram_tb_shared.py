@@ -61,7 +61,7 @@ class StrgUBSRAMTBShared(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.config_width)
 
         self._loops_sram2tb_mux_sel = self.output("loops_sram2tb_mux_sel",
                                                   width=max(clog2(self.default_iterator_support), 1),
@@ -100,8 +100,7 @@ class StrgUBSRAMTBShared(Generator):
             # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
             self.add_child(f"output_sched_gen_{i}",
                            SchedGen(iterator_support=self.default_iterator_support,
-                                    # config_width=self.default_config_width),
-                                    config_width=16),
+                                    config_width=self.config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,

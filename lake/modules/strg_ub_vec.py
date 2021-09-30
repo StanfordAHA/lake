@@ -53,11 +53,10 @@ class StrgUBVec(Generator):
         self.mem_width = mem_width
         self.mem_depth = mem_depth
         self.banks = banks
-        self.config_width = config_width
         self.data_width = data_width
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
-        self.input_config_width = config_width
+        self.cycle_config_width = config_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
 
@@ -101,7 +100,7 @@ class StrgUBVec(Generator):
         ##################################################################################
 
         # Create cycle counter to share...
-        self._cycle_count = add_counter(self, "cycle_count", 16)
+        self._cycle_count = add_counter(self, "cycle_count", self.cycle_config_width)
 
         agg_only = StrgUBAggOnly(data_width=self.data_width,
                                  mem_width=self.mem_width,
@@ -116,7 +115,7 @@ class StrgUBVec(Generator):
                                  read_delay=self.read_delay,
                                  rw_same_cycle=self.rw_same_cycle,
                                  agg_height=self.agg_height,
-                                 config_width=self.input_config_width)
+                                 config_width=self.cycle_config_width)
 
         agg_sram_shared = StrgUBAggSRAMShared(data_width=self.data_width,
                                               mem_width=self.mem_width,
@@ -131,7 +130,7 @@ class StrgUBVec(Generator):
                                               read_delay=self.read_delay,
                                               rw_same_cycle=self.rw_same_cycle,
                                               agg_height=self.agg_height,
-                                              config_width=self.input_config_width)
+                                              config_width=self.cycle_config_width)
 
         sram_only = StrgUBSRAMOnly(data_width=self.data_width,
                                    mem_width=self.mem_width,
@@ -146,7 +145,7 @@ class StrgUBVec(Generator):
                                    read_delay=self.read_delay,
                                    rw_same_cycle=self.rw_same_cycle,
                                    agg_height=self.agg_height,
-                                   config_width=self.input_config_width)
+                                   config_width=self.cycle_config_width)
 
         sram_tb_shared = StrgUBSRAMTBShared(data_width=self.data_width,
                                             mem_width=self.mem_width,
@@ -161,7 +160,7 @@ class StrgUBVec(Generator):
                                             read_delay=self.read_delay,
                                             rw_same_cycle=self.rw_same_cycle,
                                             agg_height=self.agg_height,
-                                            config_width=self.input_config_width)
+                                            config_width=self.cycle_config_width)
 
         tb_only = StrgUBTBOnly(data_width=self.data_width,
                                mem_width=self.mem_width,
@@ -176,7 +175,7 @@ class StrgUBVec(Generator):
                                read_delay=self.read_delay,
                                rw_same_cycle=self.rw_same_cycle,
                                agg_height=self.agg_height,
-                               config_width=self.input_config_width)
+                               config_width=self.cycle_config_width)
 
         self.add_child("agg_only",
                        agg_only,
@@ -195,7 +194,6 @@ class StrgUBVec(Generator):
                        sram_only,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       cycle_count=self._cycle_count,
                        wen_to_sram=self._wen_to_sram,
                        cen_to_sram=self._cen_to_sram,
                        addr_to_sram=self._addr_to_sram,
