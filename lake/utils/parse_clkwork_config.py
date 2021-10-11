@@ -1,5 +1,9 @@
 import collections
 from lake.utils.util import transform_strides_and_ranges
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9a17e86a3c80fbc2d5adfb8c0734a9c93d74458d
 
 ControllerInfo = collections.namedtuple('ControllerInfo',
                                         'dim extent cyc_stride in_data_stride cyc_strt \

@@ -11,6 +11,7 @@ import random as rand
 import pytest
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("sprt_stcl_valid", [True, False])
 def test_app_ctrl(sprt_stcl_valid,
                   int_in_ports=1,

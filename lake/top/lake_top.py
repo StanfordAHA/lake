@@ -1049,8 +1049,8 @@ class LakeTop(Generator):
 
     def get_static_bitstream(self,
                              config_path,
-                             in_file_name,
-                             out_file_name):
+                             in_file_name="",
+                             out_file_name=""):
 
         input_ports = 1
         output_ports = 1
@@ -1086,21 +1086,21 @@ class LakeTop(Generator):
         config = []
 
         # control signals
-        config.append(("flush_reg_sel", 0))
-        config.append(("flush_reg_value", 0))
+        # config.append(("flush_reg_sel", 0))
+        # config.append(("flush_reg_value", 0))
 
         # set the mode and activate the tile
         config.append(("mode", 0))
         config.append(("tile_en", 1))
 
         # TODO: Maybe need to check if size 1?
-        for i in range(input_ports):
-            config.append((f"ren_in_{i}_reg_sel", 1))
-            config.append((f"ren_in_{i}_reg_value", 0))
+        # for i in range(input_ports):
+        #     config.append((f"ren_in_{i}_reg_sel", 1))
+        #     config.append((f"ren_in_{i}_reg_value", 0))
 
-        for i in range(output_ports):
-            config.append((f"wen_in_{i}_reg_sel", 1))
-            config.append((f"wen_in_{i}_reg_value", 0))
+        # for i in range(output_ports):
+        #     config.append((f"wen_in_{i}_reg_sel", 1))
+        #     config.append((f"wen_in_{i}_reg_value", 0))
 
         # Check the hardware if it supports stencil valid
         if self.stencil_valid:
@@ -1284,6 +1284,7 @@ if __name__ == "__main__":
     if args.f is None:
         prefix = ""
         lake_dut, need_config_lift, use_sram_stub, tsmc_info = get_lake_dut()
+        extract_formal_annotation(lake_dut, f"lake_top_annotation.txt", "full")
     # optional: to add generator cuts for formal module verilog + annotations
     else:
         module = args.f
