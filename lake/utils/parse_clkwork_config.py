@@ -1,16 +1,10 @@
 import collections
 from lake.utils.util import transform_strides_and_ranges
-<<<<<<< HEAD
-=======
 
->>>>>>> 9a17e86a3c80fbc2d5adfb8c0734a9c93d74458d
-
+verbose_controller_info = False
 ControllerInfo = collections.namedtuple('ControllerInfo',
                                         'dim extent cyc_stride in_data_stride cyc_strt \
                                             in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt')
-
-
-verbose_controller_info = False
 
 
 def search_for_config(cfg_file, key):
