@@ -85,7 +85,6 @@ class StrgUBVec(MemoryController):
             self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
         else:
-            # self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
             self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
             self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
 

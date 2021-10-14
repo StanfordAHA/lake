@@ -47,7 +47,7 @@ class LakeTop(Generator):
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
-                 fifo_mode=False,
+                 fifo_mode=True,
                  add_clk_enable=True,
                  add_flush=True,
                  name="LakeTop",
@@ -578,7 +578,8 @@ class LakeTop(Generator):
                        data_out=self._ub_data_out,
                        data_to_strg=self._ub_data_to_mem,
                        wen_to_strg=self._ub_wen_to_mem,
-                       accessor_output=self._accessor_output)
+                       accessor_output=self._accessor_output,
+                       chain_data_in=self._chain_data_in)
 
         if self.formal_module == "agg":
             self._formal_agg_data_out = self.output("formal_agg_data_out", self.data_width,
@@ -594,7 +595,7 @@ class LakeTop(Generator):
         if self.rw_same_cycle:
             self.wire(strg_ub.ports.ren_to_strg, self._ub_cen_to_mem)
         else:
-            self.wire(strg_ub.ports.cen_to_strg, self._ub_cen_to_mem)
+            self.wire(strg_ub.ports.ren_to_strg, self._ub_cen_to_mem)
 
         # Wire addrs
         if self.rw_same_cycle:
