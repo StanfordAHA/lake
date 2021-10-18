@@ -42,7 +42,7 @@ def wrapper(dut,
     # lc = <path to clockwork>/aha_garnet_design/
 
     config_path = config_path_input
-    #config_path = lc + config_path_input
+    # config_path = lc + config_path_input
 
     configs = dut.get_static_bitstream(config_path)
     # prints out list of configs for compiler team
@@ -107,8 +107,6 @@ if __name__ == "__main__":
                         help="use dual port sram",
                         default=False)
 
-
-
     args = parser.parse_args()
 
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
@@ -121,14 +119,12 @@ if __name__ == "__main__":
     if args.c is None:
         error(usage)
 
-
     lake_kwargs = {}
 
     if pond is False:
         lake_kwargs['stencil_valid'] = stencil_valid
         lake_kwargs['mem_width'] = args.mw
         lake_kwargs['rw_same_cycle'] = args.dp
-
 
     dut, module_name, iterator_support = get_dut(pond, args.pd, args.pl, **lake_kwargs)
     wrapper(dut, module_name, iterator_support, args.c, args.n)

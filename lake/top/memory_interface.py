@@ -1,6 +1,7 @@
 import kratos as kts
 from enum import Enum
 from kratos.stmts import *
+import _kratos
 
 
 class MemoryPortExclusionAttr(kts.Attribute):
@@ -72,6 +73,9 @@ class MemoryPort():
         for (name, signal) in self.port_interface.items():
             if signal is not None:
                 signal.add_attribute(MemoryPortExclusionAttr())
+                if isinstance(signal, _kratos.VarSlice):
+                    parent_sig = signal.parent_var
+                    parent_sig.add_attribute(MemoryPortExclusionAttr())
 
     def __str__(self):
         conn_str = ""

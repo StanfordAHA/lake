@@ -36,8 +36,8 @@ def test_storage_fifo(mem_width,  # CGRA Params
         return
 
     new_config = {}
-    new_config["fifo_ctrl_fifo_depth"] = depth
-    new_config["mode"] = 1
+    new_config["mem_ctrl_strg_fifo_flat_strg_fifo_inst_fifo_depth"] = depth
+    # new_config["mode"] = 1
     new_config["tile_en"] = 1
 
     model_rf = RegFIFOModel(data_width=data_width,
@@ -62,6 +62,8 @@ def test_storage_fifo(mem_width,  # CGRA Params
                      config_data_width=config_data_width,
                      config_addr_width=config_addr_width,
                      fifo_mode=fifo_mode)
+
+    lt_dut = lt_dut.dut
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -97,12 +99,12 @@ def test_storage_fifo(mem_width,  # CGRA Params
         pop = rand.randint(0, 1)
 
         if in_out_ports > 1:
-            tester.circuit.data_in_0 = data_in
+            tester.circuit.input_width_16_num_0 = data_in
         else:
-            tester.circuit.data_in = data_in
+            tester.circuit.input_width_16_num_0 = data_in
 
-        tester.circuit.ren_in[0] = pop
-        tester.circuit.wen_in[0] = push
+        tester.circuit.input_width_1_num_0[0] = pop
+        tester.circuit.input_width_1_num_1[0] = push
 
         (model_out,
          model_val_x,
@@ -115,15 +117,15 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
         tester.eval()
 
-        tester.circuit.empty.expect(model_empty)
-        tester.circuit.full.expect(model_full)
+        tester.circuit.output_width_1_num_0.expect(model_empty)
+        tester.circuit.output_width_1_num_1.expect(model_full)
         # Now check the outputs
-        tester.circuit.valid_out.expect(model_val)
+        tester.circuit.output_width_1_num_2.expect(model_val)
         if model_val:
             if in_out_ports > 1:
-                tester.circuit.data_out_0.expect(model_out[0])
+                tester.circuit.output_width_16_num_0.expect(model_out[0])
             else:
-                tester.circuit.data_out.expect(model_out[0])
+                tester.circuit.output_width_16_num_0.expect(model_out[0])
 
         tester.step(2)
 
@@ -137,4 +139,4 @@ def test_storage_fifo(mem_width,  # CGRA Params
 if __name__ == "__main__":
     test_storage_fifo(mem_width=64,
                       in_out_ports=1,
-                      depth=16)
+                      depth=32)
