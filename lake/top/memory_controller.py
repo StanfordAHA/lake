@@ -220,6 +220,7 @@ class MemoryControllerFlatWrapper(MemoryController):
         new_mem_prt_intf = new_mem_prt.get_port_interface()
         # These interfaces should match directly...
         for (name, sig) in mem_prt.get_port_interface().items():
+            # print(sig)
             # These should all comply anyway, so just need to recreate them
             try:
                 if sig is None:

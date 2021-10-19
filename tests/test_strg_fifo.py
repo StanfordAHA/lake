@@ -35,10 +35,9 @@ def test_storage_fifo(mem_width,  # CGRA Params
     if banks == 1 and fw_int == 1:
         return
 
-    new_config = {}
-    new_config["mem_ctrl_strg_fifo_flat_strg_fifo_inst_fifo_depth"] = depth
-    # new_config["mode"] = 1
-    new_config["tile_en"] = 1
+    fifo_config = {'mode': 'FIFO',
+                   'fifo_depth': depth,
+                   'tile_en': 1}
 
     model_rf = RegFIFOModel(data_width=data_width,
                             width_mult=fw_int,
@@ -65,16 +64,16 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
     lt_dut = lt_dut.dut
 
+    new_config = lt_dut.get_bitstream(fifo_config)
+
     magma_dut = kts.util.to_magma(lt_dut,
-                                  flatten_array=True,
-                                  check_multiple_driver=False,
                                   optimize_if=False,
-                                  check_flip_flop_always_ff=False)
+                                  flatten_array=True)
 
     tester = fault.Tester(magma_dut, magma_dut.clk)
     tester.zero_inputs()
     ###
-    for key, value in new_config.items():
+    for key, value in new_config:
         setattr(tester.circuit, key, value)
 
     rand.seed(0)
@@ -131,9 +130,9 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
-                               directory=tempdir,
+                               directory="mekdir",
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 if __name__ == "__main__":

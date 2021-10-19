@@ -310,8 +310,13 @@ class StrgFIFO(MemoryController):
                 rw_port_intf['data_out'] = None
                 rw_port_intf['write_addr'] = self._wen_addr_out[b]
                 rw_port_intf['write_enable'] = self._wen_to_strg[b]
-                rw_port_intf['read_addr'] = None
-                rw_port_intf['read_enable'] = None
+                # Tie read address and read enable to 0
+                tmp0_rdaddr = self.output("tmp0_rdaddr", width=self._ren_addr_out[b].width)
+                tmp0_rden = self.output("tmp0_rden", width=1)
+                self.wire(tmp0_rdaddr, kts.const(0, width=tmp0_rdaddr.width))
+                self.wire(tmp0_rden, kts.const(0, width=tmp0_rden.width))
+                rw_port_intf['read_addr'] = tmp0_rdaddr
+                rw_port_intf['read_enable'] = tmp0_rden
                 rw_port.annotate_port_signals()
                 r_port = MemoryPort(MemoryPortType.READ)
                 r_port_intf = r_port.get_port_interface()
@@ -525,7 +530,7 @@ class StrgFIFO(MemoryController):
 
     def get_bitstream(self, config_json):
         config = []
-        config.append(('fifo_depth', config_json['depth']))
+        config.append(('fifo_depth', config_json['fifo_depth']))
         return config
 
     def get_config_mode_str(self):
