@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from lake.utils.util import *
-from lake.top.lake_top import get_lake_dut
+from lake.top.lake_top import LakeTop, get_lake_dut
 from lake.top.pond import get_pond_dut
 
 from _kratos import create_wrapper_flatten
@@ -122,12 +122,18 @@ if __name__ == "__main__":
     lake_kwargs = {}
 
     if pond is False:
+        # Use updated codepath for wrapper generation of laketop
         lake_kwargs['stencil_valid'] = stencil_valid
         lake_kwargs['mem_width'] = args.mw
         lake_kwargs['rw_same_cycle'] = args.dp
+        lt_dut = LakeTop(**lake_kwargs)
+        lt_dut.wrapper(wrapper_vlog_filename=args.n,
+                       vlog_extension="sv",
+                       config_path=args.c)
 
-    dut, module_name, iterator_support = get_dut(pond, args.pd, args.pl, **lake_kwargs)
-    wrapper(dut, module_name, iterator_support, args.c, args.n)
+    else:
+        dut, module_name, iterator_support = get_dut(pond, args.pd, args.pl, **lake_kwargs)
+        wrapper(dut, module_name, iterator_support, args.c, args.n)
 
     # Example usage:
     # python wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf

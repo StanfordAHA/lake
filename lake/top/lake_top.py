@@ -12,6 +12,8 @@ from lake.top.memtile_builder import MemoryTileBuilder
 from lake.top.tech_maps import SKY_Tech_Map, TSMC_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.modules.stencil_valid import StencilValid
+from _kratos import create_wrapper_flatten
+from lake.attributes.config_reg_attr import ConfigRegAttr
 
 
 class LakeTop(Generator):
