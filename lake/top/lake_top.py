@@ -1,5 +1,5 @@
 from lake.attributes.formal_attr import *
-import os
+import json
 from kratos import *
 from lake.modules.passthru import *
 from lake.modules.strg_ub_vec import StrgUBVec
@@ -176,6 +176,100 @@ class LakeTop(Generator):
 
     def __str__(self):
         return str(self.dut)
+
+    def form_json(self, config_path):
+        config_file = open(config_path, "r")
+        loaded_json = json.load(config_file)
+        loaded_json["mode"] = "UB"
+        return loaded_json
+
+    def make_wrapper(self, to_wrap, mode="UB", cfg_dict={}, wrapper_name="default_wrapper"):
+
+        replace_ins = {
+            "input_width_16_num_0": "chain_data_in_0",
+            "input_width_16_num_1": "chain_data_in_1",
+            "input_width_16_num_2": "data_in_0",
+            "input_width_16_num_3": "data_in_1",
+        }
+
+        replace_outs = {
+            "output_width_16_num_0": "data_out_0",
+            "output_width_16_num_1": "data_out_1",
+            "output_width_1_num_2": "stencil_valid",
+        }
+
+        # Set the child to external so that it isn't duplicated
+        tw_int_gen = to_wrap.internal_generator
+        new_gen = Generator(name=wrapper_name)
+        new_gen.add_child(f"{tw_int_gen.name}_inst", to_wrap)
+        for port_name in tw_int_gen.get_port_names():
+
+            port = tw_int_gen.get_port(port_name)
+            # Check if the cfg has a value already assigned
+            if port_name in cfg_dict:
+                ngv = new_gen.var_from_def(port, port_name)
+                tmp_val = kts.const(cfg_dict[port_name], ngv.width)
+                new_gen.wire(ngv, tmp_val)
+                new_gen.wire(ngv, port)
+            # Fallback to unassigned config regs to set to 0
+            elif len(port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))) == 1:
+                ngv = new_gen.var_from_def(port, port_name)
+                tmp_val = kts.const(0, ngv.width)
+                new_gen.wire(ngv, tmp_val)
+                new_gen.wire(ngv, port)
+            elif port_name == "clk":
+                ngc = new_gen.clock("clk")
+                new_gen.wire(ngc, port)
+            elif port_name == "clk_en":
+                ngc = new_gen.clock_en("clk_en")
+                new_gen.wire(ngc, port)
+            elif port_name == "rst_n":
+                ngc = new_gen.reset("rst_n")
+                new_gen.wire(ngc, port)
+            elif port_name in replace_ins:
+                np = new_gen.port_from_def(port, name=replace_ins[port_name])
+                new_gen.wire(np, port)
+            elif port_name in replace_outs:
+                np = new_gen.port_from_def(port, name=replace_outs[port_name])
+                new_gen.wire(np, port)
+            else:
+                np = new_gen.port_from_def(port, name=port_name)
+                new_gen.wire(np, port)
+        return new_gen
+
+    def wrapper(self, wrapper_vlog_filename="default_wrapper",
+                vlog_extension="v",
+                config_path="/aha/config.json"):
+        """Create a verilog wrapper for the dut with configurations specified in the json file
+
+        Args:
+            vlog_filename (str, optional): Filename for eventual output verilog - default .sv extension. Defaults to "default_wrapper".
+            config_path (str, optional): Filepath for configuration json. Defaults to "/aha/config.json".
+        """
+        # Load the JSON and manipulate before sending under to MTB
+        config_json = self.form_json(config_path=config_path)
+        mode = config_json['mode']
+        configs = self.dut.get_bitstream(config_json=config_json)
+        cfg_dict = {}
+        for (cfg_reg, val) in configs:
+            cfg_dict[cfg_reg] = val
+
+        # get flattened module
+        flattened = create_wrapper_flatten(self.dut.internal_generator,
+                                           f"{self.dut.name}_flat")
+        flattened_gen = Generator(f"{self.dut.name}_flat", internal_generator=flattened)
+        # Create another level of wrapping...
+
+        # Set the current dut and flattened dut to external for sharing
+        flattened_gen.external = True
+        self.dut.external = True
+
+        wrapper = self.make_wrapper(to_wrap=flattened_gen, mode=mode, cfg_dict=cfg_dict,
+                                    wrapper_name=wrapper_vlog_filename)
+        verilog(wrapper, filename=f"{wrapper_vlog_filename}.{vlog_extension}")
+
+        # Restore the external state
+        self.dut.external = False
 
 
 if __name__ == "__main__":
