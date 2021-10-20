@@ -135,11 +135,9 @@ class LakeTop(Generator):
                                           interconnect_output_ports=self.interconnect_output_ports,
                                           read_delay=self.read_delay,
                                           rw_same_cycle=self.rw_same_cycle,
-                                          agg_height=self.agg_height,
-                                          config_width=self.config_width,
-                                          agg_data_top=(self.formal_module == "agg")))
+                                          config_width=self.config_width))
 
-        if self.fifo_mode:
+        if self.fifo_mode and (self.fw_int > 1 or self.banks > 1):
             controllers.append(StrgFIFO(data_width=self.data_width,
                                         banks=self.banks,
                                         memory_width=self.mem_width,
@@ -282,8 +280,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     lake_top = LakeTop(data_width=16,
-                       mem_width=64,
-                       mem_depth=512,
+                       mem_width=16,
+                       mem_depth=256,
                        banks=1,
                        fifo_mode=True,
                        add_clk_enable=True,

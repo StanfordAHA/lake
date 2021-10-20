@@ -103,10 +103,10 @@ class StrgRAM(MemoryController):
 
         self._rd_bank = self.var("rd_bank", max(1, clog2(self.banks)))
         self.set_read_bank()
-        # self._rd_valid = self.var("rd_valid", 1)
-        # self.set_read_valid()
-        # if self.fw_int == 1:
-        #     self.wire(self._valid_out, self._rd_valid)
+        self._rd_valid = self.var("rd_valid", 1)
+        self.set_read_valid()
+        if self.fw_int == 1:
+            self.wire(self._valid_out, self._rd_valid)
 
         # Fetch width of 1 is simpler...
         if self.fw_int == 1:
