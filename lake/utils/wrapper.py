@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from lake.utils.util import *
-from lake.top.lake_top import LakeTop, get_lake_dut
+from lake.top.lake_top import LakeTop
 from lake.top.pond import get_pond_dut
 
 from _kratos import create_wrapper_flatten
@@ -23,11 +23,7 @@ def get_dut(pond, pd, pl, **dut_kwargs):
         module_name = "Pond"
         iterator_support = pl
     else:
-        dut, need_config_lift, s, t = \
-            get_lake_dut(**dut_kwargs)
-        module_name = dut.name
-        # module_name = "LakeTop"
-        iterator_support = 6
+        raise NotImplementedError
 
     return dut, module_name, iterator_support
 
