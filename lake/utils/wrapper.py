@@ -155,6 +155,7 @@ if __name__ == "__main__":
                        config_path=args.c)
         if args.v:
             lt_dut.get_verilog(args.vn)
+        print(lt_dut)
 
     else:
         dut, module_name, iterator_support = get_dut(pond, args.pd, args.pl, **lake_kwargs)
