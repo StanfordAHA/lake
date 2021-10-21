@@ -99,7 +99,7 @@ if __name__ == "__main__":
                         default=64)
 
     parser.add_argument("-dp",
-                        type=bool,
+                        action='store_true',
                         help="use dual port sram",
                         default=False)
 
