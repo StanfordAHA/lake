@@ -93,11 +93,11 @@ class LakeTop(Generator):
         }
 
         # Create the memory interface based on different params
-        tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
+        tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True)]
 
         if self.rw_same_cycle:
-            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True),
-                        MemoryPort(MemoryPortType.READ, delay=1, active_read=True)]
+            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True),
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=True)]
 
         tech_map = TSMC_Tech_Map()
         MTB.set_memory_interface(name_prefix="sram_idk",

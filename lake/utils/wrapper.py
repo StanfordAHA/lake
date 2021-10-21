@@ -112,6 +112,21 @@ if __name__ == "__main__":
                         help="optional: module name for Lake module (default: LakeTop)",
                         default="LakeTop")
 
+    parser.add_argument("-ii",
+                        type=int,
+                        help="input iterator support",
+                        default=6)
+
+    parser.add_argument("-oi",
+                        type=int,
+                        help="output iterator support",
+                        default=6)
+
+    parser.add_argument("-rd",
+                        type=int,
+                        help="memory read delay",
+                        default=1)
+
     args = parser.parse_args()
 
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
@@ -131,6 +146,9 @@ if __name__ == "__main__":
         lake_kwargs['stencil_valid'] = stencil_valid
         lake_kwargs['mem_width'] = args.mw
         lake_kwargs['rw_same_cycle'] = args.dp
+        lake_kwargs['input_iterator_support'] = args.ii
+        lake_kwargs['output_iterator_support'] = args.oi
+        lake_kwargs['read_delay'] = args.rd
         lt_dut = LakeTop(**lake_kwargs)
         lt_dut.wrapper(wrapper_vlog_filename=args.n,
                        vlog_extension="sv",
