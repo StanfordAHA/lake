@@ -1,5 +1,4 @@
 from kratos import *
-from functools import reduce
 import operator
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint

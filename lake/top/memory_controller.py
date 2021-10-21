@@ -3,6 +3,7 @@ from lake.top.memory_interface import MemoryPort, MemoryPortExclusionAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
 from kratos.generator import PortDirection
+import _kratos
 
 
 class MemoryController(kts.Generator):
@@ -61,8 +62,9 @@ class MemoryController(kts.Generator):
             port_dir = PortDirection(curr_port.port_direction)
             if len(memport_excl_attr) > 0:
                 continue
-            if len(attrs) > 0 or "clk" in curr_port.name or "rst_n" in curr_port.name:
+            if "clk" in curr_port.name or "rst_n" in curr_port.name:
                 liftable.append(curr_port)
+
         return liftable
 
     def get_memory_ports(self):
@@ -71,7 +73,7 @@ class MemoryController(kts.Generator):
         '''
         raise NotImplementedError
 
-    def get_bitstream(self, config_json):
+    def get_bitstream(self, config_json, prefix=""):
         '''
         Pass in a config-related json to return a list of
         (config_reg, value) tuples
@@ -218,10 +220,16 @@ class MemoryControllerFlatWrapper(MemoryController):
         new_mem_prt_intf = new_mem_prt.get_port_interface()
         # These interfaces should match directly...
         for (name, sig) in mem_prt.get_port_interface().items():
+            # print(sig)
             # These should all comply anyway, so just need to recreate them
             try:
                 if sig is None:
                     continue
+                # Check if slice and lift the parent
+                if isinstance(sig, _kratos.VarSlice):
+                    sig = sig.parent_var
+                # if self.internal_generator.has_port(f"{sig}_lifted"):
+                #     continue
                 lifted_port = self.port_from_def(sig, name=f"{sig}_lifted")
                 new_mem_prt_intf[name] = lifted_port
                 self.wire(lifted_port, sig)

@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from lake.utils.util import *
-from lake.top.lake_top import get_lake_dut
+from lake.top.lake_top import LakeTop
 from lake.top.pond import get_pond_dut
 
 from _kratos import create_wrapper_flatten
@@ -23,11 +23,7 @@ def get_dut(pond, pd, pl, **dut_kwargs):
         module_name = "Pond"
         iterator_support = pl
     else:
-        dut, need_config_lift, s, t = \
-            get_lake_dut(**dut_kwargs)
-        module_name = dut.name
-        # module_name = "LakeTop"
-        iterator_support = 6
+        raise NotImplementedError
 
     return dut, module_name, iterator_support
 
@@ -41,7 +37,8 @@ def wrapper(dut,
     # we are in the process of transitioning to csvs being in this folder
     # lc = <path to clockwork>/aha_garnet_design/
 
-    config_path = lc + config_path_input
+    config_path = config_path_input
+    # config_path = lc + config_path_input
 
     configs = dut.get_static_bitstream(config_path)
     # prints out list of configs for compiler team
@@ -82,19 +79,53 @@ if __name__ == "__main__":
     parser.add_argument("-s",
                         type=str,
                         help="optional: True or False indicating whether or not to generate memtile with stencil_valid (default: True)",
-                        default="True")
+                        default="False")
     parser.add_argument("-p",
                         type=str,
                         help="True for pond wrapper. False for memtile wrapper. (default: False)",
                         default="False")
-    parser.add_argument("-pd",
+    parser.add_argument("-d",
                         type=int,
-                        help="optional: depth for Pond memory",
-                        default=32)
+                        help="optional: depth for memory",
+                        default=256)
     parser.add_argument("-pl",
                         type=int,
                         help="optional: iterator support for Pond memory",
                         default=3)
+
+    parser.add_argument("-mw",
+                        type=int,
+                        help="optional: memory width",
+                        default=64)
+
+    parser.add_argument("-dp",
+                        action='store_true',
+                        help="use dual port sram",
+                        default=False)
+
+    parser.add_argument("-v",
+                        action='store_true',
+                        help='Generate main verilog')
+
+    parser.add_argument("-vn",
+                        type=str,
+                        help="optional: module name for Lake module (default: LakeTop)",
+                        default="LakeTop")
+
+    parser.add_argument("-ii",
+                        type=int,
+                        help="input iterator support",
+                        default=6)
+
+    parser.add_argument("-oi",
+                        type=int,
+                        help="output iterator support",
+                        default=6)
+
+    parser.add_argument("-rd",
+                        type=int,
+                        help="memory read delay",
+                        default=1)
 
     args = parser.parse_args()
 
@@ -108,8 +139,28 @@ if __name__ == "__main__":
     if args.c is None:
         error(usage)
 
-    dut, module_name, iterator_support = get_dut(pond, args.pd, args.pl, stencil_valid)
-    wrapper(dut, module_name, iterator_support, args.c, args.n)
+    lake_kwargs = {}
+
+    if pond is False:
+        # Use updated codepath for wrapper generation of laketop
+        lake_kwargs['stencil_valid'] = stencil_valid
+        lake_kwargs['mem_width'] = args.mw
+        lake_kwargs['mem_depth'] = args.d
+        lake_kwargs['rw_same_cycle'] = args.dp
+        lake_kwargs['input_iterator_support'] = args.ii
+        lake_kwargs['output_iterator_support'] = args.oi
+        lake_kwargs['read_delay'] = args.rd
+        lt_dut = LakeTop(**lake_kwargs)
+        lt_dut.wrapper(wrapper_vlog_filename=args.n,
+                       vlog_extension="sv",
+                       config_path=args.c)
+        if args.v:
+            lt_dut.get_verilog(args.vn)
+        print(lt_dut)
+
+    else:
+        dut, module_name, iterator_support = get_dut(pond, args.d, args.pl, **lake_kwargs)
+        wrapper(dut, module_name, iterator_support, args.c, args.n)
 
     # Example usage:
     # python wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf

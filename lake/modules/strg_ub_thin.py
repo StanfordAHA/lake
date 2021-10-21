@@ -1,4 +1,6 @@
-from lake.utils.parse_clkwork_config import configure_controller, extract_controller, map_controller
+from lake.top.memory_controller import MemoryController
+from lake.top.memory_interface import MemoryPort, MemoryPortType
+from lake.utils.parse_clkwork_config import configure_controller, extract_controller, extract_controller_json, map_controller
 from lake.utils.util import get_priority_encode
 from kratos import *
 from lake.modules.passthru import *
@@ -7,9 +9,10 @@ from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
 import os
+import kratos as kts
 
 
-class StrgUBThin(Generator):
+class StrgUBThin(MemoryController):
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_width=16,
@@ -52,6 +55,8 @@ class StrgUBThin(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
+        self.base_ports = [[None]]
+
         self._data_in = self.input("data_in", self.data_width,
                                    size=self.interconnect_input_ports,
                                    packed=True,
@@ -77,14 +82,14 @@ class StrgUBThin(Generator):
             self._write = self.input("wen_in", 1)
             self._write_addr = self.input("write_addr", self.config_width)
             self._read_addr = self.input("read_addr", self.config_width)
-            self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
+            # self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
             self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
             self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
             self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
-            self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
-            self.wire(self._accessor_output, self._read)
-            self.wire(self._cen_to_sram, self._write | self._read)
+            # self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
+            # self.wire(self._accessor_output, self._read)
+            # self.wire(self._cen_to_sram, self._write | self._read)
             self.wire(self._wen_to_sram, self._write)
             self.wire(self._ren_to_sram, self._read)
             self.wire(self._data_out, self._data_from_sram)
@@ -92,6 +97,41 @@ class StrgUBThin(Generator):
             self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
             self.wire(self._rd_addr_to_sram, self._read_addr[clog2(self.mem_depth) - 1, 0])
 
+            if self.rw_same_cycle:
+                self.base_ports = [[None, None]]
+                tmp0_rdaddr = self.output("tmp0_rdaddr", width=self._rd_addr_to_sram.width)
+                tmp0_rden = self.output("tmp0_rden", width=self._ren_to_sram.width)
+                self.wire(tmp0_rdaddr, kts.const(0, width=self._rd_addr_to_sram.width))
+                self.wire(tmp0_rden, kts.const(0, width=self._ren_to_sram.width))
+                rw_port = MemoryPort(MemoryPortType.READWRITE)
+                rw_port_intf = rw_port.get_port_interface()
+                rw_port_intf['data_in'] = self._data_to_sram
+                rw_port_intf['data_out'] = None
+                rw_port_intf['write_addr'] = self._wr_addr_to_sram
+                rw_port_intf['write_enable'] = self._wen_to_sram
+                rw_port_intf['read_addr'] = tmp0_rdaddr
+                rw_port_intf['read_enable'] = tmp0_rden
+                rw_port.annotate_port_signals()
+                self.base_ports[0][0] = rw_port
+                # Populate second port as just R
+                r_port = MemoryPort(MemoryPortType.READ)
+                r_port_intf = r_port.get_port_interface()
+                r_port_intf['data_out'] = self._data_from_sram
+                r_port_intf['read_addr'] = self._rd_addr_to_sram
+                r_port_intf['read_enable'] = self._ren_to_sram
+                r_port.annotate_port_signals()
+                self.base_ports[0][1] = r_port
+            else:
+                rw_port = MemoryPort(MemoryPortType.READWRITE)
+                rw_port_intf = rw_port.get_port_interface()
+                rw_port_intf['data_in'] = self._data_to_sram
+                rw_port_intf['data_out'] = self._data_from_sram
+                rw_port_intf['write_addr'] = self._wr_addr_to_sram
+                rw_port_intf['write_enable'] = self._wen_to_sram
+                rw_port_intf['read_addr'] = self._rd_addr_to_sram
+                rw_port_intf['read_enable'] = self._ren_to_sram
+                rw_port.annotate_port_signals()
+                self.base_ports[0][0] = rw_port
             return
 
         # Create cycle counter to share...
@@ -191,10 +231,10 @@ class StrgUBThin(Generator):
         # -------------------------------- Delineate new group -------------------------------
 
         # Now deal with dual_port/single_port madness...
-        self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
+        # self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
         self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
         self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
-        self.wire(self._cen_to_sram, self._write.r_or() | self._read.r_or())
+        # self.wire(self._cen_to_sram, self._write.r_or() | self._read.r_or())
         self.wire(self._wen_to_sram, self._write.r_or())
         self.wire(self._ren_to_sram, self._read.r_or())
 
@@ -216,6 +256,31 @@ class StrgUBThin(Generator):
             pri_enc_rd = get_priority_encode(self, self._read)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
             self.wire(self._rd_addr_to_sram, self._read_addr[pri_enc_rd][clog2(self.mem_depth) - 1, 0])
+
+            self.base_ports = [[None, None]]
+            tmp0_rdaddr = self.output("tmp0_rdaddr", width=self._rd_addr_to_sram.width)
+            tmp0_rden = self.output("tmp0_rden", width=self._ren_to_sram.width)
+            self.wire(tmp0_rdaddr, kts.const(0, width=self._rd_addr_to_sram.width))
+            self.wire(tmp0_rden, kts.const(0, width=self._ren_to_sram.width))
+            rw_port = MemoryPort(MemoryPortType.READWRITE)
+            rw_port_intf = rw_port.get_port_interface()
+            rw_port_intf['data_in'] = self._data_to_sram
+            rw_port_intf['data_out'] = None
+            rw_port_intf['write_addr'] = self._wr_addr_to_sram
+            rw_port_intf['write_enable'] = self._wen_to_sram
+            rw_port_intf['read_addr'] = tmp0_rdaddr
+            rw_port_intf['read_enable'] = tmp0_rden
+            rw_port.annotate_port_signals()
+            self.base_ports[0][0] = rw_port
+            # Populate second port as just R
+            r_port = MemoryPort(MemoryPortType.READ)
+            r_port_intf = r_port.get_port_interface()
+            r_port_intf['data_out'] = self._data_from_sram
+            r_port_intf['read_addr'] = self._rd_addr_to_sram
+            r_port_intf['read_enable'] = self._ren_to_sram
+            r_port.annotate_port_signals()
+            self.base_ports[0][1] = r_port
+
         else:
             self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
             pri_enc_wr = get_priority_encode(self, self._write)
@@ -230,6 +295,17 @@ class StrgUBThin(Generator):
                 else:
                     self._addr = self._read_addr[pri_enc_rd][clog2(self.mem_depth) - 1, 0]
             self.add_code(set_sram_addr)
+
+            rw_port = MemoryPort(MemoryPortType.READWRITE)
+            rw_port_intf = rw_port.get_port_interface()
+            rw_port_intf['data_in'] = self._data_to_sram
+            rw_port_intf['data_out'] = self._data_from_sram
+            rw_port_intf['write_addr'] = self._addr_to_sram
+            rw_port_intf['write_enable'] = self._wen_to_sram
+            rw_port_intf['read_addr'] = self._addr_to_sram
+            rw_port_intf['read_enable'] = self._ren_to_sram
+            rw_port.annotate_port_signals()
+            self.base_ports[0][0] = rw_port
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def delay_read(self):
@@ -273,6 +349,36 @@ class StrgUBThin(Generator):
                                            controller=c_conf)
 
         return config
+
+    def get_bitstream(self, config_json, prefix=""):
+        # return super().get_bitstream(config_json, prefix=prefix)
+        config = []
+        in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
+        out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
+        for in_ctrl in in_ctrls:
+            if in_ctrl in config_json:
+                controller_tmp = map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl)
+                config += configure_controller(prefix="", name=in_ctrl, controller=controller_tmp)
+        for out_ctrl in out_ctrls:
+            if out_ctrl in config_json:
+                controller_tmp = map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl)
+                config += configure_controller(prefix="", name=out_ctrl, controller=controller_tmp)
+        return config
+
+    def get_memory_ports(self):
+        return self.base_ports
+
+    def get_inputs(self):
+        return super().get_inputs()
+
+    def get_outputs(self):
+        return super().get_outputs()
+
+    def __str__(self):
+        return self.name
+
+    def get_config_mode_str(self):
+        return "UB"
 
 
 if __name__ == "__main__":
