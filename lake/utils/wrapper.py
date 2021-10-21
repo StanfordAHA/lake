@@ -104,7 +104,6 @@ if __name__ == "__main__":
                         default=False)
 
     parser.add_argument("-v",
-                        type=bool,
                         action='store_true',
                         help='Generate main verilog')
 
