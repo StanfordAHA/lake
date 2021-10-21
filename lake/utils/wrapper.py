@@ -84,10 +84,10 @@ if __name__ == "__main__":
                         type=str,
                         help="True for pond wrapper. False for memtile wrapper. (default: False)",
                         default="False")
-    parser.add_argument("-pd",
+    parser.add_argument("-d",
                         type=int,
-                        help="optional: depth for Pond memory",
-                        default=32)
+                        help="optional: depth for memory",
+                        default=256)
     parser.add_argument("-pl",
                         type=int,
                         help="optional: iterator support for Pond memory",
@@ -145,6 +145,7 @@ if __name__ == "__main__":
         # Use updated codepath for wrapper generation of laketop
         lake_kwargs['stencil_valid'] = stencil_valid
         lake_kwargs['mem_width'] = args.mw
+        lake_kwargs['mem_depth'] = args.d
         lake_kwargs['rw_same_cycle'] = args.dp
         lake_kwargs['input_iterator_support'] = args.ii
         lake_kwargs['output_iterator_support'] = args.oi
