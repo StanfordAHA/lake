@@ -1,6 +1,6 @@
 from lake.top.memory_controller import MemoryController
 from lake.top.memory_interface import MemoryPort, MemoryPortType
-from lake.utils.parse_clkwork_config import configure_controller, extract_controller, map_controller
+from lake.utils.parse_clkwork_config import configure_controller, extract_controller, extract_controller_json, map_controller
 from lake.utils.util import get_priority_encode
 from kratos import *
 from lake.modules.passthru import *
@@ -348,6 +348,21 @@ class StrgUBThin(MemoryController):
                                            name=c_name,
                                            controller=c_conf)
 
+        return config
+
+    def get_bitstream(self, config_json, prefix=""):
+        # return super().get_bitstream(config_json, prefix=prefix)
+        config = []
+        in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
+        out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
+        for in_ctrl in in_ctrls:
+            if in_ctrl in config_json:
+                controller_tmp = map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl)
+                config += configure_controller(prefix="", name=in_ctrl, controller=controller_tmp)
+        for out_ctrl in out_ctrls:
+            if out_ctrl in config_json:
+                controller_tmp = map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl)
+                config += configure_controller(prefix="", name=out_ctrl, controller=controller_tmp)
         return config
 
     def get_memory_ports(self):
