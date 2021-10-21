@@ -103,6 +103,16 @@ if __name__ == "__main__":
                         help="use dual port sram",
                         default=False)
 
+    parser.add_argument("-v",
+                        type=bool,
+                        action='store_true',
+                        help='Generate main verilog')
+
+    parser.add_argument("-vn",
+                        type=str,
+                        help="optional: module name for Lake module (default: LakeTop)",
+                        default="LakeTop")
+
     args = parser.parse_args()
 
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
@@ -126,6 +136,8 @@ if __name__ == "__main__":
         lt_dut.wrapper(wrapper_vlog_filename=args.n,
                        vlog_extension="sv",
                        config_path=args.c)
+        if args.v:
+            lt_dut.get_verilog(args.vn)
 
     else:
         dut, module_name, iterator_support = get_dut(pond, args.pd, args.pl, **lake_kwargs)
