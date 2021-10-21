@@ -303,6 +303,9 @@ class LakeTop(Generator):
         # Restore the external state
         self.dut.external = False
 
+    def get_verilog(self, verilog_name):
+        verilog(self.dut, filename=verilog_name, optimize_if=False)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='LakeTop')
