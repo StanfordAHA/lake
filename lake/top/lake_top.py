@@ -180,23 +180,55 @@ class LakeTop(Generator):
     def form_json(self, config_path):
         config_file = open(config_path, "r")
         loaded_json = json.load(config_file)
-        loaded_json["mode"] = "UB"
+        # loaded_json["mode"] = "UB"
         return loaded_json
 
     def make_wrapper(self, to_wrap, mode="UB", cfg_dict={}, wrapper_name="default_wrapper"):
 
-        replace_ins = {
-            "input_width_16_num_0": "chain_data_in_0",
-            "input_width_16_num_1": "chain_data_in_1",
-            "input_width_16_num_2": "data_in_0",
-            "input_width_16_num_3": "data_in_1",
-        }
+        replace_ins = {}
+        replace_outs = {}
 
-        replace_outs = {
-            "output_width_16_num_0": "data_out_0",
-            "output_width_16_num_1": "data_out_1",
-            "output_width_1_num_2": "stencil_valid",
-        }
+        if mode == "UB" and self.fw_int == 1:
+
+            replace_ins = {
+                "input_width_16_num_0": "data_in_0",
+                "input_width_16_num_1": "data_in_1",
+            }
+
+            replace_outs = {
+                "output_width_16_num_0": "data_out_0",
+                "output_width_16_num_1": "data_out_1",
+                "output_width_1_num_4": "stencil_valid",
+            }
+        elif mode == "UB" and self.fw_int > 1:
+            replace_ins = {
+                "input_width_16_num_0": "chain_data_in_0",
+                "input_width_16_num_1": "chain_data_in_1",
+                "input_width_16_num_2": "data_in_0",
+                "input_width_16_num_3": "data_in_1",
+            }
+
+            replace_outs = {
+                "output_width_16_num_0": "data_out_0",
+                "output_width_16_num_1": "data_out_1",
+                "output_width_1_num_2": "stencil_valid",
+            }
+        elif mode == "ROM" and self.fw_int > 1:
+            replace_ins = {
+                "input_width_16_num_0": "chain_data_in_0",
+                "input_width_16_num_1": "chain_data_in_1",
+                "input_width_16_num_2": "data_in_0",
+                "input_width_16_num_3": "data_in_1",
+            }
+
+            replace_outs = {
+                "output_width_16_num_0": "data_out_0",
+                "output_width_16_num_1": "data_out_1",
+                "output_width_1_num_2": "stencil_valid",
+            }
+
+        else:
+            raise NotImplementedError
 
         # Set the child to external so that it isn't duplicated
         tw_int_gen = to_wrap.internal_generator
@@ -280,7 +312,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     lake_top = LakeTop(data_width=16,
-                       mem_width=16,
+                       mem_width=64,
                        mem_depth=256,
                        banks=1,
                        fifo_mode=True,
