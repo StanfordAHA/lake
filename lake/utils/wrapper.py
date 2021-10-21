@@ -159,7 +159,7 @@ if __name__ == "__main__":
         print(lt_dut)
 
     else:
-        dut, module_name, iterator_support = get_dut(pond, args.pd, args.pl, **lake_kwargs)
+        dut, module_name, iterator_support = get_dut(pond, args.d, args.pl, **lake_kwargs)
         wrapper(dut, module_name, iterator_support, args.c, args.n)
 
     # Example usage:
