@@ -322,10 +322,12 @@ class LakeTop(Generator):
         verilog(self.dut, filename=verilog_name, optimize_if=False)
         # Sometimes we need the verilog of the flattened module for a wrapper
         if flattened:
+            self.dut.external = True
             flattened = create_wrapper_flatten(self.dut.internal_generator,
                                                f"{self.dut.name}_flat")
             flattened_gen = Generator(f"{self.dut.name}_flat", internal_generator=flattened)
             verilog(flattened_gen, filename=f"{self.dut.name}_flat.v")
+            self.dut.external = False
 
 
 if __name__ == "__main__":
