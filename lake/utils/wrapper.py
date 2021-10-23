@@ -136,6 +136,10 @@ if __name__ == "__main__":
                         help="memory read delay",
                         default=1)
 
+    parser.add_argument("-a",
+                        action='store_true',
+                        help="append module wrapper to wrapper file")
+
     args = parser.parse_args()
 
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
@@ -164,9 +168,10 @@ if __name__ == "__main__":
         lt_dut.wrapper(wrapper_vlog_filename=args.wfn,
                        wrapper_vlog_modulename=args.wmn,
                        # vlog_extension="sv",
-                       config_path=args.c)
+                       config_path=args.c,
+                       append=args.a)
         if args.v:
-            lt_dut.get_verilog(args.vfn)
+            lt_dut.get_verilog(args.vfn, flattened=True)
         print(lt_dut)
 
     else:

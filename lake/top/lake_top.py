@@ -14,6 +14,7 @@ from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortTyp
 from lake.modules.stencil_valid import StencilValid
 from _kratos import create_wrapper_flatten
 from lake.attributes.config_reg_attr import ConfigRegAttr
+import os
 
 
 class LakeTop(Generator):
@@ -272,7 +273,8 @@ class LakeTop(Generator):
     def wrapper(self, wrapper_vlog_filename="default_wrapper.sv",
                 wrapper_vlog_modulename="LakeTop",
                 # vlog_extension="v",
-                config_path="/aha/config.json"):
+                config_path="/aha/config.json",
+                append=False):
         """Create a verilog wrapper for the dut with configurations specified in the json file
 
         Args:
@@ -292,20 +294,38 @@ class LakeTop(Generator):
                                            f"{self.dut.name}_flat")
         flattened_gen = Generator(f"{self.dut.name}_flat", internal_generator=flattened)
         # Create another level of wrapping...
-
         # Set the current dut and flattened dut to external for sharing
         flattened_gen.external = True
         self.dut.external = True
 
         wrapper = self.make_wrapper(to_wrap=flattened_gen, mode=mode, cfg_dict=cfg_dict,
                                     wrapper_name=wrapper_vlog_modulename)
-        verilog(wrapper, filename=f"{wrapper_vlog_filename}")
+        # If we want to append, we should generate the the verilog to a temp name and then
+        # append it to the original if it exists
+        if append:
+            if os.path.exists(f"{wrapper_vlog_filename}"):
+                new_file_lines = []
+                verilog(wrapper, filename=f"tmp_wrapper_vlog")
+                with open("tmp_wrapper_vlog", "r") as og_file:
+                    new_file_lines = og_file.readlines()
+                with open(wrapper_vlog_filename, "a") as cat_file:
+                    cat_file.writelines(new_file_lines)
+            else:
+                verilog(wrapper, filename=f"{wrapper_vlog_filename}")
+        else:
+            verilog(wrapper, filename=f"{wrapper_vlog_filename}")
 
         # Restore the external state
         self.dut.external = False
 
-    def get_verilog(self, verilog_name):
+    def get_verilog(self, verilog_name, flattened=False):
         verilog(self.dut, filename=verilog_name, optimize_if=False)
+        # Sometimes we need the verilog of the flattened module for a wrapper
+        if flattened:
+            flattened = create_wrapper_flatten(self.dut.internal_generator,
+                                               f"{self.dut.name}_flat")
+            flattened_gen = Generator(f"{self.dut.name}_flat", internal_generator=flattened)
+            verilog(flattened_gen, filename=f"{self.dut.name}_flat.v")
 
 
 if __name__ == "__main__":
