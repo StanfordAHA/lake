@@ -269,8 +269,9 @@ class LakeTop(Generator):
                 new_gen.wire(np, port)
         return new_gen
 
-    def wrapper(self, wrapper_vlog_filename="default_wrapper",
-                vlog_extension="v",
+    def wrapper(self, wrapper_vlog_filename="default_wrapper.sv",
+                wrapper_vlog_modulename="LakeTop",
+                # vlog_extension="v",
                 config_path="/aha/config.json"):
         """Create a verilog wrapper for the dut with configurations specified in the json file
 
@@ -297,8 +298,8 @@ class LakeTop(Generator):
         self.dut.external = True
 
         wrapper = self.make_wrapper(to_wrap=flattened_gen, mode=mode, cfg_dict=cfg_dict,
-                                    wrapper_name=wrapper_vlog_filename)
-        verilog(wrapper, filename=f"{wrapper_vlog_filename}.{vlog_extension}")
+                                    wrapper_name=wrapper_vlog_modulename)
+        verilog(wrapper, filename=f"{wrapper_vlog_filename}")
 
         # Restore the external state
         self.dut.external = False

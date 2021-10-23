@@ -20,7 +20,7 @@ def get_dut(pond, pd, pl, **dut_kwargs):
                          mem_in_ports=1,
                          mem_out_ports=1,
                          **dut_kwargs)
-        module_name = "Pond"
+        module_name = dut.name
         iterator_support = pl
     else:
         raise NotImplementedError
@@ -72,7 +72,11 @@ if __name__ == "__main__":
     parser.add_argument("-c",
                         type=str,
                         help="required: csv_file path relative to LAKE_CONTROLLERS environment variable")
-    parser.add_argument("-n",
+    parser.add_argument("-wfn",
+                        type=str,
+                        help="optional: file name for LakeWrapper module (default: lakewrapper.sv)",
+                        default="lakewrapper.sv")
+    parser.add_argument("-wmn",
                         type=str,
                         help="optional: module name for LakeWrapper module (default: LakeWrapper)",
                         default="LakeWrapper")
@@ -107,10 +111,15 @@ if __name__ == "__main__":
                         action='store_true',
                         help='Generate main verilog')
 
-    parser.add_argument("-vn",
+    parser.add_argument("-vmn",
                         type=str,
                         help="optional: module name for Lake module (default: LakeTop)",
                         default="LakeTop")
+
+    parser.add_argument("-vfn",
+                        type=str,
+                        help="optional: file name for Lake module (default: laketop.sv)",
+                        default="laketop.sv")
 
     parser.add_argument("-ii",
                         type=int,
@@ -150,16 +159,20 @@ if __name__ == "__main__":
         lake_kwargs['input_iterator_support'] = args.ii
         lake_kwargs['output_iterator_support'] = args.oi
         lake_kwargs['read_delay'] = args.rd
+        lake_kwargs['name'] = args.vmn
         lt_dut = LakeTop(**lake_kwargs)
-        lt_dut.wrapper(wrapper_vlog_filename=args.n,
-                       vlog_extension="sv",
+        lt_dut.wrapper(wrapper_vlog_filename=args.wfn,
+                       wrapper_vlog_modulename=args.wmn,
+                       # vlog_extension="sv",
                        config_path=args.c)
         if args.v:
-            lt_dut.get_verilog(args.vn)
+            lt_dut.get_verilog(args.vfn)
         print(lt_dut)
 
     else:
-        dut, module_name, iterator_support = get_dut(pond, args.d, args.pl, **lake_kwargs)
+        pond_kwargs = {}
+        pond_kwargs['name'] = args.wmn
+        dut, module_name, iterator_support = get_dut(pond, args.d, args.pl, **pond_kwargs)
         wrapper(dut, module_name, iterator_support, args.c, args.n)
 
     # Example usage:
