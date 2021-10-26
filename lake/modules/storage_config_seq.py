@@ -126,8 +126,10 @@ class StorageConfigSeq(Generator):
 
             # Have word counter for repeated reads/writes
             self._cnt = self.var("cnt", clog2(self.fw_int))
+            self._rd_valid = self.var("rd_valid", 1)
             self._rd_cnt = self.var("rd_cnt", clog2(self.fw_int))
             self.add_code(self.update_cnt)
+            self.add_code(self.update_rd_valid)
             self.add_code(self.update_rd_cnt)
             # Gate wen if not about to finish the word
 
@@ -183,19 +185,27 @@ class StorageConfigSeq(Generator):
     def update_cnt(self):
         if ~self._rst_n:
             self._cnt = 0
-        # Increment when reading/writing - making sure
+        # Increment when writing - making sure
         # that the sequencing is correct from app level!
-        elif (self._config_wr | self._config_rd) & self._config_en.r_or():
+        elif self._config_wr & self._config_en.r_or():
             self._cnt = self._cnt + 1
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def update_rd_valid(self):
+        if ~self._rst_n:
+            self._rd_valid = 0
+        # Assumes 1 cycle read delay from memory
+        else:
+            self._rd_valid = self._config_rd & self._config_en.r_or()
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_rd_cnt(self):
         if ~self._rst_n:
             self._rd_cnt = 0
-        # Increment when reading/writing - making sure
+        # Increment when reading - making sure
         # that the sequencing is correct from app level!
-        else:
-            self._rd_cnt = self._cnt
+        elif self._rd_valid:
+            self._rd_cnt = self._rd_cnt + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def write_buffer(self):
