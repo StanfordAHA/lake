@@ -99,7 +99,6 @@ class StorageConfigSeqTb(Generator):
         self._rst_n = self.reset("rst_n")
         self._rst_n.add_attribute(FormalAttr(self._rst_n.name, FormalSignalConstraint.RSTN))
 
-
         self._config_data_in = self.input("config_data_in",
                                           self.config_data_width)
         self._config_data_in.add_attribute(ControlSignalAttr(False))
@@ -173,7 +172,6 @@ class StorageConfigSeqTb(Generator):
         self._config_en = self.input("config_en", self.total_sets)
         self._config_en.add_attribute(ControlSignalAttr(False))
 
-        
         self.address_width = clog2(self.num_tiles * self.mem_depth)
 
         # Add tile enable!
@@ -181,7 +179,6 @@ class StorageConfigSeqTb(Generator):
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
         self._tile_en.add_attribute(FormalAttr(self._tile_en.name, FormalSignalConstraint.SET1))
 
-        
         # Currenlt mode = 0 is UB, mode = 1 is FIFO
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -828,8 +825,6 @@ def get_db_dut(formal_module=None,
                                     stencil_valid=stencil_valid,
                                     formal_module=formal_module,
                                     do_config_lift=do_config_lift)
-
-    # print(f"Supports Stencil Valid: {db_dut.supports('stencil_valid')}")
 
     # if do_config_lift, then do not need_config_lift later
     return db_dut, not do_config_lift, use_sram_stub, tsmc_info
