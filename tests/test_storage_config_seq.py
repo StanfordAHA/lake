@@ -62,7 +62,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
     test_num = 0
     write_cnt = num_words_per_row
     read_cnt = num_words_per_row
-    written_addr_cfg = [] # each element has [addr, config_en]
+    written_addr_cfg = []  # each element has [addr, config_en]
     last_read_addr = 0
     last_read_en = 0
     last_read_config_en = 0
@@ -135,7 +135,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
             last_read_en = 1
 
             # computes the enabled set from the 1-hot encoding
-            for i in range (sets_per_macro-1, -1, -1):
+            for i in range (sets_per_macro - 1, -1, -1):
                 if config_en / (2 ** i) >= 1:
                     last_model_rd_reg = sram_model[i][config_addr_in][read_cnt]
                     break
@@ -170,10 +170,10 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
 
         set = 0
         # computes the enabled set from the 1-hot encoding
-        for i in range (sets_per_macro-1, -1, -1):
+        for i in range (sets_per_macro - 1, -1, -1):
             if config_en / (2 ** i) >= 1:
                 set = i
-                break   
+                break
 
         # retrieve from model
         for word in sram_model[set][addr]:
