@@ -829,6 +829,7 @@ def get_db_dut(formal_module=None,
     # if do_config_lift, then do not need_config_lift later
     return db_dut, not do_config_lift, use_sram_stub, tsmc_info
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='StorageConfigSeqTb')
     parser.add_argument("-f",
