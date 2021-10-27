@@ -800,36 +800,34 @@ class StorageConfigSeqTb(Generator):
 
 
 def get_db_dut(formal_module=None,
-                in_ports=2,
-                out_ports=2,
-                # no stencil valid needed for formal problems
-                stencil_valid=False,
-                tsmc_info=SRAMMacroInfo("tsmc_name"),
-                use_sram_stub=True,
-                fifo_mode=True,
-                data_width=16,
-                mem_width=64,
-                mem_depth=512,
-                do_config_lift=True):
+               in_ports=2,
+               out_ports=2,
+               # no stencil valid needed for formal problems
+               stencil_valid=False,
+               tsmc_info=SRAMMacroInfo("tsmc_name"),
+               use_sram_stub=True,
+               fifo_mode=True,
+               data_width=16,
+               mem_width=64,
+               mem_depth=512,
+               do_config_lift=True):
 
-    db_dut = StorageConfigSeqTb(    data_width=data_width,
-                                    mem_width=mem_width,
-                                    mem_depth=mem_depth,
-                                    interconnect_input_ports=in_ports,
-                                    interconnect_output_ports=out_ports,
-                                    sram_macro_info=tsmc_info,
-                                    use_sram_stub=use_sram_stub,
-                                    fifo_mode=fifo_mode,
-                                    add_clk_enable=True,
-                                    add_flush=True,
-                                    stencil_valid=stencil_valid,
-                                    formal_module=formal_module,
-                                    do_config_lift=do_config_lift)
+    db_dut = StorageConfigSeqTb(data_width=data_width,
+                                mem_width=mem_width,
+                                mem_depth=mem_depth,
+                                interconnect_input_ports=in_ports,
+                                interconnect_output_ports=out_ports,
+                                sram_macro_info=tsmc_info,
+                                use_sram_stub=use_sram_stub,
+                                fifo_mode=fifo_mode,
+                                add_clk_enable=True,
+                                add_flush=True,
+                                stencil_valid=stencil_valid,
+                                formal_module=formal_module,
+                                do_config_lift=do_config_lift)
 
     # if do_config_lift, then do not need_config_lift later
     return db_dut, not do_config_lift, use_sram_stub, tsmc_info
-
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='StorageConfigSeqTb')
@@ -859,4 +857,3 @@ if __name__ == "__main__":
     verilog(db_dut, filename=f"storage_config_seq_tb.sv",
             optimize_if=False,
             additional_passes={"change sram port names": sram_port_pass})
-
