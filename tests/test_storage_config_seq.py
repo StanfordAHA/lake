@@ -14,11 +14,11 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
                             mem_width=64,
                             mem_depth=512,
                             test_cases=10000,   # numbers of cycles excluding axi gap cycles
-                            axi_gap_min=0,      # ~1000 in Garnet 
+                            axi_gap_min=0,      # ~1000 in Garnet
                             axi_gap_max=12      # ~1200 in Garnet
                             ):
 
-    num_words_per_row = int(mem_width/data_width)
+    num_words_per_row = int(mem_width / data_width)
 
     # Set up model...
     config_addr_width = 8
@@ -26,19 +26,18 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
     sets_per_macro = max(1, int(mem_depth / data_words_per_set))
     sram_model = []
     for i in range(sets_per_macro):
-        sram_model.append([]) # new set
+        sram_model.append([])  # new set
         for j in range(data_words_per_set):
-            sram_model[i].append([]) # new row
+            sram_model[i].append([])  # new row
             for x in range (num_words_per_row):
-                sram_model[i][j].append(0) # new word
+                sram_model[i][j].append(0)  # new word
     ###
-    
 
     # Set up dut...
     db_dut, need_config_lift, use_sram_stub, tsmc_info \
-        = get_db_dut(   data_width=data_width,
-                        mem_width=mem_width,
-                        mem_depth=mem_depth)
+        = get_db_dut(data_width=data_width,
+                     mem_width=mem_width,
+                     mem_depth=mem_depth)
     magma_dut = k.util.to_magma(db_dut,
                                 optimize_if=False,
                                 flatten_array=True)
@@ -72,7 +71,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
     while test_num < test_cases or \
             (write_cnt < num_words_per_row - 1) or \
             (read_cnt < num_words_per_row - 1):
-        
+
         # generating test inputs
         # either read or write
         # does not make too much sense for read+write to the same addr
@@ -114,11 +113,11 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
         tester.circuit.config_write = config_write
         tester.circuit.config_addr_in = config_addr_in
         tester.circuit.config_data_in = config_data_in
-        
+
         # update the model
         if config_en > 0 and config_write == 1:
             # decoding the set from 1-hot config_en
-            for i in range (sets_per_macro-1, -1, -1):
+            for i in range (sets_per_macro - 1, -1, -1):
                 if config_en / (2**i) >= 1:
                     sram_model[i][config_addr_in][write_cnt] = config_data_in
                     break
@@ -130,14 +129,14 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
             tester.circuit.config_data_out_0.expect(last_model_rd_reg)
             tester.circuit.config_data_out_1.expect(last_model_rd_reg)
 
-        # remember the model read data to 
+        # remember the model read data to
         # check against the circuit output in the next cycle
         if config_en > 0 and config_read == 1:
             last_read_en = 1
 
             # computes the enabled set from the 1-hot encoding
             for i in range (sets_per_macro-1, -1, -1):
-                if config_en / (2**i) >= 1:
+                if config_en / (2 ** i) >= 1:
                     last_model_rd_reg = sram_model[i][config_addr_in][read_cnt]
                     break
         else:
@@ -146,7 +145,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
         tester.step(2)
 
         # inserting bubbles in consecutive reads/writes
-        stall =  rand.randint(axi_gap_min, axi_gap_max)
+        stall = rand.randint(axi_gap_min, axi_gap_max)
         if stall > 0:
             # needs to check circuit read data before it becomes invalid
             if last_read_en:
@@ -160,7 +159,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
                 tester.step(2)
 
         test_num += 1
-    
+
     # compare all the written data
     tester.circuit.config_read = 1
     tester.circuit.config_write = 0
@@ -172,10 +171,10 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
         set = 0
         # computes the enabled set from the 1-hot encoding
         for i in range (sets_per_macro-1, -1, -1):
-            if config_en / (2**i) >= 1:
+            if config_en / (2 ** i) >= 1:
                 set = i
                 break   
-        
+
         # retrieve from model
         for word in sram_model[set][addr]:
             # retrieve from dut
@@ -196,7 +195,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
                     tester.eval()
                     tester.step(2)
 
-            # restore config_en        
+            # restore config_en
             tester.circuit.config_en = config_en
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -204,6 +203,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
                                directory="test_output",
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
+
 
 if __name__ == "__main__":
     test_storage_config_seq()
