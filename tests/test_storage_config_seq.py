@@ -200,9 +200,9 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
-                               directory="test_output",
+                               directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
