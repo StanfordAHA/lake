@@ -84,9 +84,8 @@ if __name__ == "__main__":
                         action='store_true',
                         help="optional: indicating whether or not to generate memtile with stencil_valid (default: False)")
     parser.add_argument("-p",
-                        type=str,
-                        help="True for pond wrapper. False for memtile wrapper. (default: False)",
-                        default="False")
+                        action='store_true',
+                        help="True for pond wrapper. False for memtile wrapper. (default: False)")
     parser.add_argument("-d",
                         type=int,
                         help="optional: depth for memory",
@@ -145,17 +144,14 @@ if __name__ == "__main__":
     usage += " [-s / --stencil_valid] [True or False indicating whether or not to generate hardware with stencil_valid (default: True)"
     usage += " [-n] [module name for LakeWrapper module (default: LakeWrapper)]"
 
-    stencil_valid = True if args.s == "True" else False
-    pond = False if args.p == "False" else True
-
     if args.c is None:
         error(usage)
 
     lake_kwargs = {}
 
-    if pond is False:
+    if args.p is False:
         # Use updated codepath for wrapper generation of laketop
-        lake_kwargs['stencil_valid'] = stencil_valid
+        lake_kwargs['stencil_valid'] = args.s
         lake_kwargs['mem_width'] = args.mw
         lake_kwargs['mem_depth'] = args.d
         lake_kwargs['rw_same_cycle'] = args.dp
@@ -176,7 +172,7 @@ if __name__ == "__main__":
     else:
         pond_kwargs = {}
         pond_kwargs['name'] = args.wmn
-        dut, module_name, iterator_support = get_dut(pond, args.d, args.pl, **pond_kwargs)
+        dut, module_name, iterator_support = get_dut(args.p, args.d, args.pl, **pond_kwargs)
         wrapper(dut, module_name, iterator_support, args.c, args.n)
 
     # Example usage:
