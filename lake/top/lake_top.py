@@ -212,7 +212,7 @@ class LakeTop(Generator):
             replace_outs = {
                 "output_width_16_num_0": "data_out_0",
                 "output_width_16_num_1": "data_out_1",
-                "output_width_1_num_2": "stencil_valid",
+                "output_width_1_num_3": "stencil_valid",
             }
         elif mode == "ROM" and self.fw_int > 1:
             replace_ins = {
@@ -225,7 +225,7 @@ class LakeTop(Generator):
             replace_outs = {
                 "output_width_16_num_0": "data_out_0",
                 "output_width_16_num_1": "data_out_1",
-                "output_width_1_num_2": "stencil_valid",
+                "output_width_1_num_3": "stencil_valid",
             }
 
         else:
