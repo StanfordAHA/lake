@@ -190,15 +190,14 @@ class LakeTop(Generator):
         replace_outs = {}
 
         if mode == "UB" and self.fw_int == 1:
-
             replace_ins = {
-                "input_width_16_num_0": "data_in_0",
-                "input_width_16_num_1": "data_in_1",
+                "input_width_16_num_0": "data_pond_in_0",
+                "input_width_16_num_1": "data_pond_in_1",
             }
 
             replace_outs = {
-                "output_width_16_num_0": "data_out_0",
-                "output_width_16_num_1": "data_out_1",
+                "output_width_16_num_0": "data_pond_out_0",
+                "output_width_16_num_1": "data_pond_out_1",
                 "output_width_1_num_4": "stencil_valid",
             }
         elif mode == "UB" and self.fw_int > 1:
@@ -241,6 +240,9 @@ class LakeTop(Generator):
             # Check if the cfg has a value already assigned
             if port_name in cfg_dict:
                 ngv = new_gen.var_from_def(port, port_name)
+                if cfg_dict[port_name] < 0:
+                    # Make it positive
+                    cfg_dict[port_name] = (2 ** ngv.width) + cfg_dict[port_name]
                 tmp_val = kts.const(cfg_dict[port_name], ngv.width)
                 new_gen.wire(ngv, tmp_val)
                 new_gen.wire(ngv, port)

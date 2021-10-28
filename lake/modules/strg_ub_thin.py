@@ -357,11 +357,11 @@ class StrgUBThin(MemoryController):
         out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
         for in_ctrl in in_ctrls:
             if in_ctrl in config_json:
-                controller_tmp = map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl)
+                controller_tmp = (map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl), 0)
                 config += configure_controller(prefix="", name=in_ctrl, controller=controller_tmp)
         for out_ctrl in out_ctrls:
             if out_ctrl in config_json:
-                controller_tmp = map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl)
+                controller_tmp = (map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl), 1)
                 config += configure_controller(prefix="", name=out_ctrl, controller=controller_tmp)
         return config
 
