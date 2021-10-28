@@ -173,7 +173,7 @@ if __name__ == "__main__":
         pond_kwargs = {}
         pond_kwargs['name'] = args.wmn
         dut, module_name, iterator_support = get_dut(args.p, args.d, args.pl, **pond_kwargs)
-        wrapper(dut, module_name, iterator_support, args.c, args.n)
+        wrapper(dut, module_name, iterator_support, args.c, args.wfn)
 
     # Example usage:
     # python wrapper_lake.py -c conv_3_3_recipe/buf_inst_input_10_to_buf_inst_output_3_ubuf
