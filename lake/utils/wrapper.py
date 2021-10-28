@@ -81,9 +81,8 @@ if __name__ == "__main__":
                         help="optional: module name for LakeWrapper module (default: LakeWrapper)",
                         default="LakeWrapper")
     parser.add_argument("-s",
-                        type=str,
-                        help="optional: True or False indicating whether or not to generate memtile with stencil_valid (default: True)",
-                        default="False")
+                        action='store_true',
+                        help="optional: indicating whether or not to generate memtile with stencil_valid (default: False)")
     parser.add_argument("-p",
                         type=str,
                         help="True for pond wrapper. False for memtile wrapper. (default: False)",
