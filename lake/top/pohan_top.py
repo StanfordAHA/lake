@@ -254,7 +254,7 @@ class PohanTop():
 
         wrapper = self.make_wrapper(to_wrap=flattened_gen, mode=mode, cfg_dict=cfg_dict,
                                     wrapper_name=wrapper_vlog_filename)
-        verilog(wrapper, filename=f"{wrapper_vlog_filename}.{vlog_extension}")
+        verilog(wrapper, filename=f"LakeWrapper_{wrapper_vlog_filename}.{vlog_extension}")
 
         # Restore the external state
         self.dut.external = False

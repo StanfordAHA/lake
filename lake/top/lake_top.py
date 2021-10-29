@@ -193,18 +193,18 @@ class LakeTop(Generator):
         replace_ins = {}
         replace_outs = {}
 
-        if mode == "UB" and self.fw_int == 1:
+        if mode == "UB" and self.read_delay == 0:
             replace_ins = {
-                "input_width_16_num_0": "data_pond_in_0",
-                "input_width_16_num_1": "data_pond_in_1",
+                "input_width_16_num_0": "data_in_pond_0",
+                "input_width_16_num_1": "data_in_pond_1",
             }
 
             replace_outs = {
-                "output_width_16_num_0": "data_pond_out_0",
-                "output_width_16_num_1": "data_pond_out_1",
-                "output_width_1_num_4": "stencil_valid",
+                "output_width_16_num_0": "data_out_pond_0",
+                "output_width_16_num_1": "data_out_pond_1",
+                "output_width_1_num_4": "valid_out_pond",
             }
-        elif mode == "UB" and self.fw_int > 1:
+        elif mode == "UB" and self.read_delay >= 1:
             replace_ins = {
                 "input_width_16_num_0": "chain_data_in_0",
                 "input_width_16_num_1": "chain_data_in_1",
