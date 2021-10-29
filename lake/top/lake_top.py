@@ -101,7 +101,11 @@ class LakeTop(Generator):
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=True)]
 
         tech_map = TSMC_Tech_Map()
-        MTB.set_memory_interface(name_prefix="sram_idk",
+
+        name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
+
+        # MTB.set_memory_interface(name_prefix=f"sram_{self.mem_width}_{self.mem_depth}_{len(tsmc_mem)}p",
+        MTB.set_memory_interface(name_prefix=name_prefix,
                                  mem_params=memory_params,
                                  ports=tsmc_mem,
                                  sim_macro_n=True,
