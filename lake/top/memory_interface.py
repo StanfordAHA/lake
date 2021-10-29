@@ -307,7 +307,8 @@ class MemoryInterface(kts.Generator):
         new_read = None
         # Standalone read ports may be comb (register file),
         # or they may be sequential if requiring an active read...
-        seq_comb_n = port.get_active_read()
+        # seq_comb_n = port.get_active_read() or (port.get_port_delay() > 1)
+        seq_comb_n = port.get_port_delay() >= 1
         if seq_comb_n:
             # Gen sequential read...
             sens_lst = [(kts.posedge, self._clk)]
