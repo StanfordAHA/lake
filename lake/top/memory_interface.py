@@ -328,9 +328,14 @@ class MemoryInterface(kts.Generator):
         new_write = self.sequential(*sens_lst)
         new_wr_if = new_write.if_(pintf['write_enable'] == 1)
         new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
-        read_if = IfStmt(pintf['read_enable'])
-        read_if.then_(pintf['data_out'].assign(self._data_array[pintf['read_addr']]))
-        new_wr_if.else_(read_if)
+        # If delay is 1 or more, do active read
+        if port.get_port_delay() > 0:
+            assert port.get_active_read() is True
+            read_if = IfStmt(pintf['read_enable'])
+            read_if.then_(pintf['data_out'].assign(self._data_array[pintf['read_addr']]))
+            new_wr_if.else_(read_if)
+        else:
+            self.add_stmt(pintf['data_out'].assign(self._data_array[pintf['read_addr']]))
 
     def realize_write_port(self, port: MemoryPort):
         pintf = port.get_port_interface()

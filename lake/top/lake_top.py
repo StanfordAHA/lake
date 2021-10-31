@@ -97,8 +97,8 @@ class LakeTop(Generator):
         tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True)]
 
         if self.rw_same_cycle:
-            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True),
-                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=True)]
+            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=False),
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
 
         tech_map = TSMC_Tech_Map()
 
@@ -350,7 +350,8 @@ if __name__ == "__main__":
                        fifo_mode=True,
                        add_clk_enable=True,
                        add_flush=True,
-                       rw_same_cycle=True)
+                       rw_same_cycle=True,
+                       read_delay=0)
 
     print(lake_top)
 

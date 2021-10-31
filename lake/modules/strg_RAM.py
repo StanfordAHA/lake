@@ -216,6 +216,9 @@ class StrgRAM(MemoryController):
             for i in range(self.fw_int):
                 self.add_code(self.set_data_combined, idx=i)
         # If read delay is 0, we can rmw in the same cycle (TIMING?)
+        else:
+            assert self.read_delay == 0
+            raise NotImplementedError
 
         self.base_ports = [[None]]
         rw_port = MemoryPort(MemoryPortType.READWRITE)
