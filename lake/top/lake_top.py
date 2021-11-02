@@ -6,6 +6,7 @@ from lake.modules.strg_ub_vec import StrgUBVec
 from lake.modules.strg_ub_thin import StrgUBThin
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
+from lake.top.extract_tile_info import extract_top_config
 from lake.utils.sram_macro import SRAMMacroInfo
 import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
@@ -345,15 +346,17 @@ if __name__ == "__main__":
 
     lake_top = LakeTop(data_width=16,
                        mem_width=64,
-                       mem_depth=256,
+                       mem_depth=512,
                        banks=1,
                        fifo_mode=True,
                        add_clk_enable=True,
                        add_flush=True,
-                       rw_same_cycle=True,
-                       read_delay=0)
+                       rw_same_cycle=False,
+                       read_delay=1)
 
     print(lake_top)
+
+    config = extract_top_config(lake_top.dut, verbose=True)
 
     # generate verilog
     verilog(lake_top.dut, filename=f"lake_top_test.sv",
