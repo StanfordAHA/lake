@@ -204,7 +204,7 @@ class StorageConfigSeq(Generator):
             self._rd_cnt = 0
         # Increment when reading - making sure
         # that the sequencing is correct from app level!
-        elif self._rd_valid:
+        elif self._rd_valid and not (self._config_rd & self._config_en.r_or()):
             self._rd_cnt = self._rd_cnt + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
