@@ -13,9 +13,10 @@ import fault
 def test_storage_config_seq(data_width=16,      # CGRA Params
                             mem_width=64,
                             mem_depth=512,
-                            test_cases=10000,   # numbers of cycles excluding axi gap cycles
-                            axi_gap_min=0,      # ~1000 in Garnet
-                            axi_gap_max=12      # ~1200 in Garnet
+                            test_cases=1000,   # numbers of cycles excluding axi gap cycles
+                            axi_gap_min=10,      # MUST be > 0, ~1000 in Garnet
+                            axi_gap_max=20,     # ~1200 in Garnet
+                            axi_rd_timing=2     # numbers of cycles for 1 read
                             ):
 
     num_words_per_row = int(mem_width / data_width)
@@ -114,6 +115,13 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
         tester.circuit.config_addr_in = config_addr_in
         tester.circuit.config_data_in = config_data_in
 
+        # simualte the actual AXI read which asserts config_en and config_rd/config_wr
+        # for more than 1 cycles to meet timing
+        if config_en > 0 and config_read == 1:
+            for i in range (axi_rd_timing - 1):
+                tester.eval()
+                tester.step(2)
+
         # update the model
         if config_en > 0 and config_write == 1:
             # decoding the set from 1-hot config_en
@@ -145,7 +153,11 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
         tester.step(2)
 
         # inserting bubbles in consecutive reads/writes
-        stall = rand.randint(axi_gap_min, axi_gap_max)
+        if config_en > 0 and config_read == 1:
+            stall = rand.randint(axi_gap_min, axi_gap_max)
+        else:
+            # for write or nop, the min stall is 0 meaning can be back-to-back
+            stall = rand.randint(0, axi_gap_max)
         if stall > 0:
             # needs to check circuit read data before it becomes invalid
             if last_read_en:
@@ -154,6 +166,9 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
             last_read_en = 0
 
             tester.circuit.config_en = 0
+            # optional to clear config_write and config_read
+            tester.circuit.config_write = 0
+            tester.circuit.config_read = 0
             for i in range(stall):
                 tester.eval()
                 tester.step(2)
@@ -180,6 +195,13 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
             # retrieve from dut
             tester.circuit.config_en = config_en
             tester.circuit.config_addr_in = addr
+
+            # simualte the actual AXI read which asserts cfg_en and cfg_rd
+            # for more than 1 cycles to meet timing
+            for i in range (axi_rd_timing - 1):
+                tester.eval()
+                tester.step(2)
+
             # needs to wait 1 cycle for read data
             tester.eval()
             tester.step(2)
@@ -191,16 +213,20 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
             stall = rand.randint(axi_gap_min, axi_gap_max)
             if stall > 0:
                 tester.circuit.config_en = 0
+                # optional to clear config_write and config_read
+                tester.circuit.config_write = 0
+                tester.circuit.config_read = 0
                 for i in range(stall):
                     tester.eval()
                     tester.step(2)
 
             # restore config_en
             tester.circuit.config_en = config_en
+            tester.circuit.config_read = 1
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
-                               directory=tempdir,
+                               directory="test_output",
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 
