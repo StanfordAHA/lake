@@ -109,6 +109,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
                 read_cnt = 0
 
         # update dut
+        tester.circuit.clk_en = config_en > 0
         tester.circuit.config_en = config_en
         tester.circuit.config_read = config_read
         tester.circuit.config_write = config_write
@@ -165,6 +166,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
                 tester.circuit.config_data_out_1.expect(last_model_rd_reg)
             last_read_en = 0
 
+            tester.circuit.clk_en = 0
             tester.circuit.config_en = 0
             # optional to clear config_write and config_read
             tester.circuit.config_write = 0
@@ -193,6 +195,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
         # retrieve from model
         for word in sram_model[set][addr]:
             # retrieve from dut
+            tester.circuit.clk_en = config_en > 0
             tester.circuit.config_en = config_en
             tester.circuit.config_addr_in = addr
 
@@ -212,6 +215,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
             # inserting simualted axi wait cycles in consecutive reads/writes
             stall = rand.randint(axi_gap_min, axi_gap_max)
             if stall > 0:
+                tester.circuit.clk_en = 0
                 tester.circuit.config_en = 0
                 # optional to clear config_write and config_read
                 tester.circuit.config_write = 0
@@ -221,12 +225,13 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
                     tester.step(2)
 
             # restore config_en
+            tester.circuit.clk_en = config_en > 0
             tester.circuit.config_en = config_en
             tester.circuit.config_read = 1
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
-                               directory="test_output",
+                               directory="tempdir",
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 

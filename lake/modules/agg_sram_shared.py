@@ -104,12 +104,6 @@ class StrgUBAggSRAMShared(Generator):
             self.wire(self._floop_restart[i], fl_ctr_sram_wr.ports.restart)
 
             # scheduler modules
-            
-            # optimized
-            #self.var("agg_write_reg", 12/4)
-            #agg_write_reg[starting_cycle/4]
-
-            # original
             self.add_child(f"agg_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.default_iterator_support,
                                     # config_width=self.mem_addr_width),
