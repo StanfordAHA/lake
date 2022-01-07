@@ -1,4 +1,3 @@
-from lake.utils.tile_builder import TileBase
 from math import e
 import kratos as kts
 from kratos import *
@@ -13,7 +12,7 @@ from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 
 
-class Intersect(TileBase):
+class Intersect(kts.Generator):
     def __init__(self,
                  data_width=16,
                  use_merger=False):
