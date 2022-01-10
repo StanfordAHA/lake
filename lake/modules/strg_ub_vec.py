@@ -188,8 +188,7 @@ class StrgUBVec(Generator):
         self.add_child("agg_sram_shared",
                        agg_sram_shared,
                        clk=self._clk,
-                       rst_n=self._rst_n,
-                       cycle_count=self._cycle_count)
+                       rst_n=self._rst_n)
 
         self.add_child("sram_only",
                        sram_only,
@@ -217,11 +216,13 @@ class StrgUBVec(Generator):
                        data_out=self._data_out)
 
         self.wire(agg_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
-        self.wire(agg_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
-        self.wire(agg_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
 
-        self.wire(sram_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
-        self.wire(sram_only.ports.floop_restart, agg_sram_shared.ports.floop_restart)
+        self.wire(agg_only.ports.sram_read_addr_in, agg_sram_shared.ports.agg_sram_shared_addr_out)
+        self.wire(sram_only.ports.sram_read_addr_in, agg_sram_shared.ports.agg_sram_shared_addr_out)
+        self.wire(agg_only.ports.agg_write_out, agg_sram_shared.ports.agg_write_in)
+        self.wire(sram_tb_shared.ports.t_read_out, agg_sram_shared.ports.sram_read_in)
+        self.wire(sram_only.ports.sram_read_addr_out, agg_sram_shared.ports.sram_read_addr_in)
+
         self.wire(sram_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(sram_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
         self.wire(sram_only.ports.agg_read, agg_sram_shared.ports.agg_read_out)
