@@ -3,7 +3,7 @@ from lake.utils.util import transform_strides_and_ranges
 
 
 ControllerInfo = collections.namedtuple('ControllerInfo',
-                                        'dim extent cyc_stride in_data_stride cyc_strt \
+                                        'dim extent cyc_stride in_data_stride cyc_strt delay mode \
                                             in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt')
 
 
@@ -54,6 +54,8 @@ def extract_controller_json(control_node):
     in_data_strides = get_property(control_node, 'write_data_stride')
     out_data_strides = get_property(control_node, 'read_data_stride')
     mux_data_strides = get_property(control_node, 'mux_write_data_stride')
+    delay = get_property(control_node, "delay")
+    mode = get_property(control_node, "mode")
 
     ctrl_info = ControllerInfo(dim=dim,
                                cyc_strt=cyc_strt,
@@ -64,6 +66,8 @@ def extract_controller_json(control_node):
                                out_data_strt=out_data_strt,
                                out_data_stride=out_data_strides,
                                mux_data_stride=mux_data_strides,
+                               delay=delay,
+                               mode=mode,
                                mux_data_strt=mux_data_strt)
     return ctrl_info
 
@@ -78,6 +82,8 @@ def extract_controller(file_path):
     mux_data_strt = search_for_config(file_lines, 'mux_write_data_starting_addr')
     in_data_strt = search_for_config(file_lines, 'write_data_starting_addr')
     out_data_strt = search_for_config(file_lines, 'read_data_starting_addr')
+    delay = search_for_config(file_lines, 'delay')
+    mode = search_for_config(file_lines, 'mode')
 
     ranges = []
     cyc_strides = []
@@ -99,6 +105,8 @@ def extract_controller(file_path):
                                cyc_stride=cyc_strides,
                                in_data_stride=in_data_strides,
                                out_data_strt=out_data_strt,
+                               delay=delay,
+                               mode=mode,
                                out_data_stride=out_data_strides,
                                mux_data_stride=mux_data_strides,
                                mux_data_strt=mux_data_strt)
@@ -116,6 +124,8 @@ def map_controller(controller, name):
     ctrl_out_data_strt = controller.out_data_strt
     ctrl_mux_data_strides = controller.mux_data_stride
     ctrl_mux_data_strt = controller.mux_data_strt
+    ctrl_delay = controller.delay
+    ctrl_mode = controller.mode
 
     if verbose_controller_info:
         print(f"extracted controller for: {name}")
@@ -155,6 +165,8 @@ def map_controller(controller, name):
                                  cyc_stride=tform_cyc_strides,
                                  in_data_stride=tform_in_data_strides,
                                  out_data_strt=ctrl_out_data_strt,
+                                 delay=ctrl_delay,
+                                 mode=ctrl_mode,
                                  out_data_stride=tform_out_data_strides,
                                  mux_data_strt=ctrl_mux_data_strt,
                                  mux_data_stride=tform_mux_data_strides)

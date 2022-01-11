@@ -936,12 +936,14 @@ class LakeTop(Generator):
                 config.append((f"strg_ub_agg_only_agg_write_sched_gen_1_sched_addr_gen_strides_{i}", in2agg_1.cyc_stride[i]))
 
         if "agg2sram_0" in root_node:
-            config.append(("strg_ub_agg_sram_shared_delay_0", 4))
-            config.append(("strg_ub_agg_sram_shared_mode_0", 0))
+            agg2sram_0 = map_controller(extract_controller_json(root_node["agg2sram_0"]), "agg2sram_0")
+            config.append(("strg_ub_agg_sram_shared_delay_0", agg2sram_0.delay))
+            config.append(("strg_ub_agg_sram_shared_mode_0", agg2sram_0.mode))
 
         if "agg2sram_1" in root_node:
-            config.append(("strg_ub_agg_sram_shared_delay_1", 4))
-            config.append(("strg_ub_agg_sram_shared_mode_1", 0))
+            agg2sram_1 = map_controller(extract_controller_json(root_node["agg2sram_1"]), "agg2sram_1")
+            config.append(("strg_ub_agg_sram_shared_delay_1", agg2sram_1.delay))
+            config.append(("strg_ub_agg_sram_shared_mode_1", agg2sram_1.mode))
 
         # Count tbs
         num_tbs = 0
@@ -1117,12 +1119,12 @@ class LakeTop(Generator):
                 config.append((f"strg_ub_agg_only_agg_write_sched_gen_1_sched_addr_gen_strides_{i}", in2agg_1.cyc_stride[i]))
 
         if agg2sram_0 is not None:
-            config.append(("strg_ub_agg_sram_shared_delay_0", 4))
-            config.append(("strg_ub_agg_sram_shared_mode_0", 0))
+            config.append(("strg_ub_agg_sram_shared_delay_0", agg2sram_0.delay))
+            config.append(("strg_ub_agg_sram_shared_mode_0", agg2sram_0.mode))
 
         if agg2sram_1 is not None:
-            config.append(("strg_ub_agg_sram_shared_delay_1", 4))
-            config.append(("strg_ub_agg_sram_shared_mode_1", 0))
+            config.append(("strg_ub_agg_sram_shared_delay_0", agg2sram_1.delay))
+            config.append(("strg_ub_agg_sram_shared_mode_0", agg2sram_1.mode))
 
         if sram2tb_0 is not None:
             config.append(("strg_ub_sram_only_output_addr_gen_0_starting_addr", sram2tb_0.out_data_strt))
