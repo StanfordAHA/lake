@@ -30,7 +30,7 @@ class StrgUBAggSRAMShared(Generator):
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 addr_fifo_depth=5,
+                 addr_fifo_depth=8,
                  agg_height=4,
                  tb_height=2):
 

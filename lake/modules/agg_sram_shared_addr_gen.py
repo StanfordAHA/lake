@@ -14,7 +14,7 @@ class AggSramSharedAddrGen(Generator):
     '''
     def __init__(self,
                  height=512,
-                 addr_fifo_depth=5,
+                 addr_fifo_depth=8,
                  config_width=16):
 
         super().__init__(f"agg_sram_shared_addr_gen")

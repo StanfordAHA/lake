@@ -16,7 +16,7 @@ class AggSramSharedSchedGen(Generator):
                  data_width=16,  # CGRA Params
                  mem_width=64,
                  agg_range_width=16,
-                 addr_fifo_depth=5,
+                 addr_fifo_depth=8,
                  agg_read_strt_cycle_width=4,
                  config_width=16):
 
