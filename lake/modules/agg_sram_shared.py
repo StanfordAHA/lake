@@ -97,7 +97,7 @@ class StrgUBAggSRAMShared(Generator):
             self._delay.add_attribute(FormalAttr(f"{self._delay.name}_{i}", FormalSignalConstraint.SOLVE))
 
             # linear or reuse mode configuration register
-            self._mode = self.input(f"mode_{i}", 1)
+            self._mode = self.input(f"mode_{i}", 2)
             self._mode.add_attribute(ConfigRegAttr("Mode of agg_sram shared schedule or addressing"))
             self._mode.add_attribute(FormalAttr(f"{self._mode.name}_{i}", FormalSignalConstraint.SOLVE))
 
@@ -107,11 +107,12 @@ class StrgUBAggSRAMShared(Generator):
                                                  mem_width=self.mem_width,
                                                  agg_range_width=self.agg_range_width,
                                                  addr_fifo_depth=self.addr_fifo_depth,
+                                                 interconnect_input_ports=interconnect_input_ports,
                                                  config_width=self.config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            agg_write=self._agg_write_in[i],
-                           sram_read=self._sram_read_in[i],
+                           sram_read=self._sram_read_in,
                            delay=self._delay,
                            mode=self._mode,
                            valid_output=self._agg_read[i])
@@ -120,12 +121,13 @@ class StrgUBAggSRAMShared(Generator):
             self.add_child(f"agg_sram_shared_addr_gen_{i}",
                            AggSramSharedAddrGen(height=self.mem_depth,
                                                 addr_fifo_depth=self.addr_fifo_depth,
+                                                interconnect_input_ports=interconnect_input_ports,
                                                 config_width=self.mem_addr_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._agg_read[i],
-                           sram_read=self._sram_read_in[i],
-                           sram_read_addr=self._sram_read_addr_in[i],
+                           sram_read=self._sram_read_in,
+                           sram_read_addr=self._sram_read_addr_in,
                            mode=self._mode,
                            addr_out=self._agg_sram_shared_addr_out[i])
 
