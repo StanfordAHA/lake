@@ -222,7 +222,8 @@ class StrgFIFO(Generator):
 
         # Wire the thin output from front to thin input to back
         self.wire(self._back_data_in, self._front_data_out)
-        self.wire(self._back_push, self._front_valid)
+        # Back can only be directly pushed when there's nothing in memory
+        self.wire(self._back_push, (self._front_valid & (self._num_words_mem == 0)) & (~self._back_full | self._back_pop))
         self.add_code(self.set_front_pop)
 
         # Queue writes
