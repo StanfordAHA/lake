@@ -275,7 +275,7 @@ class StrgFIFO(Generator):
             bank_idx_read = self._prev_bank_rd
         self.wire(self._data_out,
                   kts.ternary(self._back_pl, self._data_from_strg[bank_idx_read][0], self._back_data_out))
-        self.wire(self._valid_out, kts.ternary(self._back_pl, self._pop, self._back_valid))
+        self.wire(self._valid_out, kts.ternary(self._back_pl, const(1, 1), self._back_valid))
 
         # Set addresses to storage
         for i in range(self.banks):
