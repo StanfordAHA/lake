@@ -64,7 +64,16 @@ class StrgUBAggSRAMShared(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
+        self._agg_write_restart_in = self.input("agg_write_restart_in", self.interconnect_input_ports)
         self._agg_write_in = self.input("agg_write_in", self.interconnect_input_ports)
+        self._agg_write_addr_l2b_in = self.input("agg_write_addr_l2b_in", 2,
+                                                 size=self.interconnect_input_ports,
+                                                 packed=True,
+                                                 explicit_array=True)
+        self._agg_write_mux_sel_in = self.input("agg_write_mux_sel_in", max(clog2(self.default_iterator_support), 1),
+                                                size=self.interconnect_input_ports,
+                                                packed=True,
+                                                explicit_array=True)
         self._sram_read_in = self.input("sram_read_in", self.interconnect_input_ports)
         self._sram_read_addr_in = self.input("sram_read_addr_in", self.mem_addr_width,
                                              size=self.interconnect_input_ports,
@@ -111,7 +120,10 @@ class StrgUBAggSRAMShared(Generator):
                                                  config_width=self.config_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
+                           agg_write_restart=self._agg_write_restart_in[i],
                            agg_write=self._agg_write_in[i],
+                           agg_write_addr_l2b=self._agg_write_addr_l2b_in[i],
+                           agg_write_mux_sel=self._agg_write_mux_sel_in[i],
                            sram_read=self._sram_read_in,
                            delay=self._delay,
                            mode=self._mode,

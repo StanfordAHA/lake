@@ -58,6 +58,10 @@ class StrgUBAggOnly(Generator):
         self.sram_iterator_support = 6
         self.agg_rd_addr_gen_width = 8
 
+        self.agg_iter_support = 6
+        self.agg_addr_width = agg_addr_width
+        self.agg_range_width = 16
+
         ##################################################################################
         # IO
         ##################################################################################
@@ -85,7 +89,16 @@ class StrgUBAggOnly(Generator):
                                          explicit_array=True)
         self._agg_data_out.add_attribute(FormalAttr(self._agg_data_out.name, FormalSignalConstraint.SEQUENCE, "sram"))
 
+        self._agg_write_restart_out = self.output("agg_write_restart_out", self.interconnect_input_ports)
         self._agg_write_out = self.output("agg_write_out", self.interconnect_input_ports)
+        self._agg_write_addr_l2b_out = self.output("agg_write_addr_l2b_out", 2,
+                                                   size=self.interconnect_input_ports,
+                                                   packed=True,
+                                                   explicit_array=True)
+        self._agg_write_mux_sel_out = self.output("agg_write_mux_sel_out", max(clog2(self.agg_iter_support), 1),
+                                                  size=self.interconnect_input_ports,
+                                                  packed=True,
+                                                  explicit_array=True)
 
         ##################################################################################
         # AGG RELEVANT SIGNALS
@@ -120,15 +133,13 @@ class StrgUBAggOnly(Generator):
                                           explicit_array=True)
 
         self.wire(self._agg_write_out, self._agg_write)
+        self.wire(self._agg_write_addr_l2b_out[0], self._agg_write_addr[0][1, 0])
+        self.wire(self._agg_write_addr_l2b_out[1], self._agg_write_addr[1][1, 0])
 
         ##################################################################################
         # AGG PATHS
         ##################################################################################
         for i in range(self.interconnect_input_ports):
-
-            self.agg_iter_support = 6
-            self.agg_addr_width = agg_addr_width
-            self.agg_range_width = 16
 
             forloop_ctr = ForLoop(iterator_support=self.agg_iter_support,
                                   # config_width=self.default_config_width)
@@ -141,6 +152,8 @@ class StrgUBAggOnly(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            step=self._agg_write[i])
+            self.wire(self._agg_write_mux_sel_out[i], forloop_ctr.ports.mux_sel_out)
+            self.wire(self._agg_write_restart_out[i], forloop_ctr.ports.restart)
 
             newAG = AddrGen(iterator_support=self.agg_iter_support,
                             config_width=self.agg_addr_width)
@@ -178,15 +191,6 @@ class StrgUBAggOnly(Generator):
 
             self.add_code(agg_ctrl)
 
-            # newAG = LinearAddrGen(height=self.agg_height,
-            #                       config_width=self.agg_addr_width)
-
-            # self.add_child(f"agg_read_addr_gen_{i}",
-            #                newAG,
-            #                clk=self._clk,
-            #                rst_n=self._rst_n,
-            #                step=self._agg_read[i])
-            # safe_wire(gen=self, w_to=self._agg_read_addr_gen_out[i], w_from=newAG.ports.addr_out)
             self.wire(self._agg_read_addr_in[i], self._sram_read_addr_in[i][self.agg_addr_width - 1, 0])
             safe_wire(gen=self, w_to=self._agg_read_addr_gen_out[i], w_from=self._agg_read_addr_in[i])
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])

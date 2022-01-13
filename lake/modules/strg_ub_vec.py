@@ -219,7 +219,10 @@ class StrgUBVec(Generator):
 
         self.wire(agg_only.ports.sram_read_addr_in, agg_sram_shared.ports.agg_sram_shared_addr_out)
         self.wire(sram_only.ports.sram_read_addr_in, agg_sram_shared.ports.agg_sram_shared_addr_out)
+        self.wire(agg_only.ports.agg_write_restart_out, agg_sram_shared.ports.agg_write_restart_in)
         self.wire(agg_only.ports.agg_write_out, agg_sram_shared.ports.agg_write_in)
+        self.wire(agg_only.ports.agg_write_addr_l2b_out, agg_sram_shared.ports.agg_write_addr_l2b_in)
+        self.wire(agg_only.ports.agg_write_mux_sel_out, agg_sram_shared.ports.agg_write_mux_sel_in)
         self.wire(sram_tb_shared.ports.t_read_out, agg_sram_shared.ports.sram_read_in)
         self.wire(sram_only.ports.sram_read_addr_out, agg_sram_shared.ports.sram_read_addr_in)
 
