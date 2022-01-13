@@ -73,10 +73,10 @@ class AggSramSharedSchedGen(Generator):
 
     @always_comb
     def shifter_in_sel(self):
-        if self._mode[1]:
+        if self._mode[1] == 0:
             self._shifter_in = self._agg_write & (self._agg_write_addr_l2b.r_and() | ~(self._agg_write_mux_sel == 0) | self._agg_write_restart)
         else:
-            self._shifter_in = ternary(self._mode[1], self._sram_read[1], self._sram_read[0])
+            self._shifter_in = ternary(self._mode[0], self._sram_read[1], self._sram_read[0])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_shifter(self):
@@ -87,7 +87,7 @@ class AggSramSharedSchedGen(Generator):
 
     @always_comb
     def set_valid_output(self):
-        if self._mode[1] == 1:
+        if self._mode[1] == 0:
             self._valid_output = self._shifter[self._agg_read_strt_cycle]
         else:
             self._valid_output = self._shifter[self._delay]

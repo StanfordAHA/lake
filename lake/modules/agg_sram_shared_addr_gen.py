@@ -63,14 +63,14 @@ class AggSramSharedAddrGen(Generator):
         self.wire(self._addr_fifo_wr_en, ternary(self._mode[0], self._sram_read[1], self._sram_read[0]))
         self.wire(self._addr_fifo_in, ternary(self._mode[0], self._sram_read_addr[1], self._sram_read_addr[0]))
         self.add_code(self.update_addr_fifo)
-        self.wire(self._addr_out, ternary(self._mode[1], self._lin_addr_cnter, self._addr_fifo_out))
+        self.wire(self._addr_out, ternary(self._mode[1], self._addr_fifo_out, self._lin_addr_cnter))
         # GENERATION LOGIC: end
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def calculate_address(self):
         if ~self._rst_n:
             self._lin_addr_cnter = 0
-        elif self._mode[1] == 1:
+        elif self._mode[1] == 0:
             if self._step:
                 if (self._lin_addr_cnter == self.height - 1):
                     self._lin_addr_cnter = 0
@@ -84,7 +84,7 @@ class AggSramSharedAddrGen(Generator):
             self._rd_ptr = 0
             self._addr_fifo = 0
             self._addr_fifo_out = 0
-        elif self._mode[1] == 0:
+        elif self._mode[1] == 1:
             if self._addr_fifo_wr_en:
                 self._wr_ptr = self._wr_ptr + 1
                 self._addr_fifo[self._wr_ptr] = self._addr_fifo_in
