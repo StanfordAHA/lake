@@ -17,7 +17,7 @@ class AggSramSharedSchedGen(Generator):
                  data_width=16,  # CGRA Params
                  mem_width=64,
                  agg_range_width=16,
-                 addr_fifo_depth=8,
+                 delay_width=4,
                  agg_read_strt_cycle_width=4,
                  interconnect_input_ports=2,
                  config_width=16):
@@ -28,7 +28,7 @@ class AggSramSharedSchedGen(Generator):
         self.config_width = config_width
         self.fetch_width = mem_width // data_width
         self.agg_range_width = agg_range_width
-        self.addr_fifo_depth = addr_fifo_depth
+        self.delay_width = delay_width
         self.agg_read_strt_cycle_width = agg_read_strt_cycle_width
         self.interconnect_input_ports = interconnect_input_ports
 
@@ -45,7 +45,7 @@ class AggSramSharedSchedGen(Generator):
         self._sram_read = self.input("sram_read", self.interconnect_input_ports)
 
         # delay configuration register
-        self._delay = self.input("delay", clog2(self.addr_fifo_depth))
+        self._delay = self.input("delay", self.delay_width)
 
         # linear or reuse mode configuration register
         self._mode = self.input("mode", 2)
@@ -63,7 +63,7 @@ class AggSramSharedSchedGen(Generator):
 
         # new
         # self._delay_cnt = self.var("delay_cnt", clog2(self.fetch_width))
-        self._shifter = self.var("shifter", self.addr_fifo_depth)
+        self._shifter = self.var("shifter", 2 ** self.delay_width)
         self._shifter_in = self.var("shifter_in", 1)
 
         self.add_code(self.shifter_in_sel)

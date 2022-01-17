@@ -30,7 +30,8 @@ class StrgUBAggSRAMShared(Generator):
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 addr_fifo_depth=8,
+                 addr_fifo_depth=4,
+                 delay_width=4,
                  agg_height=4,
                  tb_height=2):
 
@@ -51,6 +52,7 @@ class StrgUBAggSRAMShared(Generator):
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
         self.addr_fifo_depth = addr_fifo_depth
+        self.delay_width = delay_width
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -101,7 +103,7 @@ class StrgUBAggSRAMShared(Generator):
             self.agg_range_width = 16
 
             # delay configuration register
-            self._delay = self.input(f"delay_{i}", clog2(self.addr_fifo_depth))
+            self._delay = self.input(f"delay_{i}", self.delay_width)
             self._delay.add_attribute(ConfigRegAttr("Delay cycles of agg_sram shared schedule"))
             self._delay.add_attribute(FormalAttr(f"{self._delay.name}_{i}", FormalSignalConstraint.SOLVE))
 
@@ -115,7 +117,7 @@ class StrgUBAggSRAMShared(Generator):
                            AggSramSharedSchedGen(data_width=self.data_width,
                                                  mem_width=self.mem_width,
                                                  agg_range_width=self.agg_range_width,
-                                                 addr_fifo_depth=self.addr_fifo_depth,
+                                                 delay_width=self.delay_width,
                                                  interconnect_input_ports=interconnect_input_ports,
                                                  config_width=self.config_width),
                            clk=self._clk,
