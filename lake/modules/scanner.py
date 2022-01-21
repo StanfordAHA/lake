@@ -3,7 +3,7 @@ from kratos import *
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
-from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg, transform_strides_and_ranges
+from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg, transform_strides_and_ranges, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -739,6 +739,9 @@ class Scanner(Generator):
 
     def get_bitstream(self, inner_offset, max_out, ranges, strides, root):
 
+        flattened = create_wrapper_flatten(self.internal_generator.clone(),
+                                           self.name + "_W")
+
         # Store all configurations here
         config = [
             ("inner_dim_offset", inner_offset),
@@ -755,7 +758,7 @@ class Scanner(Generator):
                 config += [(f"fiber_outer_addr_strides_{i}", tform_strides[i])]
                 config += [("fiber_outer_addr_starting_addr", 0)]
 
-        return config
+        return trim_config_list(flattened, config)
 
 
 if __name__ == "__main__":
