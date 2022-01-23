@@ -69,7 +69,7 @@ class Pond(Generator):
                                     packed=True)
 
         # Add "_pond" suffix to avoid error during garnet RTL generation
-        self._data_in = self.input("data_in_pond", self.data_width,
+        self._data_in = self.input("data_in_pond_0", self.data_width,
                                    size=self.interconnect_input_ports,
                                    explicit_array=True,
                                    packed=True)
@@ -84,7 +84,7 @@ class Pond(Generator):
                                    size=self.interconnect_output_ports,
                                    explicit_array=True,
                                    packed=True)
-        self._data_out = self.output("data_out_pond", self.data_width,
+        self._data_out = self.output("data_out_pond_0", self.data_width,
                                      size=self.interconnect_output_ports,
                                      explicit_array=True,
                                      packed=True)
@@ -353,10 +353,10 @@ class Pond(Generator):
         config = []
 
         # Get controllers from json node...
-        assert "in2regfile" in root_node
-        assert "regfile2out" in root_node
-        in2rf_ctrl = map_controller(extract_controller_json(root_node["in2regfile"]), "in2regfile")
-        rf2out_ctrl = map_controller(extract_controller_json(root_node["regfile2out"]), "regfile2out")
+        assert "in2regfile_0" in root_node
+        assert "regfile2out_0" in root_node
+        in2rf_ctrl = map_controller(extract_controller_json(root_node["in2regfile_0"]), "in2regfile")
+        rf2out_ctrl = map_controller(extract_controller_json(root_node["regfile2out_0"]), "regfile2out")
 
         # Configure registers based on controller data...
         config.append(("rf_write_iter_0_dimensionality", in2rf_ctrl.dim))
