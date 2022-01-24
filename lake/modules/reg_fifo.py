@@ -97,7 +97,9 @@ class RegFIFO(Generator):
 
         self.wire(self._read, self._pop & ~self._passthru & ~self._empty)
 
-        self.wire(self._passthru, self._pop & self._push & self._empty)
+        # Disallow passthru for now to prevent combinational loops
+        self.wire(self._passthru, const(0, 1))
+        # self.wire(self._passthru, self._pop & self._push & self._empty)
 
         # Should only write
 
