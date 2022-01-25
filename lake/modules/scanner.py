@@ -141,7 +141,7 @@ class Scanner(Generator):
                        self.FIBER_OUTER_ADDR,
                        clk=self._gclk,
                        rst_n=self._rst_n,
-                       step=self._step_outer,
+                       step=self._step_outer & self._root,
                        mux_sel=self.FIBER_OUTER_ITER.ports.mux_sel_out,
                        restart=self.FIBER_OUTER_ITER.ports.restart)
         self._outer_addr = self.var("outer_addr", 16)
@@ -634,7 +634,7 @@ class Scanner(Generator):
         SEQ_DONE.output(self._update_seq_state, 0)
         SEQ_DONE.output(self._step_agen, 0)
         SEQ_DONE.output(self._last_valid_accepting, 0)
-        SEQ_DONE.output(self._step_outer, self._root)
+        SEQ_DONE.output(self._step_outer, 1)
         SEQ_DONE.output(self._update_previous_outer, 0)
 
         #############
