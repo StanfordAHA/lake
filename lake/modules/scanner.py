@@ -634,7 +634,7 @@ class Scanner(Generator):
         SEQ_DONE.output(self._update_seq_state, 0)
         SEQ_DONE.output(self._step_agen, 0)
         SEQ_DONE.output(self._last_valid_accepting, 0)
-        SEQ_DONE.output(self._step_outer, 1)
+        SEQ_DONE.output(self._step_outer, self._root)
         SEQ_DONE.output(self._update_previous_outer, 0)
 
         #############
