@@ -451,7 +451,9 @@ class Scanner(Generator):
         # Once done, we need another flush
         SEQ_DONE.next(DONE, ((self._outer_restart | self._outer_length_one) & self._root) | (self._eos_in_seen))
         SEQ_DONE.next(ISSUE_STRM, ~self._outer_restart & self._root)
-        SEQ_DONE.next(ISSUE_STRM_NR, ~self._outer_restart & ~self._root)
+        # SEQ_DONE.next(ISSUE_STRM_NR, ~self._outer_restart & ~self._root)
+        # It might be the case that you should always set up another issue if not at EOS
+        SEQ_DONE.next(ISSUE_STRM_NR, ~self._root)
 
         # DONE
         DONE.next(DONE, kts.const(1, 1))
