@@ -38,6 +38,18 @@ class Scanner(Generator):
         self._root = self.input("root", 1)
         self._root.add_attribute(ConfigRegAttr("If this scanner is at the root node, it will dispatch on its own"))
 
+        # Repeat number
+        self._do_repeat = self.input("do_repeat", 1)
+        self._do_repeat.add_attribute(ConfigRegAttr("If this scanner should do a repeat for creating outer coords"))
+
+        # Repeat inner or outer
+        self._repeat_outer_inner_n = self.input("repeat_outer_inner_n", 1)
+        self._repeat_outer_inner_n.add_attribute(ConfigRegAttr("If this scanner should repeat inside or outside"))
+
+        # Repeat inner or outer
+        self._repeat_factor = self.input("repeat_factor", 16)
+        self._repeat_factor.add_attribute(ConfigRegAttr("How many times this scanner should repeat inside or outside"))
+
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
@@ -60,8 +72,8 @@ class Scanner(Generator):
         self._coord_out = self.output("coord_out", self.data_width)
         self._coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._outer_coord_out = self.output("outer_coord_out", self.data_width)
-        self._outer_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        # self._outer_coord_out = self.output("outer_coord_out", self.data_width)
+        # self._outer_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._pos_out = self.output("pos_out", self.data_width)
         self._pos_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -174,7 +186,7 @@ class Scanner(Generator):
 # scanners are driven by upper levels
 # =============================
 
-        self._infifo = RegFIFO(data_width=2 * self.data_width + 2, width_mult=1, depth=8)
+        self._infifo = RegFIFO(data_width=1 * self.data_width + 2, width_mult=1, depth=8)
 
         # Need to know if we've seen eos_in
         self._eos_in_seen = self.var("eos_in_seen", 1)
@@ -191,8 +203,8 @@ class Scanner(Generator):
         self._upstream_pos_in = self.input("us_pos_in", self.data_width)
         self._upstream_pos_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._upstream_coord_in = self.output("us_coord_in", self.data_width)
-        self._upstream_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        # self._upstream_coord_in = self.input("us_coord_in", self.data_width)
+        # self._upstream_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._upstream_valid_in = self.input("us_valid_in", 1)
         self._upstream_valid_in.add_attribute(ControlSignalAttr(is_control=True))
@@ -205,22 +217,22 @@ class Scanner(Generator):
 
         # For input streams, need coord_in, valid_in, eos_in
         self._infifo_pos_in = self.var("infifo_pos_in", self.data_width)
-        self._infifo_coord_in = self.var("infifo_coord_in", self.data_width)
+        # self._infifo_coord_in = self.var("infifo_coord_in", self.data_width)
         self._infifo_valid_in = self.var("infifo_valid_in", 1)
         self._infifo_eos_in = self.var("infifo_eos_in", 1)
 
         # Stupid convert
-        self._pos_in_us_packed = self.var("fifo_us_in_packed", 2 * self.data_width + 2, packed=True)
+        self._pos_in_us_packed = self.var("fifo_us_in_packed", 1 * self.data_width + 2, packed=True)
 
         # indicate valid data as well
-        self.wire(self._pos_in_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2], self._upstream_coord_in)
+        # self.wire(self._pos_in_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2], self._upstream_coord_in)
         self.wire(self._pos_in_us_packed[self.data_width + 1], self._upstream_valid_in)
         # The EOS tags on the last valid in the stream
         self.wire(self._pos_in_us_packed[self.data_width], self._upstream_eos_in)
         self.wire(self._pos_in_us_packed[self.data_width - 1, 0], self._upstream_pos_in)
 
-        self._data_out_us_packed = self.var("fifo_out_us_packed", 2 * self.data_width + 2, packed=True)
-        self.wire(self._infifo_coord_in, self._data_out_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2])
+        self._data_out_us_packed = self.var("fifo_out_us_packed", 1 * self.data_width + 2, packed=True)
+        # self.wire(self._infifo_coord_in, self._data_out_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2])
         self.wire(self._infifo_valid_in, self._data_out_us_packed[self.data_width + 1])
         self.wire(self._infifo_eos_in, self._data_out_us_packed[self.data_width])
         self.wire(self._infifo_pos_in, self._data_out_us_packed[self.data_width - 1, 0])
@@ -299,11 +311,22 @@ class Scanner(Generator):
         self._next_seq_addr = self.var("next_seq_addr", 16)
 
         # State of the address gens
-        self.wire(self._iter_dim, 1)
-        self.wire(self._iter_ranges[0], self._seq_length - 1)
-        self.wire(self._iter_ranges[1], 0)
-        self.wire(self._addr_strides[0], 1)
-        self.wire(self._addr_strides[1], 0)
+        self.wire(self._iter_dim, kts.ternary(self._do_repeat, kts.const(2, self._iter_dim.width), kts.const(1, self._iter_dim.width)))
+        # We can embed the iteration differences here (although it might feel hacky)
+        self.wire(self._iter_ranges[0], kts.ternary(self._do_repeat,
+                                                    kts.ternary(self._repeat_outer_inner_n, self._seq_length - 1, self._repeat_factor),
+                                                    self._seq_length - 1))
+        self.wire(self._iter_ranges[1], kts.ternary(self._do_repeat,
+                                                    kts.ternary(self._repeat_outer_inner_n,  self._repeat_factor, self._seq_length - 1),
+                                                    kts.const(0, self._iter_ranges[1].width)))
+        # self.wire(self._addr_strides[0], 1)
+        self.wire(self._addr_strides[0], kts.ternary(self._do_repeat,
+                                                    kts.ternary(self._repeat_outer_inner_n, kts.const(1, self._addr_strides[0].width), kts.const(0, self._addr_strides[0].width)),
+                                                    kts.const(1, self._addr_strides[0].width)))
+        # self.wire(self._addr_strides[1], 0)
+        self.wire(self._addr_strides[1], kts.ternary(self._do_repeat,
+                                                    kts.ternary(self._repeat_outer_inner_n,  ~(self._seq_length - 1), kts.const(1, self._addr_strides[1].width)),
+                                                    kts.const(0, self._addr_strides[1].width)))
         # This offset is needed to get info into the next structure
         self.wire(self._addr_offset, self._seq_addr)
 
@@ -357,7 +380,7 @@ class Scanner(Generator):
         self._max_outer_dim = self.input("max_outer_dim", 16)
         self._max_outer_dim.add_attribute(ConfigRegAttr("How long is the matrix..."))
 
-        self._rfifo = RegFIFO(data_width=3 * self.data_width + 2, width_mult=1, depth=8)
+        self._rfifo = RegFIFO(data_width=2 * self.data_width + 2, width_mult=1, depth=8)
 
         self._fifo_push = self.var("fifo_push", 1)
         self._tag_valid_data = self.var("tag_valid_data", 1)
@@ -445,7 +468,8 @@ class Scanner(Generator):
         # complexity, or if we are looking at one of the eos since we can make the last
         # move for the intersection now...
         # If we have eos and can push to the fifo, we are done
-        SEQ_ITER.next(SEQ_DONE, self._last_valid_accepting)
+        # SEQ_ITER.next(SEQ_DONE, self._last_valid_accepting)
+        SEQ_ITER.next(SEQ_DONE, self._iter_restart)
         SEQ_ITER.next(SEQ_ITER, kts.const(1, 1))
 
         # Once done, we need another flush
@@ -614,7 +638,8 @@ class Scanner(Generator):
         SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
         SEQ_ITER.output(self._update_seq_state, 0)
         SEQ_ITER.output(self._step_agen, ~self._rfifo.ports.almost_full & ~self._ready_gate)
-        SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._valid_in))
+        # SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._valid_in))
+        SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == ((self._seq_length + 1) * (self._repeat_factor + 2) - 1)) & (self._valid_in))
         SEQ_ITER.output(self._step_outer, 0)
         SEQ_ITER.output(self._update_previous_outer, 0)
 
@@ -665,23 +690,23 @@ class Scanner(Generator):
 # ===================================
 
         # Include the outer coord as well
-        self._oc_to_fifo = self.var("outer_coord_to_fifo", self.data_width)
-        self.wire(self._oc_to_fifo, kts.ternary(self._root, kts.const(0, self.data_width), self._infifo_coord_in))
+        # self._oc_to_fifo = self.var("outer_coord_to_fifo", self.data_width)
+        # self.wire(self._oc_to_fifo, kts.ternary(self._root, kts.const(0, self.data_width), self._infifo_coord_in))
 
         # Stupid convert
-        self._data_in_packed = self.var("fifo_in_packed", 3 * self.data_width + 2, packed=True)
+        self._data_in_packed = self.var("fifo_in_packed", 2 * self.data_width + 2, packed=True)
 
         # indicate valid data as well
-        self.wire(self._data_in_packed[(3 * self.data_width) - 1 + 2, 2 * self.data_width + 2], self._oc_to_fifo)
+        # self.wire(self._data_in_packed[(3 * self.data_width) - 1 + 2, 2 * self.data_width + 2], self._oc_to_fifo)
         self.wire(self._data_in_packed[(2 * self.data_width) - 1 + 2, self.data_width + 2], self._pos_out_to_fifo)
         self.wire(self._data_in_packed[self.data_width + 1], self._tag_valid_data)
         # The EOS tags on the last valid in the stream
         self.wire(self._data_in_packed[self.data_width], self._tag_eos)
         self.wire(self._data_in_packed[self.data_width - 1, 0], self._data_in)
 
-        self._data_out_packed = self.var("fifo_out_packed", 3 * self.data_width + 2, packed=True)
+        self._data_out_packed = self.var("fifo_out_packed", 2 * self.data_width + 2, packed=True)
         # self.wire(self._data_out_packed, kts.concat(self._pos_out, self._valid_out, self._eos_out, self._coord_out))
-        self.wire(self._outer_coord_out, self._data_out_packed[3 * self.data_width - 1 + 2, 2 * self.data_width + 2])
+        # self.wire(self._outer_coord_out, self._data_out_packed[3 * self.data_width - 1 + 2, 2 * self.data_width + 2])
         self.wire(self._pos_out, self._data_out_packed[2 * self.data_width - 1 + 2, self.data_width + 2])
         self.wire(self._valid_out, self._data_out_packed[self.data_width + 1])
         self.wire(self._eos_out, self._data_out_packed[self.data_width])
@@ -739,7 +764,7 @@ class Scanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, max_out, ranges, strides, root):
+    def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
@@ -747,7 +772,10 @@ class Scanner(Generator):
         # Store all configurations here
         config = [
             ("inner_dim_offset", inner_offset),
-            ("max_outer_dim", max_out)]
+            ("max_outer_dim", max_out),
+            ("do_repeat", do_repeat),
+            ("repeat_outer_inner_n", repeat_outer),
+            ("repeat_factor", repeat_factor - 2)]
 
         if root:
             dim = len(ranges)
