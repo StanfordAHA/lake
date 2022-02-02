@@ -50,6 +50,10 @@ class Scanner(Generator):
         self._repeat_factor = self.input("repeat_factor", 16)
         self._repeat_factor.add_attribute(ConfigRegAttr("How many times this scanner should repeat inside or outside"))
 
+        # Set the stop token injection level - (default 0 + 1 for root)
+        self._stop_lvl = self.input("stop_lvl", 16)
+        self._stop_lvl.add_attribute(ConfigRegAttr("What level stop tokens should this scanner inject"))
+
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
@@ -120,7 +124,7 @@ class Scanner(Generator):
         self._infifo = RegFIFO(data_width=1 * self.data_width + 2, width_mult=1, depth=8)
 
         # Need to know if we've seen eos_in
-        self._eos_in_seen = self.var("eos_in_seen", 1)
+        # self._eos_in_seen = self.var("eos_in_seen", 1)
 
         self._fifo_push = self.var("fifo_push", 1)
         self._tag_valid_data = self.var("tag_valid_data", 1)
@@ -187,13 +191,13 @@ class Scanner(Generator):
         self.wire(self._fifo_us_full, self._infifo.ports.full)
         self.wire(self._upstream_ready_out, ~self._fifo_us_full)
 
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def eos_seen_ff():
-            if ~self._rst_n:
-                self._eos_in_seen = 0
-            elif self._infifo_eos_in:
-                self._eos_in_seen = 1
-        self.add_code(eos_seen_ff)
+        # @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        # def eos_seen_ff():
+        #     if ~self._rst_n:
+        #         self._eos_in_seen = 0
+        #     elif self._infifo_eos_in:
+        #         self._eos_in_seen = 1
+        # self.add_code(eos_seen_ff)
 
 # =============================
 # SCAN FSM
@@ -223,17 +227,13 @@ class Scanner(Generator):
         self.wire(self._ptr_in, self._data_in)
         # self.wire(self._ptr_in, self._data_in[15, 8])
 
-        # Set up fiber addr
-        self._fiber_addr = self.var("fiber_addr", 16)
-        self.wire(self._fiber_addr, self._fiber_addr_pre + self._inner_dim_offset)
-
         # Need to hook up the current and next seqence_length
         # Also need to intercept the configs and set them internally...
         self._ptr_reg = register(self, self._ptr_in)
         self._agen_addr_d1 = register(self, self._fiber_addr_pre)
         self._pos_out_to_fifo = self.var("pos_out_to_fifo", self.data_width)
         # In this way, we can save the relative position of each value in the ptr array for downstream
-        self.wire(self._pos_out_to_fifo, self._agen_addr_d1)
+        # self.wire(self._pos_out_to_fifo, self._agen_addr_d1)
         # self.wire(self._pos_out_to_fifo, (self._agen_addr_d1 - self._inner_dim_offset))
 
         self._update_seq_state = self.var("update_seq_state", 1)
@@ -269,6 +269,10 @@ class Scanner(Generator):
                 self._payload_ptr = self._ptr_reg
         self.add_code(update_seq_state_ff)
 
+        # Set up fiber addr
+        self._fiber_addr = self.var("fiber_addr", 16)
+        self.wire(self._fiber_addr, self._fiber_addr_pre + self._seq_addr)
+
         self._rfifo = RegFIFO(data_width=2 * self.data_width + 2, width_mult=1, depth=8)
 
         self._fifo_push = self.var("fifo_push", 1)
@@ -283,9 +287,11 @@ class Scanner(Generator):
         # Define logic for iter_finish + rep_finish
         self._iter_finish = sticky_flag(self, self._last_valid_accepting, clear=self._clr_fiber_addr, name="iter_finish")
         self._rep_finish = sticky_flag(self, (self._num_reps == (self._repeat_factor - 1)) & self._inc_rep, clear=self._clr_rep, name="rep_finish")
+        self._seen_root_eos = sticky_flag(self, self._infifo_eos_in & (self._infifo_pos_in == 0), name="seen_root_eos")
 
         self._en_reg_data_in = self.var("en_reg_data_in", 1)
         self._data_in_d1 = register(self, self._data_in, enable=self._en_reg_data_in)
+        self._agen_addr_d1_cap = register(self, self._agen_addr_d1, enable=self._en_reg_data_in)
 
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
@@ -293,6 +299,7 @@ class Scanner(Generator):
         ISSUE_STRM = self.scan_fsm.add_state("ISSUE_STRM")
         # Non-root dispatch state for separation
         ISSUE_STRM_NR = self.scan_fsm.add_state("ISSUE_STRM_NR")
+        PASS_STOP = self.scan_fsm.add_state("PASS_STOP")
         READ_0 = self.scan_fsm.add_state("READ_0")
         READ_1 = self.scan_fsm.add_state("READ_1")
         READ_2 = self.scan_fsm.add_state("READ_2")
@@ -325,6 +332,7 @@ class Scanner(Generator):
         self.scan_fsm.output(self._clr_rep)
         self.scan_fsm.output(self._data_to_fifo)
         self.scan_fsm.output(self._en_reg_data_in)
+        self.scan_fsm.output(self._pos_out_to_fifo)
 
         ####################
         # Next State Logic
@@ -341,10 +349,17 @@ class Scanner(Generator):
         # ISSUE_STRM.next(READ_0, ~((self._outer_addr == self._previous_outer) & self._previous_outer_valid))
         ISSUE_STRM.next(READ_0, None)
 
-        # If we are seeing the eos_in this state we are done
-        # EOS tokens are now separate, so this should be final
-        ISSUE_STRM_NR.next(DONE, self._infifo_eos_in)
-        ISSUE_STRM_NR.next(READ_0, ~self._infifo_eos_in)
+        # If we are seeing the eos_in this state we need to pass them along to downstream modules
+        # If we have valid data in (the input fifo is not empty), then we should issue the corresponding stream
+        ISSUE_STRM_NR.next(PASS_STOP, self._infifo_eos_in)
+        ISSUE_STRM_NR.next(READ_0, ~self._infifo_eos_in & self._infifo_valid_in)
+        ISSUE_STRM_NR.next(ISSUE_STRM_NR, None)
+
+        # In this state, we are passing through stop tokens into
+        # the downstream
+        PASS_STOP.next(PASS_STOP, self._infifo_eos_in)
+        PASS_STOP.next(ISSUE_STRM_NR, ~self._infifo_eos_in & ~self._seen_root_eos)
+        PASS_STOP.next(DONE, ~self._infifo_eos_in & self._seen_root_eos)
 
         # Can continue on our way in root mode, otherwise we need to
         # bring the pointer up to locate the coordinate
@@ -440,6 +455,7 @@ class Scanner(Generator):
         START.output(self._clr_rep, 0)
         START.output(self._data_to_fifo, kts.const(0, 16))
         START.output(self._en_reg_data_in, 0)
+        START.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         #######
         # ISSUE_STRM - TODO - Generate general hardware...
@@ -463,6 +479,7 @@ class Scanner(Generator):
         ISSUE_STRM.output(self._clr_rep, 0)
         ISSUE_STRM.output(self._data_to_fifo, kts.const(0, 16))
         ISSUE_STRM.output(self._en_reg_data_in, 0)
+        ISSUE_STRM.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         #######
         # ISSUE_STRM_NR
@@ -485,6 +502,30 @@ class Scanner(Generator):
         ISSUE_STRM_NR.output(self._clr_rep, 0)
         ISSUE_STRM_NR.output(self._data_to_fifo, kts.const(0, 16))
         ISSUE_STRM_NR.output(self._en_reg_data_in, 0)
+        ISSUE_STRM_NR.output(self._pos_out_to_fifo, kts.const(0, 16))
+
+        #######
+        # PASS_STOP
+        #######
+        PASS_STOP.output(self._valid_inc, 0)
+        PASS_STOP.output(self._valid_rst, 0)
+        PASS_STOP.output(self._ren, 0)
+        PASS_STOP.output(self._fifo_push, self._infifo_eos_in)
+        PASS_STOP.output(self._tag_valid_data, 0)
+        PASS_STOP.output(self._tag_eos, 1)
+        # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
+        PASS_STOP.output(self._addr_out, kts.const(0, 16))
+        PASS_STOP.output(self._next_seq_length, kts.const(0, 16))
+        PASS_STOP.output(self._update_seq_state, 0)
+        PASS_STOP.output(self._last_valid_accepting, 0)
+        PASS_STOP.output(self._pop_infifo, ~self._fifo_full & self._infifo_eos_in)
+        PASS_STOP.output(self._inc_fiber_addr, 0)
+        PASS_STOP.output(self._clr_fiber_addr, 0)
+        PASS_STOP.output(self._inc_rep, 0)
+        PASS_STOP.output(self._clr_rep, 0)
+        PASS_STOP.output(self._data_to_fifo, self._infifo_pos_in)
+        PASS_STOP.output(self._en_reg_data_in, 0)
+        PASS_STOP.output(self._pos_out_to_fifo, self._infifo_pos_in)
 
         #######
         # READ_0 - TODO - Generate general hardware...
@@ -507,6 +548,7 @@ class Scanner(Generator):
         READ_0.output(self._clr_rep, 0)
         READ_0.output(self._data_to_fifo, kts.const(0, 16))
         READ_0.output(self._en_reg_data_in, 0)
+        READ_0.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         #######
         # READ_1 - TODO - Generate general hardware...
@@ -528,6 +570,7 @@ class Scanner(Generator):
         READ_1.output(self._clr_rep, 0)
         READ_1.output(self._data_to_fifo, kts.const(0, 16))
         READ_1.output(self._en_reg_data_in, 0)
+        READ_1.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         #######
         # READ_2 - TODO - Generate general hardware...
@@ -551,6 +594,7 @@ class Scanner(Generator):
         READ_2.output(self._clr_rep, 0)
         READ_2.output(self._data_to_fifo, kts.const(0, 16))
         READ_2.output(self._en_reg_data_in, 0)
+        READ_2.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         #######
         # SEQ_START - TODO - Generate general hardware...
@@ -572,6 +616,7 @@ class Scanner(Generator):
         SEQ_START.output(self._clr_rep, 0)
         SEQ_START.output(self._data_to_fifo, kts.const(0, 16))
         SEQ_START.output(self._en_reg_data_in, 0)
+        SEQ_START.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         #############
         # SEQ_ITER
@@ -599,6 +644,7 @@ class Scanner(Generator):
         SEQ_ITER.output(self._data_to_fifo, self._data_in)
         SEQ_ITER.output(self._en_reg_data_in, 0)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
+        SEQ_ITER.output(self._pos_out_to_fifo, self._agen_addr_d1)
 
         #############
         # SEQ_DONE
@@ -618,11 +664,13 @@ class Scanner(Generator):
         SEQ_DONE.output(self._last_valid_accepting, 0)
         SEQ_DONE.output(self._pop_infifo, ~self._root)
         SEQ_DONE.output(self._inc_fiber_addr, 0)
-        SEQ_DONE.output(self._clr_fiber_addr, 0)
+        # Make sure to clear the fiber addr
+        SEQ_DONE.output(self._clr_fiber_addr, 1)
         SEQ_DONE.output(self._inc_rep, 0)
         SEQ_DONE.output(self._clr_rep, 0)
-        SEQ_DONE.output(self._data_to_fifo, kts.const(0, 16))
+        SEQ_DONE.output(self._data_to_fifo, self._stop_lvl)
         SEQ_DONE.output(self._en_reg_data_in, 0)
+        SEQ_DONE.output(self._pos_out_to_fifo, self._stop_lvl)
         # SEQ_DONE.output(self._step_outer, 1)
         # SEQ_DONE.output(self._update_previous_outer, 0)
 
@@ -648,6 +696,7 @@ class Scanner(Generator):
         REP_INNER_PRE.output(self._clr_rep, 0)
         REP_INNER_PRE.output(self._data_to_fifo, kts.const(0, 16))
         REP_INNER_PRE.output(self._en_reg_data_in, 1)
+        REP_INNER_PRE.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         #############
         # REP_INNER
@@ -671,6 +720,8 @@ class Scanner(Generator):
         REP_INNER.output(self._clr_rep, 0)
         REP_INNER.output(self._data_to_fifo, self._data_in_d1)
         REP_INNER.output(self._en_reg_data_in, 0)
+        # Capture the address used to read as the position
+        REP_INNER.output(self._pos_out_to_fifo, self._agen_addr_d1_cap)
 
         #############
         # REP_OUTER
@@ -692,6 +743,7 @@ class Scanner(Generator):
         REP_OUTER.output(self._clr_rep, 0)
         REP_OUTER.output(self._data_to_fifo, kts.const(0, 16))
         REP_OUTER.output(self._en_reg_data_in, 0)
+        REP_OUTER.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         #############
         # REP_STOP
@@ -713,8 +765,9 @@ class Scanner(Generator):
         REP_STOP.output(self._clr_fiber_addr, 0)
         REP_STOP.output(self._inc_rep, 0)
         REP_STOP.output(self._clr_rep, ~self._repeat_outer_inner_n)
-        REP_STOP.output(self._data_to_fifo, kts.const(0, 16))
+        REP_STOP.output(self._data_to_fifo, kts.const(1, 16))
         REP_STOP.output(self._en_reg_data_in, 0)
+        REP_STOP.output(self._pos_out_to_fifo, kts.const(1, 16))
 
         #############
         # DONE
@@ -736,6 +789,7 @@ class Scanner(Generator):
         DONE.output(self._clr_rep, 0)
         DONE.output(self._data_to_fifo, kts.const(0, 16))
         DONE.output(self._en_reg_data_in, 0)
+        DONE.output(self._pos_out_to_fifo, kts.const(0, 16))
 
         self.scan_fsm.set_start_state(START)
 
@@ -819,7 +873,7 @@ class Scanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0):
+    def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
@@ -830,7 +884,8 @@ class Scanner(Generator):
             # ("max_outer_dim", max_out),
             ("do_repeat", do_repeat),
             ("repeat_outer_inner_n", repeat_outer),
-            ("repeat_factor", repeat_factor)]
+            ("repeat_factor", repeat_factor),
+            ("stop_lvl", stop_lvl)]
 
         if root:
             dim = len(ranges)
