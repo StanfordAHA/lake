@@ -513,7 +513,7 @@ def observe_cfg(generator, port, other_gen, cfg_reg_port):
         cr_attr.add_observer(generator, port)
 
 
-def register(generator, signal):
+def register(generator, signal, enable=kts.const(1, 1)):
     ''' Pass a generator and a signal to create a registered
         version of any signal easily.
     '''
@@ -523,7 +523,7 @@ def register(generator, signal):
     def reg_code():
         if ~generator._rst_n:
             reg = 0
-        else:
+        elif enable:
             reg = signal
 
     generator.add_code(reg_code)
