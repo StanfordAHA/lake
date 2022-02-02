@@ -530,6 +530,29 @@ def register(generator, signal):
     return reg
 
 
+def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None):
+    ''' Create a signal that indicates whether a signal is high
+        or has been high in the past
+    '''
+    use_name = signal.name
+    if name is not None:
+        use_name = name
+    reg = generator.var(f"{use_name}_was_high", signal.width)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def reg_code():
+        if ~generator._rst_n:
+            reg = 0
+        elif clear:
+            reg = 0
+        elif signal:
+            reg = 1
+    generator.add_code(reg_code)
+
+    sticky = generator.var(f"{use_name}_sticky", 1)
+    generator.wire(sticky, signal | reg)
+    return sticky
+
 # Add a simple counter to a design and return the signal
 def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None):
 
