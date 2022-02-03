@@ -121,7 +121,7 @@ class Scanner(Generator):
 # scanners are driven by upper levels
 # =============================
 
-        self._infifo = RegFIFO(data_width=1 * self.data_width + 2, width_mult=1, depth=8)
+        self._infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
 
         # Need to know if we've seen eos_in
         # self._eos_in_seen = self.var("eos_in_seen", 1)
@@ -157,18 +157,18 @@ class Scanner(Generator):
         self._infifo_eos_in = self.var("infifo_eos_in", 1)
 
         # Stupid convert
-        self._pos_in_us_packed = self.var("fifo_us_in_packed", 1 * self.data_width + 2, packed=True)
+        self._pos_in_us_packed = self.var("fifo_us_in_packed", 1 * self.data_width + 1, packed=True)
 
         # indicate valid data as well
         # self.wire(self._pos_in_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2], self._upstream_coord_in)
-        self.wire(self._pos_in_us_packed[self.data_width + 1], self._upstream_valid_in)
+        # self.wire(self._pos_in_us_packed[self.data_width + 1], self._upstream_valid_in)
         # The EOS tags on the last valid in the stream
         self.wire(self._pos_in_us_packed[self.data_width], self._upstream_eos_in)
         self.wire(self._pos_in_us_packed[self.data_width - 1, 0], self._upstream_pos_in)
 
-        self._data_out_us_packed = self.var("fifo_out_us_packed", 1 * self.data_width + 2, packed=True)
+        self._data_out_us_packed = self.var("fifo_out_us_packed", 1 * self.data_width + 1, packed=True)
         # self.wire(self._infifo_coord_in, self._data_out_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2])
-        self.wire(self._infifo_valid_in, self._data_out_us_packed[self.data_width + 1])
+        # self.wire(self._infifo_valid_in, self._data_out_us_packed[self.data_width + 1])
         self.wire(self._infifo_eos_in, self._data_out_us_packed[self.data_width])
         self.wire(self._infifo_pos_in, self._data_out_us_packed[self.data_width - 1, 0])
 
@@ -182,7 +182,8 @@ class Scanner(Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=(self._upstream_valid_in | self._upstream_eos_in) & ~self._fifo_us_full,
+                    #    push=(self._upstream_valid_in | self._upstream_eos_in) & ~self._fifo_us_full,
+                       push=self._upstream_valid_in,
                        pop=self._pop_infifo,
                        data_in=self._pos_in_us_packed,
                        data_out=self._data_out_us_packed)
@@ -190,6 +191,8 @@ class Scanner(Generator):
         # self.wire(self._ren, (~self._rfifo.ports.almost_full & ~self._ready_gate) )
         self.wire(self._fifo_us_full, self._infifo.ports.full)
         self.wire(self._upstream_ready_out, ~self._fifo_us_full)
+
+        self.wire(self._infifo_valid_in, ~self._infifo.ports.empty)
 
         # @always_ff((posedge, "clk"), (negedge, "rst_n"))
         # def eos_seen_ff():
@@ -273,7 +276,7 @@ class Scanner(Generator):
         self._fiber_addr = self.var("fiber_addr", 16)
         self.wire(self._fiber_addr, self._fiber_addr_pre + self._seq_addr)
 
-        self._rfifo = RegFIFO(data_width=2 * self.data_width + 2, width_mult=1, depth=8)
+        self._rfifo = RegFIFO(data_width=2 * self.data_width + 1, width_mult=1, depth=8)
 
         self._fifo_push = self.var("fifo_push", 1)
         self._tag_valid_data = self.var("tag_valid_data", 1)
@@ -351,7 +354,7 @@ class Scanner(Generator):
 
         # If we are seeing the eos_in this state we need to pass them along to downstream modules
         # If we have valid data in (the input fifo is not empty), then we should issue the corresponding stream
-        ISSUE_STRM_NR.next(PASS_STOP, self._infifo_eos_in)
+        ISSUE_STRM_NR.next(PASS_STOP, self._infifo_eos_in & self._infifo_valid_in)
         ISSUE_STRM_NR.next(READ_0, ~self._infifo_eos_in & self._infifo_valid_in)
         ISSUE_STRM_NR.next(ISSUE_STRM_NR, None)
 
@@ -802,22 +805,22 @@ class Scanner(Generator):
         # self.wire(self._oc_to_fifo, kts.ternary(self._root, kts.const(0, self.data_width), self._infifo_coord_in))
 
         # Stupid convert
-        self._data_in_packed = self.var("fifo_in_packed", 2 * self.data_width + 2, packed=True)
+        self._data_in_packed = self.var("fifo_in_packed", 2 * self.data_width + 1, packed=True)
 
         # indicate valid data as well
         # self.wire(self._data_in_packed[(3 * self.data_width) - 1 + 2, 2 * self.data_width + 2], self._oc_to_fifo)
-        self.wire(self._data_in_packed[(2 * self.data_width) - 1 + 2, self.data_width + 2], self._pos_out_to_fifo)
-        self.wire(self._data_in_packed[self.data_width + 1], self._tag_valid_data)
+        self.wire(self._data_in_packed[(2 * self.data_width) - 1 + 1, self.data_width + 1], self._pos_out_to_fifo)
+        # self.wire(self._data_in_packed[self.data_width + 1], self._tag_valid_data)
         # The EOS tags on the last valid in the stream
         self.wire(self._data_in_packed[self.data_width], self._tag_eos)
         # self.wire(self._data_in_packed[self.data_width - 1, 0], self._data_in)
         self.wire(self._data_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
-        self._data_out_packed = self.var("fifo_out_packed", 2 * self.data_width + 2, packed=True)
+        self._data_out_packed = self.var("fifo_out_packed", 2 * self.data_width + 1, packed=True)
         # self.wire(self._data_out_packed, kts.concat(self._pos_out, self._valid_out, self._eos_out, self._coord_out))
         # self.wire(self._outer_coord_out, self._data_out_packed[3 * self.data_width - 1 + 2, 2 * self.data_width + 2])
-        self.wire(self._pos_out, self._data_out_packed[2 * self.data_width - 1 + 2, self.data_width + 2])
-        self.wire(self._valid_out, self._data_out_packed[self.data_width + 1])
+        self.wire(self._pos_out, self._data_out_packed[2 * self.data_width - 1 + 1, self.data_width + 1])
+        # self.wire(self._valid_out, self._data_out_packed[self.data_width + 1])
         self.wire(self._eos_out, self._data_out_packed[self.data_width])
         self.wire(self._coord_out, self._data_out_packed[self.data_width - 1, 0])
 
@@ -839,11 +842,13 @@ class Scanner(Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._fifo_push,
-                       pop=(self._fifo_valid_entry & self._ready_in),
+                    #    pop=(self._fifo_valid_entry & self._ready_in),
+                       pop=self._ready_in,
                        data_in=self._data_in_packed,
                        data_out=self._data_out_packed,
                        valid=self._fifo_valid_entry)
 
+        self.wire(self._valid_out, ~self._rfifo.ports.empty)
         # self.wire(self._ren, (~self._rfifo.ports.almost_full & ~self._ready_gate) )
         self.wire(self._ready_out, self._ren)
         self.wire(self._fifo_full, self._rfifo.ports.full)
