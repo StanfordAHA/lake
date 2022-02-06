@@ -13,7 +13,8 @@ class RegFIFO(Generator):
                  width_mult,
                  depth,
                  parallel=False,
-                 break_out_rd_ptr=False):
+                 break_out_rd_ptr=False,
+                 almost_full_diff=2):
 
         super().__init__(f"reg_fifo_d_{depth}_w_{width_mult}", debug=True)
 
@@ -23,6 +24,7 @@ class RegFIFO(Generator):
         self.width_mult = width_mult
         self.parallel = parallel
         self.break_out_rd_ptr = break_out_rd_ptr
+        self.almost_full_diff = almost_full_diff
 
         assert not (depth & (depth - 1)), "FIFO depth needs to be a power of 2"
 
@@ -91,7 +93,7 @@ class RegFIFO(Generator):
         # self.wire(self._full, (self._wr_ptr + 1) == self._rd_ptr)
         self.wire(self._full, self._num_items == self.depth)
         # Experiment to cover latency
-        self.wire(self._almost_full, self._num_items >= (self.depth - 2))
+        self.wire(self._almost_full, self._num_items >= (self.depth - self.almost_full_diff))
         # self.wire(self._empty, self._wr_ptr == self._rd_ptr)
         self.wire(self._empty, self._num_items == 0)
 

@@ -84,47 +84,37 @@ class Lookup(Generator):
         # Ready is just a function of having room in the FIFO
         self.wire(self._ready_out, ~self._infifo.ports.full)
         # Convert to packed
-        self._infifo_in_packed = self.var("infifo_in_packed", self.data_width + 1, size=2, explicit_array=True, packed=True)
-        self._infifo_out_packed = self.var("infifo_out_packed", self.data_width + 1, size=2, explicit_array=True, packed=True)
+        self._infifo_in_packed = self.var("infifo_in_packed", self.data_width + 1, packed=True)
+        self._infifo_out_packed = self.var("infifo_out_packed", self.data_width + 1, packed=True)
 
-        self._infifo_out_eos = self.var("infifo_out_eos", 2)
-        self._infifo_out_valid = self.var("infifo_out_valid", 2)
-        self._infifo_out_data = self.var("infifo_out_data", self.data_width, size=2, explicit_array=True, packed=True)
+        self._infifo_out_eos = self.var("infifo_out_eos", 1)
+        self._infifo_out_valid = self.var("infifo_out_valid", 1)
+        self._infifo_out_pos = self.var("infifo_out_pos", self.data_width)
 
         # indicate valid data as well
-        self.wire(self._infifo_in_packed[0][self.data_width], self._eos_in[0])
-        self.wire(self._infifo_in_packed[0][self.data_width - 1, 0], self._data_in[0])
-        self.wire(self._infifo_out_eos[0], self._infifo_out_packed[0][self.data_width])
-        self.wire(self._infifo_out_data[0], self._infifo_out_packed[0][self.data_width - 1, 0])
-
-        self.wire(self._infifo_in_packed[1][self.data_width], self._eos_in[1])
-        self.wire(self._infifo_in_packed[1][self.data_width - 1, 0], self._data_in[1])
-        self.wire(self._infifo_out_eos[1], self._infifo_out_packed[1][self.data_width])
-        self.wire(self._infifo_out_data[1], self._infifo_out_packed[1][self.data_width - 1, 0])
+        self.wire(self._infifo_in_packed[self.data_width], self._eos_in)
+        self.wire(self._infifo_in_packed[self.data_width - 1, 0], self._pos_in)
+        self.wire(self._infifo_out_eos, self._infifo_out_packed[self.data_width])
+        self.wire(self._infifo_out_pos, self._infifo_out_packed[self.data_width - 1, 0])
 
         # Push when there's incoming transaction and room to accept it
-        self._infifo_push = self.var("infifo_push", 2)
-        # self.wire(self._infifo_push, (self._valid_in | self._eos_in) & (~self._infifo.ports.full))
-        self.wire(self._infifo_push[0], self._valid_in[0])
-        self.wire(self._infifo_push[1], self._valid_in[1])
+        self._infifo_push = self.var("infifo_push", 1)
+        self.wire(self._infifo_push, self._valid_in)
 
         # Pop when ready to accum more streams
-        self._infifo_pop = self.var("infifo_pop", 2)
+        self._infifo_pop = self.var("infifo_pop", 1)
 
-        for i in range(2):
-            self.add_child(f"input_fifo_{i}",
-                        self._infifo[i],
-                        clk=self._gclk,
-                        rst_n=self._rst_n,
-                        clk_en=self._clk_en,
-                        push=self._infifo_push[i],
-                        pop=self._infifo_pop[i],
-                        data_in=self._infifo_in_packed[i],
-                        data_out=self._infifo_out_packed[i])
-                    #    valid=self._infifo_valid_entry)
+        self.add_child(f"input_fifo",
+                       self._infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._infifo_push,
+                       pop=self._infifo_pop,
+                       data_in=self._infifo_in_packed,
+                       data_out=self._infifo_out_packed)
 
-        self.wire(self._infifo_out_valid[0], ~self._infifo[0].ports.empty)
-        self.wire(self._infifo_out_valid[1], ~self._infifo[1].ports.empty)
+        self.wire(self._infifo_out_valid, ~self._infifo.ports.empty)
 
 # ==============================
 # OUTPUT FIFO
@@ -134,7 +124,7 @@ class Lookup(Generator):
         self._pe_output = self.var("pe_output", self.data_width) 
         self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
 
-        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
+        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8, almost_full_diff=1)
 
         # Convert to packed
         self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1, packed=True)
@@ -143,7 +133,6 @@ class Lookup(Generator):
         self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_eos)
         self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
-        # self.wire(self._outfifo_out_valid, self._outfifo_out_packed[self.data_width + 1])
         self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
         self.wire(self._data_out, self._outfifo_out_packed[self.data_width - 1, 0])
 
@@ -152,8 +141,7 @@ class Lookup(Generator):
 
         # Pop when ready to accum more streams
         self._outfifo_pop = self.var("outfifo_pop", 1)
-        self._outfifo_full = self.var("outfifo_full", 1)
-        # self._outfifo_empty = self.var("outfifo_empty", 1)
+        self._outfifo_almost_full = self.var("outfifo_almost_full", 1)
 
         self.add_child(f"output_fifo",
                        self._outfifo,
@@ -168,56 +156,40 @@ class Lookup(Generator):
         self.wire(self._valid_out, ~self._outfifo.ports.empty)
 
         self.wire(self._outfifo_pop, self._ready_in)
-        self.wire(self._outfifo_full, self._outfifo.ports.full)
+        self.wire(self._outfifo_almost_full, self._outfifo.ports.almost_full)
         # self.wire(self._outfifo_empty, self._outfifo.ports.empty)
 
 # =============================
-# Instantiate actual PE
+# Instantiate push/pop logic
 # =============================
 
-        self._execute_op = self.var("execute_op", 1)
-        self.wire(self._execute_op, self._infifo_out_valid.r_and() & ~self._infifo_out_eos.r_or() & ~self._outfifo_full)
+        # Registered version of ren - basically "was there a read last cycle" - assume 
+        # we have a single cycle delay SRAM as per usual...
+        self._ren_d1 = register(self, self._ren)
 
-        self._op = self.input("op", 1)
-        self._op.add_attribute(ConfigRegAttr("Operation"))
+        # We pass through the eos token whenever there is no read outstanding
+        # and there is room in the output fifo
+        self._passthru_eos = self.var("passthru_eos", 1)
+        self.wire(self._passthru_eos, ~self._ren_d1 & self._infifo_out_valid & self._infifo_out_eos)
 
-        @always_comb
-        def PE_comb():
-            if self._execute_op:
-                # ADD
-                if self._op == 0:
-                    self._pe_output = self._infifo_out_data[0] + self._infifo_out_data[1]
-                # MUL
-                elif self._op == 1:
-                    self._pe_output = self._infifo_out_data[0] * self._infifo_out_data[1]
-                else:
-                    self._pe_output = 0
-            else:
-                self._pe_output = 0
-        self.add_code(PE_comb)
-
+        # We can always make a read to the SRAM every cycle as long
+        # as the fifo is not full and we didn't just make a read
         @always_comb
         def fifo_push():
-            self._outfifo_push = 0
-            self._outfifo_in_eos = 0
-            self._data_to_fifo = 0
-            self._infifo_pop[0] = 0
-            self._infifo_pop[1] = 0
-            # If both inputs are valid, then we either can perform the op, otherwise we push through EOS
-            if self._infifo_out_valid.r_and() & ~self._outfifo_full:
-                # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
-                if self._infifo_out_eos.r_and():
-                    self._outfifo_push = 1
-                    self._outfifo_in_eos = 0
-                    self._data_to_fifo = self._pe_output
-                    self._infifo_pop[0] = 1
-                    self._infifo_pop[1] = 1
-                else:
-                    self._outfifo_push = 1
-                    self._outfifo_in_eos = 1
-                    self._data_to_fifo = self._infifo_out_data[0]
-                    self._infifo_pop[0] = 1
-                    self._infifo_pop[1] = 1
+            # Push to the fifo any outstanding reads, else you have an eos
+            self._outfifo_push = self._ren_d1 | (self._infifo_out_valid & self._infifo_out_eos)
+            # Eos is
+            self._outfifo_in_eos = self._passthru_eos
+            # Data is either the read data or just the stop token
+            self._data_to_fifo = kts.ternary(self._ren_d1, self._data_in, self._infifo_out_pos)
+            # Need to use fifo almost full for the pop because of single cycle read delay
+            # if there is a read in flight, we need to wait for it
+            self._infifo_pop = ((self._infifo_out_valid & ~self._infifo_out_eos & ~self._outfifo_almost_full) |
+                                (self._infifo_out_valid & self._infifo_out_eos & ~self._ren_d1))
+            # Read enable is if we have a non eos input, but should match the infifo pop
+            self._ren = self._infifo_out_valid & ~self._infifo_out_eos & ~self._outfifo_almost_full
+            # Address is simply the fifo input
+            self._addr_out = self._infifo_out_pos
         self.add_code(fifo_push)
 
         if self.add_clk_enable:
@@ -235,21 +207,19 @@ class Lookup(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, op):
+    def get_bitstream(self):
 
         # Store all configurations here
-        config = [("tile_en", 1),
-                  ("op", op)]
+        config = [("tile_en", 1)]
         return config
 
 
 if __name__ == "__main__":
 
-    pe_dut = PE(data_width=16)
+    lookup_dut = Lookup(data_width=16)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
     # extract_formal_annotation(pond_dut, "pond.txt")
-
-    verilog(pe_dut, filename="pe.sv",
+    verilog(lookup_dut, filename="lookup.sv",
             optimize_if=False)
