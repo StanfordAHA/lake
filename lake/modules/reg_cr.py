@@ -122,7 +122,6 @@ class Reg(Generator):
                        pop=self._infifo_pop,
                        data_in=self._infifo_in_packed,
                        data_out=self._infifo_out_packed)
-                    #    valid=self._infifo_valid_entry)
 
         self.wire(self._infifo_out_valid, ~self._infifo.ports.empty)
 
@@ -169,13 +168,12 @@ class Reg(Generator):
                        pop=self._outfifo_pop,
                        data_in=self._outfifo_in_packed,
                        data_out=self._outfifo_out_packed)
-                    #    valid=self._outfifo_valid_entry)
 
         self.wire(self._valid_out, ~self._outfifo.ports.empty)
 
         self.wire(self._outfifo_pop, self._ready_in)
         self.wire(self._outfifo_full, self._outfifo.ports.full)
-        # self.wire(self._outfifo_empty, self._outfifo.ports.empty)
+
 # =============================
 # ACCUM FSM
 # =============================

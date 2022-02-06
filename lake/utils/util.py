@@ -553,6 +553,7 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None):
     generator.wire(sticky, signal | reg)
     return sticky
 
+
 # Add a simple counter to a design and return the signal
 def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None):
 

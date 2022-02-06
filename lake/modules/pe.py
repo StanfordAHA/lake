@@ -98,7 +98,6 @@ class PE(Generator):
 
         # Push when there's incoming transaction and room to accept it
         self._infifo_push = self.var("infifo_push", 2)
-        # self.wire(self._infifo_push, (self._valid_in | self._eos_in) & (~self._infifo.ports.full))
         self.wire(self._infifo_push[0], self._valid_in[0])
         self.wire(self._infifo_push[1], self._valid_in[1])
 
@@ -107,15 +106,14 @@ class PE(Generator):
 
         for i in range(2):
             self.add_child(f"input_fifo_{i}",
-                        self._infifo[i],
-                        clk=self._gclk,
-                        rst_n=self._rst_n,
-                        clk_en=self._clk_en,
-                        push=self._infifo_push[i],
-                        pop=self._infifo_pop[i],
-                        data_in=self._infifo_in_packed[i],
-                        data_out=self._infifo_out_packed[i])
-                    #    valid=self._infifo_valid_entry)
+                           self._infifo[i],
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           clk_en=self._clk_en,
+                           push=self._infifo_push[i],
+                           pop=self._infifo_pop[i],
+                           data_in=self._infifo_in_packed[i],
+                           data_out=self._infifo_out_packed[i])
 
         self.wire(self._infifo_out_valid[0], ~self._infifo[0].ports.empty)
         self.wire(self._infifo_out_valid[1], ~self._infifo[1].ports.empty)
@@ -124,8 +122,8 @@ class PE(Generator):
 # OUTPUT FIFO
 # ==============================
 
-        self._data_to_fifo = self.var("data_to_fifo", self.data_width) 
-        self._pe_output = self.var("pe_output", self.data_width) 
+        self._data_to_fifo = self.var("data_to_fifo", self.data_width)
+        self._pe_output = self.var("pe_output", self.data_width)
         self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
 
         self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
@@ -137,7 +135,6 @@ class PE(Generator):
         self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_eos)
         self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
-        # self.wire(self._outfifo_out_valid, self._outfifo_out_packed[self.data_width + 1])
         self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
         self.wire(self._data_out, self._outfifo_out_packed[self.data_width - 1, 0])
 

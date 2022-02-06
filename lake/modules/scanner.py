@@ -102,7 +102,6 @@ class Scanner(Generator):
 # Generate addresses to scan over fiber...
 # ==========================================
 
-
         self._inc_fiber_addr = self.var("inc_fiber_addr", 1)
         self._clr_fiber_addr = self.var("clr_fiber_addr", 1)
         self._fiber_addr_pre = add_counter(self, "fiber_addr_pre", 16, self._inc_fiber_addr, clear=self._clr_fiber_addr)
@@ -182,7 +181,6 @@ class Scanner(Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                    #    push=(self._upstream_valid_in | self._upstream_eos_in) & ~self._fifo_us_full,
                        push=self._upstream_valid_in,
                        pop=self._pop_infifo,
                        data_in=self._pos_in_us_packed,
@@ -695,7 +693,7 @@ class Scanner(Generator):
         REP_INNER_PRE.output(self._inc_fiber_addr, 0)
         REP_INNER_PRE.output(self._clr_fiber_addr, 0)
         # REP_INNER_PRE.output(self._inc_rep, ~self._fifo_full & ~self._rep_finish)
-        REP_INNER_PRE.output(self._inc_rep,0)
+        REP_INNER_PRE.output(self._inc_rep, 0)
         REP_INNER_PRE.output(self._clr_rep, 0)
         REP_INNER_PRE.output(self._data_to_fifo, kts.const(0, 16))
         REP_INNER_PRE.output(self._en_reg_data_in, 1)
@@ -826,23 +824,12 @@ class Scanner(Generator):
 
         self._fifo_valid_entry = self.var("fifo_valid_entry", 1)
 
-        # @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        # def ready_gate_ff():
-        #     if ~self._rst_n:
-        #         self._ready_gate = 0
-        #     elif self._iter_restart:
-        #         self._ready_gate = 1
-        #     elif self._inc_out_dim_x:
-        #         self._ready_gate = 0
-        # self.add_code(ready_gate_ff)
-
         self.add_child(f"coordinate_fifo",
                        self._rfifo,
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._fifo_push,
-                    #    pop=(self._fifo_valid_entry & self._ready_in),
                        pop=self._ready_in,
                        data_in=self._data_in_packed,
                        data_out=self._data_out_packed,
@@ -852,13 +839,6 @@ class Scanner(Generator):
         # self.wire(self._ren, (~self._rfifo.ports.almost_full & ~self._ready_gate) )
         self.wire(self._ready_out, self._ren)
         self.wire(self._fifo_full, self._rfifo.ports.full)
-        # Increment valid count when we receive a valid we can actually push in the FIFO
-
-        # @always_comb
-        # def eos_comparison():
-        #     self._last_valid_accepting = (self._valid_cnt == self._seq_length) & (self._valid_in)
-        #     self._last_valid_accepting = (self._valid_cnt == self._seq_length) & (self._valid_in)
-        # self.add_code(eos_comparison)
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)

@@ -132,25 +132,8 @@ class Intersect(kts.Generator):
         # self.wire(self._gate_eos[0], self._eos_in[0] & ((self._coord_in[0] <= self._coord_in[1]) | ~self._valid_in[0]))
         # self.wire(self._gate_eos[1], self._eos_in[1] & ((self._coord_in[0] >= self._coord_in[1]) | ~self._valid_in[1]))
         # self.wire(self._any_eos, self._gate_eos.r_or())
-        
-        self.wire(self._any_eos, self._eos_in.r_or())
 
-        # Check if we have seen both eos to drain both inputs and start again
-        # self._eos_seen = self.var("eos_seen", self.num_streams)
-        # self._eos_seen_set = self.var("eos_seen_set", self.num_streams)
-        # self._eos_seen_clr = self.var("eos_seen_clr", self.num_streams)
-        # for i in range(self.num_streams):
-        #     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        #     def eos_seen_ff():
-        #         if ~self._rst_n:
-        #             self._eos_seen[i] = 0
-        #         elif self._eos_seen_clr[i]:
-        #             self._eos_seen[i] = 0
-        #         elif self._eos_seen_set[i]:
-        #             self._eos_seen[i] = 1
-        #     self.add_code(eos_seen_ff)
-        # self._all_eos_seen = self.var("all_eos_seen", 1)
-        # self.wire(self._all_eos_seen, self._eos_seen.r_and())
+        self.wire(self._any_eos, self._eos_in.r_or())
 
         # Control Vars from FSM
         self._inc_pos_cnt = self.var("inc_pos_cnt", self.num_streams)
@@ -224,7 +207,7 @@ class Intersect(kts.Generator):
         ALIGN.next(ALIGN, None)
 
         # Then in DRAIN, we pass thru the stop tokens
-        # The only way to leave DRAIN is to get new data 
+        # The only way to leave DRAIN is to get new data
         # where both streams are valid but not both streams are eos
         # DRAIN.next(DONE, ~self._any_eos & self._all_valid)
         DRAIN.next(DONE, ~self._eos_in.r_and() & self._valid_in.r_and())

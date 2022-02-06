@@ -120,8 +120,8 @@ class Lookup(Generator):
 # OUTPUT FIFO
 # ==============================
 
-        self._data_to_fifo = self.var("data_to_fifo", self.data_width) 
-        self._pe_output = self.var("pe_output", self.data_width) 
+        self._data_to_fifo = self.var("data_to_fifo", self.data_width)
+        self._pe_output = self.var("pe_output", self.data_width)
         self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
 
         self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8, almost_full_diff=1)
@@ -163,7 +163,7 @@ class Lookup(Generator):
 # Instantiate push/pop logic
 # =============================
 
-        # Registered version of ren - basically "was there a read last cycle" - assume 
+        # Registered version of ren - basically "was there a read last cycle" - assume
         # we have a single cycle delay SRAM as per usual...
         self._ren_d1 = register(self, self._ren)
 
