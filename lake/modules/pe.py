@@ -197,7 +197,7 @@ class PE(Generator):
             # If both inputs are valid, then we either can perform the op, otherwise we push through EOS
             if self._infifo_out_valid.r_and() & ~self._outfifo_full:
                 # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
-                if self._infifo_out_eos.r_and():
+                if ~self._infifo_out_eos.r_and():
                     self._outfifo_push = 1
                     self._outfifo_in_eos = 0
                     self._data_to_fifo = self._pe_output
