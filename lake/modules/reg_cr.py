@@ -253,7 +253,10 @@ class Reg(Generator):
         #############
         # OUTPUT
         #############
-        OUTPUT.output(self._infifo_pop, self._infifo_out_valid & ~self._outfifo_full)
+        # OUTPUT.output(self._infifo_pop, self._infifo_out_valid & ~self._outfifo_full)
+        # Don't pop the fifo, just use this state to output a value to the output fifo
+        # TODO: Merge states with ACCUM
+        OUTPUT.output(self._infifo_pop, 0)
         OUTPUT.output(self._outfifo_push, ~self._outfifo_full)
         OUTPUT.output(self._reg_clr, 0)
         OUTPUT.output(self._reg_accum, 0)
@@ -393,7 +396,7 @@ class Reg(Generator):
 
         # Store all configurations here
         config = [("tile_en", 1),
-                  ("default_value", 1)]
+                  ("default_value", 0)]
         return config
 
 

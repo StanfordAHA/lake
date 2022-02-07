@@ -113,9 +113,11 @@ class RegFIFO(Generator):
             self.add_code(self.rd_ptr_ff_parallel)
             self.wire(self._parallel_out, self._reg_array)
             self.wire(self._write,
-                      self._push & ~self._passthru & (~self._full | (self._pop | self._parallel_read)))
+                      self._push & ~self._passthru & (~self._full | (self._parallel_read)))
         else:
-            self.wire(self._write, self._push & ~self._passthru & (~self._full | self._pop))
+            # self.wire(self._write, self._push & ~self._passthru & (~self._full | self._pop))
+            # Don't want to write when full at all for decoupling
+            self.wire(self._write, self._push & ~self._passthru & (~self._full))
             self.add_code(self.set_num_items)
             self.add_code(self.reg_array_ff)
             self.add_code(self.wr_ptr_ff)
