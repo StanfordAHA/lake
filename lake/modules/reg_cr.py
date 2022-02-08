@@ -3,7 +3,7 @@ from kratos import *
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
-from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg
+from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg, sticky_flag
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -73,6 +73,10 @@ class Reg(Generator):
         # Store the default value...
         self._default_value = self.input("default_value", self.data_width)
         self._default_value.add_attribute(ConfigRegAttr("Default value for accumulation"))
+
+        # Set the reduction stop level - crush at and below, pass above
+        self._stop_lvl = self.input("stop_lvl", 16)
+        self._stop_lvl.add_attribute(ConfigRegAttr("What level stop tokens should this reduction block crush"))
 
         # Declare the accum reg
         self._accum_reg = self.var("accum_reg", self.data_width)
@@ -159,6 +163,11 @@ class Reg(Generator):
         self._outfifo_full = self.var("outfifo_full", 1)
         # self._outfifo_empty = self.var("outfifo_empty", 1)
 
+        self._clr_once_popped = self.var("clr_once_popped", 1)
+        self._set_once_popped = self.var("set_once_popped", 1)
+        # self._stop_lvl_sticky = sticky_flag(self, self._infifo_out_valid & (self._infifo_out_data == self._stop_lvl) & self._infifo_pop, clear=self._clr_stop_lvl_sticky, seq_only=True)
+        self._stop_lvl_sticky = sticky_flag(self, self._set_once_popped, clear=self._clr_once_popped, seq_only=True)
+
         self.add_child(f"output_fifo",
                        self._outfifo,
                        clk=self._gclk,
@@ -205,6 +214,8 @@ class Reg(Generator):
         self.accum_fsm.output(self._reg_accum)
         self.accum_fsm.output(self._data_to_fifo)
         self.accum_fsm.output(self._outfifo_in_eos)
+        self.accum_fsm.output(self._set_once_popped)
+        self.accum_fsm.output(self._clr_once_popped)
 
         # State Transitions
 
@@ -217,14 +228,17 @@ class Reg(Generator):
         # START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
 
         # In ACCUM, we are just accumulating data as long as we have valids
-        ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
+        # Need to crush lower level stops then move on when we see the appropriate level
+        ACCUM.next(ACCUM, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data > self._stop_lvl))
+        ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data == self._stop_lvl))
         ACCUM.next(ACCUM, None)
 
         OUTPUT.next(STOP_PASS, ~self._outfifo_full)
         OUTPUT.next(OUTPUT, None)
 
         # Basically pass through until we get a new valid data...otherwise we are technically done
-        STOP_PASS.next(START, self._infifo_out_valid & ~self._infifo_out_eos)
+        # Or until we hit a new empty stream which would be indicated by a crushable stop
+        STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data >= self._stop_lvl))))
         STOP_PASS.next(STOP_PASS, None)
 
         #############
@@ -238,17 +252,21 @@ class Reg(Generator):
         START.output(self._reg_accum, 0)
         START.output(self._data_to_fifo, kts.const(0, 16))
         START.output(self._outfifo_in_eos, 0)
+        START.output(self._set_once_popped, 0)
+        START.output(self._clr_once_popped, 0)
 
         #############
         # ACCUM
         #############
-        # Always pop...
-        ACCUM.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos)
+        # Pop if we have a valid data or an eos above the stop level to crush
+        ACCUM.output(self._infifo_pop, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & self._infifo_out_data > self._stop_lvl)))
         ACCUM.output(self._outfifo_push, 0)
         ACCUM.output(self._reg_clr, 0)
         ACCUM.output(self._reg_accum, self._infifo_out_valid & ~self._infifo_out_eos)
         ACCUM.output(self._data_to_fifo, kts.const(0, 16))
         ACCUM.output(self._outfifo_in_eos, 0)
+        ACCUM.output(self._set_once_popped, 0)
+        ACCUM.output(self._clr_once_popped, 0)
 
         #############
         # OUTPUT
@@ -256,22 +274,27 @@ class Reg(Generator):
         # OUTPUT.output(self._infifo_pop, self._infifo_out_valid & ~self._outfifo_full)
         # Don't pop the fifo, just use this state to output a value to the output fifo
         # TODO: Merge states with ACCUM
-        OUTPUT.output(self._infifo_pop, 0)
+        OUTPUT.output(self._infifo_pop, ~self._stop_lvl_sticky)
         OUTPUT.output(self._outfifo_push, ~self._outfifo_full)
         OUTPUT.output(self._reg_clr, 0)
         OUTPUT.output(self._reg_accum, 0)
         OUTPUT.output(self._data_to_fifo, self._accum_reg)
         OUTPUT.output(self._outfifo_in_eos, 0)
+        OUTPUT.output(self._set_once_popped, ~self._stop_lvl_sticky)
+        OUTPUT.output(self._clr_once_popped, 0)
 
         #############
         # STOP_PASS - Deal with full output...
         #############
-        STOP_PASS.output(self._infifo_pop, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos)
-        STOP_PASS.output(self._outfifo_push, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos)
+        # Only rip the stop off if its below the stop level
+        STOP_PASS.output(self._infifo_pop, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data < self._stop_lvl))
+        STOP_PASS.output(self._outfifo_push, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data < self._stop_lvl))
         STOP_PASS.output(self._reg_clr, 1)
         STOP_PASS.output(self._reg_accum, 0)
         STOP_PASS.output(self._data_to_fifo, self._infifo_out_data)
         STOP_PASS.output(self._outfifo_in_eos, self._infifo_out_valid & self._infifo_out_eos)
+        STOP_PASS.output(self._set_once_popped, 0)
+        STOP_PASS.output(self._clr_once_popped, 1)
 
         # self._data_written = self.var("data_written", 1)
         # self.wire(self._valid_out, self._data_written | self._write_en)
@@ -392,11 +415,12 @@ class Reg(Generator):
             START.next(ISSUE_STRM_NR, ~self._root)
 
     # No actual config at this level
-    def get_bitstream(self):
+    def get_bitstream(self, stop_lvl):
 
         # Store all configurations here
         config = [("tile_en", 1),
-                  ("default_value", 0)]
+                  ("default_value", 0),
+                  ("stop_lvl", stop_lvl)]
         return config
 
 

@@ -530,7 +530,7 @@ def register(generator, signal, enable=kts.const(1, 1)):
     return reg
 
 
-def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None):
+def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=False):
     ''' Create a signal that indicates whether a signal is high
         or has been high in the past
     '''
@@ -550,7 +550,10 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None):
     generator.add_code(reg_code)
 
     sticky = generator.var(f"{use_name}_sticky", 1)
-    generator.wire(sticky, signal | reg)
+    if seq_only:
+        generator.wire(sticky, reg)
+    else:
+        generator.wire(sticky, signal | reg)
     return sticky
 
 
