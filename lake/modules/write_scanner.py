@@ -61,9 +61,10 @@ class WriteScanner(Generator):
 
         self._eos_in = self.input("eos_in", 2)
         self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
-        # Ready in for pos and coord
-        # self._ready_in = self.input("ready_in", 2)
-        # self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        # Ready in from the memory
+        self._ready_in = self.input("ready_in", 1)
+        self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
         self._ready_out = self.output("ready_out", 2)
         self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
@@ -97,6 +98,9 @@ class WriteScanner(Generator):
         # Point to the row in storage for data recovery
         # self._payload_ptr = self.output("payload_ptr", 16)
         # self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._inner_dim_offset = self.input("inner_dim_offset", 16)
+        self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the inner level..."))
 
 # ==========================================
 # Generate addresses to scan over fiber...
@@ -157,7 +161,6 @@ class WriteScanner(Generator):
         self._addr_infifo_valid_in = self.var("addr_infifo_valid_in", 1)
         self._addr_infifo_eos_in = self.var("addr_infifo_eos_in", 1)
 
-        # Stupid convert
         self._addr_infifo_in_packed = self.var("addr_infifo_in_packed", 1 * self.data_width + 1, packed=True)
         self.wire(self._addr_infifo_in_packed[self.data_width], self._eos_in[1])
         self.wire(self._addr_infifo_in_packed[self.data_width - 1, 0], self._data_in[1])
@@ -183,122 +186,30 @@ class WriteScanner(Generator):
 # SCAN FSM
 # =============================
 
-        # Contains the address as the position for the ptr array
-        self._pos_addr = self.var("pos_addr", self.data_width)
+        # Address for writing segment
+        self._inc_seg_addr = self.var("inc_seg_addr", 1)
+        self._clr_seg_addr = self.var("clr_seg_addr", 1)
+        self._seg_addr = add_counter(self, "segment_addr", 16, increment=self._inc_seg_addr, clear=self._clr_seg_addr)
 
-        self._valid_inc = self.var("valid_inc", 1)
-        self._valid_rst = self.var("valid_rst", 1)
-        self._valid_cnt = self.var("valid_cnt", 16)
+        # Value to go to segment
+        self._inc_seg_ctr = self.var("inc_seg_ctr", 1)
+        self._clr_seg_ctr = self.var("clr_seg_ctr", 1)
+        self._seg_ctr = add_counter(self, "segment_counter", 16, increment=self._inc_seg_ctr, clear=self._clr_seg_ctr)
 
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def valid_cnt():
-            if ~self._rst_n:
-                self._valid_cnt = 0
-            elif self._valid_rst:
-                self._valid_cnt = 0
-            elif self._valid_inc:
-                self._valid_cnt = self._valid_cnt + 1
-        self.add_code(valid_cnt)
-
-        self._inner_dim_offset = self.input("inner_dim_offset", 16)
-        self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the offset..."))
-        # self._coord_in = self.var("coord_in", 8)
-        self._ptr_in = self.var("ptr_in", self.data_width)
-        self.wire(self._ptr_in, self._data_in)
-        # self.wire(self._ptr_in, self._data_in[15, 8])
-
-        # Need to hook up the current and next seqence_length
-        # Also need to intercept the configs and set them internally...
-        self._ptr_reg = register(self, self._ptr_in)
-        self._agen_addr_d1 = register(self, self._fiber_addr_pre)
-        self._pos_out_to_fifo = self.var("pos_out_to_fifo", self.data_width)
-        # In this way, we can save the relative position of each value in the ptr array for downstream
-        # self.wire(self._pos_out_to_fifo, self._agen_addr_d1)
-        # self.wire(self._pos_out_to_fifo, (self._agen_addr_d1 - self._inner_dim_offset))
-
-        self._update_seq_state = self.var("update_seq_state", 1)
-        self._seq_length = self.var("seq_length", 16)
-        self._seq_addr = self.var("seq_addr", 16)
-        self._next_seq_length = self.var("next_seq_length", 16)
-        self._next_seq_addr = self.var("next_seq_addr", 16)
-
-        self._seq_length_ptr_math = self.var("seq_length_ptr_math", self.data_width)
-        # self.wire(self._seq_length_ptr_math[7, 0], self._ptr_in - self._ptr_reg - 1)
-        # self.wire(self._seq_length_ptr_math[15, 8], 0)
-        self.wire(self._seq_length_ptr_math, self._ptr_in - self._ptr_reg - 1)
-
-        self.wire(self._pos_addr, kts.ternary(self._root, kts.const(0, self._pos_addr.width), self._infifo_pos_in))
-
-        # On the first read, we locate the base offset addr, then on the
-        # second we get the length as the subtraction of the pointers
-        # self.wire(self._next_seq_length, self._ptr_in - self._ptr_reg - 1)
-        # The memory address is the pointer offset + base register
-        self.wire(self._next_seq_addr, self._ptr_reg + self._inner_dim_offset)
-
-        # Hold state for iterator - just length
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def update_seq_state_ff():
-            if ~self._rst_n:
-                self._seq_length = 0
-                self._seq_addr = 0
-                self._payload_ptr = 0
-            elif self._update_seq_state:
-                self._seq_length = self._next_seq_length
-                self._seq_addr = self._next_seq_addr
-                # Output this for use in the intersection engine
-                self._payload_ptr = self._ptr_reg
-        self.add_code(update_seq_state_ff)
-
-        # Set up fiber addr
-        self._fiber_addr = self.var("fiber_addr", 16)
-        self.wire(self._fiber_addr, self._fiber_addr_pre + self._seq_addr)
-
-        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
-        self._pos_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
-
-        self._fifo_push = self.var("fifo_push", 1)
-        self._tag_eos = self.var("tag_eos", 1)
-        self._last_valid_accepting = self.var("last_valid_accepting", 1)
-
-        # Join the individual fifo fulls
-        self._fifo_full_pre = self.var("fifo_full_pre", 2)
-        self._fifo_full = self.var("fifo_full", 1)
-        self.wire(self._fifo_full, self._fifo_full_pre.r_or())
-
-        self._join_almost_full = self.var("join_almost_full", 1)
-
-        self._data_to_fifo = self.var("data_to_fifo", self.data_width)
-        # Gate ready after last read in the stream
-        # self._ready_gate = self.var("ready_gate", 1)
-
-        # Define logic for iter_finish + rep_finish
-        self._iter_finish = sticky_flag(self, self._last_valid_accepting, clear=self._clr_fiber_addr, name="iter_finish")
-        self._rep_finish = sticky_flag(self, (self._num_reps == (self._repeat_factor - 1)) & self._inc_rep, clear=self._clr_rep, name="rep_finish")
-        self._seen_root_eos = sticky_flag(self, self._infifo_eos_in & (self._infifo_pos_in == 0), name="seen_root_eos")
-
-        self._en_reg_data_in = self.var("en_reg_data_in", 1)
-        self._data_in_d1 = register(self, self._data_in, enable=self._en_reg_data_in)
-        self._agen_addr_d1_cap = register(self, self._agen_addr_d1, enable=self._en_reg_data_in)
+        self._set_curr_coord = self.var("set_curr_coord", 1)
+        self._curr_coord = register(self, self._data_infifo_data_in, enable=self._set_curr_coord)
 
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
         START = self.scan_fsm.add_state("START")
-        ISSUE_STRM = self.scan_fsm.add_state("ISSUE_STRM")
-        # Non-root dispatch state for separation
-        ISSUE_STRM_NR = self.scan_fsm.add_state("ISSUE_STRM_NR")
-        PASS_STOP = self.scan_fsm.add_state("PASS_STOP")
-        READ_0 = self.scan_fsm.add_state("READ_0")
-        READ_1 = self.scan_fsm.add_state("READ_1")
-        READ_2 = self.scan_fsm.add_state("READ_2")
+        # Lowest level
+        LL = self.scan_fsm.add_state("LL")
+        # Lowest level uncompressed (use address)
+        UnLL = self.scan_fsm.add_state("UnLL")
+        # Lowest level compressed 
+        ComLL = self.scan_fsm.add_state("ComLL")
 
-        SEQ_START = self.scan_fsm.add_state("SEQ_START")
-        SEQ_ITER = self.scan_fsm.add_state("SEQ_ITER")
-        SEQ_DONE = self.scan_fsm.add_state("SEQ_DONE")
-
-        REP_INNER_PRE = self.scan_fsm.add_state("REP_INNER_PRE")
-        REP_INNER = self.scan_fsm.add_state("REP_INNER")
-        REP_OUTER = self.scan_fsm.add_state("REP_OUTER")
-        REP_STOP = self.scan_fsm.add_state("REP_STOP")
+        UL = self.scan_fsm.add_state("UL")
 
         DONE = self.scan_fsm.add_state("DONE")
 
@@ -752,60 +663,6 @@ class WriteScanner(Generator):
 
         self.scan_fsm.set_start_state(START)
 
-# ===================================
-# Dump metadata into fifo
-# ===================================
-
-        self.wire(self._ready_out, self._ren)
-        # Include the outer coord as well
-        # self._oc_to_fifo = self.var("outer_coord_to_fifo", self.data_width)
-        # self.wire(self._oc_to_fifo, kts.ternary(self._root, kts.const(0, self.data_width), self._infifo_coord_in))
-
-        ### COORD FIFO
-        self._coord_data_in_packed = self.var("coord_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._coord_data_in_packed[self.data_width], self._tag_eos)
-        self.wire(self._coord_data_in_packed[self.data_width - 1, 0], self._data_to_fifo)
-
-        self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._eos_out[0], self._coord_data_out_packed[self.data_width])
-        self.wire(self._coord_out, self._coord_data_out_packed[self.data_width - 1, 0])
-
-        self.add_child(f"coordinate_fifo",
-                       self._coord_fifo,
-                       clk=self._gclk,
-                       rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       push=self._fifo_push,
-                       pop=self._ready_in[0],
-                       data_in=self._coord_data_in_packed,
-                       data_out=self._coord_data_out_packed)
-
-        self.wire(self._valid_out[0], ~self._coord_fifo.ports.empty)
-        self.wire(self._fifo_full_pre[0], self._coord_fifo.ports.full)
-
-        ### POS FIFO
-        self._pos_data_in_packed = self.var("pos_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._pos_data_in_packed[self.data_width], self._tag_eos)
-        self.wire(self._pos_data_in_packed[self.data_width - 1, 0], self._pos_out_to_fifo)
-
-        self._pos_data_out_packed = self.var("pos_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._eos_out[1], self._pos_data_out_packed[self.data_width])
-        self.wire(self._pos_out, self._pos_data_out_packed[self.data_width - 1, 0])
-
-        self.add_child(f"pos_fifo",
-                       self._pos_fifo,
-                       clk=self._gclk,
-                       rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       push=self._fifo_push,
-                       pop=self._ready_in[1],
-                       data_in=self._pos_data_in_packed,
-                       data_out=self._pos_data_out_packed)
-
-        self.wire(self._valid_out[1], ~self._pos_fifo.ports.empty)
-        self.wire(self._fifo_full_pre[1], self._pos_fifo.ports.full)
-
-        self.wire(self._join_almost_full, self._coord_fifo.ports.almost_full | self._pos_fifo.ports.almost_full)
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
 
