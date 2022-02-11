@@ -191,13 +191,27 @@ class WriteScanner(Generator):
         self._clr_seg_addr = self.var("clr_seg_addr", 1)
         self._seg_addr = add_counter(self, "segment_addr", 16, increment=self._inc_seg_addr, clear=self._clr_seg_addr)
 
+        self._inc_coord_addr = self.var("inc_coord_addr", 1)
+        self._clr_coord_addr = self.var("clr_coord_addr", 1)
+        self._coord_addr = add_counter(self, "coord_addr", 16, increment=self._inc_coord_addr, clear=self._clr_coord_addr)
+
         # Value to go to segment
         self._inc_seg_ctr = self.var("inc_seg_ctr", 1)
         self._clr_seg_ctr = self.var("clr_seg_ctr", 1)
         self._seg_ctr = add_counter(self, "segment_counter", 16, increment=self._inc_seg_ctr, clear=self._clr_seg_ctr)
 
         self._set_curr_coord = self.var("set_curr_coord", 1)
+        self._clr_curr_coord = self.var("clr_curr_coord", 1)
         self._curr_coord = register(self, self._data_infifo_data_in, enable=self._set_curr_coord)
+        self._curr_coord_valid = sticky_flag(self, self._set_curr_coord, clear=self._clr_curr_coord, name="valid_coord_sticky", seq_only=True)
+
+        # Indicates if we are seeing a new coordinate
+        self._new_coord = self.var("new_coord", 1)
+        # We have a new coord if the new coord input is valid and the curr_coord is not valid, or the data is different.
+        self.wire(self._new_coord, (self._data_infifo_valid_in & ~self._data_infifo_eos_in) & (~self._curr_coord_valid | (self._data_infifo_data_in != self._curr_coord)))
+
+        self._matching_stop = self.var("matching_stop", 1)
+        self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == self._stop_lvl))
 
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
@@ -206,460 +220,266 @@ class WriteScanner(Generator):
         LL = self.scan_fsm.add_state("LL")
         # Lowest level uncompressed (use address)
         UnLL = self.scan_fsm.add_state("UnLL")
-        # Lowest level compressed 
+        # Lowest level compressed
         ComLL = self.scan_fsm.add_state("ComLL")
-
+        UL_WZ = self.scan_fsm.add_state("UL_WZ")
         UL = self.scan_fsm.add_state("UL")
-
+        UL_EMIT_COORD = self.scan_fsm.add_state("UL_EMIT_COORD")
+        UL_EMIT_SEG = self.scan_fsm.add_state("UL_EMIT_SEG")
         DONE = self.scan_fsm.add_state("DONE")
-
-        self.scan_fsm.output(self._valid_inc)
-        self.scan_fsm.output(self._valid_rst)
-        self.scan_fsm.output(self._ren)
-        self.scan_fsm.output(self._fifo_push)
-        self.scan_fsm.output(self._tag_eos)
-        self.scan_fsm.output(self._addr_out)
-        self.scan_fsm.output(self._next_seq_length)
-        self.scan_fsm.output(self._update_seq_state)
-        self.scan_fsm.output(self._last_valid_accepting)
-        self.scan_fsm.output(self._pop_infifo)
-        self.scan_fsm.output(self._inc_fiber_addr)
-        self.scan_fsm.output(self._clr_fiber_addr)
-        self.scan_fsm.output(self._inc_rep)
-        self.scan_fsm.output(self._clr_rep)
-        self.scan_fsm.output(self._data_to_fifo)
-        self.scan_fsm.output(self._en_reg_data_in)
-        self.scan_fsm.output(self._pos_out_to_fifo)
 
         ####################
         # Next State Logic
         ####################
 
-        # Dummy state for eventual filling block.
-        START.next(ISSUE_STRM, self._root)
-        START.next(ISSUE_STRM_NR, ~self._root)
+        ####################
+        # START #
+        ####################
+        # Start state goes to either lowest level or upper level
+        START.next(LL, self._lowest_level)
+        START.next(UL_WZ, ~self._lowest_level)
 
-        # Completely done at this point
-        # ISSUE_STRM.next(DONE, self._out_dim_x == self._max_outer_dim)
-        # If not done, we have to issue more streams
-        # ISSUE_STRM.next(SEQ_START, (self._outer_addr == self._previous_outer) & self._previous_outer_valid)
-        # ISSUE_STRM.next(READ_0, ~((self._outer_addr == self._previous_outer) & self._previous_outer_valid))
-        ISSUE_STRM.next(READ_0, None)
+        ####################
+        # LL #
+        ####################
+        # Redundant state but helpful in my head
+        # Go to compressed or uncompressed from here
+        LL.next(ComLL, self._compressed)
+        LL.next(UnLL, ~self._compressed)
 
-        # If we are seeing the eos_in this state we need to pass them along to downstream modules
-        # If we have valid data in (the input fifo is not empty), then we should issue the corresponding stream
-        ISSUE_STRM_NR.next(PASS_STOP, self._infifo_eos_in & self._infifo_valid_in)
-        ISSUE_STRM_NR.next(READ_0, ~self._infifo_eos_in & self._infifo_valid_in)
-        ISSUE_STRM_NR.next(ISSUE_STRM_NR, None)
+        ####################
+        # ComLL
+        ####################
+        # In the compressed state of lowest level, we only need to write the
+        # data values in order...just watching for the stop 0 token
+        ComLL.next(DONE, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
+        ComLL.next(ComLL, None)
 
-        # In this state, we are passing through stop tokens into
-        # the downstream
-        PASS_STOP.next(PASS_STOP, self._infifo_eos_in)
-        PASS_STOP.next(ISSUE_STRM_NR, ~self._infifo_eos_in & ~self._seen_root_eos)
-        PASS_STOP.next(DONE, ~self._infifo_eos_in & self._seen_root_eos)
+        ####################
+        # UnLL
+        ####################
+        # In the uncompressed lowest level, we are writing the data at the specified address, so we are similarly looking
+        # for stop 0 token
+        UnLL.next(DONE, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
+                  (self._data_infifo_data_in == 0) & (self._addr_infifo_data_in == 0))
+        UnLL.next(UnLL, None)
 
-        # Can continue on our way in root mode, otherwise we need to
-        # bring the pointer up to locate the coordinate
-        READ_0.next(READ_1, None)
+        ####################
+        # UL_WZ
+        ####################
+        # Need to write a 0 to the segment array first...
+        UL_WZ.next(UL, self._ready_in)
+        UL_WZ.next(UL_WZ, ~self._ready_in)
 
-        # If you're not at the right coordinate yet, go straight to SEQ_START and emit length 0 sequence
-        # READ_1.next(SEQ_START, (self._coord_in > self._outer_addr) & self._root)
-        # # Otherwise, proceed
-        # READ_1.next(READ_2, (self._coord_in <= self._outer_addr) & self._root)
-        # READ_1.next(READ_2, self._root)
+        ####################
+        # UL #
+        ####################
+        # ASSUMED TO BE COMPRESSED - OTHERWISE DFG LOOKS DIFFERENT - PERFORMS MATH ON COORDINATES
+        # In the upper level, we will emit new coordinates linearly as we see new ones, reset tracking at stop_lvl
+        UL.next(UL_EMIT_COORD, self._new_coord)
+        UL.next(UL_EMIT_SEG, self._matching_stop)
+        UL.next(UL, None)
 
-        # # If not root, we should go back to READ_0 while the input coordinate is smaller than the fifo coord
-        # READ_1.next(READ_0, (self._coord_in < self._infifo_coord_in) & ~self._root)
-        # # Otherwise, proceed
-        # READ_1.next(READ_2, (self._coord_in >= self._infifo_coord_in) & ~self._root)
-        READ_1.next(READ_2, None)
+        ####################
+        # UL_EMIT_COORD #
+        ####################
+        # From the emit coord, we will send a write out as long the memory is ready for a write, then go back to UL
+        UL_EMIT_COORD.next(UL_EMIT_COORD, ~self._ready_in)
+        UL_EMIT_COORD.next(UL, self._ready_in)
 
-        # Go to this state to see the length, will also have EOS?
-        READ_2.next(SEQ_START, None)
+        ####################
+        # UL_EMIT_SEG #
+        ####################
+        # From the emit seg, we will send out the writes to the segment array, will clear all the state
+        UL_EMIT_SEG.next(UL_EMIT_SEG, ~self._ready_in)
+        UL_EMIT_SEG.next(UL, self._ready_in)
 
-        # At Start, we can either immediately end the stream or go to the iteration phase
-        SEQ_START.next(SEQ_DONE, self._seq_length == kts.const(2 ** 16 - 1, 16))
-        SEQ_START.next(SEQ_ITER, None)
-
-        # In ITER, we go back to idle when the fifo is full to avoid
-        # complexity, or if we are looking at one of the eos since we can make the last
-        # move for the intersection now...
-        # If we have eos and can push to the fifo, we are done
-        # SEQ_ITER.next(SEQ_DONE, self._last_valid_accepting)
-        SEQ_ITER.next(REP_INNER_PRE, self._root & self._do_repeat & ~self._repeat_outer_inner_n)
-        SEQ_ITER.next(REP_OUTER, (self._root & self._do_repeat & self._repeat_outer_inner_n) & self._iter_finish)
-        SEQ_ITER.next(SEQ_DONE, self._iter_finish)
-        SEQ_ITER.next(SEQ_ITER, None)
-
-        # Once done, we need another flush
-        # SEQ_DONE.next(DONE, ((self._outer_restart | self._outer_length_one) & self._root) | (self._eos_in_seen))
-        # SEQ_DONE.next(ISSUE_STRM, ~self._outer_restart & self._root)
-        SEQ_DONE.next(SEQ_DONE, self._fifo_full)
-        SEQ_DONE.next(DONE, self._root & ~self._fifo_full)
-        # SEQ_DONE.next(ISSUE_STRM_NR, ~self._outer_restart & ~self._root)
-        # It might be the case that you should always set up another issue if not at EOS
-        SEQ_DONE.next(ISSUE_STRM_NR, ~self._root & ~self._fifo_full)
-
-        # Now handle the repetition states...
-
-        # Rep inner pre is used to register the read from memory...can probably optimize this away
-        # TODO: Optimize this state away...
-        REP_INNER_PRE.next(REP_INNER, None)
-
-        # From rep inner, keep emitting the same data until the reps are finished
-        REP_INNER.next(REP_STOP, self._rep_finish)
-        REP_INNER.next(REP_INNER, None)
-
-        # This state might be unnecessary, but from rep outer, we should inject another STOP
-        REP_OUTER.next(REP_STOP, None)
-
-        # From the stop injection we can either 1. go back to the iterator for the repeat inner case
-        # if there is more to do (iter has not finished yet) or go to seq done if it is or...
-        # 2. go to the start of the sequence again, clearing state similar to the transition from R2 to seq start
-        # Fall through to stay here until the token gets pushed into the FIFO
-        # Can only move on if the fifo is not full...
-        REP_STOP.next(SEQ_ITER, ~self._iter_finish & ~self._repeat_outer_inner_n & ~self._fifo_full)
-        REP_STOP.next(SEQ_DONE, self._iter_finish & ~self._repeat_outer_inner_n & ~self._fifo_full)
-        # TODO: Add assertion the iter_finish is high if in outer repeat
-        REP_STOP.next(SEQ_START, self._repeat_outer_inner_n & ~self._rep_finish & ~self._fifo_full)
-        REP_STOP.next(SEQ_DONE, self._repeat_outer_inner_n & self._rep_finish & ~self._fifo_full)
-        REP_STOP.next(REP_STOP, None)
-
+        ####################
         # DONE
+        ####################
+        # We are done...
+        # TODO: Accept multiple blocks
         DONE.next(DONE, None)
 
         ####################
         # FSM Output Logic
         ####################
 
+        self.scan_fsm.output(self._addr_out)
+        self.scan_fsm.output(self._wen)
+        self.scan_fsm.output(self._data_out)
+        self.scan_fsm.output(self._inc_seg_addr)
+        self.scan_fsm.output(self._clr_seg_addr)
+        self.scan_fsm.output(self._inc_coord_addr)
+        self.scan_fsm.output(self._clr_coord_addr)
+        self.scan_fsm.output(self._inc_seg_ctr)
+        self.scan_fsm.output(self._clr_seg_ctr)
+        self.scan_fsm.output(self._set_curr_coord)
+        self.scan_fsm.output(self._clr_curr_coord)
+        self.scan_fsm.output(self._infifo_pop[0])
+        self.scan_fsm.output(self._infifo_pop[1])
+
         #######
         # START - TODO - Generate general hardware...
         #######
-        START.output(self._valid_inc, 0)
-        START.output(self._valid_rst, 0)
-        START.output(self._ren, 0)
-        START.output(self._fifo_push, 0)
-        START.output(self._tag_eos, 0)
         START.output(self._addr_out, kts.const(0, 16))
-        START.output(self._next_seq_length, kts.const(0, 16))
-        START.output(self._update_seq_state, 0)
-        START.output(self._last_valid_accepting, 0)
-        START.output(self._pop_infifo, 0)
-        START.output(self._inc_fiber_addr, 0)
-        START.output(self._clr_fiber_addr, 0)
-        START.output(self._inc_rep, 0)
-        START.output(self._clr_rep, 0)
-        START.output(self._data_to_fifo, kts.const(0, 16))
-        START.output(self._en_reg_data_in, 0)
-        START.output(self._pos_out_to_fifo, kts.const(0, 16))
+        START.output(self._wen, 0)
+        START.output(self._data_out, kts.const(0, 16))
+        START.output(self._inc_seg_addr, 0)
+        START.output(self._clr_seg_addr, 0)
+        START.output(self._inc_coord_addr, 0)
+        START.output(self._clr_coord_addr, 0)
+        START.output(self._inc_seg_ctr, 0)
+        START.output(self._clr_seg_ctr, 0)
+        START.output(self._set_curr_coord, 0)
+        START.output(self._clr_curr_coord, 0)
+        START.output(self._infifo_pop[0], 0)
+        START.output(self._infifo_pop[1], 0)
 
         #######
-        # ISSUE_STRM - TODO - Generate general hardware...
+        # LL
         #######
-        ISSUE_STRM.output(self._valid_inc, 0)
-        ISSUE_STRM.output(self._valid_rst, 0)
-        ISSUE_STRM.output(self._ren, 0)
-        ISSUE_STRM.output(self._fifo_push, 0)
-        ISSUE_STRM.output(self._tag_eos, 0)
-        # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
-        ISSUE_STRM.output(self._addr_out, kts.const(0, 16))
-        ISSUE_STRM.output(self._next_seq_length, kts.const(0, 16))
-        ISSUE_STRM.output(self._update_seq_state, 0)
-        ISSUE_STRM.output(self._last_valid_accepting, 0)
-        ISSUE_STRM.output(self._pop_infifo, 0)
-        ISSUE_STRM.output(self._inc_fiber_addr, 0)
-        ISSUE_STRM.output(self._clr_fiber_addr, 0)
-        ISSUE_STRM.output(self._inc_rep, 0)
-        ISSUE_STRM.output(self._clr_rep, 0)
-        ISSUE_STRM.output(self._data_to_fifo, kts.const(0, 16))
-        ISSUE_STRM.output(self._en_reg_data_in, 0)
-        ISSUE_STRM.output(self._pos_out_to_fifo, kts.const(0, 16))
+        LL.output(self._addr_out, kts.const(0, 16))
+        LL.output(self._wen, 0)
+        LL.output(self._data_out, kts.const(0, 16))
+        LL.output(self._inc_seg_addr, 0)
+        LL.output(self._clr_seg_addr, 0)
+        LL.output(self._inc_coord_addr, 0)
+        LL.output(self._clr_coord_addr, 0)
+        LL.output(self._inc_seg_ctr, 0)
+        LL.output(self._clr_seg_ctr, 0)
+        LL.output(self._set_curr_coord, 0)
+        LL.output(self._clr_curr_coord, 0)
+        LL.output(self._infifo_pop[0], 0)
+        LL.output(self._infifo_pop[1], 0)
 
         #######
-        # ISSUE_STRM_NR
+        # UnLL
         #######
-        ISSUE_STRM_NR.output(self._valid_inc, 0)
-        ISSUE_STRM_NR.output(self._valid_rst, 0)
-        ISSUE_STRM_NR.output(self._ren, 0)
-        ISSUE_STRM_NR.output(self._fifo_push, 0)
-        ISSUE_STRM_NR.output(self._tag_eos, 0)
-        # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
-        ISSUE_STRM_NR.output(self._addr_out, kts.const(0, 16))
-        ISSUE_STRM_NR.output(self._next_seq_length, kts.const(0, 16))
-        ISSUE_STRM_NR.output(self._update_seq_state, 0)
-        ISSUE_STRM_NR.output(self._last_valid_accepting, 0)
-        ISSUE_STRM_NR.output(self._pop_infifo, 0)
-        ISSUE_STRM_NR.output(self._inc_fiber_addr, 0)
-        ISSUE_STRM_NR.output(self._clr_fiber_addr, 0)
-        ISSUE_STRM_NR.output(self._inc_rep, 0)
-        ISSUE_STRM_NR.output(self._clr_rep, 0)
-        ISSUE_STRM_NR.output(self._data_to_fifo, kts.const(0, 16))
-        ISSUE_STRM_NR.output(self._en_reg_data_in, 0)
-        ISSUE_STRM_NR.output(self._pos_out_to_fifo, kts.const(0, 16))
+        UnLL.output(self._addr_out, self._addr_infifo_data_in)
+        # Only write the values
+        UnLL.output(self._wen, (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ~(self._data_infifo_eos_in | self._addr_infifo_eos_in))
+        UnLL.output(self._data_out, self._data_infifo_data_in)
+        UnLL.output(self._inc_seg_addr, 0)
+        UnLL.output(self._clr_seg_addr, 0)
+        UnLL.output(self._inc_coord_addr, 0)
+        UnLL.output(self._clr_coord_addr, 0)
+        UnLL.output(self._inc_seg_ctr, 0)
+        UnLL.output(self._clr_seg_ctr, 0)
+        UnLL.output(self._set_curr_coord, 0)
+        UnLL.output(self._clr_curr_coord, 0)
+        # Pop if the memory is ready for a write, or its eos
+        UnLL.output(self._infifo_pop[0], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
+        UnLL.output(self._infifo_pop[1], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
 
         #######
-        # PASS_STOP
+        # ComLL
         #######
-        PASS_STOP.output(self._valid_inc, 0)
-        PASS_STOP.output(self._valid_rst, 0)
-        PASS_STOP.output(self._ren, 0)
-        PASS_STOP.output(self._fifo_push, self._infifo_eos_in)
-        PASS_STOP.output(self._tag_eos, 1)
-        # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
-        PASS_STOP.output(self._addr_out, kts.const(0, 16))
-        PASS_STOP.output(self._next_seq_length, kts.const(0, 16))
-        PASS_STOP.output(self._update_seq_state, 0)
-        PASS_STOP.output(self._last_valid_accepting, 0)
-        PASS_STOP.output(self._pop_infifo, ~self._fifo_full & self._infifo_eos_in)
-        PASS_STOP.output(self._inc_fiber_addr, 0)
-        PASS_STOP.output(self._clr_fiber_addr, 0)
-        PASS_STOP.output(self._inc_rep, 0)
-        PASS_STOP.output(self._clr_rep, 0)
-        PASS_STOP.output(self._data_to_fifo, self._infifo_pos_in)
-        PASS_STOP.output(self._en_reg_data_in, 0)
-        PASS_STOP.output(self._pos_out_to_fifo, self._infifo_pos_in)
-
-        #######
-        # READ_0 - TODO - Generate general hardware...
-        #######
-        READ_0.output(self._valid_inc, 0)
-        READ_0.output(self._valid_rst, 0)
-        READ_0.output(self._ren, 1)
-        READ_0.output(self._fifo_push, 0)
-        READ_0.output(self._tag_eos, 0)
-        # READ_0.output(self._addr_out, self._out_dim_addr)
-        READ_0.output(self._addr_out, self._pos_addr)
-        READ_0.output(self._next_seq_length, kts.const(0, 16))
-        READ_0.output(self._update_seq_state, 0)
-        READ_0.output(self._last_valid_accepting, 0)
-        READ_0.output(self._pop_infifo, 0)
-        READ_0.output(self._inc_fiber_addr, 0)
-        READ_0.output(self._clr_fiber_addr, 0)
-        READ_0.output(self._inc_rep, 0)
-        READ_0.output(self._clr_rep, 0)
-        READ_0.output(self._data_to_fifo, kts.const(0, 16))
-        READ_0.output(self._en_reg_data_in, 0)
-        READ_0.output(self._pos_out_to_fifo, kts.const(0, 16))
+        # Use the seg addr
+        ComLL.output(self._addr_out, self._seg_addr)
+        # Only write if its data
+        ComLL.output(self._wen, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
+        ComLL.output(self._data_out, self._data_infifo_data_in)
+        # Increase the seg addr only if we are actually writing
+        ComLL.output(self._inc_seg_addr, self._data_infifo_valid_in & ~self._data_infifo_eos_in & self._ready_in)
+        ComLL.output(self._clr_seg_addr, 0)
+        ComLL.output(self._inc_coord_addr, 0)
+        ComLL.output(self._clr_coord_addr, 0)
+        ComLL.output(self._inc_seg_ctr, 0)
+        ComLL.output(self._clr_seg_ctr, 0)
+        ComLL.output(self._set_curr_coord, 0)
+        ComLL.output(self._clr_curr_coord, 0)
+        # Only pop if its eos or the memory is ready for the write
+        ComLL.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._data_infifo_eos_in | self._ready_in))
+        ComLL.output(self._infifo_pop[1], 0)
 
         #######
-        # READ_1 - TODO - Generate general hardware...
+        # UL_WZ
         #######
-        READ_1.output(self._valid_inc, 0)
-        READ_1.output(self._valid_rst, 0)
-        READ_1.output(self._ren, 1)
-        READ_1.output(self._fifo_push, 0)
-        READ_1.output(self._tag_eos, 0)
-        READ_1.output(self._addr_out, self._pos_addr + 1)
-        READ_1.output(self._next_seq_length, kts.const(2 ** 16 - 1, 16))
-        READ_1.output(self._update_seq_state, 0)
-        READ_1.output(self._last_valid_accepting, 0)
-        READ_1.output(self._pop_infifo, 0)
-        READ_1.output(self._inc_fiber_addr, 0)
-        READ_1.output(self._clr_fiber_addr, 0)
-        READ_1.output(self._inc_rep, 0)
-        READ_1.output(self._clr_rep, 0)
-        READ_1.output(self._data_to_fifo, kts.const(0, 16))
-        READ_1.output(self._en_reg_data_in, 0)
-        READ_1.output(self._pos_out_to_fifo, kts.const(0, 16))
+        # Write a 0 to the segment array
+        UL_WZ.output(self._addr_out, self._seg_addr)
+        UL_WZ.output(self._wen, 1)
+        UL_WZ.output(self._data_out, kts.const(0, 16))
+        UL_WZ.output(self._inc_seg_addr, self._ready_in)
+        UL_WZ.output(self._clr_seg_addr, 0)
+        UL_WZ.output(self._inc_coord_addr, 0)
+        UL_WZ.output(self._clr_coord_addr, 0)
+        UL_WZ.output(self._inc_seg_ctr, 0)
+        UL_WZ.output(self._clr_seg_ctr, 0)
+        UL_WZ.output(self._set_curr_coord, 0)
+        UL_WZ.output(self._clr_curr_coord, 0)
+        UL_WZ.output(self._infifo_pop[0], 0)
+        UL_WZ.output(self._infifo_pop[1], 0)
 
         #######
-        # READ_2 - TODO - Generate general hardware...
+        # UL
         #######
-        READ_2.output(self._valid_inc, 0)
-        READ_2.output(self._valid_rst, 0)
-        READ_2.output(self._ren, 0)
-        READ_2.output(self._fifo_push, 0)
-        READ_2.output(self._tag_eos, 0)
-        # Don't increment here - only increment after seeing the second one
-        # READ_2.output(self._inc_out_dim_addr, 0)
-        READ_2.output(self._addr_out, kts.const(0, 16))
-        READ_2.output(self._next_seq_length, self._seq_length_ptr_math)
-        READ_2.output(self._update_seq_state, 1)
-        READ_2.output(self._last_valid_accepting, 0)
-        READ_2.output(self._pop_infifo, 0)
-        READ_2.output(self._inc_fiber_addr, 0)
-        READ_2.output(self._clr_fiber_addr, 0)
-        READ_2.output(self._inc_rep, 0)
-        READ_2.output(self._clr_rep, 0)
-        READ_2.output(self._data_to_fifo, kts.const(0, 16))
-        READ_2.output(self._en_reg_data_in, 0)
-        READ_2.output(self._pos_out_to_fifo, kts.const(0, 16))
+        UL.output(self._addr_out, kts.const(0, 16))
+        UL.output(self._wen, 0)
+        UL.output(self._data_out, kts.const(0, 16))
+        UL.output(self._inc_seg_addr, 0)
+        UL.output(self._clr_seg_addr, 0)
+        UL.output(self._inc_coord_addr, 0)
+        UL.output(self._clr_coord_addr, 0)
+        UL.output(self._inc_seg_ctr, 0)
+        UL.output(self._clr_seg_ctr, 0)
+        UL.output(self._set_curr_coord, self._new_coord)
+        UL.output(self._clr_curr_coord, 0)
+        # Pop below the stop level
+        UL.output(self._infifo_pop[0], self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in > self._stop_lvl))
+        UL.output(self._infifo_pop[1], 0)
 
         #######
-        # SEQ_START - TODO - Generate general hardware...
+        # UL_EMIT_COORD
         #######
-        SEQ_START.output(self._valid_rst, 0)
-        SEQ_START.output(self._valid_inc, 0)
-        SEQ_START.output(self._ren, 0)
-        SEQ_START.output(self._fifo_push, self._seq_length == kts.const(2 ** 16 - 1, 16))
-        SEQ_START.output(self._tag_eos, self._seq_length == kts.const(2 ** 16 - 1, 16))
-        SEQ_START.output(self._addr_out, kts.const(0, 16))
-        SEQ_START.output(self._next_seq_length, kts.const(0, 16))
-        SEQ_START.output(self._update_seq_state, 0)
-        SEQ_START.output(self._last_valid_accepting, 0)
-        SEQ_START.output(self._pop_infifo, 0)
-        SEQ_START.output(self._inc_fiber_addr, 0)
-        SEQ_START.output(self._clr_fiber_addr, 0)
-        SEQ_START.output(self._inc_rep, 0)
-        SEQ_START.output(self._clr_rep, 0)
-        SEQ_START.output(self._data_to_fifo, kts.const(0, 16))
-        SEQ_START.output(self._en_reg_data_in, 0)
-        SEQ_START.output(self._pos_out_to_fifo, kts.const(0, 16))
+        UL_EMIT_COORD.output(self._addr_out, self._coord_addr + self._inner_dim_offset)
+        UL_EMIT_COORD.output(self._wen, 1)
+        UL_EMIT_COORD.output(self._data_out, self._curr_coord)
+        UL_EMIT_COORD.output(self._inc_seg_addr, 0)
+        UL_EMIT_COORD.output(self._clr_seg_addr, 0)
+        UL_EMIT_COORD.output(self._inc_coord_addr, self._ready_in)
+        UL_EMIT_COORD.output(self._clr_coord_addr, 0)
+        UL_EMIT_COORD.output(self._inc_seg_ctr, self._ready_in)
+        UL_EMIT_COORD.output(self._clr_seg_ctr, 0)
+        UL_EMIT_COORD.output(self._set_curr_coord, 0)
+        UL_EMIT_COORD.output(self._clr_curr_coord, 0)
+        # Pop the coordinate if the write goes through
+        UL_EMIT_COORD.output(self._infifo_pop[0], self._ready_in)
+        UL_EMIT_COORD.output(self._infifo_pop[1], 0)
 
-        #############
-        # SEQ_ITER
-        #############
-        SEQ_ITER.output(self._valid_inc, self._valid_in & (~self._fifo_full))
-        SEQ_ITER.output(self._valid_rst, 0)
-        SEQ_ITER.output(self._ren, ~self._join_almost_full)
-        SEQ_ITER.output(self._fifo_push, self._valid_in & (~self._fifo_full))
-        SEQ_ITER.output(self._tag_eos, 0)
-        SEQ_ITER.output(self._addr_out, self._fiber_addr)
-        SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
-        SEQ_ITER.output(self._update_seq_state, 0)
-        SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._valid_in))
-        SEQ_ITER.output(self._pop_infifo, 0)
-        SEQ_ITER.output(self._inc_fiber_addr, ~self._join_almost_full)
-        SEQ_ITER.output(self._clr_fiber_addr, 0)
-        SEQ_ITER.output(self._inc_rep, 0)
-        SEQ_ITER.output(self._clr_rep, 0)
-        SEQ_ITER.output(self._data_to_fifo, self._data_in)
-        SEQ_ITER.output(self._en_reg_data_in, 0)
-        # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        SEQ_ITER.output(self._pos_out_to_fifo, self._agen_addr_d1)
-
-        #############
-        # SEQ_DONE
-        #############
-        SEQ_DONE.output(self._valid_inc, 0)
-        SEQ_DONE.output(self._valid_rst, 1)
-        SEQ_DONE.output(self._ren, 0)
-        SEQ_DONE.output(self._fifo_push, 1)
-        SEQ_DONE.output(self._tag_eos, 1)
-        SEQ_DONE.output(self._addr_out, kts.const(0, 16))
-        SEQ_DONE.output(self._next_seq_length, kts.const(0, 16))
-        SEQ_DONE.output(self._update_seq_state, 0)
-        # SEQ_DONE.output(self._step_agen, 0)
-        SEQ_DONE.output(self._last_valid_accepting, 0)
-        SEQ_DONE.output(self._pop_infifo, ~self._root)
-        SEQ_DONE.output(self._inc_fiber_addr, 0)
-        # Make sure to clear the fiber addr
-        SEQ_DONE.output(self._clr_fiber_addr, 1)
-        SEQ_DONE.output(self._inc_rep, 0)
-        SEQ_DONE.output(self._clr_rep, 0)
-        SEQ_DONE.output(self._data_to_fifo, self._stop_lvl)
-        SEQ_DONE.output(self._en_reg_data_in, 0)
-        SEQ_DONE.output(self._pos_out_to_fifo, self._stop_lvl)
-        # SEQ_DONE.output(self._step_outer, 1)
-        # SEQ_DONE.output(self._update_previous_outer, 0)
-
-        #############
-        # REP_INNER_PRE
-        #############
-        REP_INNER_PRE.output(self._valid_inc, 0)
-        REP_INNER_PRE.output(self._valid_rst, 0)
-        REP_INNER_PRE.output(self._ren, 0)
-        REP_INNER_PRE.output(self._fifo_push, 0)
-        REP_INNER_PRE.output(self._tag_eos, 0)
-        REP_INNER_PRE.output(self._addr_out, kts.const(0, 16))
-        REP_INNER_PRE.output(self._next_seq_length, kts.const(0, 16))
-        REP_INNER_PRE.output(self._update_seq_state, 0)
-        REP_INNER_PRE.output(self._last_valid_accepting, 0)
-        REP_INNER_PRE.output(self._pop_infifo, 0)
-        REP_INNER_PRE.output(self._inc_fiber_addr, 0)
-        REP_INNER_PRE.output(self._clr_fiber_addr, 0)
-        REP_INNER_PRE.output(self._inc_rep, 0)
-        REP_INNER_PRE.output(self._clr_rep, 0)
-        REP_INNER_PRE.output(self._data_to_fifo, kts.const(0, 16))
-        REP_INNER_PRE.output(self._en_reg_data_in, 1)
-        REP_INNER_PRE.output(self._pos_out_to_fifo, kts.const(0, 16))
-
-        #############
-        # REP_INNER
-        #############
-        REP_INNER.output(self._valid_inc, 0)
-        REP_INNER.output(self._valid_rst, 0)
-        REP_INNER.output(self._ren, 0)
-        REP_INNER.output(self._fifo_push, 1)
-        REP_INNER.output(self._tag_eos, 0)
-        REP_INNER.output(self._addr_out, kts.const(0, 16))
-        REP_INNER.output(self._next_seq_length, kts.const(0, 16))
-        REP_INNER.output(self._update_seq_state, 0)
-        REP_INNER.output(self._last_valid_accepting, 0)
-        REP_INNER.output(self._pop_infifo, 0)
-        REP_INNER.output(self._inc_fiber_addr, 0)
-        REP_INNER.output(self._clr_fiber_addr, 0)
-        REP_INNER.output(self._inc_rep, ~self._fifo_full)
-        REP_INNER.output(self._clr_rep, 0)
-        REP_INNER.output(self._data_to_fifo, self._data_in_d1)
-        REP_INNER.output(self._en_reg_data_in, 0)
-        # Capture the address used to read as the position
-        REP_INNER.output(self._pos_out_to_fifo, self._agen_addr_d1_cap)
-
-        #############
-        # REP_OUTER
-        #############
-        REP_OUTER.output(self._valid_inc, 0)
-        REP_OUTER.output(self._valid_rst, 1)
-        REP_OUTER.output(self._ren, 0)
-        REP_OUTER.output(self._fifo_push, 0)
-        REP_OUTER.output(self._tag_eos, 0)
-        REP_OUTER.output(self._addr_out, kts.const(0, 16))
-        REP_OUTER.output(self._next_seq_length, kts.const(0, 16))
-        REP_OUTER.output(self._update_seq_state, 0)
-        REP_OUTER.output(self._last_valid_accepting, 0)
-        REP_OUTER.output(self._pop_infifo, 0)
-        REP_OUTER.output(self._inc_fiber_addr, 0)
-        REP_OUTER.output(self._clr_fiber_addr, 1)
-        REP_OUTER.output(self._inc_rep, 1)
-        REP_OUTER.output(self._clr_rep, 0)
-        REP_OUTER.output(self._data_to_fifo, kts.const(0, 16))
-        REP_OUTER.output(self._en_reg_data_in, 0)
-        REP_OUTER.output(self._pos_out_to_fifo, kts.const(0, 16))
-
-        #############
-        # REP_STOP
-        #############
-        # Since we will escape SEQ_ITER every time there is a read, we will need to increment it here
-        REP_STOP.output(self._valid_inc, ~self._repeat_outer_inner_n & ~self._fifo_full)
-        REP_STOP.output(self._valid_rst, self._repeat_outer_inner_n)
-        REP_STOP.output(self._ren, 0)
-        REP_STOP.output(self._fifo_push, 1)
-        REP_STOP.output(self._tag_eos, 1)
-        REP_STOP.output(self._addr_out, kts.const(0, 16))
-        REP_STOP.output(self._next_seq_length, kts.const(0, 16))
-        REP_STOP.output(self._update_seq_state, 0)
-        # If we are on the last one, this gets us to the end
-        REP_STOP.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & ~self._repeat_outer_inner_n)
-        REP_STOP.output(self._pop_infifo, 0)
-        REP_STOP.output(self._inc_fiber_addr, 0)
-        REP_STOP.output(self._clr_fiber_addr, 0)
-        REP_STOP.output(self._inc_rep, 0)
-        REP_STOP.output(self._clr_rep, ~self._repeat_outer_inner_n)
-        REP_STOP.output(self._data_to_fifo, kts.const(1, 16))
-        REP_STOP.output(self._en_reg_data_in, 0)
-        REP_STOP.output(self._pos_out_to_fifo, kts.const(1, 16))
+        #######
+        # UL_EMIT_SEG
+        #######
+        UL_EMIT_SEG.output(self._addr_out, self._seg_addr)
+        UL_EMIT_SEG.output(self._wen, 1)
+        UL_EMIT_SEG.output(self._data_out, self._seg_ctr)
+        UL_EMIT_SEG.output(self._inc_seg_addr, self._ready_in)
+        UL_EMIT_SEG.output(self._clr_seg_addr, 0)
+        UL_EMIT_SEG.output(self._inc_coord_addr, 0)
+        UL_EMIT_SEG.output(self._clr_coord_addr, 0)
+        UL_EMIT_SEG.output(self._inc_seg_ctr, 0)
+        UL_EMIT_SEG.output(self._clr_seg_ctr, 0)
+        UL_EMIT_SEG.output(self._set_curr_coord, 0)
+        UL_EMIT_SEG.output(self._clr_curr_coord, 0)
+        UL_EMIT_SEG.output(self._infifo_pop[0], self._ready_in)
+        UL_EMIT_SEG.output(self._infifo_pop[1], 0)
 
         #############
         # DONE
         #############
-        DONE.output(self._valid_inc, 0)
-        DONE.output(self._valid_rst, 0)
-        DONE.output(self._ren, 0)
-        DONE.output(self._fifo_push, 0)
-        DONE.output(self._tag_eos, 0)
         DONE.output(self._addr_out, kts.const(0, 16))
-        DONE.output(self._next_seq_length, kts.const(0, 16))
-        DONE.output(self._update_seq_state, 0)
-        DONE.output(self._last_valid_accepting, 0)
-        DONE.output(self._pop_infifo, 0)
-        DONE.output(self._inc_fiber_addr, 0)
-        DONE.output(self._clr_fiber_addr, 0)
-        DONE.output(self._inc_rep, 0)
-        DONE.output(self._clr_rep, 0)
-        DONE.output(self._data_to_fifo, kts.const(0, 16))
-        DONE.output(self._en_reg_data_in, 0)
-        DONE.output(self._pos_out_to_fifo, kts.const(0, 16))
+        DONE.output(self._wen, 0)
+        DONE.output(self._data_out, kts.const(0, 16))
+        DONE.output(self._inc_seg_addr, 0)
+        DONE.output(self._clr_seg_addr, 0)
+        DONE.output(self._inc_coord_addr, 0)
+        DONE.output(self._clr_coord_addr, 0)
+        DONE.output(self._inc_seg_ctr, 0)
+        DONE.output(self._clr_seg_ctr, 0)
+        DONE.output(self._set_curr_coord, 0)
+        DONE.output(self._clr_curr_coord, 0)
+        DONE.output(self._infifo_pop[0], 0)
+        DONE.output(self._infifo_pop[1], 0)
 
         self.scan_fsm.set_start_state(START)
 
