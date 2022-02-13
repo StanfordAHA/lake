@@ -6,6 +6,7 @@ import os as os
 from enum import Enum
 from lake.attributes.formal_attr import *
 import csv
+import pathlib
 
 lake_util_verbose_trim = False
 
@@ -13,6 +14,17 @@ lake_util_verbose_trim = False
 def check_env():
     lake_controller_path = os.getenv("LAKE_CONTROLLERS")
     lake_stream_path = os.getenv("LAKE_STREAM")
+
+    clockwork_path = os.path.join(pathlib.Path(__file__).parent.parent.parent.parent.resolve(), "clockwork")
+    if lake_controller_path is None:
+        lc_path_tmp = os.path.join(clockwork_path, "lake_controllers")
+        if os.path.exists(lc_path_tmp):
+            lake_controller_path = lc_path_tmp
+
+    if lake_stream_path is None:
+        ls_path_tmp = os.path.join(clockwork_path, "lake_stream")
+        if os.path.exists(os.path.join(clockwork_path, "lake_stream")):
+            lake_stream_path = ls_path_tmp
 
     assert lake_controller_path is not None and lake_stream_path is not None,\
         f"Please check env vars:\nLAKE_CONTROLLERS: {lake_controller_path}\nLAKE_STREAM: {lake_stream_path}"
