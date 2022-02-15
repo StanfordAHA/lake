@@ -54,6 +54,12 @@ class Intersect(kts.Generator):
                                     explicit_array=True)
         self._coord_in.add_attribute(ControlSignalAttr(is_control=False))
 
+        self._pos_in = self.input("pos_in", self.data_width,
+                                  size=self.num_streams,
+                                  packed=True,
+                                  explicit_array=True)
+        self._pos_in.add_attribute(ControlSignalAttr(is_control=False))
+
         # self._o_coord_in = self.input("o_coord_in", self.data_width,
         #                               size=self.num_streams,
         #                               packed=True,
@@ -61,20 +67,20 @@ class Intersect(kts.Generator):
         # self._o_coord_in.add_attribute(ControlSignalAttr(is_control=False))
 
         # Need offsets for memory access
-        self._payload_ptr = self.input("payload_ptr", 16,
-                                       size=self.num_streams,
-                                       packed=True,
-                                       explicit_array=True)
-        self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False))
+        # self._payload_ptr = self.input("payload_ptr", 16,
+        #                                size=self.num_streams,
+        #                                packed=True,
+        #                                explicit_array=True)
+        # self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False))
 
         # Are incoming guys valid/eos?
-        self._valid_in = self.input("valid_in", self.num_streams)
+        self._valid_in = self.input("valid_in", self.num_streams * 2)
         self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
-        self._eos_in = self.input("eos_in", self.num_streams)
+        self._eos_in = self.input("eos_in", self.num_streams * 2)
         self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
         # Pop the incoming guys
-        self._ready_out = self.output("ready_out", self.num_streams)
+        self._ready_out = self.output("ready_out", self.num_streams * 2)
         self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # BackPRESH, 3 different channels
@@ -246,8 +252,10 @@ class Intersect(kts.Generator):
         ITER.output(self._clr_eos_sticky[0], 0)
         ITER.output(self._clr_eos_sticky[1], 0)
         ITER.output(self._coord_to_fifo, self._coord_in[0])
-        ITER.output(self._pos_to_fifo[0], self._pos_cnt[0] + self._payload_ptr[0])
-        ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
+        # ITER.output(self._pos_to_fifo[0], self._pos_cnt[0] + self._payload_ptr[0])
+        # ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
+        ITER.output(self._pos_to_fifo[0], self._pos_in[0])
+        ITER.output(self._pos_to_fifo[1], self._pos_in[1])
 
         #######
         # ALIGN
@@ -297,7 +305,10 @@ class Intersect(kts.Generator):
         self.intersect_fsm.set_start_state(IDLE)
 
         # Incrementing the pos cnt == popping the incoming stream
-        self.wire(self._ready_out, self._inc_pos_cnt)
+        self.wire(self._ready_out[0], self._inc_pos_cnt[0])
+        self.wire(self._ready_out[1], self._inc_pos_cnt[1])
+        self.wire(self._ready_out[2], self._inc_pos_cnt[0])
+        self.wire(self._ready_out[3], self._inc_pos_cnt[1])
 # ===================================
 # Dump metadata into fifo
 # ===================================

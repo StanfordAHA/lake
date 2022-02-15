@@ -632,7 +632,7 @@ class Scanner(Generator):
         SEQ_ITER.output(self._data_to_fifo, self._data_in)
         SEQ_ITER.output(self._en_reg_data_in, 0)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        SEQ_ITER.output(self._pos_out_to_fifo, self._agen_addr_d1)
+        SEQ_ITER.output(self._pos_out_to_fifo, self._agen_addr_d1 + self._payload_ptr)
 
         #############
         # SEQ_DONE
@@ -700,7 +700,7 @@ class Scanner(Generator):
         REP_INNER.output(self._data_to_fifo, self._data_in_d1)
         REP_INNER.output(self._en_reg_data_in, 0)
         # Capture the address used to read as the position
-        REP_INNER.output(self._pos_out_to_fifo, self._agen_addr_d1_cap)
+        REP_INNER.output(self._pos_out_to_fifo, self._agen_addr_d1_cap + self._payload_ptr)
 
         #############
         # REP_OUTER
