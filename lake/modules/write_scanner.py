@@ -1,3 +1,4 @@
+from bz2 import compress
 import kratos as kts
 from kratos import *
 from lake.passes.passes import lift_config_reg
@@ -102,19 +103,6 @@ class WriteScanner(Generator):
         self._inner_dim_offset = self.input("inner_dim_offset", 16)
         self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the inner level..."))
 
-# ==========================================
-# Generate addresses to scan over fiber...
-# ==========================================
-
-        self._inc_fiber_addr = self.var("inc_fiber_addr", 1)
-        self._clr_fiber_addr = self.var("clr_fiber_addr", 1)
-        self._fiber_addr_pre = add_counter(self, "fiber_addr_pre", 16, self._inc_fiber_addr, clear=self._clr_fiber_addr)
-
-        self._inc_rep = self.var("inc_rep", 1)
-        self._clr_rep = self.var("clr_rep", 1)
-        self._num_reps = add_counter(self, "num_reps", 16, self._inc_rep, self._clr_rep)
-        # self._step_agen = self.var("step_agen", 1)
-
 # =============================
 # Input FIFO
 #
@@ -210,8 +198,17 @@ class WriteScanner(Generator):
         # We have a new coord if the new coord input is valid and the curr_coord is not valid, or the data is different.
         self.wire(self._new_coord, (self._data_infifo_valid_in & ~self._data_infifo_eos_in) & (~self._curr_coord_valid | (self._data_infifo_data_in != self._curr_coord)))
 
+        self._stop_in = self.var("stop_in", 1)
+        self.wire(self._stop_in, self._data_infifo_valid_in & self._data_infifo_eos_in)
+
+        self._full_stop = self.var("full_stop", 1)
+        self.wire(self._full_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
+
         self._matching_stop = self.var("matching_stop", 1)
         self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == self._stop_lvl))
+
+        self._clr_wen_made = self.var("clr_wen_made", 1)
+        self._wen_made = sticky_flag(self, self._wen, clear=self._clr_wen_made, name="wen_made", seq_only=True)
 
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
@@ -283,16 +280,20 @@ class WriteScanner(Generator):
         ####################
         # UL_EMIT_COORD #
         ####################
-        # From the emit coord, we will send a write out as long the memory is ready for a write, then go back to UL
-        UL_EMIT_COORD.next(UL_EMIT_COORD, ~self._ready_in)
-        UL_EMIT_COORD.next(UL, self._ready_in)
+        # From the emit coord, we will send a write out as long the memory is ready for a write
+        # Then go back to UL once we see new data or a stop in
+        UL_EMIT_COORD.next(UL, self._new_coord | self._stop_in)
+        UL_EMIT_COORD.next(UL_EMIT_COORD, None)
 
         ####################
         # UL_EMIT_SEG #
         ####################
         # From the emit seg, we will send out the writes to the segment array, will clear all the state
-        UL_EMIT_SEG.next(UL_EMIT_SEG, ~self._ready_in)
-        UL_EMIT_SEG.next(UL, self._ready_in)
+        # Should go to done if we see a stop 0
+        # Should only move on once we have drained the subsequent stops and see valid data coming in
+        UL_EMIT_SEG.next(UL, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
+        UL_EMIT_SEG.next(DONE, self._full_stop)
+        UL_EMIT_SEG.next(UL_EMIT_SEG, None)
 
         ####################
         # DONE
@@ -318,6 +319,7 @@ class WriteScanner(Generator):
         self.scan_fsm.output(self._clr_curr_coord)
         self.scan_fsm.output(self._infifo_pop[0])
         self.scan_fsm.output(self._infifo_pop[1])
+        self.scan_fsm.output(self._clr_wen_made)
 
         #######
         # START - TODO - Generate general hardware...
@@ -335,6 +337,7 @@ class WriteScanner(Generator):
         START.output(self._clr_curr_coord, 0)
         START.output(self._infifo_pop[0], 0)
         START.output(self._infifo_pop[1], 0)
+        START.output(self._clr_wen_made, 0)
 
         #######
         # LL
@@ -352,6 +355,7 @@ class WriteScanner(Generator):
         LL.output(self._clr_curr_coord, 0)
         LL.output(self._infifo_pop[0], 0)
         LL.output(self._infifo_pop[1], 0)
+        LL.output(self._clr_wen_made, 0)
 
         #######
         # UnLL
@@ -371,6 +375,7 @@ class WriteScanner(Generator):
         # Pop if the memory is ready for a write, or its eos
         UnLL.output(self._infifo_pop[0], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
         UnLL.output(self._infifo_pop[1], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
+        UnLL.output(self._clr_wen_made, 0)
 
         #######
         # ComLL
@@ -392,6 +397,7 @@ class WriteScanner(Generator):
         # Only pop if its eos or the memory is ready for the write
         ComLL.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._data_infifo_eos_in | self._ready_in))
         ComLL.output(self._infifo_pop[1], 0)
+        ComLL.output(self._clr_wen_made, 0)
 
         #######
         # UL_WZ
@@ -410,6 +416,7 @@ class WriteScanner(Generator):
         UL_WZ.output(self._clr_curr_coord, 0)
         UL_WZ.output(self._infifo_pop[0], 0)
         UL_WZ.output(self._infifo_pop[1], 0)
+        UL_WZ.output(self._clr_wen_made, 0)
 
         #######
         # UL
@@ -426,43 +433,50 @@ class WriteScanner(Generator):
         UL.output(self._set_curr_coord, self._new_coord)
         UL.output(self._clr_curr_coord, 0)
         # Pop below the stop level
-        UL.output(self._infifo_pop[0], self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in > self._stop_lvl))
+        UL.output(self._infifo_pop[0], self._stop_in & (self._data_infifo_data_in > self._stop_lvl))
+        # UL.output(self._infifo_pop[0], 0)
         UL.output(self._infifo_pop[1], 0)
+        UL.output(self._clr_wen_made, 1)
 
         #######
         # UL_EMIT_COORD
         #######
         UL_EMIT_COORD.output(self._addr_out, self._coord_addr + self._inner_dim_offset)
-        UL_EMIT_COORD.output(self._wen, 1)
+        UL_EMIT_COORD.output(self._wen, ~self._wen_made & self._ready_in)
         UL_EMIT_COORD.output(self._data_out, self._curr_coord)
         UL_EMIT_COORD.output(self._inc_seg_addr, 0)
         UL_EMIT_COORD.output(self._clr_seg_addr, 0)
-        UL_EMIT_COORD.output(self._inc_coord_addr, self._ready_in)
+        UL_EMIT_COORD.output(self._inc_coord_addr, ~self._wen_made & self._ready_in)
         UL_EMIT_COORD.output(self._clr_coord_addr, 0)
-        UL_EMIT_COORD.output(self._inc_seg_ctr, self._ready_in)
+        UL_EMIT_COORD.output(self._inc_seg_ctr, ~self._wen_made & self._ready_in)
         UL_EMIT_COORD.output(self._clr_seg_ctr, 0)
         UL_EMIT_COORD.output(self._set_curr_coord, 0)
         UL_EMIT_COORD.output(self._clr_curr_coord, 0)
-        # Pop the coordinate if the write goes through
-        UL_EMIT_COORD.output(self._infifo_pop[0], self._ready_in)
+        # Pop until stop in or new coordinate
+        UL_EMIT_COORD.output(self._infifo_pop[0], ~self._new_coord & ~self._stop_in)
         UL_EMIT_COORD.output(self._infifo_pop[1], 0)
+        UL_EMIT_COORD.output(self._clr_wen_made, 0)
 
         #######
         # UL_EMIT_SEG
         #######
         UL_EMIT_SEG.output(self._addr_out, self._seg_addr)
-        UL_EMIT_SEG.output(self._wen, 1)
+        UL_EMIT_SEG.output(self._wen, ~self._wen_made & self._ready_in)
         UL_EMIT_SEG.output(self._data_out, self._seg_ctr)
-        UL_EMIT_SEG.output(self._inc_seg_addr, self._ready_in)
+        UL_EMIT_SEG.output(self._inc_seg_addr, ~self._wen_made & self._ready_in)
         UL_EMIT_SEG.output(self._clr_seg_addr, 0)
         UL_EMIT_SEG.output(self._inc_coord_addr, 0)
         UL_EMIT_SEG.output(self._clr_coord_addr, 0)
         UL_EMIT_SEG.output(self._inc_seg_ctr, 0)
         UL_EMIT_SEG.output(self._clr_seg_ctr, 0)
         UL_EMIT_SEG.output(self._set_curr_coord, 0)
-        UL_EMIT_SEG.output(self._clr_curr_coord, 0)
-        UL_EMIT_SEG.output(self._infifo_pop[0], self._ready_in)
+        # Make sure to clear the coord on segment emissions so it doesn't get reused
+        UL_EMIT_SEG.output(self._clr_curr_coord, 1)
+        # Assumption is that valid sets of coordinates are always passed here so I should be able to hit new data
+        # Pop until we have data in thats not a stop (or we fall through to DONE)
+        UL_EMIT_SEG.output(self._infifo_pop[0], self._data_infifo_valid_in & self._data_infifo_eos_in)
         UL_EMIT_SEG.output(self._infifo_pop[1], 0)
+        UL_EMIT_SEG.output(self._clr_wen_made, 0)
 
         #############
         # DONE
@@ -480,6 +494,7 @@ class WriteScanner(Generator):
         DONE.output(self._clr_curr_coord, 0)
         DONE.output(self._infifo_pop[0], 0)
         DONE.output(self._infifo_pop[1], 0)
+        DONE.output(self._clr_wen_made, 0)
 
         self.scan_fsm.set_start_state(START)
 
@@ -501,7 +516,7 @@ class WriteScanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0):
+    def get_bitstream(self, inner_offset, compressed=0, lowest_level=0, stop_lvl=0):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
@@ -509,22 +524,9 @@ class WriteScanner(Generator):
         # Store all configurations here
         config = [
             ("inner_dim_offset", inner_offset),
-            # ("max_outer_dim", max_out),
-            ("do_repeat", do_repeat),
-            ("repeat_outer_inner_n", repeat_outer),
-            ("repeat_factor", repeat_factor),
+            ("compressed", compressed),
+            ("lowest_level", lowest_level),
             ("stop_lvl", stop_lvl)]
-
-        if root:
-            dim = len(ranges)
-            tform_ranges, tform_strides = transform_strides_and_ranges(ranges=ranges,
-                                                                       strides=strides,
-                                                                       dimensionality=dim)
-            # for i in range(dim):
-            #     config += [("fiber_outer_iter_dimensionality", dim)]
-            #     config += [(f"fiber_outer_iter_ranges_{i}", tform_ranges[i])]
-            #     config += [(f"fiber_outer_addr_strides_{i}", tform_strides[i])]
-            #     config += [("fiber_outer_addr_starting_addr", 0)]
 
         return trim_config_list(flattened, config)
 
