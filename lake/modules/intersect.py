@@ -399,13 +399,14 @@ class Intersect(kts.Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, numlevels=0):
+    def get_bitstream(self, cmrg_stop_lvl=0):
 
         # Store all configurations here
         config = [("tile_en", 1)]
 
         if self.use_merger:
-            config += ("num_levels_used", numlevels)
+            config += ("cmrg_stop_lvl", cmrg_stop_lvl)
+
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
@@ -416,95 +417,278 @@ class Intersect(kts.Generator):
 
     def add_merging_logic(self):
 
-        num_levels = 4
-        self._num_levels_used = self.add_cfg_reg(name="num_levels_used",
-                                                 description="How many coordinate levels this unit is synchronizing",
-                                                 width=kts.clog2(num_levels))
+        # TODO: Gate merging logic when unused...
+        # Enable/Disable tile
+        self._cmrg_stop_lvl = self.input("cmrg_stop_lvl", 16)
+        self._cmrg_stop_lvl.add_attribute(ConfigRegAttr("Strip level for cmrg"))
 
         # Interface to downstream
-        self._cmrg_ready_in = self.input("cmrg_ready_in", 1)
+        self._cmrg_ready_in = self.input("cmrg_ready_in", 2)
         self._cmrg_ready_in.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._cmrg_valid_out = self.output("cmrg_valid_out", 1)
+        self._cmrg_valid_out = self.output("cmrg_valid_out", 2)
         self._cmrg_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._cmrg_eos_out = self.output("cmrg_eos_out", 1)
+        self._cmrg_eos_out = self.output("cmrg_eos_out", 2)
         self._cmrg_eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._cmrg_ready_out = self.output("cmrg_ready_out", 1)
+        self._cmrg_ready_out = self.output("cmrg_ready_out", 2)
         self._cmrg_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._cmrg_coord_out = [self.output(f"cmrg_coord_out_{x}", self.data_width) for x in range(num_levels)]
-        for i in range(num_levels):
-            self._cmrg_coord_out[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        self._cmrg_coord_out = self.output(f"cmrg_coord_out", self.data_width, size=2)
+        self._cmrg_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         # Coords in
-        self._cmrg_coord_in = [self.input(f"cmrg_coord_in_{x}", self.data_width) for x in range(num_levels)]
-        for i in range(num_levels):
-            self._cmrg_coord_in[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        self._cmrg_coord_in = self.input(f"cmrg_coord_in", self.data_width, size=2)
+        self._cmrg_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._cmrg_valid_in = self.input("cmrg_valid_in", num_levels)
+        self._cmrg_valid_in = self.input("cmrg_valid_in", 2)
         self._cmrg_valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._cmrg_eos_in = self.input("cmrg_eos_in", num_levels)
+        self._cmrg_eos_in = self.input("cmrg_eos_in", 2)
         self._cmrg_eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._cmrg_fifo_push = self.input("cmrg_fifo_push", num_levels)
-        self._cmrg_fifo_push.add_attribute(ControlSignalAttr(is_control=True))
-
-        self._cmrg_fifo_pop = self.var("cmrg_fifo_pop", num_levels)
-
-        self._of_valid_out = self.var("of_valid_out", num_levels)
-        self._of_eos_out = self.var("of_eos_out", num_levels)
-        self._of_entry_valid = self.var("of_entry_valid", num_levels)
+        ####
+        self._cmrg_fifo_push = self.var("cmrg_fifo_push", 2)
+        self._cmrg_fifo_pop = self.var("cmrg_fifo_pop", 2)
 
         # Create a bunch of fifos
         fifo_kwargs = {
-            "data_width": self.data_width + 2,
+            "data_width": self.data_width + 1,
             "width_mult": 1,
-            "depth": 16
+            "depth": 8
         }
 
-        for i in range(num_levels):
-            int_fifo = RegFIFO(**fifo_kwargs)
-            # Stupid convert -
-            tmp_coord_mrg_in = self.var(f"coord_mrg_fifo_in_{i}", self.data_width + 2, packed=True)
-            self.wire(tmp_coord_mrg_in[self.data_width - 1, 0], self._cmrg_coord_in[i])
-            self.wire(tmp_coord_mrg_in[self.data_width], self._cmrg_valid_in[i])
-            self.wire(tmp_coord_mrg_in[self.data_width + 1], self._cmrg_eos_in[i])
+        base_infifo = RegFIFO(**fifo_kwargs)
+        proc_infifo = RegFIFO(**fifo_kwargs)
 
-            tmp_coord_mrg_out = self.var(f"coord_mrg_fifo_out_{i}", self.data_width + 2, packed=True)
-            self.wire(self._cmrg_coord_out[i], tmp_coord_mrg_out[self.data_width - 1, 0])
-            self.wire(self._of_valid_out[i], tmp_coord_mrg_out[self.data_width])
-            self.wire(self._of_eos_out[i], tmp_coord_mrg_out[self.data_width + 1])
+        ##############
+        # BASE infifo
+        ##############
+        # Use this stream to process the PROC stream...
+        self._base_infifo_in_data = self.var("base_infifo_in_data", 16)
+        self._base_infifo_in_eos = self.var("base_infifo_in_eos", 1)
+        self._base_infifo_in_valid = self.var("base_infifo_in_valid", 1)
+        # Stupid convert -
+        self._base_infifo_in_packed = self.var(f"base_infifo_in_packed", self.data_width + 1, packed=True)
+        self.wire(self._base_infifo_in_packed[self.data_width], self._cmrg_eos_in[0])
+        self.wire(self._base_infifo_in_packed[self.data_width - 1, 0], self._cmrg_coord_in[0])
 
-            self.add_child(f"coord_mrg_fifo_{i}",
-                           int_fifo,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           clk_en=self._clk_en,
-                           push=self._cmrg_fifo_push[i],
-                           pop=self._cmrg_fifo_pop[i],
-                           data_in=tmp_coord_mrg_in,
-                           data_out=tmp_coord_mrg_out,
-                           valid=self._of_entry_valid[i])
+        self._base_infifo_out_packed = self.var(f"base_infifo_out_packed", self.data_width + 1, packed=True)
+        self.wire(self._base_infifo_in_eos, self._base_infifo_out_packed[self.data_width])
+        self.wire(self._base_infifo_in_data, self._base_infifo_out_packed[self.data_width - 1, 0])
 
-            # The actual valid/ready/eos out will be determined by the lowest level FIFO
-            # which will have the most data by virtue of the tree structure
-            if i == 0:
-                self.wire(self._cmrg_ready_out, ~int_fifo.ports.full)
-                self.wire(self._cmrg_valid_out, self._of_valid_out[i])
-                self.wire(self._cmrg_eos_out, self._of_eos_out[i])
-                # Pop the bottom based on the input ready,
-                self.wire(self._cmrg_fifo_pop[i], self._cmrg_ready_in & (self._num_levels_used != 0)[0])
-            # In the other case, we want to pop if the level down is eos and popping
-            else:
-                self.wire(self._cmrg_fifo_pop[i], (self._cmrg_fifo_pop[i - 1] & self._of_eos_out[i - 1]) & (i < self._num_levels_used)[0])
+        self.add_child(f"base_infifo",
+                       base_infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._valid_in[0],
+                       pop=self._cmrg_fifo_pop[0],
+                       data_in=self._base_infifo_in_packed,
+                       data_out=self._base_infifo_out_packed)
+
+        self.wire(self._base_infifo_in_valid, ~base_infifo.ports.empty)
+
+        ##############
+        # PROC infifo
+        ##############
+        self._proc_infifo_in_data = self.var("proc_infifo_in_data", 16)
+        self._proc_infifo_in_eos = self.var("proc_infifo_in_eos", 1)
+        self._proc_infifo_in_valid = self.var("proc_infifo_in_valid", 1)
+
+        self._proc_infifo_in_packed = self.var(f"proc_infifo_in_packed", self.data_width + 1, packed=True)
+        self.wire(self._proc_infifo_in_packed[self.data_width], self._cmrg_eos_in[1])
+        self.wire(self._proc_infifo_in_packed[self.data_width - 1, 0], self._cmrg_coord_in[1])
+
+        self._proc_infifo_out_packed = self.var(f"proc_infifo_out_packed", self.data_width + 1, packed=True)
+        self.wire(self._proc_infifo_in_eos, self._proc_infifo_out_packed[self.data_width])
+        self.wire(self._proc_infifo_in_data, self._proc_infifo_out_packed[self.data_width - 1, 0])
+
+        self.add_child(f"proc_infifo",
+                       proc_infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._valid_in[1],
+                       pop=self._cmrg_fifo_pop[1],
+                       data_in=self._proc_infifo_in_packed,
+                       data_out=self._proc_infifo_out_packed)
+
+        self.wire(self._proc_infifo_in_valid, ~proc_infifo.ports.empty)
+
+        ####################
+        # HELPER LOGIC FOR FSM
+        ####################
+
+        self._data_seen = self.var("data_seen", 1)
+        self.wire(self._data_seen, self._base_infifo_in_valid & ~self._base_infifo_in_eos)
+
+        self._eos_seen = self.var("eos_seen", 1)
+        self.wire(self._eos_seen, self._base_infifo_in_valid & self._base_infifo_in_eos)
+
+        self._clr_pushed_proc = self.var("clr_pushed_proc", 1)
+        self._pushed_proc = sticky_flag(self, self._cmrg_fifo_push[1], clear=self._clr_pushed_proc, name="pushed_proc", seq_only=True)
+
+        self._clr_pushed_stop_lvl = self.var("clr_pushed_stop_lvl", 1)
+        self._pushed_stop_lvl = sticky_flag(self, self._cmrg_fifo_push[0] & self._base_infifo_in_valid & self._base_infifo_in_eos,
+                                            clear=self._clr_pushed_proc, name="pushed_proc", seq_only=True)
+
+        ####################
+        # STATE MACHINE TO PROCESS PROC STREAM
+        ####################
+
+        # Create FSM
+        self.proc_fsm = self.add_fsm("proc_seq", reset_high=False)
+        START = self.proc_fsm.add_state("START")
+        DATA_SEEN = self.proc_fsm.add_state("DATA_SEEN")
+        STRIP = self.proc_fsm.add_state("STRIP")
+        PASS_STOP = self.proc_fsm.add_state(PASS_STOP)
+
+        ####################
+        # Next State Logic
+        ####################
+
+        ####################
+        # START #
+        ####################
+        # IN the START state, we are waiting to see data in a stream
+        # to know to pass on the processed stream
+        # If we hit the EOS without seeing data, we should strip it
+        START.next(DATA_SEEN, self._data_seen)
+        START.next(STRIP, self._eos_seen)
+        START.next(START, None)
+
+        ####################
+        # DATA_SEEN #
+        ####################
+        # In DATA SEEN, we want to pass thru any data including the
+        # stop token at the correct level, then go to the pass_stop logic. Make sure we also pushed the proc stream once
+        DATA_SEEN.next(PASS_STOP, self._pushed_proc & self._pushed_stop_lvl)
+        DATA_SEEN.next(DATA_SEEN, None)
+
+        ####################
+        # STRIP #
+        ####################
+        # At strip, we just want to strip one data from proc and strip the stop token from base
+        # Once that is done, we can move onto draining the stop tokens from both if there are any...
+        STRIP.next(PASS_STOP, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos)
+        STRIP.next(STRIP, None)
+
+        ####################
+        # FSM Output Logic
+        ####################
+
+        self.proc_fsm.output(self._cmrg_fifo_pop[0])
+        self.proc_fsm.output(self._cmrg_fifo_pop[1])
+        self.proc_fsm.output(self._cmrg_fifo_push[0])
+        self.proc_fsm.output(self._cmrg_fifo_push[1])
+        self.proc_fsm.output(self._clr_pushed_proc)
+        self.proc_fsm.output(self._clr_pushed_stop_lvl)
+
+        ################
+        # START
+        ################
+        START.output(self._cmrg_fifo_pop[0], 0)
+        START.output(self._cmrg_fifo_pop[1], 0)
+        START.output(self._cmrg_fifo_push[0], 0)
+        START.output(self._cmrg_fifo_push[1], 0)
+        START.output(self._clr_pushed_proc, 0)
+        START.output(self._clr_pushed_stop_lvl, 0)
+
+        ################
+        # DATA_SEEN
+        ################
+        DATA_SEEN.output(self._cmrg_fifo_pop[0], ~self._pushed_stop_lvl & ~base_outfifo.ports.full)
+        DATA_SEEN.output(self._cmrg_fifo_pop[1], ~self._pushed_proc & ~proc_outfifo.ports.full)
+        DATA_SEEN.output(self._cmrg_fifo_push[0], ~self._pushed_stop_lvl)
+        DATA_SEEN.output(self._cmrg_fifo_push[1], ~self._pushed_proc)
+        DATA_SEEN.output(self._clr_pushed_proc, 0)
+        DATA_SEEN.output(self._clr_pushed_stop_lvl, 0)
+
+        ################
+        # STRIP
+        ################
+        # TODO
+        STRIP.output(self._cmrg_fifo_pop[0], 0)
+        STRIP.output(self._cmrg_fifo_pop[1], 0)
+        STRIP.output(self._cmrg_fifo_push[0], 0)
+        STRIP.output(self._cmrg_fifo_push[1], 0)
+        STRIP.output(self._clr_pushed_proc, 0)
+        STRIP.output(self._clr_pushed_stop_lvl, 0)
+
+        ################
+        # PASS_STOP
+        ################
+        # TODO
+        PASS_STOP.output(self._cmrg_fifo_pop[0], 0)
+        PASS_STOP.output(self._cmrg_fifo_pop[1], 0)
+        PASS_STOP.output(self._cmrg_fifo_push[0], 0)
+        PASS_STOP.output(self._cmrg_fifo_push[1], 0)
+        PASS_STOP.output(self._clr_pushed_proc, 0)
+        PASS_STOP.output(self._clr_pushed_stop_lvl, 0)
+
+        self.proc_fsm.set_start_state(START)
+
+        ################
+        # OUTPUT FIFOS #
+        ################
+        base_outfifo = RegFIFO(**fifo_kwargs)
+        proc_outfifo = RegFIFO(**fifo_kwargs)
+
+        ##############
+        # BASE outfifo
+        ##############
+        # Use this stream to process the PROC stream...
+        # self._base_outfifo_in_data = self.var("base_outfifo_in_data", 16)
+        # self._base_outfifo_in_eos = self.var("base_outfifo_in_eos", 1)
+        # Stupid convert -
+        self._base_outfifo_in_packed = self.var(f"base_outfifo_in_packed", self.data_width + 1, packed=True)
+        self.wire(self._base_outfifo_in_packed[self.data_width], self._base_infifo_in_eos)
+        self.wire(self._base_outfifo_in_packed[self.data_width - 1, 0], self._base_infifo_in_data)
+
+        self._base_outfifo_out_packed = self.var(f"base_outfifo_out_packed", self.data_width + 1, packed=True)
+        self.wire(self._cmrg_eos_out[0], self._base_outfifo_out_packed[self.data_width])
+        self.wire(self._cmrg_coord_out[0], self._base_outfifo_out_packed[self.data_width - 1, 0])
+
+        self.add_child(f"base_outfifo",
+                       base_outfifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._cmrg_fifo_push[0],
+                       pop=self._ready_in[0],
+                       data_in=self._base_outfifo_in_packed,
+                       data_out=self._base_outfifo_out_packed)
+
+        ##############
+        # PROC outfifo
+        ##############
+        # self._proc_outfifo_in_data = self.var("proc_outfifo_in_data", 16)
+        # self._proc_outfifo_in_eos = self.var("proc_outfifo_in_eos", 1)
+
+        self._proc_outfifo_in_packed = self.var(f"proc_outfifo_in_packed", self.data_width + 1, packed=True)
+        self.wire(self._proc_outfifo_in_packed[self.data_width], self._proc_infifo_in_eos)
+        self.wire(self._proc_outfifo_in_packed[self.data_width - 1, 0], self._proc_infifo_in_data)
+
+        self._proc_outfifo_out_packed = self.var(f"proc_outfifo_out_packed", self.data_width + 1, packed=True)
+        self.wire(self._cmrg_eos_out[1], self._proc_outfifo_out_packed[self.data_width])
+        self.wire(self._cmrg_coord_out[1], self._proc_outfifo_out_packed[self.data_width - 1, 0])
+
+        self.add_child(f"proc_outfifo",
+                       proc_outfifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._cmrg_fifo_push[1],
+                       pop=self._ready_in[1],
+                       data_in=self._proc_outfifo_in_packed,
+                       data_out=self._proc_outfifo_out_packed)
 
 
 if __name__ == "__main__":
     intersect_dut = Intersect(data_width=16,
-                              use_merger=False)
+                              use_merger=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
