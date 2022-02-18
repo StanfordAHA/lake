@@ -399,13 +399,14 @@ class Intersect(kts.Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, cmrg_stop_lvl=0):
+    def get_bitstream(self, cmrg_enable=0, cmrg_stop_lvl=0):
 
         # Store all configurations here
         config = [("tile_en", 1)]
 
         if self.use_merger:
-            config += ("cmrg_stop_lvl", cmrg_stop_lvl)
+            config += [("cmrg_enable", cmrg_enable)]
+            config += [("cmrg_stop_lvl", cmrg_stop_lvl)]
 
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
@@ -422,6 +423,9 @@ class Intersect(kts.Generator):
         self._cmrg_stop_lvl = self.input("cmrg_stop_lvl", 16)
         self._cmrg_stop_lvl.add_attribute(ConfigRegAttr("Strip level for cmrg"))
 
+        self._cmrg_enable = self.input("cmrg_enable", 1)
+        self._cmrg_enable.add_attribute(ConfigRegAttr("Enable cmrger"))
+
         # Interface to downstream
         self._cmrg_ready_in = self.input("cmrg_ready_in", 2)
         self._cmrg_ready_in.add_attribute(ControlSignalAttr(is_control=False))
@@ -435,11 +439,13 @@ class Intersect(kts.Generator):
         self._cmrg_ready_out = self.output("cmrg_ready_out", 2)
         self._cmrg_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._cmrg_coord_out = self.output(f"cmrg_coord_out", self.data_width, size=2)
+        self._cmrg_coord_out = self.output(f"cmrg_coord_out", self.data_width,
+                                           size=2, packed=True, explicit_array=True)
         self._cmrg_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         # Coords in
-        self._cmrg_coord_in = self.input(f"cmrg_coord_in", self.data_width, size=2)
+        self._cmrg_coord_in = self.input(f"cmrg_coord_in", self.data_width,
+                                         size=2, packed=True, explicit_array=True)
         self._cmrg_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._cmrg_valid_in = self.input("cmrg_valid_in", 2)
@@ -461,6 +467,8 @@ class Intersect(kts.Generator):
 
         base_infifo = RegFIFO(**fifo_kwargs)
         proc_infifo = RegFIFO(**fifo_kwargs)
+        base_outfifo = RegFIFO(**fifo_kwargs)
+        proc_outfifo = RegFIFO(**fifo_kwargs)
 
         ##############
         # BASE infifo
@@ -483,12 +491,13 @@ class Intersect(kts.Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._valid_in[0],
+                       push=self._cmrg_valid_in[0],
                        pop=self._cmrg_fifo_pop[0],
                        data_in=self._base_infifo_in_packed,
                        data_out=self._base_infifo_out_packed)
 
         self.wire(self._base_infifo_in_valid, ~base_infifo.ports.empty)
+        self.wire(self._cmrg_ready_out[0], ~base_infifo.ports.full)
 
         ##############
         # PROC infifo
@@ -510,19 +519,22 @@ class Intersect(kts.Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._valid_in[1],
+                       push=self._cmrg_valid_in[1],
                        pop=self._cmrg_fifo_pop[1],
                        data_in=self._proc_infifo_in_packed,
                        data_out=self._proc_infifo_out_packed)
 
         self.wire(self._proc_infifo_in_valid, ~proc_infifo.ports.empty)
+        self.wire(self._cmrg_ready_out[1], ~proc_infifo.ports.full)
 
         ####################
         # HELPER LOGIC FOR FSM
         ####################
 
-        self._data_seen = self.var("data_seen", 1)
-        self.wire(self._data_seen, self._base_infifo_in_valid & ~self._base_infifo_in_eos)
+        self._base_data_seen = self.var("base_data_seen", 1)
+        self.wire(self._base_data_seen, self._base_infifo_in_valid & ~self._base_infifo_in_eos)
+        self._proc_data_seen = self.var("proc_data_seen", 1)
+        self.wire(self._proc_data_seen, self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
 
         self._eos_seen = self.var("eos_seen", 1)
         self.wire(self._eos_seen, self._base_infifo_in_valid & self._base_infifo_in_eos)
@@ -532,7 +544,11 @@ class Intersect(kts.Generator):
 
         self._clr_pushed_stop_lvl = self.var("clr_pushed_stop_lvl", 1)
         self._pushed_stop_lvl = sticky_flag(self, self._cmrg_fifo_push[0] & self._base_infifo_in_valid & self._base_infifo_in_eos,
-                                            clear=self._clr_pushed_proc, name="pushed_proc", seq_only=True)
+                                            clear=self._clr_pushed_stop_lvl, name="pushed_stop_lvl", seq_only=True)
+
+        self._pushing_s0 = self.var("pushing_s0", 1)
+        self.wire(self._pushing_s0, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos &
+                  (self._base_infifo_in_data == 0) & (self._proc_infifo_in_data == 0) & ~base_infifo.ports.full & ~proc_infifo.ports.full)
 
         ####################
         # STATE MACHINE TO PROCESS PROC STREAM
@@ -543,7 +559,8 @@ class Intersect(kts.Generator):
         START = self.proc_fsm.add_state("START")
         DATA_SEEN = self.proc_fsm.add_state("DATA_SEEN")
         STRIP = self.proc_fsm.add_state("STRIP")
-        PASS_STOP = self.proc_fsm.add_state(PASS_STOP)
+        PASS_STOP = self.proc_fsm.add_state("PASS_STOP")
+        DONE = self.proc_fsm.add_state("DONEX")
 
         ####################
         # Next State Logic
@@ -555,7 +572,7 @@ class Intersect(kts.Generator):
         # IN the START state, we are waiting to see data in a stream
         # to know to pass on the processed stream
         # If we hit the EOS without seeing data, we should strip it
-        START.next(DATA_SEEN, self._data_seen)
+        START.next(DATA_SEEN, self._base_data_seen)
         START.next(STRIP, self._eos_seen)
         START.next(START, None)
 
@@ -576,6 +593,20 @@ class Intersect(kts.Generator):
         STRIP.next(STRIP, None)
 
         ####################
+        # PASS_STOP #
+        ####################
+        # IN PASS_STOP, there are two possibilities - the proc stream either hits S0 or has data again
+        # since every hierarchically issued coordinate has a chance to have a non-null payload
+        PASS_STOP.next(START, self._proc_data_seen)
+        PASS_STOP.next(DONE, self._pushing_s0)
+        PASS_STOP.next(PASS_STOP, None)
+
+        ####################
+        # DONE #
+        ####################
+        DONE.next(DONE, None)
+
+        ####################
         # FSM Output Logic
         ####################
 
@@ -593,25 +624,26 @@ class Intersect(kts.Generator):
         START.output(self._cmrg_fifo_pop[1], 0)
         START.output(self._cmrg_fifo_push[0], 0)
         START.output(self._cmrg_fifo_push[1], 0)
-        START.output(self._clr_pushed_proc, 0)
-        START.output(self._clr_pushed_stop_lvl, 0)
+        # Force these to 0 (but does this consume power?)
+        START.output(self._clr_pushed_proc, 1)
+        START.output(self._clr_pushed_stop_lvl, 1)
 
         ################
         # DATA_SEEN
         ################
         DATA_SEEN.output(self._cmrg_fifo_pop[0], ~self._pushed_stop_lvl & ~base_outfifo.ports.full)
         DATA_SEEN.output(self._cmrg_fifo_pop[1], ~self._pushed_proc & ~proc_outfifo.ports.full)
-        DATA_SEEN.output(self._cmrg_fifo_push[0], ~self._pushed_stop_lvl)
-        DATA_SEEN.output(self._cmrg_fifo_push[1], ~self._pushed_proc)
+        DATA_SEEN.output(self._cmrg_fifo_push[0], ~self._pushed_stop_lvl & self._base_infifo_in_valid)
+        DATA_SEEN.output(self._cmrg_fifo_push[1], ~self._pushed_proc & self._proc_infifo_in_valid)
         DATA_SEEN.output(self._clr_pushed_proc, 0)
         DATA_SEEN.output(self._clr_pushed_stop_lvl, 0)
 
         ################
         # STRIP
         ################
-        # TODO
-        STRIP.output(self._cmrg_fifo_pop[0], 0)
-        STRIP.output(self._cmrg_fifo_pop[1], 0)
+        # Pop both fifos when they are joined
+        STRIP.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos)
+        STRIP.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos)
         STRIP.output(self._cmrg_fifo_push[0], 0)
         STRIP.output(self._cmrg_fifo_push[1], 0)
         STRIP.output(self._clr_pushed_proc, 0)
@@ -621,20 +653,29 @@ class Intersect(kts.Generator):
         # PASS_STOP
         ################
         # TODO
-        PASS_STOP.output(self._cmrg_fifo_pop[0], 0)
-        PASS_STOP.output(self._cmrg_fifo_pop[1], 0)
-        PASS_STOP.output(self._cmrg_fifo_push[0], 0)
-        PASS_STOP.output(self._cmrg_fifo_push[1], 0)
+        PASS_STOP.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_infifo.ports.full & ~proc_infifo.ports.full)
+        PASS_STOP.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_infifo.ports.full & ~proc_infifo.ports.full)
+        PASS_STOP.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & self._proc_infifo_in_valid)
+        PASS_STOP.output(self._cmrg_fifo_push[1], self._base_infifo_in_valid & self._proc_infifo_in_valid)
         PASS_STOP.output(self._clr_pushed_proc, 0)
         PASS_STOP.output(self._clr_pushed_stop_lvl, 0)
+
+        ################
+        # DONE
+        ################
+        # TODO
+        DONE.output(self._cmrg_fifo_pop[0], 0)
+        DONE.output(self._cmrg_fifo_pop[1], 0)
+        DONE.output(self._cmrg_fifo_push[0], 0)
+        DONE.output(self._cmrg_fifo_push[1], 0)
+        DONE.output(self._clr_pushed_proc, 0)
+        DONE.output(self._clr_pushed_stop_lvl, 0)
 
         self.proc_fsm.set_start_state(START)
 
         ################
         # OUTPUT FIFOS #
         ################
-        base_outfifo = RegFIFO(**fifo_kwargs)
-        proc_outfifo = RegFIFO(**fifo_kwargs)
 
         ##############
         # BASE outfifo
@@ -661,6 +702,8 @@ class Intersect(kts.Generator):
                        data_in=self._base_outfifo_in_packed,
                        data_out=self._base_outfifo_out_packed)
 
+        self.wire(self._cmrg_valid_out[0], ~base_outfifo.ports.empty)
+
         ##############
         # PROC outfifo
         ##############
@@ -684,6 +727,8 @@ class Intersect(kts.Generator):
                        pop=self._ready_in[1],
                        data_in=self._proc_outfifo_in_packed,
                        data_out=self._proc_outfifo_out_packed)
+
+        self.wire(self._cmrg_valid_out[1], ~proc_outfifo.ports.empty)
 
 
 if __name__ == "__main__":
