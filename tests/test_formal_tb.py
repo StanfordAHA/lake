@@ -223,10 +223,9 @@ def test_formal_tb():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "tb_formal"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":

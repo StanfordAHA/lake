@@ -64,13 +64,9 @@ def test_storage_ram(mem_width,  # CGRA Params
                      config_addr_width=config_addr_width,
                      fifo_mode=fifo_mode)
 
-    print(lt_dut)
-
     lt_dut = lt_dut.dut
 
     new_config = lt_dut.get_bitstream(new_config)
-
-    print(new_config)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -122,9 +118,11 @@ def test_storage_ram(mem_width,  # CGRA Params
         if in_out_ports > 1:
             tester.circuit.input_width_16_num_0 = data_in
             tester.circuit.input_width_16_num_1 = addr_in
+            tester.circuit.input_width_16_num_2 = addr_in
         else:
             tester.circuit.input_width_16_num_0 = data_in
             tester.circuit.input_width_16_num_1 = addr_in
+            tester.circuit.input_width_16_num_2 = addr_in
 
         tester.circuit.input_width_1_num_0[0] = read
         tester.circuit.input_width_1_num_1[0] = write
@@ -133,7 +131,13 @@ def test_storage_ram(mem_width,  # CGRA Params
         tester.eval()
 
         # # Now check the outputs
-        tester.circuit.output_width_1_num_1.expect(prev_rd)
+        valid_line = tester.circuit.output_width_1_num_0
+        if fw_int > 1:
+            valid_line = tester.circuit.output_width_1_num_1
+
+        # tester.circuit.output_width_1_num_0.expect(prev_rd)
+        # tester.circuit[f"output_width_1_num_{valid_line}"].expect(prev_rd)
+        valid_line.expect(prev_rd)
         if prev_rd:
             if in_out_ports > 1:
                 tester.circuit.output_width_16_num_0.expect(model_out[0])
@@ -144,7 +148,6 @@ def test_storage_ram(mem_width,  # CGRA Params
         prev_rd = read
 
     with tempfile.TemporaryDirectory() as tempdir:
-        # tempdir = "strg_ram_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
