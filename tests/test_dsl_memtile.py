@@ -1,17 +1,13 @@
 import kratos as kts
 import fault
-import pytest
 import tempfile
-import os
+import pytest
 
-from lake.passes.passes import lift_config_reg, change_sram_port_names
 from lake.utils.sram_macro import SRAMMacroInfo
 # input and output data
 from lake.utils.parse_clkwork_csv import generate_data_lists
 # configurations
 from lake.utils.parse_clkwork_config import *
-from lake.utils.util import get_configs_dict, set_configs_sv
-from lake.utils.util import extract_formal_annotation
 from lake.utils.util import check_env
 from lake.dsl.dsl_examples.memtile import *
 
@@ -90,6 +86,7 @@ def gen_test_lake(config_path,
                                flags=["-Wno-fatal", "--trace"])
 
 
+@pytest.mark.skip
 def test_conv_3_3():
     lc, ls = check_env()
     config_path = lc + "conv_3_3_recipe_dsl"

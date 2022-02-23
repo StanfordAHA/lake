@@ -3,7 +3,8 @@ import pytest
 
 
 # add more tests with this function by adding args
-@pytest.mark.parametrize("args", [lake_test_app_args("separate")])
+@pytest.mark.skip
+# @pytest.mark.parametrize("args", [lake_test_app_args("separate")])
 def test_lake(args):
     gen_test_lake(config_path=args[0],
                   stream_path=args[1],
