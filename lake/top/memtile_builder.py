@@ -25,21 +25,28 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     # with the standard routing network on the AHA CGRA
     legal_widths = [16, 1]
 
-    def __init__(self, name, debug, memory_interface: MemoryInterface = None, memory_banks=1, controllers=[]):
+    def __init__(self, name, debug, memory_interface: MemoryInterface = None, memory_banks=1, controllers=None):
 
         super().__init__(name, debug)
 
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
-        self.controllers = controllers
+        if controllers is not None:
+            self.controllers = controllers
+        else:
+            self.controllers = []
         self.controllers_flat = []
         self.controllers_dict = {}
         self.controllers_flat_dict = {}
+        self.c_to_flat = {}
+        self.flat_to_c = {}
         for mem_ctrl in self.controllers:
             self.controllers_dict[mem_ctrl.name] = mem_ctrl
             flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=MemoryTileBuilder.legal_widths)
             self.controllers_flat_dict[flat_wrap.name] = flat_wrap
             self.controllers_flat.append(flat_wrap)
+            self.c_to_flat[mem_ctrl.name] = flat_wrap.name
+            self.flat_to_c[flat_wrap.name] = mem_ctrl.name
         self.num_modes = 0
 
         self.memories = []
@@ -54,6 +61,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         self.mem_port_code = {}
         self.mem_port_mux_if = {}
+
+        self.ctrl_to_mode = {}
 
         self.supports_chaining = True
 
@@ -124,6 +133,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             self._mode = self.var("mode", 1)
             tmp0 = kts.const(0, 1)
             self.wire(self._mode, tmp0)
+
+        # Provide mapping from controller name to mode
+        for i, ctrl in enumerate(self.controllers):
+            self.ctrl_to_mode[ctrl.name] = i
 
         self.resolve_memports()
         self.resolve_inputs()
@@ -258,6 +271,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=MemoryTileBuilder.legal_widths)
             self.controllers_flat_dict[flat_wrap.name] = flat_wrap
             self.controllers_flat.append(flat_wrap)
+            self.c_to_flat[mem_ctrl.name] = flat_wrap.name
+            self.flat_to_c[flat_wrap.name] = mem_ctrl.name
         else:
             raise MemoryTileFinalizedException(f"Controllers finalized - {mem_ctrl} isn't being added...")
 
@@ -462,14 +477,23 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 prev_stmt = None
                 # Default assign 0 to prevent latches.
                 mux_comb.add_stmt(new_output.assign(0))
-                for (idx, (ctrl_name, port)) in enumerate(signal_dict.items()):
+                on_first = True
+                for (ctrl_name, port) in signal_dict.items():
+                    # Create a list of ports/values to wire to based on the existence of the port in the mode
+                    # for idx in self.num_modes:
                     if mux_size == 1:
                         mux_comb.add_stmt(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
                     else:
-                        if idx == 0:
+                        # Index is set off the controller mapping
+                        ctrl_name_unflat = self.flat_to_c[ctrl_name]
+                        idx = self.ctrl_to_mode[ctrl_name_unflat]
+                        if on_first is True:
                             first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
+                            # Figure out if an output from a controller of the mode idx is actually defined or not
                             first_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
                             prev_stmt = first_if
+                            on_first = False
+
                         else:
                             chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
                             chain_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))

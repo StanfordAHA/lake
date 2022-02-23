@@ -62,6 +62,8 @@ def test_storage_fifo(mem_width,  # CGRA Params
                      config_addr_width=config_addr_width,
                      fifo_mode=fifo_mode)
 
+    # print(lt_dut)
+
     lt_dut = lt_dut.dut
 
     new_config = lt_dut.get_bitstream(fifo_config)
@@ -130,9 +132,9 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
-                               directory="test_output",
+                               directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
