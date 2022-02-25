@@ -71,6 +71,7 @@ def SKY_Tech_Map() -> dict:
 
     return tech_map
 
+
 def GF_Tech_Map() -> dict:
     '''
     Currently returns the tech map for the single port SRAM, but we can

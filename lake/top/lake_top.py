@@ -108,7 +108,6 @@ class LakeTop(Generator):
         else:
             tech_map = TSMC_Tech_Map()
 
-
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
         MTB.set_memory_interface(name_prefix=name_prefix,
