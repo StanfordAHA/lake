@@ -10,7 +10,7 @@ from lake.top.extract_tile_info import extract_top_config
 from lake.utils.sram_macro import SRAMMacroInfo
 import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
-from lake.top.tech_maps import SKY_Tech_Map, TSMC_Tech_Map
+from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.modules.stencil_valid import StencilValid
 from _kratos import create_wrapper_flatten
@@ -46,7 +46,8 @@ class LakeTop(Generator):
                  gen_addr=True,
                  stencil_valid=True,
                  formal_module=None,
-                 do_config_lift=True):
+                 do_config_lift=True,
+                 GF=True):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -75,6 +76,7 @@ class LakeTop(Generator):
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
         self.formal_module = formal_module
+        self.GF = GF
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -101,14 +103,18 @@ class LakeTop(Generator):
             tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=False),
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
 
-        tech_map = TSMC_Tech_Map()
+        if self.GF:
+            tech_map = GF_Tech_Map()
+        else:
+            tech_map = TSMC_Tech_Map()
+
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
         MTB.set_memory_interface(name_prefix=name_prefix,
                                  mem_params=memory_params,
                                  ports=tsmc_mem,
-                                 sim_macro_n=True,
+                                 sim_macro_n=not self.use_sram_stub,
                                  tech_map=tech_map)
 
         # Now add the controllers in...

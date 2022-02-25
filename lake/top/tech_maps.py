@@ -70,3 +70,35 @@ def SKY_Tech_Map() -> dict:
     }
 
     return tech_map
+
+def GF_Tech_Map() -> dict:
+    '''
+    Currently returns the tech map for the single port SRAM, but we can
+    procedurally generate different tech maps
+    '''
+    ports = []
+
+    # TODO: FILL THESE OUT ALEX
+
+    single_port = {
+        'data_in': 'D',
+        'addr': 'A',
+        'write_enable': 'WEB',
+        'cen': 'CEB',
+        'clk': 'CLK',
+        'data_out': 'Q',
+        'alt_sigs': {
+            # value, width
+            'ALEX': (0, 2),
+            'MAX': (0, 2)
+        }
+    }
+
+    ports.append(single_port)
+
+    tech_map = {
+        'name': "GLOBALFOUNDRIESSTUFF",
+        'ports': ports
+    }
+
+    return tech_map
