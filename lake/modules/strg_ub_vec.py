@@ -367,28 +367,14 @@ class StrgUBVec(MemoryController):
                 config.append((f"strg_ub_agg_only_agg_write_sched_gen_1_sched_addr_gen_strides_{i}", in2agg_1.cyc_stride[i]))
 
         if agg2sram_0 is not None:
-            config.append(("strg_ub_agg_sram_shared_loops_in2buf_autovec_write_0_dimensionality", agg2sram_0.dim))
-            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_enable", 1))
-            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_starting_addr", agg2sram_0.cyc_strt))
-            config.append(("strg_ub_agg_only_agg_read_addr_gen_0_starting_addr", agg2sram_0.out_data_strt))
-            config.append(("strg_ub_sram_only_input_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
-            for i in range(agg2sram_0.dim):
-                config.append((f"strg_ub_agg_only_agg_read_addr_gen_0_strides_{i}", agg2sram_0.out_data_stride[i]))
-                config.append((f"strg_ub_agg_sram_shared_loops_in2buf_autovec_write_0_ranges_{i}", agg2sram_0.extent[i]))
-                config.append((f"strg_ub_sram_only_input_addr_gen_0_strides_{i}", agg2sram_0.in_data_stride[i]))
-                config.append((f"strg_ub_agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_strides_{i}", agg2sram_0.cyc_stride[i]))
+            config.append(("strg_ub_agg_sram_shared_delay_0", agg2sram_0.delay[0]))
+            config.append(("strg_ub_agg_sram_shared_mode_0", agg2sram_0.mode[0]))
+            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_agg_read_padding", agg2sram_0.agg_read_padding[0]))
 
         if agg2sram_1 is not None:
-            config.append(("strg_ub_agg_sram_shared_loops_in2buf_autovec_write_1_dimensionality", agg2sram_1.dim))
-            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_enable", 1))
-            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_starting_addr", agg2sram_1.cyc_strt))
-            config.append(("strg_ub_agg_only_agg_read_addr_gen_1_starting_addr", agg2sram_1.out_data_strt))
-            config.append(("strg_ub_sram_only_input_addr_gen_1_starting_addr", agg2sram_1.in_data_strt))
-            for i in range(agg2sram_1.dim):
-                config.append((f"strg_ub_agg_only_agg_read_addr_gen_1_strides_{i}", agg2sram_1.out_data_stride[i]))
-                config.append((f"strg_ub_agg_sram_shared_loops_in2buf_autovec_write_1_ranges_{i}", agg2sram_1.extent[i]))
-                config.append((f"strg_ub_sram_only_input_addr_gen_1_strides_{i}", agg2sram_1.in_data_stride[i]))
-                config.append((f"strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_strides_{i}", agg2sram_1.cyc_stride[i]))
+            config.append(("strg_ub_agg_sram_shared_delay_1", agg2sram_1.delay[0]))
+            config.append(("strg_ub_agg_sram_shared_mode_1", agg2sram_1.mode[0]))
+            config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_agg_read_padding", agg2sram_1.agg_read_padding[0]))
 
         if sram2tb_0 is not None:
             config.append(("strg_ub_sram_only_output_addr_gen_0_starting_addr", sram2tb_0.out_data_strt))
@@ -488,29 +474,15 @@ class StrgUBVec(MemoryController):
 
         if "agg2sram_0" in config_json:
             agg2sram_0 = map_controller(extract_controller_json(config_json["agg2sram_0"]), "agg2sram_0")
-            config.append(("agg_sram_shared_loops_in2buf_autovec_write_0_dimensionality", agg2sram_0.dim))
-            config.append(("agg_sram_shared_agg_read_sched_gen_0_enable", 1))
-            config.append(("agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_starting_addr", agg2sram_0.cyc_strt))
-            config.append(("agg_only_agg_read_addr_gen_0_starting_addr", agg2sram_0.out_data_strt))
-            config.append(("sram_only_input_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
-            for i in range(agg2sram_0.dim):
-                config.append((f"agg_only_agg_read_addr_gen_0_strides_{i}", agg2sram_0.out_data_stride[i]))
-                config.append((f"agg_sram_shared_loops_in2buf_autovec_write_0_ranges_{i}", agg2sram_0.extent[i]))
-                config.append((f"sram_only_input_addr_gen_0_strides_{i}", agg2sram_0.in_data_stride[i]))
-                config.append((f"agg_sram_shared_agg_read_sched_gen_0_sched_addr_gen_strides_{i}", agg2sram_0.cyc_stride[i]))
+            config.append(("agg_sram_shared_delay_0", agg2sram_0.delay[0]))
+            config.append(("agg_sram_shared_mode_0", agg2sram_0.mode[0]))
+            config.append(("agg_sram_shared_agg_read_sched_gen_0_agg_read_padding", agg2sram_0.agg_read_padding[0]))
 
         if "agg2sram_1" in config_json:
             agg2sram_1 = map_controller(extract_controller_json(config_json["agg2sram_1"]), "agg2sram_1")
-            config.append(("agg_sram_shared_loops_in2buf_autovec_write_1_dimensionality", agg2sram_1.dim))
-            config.append(("agg_sram_shared_agg_read_sched_gen_1_enable", 1))
-            config.append(("agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_starting_addr", agg2sram_1.cyc_strt))
-            config.append(("agg_only_agg_read_addr_gen_1_starting_addr", agg2sram_1.out_data_strt))
-            config.append(("sram_only_input_addr_gen_1_starting_addr", agg2sram_1.in_data_strt))
-            for i in range(agg2sram_1.dim):
-                config.append((f"agg_only_agg_read_addr_gen_1_strides_{i}", agg2sram_1.out_data_stride[i]))
-                config.append((f"agg_sram_shared_loops_in2buf_autovec_write_1_ranges_{i}", agg2sram_1.extent[i]))
-                config.append((f"sram_only_input_addr_gen_1_strides_{i}", agg2sram_1.in_data_stride[i]))
-                config.append((f"agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_strides_{i}", agg2sram_1.cyc_stride[i]))
+            config.append(("agg_sram_shared_delay_1", agg2sram_1.delay[0]))
+            config.append(("agg_sram_shared_mode_1", agg2sram_1.mode[0]))
+            config.append(("agg_sram_shared_agg_read_sched_gen_1_agg_read_padding", agg2sram_1.agg_read_padding[0]))
 
         # Count tbs
         num_tbs = 0
