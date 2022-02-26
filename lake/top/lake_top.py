@@ -104,9 +104,9 @@ class LakeTop(Generator):
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
 
         if self.GF:
-            tech_map = GF_Tech_Map()
+            tech_map = GF_Tech_Map(self.mem_depth, self.mem_width)
         else:
-            tech_map = TSMC_Tech_Map()
+            tech_map = TSMC_Tech_Map(self.mem_depth, self.mem_width)
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
