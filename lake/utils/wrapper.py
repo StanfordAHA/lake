@@ -105,6 +105,11 @@ if __name__ == "__main__":
                         help="use dual port sram",
                         default=False)
 
+    parser.add_argument("-stub",
+                        action='store_true',
+                        help="use sram stub for clockwork verilator simulation",
+                        default=True)
+
     parser.add_argument("-v",
                         action='store_true',
                         help='Generate main verilog')
@@ -156,6 +161,7 @@ if __name__ == "__main__":
         lake_kwargs['mem_depth'] = args.d
         lake_kwargs['rw_same_cycle'] = args.dp
         lake_kwargs['input_iterator_support'] = args.ii
+        lake_kwargs['use_sram_stub'] = args.stub
         lake_kwargs['output_iterator_support'] = args.oi
         lake_kwargs['read_delay'] = args.rd
         lake_kwargs['name'] = args.vmn
