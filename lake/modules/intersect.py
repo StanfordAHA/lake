@@ -589,7 +589,7 @@ class Intersect(kts.Generator):
         ####################
         # At strip, we just want to strip one data from proc and strip the stop token from base
         # Once that is done, we can move onto draining the stop tokens from both if there are any...
-        STRIP.next(PASS_STOP, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos)
+        STRIP.next(PASS_STOP, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
         STRIP.next(STRIP, None)
 
         ####################
@@ -642,8 +642,8 @@ class Intersect(kts.Generator):
         # STRIP
         ################
         # Pop both fifos when they are joined
-        STRIP.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos)
-        STRIP.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos)
+        STRIP.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
+        STRIP.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
         STRIP.output(self._cmrg_fifo_push[0], 0)
         STRIP.output(self._cmrg_fifo_push[1], 0)
         STRIP.output(self._clr_pushed_proc, 0)
