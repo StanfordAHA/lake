@@ -31,7 +31,7 @@ class LakeTop(Generator):
                  interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
-                 use_sram_stub=True,
+                 use_sim_sram=True,
                  sram_macro_info=SRAMMacroInfo("tsmc_name"),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
@@ -61,7 +61,7 @@ class LakeTop(Generator):
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_input_ports = mem_input_ports
         self.mem_output_ports = mem_output_ports
-        self.use_sram_stub = use_sram_stub
+        self.use_sim_sram = use_sim_sram
         self.sram_macro_info = sram_macro_info
         self.agg_height = agg_height
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
@@ -113,7 +113,7 @@ class LakeTop(Generator):
         MTB.set_memory_interface(name_prefix=name_prefix,
                                  mem_params=memory_params,
                                  ports=tsmc_mem,
-                                 sim_macro_n=not self.use_sram_stub,
+                                 sim_macro_n=self.use_sim_sram,
                                  tech_map=tech_map)
 
         # Now add the controllers in...
