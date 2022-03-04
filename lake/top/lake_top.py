@@ -880,8 +880,6 @@ class LakeTop(Generator):
         if add_flush:
             self.add_attribute("sync-reset=flush")
             kts.passes.auto_insert_sync_reset(self.internal_generator)
-            flush_port = self.internal_generator.get_port("flush")
-            flush_port.add_attribute(ControlSignalAttr(True))
 
         if do_config_lift:
             lift_config_reg(self.internal_generator)
