@@ -103,6 +103,9 @@ class WriteScanner(Generator):
         self._inner_dim_offset = self.input("inner_dim_offset", 16)
         self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the inner level..."))
 
+        self._block_mode = self.input("block_mode", 1)
+        self._block_mode.add_attribute(ConfigRegAttr("Block Writes or Not"))
+
 # =============================
 # Input FIFO
 #
@@ -169,6 +172,13 @@ class WriteScanner(Generator):
         self.wire(self._ready_out[1], ~self._addr_infifo.ports.full)
         self.wire(self._addr_infifo_valid_in, ~self._addr_infifo.ports.empty)
 
+        # State for block writes
+        self._set_block_size = self.var("set_block_size", 1)
+        self._block_size = register(self, self._data_infifo_data_in, self._set_block_size, name="block_size")
+
+        self._inc_block_write = self.var("inc_block_write", 1)
+        self._clr_block_write = self.var("clr_block_write", 1)
+        self._block_writes = add_counter(self, "block_write_count", 16, increment=self._inc_block_write, clear=self._clr_block_write)
 
 # =============================
 # SCAN FSM
@@ -213,6 +223,10 @@ class WriteScanner(Generator):
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
         START = self.scan_fsm.add_state("START")
+        BLOCK_1_SZ = self.scan_fsm.add_state("BLOCK_1_SZ")
+        BLOCK_1_WR = self.scan_fsm.add_state("BLOCK_1_WR")
+        BLOCK_2_SZ = self.scan_fsm.add_state("BLOCK_2_SZ")
+        BLOCK_2_WR = self.scan_fsm.add_state("BLOCK_2_WR")
         # Lowest level
         LL = self.scan_fsm.add_state("LL")
         # Lowest level uncompressed (use address)
@@ -233,8 +247,39 @@ class WriteScanner(Generator):
         # START #
         ####################
         # Start state goes to either lowest level or upper level
+        START.next(BLOCK_1_SZ, self._block_mode)
         START.next(LL, self._lowest_level)
         START.next(UL_WZ, ~self._lowest_level)
+
+        ####################
+        # BLOCK_1_SZ
+        ####################
+        # Get the first block size...
+        BLOCK_1_SZ.next(BLOCK_1_WR, self._data_infifo_valid_in)
+        BLOCK_1_SZ.next(BLOCK_1_SZ, None)
+
+        ####################
+        # BLOCK_1_WR
+        ####################
+        # Write the first block...
+        # If this is just writing a single structure, end after that
+        BLOCK_1_WR.next(BLOCK_2_SZ, (self._block_writes == self._block_size) & ~self._lowest_level)
+        BLOCK_1_WR.next(DONE, (self._block_writes == self._block_size) & self._lowest_level)
+        BLOCK_1_WR.next(BLOCK_1_WR, None)
+
+        ####################
+        # BLOCK_2_SZ
+        ####################
+        # Get the second block size...
+        BLOCK_2_SZ.next(BLOCK_2_WR, self._data_infifo_valid_in)
+        BLOCK_2_SZ.next(BLOCK_2_SZ, None)
+
+        ####################
+        # BLOCK_2_WR
+        ####################
+        # Get the first block size...
+        BLOCK_2_WR.next(DONE, (self._block_writes == self._block_size))
+        BLOCK_2_WR.next(BLOCK_2_WR, None)
 
         ####################
         # LL #
@@ -320,6 +365,9 @@ class WriteScanner(Generator):
         self.scan_fsm.output(self._infifo_pop[0])
         self.scan_fsm.output(self._infifo_pop[1])
         self.scan_fsm.output(self._clr_wen_made)
+        self.scan_fsm.output(self._set_block_size)
+        self.scan_fsm.output(self._inc_block_write)
+        self.scan_fsm.output(self._clr_block_write)
 
         #######
         # START - TODO - Generate general hardware...
@@ -338,6 +386,93 @@ class WriteScanner(Generator):
         START.output(self._infifo_pop[0], 0)
         START.output(self._infifo_pop[1], 0)
         START.output(self._clr_wen_made, 0)
+        START.output(self._set_block_size, 0)
+        START.output(self._inc_block_write, 0)
+        START.output(self._clr_block_write, 0)
+
+        #######
+        # BLOCK_1_SZ
+        #######
+        BLOCK_1_SZ.output(self._addr_out, kts.const(0, 16))
+        BLOCK_1_SZ.output(self._wen, 0)
+        BLOCK_1_SZ.output(self._data_out, kts.const(0, 16))
+        BLOCK_1_SZ.output(self._inc_seg_addr, 0)
+        BLOCK_1_SZ.output(self._clr_seg_addr, 0)
+        BLOCK_1_SZ.output(self._inc_coord_addr, 0)
+        BLOCK_1_SZ.output(self._clr_coord_addr, 0)
+        BLOCK_1_SZ.output(self._inc_seg_ctr, 0)
+        BLOCK_1_SZ.output(self._clr_seg_ctr, 0)
+        BLOCK_1_SZ.output(self._set_curr_coord, 0)
+        BLOCK_1_SZ.output(self._clr_curr_coord, 0)
+        BLOCK_1_SZ.output(self._infifo_pop[0], self._data_infifo_valid_in)
+        BLOCK_1_SZ.output(self._infifo_pop[1], 0)
+        BLOCK_1_SZ.output(self._clr_wen_made, 0)
+        BLOCK_1_SZ.output(self._set_block_size, self._data_infifo_valid_in)
+        BLOCK_1_SZ.output(self._inc_block_write, 0)
+        BLOCK_1_SZ.output(self._clr_block_write, 1)
+
+        #######
+        # BLOCK_1_WR
+        #######
+        BLOCK_1_WR.output(self._addr_out, self._block_writes)
+        BLOCK_1_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        BLOCK_1_WR.output(self._data_out, self._data_infifo_data_in)
+        BLOCK_1_WR.output(self._inc_seg_addr, 0)
+        BLOCK_1_WR.output(self._clr_seg_addr, 0)
+        BLOCK_1_WR.output(self._inc_coord_addr, 0)
+        BLOCK_1_WR.output(self._clr_coord_addr, 0)
+        BLOCK_1_WR.output(self._inc_seg_ctr, 0)
+        BLOCK_1_WR.output(self._clr_seg_ctr, 0)
+        BLOCK_1_WR.output(self._set_curr_coord, 0)
+        BLOCK_1_WR.output(self._clr_curr_coord, 0)
+        BLOCK_1_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._ready_in)
+        BLOCK_1_WR.output(self._infifo_pop[1], 0)
+        BLOCK_1_WR.output(self._clr_wen_made, 0)
+        BLOCK_1_WR.output(self._set_block_size, 0)
+        BLOCK_1_WR.output(self._inc_block_write, self._ready_in & self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        BLOCK_1_WR.output(self._clr_block_write, 0)
+
+        #######
+        # BLOCK_2_SZ
+        #######
+        BLOCK_2_SZ.output(self._addr_out, kts.const(0, 16))
+        BLOCK_2_SZ.output(self._wen, 0)
+        BLOCK_2_SZ.output(self._data_out, kts.const(0, 16))
+        BLOCK_2_SZ.output(self._inc_seg_addr, 0)
+        BLOCK_2_SZ.output(self._clr_seg_addr, 0)
+        BLOCK_2_SZ.output(self._inc_coord_addr, 0)
+        BLOCK_2_SZ.output(self._clr_coord_addr, 0)
+        BLOCK_2_SZ.output(self._inc_seg_ctr, 0)
+        BLOCK_2_SZ.output(self._clr_seg_ctr, 0)
+        BLOCK_2_SZ.output(self._set_curr_coord, 0)
+        BLOCK_2_SZ.output(self._clr_curr_coord, 0)
+        BLOCK_2_SZ.output(self._infifo_pop[0], self._data_infifo_valid_in)
+        BLOCK_2_SZ.output(self._infifo_pop[1], 0)
+        BLOCK_2_SZ.output(self._clr_wen_made, 0)
+        BLOCK_2_SZ.output(self._set_block_size, self._data_infifo_valid_in)
+        BLOCK_2_SZ.output(self._inc_block_write, 0)
+        BLOCK_2_SZ.output(self._clr_block_write, 1)
+
+        #######
+        # BLOCK_2_WR
+        #######
+        BLOCK_2_WR.output(self._addr_out, self._block_writes + self._inner_dim_offset)
+        BLOCK_2_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        BLOCK_2_WR.output(self._data_out, self._data_infifo_data_in)
+        BLOCK_2_WR.output(self._inc_seg_addr, 0)
+        BLOCK_2_WR.output(self._clr_seg_addr, 0)
+        BLOCK_2_WR.output(self._inc_coord_addr, 0)
+        BLOCK_2_WR.output(self._clr_coord_addr, 0)
+        BLOCK_2_WR.output(self._inc_seg_ctr, 0)
+        BLOCK_2_WR.output(self._clr_seg_ctr, 0)
+        BLOCK_2_WR.output(self._set_curr_coord, 0)
+        BLOCK_2_WR.output(self._clr_curr_coord, 0)
+        BLOCK_2_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._ready_in)
+        BLOCK_2_WR.output(self._infifo_pop[1], 0)
+        BLOCK_2_WR.output(self._clr_wen_made, 0)
+        BLOCK_2_WR.output(self._set_block_size, 0)
+        BLOCK_2_WR.output(self._inc_block_write, self._ready_in & self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        BLOCK_2_WR.output(self._clr_block_write, 0)
 
         #######
         # LL
@@ -356,6 +491,9 @@ class WriteScanner(Generator):
         LL.output(self._infifo_pop[0], 0)
         LL.output(self._infifo_pop[1], 0)
         LL.output(self._clr_wen_made, 0)
+        LL.output(self._set_block_size, 0)
+        LL.output(self._inc_block_write, 0)
+        LL.output(self._clr_block_write, 0)
 
         #######
         # UnLL
@@ -376,6 +514,9 @@ class WriteScanner(Generator):
         UnLL.output(self._infifo_pop[0], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
         UnLL.output(self._infifo_pop[1], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
         UnLL.output(self._clr_wen_made, 0)
+        UnLL.output(self._set_block_size, 0)
+        UnLL.output(self._inc_block_write, 0)
+        UnLL.output(self._clr_block_write, 0)
 
         #######
         # ComLL
@@ -398,6 +539,9 @@ class WriteScanner(Generator):
         ComLL.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._data_infifo_eos_in | self._ready_in))
         ComLL.output(self._infifo_pop[1], 0)
         ComLL.output(self._clr_wen_made, 0)
+        ComLL.output(self._set_block_size, 0)
+        ComLL.output(self._inc_block_write, 0)
+        ComLL.output(self._clr_block_write, 0)
 
         #######
         # UL_WZ
@@ -417,6 +561,9 @@ class WriteScanner(Generator):
         UL_WZ.output(self._infifo_pop[0], 0)
         UL_WZ.output(self._infifo_pop[1], 0)
         UL_WZ.output(self._clr_wen_made, 0)
+        UL_WZ.output(self._set_block_size, 0)
+        UL_WZ.output(self._inc_block_write, 0)
+        UL_WZ.output(self._clr_block_write, 0)
 
         #######
         # UL
@@ -437,6 +584,9 @@ class WriteScanner(Generator):
         # UL.output(self._infifo_pop[0], 0)
         UL.output(self._infifo_pop[1], 0)
         UL.output(self._clr_wen_made, 1)
+        UL.output(self._set_block_size, 0)
+        UL.output(self._inc_block_write, 0)
+        UL.output(self._clr_block_write, 0)
 
         #######
         # UL_EMIT_COORD
@@ -456,6 +606,9 @@ class WriteScanner(Generator):
         UL_EMIT_COORD.output(self._infifo_pop[0], ~self._new_coord & ~self._stop_in)
         UL_EMIT_COORD.output(self._infifo_pop[1], 0)
         UL_EMIT_COORD.output(self._clr_wen_made, 0)
+        UL_EMIT_COORD.output(self._set_block_size, 0)
+        UL_EMIT_COORD.output(self._inc_block_write, 0)
+        UL_EMIT_COORD.output(self._clr_block_write, 0)
 
         #######
         # UL_EMIT_SEG
@@ -477,6 +630,9 @@ class WriteScanner(Generator):
         UL_EMIT_SEG.output(self._infifo_pop[0], self._data_infifo_valid_in & self._data_infifo_eos_in)
         UL_EMIT_SEG.output(self._infifo_pop[1], 0)
         UL_EMIT_SEG.output(self._clr_wen_made, 0)
+        UL_EMIT_SEG.output(self._set_block_size, 0)
+        UL_EMIT_SEG.output(self._inc_block_write, 0)
+        UL_EMIT_SEG.output(self._clr_block_write, 0)
 
         #############
         # DONE
@@ -495,6 +651,9 @@ class WriteScanner(Generator):
         DONE.output(self._infifo_pop[0], 0)
         DONE.output(self._infifo_pop[1], 0)
         DONE.output(self._clr_wen_made, 0)
+        DONE.output(self._set_block_size, 0)
+        DONE.output(self._inc_block_write, 0)
+        DONE.output(self._clr_block_write, 0)
 
         self.scan_fsm.set_start_state(START)
 
@@ -516,7 +675,7 @@ class WriteScanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, compressed=0, lowest_level=0, stop_lvl=0):
+    def get_bitstream(self, inner_offset, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
@@ -526,7 +685,8 @@ class WriteScanner(Generator):
             ("inner_dim_offset", inner_offset),
             ("compressed", compressed),
             ("lowest_level", lowest_level),
-            ("stop_lvl", stop_lvl)]
+            ("stop_lvl", stop_lvl),
+            ("block_mode", block_mode)]
 
         return trim_config_list(flattened, config)
 

@@ -513,11 +513,14 @@ def observe_cfg(generator, port, other_gen, cfg_reg_port):
         cr_attr.add_observer(generator, port)
 
 
-def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1)):
+def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1), name=None):
     ''' Pass a generator and a signal to create a registered
         version of any signal easily.
     '''
-    reg = generator.var(signal.name + "_d1", signal.width)
+    use_name = signal.name + "_d1"
+    if name is not None:
+        use_name = name
+    reg = generator.var(use_name, signal.width)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_code():
