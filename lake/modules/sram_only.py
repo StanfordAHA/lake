@@ -132,11 +132,12 @@ class StrgUBSRAMOnly(Generator):
                                          packed=True)
 
         self.mem_addr_width = clog2(self.mem_depth)
+        self.fetch_width_bits = clog2(self.fetch_width)
 
         for i in range(self.interconnect_input_ports):
 
             _AG = AddrGen(iterator_support=self.default_iterator_support,
-                          config_width=self.mem_addr_width)
+                          config_width=self.mem_addr_width + self.fetch_width_bits)
             self.add_child(f"input_addr_gen_{i}",
                            _AG,
                            clk=self._clk,
@@ -145,7 +146,7 @@ class StrgUBSRAMOnly(Generator):
                            # mux_sel=self._floop_mux_sel[i],
                            restart=self._floop_restart[i])
             safe_wire(gen=self, w_to=_AG.ports.mux_sel, w_from=self._floop_mux_sel[i])
-            safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=_AG.ports.addr_out)
+            safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=_AG.ports.addr_out[self.mem_addr_width + self.fetch_width_bits - 1, self.fetch_width_bits])
 
         ##################################################################################
         # TB PATHS
@@ -153,7 +154,7 @@ class StrgUBSRAMOnly(Generator):
         for i in range(self.interconnect_output_ports):
 
             _AG = AddrGen(iterator_support=self.default_iterator_support,
-                          config_width=self.mem_addr_width)
+                          config_width=self.mem_addr_width + self.fetch_width_bits)
             self.add_child(f"output_addr_gen_{i}",
                            _AG,
                            clk=self._clk,
@@ -162,7 +163,7 @@ class StrgUBSRAMOnly(Generator):
                            # mux_sel=self._loops_sram2tb_mux_sel[i],
                            restart=self._loops_sram2tb_restart[i])
             safe_wire(gen=self, w_to=_AG.ports.mux_sel, w_from=self._loops_sram2tb_mux_sel[i])
-            safe_wire(gen=self, w_to=self._s_read_addr[i], w_from=_AG.ports.addr_out)
+            safe_wire(gen=self, w_to=self._s_read_addr[i], w_from=_AG.ports.addr_out[self.mem_addr_width + self.fetch_width_bits - 1, self.fetch_width_bits])
 
         ##################################################################################
         # WIRE TO SRAM INTERFACE
