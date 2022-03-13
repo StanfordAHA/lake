@@ -1,3 +1,4 @@
+from numpy import outer
 from lake.attributes.formal_attr import *
 import json
 from kratos import *

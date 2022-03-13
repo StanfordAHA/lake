@@ -84,6 +84,16 @@ class StrgUBTBOnly(Generator):
                                                  explicit_array=True,
                                                  packed=True)
 
+        # shared sram to tb outer loops
+        self._outer_loops_tb2out_inner_restart = self.output("outer_loops_tb2out_inner_restart", self.interconnect_input_ports)
+        self._outer_loops_tb2out_enable = self.input("outer_loops_tb2out_enable", self.interconnect_input_ports)
+        self._outer_loops_tb2out_restart = self.input("outer_loops_tb2out_restart", self.interconnect_input_ports)
+        self._outer_loops_tb2out_mux_sel = self.input("outer_loops_tb2out_mux_sel",
+                                                      width=max(clog2(self.default_iterator_support), 1),
+                                                      size=self.interconnect_output_ports,
+                                                      explicit_array=True,
+                                                      packed=True)
+
         self._valid_out = self.output("accessor_output", self.interconnect_output_ports)
         self._data_out = self.output("data_out", self.data_width,
                                      size=self.interconnect_output_ports,
@@ -156,6 +166,11 @@ class StrgUBTBOnly(Generator):
             self.tb_addr_width = 4
             self.tb_range_width = 16
 
+            self._inner_fl_restart = self.var(f"inner_fl_loop_restart_{i}", 1)
+            self._tb2out_restart = self.var(f"tb2out_restart_{i}", 1)
+            self._tb2out_mux_sel = self.var(f"tb2out_mux_sel_{i}",
+                                            width=max(clog2(self.default_iterator_support), 1))
+
             _AG = AddrGen(iterator_support=self.default_iterator_support,
                           config_width=self.tb_addr_width)
 
@@ -184,7 +199,13 @@ class StrgUBTBOnly(Generator):
                            fl_ctr_tb_rd,
                            clk=self._clk,
                            rst_n=self._rst_n,
-                           step=self._tb_read[i])
+                           step=self._tb_read[i],
+                           restart=self._inner_fl_restart)
+
+            self.wire(self._tb2out_mux_sel, ternary(self._inner_fl_restart,
+                                                    self._outer_loops_tb2out_mux_sel[i],
+                                                    fl_ctr_tb_rd.ports.mux_sel_out))
+            self.wire(self._outer_loops_tb2out_inner_restart[i], self._inner_fl_restart)
 
             _AG = AddrGen(iterator_support=self.tb_iter_support,
                           config_width=self.tb_addr_width)
@@ -194,8 +215,8 @@ class StrgUBTBOnly(Generator):
                            rst_n=self._rst_n,
                            step=self._tb_read[i],
                            # addr_out=self._tb_read_addr[i])
-                           mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
-                           restart=fl_ctr_tb_rd.ports.restart)
+                           mux_sel=self._tb2out_mux_sel,
+                           restart=self._tb2out_restart)
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
 
             self.add_child(f"tb_read_sched_gen_{i}",
@@ -205,9 +226,12 @@ class StrgUBTBOnly(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,
-                           mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
-                           finished=fl_ctr_tb_rd.ports.restart,
+                           mux_sel=self._tb2out_mux_sel,
+                           finished=self._tb2out_restart,
                            valid_output=self._tb_read[i])
+            self.wire(self._tb2out_restart, ternary(self._outer_loops_tb2out_enable[i],
+                                                    self._outer_loops_tb2out_restart[i],
+                                                    self._inner_fl_restart))
 
             @always_comb
             def tb_to_out():

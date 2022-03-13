@@ -136,10 +136,18 @@ def map_controller(controller, name):
     tform_in_data_strides = None
     if ctrl_in_data_strt is not None:
         (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
+        if "agg2sram" in name:
+            ctrl_in_data_strt *= 4
+            for i in range(len(tform_in_data_strides)):
+                tform_in_data_strides[i] *= 4
 
     tform_out_data_strides = None
     if ctrl_out_data_strt is not None:
         (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
+        if "sram2tb" in name:
+            ctrl_out_data_strt *= 4
+            for i in range(len(tform_out_data_strides)):
+                tform_out_data_strides[i] *= 4
 
     tform_mux_data_strides = None
     if ctrl_mux_data_strt is not None:
@@ -200,3 +208,56 @@ def configure_controller(prefix, name, controller):
                 config.append((f"{expand_name}_sched_gen_sched_addr_gen_strides_{i}", mapped_ctrl.cyc_stride[i]))
 
     return config
+
+
+def factor_sram2tb(sram2tb, tb2out, max_outer_loops):
+    # outer loop factorization
+    # find which loop levels of sram2tb and tb2out have the same extent and cycle strides (before map_controller)
+    sram2tb_idx = len(sram2tb.extent) - 1
+    tb2out_idx = len(tb2out.extent) - 1
+    shared_loop_lvls = 0
+    while(sram2tb_idx >= 0 or tb2out_idx >= 0):
+        if (shared_loop_lvls < max_outer_loops) and \
+                (sram2tb.extent[sram2tb_idx] == tb2out.extent[tb2out_idx]) and \
+                (sram2tb.cyc_stride[sram2tb_idx] == tb2out.cyc_stride[tb2out_idx]):
+
+            # print(f"same extent {sram2tb.extent[sram2tb_idx]}, sram2tb_idx {sram2tb_idx}, tb2out_idx {tb2out_idx}")
+            # print(f"untouched cyc_stride {sram2tb.cyc_stride[sram2tb_idx]}, cyc_stride {tb2out.cyc_stride[tb2out_idx]}")
+            # print(f"cyc_stride {sram2tb_0.cyc_stride[sram2tb_idx]}, cyc_stride {tb2out_0.cyc_stride[tb2out_idx]}")
+            sram2tb_idx -= 1
+            tb2out_idx -= 1
+            shared_loop_lvls += 1
+        else:
+            break
+    assert(sram2tb.dim - shared_loop_lvls >= 0)
+    assert(sram2tb.dim - shared_loop_lvls <= max_outer_loops)
+    assert(tb2out.dim - shared_loop_lvls >= 0)
+    assert(tb2out.dim - shared_loop_lvls <= max_outer_loops)
+
+    # calculate the delay from sram2tb's outer loop to tb2out's outer loop
+    sram2tb_inner_extent_sum = 0
+    for i in range(sram2tb.dim - shared_loop_lvls):
+        sram2tb_inner_extent_sum += (sram2tb.extent[i] - 1) * sram2tb.cyc_stride[i]
+    tb2out_inner_extent_sum = 0
+    for i in range(tb2out.dim - shared_loop_lvls):
+        tb2out_inner_extent_sum += (tb2out.extent[i] - 1) * tb2out.cyc_stride[i]
+    sram2tb_delay = tb2out.cyc_strt - sram2tb.cyc_strt + tb2out_inner_extent_sum - sram2tb_inner_extent_sum
+    print("delay", sram2tb_delay)
+
+    # now check how many sram2tb has happened within the delay
+    num_sram2tb = 0
+    for i in range(sram2tb.dim - 1, -1, -1):
+        if sram2tb_delay >= sram2tb.cyc_stride[i]:
+            num_sram2tb_lvl = int(sram2tb_delay / sram2tb.cyc_stride[i])
+            # find the total number of all inner loop levels
+            for j in range(i):
+                num_sram2tb_lvl *= sram2tb.extent[j]
+            num_sram2tb += num_sram2tb_lvl
+            sram2tb_delay = sram2tb_delay % sram2tb.cyc_stride[i]
+    if sram2tb_delay > 0:
+        num_sram2tb += 1
+
+    print("num_sram2tb", num_sram2tb)
+    assert num_sram2tb <= 12, f"sram2tb outer loop delay fifo (12) cannot hold {num_sram2tb} items"
+
+    return shared_loop_lvls
