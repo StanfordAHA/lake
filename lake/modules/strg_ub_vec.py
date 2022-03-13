@@ -229,8 +229,10 @@ class StrgUBVec(Generator):
         self.wire(sram_only.ports.agg_data_out, agg_only.ports.agg_data_out)
 
         self.wire(tb_only.ports.t_read, sram_tb_shared.ports.t_read_out)
+        self.wire(tb_only.ports.outer_loops_tb2out_inner_restart, sram_tb_shared.ports.outer_loops_tb2out_inner_restart)
         self.wire(tb_only.ports.outer_loops_tb2out_mux_sel, sram_tb_shared.ports.outer_loops_tb2out_mux_sel)
         self.wire(tb_only.ports.outer_loops_tb2out_restart, sram_tb_shared.ports.outer_loops_tb2out_restart)
+        self.wire(tb_only.ports.outer_loops_tb2out_enable, sram_tb_shared.ports.outer_loops_tb2out_enable)
         self.wire(tb_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)
         self.wire(tb_only.ports.loops_sram2tb_restart, sram_tb_shared.ports.loops_sram2tb_restart)
 

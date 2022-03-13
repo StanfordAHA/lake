@@ -189,20 +189,35 @@ def factor_sram2tb(sram2tb, tb2out, max_outer_loops):
             shared_loop_lvls += 1
         else:
             break
-    # print(sram2tb_idx)
-    # print(tb2out_idx)
-    # shared_loop_lvls = sram2tb.dim - sram2tb_idx + 1
     assert(sram2tb.dim - shared_loop_lvls >= 0)
     assert(sram2tb.dim - shared_loop_lvls <= max_outer_loops)
     assert(tb2out.dim - shared_loop_lvls >= 0)
     assert(tb2out.dim - shared_loop_lvls <= max_outer_loops)
 
+    # calculate the delay from sram2tb's outer loop to tb2out's outer loop
+    sram2tb_inner_extent_sum = 0
+    for i in range(sram2tb.dim - shared_loop_lvls):
+        sram2tb_inner_extent_sum += (sram2tb.extent[i] - 1) * sram2tb.cyc_stride[i]
     tb2out_inner_extent_sum = 0
     for i in range(tb2out.dim - shared_loop_lvls):
-        tb2out_inner_extent_sum += tb2out.extent[i]
-    # -1 to convert to 0-index
-    # -1 again because we need to delay till the last cycle of inner extent
-    sram2tb_delay = tb2out.cyc_strt - sram2tb.cyc_strt - 1 + tb2out_inner_extent_sum - 1
-    assert(sram2tb_delay >= 0)
+        tb2out_inner_extent_sum += (tb2out.extent[i] - 1) * tb2out.cyc_stride[i]
+    sram2tb_delay = tb2out.cyc_strt - sram2tb.cyc_strt + tb2out_inner_extent_sum - sram2tb_inner_extent_sum
+    print("delay", sram2tb_delay)
 
-    return (shared_loop_lvls, sram2tb_delay)
+    # now check how many sram2tb has happened within the delay
+    num_sram2tb = 0
+    for i in range(sram2tb.dim - 1, -1, -1):
+        if sram2tb_delay >= sram2tb.cyc_stride[i]:
+            num_sram2tb_lvl = int(sram2tb_delay / sram2tb.cyc_stride[i])
+            # find the total number of all inner loop levels
+            for j in range(i):
+                num_sram2tb_lvl *= sram2tb.extent[j]
+            num_sram2tb += num_sram2tb_lvl
+            sram2tb_delay = sram2tb_delay % sram2tb.cyc_stride[i]
+    if sram2tb_delay > 0:
+        num_sram2tb += 1
+
+    print("num_sram2tb", num_sram2tb)
+    assert num_sram2tb <= 12, f"sram2tb outer loop delay fifo (12) cannot hold {num_sram2tb} items"
+
+    return shared_loop_lvls

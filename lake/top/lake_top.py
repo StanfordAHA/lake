@@ -56,6 +56,7 @@ class LakeTop(Generator):
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=True,
+                 outer_loop_factorization=True,
                  max_outer_loops=3,
                  max_inner_loops=3):
         super().__init__(name, debug=True)
@@ -87,6 +88,7 @@ class LakeTop(Generator):
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
         self.formal_module = formal_module
+        self.outer_loop_factorization = outer_loop_factorization
         self.max_outer_loops = max_outer_loops
         self.max_inner_loops = max_inner_loops
 
@@ -913,7 +915,53 @@ class LakeTop(Generator):
 
         # Store all configurations here
         config = []
+        """
+        if self.outer_loop_factorization and ("sram2tb_0" in config_json) and ("tb2out_0" in config_json):
+            # untounched controllers
+            sram2tb_0_u = extract_controller_json(config_json["sram2tb_0"])
+            tb2out_0_u = extract_controller_json(config_json["tb2out_0"])
+            sram2tb_0_shared_loop_lvls = factor_sram2tb(sram2tb_0_u,
+                                                        tb2out_0_u,
+                                                        self.max_outer_loops)
+            print("sram2tb_0_shared_loop_lvls", sram2tb_0_shared_loop_lvls)
+            if sram2tb_0_shared_loop_lvls != 0:
+                outer_loop_dim = self.max_outer_loops + sram2tb_0_shared_loop_lvls
+                # print("outer_loop_dim", outer_loop_dim)
+                config.append(("sram_tb_shared_outer_loops_autovec_0_dimensionality", outer_loop_dim))
+                for i in range(sram2tb_0_shared_loop_lvls):
+                    config.append((f"sram_tb_shared_outer_loops_autovec_0_ranges_{sram2tb_0_shared_loop_lvls - i - 1}",
+                                   sram2tb_0_u.extent[- i - 1] - 2))  # assumed same transformation
+            else:
+                config.append(("sram_tb_shared_outer_loops_autovec_0_dimensionality", 0))
+                # config.append(("sram_tb_shared_sram2tb_delay_0", 0))
+                # for i in range(self.max_outer_loops):
+                #     config.append((f"sram_tb_shared_outer_loops_autovec_0_ranges_{i}", 0))
+        else:
+            sram2tb_0_shared_loop_lvls = 0
 
+        if self.outer_loop_factorization and ("sram2tb_1" in config_json) and ("tb2out_1" in config_json):
+            # untounched controllers
+            sram2tb_1_u = extract_controller_json(config_json["sram2tb_1"])
+            tb2out_1_u = extract_controller_json(config_json["tb2out_1"])
+            sram2tb_1_shared_loop_lvls = factor_sram2tb(sram2tb_1_u,
+                                                        tb2out_1_u,
+                                                        self.max_outer_loops)
+            print("sram2tb_1_shared_loop_lvls", sram2tb_1_shared_loop_lvls)
+            if sram2tb_1_shared_loop_lvls != 0:
+                outer_loop_dim = self.max_outer_loops + sram2tb_1_shared_loop_lvls
+                # print("outer_loop_dim", outer_loop_dim)
+                config.append(("sram_tb_shared_outer_loops_autovec_1_dimensionality", outer_loop_dim))
+                for i in range(sram2tb_1_shared_loop_lvls):
+                    config.append((f"sram_tb_shared_outer_loops_autovec_1_ranges_{sram2tb_1_shared_loop_lvls - i - 1}",
+                                   sram2tb_1_u.extent[- i - 1] - 2))  # assumed same transformation
+            else:
+                config.append(("sram_tb_shared_outer_loops_autovec_1_dimensionality", 0))
+                # config.append(("sram_tb_shared_sram2tb_delay_1", 0))
+                # for i in range(self.max_outer_loops):
+                #     config.append((f"sram_tb_shared_outer_loops_autovec_1_ranges_{i}", 0))
+        else:
+            sram2tb_1_shared_loop_lvls = 0
+        """
         # Compiler tells us to turn on the chain enable...
         if "chain_en" in root_node:
             config.append(("chain_chain_en", 1))
@@ -1030,6 +1078,81 @@ class LakeTop(Generator):
                     config.append((f"loops_stencil_valid_ranges_{i}", stencil_valid.extent[i]))
                     config.append((f"stencil_valid_sched_gen_sched_addr_gen_strides_{i}", stencil_valid.cyc_stride[i]))
 
+        """
+        if "tb2out_0" in config_json:
+            num_tbs += 1
+            tb2out_0 = map_controller(extract_controller_json(config_json["tb2out_0"]), "tb2out_0")
+            config.append(("tb_only_tb_read_sched_gen_0_enable", 1))
+            config.append(("tb_only_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out_0.cyc_strt))
+            config.append(("tb_only_tb_read_addr_gen_0_starting_addr", tb2out_0.out_data_strt))
+            config.append(("tb_only_loops_buf2out_read_0_dimensionality", tb2out_0.dim - sram2tb_0_shared_loop_lvls))
+            for i in range(tb2out_0.dim):
+                if i < (tb2out_0.dim - sram2tb_0_shared_loop_lvls):
+                    loop_level = i
+                    config.append((f"tb_only_loops_buf2out_read_0_ranges_{loop_level}", tb2out_0.extent[i]))
+                elif i == (tb2out_0.dim - sram2tb_0_shared_loop_lvls):
+                    loop_level = self.max_inner_loops
+                else:
+                    loop_level += 1
+                config.append((f"tb_only_tb_read_addr_gen_0_strides_{loop_level}", tb2out_0.out_data_stride[i]))
+                config.append((f"tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_{loop_level}", tb2out_0.cyc_stride[i]))
+
+        if "tb2out_1" in config_json:
+            num_tbs += 1
+            tb2out_1 = map_controller(extract_controller_json(config_json["tb2out_1"]), "tb2out_1")
+            config.append(("tb_only_tb_read_sched_gen_1_enable", 1))
+            config.append(("tb_only_tb_read_addr_gen_1_starting_addr", tb2out_1.out_data_strt))
+            config.append(("tb_only_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out_1.cyc_strt))
+            config.append(("tb_only_loops_buf2out_read_1_dimensionality", tb2out_1.dim - sram2tb_1_shared_loop_lvls))
+            for i in range(tb2out_1.dim):
+                if i < (tb2out_1.dim - sram2tb_1_shared_loop_lvls):
+                    loop_level = i
+                    config.append((f"tb_only_loops_buf2out_read_1_ranges_{loop_level}", tb2out_1.extent[i]))
+                elif i == (tb2out_1.dim - sram2tb_1_shared_loop_lvls):
+                    loop_level = self.max_inner_loops
+                else:
+                    loop_level += 1
+                config.append((f"tb_only_tb_read_addr_gen_1_strides_{loop_level}", tb2out_1.out_data_stride[i]))
+                config.append((f"tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_{loop_level}", tb2out_1.cyc_stride[i]))
+
+        if "sram2tb_0" in config_json:
+            sram2tb_0 = map_controller(extract_controller_json(config_json["sram2tb_0"]), "sram2tb_0")
+            config.append(("sram_only_output_addr_gen_0_starting_addr", sram2tb_0.out_data_strt))
+            config.append(("tb_only_tb_write_addr_gen_0_starting_addr", sram2tb_0.in_data_strt))
+            config.append(("sram_tb_shared_output_sched_gen_0_enable", 1))
+            config.append(("sram_tb_shared_output_sched_gen_0_sched_addr_gen_starting_addr", sram2tb_0.cyc_strt))
+            config.append(("sram_tb_shared_loops_buf2out_autovec_read_0_dimensionality", sram2tb_0.dim - sram2tb_0_shared_loop_lvls))
+            for i in range(sram2tb_0.dim):
+                if i < (sram2tb_0.dim - sram2tb_0_shared_loop_lvls):
+                    loop_level = i
+                    config.append((f"sram_tb_shared_loops_buf2out_autovec_read_0_ranges_{loop_level}", sram2tb_0.extent[i]))
+                elif i == (sram2tb_0.dim - sram2tb_0_shared_loop_lvls):
+                    loop_level = self.max_inner_loops
+                else:
+                    loop_level += 1
+                config.append((f"sram_only_output_addr_gen_0_strides_{loop_level}", sram2tb_0.out_data_stride[i]))
+                config.append((f"sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_{loop_level}", sram2tb_0.cyc_stride[i]))
+                config.append((f"tb_only_tb_write_addr_gen_0_strides_{loop_level}", sram2tb_0.in_data_stride[i]))
+
+        if "sram2tb_1" in config_json:
+            sram2tb_1 = map_controller(extract_controller_json(config_json["sram2tb_1"]), "sram2tb_1")
+            config.append(("sram_only_output_addr_gen_1_starting_addr", sram2tb_1.out_data_strt))
+            config.append(("tb_only_tb_write_addr_gen_1_starting_addr", sram2tb_1.in_data_strt))
+            config.append(("sram_tb_shared_output_sched_gen_1_enable", 1))
+            config.append(("sram_tb_shared_output_sched_gen_1_sched_addr_gen_starting_addr", sram2tb_1.cyc_strt))
+            config.append(("sram_tb_shared_loops_buf2out_autovec_read_1_dimensionality", sram2tb_1.dim - sram2tb_1_shared_loop_lvls))
+            for i in range(sram2tb_1.dim):
+                if i < (sram2tb_1.dim - sram2tb_1_shared_loop_lvls):
+                    loop_level = i
+                    config.append((f"sram_tb_shared_loops_buf2out_autovec_read_1_ranges_{loop_level}", sram2tb_1.extent[i]))
+                elif i == (sram2tb_1.dim - sram2tb_1_shared_loop_lvls):
+                    loop_level = self.max_inner_loops
+                else:
+                    loop_level += 1
+                config.append((f"sram_only_output_addr_gen_1_strides_{loop_level}", sram2tb_1.out_data_stride[i]))
+                config.append((f"sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_{loop_level}", sram2tb_1.cyc_stride[i]))
+                config.append((f"tb_only_tb_write_addr_gen_1_strides_{loop_level}", sram2tb_1.in_data_stride[i]))
+        """
         # Control Signals...
         # Set the mode and activate the tile...
         config.append(("flush_reg_sel", 0))  # 1
@@ -1106,17 +1229,15 @@ class LakeTop(Generator):
         #     config.append((f"wen_in_{i}_reg_sel", 1))
         #     config.append((f"wen_in_{i}_reg_value", 0))
 
-        if (sram2tb_0 is not None) and (tb2out_0 is not None):
-            (sram2tb_0_shared_loop_lvls, shared_delay) = factor_sram2tb(controller_objs_untouched["sram2tb_0"],
-                                                                        controller_objs_untouched["tb2out_0"],
-                                                                        self.max_outer_loops)
+        if self.outer_loop_factorization and (sram2tb_0 is not None) and (tb2out_0 is not None):
+            sram2tb_0_shared_loop_lvls = factor_sram2tb(controller_objs_untouched["sram2tb_0"],
+                                                        controller_objs_untouched["tb2out_0"],
+                                                        self.max_outer_loops)
             print("sram2tb_0_shared_loop_lvls", sram2tb_0_shared_loop_lvls)
             if sram2tb_0_shared_loop_lvls != 0:
                 outer_loop_dim = self.max_outer_loops + sram2tb_0_shared_loop_lvls
                 # print("outer_loop_dim", outer_loop_dim)
-                # print("shared_delay", shared_delay)
                 config.append(("strg_ub_sram_tb_shared_outer_loops_autovec_0_dimensionality", outer_loop_dim))
-                config.append(("strg_ub_sram_tb_shared_sram2tb_delay_0", shared_delay))
                 for i in range(sram2tb_0_shared_loop_lvls):
                     config.append((f"strg_ub_sram_tb_shared_outer_loops_autovec_0_ranges_{sram2tb_0_shared_loop_lvls - i - 1}",
                                    sram2tb_0.extent[- i - 1]))
@@ -1125,18 +1246,18 @@ class LakeTop(Generator):
                 # config.append(("strg_ub_sram_tb_shared_sram2tb_delay_0", 0))
                 # for i in range(self.max_outer_loops):
                 #     config.append((f"strg_ub_sram_tb_shared_outer_loops_autovec_0_ranges_{i}", 0))
+        else:
+            sram2tb_0_shared_loop_lvls = 0
 
-        if (sram2tb_1 is not None) and (tb2out_1 is not None):
-            (sram2tb_1_shared_loop_lvls, shared_delay) = factor_sram2tb(controller_objs_untouched["sram2tb_1"],
-                                                                        controller_objs_untouched["tb2out_1"],
-                                                                        self.max_outer_loops)
+        if self.outer_loop_factorization and (sram2tb_1 is not None) and (tb2out_1 is not None):
+            sram2tb_1_shared_loop_lvls = factor_sram2tb(controller_objs_untouched["sram2tb_1"],
+                                                        controller_objs_untouched["tb2out_1"],
+                                                        self.max_outer_loops)
             print("sram2tb_1_shared_loop_lvls", sram2tb_1_shared_loop_lvls)
             if sram2tb_1_shared_loop_lvls != 0:
                 outer_loop_dim = self.max_outer_loops + sram2tb_1_shared_loop_lvls
                 # print("outer_loop_dim", outer_loop_dim)
-                # print("shared_delay", shared_delay)
                 config.append(("strg_ub_sram_tb_shared_outer_loops_autovec_1_dimensionality", outer_loop_dim))
-                config.append(("strg_ub_sram_tb_shared_sram2tb_delay_1", shared_delay))
                 for i in range(sram2tb_1_shared_loop_lvls):
                     config.append((f"strg_ub_sram_tb_shared_outer_loops_autovec_1_ranges_{sram2tb_1_shared_loop_lvls - i - 1}",
                                    sram2tb_1.extent[- i - 1]))
@@ -1145,6 +1266,8 @@ class LakeTop(Generator):
                 # config.append(("strg_ub_sram_tb_shared_sram2tb_delay_1", 0))
                 # for i in range(self.max_outer_loops):
                 #     config.append((f"strg_ub_sram_tb_shared_outer_loops_autovec_1_ranges_{i}", 0))
+        else:
+            sram2tb_1_shared_loop_lvls = 0
 
         # Check the hardware if it supports stencil valid
         if self.stencil_valid:
@@ -1215,11 +1338,11 @@ class LakeTop(Generator):
             for i in range(sram2tb_0.dim):
                 if i < (sram2tb_0.dim - sram2tb_0_shared_loop_lvls):
                     loop_level = i
+                    config.append((f"strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_{loop_level}", sram2tb_0.extent[i]))
                 elif i == (sram2tb_0.dim - sram2tb_0_shared_loop_lvls):
                     loop_level = self.max_inner_loops
                 else:
                     loop_level += 1
-                config.append((f"strg_ub_sram_tb_shared_loops_buf2out_autovec_read_0_ranges_{loop_level}", sram2tb_0.extent[i]))
                 config.append((f"strg_ub_sram_only_output_addr_gen_0_strides_{loop_level}", sram2tb_0.out_data_stride[i]))
                 config.append((f"strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_{loop_level}", sram2tb_0.cyc_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_write_addr_gen_0_strides_{loop_level}", sram2tb_0.in_data_stride[i]))
@@ -1233,11 +1356,11 @@ class LakeTop(Generator):
             for i in range(sram2tb_1.dim):
                 if i < (sram2tb_1.dim - sram2tb_1_shared_loop_lvls):
                     loop_level = i
+                    config.append((f"strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_{loop_level}", sram2tb_1.extent[i]))
                 elif i == (sram2tb_1.dim - sram2tb_1_shared_loop_lvls):
                     loop_level = self.max_inner_loops
                 else:
                     loop_level += 1
-                config.append((f"strg_ub_sram_tb_shared_loops_buf2out_autovec_read_1_ranges_{loop_level}", sram2tb_1.extent[i]))
                 config.append((f"strg_ub_sram_only_output_addr_gen_1_strides_{loop_level}", sram2tb_1.out_data_stride[i]))
                 config.append((f"strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_{loop_level}", sram2tb_1.cyc_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_write_addr_gen_1_strides_{loop_level}", sram2tb_1.in_data_stride[i]))
@@ -1250,14 +1373,13 @@ class LakeTop(Generator):
             for i in range(tb2out_0.dim):
                 if i < (tb2out_0.dim - sram2tb_0_shared_loop_lvls):
                     loop_level = i
+                    config.append((f"strg_ub_tb_only_loops_buf2out_read_0_ranges_{loop_level}", tb2out_0.extent[i]))
                 elif i == (tb2out_0.dim - sram2tb_0_shared_loop_lvls):
                     loop_level = self.max_inner_loops
                 else:
                     loop_level += 1
-                config.append((f"strg_ub_tb_only_loops_buf2out_read_0_ranges_{loop_level}", tb2out_0.extent[i]))
                 config.append((f"strg_ub_tb_only_tb_read_addr_gen_0_strides_{loop_level}", tb2out_0.out_data_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_{loop_level}", tb2out_0.cyc_stride[i]))
-                print(f"strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_{loop_level}, {tb2out_0.cyc_stride[i]}")
 
         if tb2out_1 is not None:
             config.append((f"strg_ub_tb_only_tb_read_addr_gen_1_starting_addr", tb2out_1.out_data_strt))
@@ -1267,11 +1389,11 @@ class LakeTop(Generator):
             for i in range(tb2out_1.dim):
                 if i < (tb2out_1.dim - sram2tb_1_shared_loop_lvls):
                     loop_level = i
+                    config.append((f"strg_ub_tb_only_loops_buf2out_read_1_ranges_{loop_level}", tb2out_1.extent[i]))
                 elif i == (tb2out_1.dim - sram2tb_1_shared_loop_lvls):
                     loop_level = self.max_inner_loops
                 else:
                     loop_level += 1
-                config.append((f"strg_ub_tb_only_loops_buf2out_read_1_ranges_{loop_level}", tb2out_1.extent[i]))
                 config.append((f"strg_ub_tb_only_tb_read_addr_gen_1_strides_{loop_level}", tb2out_1.out_data_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_{loop_level}", tb2out_1.cyc_stride[i]))
 
