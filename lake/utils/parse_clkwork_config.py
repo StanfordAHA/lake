@@ -194,6 +194,9 @@ def factor_sram2tb(sram2tb, tb2out, max_outer_loops):
     assert(tb2out.dim - shared_loop_lvls >= 0)
     assert(tb2out.dim - shared_loop_lvls <= max_outer_loops)
 
+    if shared_loop_lvls == 0:
+        return 0
+
     # calculate the delay from sram2tb's outer loop to tb2out's outer loop
     sram2tb_inner_extent_sum = 0
     for i in range(sram2tb.dim - shared_loop_lvls):
