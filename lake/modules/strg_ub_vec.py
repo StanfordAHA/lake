@@ -2,7 +2,7 @@ from lake.modules.chain_accessor import ChainAccessor
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.top.memory_interface import MemoryPort, MemoryPortType
 from lake.top.memory_controller import MemoryController
-from lake.utils.parse_clkwork_config import extract_controller, extract_controller_json, map_controller
+from lake.utils.parse_clkwork_config import extract_controller, extract_controller_json, map_controller, factor_sram2tb
 from kratos import *
 from lake.modules.passthru import *
 from lake.attributes.formal_attr import *
