@@ -146,6 +146,8 @@ class StrgUBSRAMTBShared(Generator):
 
             self.add_code(self.update_outer_loops_fifo, port=i)
             self.wire(self._outer_loops_tb2out_enable[i], self._outer_factorization)
+            self.wire(self._outer_loops_tb2out_restart[i], self._restart_fifo[self._rd_ptr] & self._outer_loops_tb2out_inner_restart[i])
+            self.wire(self._outer_loops_tb2out_mux_sel[i], self._mux_sel_fifo[self._rd_ptr])
 
             # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
             self.add_child(f"output_sched_gen_{i}",
@@ -170,12 +172,16 @@ class StrgUBSRAMTBShared(Generator):
             if self._outer_fl_step:
                 self._restart_fifo[self._wr_ptr] = self[f"outer_loops_autovec_{port}"].ports.restart
                 self._mux_sel_fifo[self._wr_ptr] = self[f"outer_loops_autovec_{port}"].ports.mux_sel_out
-                self._wr_ptr = self._wr_ptr + 1
+                if self._wr_ptr == (self.sram2tb_delay_buf - 1):
+                    self._wr_ptr = 0
+                else:
+                    self._wr_ptr = self._wr_ptr + 1
 
             if self._outer_loops_tb2out_inner_restart[port]:
-                self._rd_ptr = self._rd_ptr + 1
-            self._outer_loops_tb2out_restart[port] = self._restart_fifo[self._rd_ptr]
-            self._outer_loops_tb2out_mux_sel[port] = self._mux_sel_fifo[self._rd_ptr]
+                if self._rd_ptr == (self.sram2tb_delay_buf - 1):
+                    self._rd_ptr = 0
+                else:
+                    self._rd_ptr = self._rd_ptr + 1
 
 
 if __name__ == "__main__":
