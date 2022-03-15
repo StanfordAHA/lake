@@ -37,7 +37,8 @@ class StrgUBVec(MemoryController):
                  agg_data_top=False,
                  outer_loop_factorization=True,
                  max_outer_loops=3,
-                 max_inner_loops=3):
+                 max_inner_loops=3,
+                 sram2tb_delay_buf=4):
 
         super().__init__("strg_ub_vec")
 
@@ -62,6 +63,7 @@ class StrgUBVec(MemoryController):
         self.outer_loop_factorization = outer_loop_factorization
         self.max_outer_loops = max_outer_loops
         self.max_inner_loops = max_inner_loops
+        self.sram2tb_delay_buf = sram2tb_delay_buf
 
         self.input_iterator_support = 6
         self.output_iterator_support = 6
@@ -171,7 +173,9 @@ class StrgUBVec(MemoryController):
                                             read_delay=self.read_delay,
                                             rw_same_cycle=self.rw_same_cycle,
                                             agg_height=self.agg_height,
-                                            config_width=self.input_config_width)
+                                            config_width=self.input_config_width,
+                                            max_inner_loops=self.max_inner_loops,
+                                            sram2tb_delay_buf=self.sram2tb_delay_buf)
 
         tb_only = StrgUBTBOnly(data_width=self.data_width,
                                mem_width=self.mem_width,
@@ -186,7 +190,8 @@ class StrgUBVec(MemoryController):
                                read_delay=self.read_delay,
                                rw_same_cycle=self.rw_same_cycle,
                                agg_height=self.agg_height,
-                               config_width=self.input_config_width)
+                               config_width=self.input_config_width,
+                               max_inner_loops=self.max_inner_loops)
 
         self.add_child("agg_only",
                        agg_only,
@@ -453,6 +458,12 @@ class StrgUBVec(MemoryController):
                 config.append((f"strg_ub_sram_only_output_addr_gen_0_strides_{loop_level}", sram2tb_0.out_data_stride[i]))
                 config.append((f"strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_{loop_level}", sram2tb_0.cyc_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_write_addr_gen_0_strides_{loop_level}", sram2tb_0.in_data_stride[i]))
+                if i < (sram2tb_0.dim - sram2tb_0_shared_loop_lvls):
+                    with open("Lake_inner_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{sram2tb_0.cyc_stride[i]}, {sram2tb_0.cyc_stride[i].bit_length()}\n")
+                else:
+                    with open("Lake_outer_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{sram2tb_0.cyc_stride[i]}, {sram2tb_0.cyc_stride[i].bit_length()}\n")
 
         if sram2tb_1 is not None:
             config.append(("strg_ub_sram_only_output_addr_gen_1_starting_addr", sram2tb_1.out_data_strt))
@@ -471,6 +482,12 @@ class StrgUBVec(MemoryController):
                 config.append((f"strg_ub_sram_only_output_addr_gen_1_strides_{loop_level}", sram2tb_1.out_data_stride[i]))
                 config.append((f"strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_{loop_level}", sram2tb_1.cyc_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_write_addr_gen_1_strides_{loop_level}", sram2tb_1.in_data_stride[i]))
+                if i < (sram2tb_1.dim - sram2tb_1_shared_loop_lvls):
+                    with open("Lake_inner_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{sram2tb_1.cyc_stride[i]}, {sram2tb_1.cyc_stride[i].bit_length()}\n")
+                else:
+                    with open("Lake_outer_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{sram2tb_1.cyc_stride[i]}, {sram2tb_1.cyc_stride[i].bit_length()}\n")
 
         if tb2out_0 is not None:
             config.append((f"strg_ub_tb_only_tb_read_addr_gen_0_starting_addr", tb2out_0.out_data_strt))
@@ -487,6 +504,12 @@ class StrgUBVec(MemoryController):
                     loop_level += 1
                 config.append((f"strg_ub_tb_only_tb_read_addr_gen_0_strides_{loop_level}", tb2out_0.out_data_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_{loop_level}", tb2out_0.cyc_stride[i]))
+                if i < (tb2out_0.dim - sram2tb_0_shared_loop_lvls):
+                    with open("Lake_inner_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{tb2out_0.cyc_stride[i]}, {tb2out_0.cyc_stride[i].bit_length()}\n")
+                else:
+                    with open("Lake_outer_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{tb2out_0.cyc_stride[i]}, {tb2out_0.cyc_stride[i].bit_length()}\n")
 
         if tb2out_1 is not None:
             config.append((f"strg_ub_tb_only_tb_read_addr_gen_1_starting_addr", tb2out_1.out_data_strt))
@@ -503,6 +526,12 @@ class StrgUBVec(MemoryController):
                     loop_level += 1
                 config.append((f"strg_ub_tb_only_tb_read_addr_gen_1_strides_{loop_level}", tb2out_1.out_data_stride[i]))
                 config.append((f"strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_{loop_level}", tb2out_1.cyc_stride[i]))
+                if i < (tb2out_1.dim - sram2tb_1_shared_loop_lvls):
+                    with open("Lake_inner_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{tb2out_1.cyc_stride[i]}, {tb2out_1.cyc_stride[i].bit_length()}\n")
+                else:
+                    with open("Lake_outer_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{tb2out_1.cyc_stride[i]}, {tb2out_1.cyc_stride[i].bit_length()}\n")
 
         return config
 
@@ -648,6 +677,12 @@ class StrgUBVec(MemoryController):
                     loop_level += 1
                 config.append((f"tb_only_tb_read_addr_gen_0_strides_{loop_level}", tb2out_0.out_data_stride[i]))
                 config.append((f"tb_only_tb_read_sched_gen_0_sched_addr_gen_strides_{loop_level}", tb2out_0.cyc_stride[i]))
+                if i < (tb2out_0.dim - sram2tb_0_shared_loop_lvls):
+                    with open("Lake_inner_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{tb2out_0.cyc_stride[i]}, {tb2out_0.cyc_stride[i].bit_length()}\n")
+                else:
+                    with open("Lake_outer_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{tb2out_0.cyc_stride[i]}, {tb2out_0.cyc_stride[i].bit_length()}\n")
 
         if "tb2out_1" in config_json:
             num_tbs += 1
@@ -666,6 +701,12 @@ class StrgUBVec(MemoryController):
                     loop_level += 1
                 config.append((f"tb_only_tb_read_addr_gen_1_strides_{loop_level}", tb2out_1.out_data_stride[i]))
                 config.append((f"tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_{loop_level}", tb2out_1.cyc_stride[i]))
+                if i < (tb2out_1.dim - sram2tb_1_shared_loop_lvls):
+                    with open("Lake_inner_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{tb2out_1.cyc_stride[i]}, {tb2out_1.cyc_stride[i].bit_length()}\n")
+                else:
+                    with open("Lake_outer_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{tb2out_1.cyc_stride[i]}, {tb2out_1.cyc_stride[i].bit_length()}\n")
 
         if "sram2tb_0" in config_json:
             sram2tb_0 = map_controller(extract_controller_json(config_json["sram2tb_0"]), "sram2tb_0")
@@ -685,6 +726,12 @@ class StrgUBVec(MemoryController):
                 config.append((f"sram_only_output_addr_gen_0_strides_{loop_level}", sram2tb_0.out_data_stride[i]))
                 config.append((f"sram_tb_shared_output_sched_gen_0_sched_addr_gen_strides_{loop_level}", sram2tb_0.cyc_stride[i]))
                 config.append((f"tb_only_tb_write_addr_gen_0_strides_{loop_level}", sram2tb_0.in_data_stride[i]))
+                if i < (sram2tb_0.dim - sram2tb_0_shared_loop_lvls):
+                    with open("Lake_inner_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{sram2tb_0.cyc_stride[i]}, {sram2tb_0.cyc_stride[i].bit_length()}\n")
+                else:
+                    with open("Lake_outer_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{sram2tb_0.cyc_stride[i]}, {sram2tb_0.cyc_stride[i].bit_length()}\n")
 
         if "sram2tb_1" in config_json:
             sram2tb_1 = map_controller(extract_controller_json(config_json["sram2tb_1"]), "sram2tb_1")
@@ -704,6 +751,12 @@ class StrgUBVec(MemoryController):
                 config.append((f"sram_only_output_addr_gen_1_strides_{loop_level}", sram2tb_1.out_data_stride[i]))
                 config.append((f"sram_tb_shared_output_sched_gen_1_sched_addr_gen_strides_{loop_level}", sram2tb_1.cyc_stride[i]))
                 config.append((f"tb_only_tb_write_addr_gen_1_strides_{loop_level}", sram2tb_1.in_data_stride[i]))
+                if i < (sram2tb_1.dim - sram2tb_1_shared_loop_lvls):
+                    with open("Lake_inner_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{sram2tb_1.cyc_stride[i]}, {sram2tb_1.cyc_stride[i].bit_length()}\n")
+                else:
+                    with open("Lake_outer_cycle_stride.txt", 'a') as file1:
+                        file1.write(f"{sram2tb_1.cyc_stride[i]}, {sram2tb_1.cyc_stride[i].bit_length()}\n")
 
         return trim_config_list(flattened, config)
 
