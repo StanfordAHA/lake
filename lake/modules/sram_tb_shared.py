@@ -33,7 +33,9 @@ class StrgUBSRAMTBShared(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
-                 tb_height=2):
+                 tb_height=2,
+                 max_inner_loops=3,
+                 sram2tb_delay_buf=4):
 
         super().__init__("strg_ub_sram_tb_shared")
 
@@ -51,13 +53,13 @@ class StrgUBSRAMTBShared(Generator):
         self.data_width = data_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
+        self.max_inner_loops = max_inner_loops
+        self.sram2tb_delay_buf = sram2tb_delay_buf  # maximum delay from sram write to tb read to increment the shared outer loops
 
         self.default_iterator_support = 6
         self.default_config_width = 16
         self.sram_iterator_support = 6
         self.agg_rd_addr_gen_width = 8
-        self.outer_iterator_start = 3
-        self.sram2tb_delay_buf = 12  # maximum delay of outer loops from sram write to tb read
 
         ##################################################################################
         # IO
@@ -110,9 +112,10 @@ class StrgUBSRAMTBShared(Generator):
             self._sram2tb_mux_sel = self.var(f"sram2tb_mux_sel_{i}",
                                              width=max(clog2(self.default_iterator_support), 1))
             self._inner_fl_restart = self.var(f"inner_fl_loop_restart_{i}", 1)
+            self._inner_mux_sel = self.var(f"inner_mux_sel_{i}", width=max(clog2(self.default_iterator_support), 1))
 
             # for loop for sram reads, tb writes
-            loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
+            loops_sram2tb = ForLoop(iterator_support=self.max_inner_loops,
                                     config_width=self.default_config_width)
 
             self.add_child(f"loops_buf2out_autovec_read_{i}",
@@ -123,8 +126,8 @@ class StrgUBSRAMTBShared(Generator):
                            restart=self._inner_fl_restart)
 
             # Outer loop factorization with tb2out
-            outer_fl_ctr = OuterForLoop(iterator_support=self.default_iterator_support,
-                                        iter_start=self.outer_iterator_start,
+            outer_fl_ctr = OuterForLoop(iterator_support=self.default_iterator_support,  # is the total # of iterators
+                                        iter_start=self.max_inner_loops,  # starts after inner iterator
                                         config_width=self.default_config_width)
 
             self.add_child(f"outer_loops_autovec_{i}",
@@ -135,12 +138,13 @@ class StrgUBSRAMTBShared(Generator):
 
             self.wire(self._outer_factorization, self[f"outer_loops_autovec_{i}"].ports.dimensionality > 0)
             self.wire(self._outer_fl_step, ternary(self._outer_factorization, loops_sram2tb.ports.restart, const(0, 1)))
+            safe_wire(gen=self, w_to=self._inner_mux_sel, w_from=loops_sram2tb.ports.mux_sel_out)
             self.wire(self._sram2tb_restart, ternary(self._outer_factorization,
                                                      outer_fl_ctr.ports.restart,
                                                      self._inner_fl_restart))
             self.wire(self._sram2tb_mux_sel, ternary(self._inner_fl_restart,
                                                      outer_fl_ctr.ports.mux_sel_out,
-                                                     loops_sram2tb.ports.mux_sel_out))
+                                                     self._inner_mux_sel))
             safe_wire(gen=self, w_to=self._loops_sram2tb_mux_sel[i], w_from=self._sram2tb_mux_sel)
             self.wire(self._loops_sram2tb_restart[i], self._sram2tb_restart)
 

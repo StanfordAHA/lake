@@ -38,7 +38,9 @@ class StrgUBVec(Generator):
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
                  tb_height=2,
-                 agg_data_top=False):
+                 agg_data_top=False,
+                 max_inner_loops=3,
+                 sram2tb_delay_buf=4):
 
         super().__init__("strg_ub_vec")
 
@@ -60,6 +62,8 @@ class StrgUBVec(Generator):
         self.input_config_width = config_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
+        self.max_inner_loops = max_inner_loops
+        self.sram2tb_delay_buf = sram2tb_delay_buf
 
         self.input_iterator_support = 6
         self.output_iterator_support = 6
@@ -161,7 +165,9 @@ class StrgUBVec(Generator):
                                             read_delay=self.read_delay,
                                             rw_same_cycle=self.rw_same_cycle,
                                             agg_height=self.agg_height,
-                                            config_width=self.input_config_width)
+                                            config_width=self.input_config_width,
+                                            max_inner_loops=self.max_inner_loops,
+                                            sram2tb_delay_buf=self.sram2tb_delay_buf)
 
         tb_only = StrgUBTBOnly(data_width=self.data_width,
                                mem_width=self.mem_width,
@@ -176,7 +182,8 @@ class StrgUBVec(Generator):
                                read_delay=self.read_delay,
                                rw_same_cycle=self.rw_same_cycle,
                                agg_height=self.agg_height,
-                               config_width=self.input_config_width)
+                               config_width=self.input_config_width,
+                               max_inner_loops=self.max_inner_loops)
 
         self.add_child("agg_only",
                        agg_only,

@@ -31,7 +31,8 @@ class StrgUBTBOnly(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
-                 tb_height=2):
+                 tb_height=2,
+                 max_inner_loops=3):
 
         super().__init__("strg_ub_tb_only")
 
@@ -49,6 +50,7 @@ class StrgUBTBOnly(Generator):
         self.data_width = data_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
+        self.max_inner_loops = max_inner_loops
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -166,6 +168,7 @@ class StrgUBTBOnly(Generator):
             self.tb_addr_width = 4
             self.tb_range_width = 16
 
+            self._inner_mux_sel = self.var(f"inner_mux_sel_{i}", width=max(clog2(self.default_iterator_support), 1))
             self._inner_fl_restart = self.var(f"inner_fl_loop_restart_{i}", 1)
             self._tb2out_restart = self.var(f"tb2out_restart_{i}", 1)
             self._tb2out_mux_sel = self.var(f"tb2out_mux_sel_{i}",
@@ -192,7 +195,7 @@ class StrgUBTBOnly(Generator):
 
             # READ FROM TB
 
-            fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
+            fl_ctr_tb_rd = ForLoop(iterator_support=self.max_inner_loops,
                                    config_width=self.tb_range_width)
 
             self.add_child(f"loops_buf2out_read_{i}",
@@ -202,9 +205,10 @@ class StrgUBTBOnly(Generator):
                            step=self._tb_read[i],
                            restart=self._inner_fl_restart)
 
+            safe_wire(gen=self, w_to=self._inner_mux_sel, w_from=fl_ctr_tb_rd.ports.mux_sel_out)
             self.wire(self._tb2out_mux_sel, ternary(self._inner_fl_restart,
                                                     self._outer_loops_tb2out_mux_sel[i],
-                                                    fl_ctr_tb_rd.ports.mux_sel_out))
+                                                    self._inner_mux_sel))
             self.wire(self._outer_loops_tb2out_inner_restart[i], self._inner_fl_restart)
 
             _AG = AddrGen(iterator_support=self.tb_iter_support,

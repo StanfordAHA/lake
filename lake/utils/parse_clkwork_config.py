@@ -1,4 +1,6 @@
 import collections
+
+from numpy import maximum
 from lake.utils.util import transform_strides_and_ranges
 
 
@@ -170,7 +172,7 @@ def map_controller(controller, name):
     return mapped_ctrl
 
 
-def factor_sram2tb(sram2tb, tb2out, max_outer_loops):
+def factor_sram2tb(sram2tb, tb2out, max_outer_loops, max_inner_loops, sram2tb_delay_buf):
     # outer loop factorization
     # find which loop levels of sram2tb and tb2out have the same extent and cycle strides (before map_controller)
     sram2tb_idx = len(sram2tb.extent) - 1
@@ -189,10 +191,8 @@ def factor_sram2tb(sram2tb, tb2out, max_outer_loops):
             shared_loop_lvls += 1
         else:
             break
-    assert(sram2tb.dim - shared_loop_lvls >= 0)
-    assert(sram2tb.dim - shared_loop_lvls <= max_outer_loops)
-    assert(tb2out.dim - shared_loop_lvls >= 0)
-    assert(tb2out.dim - shared_loop_lvls <= max_outer_loops)
+    assert((sram2tb.dim - shared_loop_lvls) <= max_inner_loops)
+    assert((tb2out.dim - shared_loop_lvls) <= max_inner_loops)
 
     if shared_loop_lvls == 0:
         return 0
@@ -221,6 +221,8 @@ def factor_sram2tb(sram2tb, tb2out, max_outer_loops):
         num_sram2tb += 1
 
     print("num_sram2tb", num_sram2tb)
-    assert num_sram2tb <= 12, f"sram2tb outer loop delay fifo (12) cannot hold {num_sram2tb} items"
+    with open("Lake_delay_fifo.txt", 'a') as file1:
+        file1.write(f"{num_sram2tb}\n")
+    assert num_sram2tb <= sram2tb_delay_buf, f"sram2tb outer loop delay fifo ({sram2tb_delay_buf}) cannot hold {num_sram2tb} items"
 
     return shared_loop_lvls
