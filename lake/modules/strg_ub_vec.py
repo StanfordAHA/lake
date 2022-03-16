@@ -360,7 +360,9 @@ class StrgUBVec(MemoryController):
         if self.outer_loop_factorization and (sram2tb_0 is not None) and (tb2out_0 is not None):
             sram2tb_0_shared_loop_lvls = factor_sram2tb(controller_objs_untouched["sram2tb_0"],
                                                         controller_objs_untouched["tb2out_0"],
-                                                        self.max_outer_loops)
+                                                        self.max_outer_loops,
+                                                        self.max_inner_loops,
+                                                        self.sram2tb_delay_buf)
             print("sram2tb_0_shared_loop_lvls", sram2tb_0_shared_loop_lvls)
             if sram2tb_0_shared_loop_lvls != 0:
                 outer_loop_dim = self.max_outer_loops + sram2tb_0_shared_loop_lvls
@@ -380,7 +382,9 @@ class StrgUBVec(MemoryController):
         if self.outer_loop_factorization and (sram2tb_1 is not None) and (tb2out_1 is not None):
             sram2tb_1_shared_loop_lvls = factor_sram2tb(controller_objs_untouched["sram2tb_1"],
                                                         controller_objs_untouched["tb2out_1"],
-                                                        self.max_outer_loops)
+                                                        self.max_outer_loopss,
+                                                        self.max_inner_loops,
+                                                        self.sram2tb_delay_buf)
             print("sram2tb_1_shared_loop_lvls", sram2tb_1_shared_loop_lvls)
             if sram2tb_1_shared_loop_lvls != 0:
                 outer_loop_dim = self.max_outer_loops + sram2tb_1_shared_loop_lvls
@@ -565,7 +569,9 @@ class StrgUBVec(MemoryController):
             tb2out_0_u = extract_controller_json(config_json["tb2out_0"])
             sram2tb_0_shared_loop_lvls = factor_sram2tb(sram2tb_0_u,
                                                         tb2out_0_u,
-                                                        self.max_outer_loops)
+                                                        self.max_outer_loops,
+                                                        self.max_inner_loops,
+                                                        self.sram2tb_delay_buf)
             print("sram2tb_0_shared_loop_lvls", sram2tb_0_shared_loop_lvls)
             if sram2tb_0_shared_loop_lvls != 0:
                 outer_loop_dim = self.max_outer_loops + sram2tb_0_shared_loop_lvls
@@ -588,7 +594,9 @@ class StrgUBVec(MemoryController):
             tb2out_1_u = extract_controller_json(config_json["tb2out_1"])
             sram2tb_1_shared_loop_lvls = factor_sram2tb(sram2tb_1_u,
                                                         tb2out_1_u,
-                                                        self.max_outer_loops)
+                                                        self.max_outer_loops,
+                                                        self.max_inner_loops,
+                                                        self.sram2tb_delay_buf)
             print("sram2tb_1_shared_loop_lvls", sram2tb_1_shared_loop_lvls)
             if sram2tb_1_shared_loop_lvls != 0:
                 outer_loop_dim = self.max_outer_loops + sram2tb_1_shared_loop_lvls
