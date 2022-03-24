@@ -148,60 +148,8 @@ class BuffetLike(Generator):
         self.wire(self._rd_rsp_fifo_full, self._rd_rsp_outfifo.ports.full)
         self.wire(self._rd_rsp_valid, ~self._rd_rsp_outfifo.ports.empty)
 
-#         self._addr_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
-#         self._infifo_pop = self.var("infifo_pop", 2)
-
-#         # For input streams, need coord_in, valid_in, eos_in
-#         self._data_infifo_data_in = self.var("data_infifo_data_in", self.data_width)
-#         # self._infifo_coord_in = self.var("infifo_coord_in", self.data_width)
-#         self._data_infifo_valid_in = self.var("data_infifo_valid_in", 1)
-#         self._data_infifo_eos_in = self.var("data_infifo_eos_in", 1)
-
-#         # Stupid convert
-#         self._data_infifo_in_packed = self.var("data_infifo_in_packed", 1 * self.data_width + 1, packed=True)
-#         self.wire(self._data_infifo_in_packed[self.data_width], self._eos_in[0])
-#         self.wire(self._data_infifo_in_packed[self.data_width - 1, 0], self._data_in[0])
-#         self._data_infifo_out_packed = self.var("data_infifo_out_packed", 1 * self.data_width + 1, packed=True)
-#         self.wire(self._data_infifo_eos_in, self._data_infifo_out_packed[self.data_width])
-#         self.wire(self._data_infifo_data_in, self._data_infifo_out_packed[self.data_width - 1, 0])
-
-
-#         # For input streams, need coord_in, valid_in, eos_in
-#         self._addr_infifo_data_in = self.var("addr_infifo_data_in", self.data_width)
-#         # self._infifo_coord_in = self.var("infifo_coord_in", self.data_width)
-#         self._addr_infifo_valid_in = self.var("addr_infifo_valid_in", 1)
-#         self._addr_infifo_eos_in = self.var("addr_infifo_eos_in", 1)
-
-#         self._addr_infifo_in_packed = self.var("addr_infifo_in_packed", 1 * self.data_width + 1, packed=True)
-#         self.wire(self._addr_infifo_in_packed[self.data_width], self._eos_in[1])
-#         self.wire(self._addr_infifo_in_packed[self.data_width - 1, 0], self._data_in[1])
-#         self._addr_infifo_out_packed = self.var("addr_infifo_out_packed", 1 * self.data_width + 1, packed=True)
-#         self.wire(self._addr_infifo_eos_in, self._addr_infifo_out_packed[self.data_width])
-#         self.wire(self._addr_infifo_data_in, self._addr_infifo_out_packed[self.data_width - 1, 0])
-
-#         self.add_child(f"addr_input_fifo",
-#                        self._addr_infifo,
-#                        clk=self._gclk,
-#                        rst_n=self._rst_n,
-#                        clk_en=self._clk_en,
-#                        push=self._valid_in[1],
-#                        pop=self._infifo_pop[1],
-#                        data_in=self._addr_infifo_in_packed,
-#                        data_out=self._addr_infifo_out_packed)
-
-#         self.wire(self._ready_out[1], ~self._addr_infifo.ports.full)
-#         self.wire(self._addr_infifo_valid_in, ~self._addr_infifo.ports.empty)
-
-#         # State for block writes
-#         self._set_block_size = self.var("set_block_size", 1)
-#         self._block_size = register(self, self._data_infifo_data_in, self._set_block_size, name="block_size")
-
-#         self._inc_block_write = self.var("inc_block_write", 1)
-#         self._clr_block_write = self.var("clr_block_write", 1)
-#         self._block_writes = add_counter(self, "block_write_count", 16, increment=self._inc_block_write, clear=self._clr_block_write)
-
 # # =============================
-# # SCAN FSM
+# #  FSM
 # # =============================
 
 #         # Address for writing segment
@@ -240,36 +188,42 @@ class BuffetLike(Generator):
 #         self._clr_wen_made = self.var("clr_wen_made", 1)
 #         self._wen_made = sticky_flag(self, self._wen, clear=self._clr_wen_made, name="wen_made", seq_only=True)
 
-#         # Create FSM
-#         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
-#         START = self.scan_fsm.add_state("START")
-#         BLOCK_1_SZ = self.scan_fsm.add_state("BLOCK_1_SZ")
-#         BLOCK_1_WR = self.scan_fsm.add_state("BLOCK_1_WR")
-#         BLOCK_2_SZ = self.scan_fsm.add_state("BLOCK_2_SZ")
-#         BLOCK_2_WR = self.scan_fsm.add_state("BLOCK_2_WR")
-#         # Lowest level
-#         LL = self.scan_fsm.add_state("LL")
-#         # Lowest level uncompressed (use address)
-#         UnLL = self.scan_fsm.add_state("UnLL")
-#         # Lowest level compressed
-#         ComLL = self.scan_fsm.add_state("ComLL")
-#         UL_WZ = self.scan_fsm.add_state("UL_WZ")
-#         UL = self.scan_fsm.add_state("UL")
-#         UL_EMIT_COORD = self.scan_fsm.add_state("UL_EMIT_COORD")
-#         UL_EMIT_SEG = self.scan_fsm.add_state("UL_EMIT_SEG")
-#         DONE = self.scan_fsm.add_state("DONE")
+        self._inc_wr_addr = self.var("inc_wr_addr", 1)
+        self._wr_addr = add_counter(self, "write_addr", bitwidth=self.data_width, increment=self._inc_wr_addr)
 
-#         ####################
-#         # Next State Logic
-#         ####################
+        self._inc_bounds_ctr = self.var("inc_bounds_ctr", 1)
+        self._clr_bounds_ctr = self.var("clr_bounds_ctr", 1)
+        self._bounds_ctr = add_counter(self, "bounds_ctr", bitwidth=self.data_width,
+                                       increment=self._inc_bounds_ctr, clear=self._clr_bounds_ctr)
 
-#         ####################
-#         # START #
-#         ####################
-#         # Start state goes to either lowest level or upper level
-#         START.next(BLOCK_1_SZ, self._block_mode)
-#         START.next(LL, self._lowest_level)
-#         START.next(UL_WZ, ~self._lowest_level)
+        self._en_curr_base = self.var("en_curr_base", 1)
+        self._en_curr_bounds = self.var("en_curr_bounds", 1)
+
+        self._curr_base = register(self, self._wr_addr, enable=self._en_curr_base)
+        self._curr_bounds = register(self, self._bounds_ctr)
+
+        # Create FSM
+        self.write_fsm = self.add_fsm("write_fsm", reset_high=False)
+        WR_START = self.write_fsm.add_state("WR_START")
+        WRITING = self.write_fsm.add_state("WRITING")
+
+        ####################
+        # Next State Logic
+        ####################
+
+        ####################
+        # WR_START #
+        ####################
+        # Start state gets an allocate command
+        WR_START.next(WRITING, self._wr_fifo_valid & (self._wr_fifo_out_op == 0))
+        WR_START.next(WR_START, None)
+
+        ####################
+        # WRITING #
+        ####################
+        # Writing until we get a finalize...
+        WRITING.next(WR_START, self._wr_fifo_valid & (self._wr_fifo_out_op == 0))
+        WRITING.next(WRITING, None)
 
 #         ####################
 #         # BLOCK_1_SZ
