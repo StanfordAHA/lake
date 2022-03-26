@@ -1,3 +1,4 @@
+from turtle import width
 import kratos as kts
 from kratos import *
 from lake.passes.passes import lift_config_reg
@@ -38,6 +39,13 @@ class BuffetLike(Generator):
 
         # Buffet-like has a write side and a read side
 
+        # Need an ID to identify which buffet is being accessed
+        # self._ID = self.input("ID", self.data_width)
+        # self._ID.add_attribute(ConfigRegAttr("Identifier for the buffet controller being addressed"))
+
+        self._buffet_capacity = self.input("buffet_capacity", self.data_width)
+        self._buffet_capacity.add_attribute(ConfigRegAttr("Capacity of buffet..."))
+
         ### WRITE SIDE
         self._wr_data = self.input("wr_data", self.data_width, explicit_array=True, packed=True)
         self._wr_data.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -76,6 +84,28 @@ class BuffetLike(Generator):
 
         self._rd_rsp_valid = self.output("rd_rsp_valid", 1)
         self._rd_rsp_valid.add_attribute(ControlSignalAttr(is_control=False))
+
+        # Need interface to memory...
+        self._addr_to_mem = self.output("addr_to_mem", self.data_width)
+        self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._data_to_mem = self.output("data_to_mem", self.data_width)
+        self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._wen_to_mem = self.output("wen_to_mem", 1)
+        self._wen_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._ren_to_mem = self.output("ren_to_mem", 1)
+        self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._data_from_mem = self.input("data_from_mem", self.data_width)
+        self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._valid_from_mem = self.input("valid_from_mem", 1)
+        self._valid_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._ready_from_mem = self.input("ready_from_mem", 1)
+        self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
 
 # =============================
 # FIFO inputs
@@ -152,44 +182,20 @@ class BuffetLike(Generator):
 # #  FSM
 # # =============================
 
-#         # Address for writing segment
-#         self._inc_seg_addr = self.var("inc_seg_addr", 1)
-#         self._clr_seg_addr = self.var("clr_seg_addr", 1)
-#         self._seg_addr = add_counter(self, "segment_addr", 16, increment=self._inc_seg_addr, clear=self._clr_seg_addr)
-
-#         self._inc_coord_addr = self.var("inc_coord_addr", 1)
-#         self._clr_coord_addr = self.var("clr_coord_addr", 1)
-#         self._coord_addr = add_counter(self, "coord_addr", 16, increment=self._inc_coord_addr, clear=self._clr_coord_addr)
-
-#         # Value to go to segment
-#         self._inc_seg_ctr = self.var("inc_seg_ctr", 1)
-#         self._clr_seg_ctr = self.var("clr_seg_ctr", 1)
-#         self._seg_ctr = add_counter(self, "segment_counter", 16, increment=self._inc_seg_ctr, clear=self._clr_seg_ctr)
-
-#         self._set_curr_coord = self.var("set_curr_coord", 1)
-#         self._clr_curr_coord = self.var("clr_curr_coord", 1)
-#         self._curr_coord = register(self, self._data_infifo_data_in, enable=self._set_curr_coord)
-#         self._curr_coord_valid = sticky_flag(self, self._set_curr_coord, clear=self._clr_curr_coord, name="valid_coord_sticky", seq_only=True)
-
-#         # Indicates if we are seeing a new coordinate
-#         self._new_coord = self.var("new_coord", 1)
-#         # We have a new coord if the new coord input is valid and the curr_coord is not valid, or the data is different.
-#         self.wire(self._new_coord, (self._data_infifo_valid_in & ~self._data_infifo_eos_in) & (~self._curr_coord_valid | (self._data_infifo_data_in != self._curr_coord)))
-
-#         self._stop_in = self.var("stop_in", 1)
-#         self.wire(self._stop_in, self._data_infifo_valid_in & self._data_infifo_eos_in)
-
-#         self._full_stop = self.var("full_stop", 1)
-#         self.wire(self._full_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
-
-#         self._matching_stop = self.var("matching_stop", 1)
-#         self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == self._stop_lvl))
-
-#         self._clr_wen_made = self.var("clr_wen_made", 1)
-#         self._wen_made = sticky_flag(self, self._wen, clear=self._clr_wen_made, name="wen_made", seq_only=True)
+        # Read block base and bounds...
+        self._blk_base = self.var("blk_base", self.data_width)
+        self._blk_bounds = self.var("blk_bounds", self.data_width)
 
         self._inc_wr_addr = self.var("inc_wr_addr", 1)
         self._wr_addr = add_counter(self, "write_addr", bitwidth=self.data_width, increment=self._inc_wr_addr)
+        self._wen = self.var("wen", 1)
+
+        # Read side address + ren
+        self._rd_addr = self.var("rd_addr", self.data_width)
+        self._ren = self.var("ren", 1)
+
+        # Need to define which side (read/write) has access to the memory port
+        self._mem_acq = self.var("mem_acq", 2)
 
         self._inc_bounds_ctr = self.var("inc_bounds_ctr", 1)
         self._clr_bounds_ctr = self.var("clr_bounds_ctr", 1)
@@ -197,10 +203,25 @@ class BuffetLike(Generator):
                                        increment=self._inc_bounds_ctr, clear=self._clr_bounds_ctr)
 
         self._en_curr_base = self.var("en_curr_base", 1)
-        self._en_curr_bounds = self.var("en_curr_bounds", 1)
+        # self._en_curr_bounds = self.var("en_curr_bounds", 1)
 
         self._curr_base = register(self, self._wr_addr, enable=self._en_curr_base)
-        self._curr_bounds = register(self, self._bounds_ctr)
+        # self._curr_bounds = register(self, self._bounds_ctr, enable=self._en_curr_bounds)
+
+        self._push_blk = self.var("push_blk", 1)
+        self._pop_blk = self.var("pop_blk", 1)
+        self._blk_valid = self.var("blk_valid", 1)
+        self._blk_full = self.var("blk_full", 1)
+
+        self._curr_capacity = self.var("curr_capacity", self.data_width)
+
+        @always_ff((posedge, self._clk), (negedge, self._rst_n))
+        def cap_reg(self):
+            if self._rst_n == 0:
+                self._curr_capacity = kts.const(0, self.data_width)
+            else:
+                self._curr_capacity = self._curr_capacity + self._inc_wr_addr - kts.ternary(self._pop_blk, self._blk_bounds, kts.const(0, width=self.data_width))
+        self.add_code(cap_reg)
 
         # Create FSM
         self.write_fsm = self.add_fsm("write_fsm", reset_high=False)
@@ -208,7 +229,7 @@ class BuffetLike(Generator):
         WRITING = self.write_fsm.add_state("WRITING")
 
         ####################
-        # Next State Logic
+        # Next State Logic WRITE
         ####################
 
         ####################
@@ -222,417 +243,102 @@ class BuffetLike(Generator):
         # WRITING #
         ####################
         # Writing until we get a finalize...
-        WRITING.next(WR_START, self._wr_fifo_valid & (self._wr_fifo_out_op == 0))
+        WRITING.next(WR_START, self._wr_fifo_valid & (self._wr_fifo_out_op == 0) & ~self._blk_full)
         WRITING.next(WRITING, None)
 
-#         ####################
-#         # BLOCK_1_SZ
-#         ####################
-#         # Get the first block size...
-#         BLOCK_1_SZ.next(BLOCK_1_WR, self._data_infifo_valid_in)
-#         BLOCK_1_SZ.next(BLOCK_1_SZ, None)
+        self.write_fsm.output(self._inc_wr_addr)
+        self.write_fsm.output(self._inc_bounds_ctr)
+        self.write_fsm.output(self._clr_bounds_ctr)
+        self.write_fsm.output(self._push_blk)
+        self.write_fsm.output(self._en_curr_base)
+        self.write_fsm.output(self._wen)
+        self.write_fsm.output(self._wr_fifo_pop)
+        # self.write_fsm.output(self._en_curr_bounds)
 
-#         ####################
-#         # BLOCK_1_WR
-#         ####################
-#         # Write the first block...
-#         # If this is just writing a single structure, end after that
-#         BLOCK_1_WR.next(BLOCK_2_SZ, (self._block_writes == self._block_size) & ~self._lowest_level)
-#         BLOCK_1_WR.next(DONE, (self._block_writes == self._block_size) & self._lowest_level)
-#         BLOCK_1_WR.next(BLOCK_1_WR, None)
+        ####################
+        # Output Logic WRITE
+        ####################
 
-#         ####################
-#         # BLOCK_2_SZ
-#         ####################
-#         # Get the second block size...
-#         BLOCK_2_SZ.next(BLOCK_2_WR, self._data_infifo_valid_in)
-#         BLOCK_2_SZ.next(BLOCK_2_SZ, None)
+        ####################
+        # WR_START #
+        ####################
+        WR_START.output(self._inc_wr_addr, 0)
+        WR_START.output(self._inc_bounds_ctr, 0)
+        WR_START.output(self._clr_bounds_ctr, self._wr_fifo_valid & (self._wr_fifo_out_op == 0))
+        WR_START.output(self._push_blk, 0)
+        WR_START.output(self._en_curr_base, self._wr_fifo_valid & (self._wr_fifo_out_op == 0))
+        WR_START.output(self._wen, 0)
+        WR_START.output(self._wr_fifo_pop, 0)
+        # WR_START.output(self._en_curr_bounds, 0)
 
-#         ####################
-#         # BLOCK_2_WR
-#         ####################
-#         # Get the first block size...
-#         BLOCK_2_WR.next(DONE, (self._block_writes == self._block_size))
-#         BLOCK_2_WR.next(BLOCK_2_WR, None)
+        ####################
+        # WRITING #
+        ####################
+        # Increment wr addr if we get wr access
+        WRITING.output(self._inc_wr_addr, self._mem_acq[0] & self._wr_fifo_valid & (self._wr_fifo_out_op == 1))
+        WRITING.output(self._inc_bounds_ctr, self._mem_acq[0] & self._wr_fifo_valid & (self._wr_fifo_out_op == 1))
+        WRITING.output(self._clr_bounds_ctr, 0)
+        WRITING.output(self._push_blk, self._wr_fifo_valid & (self._wr_fifo_out_op == 0) & ~self._blk_full)
+        WRITING.output(self._en_curr_base, 0)
+        WRITING.output(self._wen, self._wr_fifo_valid & (self._wr_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
+        WRITING.output(self._wr_fifo_pop, self._mem_acq[0] & self._wr_fifo_valid & (self._wr_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
+        # WRITING.output(self._en_curr_bounds, 0)
 
-#         ####################
-#         # LL #
-#         ####################
-#         # Redundant state but helpful in my head
-#         # Go to compressed or uncompressed from here
-#         LL.next(ComLL, self._compressed)
-#         LL.next(UnLL, ~self._compressed)
+        ##### Create read side fsm separately.
 
-#         ####################
-#         # ComLL
-#         ####################
-#         # In the compressed state of lowest level, we only need to write the
-#         # data values in order...just watching for the stop 0 token
-#         ComLL.next(DONE, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
-#         ComLL.next(ComLL, None)
+        #####################
+        # READING #
+        #####################
 
-#         ####################
-#         # UnLL
-#         ####################
-#         # In the uncompressed lowest level, we are writing the data at the specified address, so we are similarly looking
-#         # for stop 0 token
-#         UnLL.next(DONE, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
-#                   (self._data_infifo_data_in == 0) & (self._addr_infifo_data_in == 0))
-#         UnLL.next(UnLL, None)
+        self.read_fsm = self.add_fsm("read_fsm", reset_high=False)
+        RD_START = self.read_fsm.add_state("RD_START")
 
-#         ####################
-#         # UL_WZ
-#         ####################
-#         # Need to write a 0 to the segment array first...
-#         UL_WZ.next(UL, self._ready_in)
-#         UL_WZ.next(UL_WZ, ~self._ready_in)
+        ####################
+        # RD_START
+        ####################
+        # Get the first block size...
+        RD_START.next(RD_START, None)
 
-#         ####################
-#         # UL #
-#         ####################
-#         # ASSUMED TO BE COMPRESSED - OTHERWISE DFG LOOKS DIFFERENT - PERFORMS MATH ON COORDINATES
-#         # In the upper level, we will emit new coordinates linearly as we see new ones, reset tracking at stop_lvl
-#         UL.next(UL_EMIT_COORD, self._new_coord)
-#         UL.next(UL_EMIT_SEG, self._matching_stop)
-#         UL.next(UL, None)
+        self.read_fsm.output(self._pop_blk)
+        self.read_fsm.output(self._rd_addr)
+        self.read_fsm.output(self._ren)
+        self.read_fsm.output(self._rd_op_fifo_pop)
+        self.read_fsm.output(self._rd_rsp_fifo_push)
 
-#         ####################
-#         # UL_EMIT_COORD #
-#         ####################
-#         # From the emit coord, we will send a write out as long the memory is ready for a write
-#         # Then go back to UL once we see new data or a stop in
-#         UL_EMIT_COORD.next(UL, self._new_coord | self._stop_in)
-#         UL_EMIT_COORD.next(UL_EMIT_COORD, None)
+        ####################
+        # RD_START
+        ####################
+        RD_START.output(self._pop_blk, (self._rd_op_fifo_out_op == 0) & self._rd_op_fifo_valid)
+        RD_START.output(self._rd_addr, self._rd_op_fifo_out_addr)
+        # Guarantee there's room for the read to land
+        RD_START.output(self._ren, (self._rd_op_fifo_out_op == 1) & self._rd_op_fifo_valid & ~self._rd_rsp_fifo_full)
+        # RD_START.output(self._rd_op_fifo_pop, self._mem_acq[1] & (self._rd_op_fifo_out_op == 1) & self._rd_op_fifo_valid & ~self._rd_rsp_fifo_full)
+        # Pop the op fifo if there is a read that's going through or if it's a free op
+        RD_START.output(self._rd_op_fifo_pop, kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[1] & ~self._rd_rsp_fifo_full, kts.const(1, 1)) & self._rd_op_fifo_valid)
+        RD_START.output(self._rd_rsp_fifo_push, self._valid_from_mem)
 
-#         ####################
-#         # UL_EMIT_SEG #
-#         ####################
-#         # From the emit seg, we will send out the writes to the segment array, will clear all the state
-#         # Should go to done if we see a stop 0
-#         # Should only move on once we have drained the subsequent stops and see valid data coming in
-#         UL_EMIT_SEG.next(UL, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
-#         UL_EMIT_SEG.next(DONE, self._full_stop)
-#         UL_EMIT_SEG.next(UL_EMIT_SEG, None)
+        self.write_fsm.set_start_state(WR_START)
+        self.read_fsm.set_start_state(RD_START)
 
-#         ####################
-#         # DONE
-#         ####################
-#         # We are done...
-#         # TODO: Accept multiple blocks
-#         DONE.next(DONE, None)
+        ### Bookkeeping FIFO
+        self._blk_fifo_in = kts.concat(self._curr_base, self._bounds_ctr)
+        self._blk_fifo = RegFIFO(data_width=self._blk_fifo_in.width, width_mult=1, depth=8)
 
-#         ####################
-#         # FSM Output Logic
-#         ####################
+        self.add_child(f"blk_fifo",
+                       self._blk_fifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._push_blk,
+                       pop=self._pop_blk,
+                       data_in=self._blk_fifo_in,
+                       data_out=kts.concat(self._blk_base, self._blk_bounds))
 
-#         self.scan_fsm.output(self._addr_out)
-#         self.scan_fsm.output(self._wen)
-#         self.scan_fsm.output(self._data_out)
-#         self.scan_fsm.output(self._inc_seg_addr)
-#         self.scan_fsm.output(self._clr_seg_addr)
-#         self.scan_fsm.output(self._inc_coord_addr)
-#         self.scan_fsm.output(self._clr_coord_addr)
-#         self.scan_fsm.output(self._inc_seg_ctr)
-#         self.scan_fsm.output(self._clr_seg_ctr)
-#         self.scan_fsm.output(self._set_curr_coord)
-#         self.scan_fsm.output(self._clr_curr_coord)
-#         self.scan_fsm.output(self._infifo_pop[0])
-#         self.scan_fsm.output(self._infifo_pop[1])
-#         self.scan_fsm.output(self._clr_wen_made)
-#         self.scan_fsm.output(self._set_block_size)
-#         self.scan_fsm.output(self._inc_block_write)
-#         self.scan_fsm.output(self._clr_block_write)
+        self.wire(self._blk_full, self._blk_fifo.ports.full)
+        self.wire(self._blk_valid, ~self._blk_fifo.ports.empty)
 
-#         #######
-#         # START - TODO - Generate general hardware...
-#         #######
-#         START.output(self._addr_out, kts.const(0, 16))
-#         START.output(self._wen, 0)
-#         START.output(self._data_out, kts.const(0, 16))
-#         START.output(self._inc_seg_addr, 0)
-#         START.output(self._clr_seg_addr, 0)
-#         START.output(self._inc_coord_addr, 0)
-#         START.output(self._clr_coord_addr, 0)
-#         START.output(self._inc_seg_ctr, 0)
-#         START.output(self._clr_seg_ctr, 0)
-#         START.output(self._set_curr_coord, 0)
-#         START.output(self._clr_curr_coord, 0)
-#         START.output(self._infifo_pop[0], 0)
-#         START.output(self._infifo_pop[1], 0)
-#         START.output(self._clr_wen_made, 0)
-#         START.output(self._set_block_size, 0)
-#         START.output(self._inc_block_write, 0)
-#         START.output(self._clr_block_write, 0)
-
-#         #######
-#         # BLOCK_1_SZ
-#         #######
-#         BLOCK_1_SZ.output(self._addr_out, kts.const(0, 16))
-#         BLOCK_1_SZ.output(self._wen, 0)
-#         BLOCK_1_SZ.output(self._data_out, kts.const(0, 16))
-#         BLOCK_1_SZ.output(self._inc_seg_addr, 0)
-#         BLOCK_1_SZ.output(self._clr_seg_addr, 0)
-#         BLOCK_1_SZ.output(self._inc_coord_addr, 0)
-#         BLOCK_1_SZ.output(self._clr_coord_addr, 0)
-#         BLOCK_1_SZ.output(self._inc_seg_ctr, 0)
-#         BLOCK_1_SZ.output(self._clr_seg_ctr, 0)
-#         BLOCK_1_SZ.output(self._set_curr_coord, 0)
-#         BLOCK_1_SZ.output(self._clr_curr_coord, 0)
-#         BLOCK_1_SZ.output(self._infifo_pop[0], self._data_infifo_valid_in)
-#         BLOCK_1_SZ.output(self._infifo_pop[1], 0)
-#         BLOCK_1_SZ.output(self._clr_wen_made, 0)
-#         BLOCK_1_SZ.output(self._set_block_size, self._data_infifo_valid_in)
-#         BLOCK_1_SZ.output(self._inc_block_write, 0)
-#         BLOCK_1_SZ.output(self._clr_block_write, 1)
-
-#         #######
-#         # BLOCK_1_WR
-#         #######
-#         BLOCK_1_WR.output(self._addr_out, self._block_writes)
-#         BLOCK_1_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
-#         BLOCK_1_WR.output(self._data_out, self._data_infifo_data_in)
-#         BLOCK_1_WR.output(self._inc_seg_addr, 0)
-#         BLOCK_1_WR.output(self._clr_seg_addr, 0)
-#         BLOCK_1_WR.output(self._inc_coord_addr, 0)
-#         BLOCK_1_WR.output(self._clr_coord_addr, 0)
-#         BLOCK_1_WR.output(self._inc_seg_ctr, 0)
-#         BLOCK_1_WR.output(self._clr_seg_ctr, 0)
-#         BLOCK_1_WR.output(self._set_curr_coord, 0)
-#         BLOCK_1_WR.output(self._clr_curr_coord, 0)
-#         BLOCK_1_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._ready_in)
-#         BLOCK_1_WR.output(self._infifo_pop[1], 0)
-#         BLOCK_1_WR.output(self._clr_wen_made, 0)
-#         BLOCK_1_WR.output(self._set_block_size, 0)
-#         BLOCK_1_WR.output(self._inc_block_write, self._ready_in & self._data_infifo_valid_in & (self._block_writes < self._block_size))
-#         BLOCK_1_WR.output(self._clr_block_write, 0)
-
-#         #######
-#         # BLOCK_2_SZ
-#         #######
-#         BLOCK_2_SZ.output(self._addr_out, kts.const(0, 16))
-#         BLOCK_2_SZ.output(self._wen, 0)
-#         BLOCK_2_SZ.output(self._data_out, kts.const(0, 16))
-#         BLOCK_2_SZ.output(self._inc_seg_addr, 0)
-#         BLOCK_2_SZ.output(self._clr_seg_addr, 0)
-#         BLOCK_2_SZ.output(self._inc_coord_addr, 0)
-#         BLOCK_2_SZ.output(self._clr_coord_addr, 0)
-#         BLOCK_2_SZ.output(self._inc_seg_ctr, 0)
-#         BLOCK_2_SZ.output(self._clr_seg_ctr, 0)
-#         BLOCK_2_SZ.output(self._set_curr_coord, 0)
-#         BLOCK_2_SZ.output(self._clr_curr_coord, 0)
-#         BLOCK_2_SZ.output(self._infifo_pop[0], self._data_infifo_valid_in)
-#         BLOCK_2_SZ.output(self._infifo_pop[1], 0)
-#         BLOCK_2_SZ.output(self._clr_wen_made, 0)
-#         BLOCK_2_SZ.output(self._set_block_size, self._data_infifo_valid_in)
-#         BLOCK_2_SZ.output(self._inc_block_write, 0)
-#         BLOCK_2_SZ.output(self._clr_block_write, 1)
-
-#         #######
-#         # BLOCK_2_WR
-#         #######
-#         BLOCK_2_WR.output(self._addr_out, self._block_writes + self._inner_dim_offset)
-#         BLOCK_2_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
-#         BLOCK_2_WR.output(self._data_out, self._data_infifo_data_in)
-#         BLOCK_2_WR.output(self._inc_seg_addr, 0)
-#         BLOCK_2_WR.output(self._clr_seg_addr, 0)
-#         BLOCK_2_WR.output(self._inc_coord_addr, 0)
-#         BLOCK_2_WR.output(self._clr_coord_addr, 0)
-#         BLOCK_2_WR.output(self._inc_seg_ctr, 0)
-#         BLOCK_2_WR.output(self._clr_seg_ctr, 0)
-#         BLOCK_2_WR.output(self._set_curr_coord, 0)
-#         BLOCK_2_WR.output(self._clr_curr_coord, 0)
-#         BLOCK_2_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._ready_in)
-#         BLOCK_2_WR.output(self._infifo_pop[1], 0)
-#         BLOCK_2_WR.output(self._clr_wen_made, 0)
-#         BLOCK_2_WR.output(self._set_block_size, 0)
-#         BLOCK_2_WR.output(self._inc_block_write, self._ready_in & self._data_infifo_valid_in & (self._block_writes < self._block_size))
-#         BLOCK_2_WR.output(self._clr_block_write, 0)
-
-#         #######
-#         # LL
-#         #######
-#         LL.output(self._addr_out, kts.const(0, 16))
-#         LL.output(self._wen, 0)
-#         LL.output(self._data_out, kts.const(0, 16))
-#         LL.output(self._inc_seg_addr, 0)
-#         LL.output(self._clr_seg_addr, 0)
-#         LL.output(self._inc_coord_addr, 0)
-#         LL.output(self._clr_coord_addr, 0)
-#         LL.output(self._inc_seg_ctr, 0)
-#         LL.output(self._clr_seg_ctr, 0)
-#         LL.output(self._set_curr_coord, 0)
-#         LL.output(self._clr_curr_coord, 0)
-#         LL.output(self._infifo_pop[0], 0)
-#         LL.output(self._infifo_pop[1], 0)
-#         LL.output(self._clr_wen_made, 0)
-#         LL.output(self._set_block_size, 0)
-#         LL.output(self._inc_block_write, 0)
-#         LL.output(self._clr_block_write, 0)
-
-#         #######
-#         # UnLL
-#         #######
-#         UnLL.output(self._addr_out, self._addr_infifo_data_in)
-#         # Only write the values
-#         UnLL.output(self._wen, (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ~(self._data_infifo_eos_in | self._addr_infifo_eos_in))
-#         UnLL.output(self._data_out, self._data_infifo_data_in)
-#         UnLL.output(self._inc_seg_addr, 0)
-#         UnLL.output(self._clr_seg_addr, 0)
-#         UnLL.output(self._inc_coord_addr, 0)
-#         UnLL.output(self._clr_coord_addr, 0)
-#         UnLL.output(self._inc_seg_ctr, 0)
-#         UnLL.output(self._clr_seg_ctr, 0)
-#         UnLL.output(self._set_curr_coord, 0)
-#         UnLL.output(self._clr_curr_coord, 0)
-#         # Pop if the memory is ready for a write, or its eos
-#         UnLL.output(self._infifo_pop[0], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
-#         UnLL.output(self._infifo_pop[1], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
-#         UnLL.output(self._clr_wen_made, 0)
-#         UnLL.output(self._set_block_size, 0)
-#         UnLL.output(self._inc_block_write, 0)
-#         UnLL.output(self._clr_block_write, 0)
-
-#         #######
-#         # ComLL
-#         #######
-#         # Use the seg addr
-#         ComLL.output(self._addr_out, self._seg_addr)
-#         # Only write if its data
-#         ComLL.output(self._wen, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
-#         ComLL.output(self._data_out, self._data_infifo_data_in)
-#         # Increase the seg addr only if we are actually writing
-#         ComLL.output(self._inc_seg_addr, self._data_infifo_valid_in & ~self._data_infifo_eos_in & self._ready_in)
-#         ComLL.output(self._clr_seg_addr, 0)
-#         ComLL.output(self._inc_coord_addr, 0)
-#         ComLL.output(self._clr_coord_addr, 0)
-#         ComLL.output(self._inc_seg_ctr, 0)
-#         ComLL.output(self._clr_seg_ctr, 0)
-#         ComLL.output(self._set_curr_coord, 0)
-#         ComLL.output(self._clr_curr_coord, 0)
-#         # Only pop if its eos or the memory is ready for the write
-#         ComLL.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._data_infifo_eos_in | self._ready_in))
-#         ComLL.output(self._infifo_pop[1], 0)
-#         ComLL.output(self._clr_wen_made, 0)
-#         ComLL.output(self._set_block_size, 0)
-#         ComLL.output(self._inc_block_write, 0)
-#         ComLL.output(self._clr_block_write, 0)
-
-#         #######
-#         # UL_WZ
-#         #######
-#         # Write a 0 to the segment array
-#         UL_WZ.output(self._addr_out, self._seg_addr)
-#         UL_WZ.output(self._wen, 1)
-#         UL_WZ.output(self._data_out, kts.const(0, 16))
-#         UL_WZ.output(self._inc_seg_addr, self._ready_in)
-#         UL_WZ.output(self._clr_seg_addr, 0)
-#         UL_WZ.output(self._inc_coord_addr, 0)
-#         UL_WZ.output(self._clr_coord_addr, 0)
-#         UL_WZ.output(self._inc_seg_ctr, 0)
-#         UL_WZ.output(self._clr_seg_ctr, 0)
-#         UL_WZ.output(self._set_curr_coord, 0)
-#         UL_WZ.output(self._clr_curr_coord, 0)
-#         UL_WZ.output(self._infifo_pop[0], 0)
-#         UL_WZ.output(self._infifo_pop[1], 0)
-#         UL_WZ.output(self._clr_wen_made, 0)
-#         UL_WZ.output(self._set_block_size, 0)
-#         UL_WZ.output(self._inc_block_write, 0)
-#         UL_WZ.output(self._clr_block_write, 0)
-
-#         #######
-#         # UL
-#         #######
-#         UL.output(self._addr_out, kts.const(0, 16))
-#         UL.output(self._wen, 0)
-#         UL.output(self._data_out, kts.const(0, 16))
-#         UL.output(self._inc_seg_addr, 0)
-#         UL.output(self._clr_seg_addr, 0)
-#         UL.output(self._inc_coord_addr, 0)
-#         UL.output(self._clr_coord_addr, 0)
-#         UL.output(self._inc_seg_ctr, 0)
-#         UL.output(self._clr_seg_ctr, 0)
-#         UL.output(self._set_curr_coord, self._new_coord)
-#         UL.output(self._clr_curr_coord, 0)
-#         # Pop below the stop level
-#         UL.output(self._infifo_pop[0], self._stop_in & (self._data_infifo_data_in > self._stop_lvl))
-#         # UL.output(self._infifo_pop[0], 0)
-#         UL.output(self._infifo_pop[1], 0)
-#         UL.output(self._clr_wen_made, 1)
-#         UL.output(self._set_block_size, 0)
-#         UL.output(self._inc_block_write, 0)
-#         UL.output(self._clr_block_write, 0)
-
-#         #######
-#         # UL_EMIT_COORD
-#         #######
-#         UL_EMIT_COORD.output(self._addr_out, self._coord_addr + self._inner_dim_offset)
-#         UL_EMIT_COORD.output(self._wen, ~self._wen_made & self._ready_in)
-#         UL_EMIT_COORD.output(self._data_out, self._curr_coord)
-#         UL_EMIT_COORD.output(self._inc_seg_addr, 0)
-#         UL_EMIT_COORD.output(self._clr_seg_addr, 0)
-#         UL_EMIT_COORD.output(self._inc_coord_addr, ~self._wen_made & self._ready_in)
-#         UL_EMIT_COORD.output(self._clr_coord_addr, 0)
-#         UL_EMIT_COORD.output(self._inc_seg_ctr, ~self._wen_made & self._ready_in)
-#         UL_EMIT_COORD.output(self._clr_seg_ctr, 0)
-#         UL_EMIT_COORD.output(self._set_curr_coord, 0)
-#         UL_EMIT_COORD.output(self._clr_curr_coord, 0)
-#         # Pop until stop in or new coordinate
-#         UL_EMIT_COORD.output(self._infifo_pop[0], ~self._new_coord & ~self._stop_in)
-#         UL_EMIT_COORD.output(self._infifo_pop[1], 0)
-#         UL_EMIT_COORD.output(self._clr_wen_made, 0)
-#         UL_EMIT_COORD.output(self._set_block_size, 0)
-#         UL_EMIT_COORD.output(self._inc_block_write, 0)
-#         UL_EMIT_COORD.output(self._clr_block_write, 0)
-
-#         #######
-#         # UL_EMIT_SEG
-#         #######
-#         UL_EMIT_SEG.output(self._addr_out, self._seg_addr)
-#         UL_EMIT_SEG.output(self._wen, ~self._wen_made & self._ready_in)
-#         UL_EMIT_SEG.output(self._data_out, self._seg_ctr)
-#         UL_EMIT_SEG.output(self._inc_seg_addr, ~self._wen_made & self._ready_in)
-#         UL_EMIT_SEG.output(self._clr_seg_addr, 0)
-#         UL_EMIT_SEG.output(self._inc_coord_addr, 0)
-#         UL_EMIT_SEG.output(self._clr_coord_addr, 0)
-#         UL_EMIT_SEG.output(self._inc_seg_ctr, 0)
-#         UL_EMIT_SEG.output(self._clr_seg_ctr, 0)
-#         UL_EMIT_SEG.output(self._set_curr_coord, 0)
-#         # Make sure to clear the coord on segment emissions so it doesn't get reused
-#         UL_EMIT_SEG.output(self._clr_curr_coord, 1)
-#         # Assumption is that valid sets of coordinates are always passed here so I should be able to hit new data
-#         # Pop until we have data in thats not a stop (or we fall through to DONE)
-#         UL_EMIT_SEG.output(self._infifo_pop[0], self._data_infifo_valid_in & self._data_infifo_eos_in)
-#         UL_EMIT_SEG.output(self._infifo_pop[1], 0)
-#         UL_EMIT_SEG.output(self._clr_wen_made, 0)
-#         UL_EMIT_SEG.output(self._set_block_size, 0)
-#         UL_EMIT_SEG.output(self._inc_block_write, 0)
-#         UL_EMIT_SEG.output(self._clr_block_write, 0)
-
-#         #############
-#         # DONE
-#         #############
-#         DONE.output(self._addr_out, kts.const(0, 16))
-#         DONE.output(self._wen, 0)
-#         DONE.output(self._data_out, kts.const(0, 16))
-#         DONE.output(self._inc_seg_addr, 0)
-#         DONE.output(self._clr_seg_addr, 0)
-#         DONE.output(self._inc_coord_addr, 0)
-#         DONE.output(self._clr_coord_addr, 0)
-#         DONE.output(self._inc_seg_ctr, 0)
-#         DONE.output(self._clr_seg_ctr, 0)
-#         DONE.output(self._set_curr_coord, 0)
-#         DONE.output(self._clr_curr_coord, 0)
-#         DONE.output(self._infifo_pop[0], 0)
-#         DONE.output(self._infifo_pop[1], 0)
-#         DONE.output(self._clr_wen_made, 0)
-#         DONE.output(self._set_block_size, 0)
-#         DONE.output(self._inc_block_write, 0)
-#         DONE.output(self._clr_block_write, 0)
-
-#         self.scan_fsm.set_start_state(START)
-
-#         # Force FSM realization first so that flush gets added...
-#         kts.passes.realize_fsm(self.internal_generator)
+        # Force FSM realization first so that flush gets added...
+        kts.passes.realize_fsm(self.internal_generator)
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
