@@ -217,7 +217,7 @@ class BuffetLike(Generator):
 
         @always_ff((posedge, self._clk), (negedge, self._rst_n))
         def cap_reg(self):
-            if self._rst_n == 0:
+            if ~self._rst_n:
                 self._curr_capacity = kts.const(0, self.data_width)
             else:
                 self._curr_capacity = self._curr_capacity + self._inc_wr_addr - kts.ternary(self._pop_blk, self._blk_bounds, kts.const(0, width=self.data_width))
