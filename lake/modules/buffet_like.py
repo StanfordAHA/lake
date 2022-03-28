@@ -1,6 +1,7 @@
 from turtle import width
 import kratos as kts
 from kratos import *
+from lake.modules.arbiter import Arbiter
 from lake.passes.passes import lift_config_reg
 from lake.utils.util import add_counter, register, sticky_flag, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
@@ -339,6 +340,17 @@ class BuffetLike(Generator):
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
+
+        # Arbitrate between the write/read side with RR arbiter
+        self.port_arbiter = Arbiter(ins=2,
+                                    algo="RR")
+        self.add_child(f"rr_arbiter",
+                       self.port_arbiter,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       request_in=kts.concat(self._wen))
+
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
