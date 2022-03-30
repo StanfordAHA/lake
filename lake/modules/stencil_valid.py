@@ -68,7 +68,7 @@ class StencilValid(MemoryController):
         (config_reg, value) tuples
         '''
         config = []
-        stencil_valid = map_controller(extract_controller_json(config_json), "stencil_valid")
+        stencil_valid = map_controller(extract_controller_json(config_json['stencil_valid']), "stencil_valid")
         config.append((f"stencil_valid_sched_gen_enable", 1))
         config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stencil_valid.cyc_strt))
         config.append((f"loops_stencil_valid_dimensionality", stencil_valid.dim))
