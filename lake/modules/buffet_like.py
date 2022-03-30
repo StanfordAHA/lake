@@ -192,7 +192,7 @@ class BuffetLike(Generator):
         self._wen = self.var("wen", 1)
 
         # Read side address + ren
-        self._rd_addr = self.var("rd_addr", self.data_width)
+        self._rd_addr_loc = self.var("rd_addr_loc", self.data_width)
         self._ren = self.var("ren", 1)
 
         # Need to define which side (read/write) has access to the memory port
@@ -301,7 +301,7 @@ class BuffetLike(Generator):
         RD_START.next(RD_START, None)
 
         self.read_fsm.output(self._pop_blk)
-        self.read_fsm.output(self._rd_addr)
+        self.read_fsm.output(self._rd_addr_loc)
         self.read_fsm.output(self._ren)
         self.read_fsm.output(self._rd_op_fifo_pop)
         self.read_fsm.output(self._rd_rsp_fifo_push)
@@ -310,9 +310,9 @@ class BuffetLike(Generator):
         # RD_START
         ####################
         RD_START.output(self._pop_blk, (self._rd_op_fifo_out_op == 0) & self._rd_op_fifo_valid)
-        RD_START.output(self._rd_addr, self._rd_op_fifo_out_addr)
+        RD_START.output(self._rd_addr_loc, self._rd_op_fifo_out_addr)
         # Guarantee there's room for the read to land
-        RD_START.output(self._ren, (self._rd_op_fifo_out_op == 1) & self._rd_op_fifo_valid & ~self._rd_rsp_fifo_full)
+        RD_START.output(self._ren, (self._rd_op_fifo_out_op == 1) & self._rd_op_fifo_valid & ~self._rd_rsp_fifo_full & self._blk_valid)
         # RD_START.output(self._rd_op_fifo_pop, self._mem_acq[1] & (self._rd_op_fifo_out_op == 1) & self._rd_op_fifo_valid & ~self._rd_rsp_fifo_full)
         # Pop the op fifo if there is a read that's going through or if it's a free op
         RD_START.output(self._rd_op_fifo_pop, kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[1] & ~self._rd_rsp_fifo_full, kts.const(1, 1)) & self._rd_op_fifo_valid)
@@ -349,8 +349,14 @@ class BuffetLike(Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       request_in=kts.concat(self._wen))
+                       request_in=kts.concat(self._wen, self._ren),
+                       grant_out=self._mem_acq,
+                       resource_ready=self._ready_from_mem)
 
+        self.wire(self._addr_to_mem, kts.ternary(self._mem_acq[0], self._wr_addr, self._rd_addr_loc + self._blk_base))
+        self.wire(self._data_to_mem, self._wr_fifo_out_data)
+        self.wire(self._ren_to_mem, self._ren & self._mem_acq[1])
+        self.wire(self._wen_to_mem, self._wen & self._mem_acq[0])
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
