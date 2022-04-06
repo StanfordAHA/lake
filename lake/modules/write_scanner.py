@@ -181,6 +181,12 @@ class WriteScanner(Generator):
         self._block_writes = add_counter(self, "block_write_count", 16, increment=self._inc_block_write, clear=self._clr_block_write)
 
 # =============================
+# Output FIFO
+# =============================
+
+
+
+# =============================
 # SCAN FSM
 # =============================
 

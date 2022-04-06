@@ -13,13 +13,15 @@ from lake.modules.reg_fifo import RegFIFO
 
 class BuffetLike(Generator):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 num_ID=2):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.num_ID = num_ID
 
         self.total_sets = 0
 
@@ -44,22 +46,46 @@ class BuffetLike(Generator):
         # self._ID = self.input("ID", self.data_width)
         # self._ID.add_attribute(ConfigRegAttr("Identifier for the buffet controller being addressed"))
 
-        self._buffet_capacity = self.input("buffet_capacity", self.data_width)
+        self._buffet_capacity = self.input("buffet_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
         self._buffet_capacity.add_attribute(ConfigRegAttr("Capacity of buffet..."))
 
         ### WRITE SIDE
+        # self._random_write = self.input("random_write")
+        # self._random_write.add_attribute(ConfigRegAttr("If we are using random write or linear write..."))
+
+        # Accept an address over the line
+        self._wr_ID = self.input("wr_ID", self.data_width, explicit_array=True, packed=True)
+        self._wr_ID.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._wr_ID_ready = self.output("wr_ID_ready", 1)
+        self._wr_ID_ready.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._wr_ID_valid = self.input("wr_ID_valid", 1)
+        self._wr_ID_valid.add_attribute(ControlSignalAttr(is_control=True))
+
+        # Accept an address over the line
+        self._wr_addr = self.input("wr_addr", self.data_width, explicit_array=True, packed=True)
+        self._wr_addr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._wr_addr_ready = self.output("wr_addr_ready", 1)
+        self._wr_addr_ready.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._wr_addr_valid = self.input("wr_addr_valid", 1)
+        self._wr_addr_valid.add_attribute(ControlSignalAttr(is_control=True))
+
+        # Accept data + op over the line
         self._wr_data = self.input("wr_data", self.data_width, explicit_array=True, packed=True)
         self._wr_data.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-        self._wr_valid = self.input("wr_valid", 1)
-        self._wr_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         # Indicates allocate/finalize or write
         self._wr_op = self.input("wr_op", 1)
         self._wr_op.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._wr_ready = self.output("wr_ready", 1)
-        self._wr_ready.add_attribute(ControlSignalAttr(is_control=False))
+        self._wr_data_ready = self.output("wr_data_ready", 1)
+        self._wr_data_ready.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._wr_data_valid = self.input("wr_data_valid", 1)
+        self._wr_data_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         ### READ SIDE
         # On read side need both a request and response channel
@@ -75,6 +101,16 @@ class BuffetLike(Generator):
         # Free or Read
         self._rd_op_op = self.input("rd_op_op", 1)
         self._rd_op_op.add_attribute(ControlSignalAttr(is_control=True))
+
+        # Read ID
+        self._rd_ID_ready = self.output("rd_op_ready", 1)
+        self._rd_ID_ready.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._rd_ID_valid = self.input("rd_op_valid", 1)
+        self._rd_ID_valid.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._rd_ID = self.input("rd_ID", self.data_width, explicit_array=True, packed=True)
+        self._rd_ID.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         # Read response channel
         self._rd_rsp_data = self.output("rd_rsp_data", self.data_width, explicit_array=True, packed=True)
@@ -113,26 +149,68 @@ class BuffetLike(Generator):
 # =============================
 
         # WR OP fifo
-        self._wr_fifo_pop = self.var("wr_fifo_pop", 1)
-        self._wr_fifo_valid = self.var("wr_fifo_valid", 1)
+        self._wr_data_fifo_pop = self.var("wr_data_fifo_pop", 1)
+        self._wr_data_fifo_valid = self.var("wr_data_fifo_valid", 1)
 
-        self._wr_fifo_in = kts.concat(self._wr_data, self._wr_op)
-        self._wr_infifo = RegFIFO(data_width=self._wr_fifo_in.width, width_mult=1, depth=8)
-        self._wr_fifo_out_data = self.var("wr_fifo_out_data", self.data_width)
-        self._wr_fifo_out_op = self.var("wr_fifo_out_op", 1)
+        self._wr_data_fifo_in = kts.concat(self._wr_data, self._wr_op)
+        self._wr_data_infifo = RegFIFO(data_width=self._wr_data_fifo_in.width, width_mult=1, depth=8)
+        self._wr_data_fifo_out_data = self.var("wr_data_fifo_out_data", self.data_width)
+        self._wr_data_fifo_out_op = self.var("wr_data_fifo_out_op", 1)
 
-        self.add_child(f"wr_fifo",
-                       self._wr_infifo,
+        self.add_child(f"wr_data_fifo",
+                       self._wr_data_infifo,
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._wr_valid,
-                       pop=self._wr_fifo_pop,
-                       data_in=self._wr_fifo_in,
-                       data_out=kts.concat(self._wr_fifo_out_data, self._wr_fifo_out_op))
+                       push=self._wr_data_valid,
+                       pop=self._wr_data_fifo_pop,
+                       data_in=self._wr_data_fifo_in,
+                       data_out=kts.concat(self._wr_data_fifo_out_data, self._wr_data_fifo_out_op))
 
-        self.wire(self._wr_ready, ~self._wr_infifo.ports.full)
-        self.wire(self._wr_fifo_valid, ~self._wr_infifo.ports.empty)
+        self.wire(self._wr_data_ready, ~self._wr_data_infifo.ports.full)
+        self.wire(self._wr_data_fifo_valid, ~self._wr_data_infifo.ports.empty)
+
+        # WR ADDR fifo
+        self._wr_addr_fifo_pop = self.var("wr_addr_fifo_pop", 1)
+        self._wr_addr_fifo_valid = self.var("wr_addr_fifo_valid", 1)
+
+        self._wr_addr_fifo_in = kts.concat(self._wr_addr)
+        self._wr_addr_infifo = RegFIFO(data_width=self._wr_addr_fifo_in.width, width_mult=1, depth=8)
+        self._wr_addr_fifo_out_data = self.var("wr_addr_fifo_out_data", self.data_width)
+
+        self.add_child(f"wr_addr_fifo",
+                       self._wr_addr_infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._wr_addr_valid,
+                       pop=self._wr_addr_fifo_pop,
+                       data_in=self._wr_addr_fifo_in,
+                       data_out=kts.concat(self._wr_addr_fifo_out_data))
+
+        self.wire(self._wr_addr_ready, ~self._wr_addr_infifo.ports.full)
+        self.wire(self._wr_addr_fifo_valid, ~self._wr_addr_infifo.ports.empty)
+
+        # WR ID fifo
+        self._wr_ID_fifo_pop = self.var("wr_ID_fifo_pop", 1)
+        self._wr_ID_fifo_valid = self.var("wr_ID_fifo_valid", 1)
+
+        self._wr_ID_fifo_in = kts.concat(self._wr_ID)
+        self._wr_ID_infifo = RegFIFO(data_width=self._wr_ID_fifo_in.width, width_mult=1, depth=8)
+        self._wr_ID_fifo_out_data = self.var("wr_ID_fifo_out_data", self.data_width)
+
+        self.add_child(f"wr_ID_fifo",
+                       self._wr_ID_infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._wr_ID_valid,
+                       pop=self._wr_ID_fifo_pop,
+                       data_in=self._wr_ID_fifo_in,
+                       data_out=kts.concat(self._wr_ID_fifo_out_data))
+
+        self.wire(self._wr_ID_ready, ~self._wr_ID_infifo.ports.full)
+        self.wire(self._wr_ID_fifo_valid, ~self._wr_ID_infifo.ports.empty)
 
         # RD OP fifo
         self._rd_op_fifo_pop = self.var("rd_op_fifo_pop", 1)
@@ -155,6 +233,27 @@ class BuffetLike(Generator):
 
         self.wire(self._rd_op_ready, ~self._rd_op_infifo.ports.full)
         self.wire(self._rd_op_fifo_valid, ~self._rd_op_infifo.ports.empty)
+
+        # RD ID fifo
+        self._rd_ID_fifo_pop = self.var("rd_ID_fifo_pop", 1)
+        self._rd_ID_fifo_valid = self.var("rd_ID_fifo_valid", 1)
+
+        self._rd_ID_fifo_in = kts.concat(self._rd_ID)
+        self._rd_ID_infifo = RegFIFO(data_width=self._rd_ID_fifo_in.width, width_mult=1, depth=8)
+        self._rd_ID_fifo_out_data = self.var("rd_ID_fifo_out_data", self.data_width)
+
+        self.add_child(f"rd_ID_fifo",
+                       self._rd_ID_infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._rd_ID_valid,
+                       pop=self._rd_ID_fifo_pop,
+                       data_in=self._rd_ID_fifo_in,
+                       data_out=kts.concat(self._rd_ID_fifo_out_data))
+
+        self.wire(self._rd_ID_ready, ~self._rd_ID_infifo.ports.full)
+        self.wire(self._rd_ID_fifo_valid, ~self._rd_ID_infifo.ports.empty)
 
 # =============================
 # FIFO outputs
@@ -187,8 +286,9 @@ class BuffetLike(Generator):
         self._blk_base = self.var("blk_base", self.data_width)
         self._blk_bounds = self.var("blk_bounds", self.data_width)
 
-        self._inc_wr_addr = self.var("inc_wr_addr", 1)
-        self._wr_addr = add_counter(self, "write_addr", bitwidth=self.data_width, increment=self._inc_wr_addr)
+        # self._inc_wr_addr = self.var("inc_wr_addr", 1)
+        # self._wr_addr = add_counter(self, "write_addr", bitwidth=self.data_width, increment=self._inc_wr_addr)
+        self._wr_addr = self.var("write_addr", self.data_width)
         self._wen = self.var("wen", 1)
 
         # Read side address + ren
@@ -209,12 +309,12 @@ class BuffetLike(Generator):
         self._curr_base = register(self, self._wr_addr, enable=self._en_curr_base)
         # self._curr_bounds = register(self, self._bounds_ctr, enable=self._en_curr_bounds)
 
-        self._push_blk = self.var("push_blk", 1)
-        self._pop_blk = self.var("pop_blk", 1)
-        self._blk_valid = self.var("blk_valid", 1)
-        self._blk_full = self.var("blk_full", 1)
+        self._push_blk = self.var("push_blk", self.num_ID)
+        self._pop_blk = self.var("pop_blk", self.num_ID)
+        self._blk_valid = self.var("blk_valid", self.num_ID)
+        self._blk_full = self.var("blk_full", self.num_ID)
 
-        self._curr_capacity = self.var("curr_capacity", self.data_width)
+        self._curr_capacity = self.var("curr_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
         @always_ff((posedge, self._clk), (negedge, self._rst_n))
         def cap_reg(self):
@@ -226,7 +326,7 @@ class BuffetLike(Generator):
 
         # Create FSM
         self.write_fsm = self.add_fsm("write_fsm", reset_high=False)
-        WR_START = self.write_fsm.add_state("WR_START")
+        WR_START = [self.write_fsm.add_state(f"WR_START_{i}") for i in range(self.num_ID)]
         WRITING = self.write_fsm.add_state("WRITING")
 
         ####################
