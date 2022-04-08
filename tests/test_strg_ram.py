@@ -21,7 +21,7 @@ def test_storage_ram(mem_width,  # CGRA Params
                      output_iterator_support=6,
                      mem_input_ports=1,
                      mem_output_ports=1,
-                     use_sram_stub=1,
+                     use_sim_sram=1,
                      read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                      rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                      agg_height=4,
@@ -55,7 +55,7 @@ def test_storage_ram(mem_width,  # CGRA Params
                      interconnect_output_ports=in_out_ports,
                      mem_input_ports=mem_input_ports,
                      mem_output_ports=mem_output_ports,
-                     use_sram_stub=use_sram_stub,
+                     use_sim_sram=use_sim_sram,
                      num_tiles=num_tiles,
                      read_delay=read_delay,
                      rw_same_cycle=rw_same_cycle,
