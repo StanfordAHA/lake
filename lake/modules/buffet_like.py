@@ -283,8 +283,8 @@ class BuffetLike(Generator):
 # # =============================
 
         # Read block base and bounds...
-        self._blk_base = self.var("blk_base", self.data_width)
-        self._blk_bounds = self.var("blk_bounds", self.data_width)
+        self._blk_base = self.var("blk_base", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
+        self._blk_bounds = self.var("blk_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
         # self._inc_wr_addr = self.var("inc_wr_addr", 1)
         # self._wr_addr = add_counter(self, "write_addr", bitwidth=self.data_width, increment=self._inc_wr_addr)
@@ -317,12 +317,13 @@ class BuffetLike(Generator):
         self._curr_capacity = self.var("curr_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
         @always_ff((posedge, self._clk), (negedge, self._rst_n))
-        def cap_reg(self):
+        def cap_reg(self, idx):
             if ~self._rst_n:
-                self._curr_capacity = kts.const(0, self.data_width)
+                self._curr_capacity[idx] = kts.const(0, self.data_width)
             else:
-                self._curr_capacity = self._curr_capacity + self._inc_wr_addr - kts.ternary(self._pop_blk, self._blk_bounds, kts.const(0, width=self.data_width))
-        self.add_code(cap_reg)
+                self._curr_capacity[idx] = self._curr_capacity[idx] + self._inc_wr_addr - kts.ternary(self._pop_blk, self._blk_bounds, kts.const(0, width=self.data_width))
+
+        [self.add_code(cap_reg, idx=i) for i in range(self.num_ID)]
 
         # Create FSM
         self.write_fsm = self.add_fsm("write_fsm", reset_high=False)
