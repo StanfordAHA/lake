@@ -1,4 +1,3 @@
-from typing import List
 from lake.modules.spec.sched_gen import SchedGen
 from lake.modules.for_loop import ForLoop
 from lake.attributes.dedicated_port import DedicatedPortAttribute
@@ -6,6 +5,7 @@ from lake.top.memory_controller import MemoryController
 from kratos import *
 from lake.utils.parse_clkwork_config import map_controller, extract_controller_json
 import kratos as kts
+
 
 class StencilValid(MemoryController):
     def __init__(self, name="stencil_valid"):
