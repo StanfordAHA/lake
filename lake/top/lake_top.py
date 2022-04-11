@@ -32,7 +32,6 @@ class LakeTop(Generator):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  use_sim_sram=True,
-                 sram_macro_info=SRAMMacroInfo("tsmc_name"),
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
@@ -47,7 +46,7 @@ class LakeTop(Generator):
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=True,
-                 GF=True):
+                 tech="tsmc"):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -62,7 +61,6 @@ class LakeTop(Generator):
         self.mem_input_ports = mem_input_ports
         self.mem_output_ports = mem_output_ports
         self.use_sim_sram = use_sim_sram
-        self.sram_macro_info = sram_macro_info
         self.agg_height = agg_height
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
         assert self.mem_width >= self.data_width, "Data width needs to be smaller than mem"
@@ -76,7 +74,7 @@ class LakeTop(Generator):
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
         self.formal_module = formal_module
-        self.GF = GF
+        self.tech = tech
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -103,8 +101,10 @@ class LakeTop(Generator):
             tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=False),
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
 
-        if self.GF:
+        if self.tech == 'gf':
             tech_map = GF_Tech_Map(self.mem_depth, self.mem_width)
+        elif self.tech == 'tsmc':
+            tech_map = TSMC_Tech_Map(self.mem_depth, self.mem_width)
         else:
             tech_map = TSMC_Tech_Map(self.mem_depth, self.mem_width)
 
