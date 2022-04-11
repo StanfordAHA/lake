@@ -46,7 +46,7 @@ class LakeTop(Generator):
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=True,
-                 tech="tsmc"):
+                 tech_map=TSMC_Tech_Map):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -74,7 +74,7 @@ class LakeTop(Generator):
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
         self.formal_module = formal_module
-        self.tech = tech
+        self.tech_map = tech_map
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -101,12 +101,7 @@ class LakeTop(Generator):
             tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=False),
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
 
-        if self.tech == 'gf':
-            tech_map = GF_Tech_Map(self.mem_depth, self.mem_width)
-        elif self.tech == 'tsmc':
-            tech_map = TSMC_Tech_Map(self.mem_depth, self.mem_width)
-        else:
-            tech_map = TSMC_Tech_Map(self.mem_depth, self.mem_width)
+        tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
