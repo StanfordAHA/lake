@@ -1,12 +1,9 @@
-from lake.top.lake_top import get_lake_dut
 import kratos as kts
 import fault
 import tempfile
 import os
 import sys
 
-from lake.passes.passes import lift_config_reg, change_sram_port_names
-from lake.utils.sram_macro import SRAMMacroInfo
 # input and output data
 from lake.utils.parse_clkwork_csv import generate_data_lists
 # configurations
@@ -20,47 +17,51 @@ from lake.utils.util import transform_strides_and_ranges
 def base_lake_tester(config_path,
                      in_file_name,
                      out_file_name,
-                     in_ports,
-                     out_ports,
                      stencil_valid=False,
                      get_configs_list=False):
 
-    lt_dut, need_config_lift, s, t = get_lake_dut(in_ports=in_ports,
-                                                  out_ports=out_ports,
-                                                  stencil_valid=stencil_valid)
+    # TODO integrate with JSON from halide apps?
+    pass
+    # lt_dut, need_config_lift, s, t = get_lake_dut(stencil_valid=stencil_valid)
 
-    configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
-    if get_configs_list:
-        # prints out list of configs for compiler team
-        configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
+    # configs = lt_dut.get_static_bitstream(config_path, in_file_name, out_file_name)
+    # if get_configs_list:
+    #     # prints out list of configs for compiler team
+    #     configs_list = set_configs_sv(lt_dut, "configs.sv", get_configs_dict(configs))
 
-    magma_dut = kts.util.to_magma(lt_dut,
-                                  flatten_array=True,
-                                  check_multiple_driver=False,
-                                  optimize_if=False,
-                                  check_flip_flop_always_ff=False)
+    # magma_dut = kts.util.to_magma(lt_dut,
+    #                               flatten_array=True,
+    #                               check_multiple_driver=False,
+    #                               optimize_if=False,
+    #                               check_flip_flop_always_ff=False)
 
-    tester = fault.Tester(magma_dut, magma_dut.clk)
+    # tester = fault.Tester(magma_dut, magma_dut.clk)
 
-    if get_configs_list:
-        return lt_dut, configs, configs_list, magma_dut, tester
-    else:
-        return lt_dut, configs, magma_dut, tester
+    # if get_configs_list:
+    #     return lt_dut, configs, configs_list, magma_dut, tester
+    # else:
+    #     return lt_dut, configs, magma_dut, tester
 
 
 def gen_test_lake(config_path,
                   stream_path,
                   in_file_name="input",
                   out_file_name="output",
-                  in_ports=2,
-                  out_ports=2):
+                  **lake_dut_kwargs):
 
     lt_dut, configs, magma_dut, tester = \
         base_lake_tester(config_path,
                          in_file_name,
                          out_file_name,
-                         in_ports,
-                         out_ports)
+                         **lake_dut_kwargs)
+
+    in_ports = 2
+    out_ports = 2
+
+    if "interconnect_input_ports" in lake_dut_kwargs.keys():
+        in_ports = lake_dut_kwargs["interconnect_input_ports"]
+    if "interconnect_output_ports" in lake_dut_kwargs.keys():
+        out_ports = lake_dut_kwargs["interconnect_output_ports"]
 
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
@@ -116,6 +117,8 @@ def conv_3_3_args():
 # This is a weird custom test path until we can get consistent paths
 def separate_args():
     clkwrk_dir = os.getenv("CLOCKWORK_DIR")
+    if clkwrk_dir is None:
+        raise RuntimeError
     config_path = clkwrk_dir + "/aha_garnet_design_new/conv_3_3/lake_collateral/ub_hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11"
     stream_path = clkwrk_dir + "/aha_garnet_design/conv_3_3/lake_stream/hw_input_global_wrapper_stencil_op_hcompute_hw_input_global_wrapper_stencil_2_to_hw_input_global_wrapper_stencil_op_hcompute_conv_stencil_1_11_ubuf_0_top_SMT.csv"
     in_file_name = ""

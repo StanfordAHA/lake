@@ -17,6 +17,7 @@ from lake.utils.parse_clkwork_config import map_controller
 from lake.utils.parse_clkwork_config import ControllerInfo
 from lake.utils.sram_macro import SRAMMacroInfo
 from _kratos import create_wrapper_flatten
+import csv
 
 
 class Pond(Generator):
@@ -32,8 +33,9 @@ class Pond(Generator):
                  config_addr_width=8,
                  cycle_count_width=16,
                  add_clk_enable=True,
-                 add_flush=True):
-        super().__init__("pond", debug=True)
+                 add_flush=True,
+                 name="pond"):
+        super().__init__(name=name, debug=True)
 
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
@@ -591,7 +593,8 @@ def get_pond_dut(depth=32,
                  mem_out_ports=1,
                  tsmc_info=SRAMMacroInfo("tsmc_name"),
                  use_sram_stub=True,
-                 do_config_lift=True):
+                 do_config_lift=True,
+                 **pond_kwargs):
 
     pond_dut = Pond(data_width=16,  # CGRA Params
                     mem_depth=depth,
@@ -604,7 +607,8 @@ def get_pond_dut(depth=32,
                     config_addr_width=8,
                     cycle_count_width=16,
                     add_clk_enable=True,
-                    add_flush=True)
+                    add_flush=True,
+                    **pond_kwargs)
 
     # print(f"Supports Stencil Valid: {lake_dut.supports('stencil_valid')}")
 

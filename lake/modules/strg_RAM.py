@@ -1,3 +1,5 @@
+from lake.top.memory_interface import MemoryPort, MemoryPortType
+from lake.top.memory_controller import MemoryController
 from kratos import *
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.passes.passes import lift_config_reg
@@ -5,7 +7,7 @@ from lake.modules.reg_fifo import RegFIFO
 import kratos as kts
 
 
-class StrgRAM(Generator):
+class StrgRAM(MemoryController):
     '''
     Storage RAM
         Does ROM/RAM from storage
@@ -96,8 +98,8 @@ class StrgRAM(Generator):
 
         self._addr_out = self.output("addr_out", self.mem_addr_width,
                                      size=self.banks,
-                                     explicit_array=True,
-                                     packed=True)
+                                     packed=True,
+                                     explicit_array=True)
 
         self._rd_bank = self.var("rd_bank", max(1, clog2(self.banks)))
         self.set_read_bank()
@@ -214,6 +216,21 @@ class StrgRAM(Generator):
             for i in range(self.fw_int):
                 self.add_code(self.set_data_combined, idx=i)
         # If read delay is 0, we can rmw in the same cycle (TIMING?)
+        else:
+            assert self.read_delay == 0
+            raise NotImplementedError
+
+        self.base_ports = [[None]]
+        rw_port = MemoryPort(MemoryPortType.READWRITE)
+        rw_port_intf = rw_port.get_port_interface()
+        rw_port_intf['data_in'] = self._data_to_strg
+        rw_port_intf['data_out'] = self._data_from_strg
+        rw_port_intf['write_addr'] = self._addr_out
+        rw_port_intf['write_enable'] = self._wen_to_strg
+        rw_port_intf['read_addr'] = self._addr_out
+        rw_port_intf['read_enable'] = self._ren_to_strg
+        rw_port.annotate_port_signals()
+        self.base_ports[0][0] = rw_port
 
     def set_read_bank(self):
         if self.banks == 1:
@@ -317,6 +334,17 @@ class StrgRAM(Generator):
         # Otherwise keep the data
         else:
             self._data_combined[idx] = self._data_from_strg[self._rd_bank][idx]
+
+    def get_memory_ports(self):
+        return self.base_ports
+
+    def get_bitstream(self, config_json):
+        config = []
+        return config
+        # raise NotImplementedError
+
+    def get_config_mode_str(self):
+        return "ROM"
 
 
 if __name__ == "__main__":

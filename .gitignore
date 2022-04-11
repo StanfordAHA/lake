@@ -29,9 +29,12 @@ dump/
 *dump*
 # verilog outputs
 *.sv
+*.v
 *.vscode
 
 *.idea
 
 # local clone of clockwork
 clockwork
+
+*egg-info*

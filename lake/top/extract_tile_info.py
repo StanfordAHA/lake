@@ -3,7 +3,6 @@ import _kratos
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.passes.passes import lift_config_reg, change_sram_port_names
-from lake.top.lake_top import LakeTop
 from lake.utils.sram_macro import SRAMMacroInfo
 import collections
 
@@ -12,7 +11,7 @@ CFG_info = collections.namedtuple('CFG_info', 'port_name port_size port_width ex
 IO_info = collections.namedtuple('IO_info', 'port_name port_size port_width is_ctrl port_dir expl_arr')
 
 
-def extract_top_config(circuit_gen: kts.Generator):
+def extract_top_config(circuit_gen: kts.Generator, verbose=False):
     int_gen = circuit_gen.internal_generator
     config_list = []
 
@@ -23,6 +22,9 @@ def extract_top_config(circuit_gen: kts.Generator):
         if len(attrs) != 1:
             continue
         cr_attr = attrs[0]
+        if verbose is True:
+            print(port_name)
+            print(cr_attr.get_documentation())
         config_list.append(CFG_info(port_name=port_name,
                                     port_size=curr_port.size,
                                     port_width=curr_port.width,
@@ -51,6 +53,7 @@ def get_interface(circuit_gen: kts.Generator):
 
 
 if __name__ == "__main__":
+    from lake.top.lake_top import LakeTop
     tsmc_info = SRAMMacroInfo("tsmc_name")
     use_sram_stub = False
     fifo_mode = True
