@@ -153,7 +153,7 @@ class BuffetLike(Generator):
 
         self._wr_data_fifo_in = kts.concat(self._wr_data, self._wr_op)
         self._wr_data_infifo = RegFIFO(data_width=self._wr_data_fifo_in.width, width_mult=1, depth=8)
-        self._wr_data_fifo_out_data = self.var("wr_data_fifo_out_data", self.data_width)
+        self._wr_data_fifo_out_data = self.var("wr_data_fifo_out_data", self.data_width, packed=True)
         self._wr_data_fifo_out_op = self.var("wr_data_fifo_out_op", 1)
 
         self.add_child(f"wr_data_fifo",
@@ -175,7 +175,7 @@ class BuffetLike(Generator):
 
         self._wr_addr_fifo_in = kts.concat(self._wr_addr)
         self._wr_addr_infifo = RegFIFO(data_width=self._wr_addr_fifo_in.width, width_mult=1, depth=8)
-        self._wr_addr_fifo_out_data = self.var("wr_addr_fifo_out_data", self.data_width)
+        self._wr_addr_fifo_out_data = self.var("wr_addr_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"wr_addr_fifo",
                        self._wr_addr_infifo,
@@ -196,7 +196,7 @@ class BuffetLike(Generator):
 
         self._wr_ID_fifo_in = kts.concat(self._wr_ID)
         self._wr_ID_infifo = RegFIFO(data_width=self._wr_ID_fifo_in.width, width_mult=1, depth=8)
-        self._wr_ID_fifo_out_data = self.var("wr_ID_fifo_out_data", self.data_width)
+        self._wr_ID_fifo_out_data = self.var("wr_ID_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"wr_ID_fifo",
                        self._wr_ID_infifo,
@@ -217,7 +217,7 @@ class BuffetLike(Generator):
 
         self._rd_op_fifo_in = kts.concat(self._rd_addr, self._rd_op_op)
         self._rd_op_infifo = RegFIFO(data_width=self._rd_op_fifo_in.width, width_mult=1, depth=8)
-        self._rd_op_fifo_out_addr = self.var("rd_op_fifo_out_addr", self.data_width)
+        self._rd_op_fifo_out_addr = self.var("rd_op_fifo_out_addr", self.data_width, packed=True)
         self._rd_op_fifo_out_op = self.var("rd_op_fifo_out_op", 1)
 
         self.add_child(f"rd_op_fifo",
@@ -239,7 +239,7 @@ class BuffetLike(Generator):
 
         self._rd_ID_fifo_in = kts.concat(self._rd_ID)
         self._rd_ID_infifo = RegFIFO(data_width=self._rd_ID_fifo_in.width, width_mult=1, depth=8)
-        self._rd_ID_fifo_out_data = self.var("rd_ID_fifo_out_data", self.data_width)
+        self._rd_ID_fifo_out_data = self.var("rd_ID_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"rd_ID_fifo",
                        self._rd_ID_infifo,
@@ -285,9 +285,9 @@ class BuffetLike(Generator):
         self._blk_base = self.var("blk_base", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
         self._blk_bounds = self.var("blk_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
-        # self._inc_wr_addr = self.var("inc_wr_addr", 1)
-        # self._wr_addr = add_counter(self, "write_addr", bitwidth=self.data_width, increment=self._inc_wr_addr)
-        self._wr_addr = self.var("write_addr", self.data_width)
+        self._inc_wr_addr = self.var("inc_wr_addr", 1)
+        self._wr_addr = add_counter(self, "write_addr", bitwidth=self.data_width, increment=self._inc_wr_addr)
+        # self._wr_addr = self.var("write_addr", self.data_width)
         self._wen = self.var("wen", 1)
 
         # Read side address + ren
@@ -325,64 +325,65 @@ class BuffetLike(Generator):
         [self.add_code(cap_reg, idx=i) for i in range(self.num_ID)]
 
         # Create FSM
-        self.write_fsm = self.add_fsm("write_fsm", reset_high=False)
-        WR_START = [self.write_fsm.add_state(f"WR_START_{i}") for i in range(self.num_ID)]
-        WRITING = self.write_fsm.add_state("WRITING")
+        self.write_fsm = [self.add_fsm(f"write_fsm_{i}", reset_high=False) for i in range(self.num_ID)]
+        WR_START = [self.write_fsm[i].add_state(f"WR_START_{i}") for i in range(self.num_ID)]
+        WRITING = [self.write_fsm[i].add_state(f"WRITING_{i}") for i in range(self.num_ID)]
 
         ####################
         # Next State Logic WRITE
         ####################
+        for ID_idx in range(self.num_ID):
 
-        ####################
-        # WR_START #
-        ####################
-        # Start state gets an allocate command
-        WR_START.next(WRITING, self._wr_fifo_valid & (self._wr_fifo_out_op == 0))
-        WR_START.next(WR_START, None)
+            self.write_fsm[ID_idx].output(self._inc_wr_addr)
+            self.write_fsm[ID_idx].output(self._inc_bounds_ctr)
+            self.write_fsm[ID_idx].output(self._clr_bounds_ctr)
+            self.write_fsm[ID_idx].output(self._push_blk)
+            self.write_fsm[ID_idx].output(self._en_curr_base)
+            self.write_fsm[ID_idx].output(self._wen)
+            self.write_fsm[ID_idx].output(self._wr_data_fifo_pop)
+            # self.write_fsm.output(self._en_curr_bounds)
 
-        ####################
-        # WRITING #
-        ####################
-        # Writing until we get a finalize...
-        WRITING.next(WR_START, self._wr_fifo_valid & (self._wr_fifo_out_op == 0) & ~self._blk_full)
-        WRITING.next(WRITING, None)
+            ####################
+            # WR_START #
+            ####################
+            # Start state gets an allocate command
+            WR_START[ID_idx].next(WRITING[ID_idx], self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 0))
+            WR_START[ID_idx].next(WR_START[ID_idx], None)
 
-        self.write_fsm.output(self._inc_wr_addr)
-        self.write_fsm.output(self._inc_bounds_ctr)
-        self.write_fsm.output(self._clr_bounds_ctr)
-        self.write_fsm.output(self._push_blk)
-        self.write_fsm.output(self._en_curr_base)
-        self.write_fsm.output(self._wen)
-        self.write_fsm.output(self._wr_fifo_pop)
-        # self.write_fsm.output(self._en_curr_bounds)
+            ####################
+            # WRITING #
+            ####################
+            # Writing until we get a finalize...
+            WRITING[ID_idx].next(WR_START[ID_idx], self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 0) & ~self._blk_full)
+            WRITING[ID_idx].next(WRITING[ID_idx], None)
 
-        ####################
-        # Output Logic WRITE
-        ####################
+            ####################
+            # Output Logic WRITE
+            ####################
 
-        ####################
-        # WR_START #
-        ####################
-        WR_START.output(self._inc_wr_addr, 0)
-        WR_START.output(self._inc_bounds_ctr, 0)
-        WR_START.output(self._clr_bounds_ctr, self._wr_fifo_valid & (self._wr_fifo_out_op == 0))
-        WR_START.output(self._push_blk, 0)
-        WR_START.output(self._en_curr_base, self._wr_fifo_valid & (self._wr_fifo_out_op == 0))
-        WR_START.output(self._wen, 0)
-        WR_START.output(self._wr_fifo_pop, 0)
-        # WR_START.output(self._en_curr_bounds, 0)
+            ####################
+            # WR_START #
+            ####################
+            WR_START[ID_idx].output(self._inc_wr_addr, 0)
+            WR_START[ID_idx].output(self._inc_bounds_ctr, 0)
+            WR_START[ID_idx].output(self._clr_bounds_ctr, self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 0))
+            WR_START[ID_idx].output(self._push_blk, 0)
+            WR_START[ID_idx].output(self._en_curr_base, self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 0))
+            WR_START[ID_idx].output(self._wen, 0)
+            WR_START[ID_idx].output(self._wr_data_fifo_pop, 0)
+            # WR_START.output(self._en_curr_bounds, 0)
 
-        ####################
-        # WRITING #
-        ####################
-        # Increment wr addr if we get wr access
-        WRITING.output(self._inc_wr_addr, self._mem_acq[0] & self._wr_fifo_valid & (self._wr_fifo_out_op == 1))
-        WRITING.output(self._inc_bounds_ctr, self._mem_acq[0] & self._wr_fifo_valid & (self._wr_fifo_out_op == 1))
-        WRITING.output(self._clr_bounds_ctr, 0)
-        WRITING.output(self._push_blk, self._wr_fifo_valid & (self._wr_fifo_out_op == 0) & ~self._blk_full)
-        WRITING.output(self._en_curr_base, 0)
-        WRITING.output(self._wen, self._wr_fifo_valid & (self._wr_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
-        WRITING.output(self._wr_fifo_pop, self._mem_acq[0] & self._wr_fifo_valid & (self._wr_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
+            ####################
+            # WRITING #
+            ####################
+            # Increment wr addr if we get wr access
+            WRITING[ID_idx].output(self._inc_wr_addr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
+            WRITING[ID_idx].output(self._inc_bounds_ctr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
+            WRITING[ID_idx].output(self._clr_bounds_ctr, 0)
+            WRITING[ID_idx].output(self._push_blk, self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 0) & ~self._blk_full)
+            WRITING[ID_idx].output(self._en_curr_base, 0)
+            WRITING[ID_idx].output(self._wen, self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
+            WRITING[ID_idx].output(self._wr_data_fifo_pop, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
         # WRITING.output(self._en_curr_bounds, 0)
 
         ##### Create read side fsm separately.
@@ -418,7 +419,8 @@ class BuffetLike(Generator):
         RD_START.output(self._rd_op_fifo_pop, kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[1] & ~self._rd_rsp_fifo_full, kts.const(1, 1)) & self._rd_op_fifo_valid)
         RD_START.output(self._rd_rsp_fifo_push, self._valid_from_mem)
 
-        self.write_fsm.set_start_state(WR_START)
+        for i in range(self.num_ID):
+            self.write_fsm[i].set_start_state(WR_START[i])
         self.read_fsm.set_start_state(RD_START)
 
         ### Bookkeeping FIFO
@@ -454,7 +456,7 @@ class BuffetLike(Generator):
                        resource_ready=self._ready_from_mem)
 
         self.wire(self._addr_to_mem, kts.ternary(self._mem_acq[0], self._wr_addr, self._rd_addr_loc + self._blk_base))
-        self.wire(self._data_to_mem, self._wr_fifo_out_data)
+        self.wire(self._data_to_mem, self._wr_data_fifo_out_data)
         self.wire(self._ren_to_mem, self._ren & self._mem_acq[1])
         self.wire(self._wen_to_mem, self._wen & self._mem_acq[0])
 

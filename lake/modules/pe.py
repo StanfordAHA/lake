@@ -1,5 +1,6 @@
 import kratos as kts
 from kratos import *
+from lake.modules.alu import ALU
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
@@ -172,20 +173,14 @@ class PE(Generator):
         self._op = self.input("op", 1)
         self._op.add_attribute(ConfigRegAttr("Operation"))
 
-        @always_comb
-        def PE_comb():
-            if self._execute_op:
-                # ADD
-                if self._op == 0:
-                    self._pe_output = self._infifo_out_data[0] + self._infifo_out_data[1]
-                # MUL
-                elif self._op == 1:
-                    self._pe_output = self._infifo_out_data[0] * self._infifo_out_data[1]
-                else:
-                    self._pe_output = 0
-            else:
-                self._pe_output = 0
-        self.add_code(PE_comb)
+        my_alu = ALU(data_width=self.data_width)
+
+        self.add_child(f"ALU",
+                       my_alu,
+                       data_in=self._infifo_out_data,
+                       data_out=self._pe_output,
+                       op=self._op,
+                       execute_op=self._execute_op)
 
         @always_comb
         def fifo_push():
