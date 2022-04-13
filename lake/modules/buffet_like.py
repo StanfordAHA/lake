@@ -1,4 +1,3 @@
-from turtle import width
 import kratos as kts
 from kratos import *
 from lake.modules.arbiter import Arbiter
@@ -103,10 +102,10 @@ class BuffetLike(Generator):
         self._rd_op_op.add_attribute(ControlSignalAttr(is_control=True))
 
         # Read ID
-        self._rd_ID_ready = self.output("rd_op_ready", 1)
+        self._rd_ID_ready = self.output("rd_ID_ready", 1)
         self._rd_ID_ready.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._rd_ID_valid = self.input("rd_op_valid", 1)
+        self._rd_ID_valid = self.input("rd_ID_valid", 1)
         self._rd_ID_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         self._rd_ID = self.input("rd_ID", self.data_width, explicit_array=True, packed=True)
@@ -491,7 +490,8 @@ class BuffetLike(Generator):
 
 
 if __name__ == "__main__":
-    buffet_dut = BuffetLike(data_width=16)
+    buffet_dut = BuffetLike(data_width=16,
+                            num_ID=1)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
