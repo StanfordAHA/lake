@@ -4,8 +4,11 @@ from lake.passes.passes import lift_config_reg
 from lake.modules.reg_fifo import RegFIFO
 import kratos as kts
 
+from lake.top.memory_controller import MemoryController
+from lake.top.memory_interface import MemoryPort, MemoryPortType
 
-class StrgFIFO(Generator):
+
+class StrgFIFO(MemoryController):
     '''
     Storage Fifo
         This module performs FIFO using multiple banks of storage and
@@ -33,9 +36,9 @@ class StrgFIFO(Generator):
         self.addr_width = addr_width
         self.fw_int = int(self.memory_width / self.data_width)
 
-        # assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
-        #     "Can't sustain throughput with this setup. Need potential bandwidth for " + \
-        #     "1 write and 1 read in a cycle - try using more banks or a macro that supports 1R1W"
+        assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
+            "Can't sustain throughput with this setup. Need potential bandwidth for " + \
+            "1 write and 1 read in a cycle - try using more banks or a macro that supports 1R1W"
 
         # Clock and Reset
         self._clk = self.clock("clk")
@@ -277,6 +280,9 @@ class StrgFIFO(Generator):
                   kts.ternary(self._back_pl, self._data_from_strg[bank_idx_read][0], self._back_data_out))
         self.wire(self._valid_out, kts.ternary(self._back_pl, const(1, 1), self._back_valid))
 
+        # Define base ports for use
+        self.base_ports = [[None]]
+
         # Set addresses to storage
         for i in range(self.banks):
             self.add_code(self.set_wen_addr, idx=i)
@@ -294,6 +300,33 @@ class StrgFIFO(Generator):
                                              packed=True)
             self.wire(self._wen_addr_out, self._wen_addr)
             self.wire(self._ren_addr_out, self._ren_addr)
+
+            self.base_ports = []
+
+            # Now we have rw_same_cycle, append to each
+            for b in range(self.banks):
+                rw_port = MemoryPort(MemoryPortType.READWRITE)
+                rw_port_intf = rw_port.get_port_interface()
+                rw_port_intf['data_in'] = self._data_to_strg[b]
+                rw_port_intf['data_out'] = None
+                rw_port_intf['write_addr'] = self._wen_addr_out[b]
+                rw_port_intf['write_enable'] = self._wen_to_strg[b]
+                # Tie read address and read enable to 0
+                tmp0_rdaddr = self.output("tmp0_rdaddr", width=self._ren_addr_out[b].width)
+                tmp0_rden = self.output("tmp0_rden", width=1)
+                self.wire(tmp0_rdaddr, kts.const(0, width=tmp0_rdaddr.width))
+                self.wire(tmp0_rden, kts.const(0, width=tmp0_rden.width))
+                rw_port_intf['read_addr'] = tmp0_rdaddr
+                rw_port_intf['read_enable'] = tmp0_rden
+                rw_port.annotate_port_signals()
+                r_port = MemoryPort(MemoryPortType.READ)
+                r_port_intf = r_port.get_port_interface()
+                r_port_intf['data_out'] = self._data_from_strg[b]
+                r_port_intf['read_addr'] = self._ren_addr_out[b]
+                r_port_intf['read_enable'] = self._ren_to_strg[b]
+                r_port.annotate_port_signals()
+                self.base_ports.append([rw_port, r_port])
+
         else:
             self._addr_out = self.output("addr_out", self.addr_width,
                                          size=self.banks,
@@ -303,6 +336,21 @@ class StrgFIFO(Generator):
             for i in range(self.banks):
                 self.wire(self._addr_out[i],
                           kts.ternary(self._wen_to_strg[i], self._wen_addr[i], self._ren_addr[i]))
+
+            self.base_ports = []
+
+            # Now we have rw_same_cycle, append to each
+            for b in range(self.banks):
+                rw_port = MemoryPort(MemoryPortType.READWRITE)
+                rw_port_intf = rw_port.get_port_interface()
+                rw_port_intf['data_in'] = self._data_to_strg[b]
+                rw_port_intf['data_out'] = self._data_from_strg[b]
+                rw_port_intf['write_addr'] = self._addr_out[b]
+                rw_port_intf['write_enable'] = self._wen_to_strg[b]
+                rw_port_intf['read_addr'] = self._addr_out[b]
+                rw_port_intf['read_enable'] = self._ren_to_strg[b]
+                rw_port.annotate_port_signals()
+                self.base_ports.append([rw_port])
 
         # Do final empty/full
         self._num_items = self.var("num_items", self.data_width)
@@ -468,6 +516,26 @@ class StrgFIFO(Generator):
             self._ren_addr[idx] = 0
         elif self._ren_to_strg[idx]:
             self._ren_addr[idx] = self._ren_addr[idx] + 1
+
+    def get_memory_ports(self):
+        return self.base_ports
+
+    def get_inputs(self):
+        return super().get_inputs()
+
+    def get_outputs(self):
+        return super().get_outputs()
+
+    def __str__(self):
+        return self.name
+
+    def get_bitstream(self, config_json):
+        config = []
+        config.append(('fifo_depth', config_json['fifo_depth']))
+        return config
+
+    def get_config_mode_str(self):
+        return "FIFO"
 
 
 if __name__ == "__main__":

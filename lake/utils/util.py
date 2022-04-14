@@ -124,7 +124,7 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
             pdir = "output" if str(curr_port.port_direction) == "PortDirection.Out" else "input"
 
             def get_unlabeled_formal_attr(pdir, port_name):
-                if pdir is "input":
+                if pdir == "input":
                     return FormalAttr(port_name, FormalSignalConstraint.SET0)
                 else:
                     return FormalAttr(port_name, FormalSignalConstraint.X)
@@ -251,7 +251,7 @@ def extract_formal_annotation_collat(generator, filepath, mem_names, edges):
                 pdir = "output"
             # If there are 0 or more than one attributes, let's just use the default X attribute
             if len(attrs) != 1:
-                if pdir is "input":
+                if pdir == "input":
                     form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
                 else:
                     form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
@@ -671,6 +671,45 @@ def decode(generator, sel, signals):
 
     generator.add_code(scan_lowest)
     return ret
+
+
+def get_priority_encode(generator, signal):
+    assert generator is not None
+    assert signal is not None
+    sig_width = signal.width
+    new_sig = None
+    if sig_width == 1:
+        new_sig = generator.var(f"{signal.name}_pri_enc", 1)
+        generator.wire(new_sig, kts.const(0, 1))
+    else:
+        # In the case of a multibit signal, create the encoded signal and then create the assignment
+        new_sig = generator.var(f"{signal.name}_pri_enc", kts.clog2(sig_width))
+        encode_comb = generator.combinational()
+        # create the ifs
+        prev_if = None
+        for i in range(sig_width):
+            first = i == 0
+            last = i == sig_width - 1
+            new_if = None
+            if first:
+                # Create the if chain first
+                new_if = encode_comb.if_(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if = new_if
+            elif last:
+                # At the end, apply the final else as well
+                new_if = IfStmt(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if.else_(new_if)
+                new_if.else_(new_sig.assign(0))
+            else:
+                # In the middle, create new if and chain with the previous
+                new_if = IfStmt(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if.else_(new_if)
+                prev_if = new_if
+
+    return new_sig
 
 
 if __name__ == "__main__":

@@ -99,11 +99,10 @@ def test_agg_formal():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "dump_agg_formal"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"],
+                               flags=["-Wno-fatal"],
                                disp_type="realtime")
 
 
