@@ -362,6 +362,7 @@ if __name__ == "__main__":
                        add_flush=True,
                        rw_same_cycle=False,
                        read_delay=1,
+                       use_sim_sram=False,
                        name=f"LakeTop_width_{args.fetch_width}_{mem_name}")
 
     print(lake_top)
