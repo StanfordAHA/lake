@@ -2,6 +2,8 @@ import kratos as kts
 from enum import Enum
 from kratos.stmts import *
 import _kratos
+import math
+from lake.utils.util import register
 
 
 class MemoryPortExclusionAttr(kts.Attribute):
@@ -143,13 +145,26 @@ class PhysicalMemoryPort(MemoryPort):
         if 'alt_sigs' in port_map:
             self.alt_sigs = port_map['alt_sigs']
 
+    def get_port_map(self):
+        return self.port_map
+
     def get_alt_signals(self):
         return self.alt_sigs
 
 
 class PhysicalMemoryStub(kts.Generator):
-    def __init__(self, name: str, debug=True, mem_params: dict = {}, ports: list = []):
+    def __init__(self, name: str, debug=True, mem_params: dict = None, ports: list = None, tech_map: dict = None):
         super().__init__(name, debug=True)
+        if mem_params is None:
+            self.mem_params = {}
+        else:
+            self.mem_params = mem_params
+        if ports is None:
+            self.ports = []
+        else:
+            self.ports = ports
+        assert tech_map is not None, f"tech_map is None"
+        self.tech_map = tech_map
         # The name will be the name of the stub
         # Set external to true so that the internals aren't generated when instantiating
         self.external = True
@@ -158,7 +173,12 @@ class PhysicalMemoryStub(kts.Generator):
         self.ports = ports
         self.mem_width = MemoryInterface.mem_width_dflt if 'mem_width' not in mem_params else mem_params['mem_width']
         self.mem_depth = MemoryInterface.mem_depth_dflt if 'mem_depth' not in mem_params else mem_params['mem_depth']
+        self.composed = False
+
+        # First create the top level interface to the physical sram
         self.create_interface()
+        # Then run a pass to instantiate more of the tech_map
+        self.compose_mems()
 
     def create_interface(self):
         # Create the port interfaces - clocks belong here now since there are actually clocks
@@ -179,6 +199,9 @@ class PhysicalMemoryStub(kts.Generator):
                 port_intf['cen'] = self.input(port_intf['cen'], 1)
                 port_intf['clk'] = self.clock(port_intf['clk'])
             elif port_type == MemoryPortType.READWRITE:
+                print('HERE')
+                print(port_intf)
+                print(port_intf['data_in'])
                 port_intf['data_in'] = self.input(port_intf['data_in'], self.mem_width, packed=True)
                 port_intf['data_out'] = self.output(port_intf['data_out'], self.mem_width, packed=True)
                 port_intf['write_enable'] = self.input(port_intf['write_enable'], 1)
@@ -192,6 +215,197 @@ class PhysicalMemoryStub(kts.Generator):
                 print(width)
                 port_intf[alt_sig] = self.input(str(alt_sig), width)
 
+    def compose_mems(self):
+        '''
+            compose_mems will find out if the tech map mismatches the dimensions of the memory and
+            create a composed array of them to match the final interface
+        '''
+        tech_depth = self.tech_map['depth']
+        tech_width = self.tech_map['width']
+        num_deep = 1
+        if tech_depth == self.mem_depth and tech_width == self.mem_width:
+            # If the dimensions match there's nothing to do....
+            return
+        # Mark this as a composed memory so we know how to deal with stubbing later.
+        self.composed = True
+        self.external = False
+        if tech_depth < self.mem_depth:
+            num_deep = math.ceil(self.mem_depth / tech_depth)
+        num_wide = 1
+        if tech_width < self.mem_width:
+            num_wide = math.ceil(self.mem_width / tech_width)
+        self.name = self.name + f"_{num_wide}_wide_{num_deep}_deep"
+        child_mem_params = {
+            'mem_width': tech_width,
+            'mem_depth': tech_depth
+        }
+
+        # Address range for decoding
+        addr_bottom = kts.clog2(tech_depth)
+        addr_top = addr_bottom + kts.clog2(num_deep) - 1
+        self.composed_children = {}
+        for x in range(num_wide):
+            for y in range(num_deep):
+                port_copies = []
+                for port in self.ports:
+                    # We have a physicalmemoryport here - copy it to the new stub
+                    pt = port.get_port_type()
+                    pd = port.get_port_delay()
+                    pal = port.get_active_low()
+                    pm = port.get_port_map()
+                    port_copies.append(PhysicalMemoryPort(pt, pd, True, pal, pm))
+                self.composed_children[(x, y)] = PhysicalMemoryStub(name=self.tech_map['name'],
+                                                                    mem_params=child_mem_params,
+                                                                    ports=port_copies,
+                                                                    tech_map=self.tech_map)
+                self.add_child(f"{self.tech_map['name']}_{x}_{y}",
+                               self.composed_children[(x, y)])
+                # Instantiated child, now need to hook up ports
+        for i, port in enumerate(self.ports):
+            port_intf = port.get_port_interface()
+            port_type = port.get_port_type()
+            port_delay = port.get_port_delay()
+            # The slight deviation here
+            if port_type == MemoryPortType.READ:
+
+                concat_data_outs = []
+
+                for y in range(num_deep):
+                    # Get the width of children gens
+                    child_ports_wide = [self.composed_children[(x, y)] for x in range(num_wide)]
+                    # concat their ports and handle broadcasting data, addr
+                    child_ports_wide_intf = [child.get_ports()[i].get_port_interface() for child in child_ports_wide]
+                    concat_data_out = kts.concat(*[cintf['data_out'] for cintf in child_ports_wide_intf])
+                    concat_data_outs.append(concat_data_out)
+                    # self.wire(port_intf['data_out'], concat_data_out)
+                    # Deal with data out (in the delay version)
+                    concat_addr_in = kts.concat(*[cintf['read_addr'] for cintf in child_ports_wide_intf])
+                    self.wire(port_intf['read_addr'], concat_addr_in)
+                    for ix in range(num_wide):
+                        self.wire(port_intf['clk'], child_ports_wide_intf[ix]['clk'])
+                        # Now decode cen...
+                        if num_deep == 1:
+                            self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'])
+                        else:
+                            self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'] & (port_intf['read_addr'][addr_top, addr_bottom] == y))
+
+                # If only 1 deep, just wire it up and leave, otherwise create a combinational block
+                if num_deep == 1:
+                    self.add_stmt(port_intf['data_out'].assign(concat_data_outs[0]))
+                else:
+
+                    data_out_mux_sel = self.var(f"port_{i}_data_out_mux_sel", addr_top - addr_bottom + 1)
+                    self.wire(data_out_mux_sel, port_intf['read_addr'][addr_top, addr_bottom])
+
+                    if port_delay == 1:
+                        final_mux_sel = register(self, data_out_mux_sel, enable=port_intf['cen'], name=f'port_{i}_registered_mux_sel_data_out')
+                    else:
+                        final_mux_sel = data_out_mux_sel
+
+                    prev_stmt = None
+                    data_out_comb = self.combinational()
+                    data_out_comb.add_stmt(port_intf['data_out'].assign(0))
+                    on_first = True
+                    for y in range(num_deep):
+                        if on_first is True:
+                            first_if = data_out_comb.if_(final_mux_sel == kts.const(y, final_mux_sel.width))
+                            first_if.then_(port_intf['data_out'].assign(concat_data_outs[y]))
+                            prev_stmt = first_if
+                            on_first = False
+                        else:
+                            chain_if = IfStmt(final_mux_sel == kts.const(y, final_mux_sel.width))
+                            chain_if.then_(port_intf['data_out'].assign(concat_data_outs[y]))
+                            prev_stmt.else_(chain_if)
+                            prev_stmt = chain_if
+
+            elif port_type == MemoryPortType.WRITE:
+                # Decode the cen/wen, broadcast data, addr to the mems
+                for y in range(num_deep):
+                    # Get the width of children gens
+                    child_ports_wide = [self.composed_children[(x, y)] for x in range(num_wide)]
+                    # concat their ports and handle broadcasting data, addr
+                    child_ports_wide_intf = [child.get_ports()[i].get_port_interface() for child in child_ports_wide]
+                    concat_data_in = kts.concat(*[cintf['data_in'] for cintf in child_ports_wide_intf])
+                    self.wire(port_intf['data_in'], concat_data_in)
+                    concat_addr_in = kts.concat(*[cintf['write_addr'] for cintf in child_ports_wide_intf])
+                    self.wire(port_intf['write_addr'], concat_addr_in)
+                    for ix in range(num_wide):
+                        self.wire(port_intf['clk'], child_ports_wide_intf[ix]['clk'])
+                        # Now decode write enable and cen through here...
+                        if num_deep == 1:
+                            self.wire(child_ports_wide_intf[ix]['write_enable'], port_intf['write_enable'])
+                            self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'])
+                        else:
+                            self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'] & (port_intf['write_addr'][addr_top, addr_bottom] == y))
+                            self.wire(child_ports_wide_intf[ix]['write_enable'], port_intf['write_enable'] & (port_intf['write_addr'][addr_top, addr_bottom] == y))
+
+            elif port_type == MemoryPortType.READWRITE:
+
+                concat_data_outs = []
+
+                for y in range(num_deep):
+                    # Get the width of children gens
+                    child_ports_wide = [self.composed_children[(x, y)] for x in range(num_wide)]
+                    # concat their ports and handle broadcasting data, addr
+                    child_ports_wide_intf = [child.get_ports()[i].get_port_interface() for child in child_ports_wide]
+                    concat_data_out = kts.concat(*[cintf['data_out'] for cintf in child_ports_wide_intf])
+                    concat_data_outs.append(concat_data_out)
+
+                    # self.wire(port_intf['data_out'], concat_data_out)
+                    # Deal with data out (in the delay version)
+                    concat_data_in = kts.concat(*[cintf['data_in'] for cintf in child_ports_wide_intf])
+                    self.wire(port_intf['data_in'], concat_data_in)
+                    # concat_addr_in = kts.concat(*[cintf['addr'] for cintf in child_ports_wide_intf])
+                    # self.wire(port_intf['addr'], concat_addr_in)
+                    for ix in range(num_wide):
+                        self.wire(port_intf['clk'], child_ports_wide_intf[ix]['clk'])
+                        self.wire(port_intf['addr'], child_ports_wide_intf[ix]['addr'])
+                        # Now decode and cen through here...
+                        if num_deep == 1:
+                            self.wire(child_ports_wide_intf[ix]['write_enable'], port_intf['write_enable'])
+                            self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'])
+                        else:
+                            self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'] & (port_intf['addr'][addr_top, addr_bottom] == y))
+                            self.wire(child_ports_wide_intf[ix]['write_enable'], port_intf['write_enable'] & (port_intf['addr'][addr_top, addr_bottom] == y))
+
+                # If only 1 deep, just wire it up and leave, otherwise create a combinational block
+                if num_deep == 1:
+                    self.add_stmt(port_intf['data_out'].assign(concat_data_outs[0]))
+                else:
+
+                    data_out_mux_sel = self.var(f"port_{i}_data_out_mux_sel", addr_top - addr_bottom + 1)
+                    self.wire(data_out_mux_sel, port_intf['addr'][addr_top, addr_bottom])
+
+                    if port_delay == 1:
+                        # Only update the read out mux when it's a read
+                        final_mux_sel = register(self, data_out_mux_sel, enable=port_intf['cen'] & ~port_intf['write_enable'], name=f'port_{i}_registered_mux_sel_data_out')
+                    else:
+                        final_mux_sel = data_out_mux_sel
+
+                    # Build combinational mux - can't directly index since I created the object list
+                    prev_stmt = None
+                    data_out_comb = self.combinational()
+                    data_out_comb.add_stmt(port_intf['data_out'].assign(0))
+                    on_first = True
+                    for y in range(num_deep):
+                        if on_first is True:
+                            first_if = data_out_comb.if_(final_mux_sel == kts.const(y, final_mux_sel.width))
+                            first_if.then_(port_intf['data_out'].assign(concat_data_outs[y]))
+                            prev_stmt = first_if
+                            on_first = False
+                        else:
+                            chain_if = IfStmt(final_mux_sel == kts.const(y, final_mux_sel.width))
+                            chain_if.then_(port_intf['data_out'].assign(concat_data_outs[y]))
+                            prev_stmt.else_(chain_if)
+                            prev_stmt = chain_if
+
+            # For now, assume the alt sigs are all inputs
+            for xx in range(num_wide):
+                for yy in range(num_deep):
+                    child_port_intf = self.composed_children[(xx, yy)].get_ports()[i].get_port_interface()
+                    for (alt_sig, (value, width)) in port.get_alt_signals().items():
+                        self.wire(child_port_intf[alt_sig], port_intf[alt_sig])
+
     def get_ports(self):
         return self.ports
 
@@ -204,14 +418,19 @@ class MemoryInterface(kts.Generator):
     mem_width_dflt = 32
     mem_depth_dflt = 256
 
-    def __init__(self, name: str, mem_params: dict, ports: list = [], sim_macro_n: bool = True, tech_map=None, reset_in_sim=False):
+    def __init__(self, name: str, mem_params: dict, ports: list = None, sim_macro_n: bool = True, tech_map=None, reset_in_sim=False):
         super().__init__(name, debug=True)
+
+        if ports is None:
+            self.mem_ports = []
+        else:
+            self.mem_ports = ports
 
         self.tech_map_provided = False
         self.tech_map = tech_map
         self.sim_macro_n = sim_macro_n
         self.mem_params = mem_params
-        self.mem_ports = ports
+        # self.mem_ports = ports
         self.reset_in_sim = reset_in_sim
 
         self._clk = None
@@ -420,7 +639,8 @@ class MemoryInterface(kts.Generator):
         # Create the stub generator
         child_stub = PhysicalMemoryStub(name=self.tech_map['name'],
                                         mem_params=self.mem_params,
-                                        ports=self.physical_ports)
+                                        ports=self.physical_ports,
+                                        tech_map=self.tech_map)
         self.add_child("mem_stub", child_stub)
 
         # Now wire the logical ports to the physical ports

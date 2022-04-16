@@ -23,7 +23,9 @@ def TSMC_Tech_Map(depth, width) -> dict:
 
     tech_map = {
         'name': f"TS1N16FFCLLSBLVTC{depth}X{width}M4S",
-        'ports': ports
+        'ports': ports,
+        'depth': depth,
+        'width': width
     }
 
     return tech_map
@@ -66,7 +68,9 @@ def SKY_Tech_Map() -> dict:
 
     tech_map = {
         'name': "sky130_sram_1kbyte_1rw1r_32x256_8",
-        'ports': ports
+        'ports': ports,
+        'depth': 256,
+        'width': 32
     }
 
     return tech_map
@@ -108,7 +112,9 @@ def GF_Tech_Map(depth, width) -> dict:
 
     tech_map = {
         'name': f"IN12LP_S1DB_W{depth:05}B{width:03}M04S2_H",
-        'ports': ports
+        'ports': ports,
+        'depth': depth,
+        'width': width
     }
 
     return tech_map
