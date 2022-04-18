@@ -41,7 +41,7 @@ class StencilValid(MemoryController):
         self._flush = self.input("flush", 1)
         self._flushed = self.var("flushed", 1)
         # Wire out internal wire
-        self.wire(self._stencil_valid, self._stencil_valid_int & ~self._flushed)
+        self.wire(self._stencil_valid, self._stencil_valid_int & self._flushed)
 
         self.add_code(self.cycle_count_inc)
         self.add_code(self.flushed_set)
@@ -49,15 +49,15 @@ class StencilValid(MemoryController):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def flushed_set(self):
         if ~self._rst_n:
-            self._flushed = kts.const(1, 1)
-        elif self._flush:
             self._flushed = 0
+        elif self._flush:
+            self._flushed = 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def cycle_count_inc(self):
         if ~self._rst_n:
             self._cycle_count = 0
-        elif ~self._flushed:
+        elif self._flushed:
             self._cycle_count = self._cycle_count + 1
 
     def define_io(self):
