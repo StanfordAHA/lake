@@ -46,7 +46,7 @@ class LakeTop(Generator):
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=True,
-                 tech_map=TSMC_Tech_Map):
+                 tech_map=TSMC_Tech_Map(depth=512, width=32)):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -101,7 +101,7 @@ class LakeTop(Generator):
             tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=False),
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
 
-        tech_map = self.tech_map(self.mem_depth, self.mem_width)
+        # tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
@@ -109,7 +109,7 @@ class LakeTop(Generator):
                                  mem_params=memory_params,
                                  ports=tsmc_mem,
                                  sim_macro_n=self.use_sim_sram,
-                                 tech_map=tech_map)
+                                 tech_map=self.tech_map)
 
         # Now add the controllers in...
         controllers = []
@@ -362,6 +362,7 @@ if __name__ == "__main__":
                        add_flush=True,
                        rw_same_cycle=False,
                        read_delay=1,
+                       use_sim_sram=False,
                        name=f"LakeTop_width_{args.fetch_width}_{mem_name}")
 
     print(lake_top)
