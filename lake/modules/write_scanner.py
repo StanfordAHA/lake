@@ -70,9 +70,37 @@ class WriteScanner(Generator):
         self._ready_out = self.output("ready_out", 2)
         self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
+        # Outputs
         # Data to write to memory (whether its val/coord/metadata)
-        self._data_out = self.output("data_out", self.data_width)
+        self._data_out = self.output("data_out", self.data_width, packed=True)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._op_out = self.output("op_out", 1)
+        self._op_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._data_out_ready_in = self.input("data_out_ready_in", 1)
+        self._data_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._data_out_valid_out = self.output("data_out_valid_out", 1)
+        self._data_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._addr_out = self.output("addr_out", self.data_width, packed=True)
+        self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._addr_out_ready_in = self.input("addr_out_ready_in", 1)
+        self._addr_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._addr_out_valid_out = self.output("addr_out_valid_out", 1)
+        self._addr_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._ID_out = self.output("ID_out", self.data_width, packed=True)
+        self._ID_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._ID_out_ready_in = self.input("ID_out_ready_in", 1)
+        self._ID_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._ID_out_valid_out = self.output("ID_out_valid_out", 1)
+        self._ID_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # self._outer_coord_out = self.output("outer_coord_out", self.data_width)
         # self._outer_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -85,16 +113,12 @@ class WriteScanner(Generator):
         # self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Address to write to memory
-        self._addr_out = self.output("addr_out", self.data_width)
-        self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         # Eos for both streams...
         # self._eos_out = self.output("eos_out", 2)
         # self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Memory write enable signal
-        self._wen = self.output("wen", 1)
-        self._wen.add_attribute(ControlSignalAttr(is_control=False))
 
         # Point to the row in storage for data recovery
         # self._payload_ptr = self.output("payload_ptr", 16)
@@ -184,6 +208,103 @@ class WriteScanner(Generator):
 # Output FIFO
 # =============================
 
+        self._data_to_fifo = self.var("data_to_fifo", self.data_width, packed=True)
+        self._op_to_fifo = self.var("op_to_fifo", 1)
+        self._addr_to_fifo = self.var("addr_to_fifo", self.data_width, packed=True)
+        self._ID_to_fifo = self.var("ID_to_fifo", self.data_width, packed=True)
+
+        self._push_to_outs = self.var("push_to_outs", 1)
+
+        all_outputs_ready = []
+        out_pushes = []
+
+        ########################
+        # DATA OUT + OP OUT
+        ########################
+        self._data_out_fifo_push = self.var("data_out_fifo_push", 1)
+        self._data_out_fifo_full = self.var("data_out_fifo_full", 1)
+
+        out_pushes.append(self._data_out_fifo_push)
+
+        # Output FIFOs to the buffet-like
+        data_out_fifo_in = kts.concat(self._data_to_fifo, self._op_to_fifo)
+        data_out_outfifo = RegFIFO(data_width=data_out_fifo_in.width, width_mult=1, depth=8)
+
+        self.add_child(f"data_out_fifo",
+                       data_out_outfifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._data_out_fifo_push,
+                       pop=self._data_out_ready_in,
+                       data_in=data_out_fifo_in,
+                       data_out=kts.concat(self._data_out, self._op_out))
+        # RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
+        self.wire(self._data_out_fifo_full, data_out_outfifo.ports.full)
+        self.wire(self._data_out_valid_out, ~data_out_outfifo.ports.empty)
+
+        all_outputs_ready.append(self._data_out_fifo_full)
+
+        ########################
+        # ADDR OUT
+        ########################
+        self._addr_out_fifo_push = self.var("addr_out_fifo_push", 1)
+        self._addr_out_fifo_full = self.var("addr_out_fifo_full", 1)
+
+        out_pushes.append(self._addr_out_fifo_push)
+
+        # Output FIFOs to the buffet-like
+        addr_out_fifo_in = kts.concat(self._addr_to_fifo)
+        addr_out_outfifo = RegFIFO(data_width=addr_out_fifo_in.width, width_mult=1, depth=8)
+
+        self.add_child(f"addr_out_fifo",
+                       addr_out_outfifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._addr_out_fifo_push,
+                       pop=self._addr_out_ready_in,
+                       data_in=addr_out_fifo_in,
+                       data_out=kts.concat(self._addr_out))
+        # RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
+        self.wire(self._addr_out_fifo_full, addr_out_outfifo.ports.full)
+        self.wire(self._addr_out_valid_out, ~addr_out_outfifo.ports.empty)
+
+        all_outputs_ready.append(self._addr_out_fifo_full)
+
+        ########################
+        # ID OUT
+        ########################
+        self._ID_out_fifo_push = self.var("ID_out_fifo_push", 1)
+        self._ID_out_fifo_full = self.var("ID_out_fifo_full", 1)
+
+        out_pushes.append(self._ID_out_fifo_push)
+
+        # Output FIFOs to the buffet-like
+        ID_out_fifo_in = kts.concat(self._ID_to_fifo)
+        ID_out_outfifo = RegFIFO(data_width=ID_out_fifo_in.width, width_mult=1, depth=8)
+
+        self.add_child(f"ID_out_fifo",
+                       ID_out_outfifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._ID_out_fifo_push,
+                       pop=self._ID_out_ready_in,
+                       data_in=ID_out_fifo_in,
+                       data_out=kts.concat(self._ID_out))
+        # RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
+        self.wire(self._ID_out_fifo_full, ID_out_outfifo.ports.full)
+        self.wire(self._ID_out_valid_out, ~ID_out_outfifo.ports.empty)
+
+        all_outputs_ready.append(self._ID_out_fifo_full)
+
+        catted = kts.concat(*[*all_outputs_ready])
+        # only downstream ready if none of the fifos are full
+        self._join_out_ready = (~catted).r_and()
+        # Broadcast the single push to all three
+        self.wire(kts.concat(*[*out_pushes]), kts.concat(*[self._push_to_outs for i in range(len(out_pushes))]))
+
 # =============================
 # SCAN FSM
 # =============================
@@ -222,11 +343,15 @@ class WriteScanner(Generator):
         self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == self._stop_lvl))
 
         self._clr_wen_made = self.var("clr_wen_made", 1)
-        self._wen_made = sticky_flag(self, self._wen, clear=self._clr_wen_made, name="wen_made", seq_only=True)
+        self._wen_made = sticky_flag(self, self._push_to_outs, clear=self._clr_wen_made, name="wen_made", seq_only=True)
+
+        self._ID_curr = self.var("ID_curr", self.data_width)
 
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
         START = self.scan_fsm.add_state("START")
+        ALLOCATE1 = self.scan_fsm.add_state("ALLOCATE1")
+        ALLOCATE2 = self.scan_fsm.add_state("ALLOCATE2")
         BLOCK_1_SZ = self.scan_fsm.add_state("BLOCK_1_SZ")
         BLOCK_1_WR = self.scan_fsm.add_state("BLOCK_1_WR")
         BLOCK_2_SZ = self.scan_fsm.add_state("BLOCK_2_SZ")
@@ -251,9 +376,25 @@ class WriteScanner(Generator):
         # START #
         ####################
         # Start state goes to either lowest level or upper level
-        START.next(BLOCK_1_SZ, self._block_mode)
-        START.next(LL, self._lowest_level)
-        START.next(UL_WZ, ~self._lowest_level)
+        START.next(ALLOCATE1, None)
+
+        ####################
+        # ALLOCATE1 #
+        ####################
+        # ALLOCATE1 allocates the lower ID buffet
+        ALLOCATE1.next(ALLOCATE1, ~self._join_out_ready)
+        ALLOCATE1.next(ALLOCATE2, ~self._lowest_level & self._join_out_ready)
+        ALLOCATE2.next(BLOCK_1_SZ, self._lowest_level & self._block_mode & self._join_out_ready)
+        ALLOCATE1.next(LL, self._lowest_level & ~self._block_mode & self._join_out_ready)
+        # ALLOCATE1.next(UL_WZ, ~self._lowest_level & self._join_out_ready)
+
+        ####################
+        # ALLOCATE2 #
+        ####################
+        # lowest level is true here
+        ALLOCATE2.next(ALLOCATE2, ~self._join_out_ready)
+        ALLOCATE2.next(BLOCK_1_SZ, self._block_mode & self._join_out_ready)
+        ALLOCATE2.next(UL_WZ, ~self._block_mode & self._join_out_ready)
 
         ####################
         # BLOCK_1_SZ
@@ -349,15 +490,17 @@ class WriteScanner(Generator):
         ####################
         # We are done...
         # TODO: Accept multiple blocks
-        DONE.next(DONE, None)
+        DONE.next(START, None)
 
         ####################
         # FSM Output Logic
         ####################
 
-        self.scan_fsm.output(self._addr_out)
-        self.scan_fsm.output(self._wen)
-        self.scan_fsm.output(self._data_out)
+        self.scan_fsm.output(self._data_to_fifo)
+        self.scan_fsm.output(self._op_to_fifo)
+        self.scan_fsm.output(self._addr_to_fifo)
+        self.scan_fsm.output(self._ID_to_fifo)
+        self.scan_fsm.output(self._push_to_outs)
         self.scan_fsm.output(self._inc_seg_addr)
         self.scan_fsm.output(self._clr_seg_addr)
         self.scan_fsm.output(self._inc_coord_addr)
@@ -376,9 +519,11 @@ class WriteScanner(Generator):
         #######
         # START - TODO - Generate general hardware...
         #######
-        START.output(self._addr_out, kts.const(0, 16))
-        START.output(self._wen, 0)
-        START.output(self._data_out, kts.const(0, 16))
+        START.output(self._data_to_fifo, kts.const(0, 16))
+        START.output(self._op_to_fifo, 0)
+        START.output(self._addr_to_fifo, kts.const(0, 16))
+        START.output(self._ID_to_fifo, kts.const(0, 16))
+        START.output(self._push_to_outs, 0)
         START.output(self._inc_seg_addr, 0)
         START.output(self._clr_seg_addr, 0)
         START.output(self._inc_coord_addr, 0)
@@ -395,11 +540,59 @@ class WriteScanner(Generator):
         START.output(self._clr_block_write, 0)
 
         #######
+        # ALLOCATE1 - TODO - Generate general hardware...
+        #######
+        ALLOCATE1.output(self._data_to_fifo, kts.const(0, 16))
+        ALLOCATE1.output(self._op_to_fifo, 0)
+        ALLOCATE1.output(self._addr_to_fifo, kts.const(0, 16))
+        ALLOCATE1.output(self._ID_to_fifo, kts.const(0, 16))
+        ALLOCATE1.output(self._push_to_outs, 1)
+        ALLOCATE1.output(self._inc_seg_addr, 0)
+        ALLOCATE1.output(self._clr_seg_addr, 0)
+        ALLOCATE1.output(self._inc_coord_addr, 0)
+        ALLOCATE1.output(self._clr_coord_addr, 0)
+        ALLOCATE1.output(self._inc_seg_ctr, 0)
+        ALLOCATE1.output(self._clr_seg_ctr, 0)
+        ALLOCATE1.output(self._set_curr_coord, 0)
+        ALLOCATE1.output(self._clr_curr_coord, 0)
+        ALLOCATE1.output(self._infifo_pop[0], 0)
+        ALLOCATE1.output(self._infifo_pop[1], 0)
+        ALLOCATE1.output(self._clr_wen_made, 0)
+        ALLOCATE1.output(self._set_block_size, 0)
+        ALLOCATE1.output(self._inc_block_write, 0)
+        ALLOCATE1.output(self._clr_block_write, 0)
+
+        #######
+        # ALLOCATE2 - TODO - Generate general hardware...
+        #######
+        ALLOCATE2.output(self._data_to_fifo, kts.const(0, 16))
+        ALLOCATE2.output(self._op_to_fifo, 0)
+        ALLOCATE2.output(self._addr_to_fifo, kts.const(0, 16))
+        ALLOCATE2.output(self._ID_to_fifo, kts.const(1, 16))
+        ALLOCATE2.output(self._push_to_outs, 1)
+        ALLOCATE2.output(self._inc_seg_addr, 0)
+        ALLOCATE2.output(self._clr_seg_addr, 0)
+        ALLOCATE2.output(self._inc_coord_addr, 0)
+        ALLOCATE2.output(self._clr_coord_addr, 0)
+        ALLOCATE2.output(self._inc_seg_ctr, 0)
+        ALLOCATE2.output(self._clr_seg_ctr, 0)
+        ALLOCATE2.output(self._set_curr_coord, 0)
+        ALLOCATE2.output(self._clr_curr_coord, 0)
+        ALLOCATE2.output(self._infifo_pop[0], 0)
+        ALLOCATE2.output(self._infifo_pop[1], 0)
+        ALLOCATE2.output(self._clr_wen_made, 0)
+        ALLOCATE2.output(self._set_block_size, 0)
+        ALLOCATE2.output(self._inc_block_write, 0)
+        ALLOCATE2.output(self._clr_block_write, 0)
+
+        #######
         # BLOCK_1_SZ
         #######
-        BLOCK_1_SZ.output(self._addr_out, kts.const(0, 16))
-        BLOCK_1_SZ.output(self._wen, 0)
-        BLOCK_1_SZ.output(self._data_out, kts.const(0, 16))
+        BLOCK_1_SZ.output(self._data_to_fifo, kts.const(0, 16))
+        BLOCK_1_SZ.output(self._op_to_fifo, 0)
+        BLOCK_1_SZ.output(self._addr_to_fifo, kts.const(0, 16))
+        BLOCK_1_SZ.output(self._ID_to_fifo, kts.const(1, 16))
+        BLOCK_1_SZ.output(self._push_to_outs, 0)
         BLOCK_1_SZ.output(self._inc_seg_addr, 0)
         BLOCK_1_SZ.output(self._clr_seg_addr, 0)
         BLOCK_1_SZ.output(self._inc_coord_addr, 0)
@@ -418,9 +611,14 @@ class WriteScanner(Generator):
         #######
         # BLOCK_1_WR
         #######
-        BLOCK_1_WR.output(self._addr_out, self._block_writes)
-        BLOCK_1_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
-        BLOCK_1_WR.output(self._data_out, self._data_infifo_data_in)
+        BLOCK_1_WR.output(self._data_to_fifo, self._data_infifo_data_in)
+        BLOCK_1_WR.output(self._op_to_fifo, 1)
+        BLOCK_1_WR.output(self._addr_to_fifo, self._block_writes)
+        BLOCK_1_WR.output(self._ID_to_fifo, kts.const(0, 16))
+        BLOCK_1_WR.output(self._push_to_outs, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        # BLOCK_1_WR.output(self._addr_out, self._block_writes)
+        # BLOCK_1_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        # BLOCK_1_WR.output(self._data_out, self._data_infifo_data_in)
         BLOCK_1_WR.output(self._inc_seg_addr, 0)
         BLOCK_1_WR.output(self._clr_seg_addr, 0)
         BLOCK_1_WR.output(self._inc_coord_addr, 0)
@@ -429,19 +627,24 @@ class WriteScanner(Generator):
         BLOCK_1_WR.output(self._clr_seg_ctr, 0)
         BLOCK_1_WR.output(self._set_curr_coord, 0)
         BLOCK_1_WR.output(self._clr_curr_coord, 0)
-        BLOCK_1_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._ready_in)
+        BLOCK_1_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
         BLOCK_1_WR.output(self._infifo_pop[1], 0)
         BLOCK_1_WR.output(self._clr_wen_made, 0)
         BLOCK_1_WR.output(self._set_block_size, 0)
-        BLOCK_1_WR.output(self._inc_block_write, self._ready_in & self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        BLOCK_1_WR.output(self._inc_block_write, self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
         BLOCK_1_WR.output(self._clr_block_write, 0)
 
         #######
         # BLOCK_2_SZ
         #######
-        BLOCK_2_SZ.output(self._addr_out, kts.const(0, 16))
-        BLOCK_2_SZ.output(self._wen, 0)
-        BLOCK_2_SZ.output(self._data_out, kts.const(0, 16))
+        BLOCK_2_SZ.output(self._data_to_fifo, kts.const(0, 16))
+        BLOCK_2_SZ.output(self._op_to_fifo, 0)
+        BLOCK_2_SZ.output(self._addr_to_fifo, kts.const(0, 16))
+        BLOCK_2_SZ.output(self._ID_to_fifo, kts.const(0, 16))
+        BLOCK_2_SZ.output(self._push_to_outs, 0)
+        # BLOCK_2_SZ.output(self._addr_out, kts.const(0, 16))
+        # BLOCK_2_SZ.output(self._wen, 0)
+        # BLOCK_2_SZ.output(self._data_out, kts.const(0, 16))
         BLOCK_2_SZ.output(self._inc_seg_addr, 0)
         BLOCK_2_SZ.output(self._clr_seg_addr, 0)
         BLOCK_2_SZ.output(self._inc_coord_addr, 0)
@@ -460,9 +663,14 @@ class WriteScanner(Generator):
         #######
         # BLOCK_2_WR
         #######
-        BLOCK_2_WR.output(self._addr_out, self._block_writes + self._inner_dim_offset)
-        BLOCK_2_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
-        BLOCK_2_WR.output(self._data_out, self._data_infifo_data_in)
+        BLOCK_2_WR.output(self._data_to_fifo, self._data_infifo_data_in)
+        BLOCK_2_WR.output(self._op_to_fifo, 1)
+        BLOCK_2_WR.output(self._addr_to_fifo, self._block_writes)
+        BLOCK_2_WR.output(self._ID_to_fifo, kts.const(1, 16))
+        BLOCK_2_WR.output(self._push_to_outs, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        # BLOCK_2_WR.output(self._addr_out, self._block_writes + self._inner_dim_offset)
+        # BLOCK_2_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        # BLOCK_2_WR.output(self._data_out, self._data_infifo_data_in)
         BLOCK_2_WR.output(self._inc_seg_addr, 0)
         BLOCK_2_WR.output(self._clr_seg_addr, 0)
         BLOCK_2_WR.output(self._inc_coord_addr, 0)
@@ -471,19 +679,24 @@ class WriteScanner(Generator):
         BLOCK_2_WR.output(self._clr_seg_ctr, 0)
         BLOCK_2_WR.output(self._set_curr_coord, 0)
         BLOCK_2_WR.output(self._clr_curr_coord, 0)
-        BLOCK_2_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._ready_in)
+        BLOCK_2_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
         BLOCK_2_WR.output(self._infifo_pop[1], 0)
         BLOCK_2_WR.output(self._clr_wen_made, 0)
         BLOCK_2_WR.output(self._set_block_size, 0)
-        BLOCK_2_WR.output(self._inc_block_write, self._ready_in & self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        BLOCK_2_WR.output(self._inc_block_write, self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
         BLOCK_2_WR.output(self._clr_block_write, 0)
 
         #######
         # LL
         #######
-        LL.output(self._addr_out, kts.const(0, 16))
-        LL.output(self._wen, 0)
-        LL.output(self._data_out, kts.const(0, 16))
+        LL.output(self._data_to_fifo, kts.const(0, self._data_to_fifo.width))
+        LL.output(self._op_to_fifo, 0)
+        LL.output(self._addr_to_fifo, kts.const(0, self._addr_to_fifo.width))
+        LL.output(self._ID_to_fifo, kts.const(0, 16))
+        LL.output(self._push_to_outs, 0)
+        # LL.output(self._addr_out, kts.const(0, 16))
+        # LL.output(self._wen, 0)
+        # LL.output(self._data_out, kts.const(0, 16))
         LL.output(self._inc_seg_addr, 0)
         LL.output(self._clr_seg_addr, 0)
         LL.output(self._inc_coord_addr, 0)
@@ -502,10 +715,15 @@ class WriteScanner(Generator):
         #######
         # UnLL
         #######
-        UnLL.output(self._addr_out, self._addr_infifo_data_in)
+        UnLL.output(self._data_to_fifo, self._data_infifo_data_in)
+        UnLL.output(self._op_to_fifo, 1)
+        UnLL.output(self._addr_to_fifo, self._addr_infifo_data_in)
+        UnLL.output(self._ID_to_fifo, kts.const(0, 16))
+        UnLL.output(self._push_to_outs, (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ~(self._data_infifo_eos_in | self._addr_infifo_eos_in))
+        # UnLL.output(self._addr_out, self._addr_infifo_data_in)
         # Only write the values
-        UnLL.output(self._wen, (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ~(self._data_infifo_eos_in | self._addr_infifo_eos_in))
-        UnLL.output(self._data_out, self._data_infifo_data_in)
+        # UnLL.output(self._wen, (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ~(self._data_infifo_eos_in | self._addr_infifo_eos_in))
+        # UnLL.output(self._data_out, self._data_infifo_data_in)
         UnLL.output(self._inc_seg_addr, 0)
         UnLL.output(self._clr_seg_addr, 0)
         UnLL.output(self._inc_coord_addr, 0)
@@ -515,8 +733,8 @@ class WriteScanner(Generator):
         UnLL.output(self._set_curr_coord, 0)
         UnLL.output(self._clr_curr_coord, 0)
         # Pop if the memory is ready for a write, or its eos
-        UnLL.output(self._infifo_pop[0], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
-        UnLL.output(self._infifo_pop[1], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._ready_in))
+        UnLL.output(self._infifo_pop[0], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._join_out_ready))
+        UnLL.output(self._infifo_pop[1], (self._data_infifo_valid_in & self._addr_infifo_valid_in) & ((self._data_infifo_eos_in & self._addr_infifo_eos_in) | self._join_out_ready))
         UnLL.output(self._clr_wen_made, 0)
         UnLL.output(self._set_block_size, 0)
         UnLL.output(self._inc_block_write, 0)
@@ -525,13 +743,18 @@ class WriteScanner(Generator):
         #######
         # ComLL
         #######
+        ComLL.output(self._data_to_fifo, self._data_infifo_data_in)
+        ComLL.output(self._op_to_fifo, 1)
+        ComLL.output(self._addr_to_fifo, self._seg_addr)
+        ComLL.output(self._ID_to_fifo, kts.const(0, 16))
+        ComLL.output(self._push_to_outs, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
         # Use the seg addr
-        ComLL.output(self._addr_out, self._seg_addr)
+        # ComLL.output(self._addr_out, self._seg_addr)
         # Only write if its data
-        ComLL.output(self._wen, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
-        ComLL.output(self._data_out, self._data_infifo_data_in)
+        # ComLL.output(self._wen, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
+        # ComLL.output(self._data_out, self._data_infifo_data_in)
         # Increase the seg addr only if we are actually writing
-        ComLL.output(self._inc_seg_addr, self._data_infifo_valid_in & ~self._data_infifo_eos_in & self._ready_in)
+        ComLL.output(self._inc_seg_addr, self._data_infifo_valid_in & ~self._data_infifo_eos_in & self._join_out_ready)
         ComLL.output(self._clr_seg_addr, 0)
         ComLL.output(self._inc_coord_addr, 0)
         ComLL.output(self._clr_coord_addr, 0)
@@ -540,7 +763,7 @@ class WriteScanner(Generator):
         ComLL.output(self._set_curr_coord, 0)
         ComLL.output(self._clr_curr_coord, 0)
         # Only pop if its eos or the memory is ready for the write
-        ComLL.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._data_infifo_eos_in | self._ready_in))
+        ComLL.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._data_infifo_eos_in | self._join_out_ready))
         ComLL.output(self._infifo_pop[1], 0)
         ComLL.output(self._clr_wen_made, 0)
         ComLL.output(self._set_block_size, 0)
@@ -550,11 +773,17 @@ class WriteScanner(Generator):
         #######
         # UL_WZ
         #######
+        UL_WZ.output(self._data_to_fifo, kts.const(0, self._data_to_fifo.width))
+        UL_WZ.output(self._op_to_fifo, 1)
+        UL_WZ.output(self._addr_to_fifo, self._seg_addr)
+        UL_WZ.output(self._ID_to_fifo, kts.const(0, 16))
+        UL_WZ.output(self._push_to_outs, 1)
+
         # Write a 0 to the segment array
-        UL_WZ.output(self._addr_out, self._seg_addr)
-        UL_WZ.output(self._wen, 1)
-        UL_WZ.output(self._data_out, kts.const(0, 16))
-        UL_WZ.output(self._inc_seg_addr, self._ready_in)
+        # UL_WZ.output(self._addr_out, self._seg_addr)
+        # UL_WZ.output(self._wen, 1)
+        # UL_WZ.output(self._data_out, kts.const(0, 16))
+        UL_WZ.output(self._inc_seg_addr, self._join_out_ready)
         UL_WZ.output(self._clr_seg_addr, 0)
         UL_WZ.output(self._inc_coord_addr, 0)
         UL_WZ.output(self._clr_coord_addr, 0)
@@ -572,9 +801,15 @@ class WriteScanner(Generator):
         #######
         # UL
         #######
-        UL.output(self._addr_out, kts.const(0, 16))
-        UL.output(self._wen, 0)
-        UL.output(self._data_out, kts.const(0, 16))
+        UL.output(self._data_to_fifo, kts.const(0, self._data_to_fifo.width))
+        UL.output(self._op_to_fifo, 0)
+        UL.output(self._addr_to_fifo, kts.const(0, self._addr_to_fifo.width))
+        UL.output(self._ID_to_fifo, kts.const(0, 16))
+        UL.output(self._push_to_outs, 0)
+
+        # UL.output(self._addr_out, kts.const(0, 16))
+        # UL.output(self._wen, 0)
+        # UL.output(self._data_out, kts.const(0, 16))
         UL.output(self._inc_seg_addr, 0)
         UL.output(self._clr_seg_addr, 0)
         UL.output(self._inc_coord_addr, 0)
@@ -595,14 +830,20 @@ class WriteScanner(Generator):
         #######
         # UL_EMIT_COORD
         #######
-        UL_EMIT_COORD.output(self._addr_out, self._coord_addr + self._inner_dim_offset)
-        UL_EMIT_COORD.output(self._wen, ~self._wen_made & self._ready_in)
-        UL_EMIT_COORD.output(self._data_out, self._curr_coord)
+        UL_EMIT_COORD.output(self._data_to_fifo, self._curr_coord)
+        UL_EMIT_COORD.output(self._op_to_fifo, 1)
+        UL_EMIT_COORD.output(self._addr_to_fifo, self._coord_addr)
+        UL_EMIT_COORD.output(self._ID_to_fifo, kts.const(1, 16))
+        UL_EMIT_COORD.output(self._push_to_outs, ~self._wen_made & self._join_out_ready)
+
+        # UL_EMIT_COORD.output(self._addr_out, self._coord_addr + self._inner_dim_offset)
+        # UL_EMIT_COORD.output(self._wen, ~self._wen_made & self._ready_in)
+        # UL_EMIT_COORD.output(self._data_out, self._curr_coord)
         UL_EMIT_COORD.output(self._inc_seg_addr, 0)
         UL_EMIT_COORD.output(self._clr_seg_addr, 0)
-        UL_EMIT_COORD.output(self._inc_coord_addr, ~self._wen_made & self._ready_in)
+        UL_EMIT_COORD.output(self._inc_coord_addr, ~self._wen_made & self._join_out_ready)
         UL_EMIT_COORD.output(self._clr_coord_addr, 0)
-        UL_EMIT_COORD.output(self._inc_seg_ctr, ~self._wen_made & self._ready_in)
+        UL_EMIT_COORD.output(self._inc_seg_ctr, ~self._wen_made & self._join_out_ready)
         UL_EMIT_COORD.output(self._clr_seg_ctr, 0)
         UL_EMIT_COORD.output(self._set_curr_coord, 0)
         UL_EMIT_COORD.output(self._clr_curr_coord, 0)
@@ -617,10 +858,16 @@ class WriteScanner(Generator):
         #######
         # UL_EMIT_SEG
         #######
-        UL_EMIT_SEG.output(self._addr_out, self._seg_addr)
-        UL_EMIT_SEG.output(self._wen, ~self._wen_made & self._ready_in)
-        UL_EMIT_SEG.output(self._data_out, self._seg_ctr)
-        UL_EMIT_SEG.output(self._inc_seg_addr, ~self._wen_made & self._ready_in)
+        UL_EMIT_SEG.output(self._data_to_fifo, self._seg_ctr)
+        UL_EMIT_SEG.output(self._op_to_fifo, 1)
+        UL_EMIT_SEG.output(self._addr_to_fifo, self._seg_addr)
+        UL_EMIT_SEG.output(self._ID_to_fifo, kts.const(0, 16))
+        UL_EMIT_SEG.output(self._push_to_outs, ~self._wen_made & self._join_out_ready)
+
+        # UL_EMIT_SEG.output(self._addr_out, self._seg_addr)
+        # UL_EMIT_SEG.output(self._wen, ~self._wen_made & self._ready_in)
+        # UL_EMIT_SEG.output(self._data_out, self._seg_ctr)
+        UL_EMIT_SEG.output(self._inc_seg_addr, ~self._wen_made & self._join_out_ready)
         UL_EMIT_SEG.output(self._clr_seg_addr, 0)
         UL_EMIT_SEG.output(self._inc_coord_addr, 0)
         UL_EMIT_SEG.output(self._clr_coord_addr, 0)
@@ -641,9 +888,15 @@ class WriteScanner(Generator):
         #############
         # DONE
         #############
-        DONE.output(self._addr_out, kts.const(0, 16))
-        DONE.output(self._wen, 0)
-        DONE.output(self._data_out, kts.const(0, 16))
+        DONE.output(self._data_to_fifo, kts.const(0, self._data_to_fifo.width))
+        DONE.output(self._op_to_fifo, 0)
+        DONE.output(self._addr_to_fifo, kts.const(0, self._addr_to_fifo.width))
+        DONE.output(self._ID_to_fifo, kts.const(0, 16))
+        DONE.output(self._push_to_outs, 0)
+
+        # DONE.output(self._addr_out, kts.const(0, 16))
+        # DONE.output(self._wen, 0)
+        # DONE.output(self._data_out, kts.const(0, 16))
         DONE.output(self._inc_seg_addr, 0)
         DONE.output(self._clr_seg_addr, 0)
         DONE.output(self._inc_coord_addr, 0)

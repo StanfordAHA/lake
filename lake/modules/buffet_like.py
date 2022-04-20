@@ -489,7 +489,14 @@ class BuffetLike(Generator):
             rd_acq = kts.concat(rd_acq, self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
         self.wire(self._ren_to_mem, rd_acq.r_or())
         self.wire(self._wen_to_mem, wr_acq.r_or())
-        self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data, self._rd_op_fifo_out_addr + self._blk_base))
+
+        # Choose which base block...
+        wr_base = kts.ternary(wr_acq[0], self._curr_base[0], kts.const(0, self._curr_base[0].width))
+        rd_base = kts.ternary(rd_acq[0], self._blk_base[0], kts.const(0, self._blk_base[0].width))
+        for i in range(self.num_ID - 1):
+            wr_base = kts.ternary(wr_acq[i + 1], self._curr_base[i + 1], wr_base)
+            rd_base = kts.ternary(wr_acq[i + 1], self._blk_base[i + 1], rd_base)
+        self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + wr_base, self._rd_op_fifo_out_addr + rd_base))
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
@@ -524,7 +531,7 @@ class BuffetLike(Generator):
 
 if __name__ == "__main__":
     buffet_dut = BuffetLike(data_width=16,
-                            num_ID=2)
+                            num_ID=4)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
