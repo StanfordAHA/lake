@@ -134,6 +134,8 @@ class MemoryControllerFlatWrapper(MemoryController):
         Flatten a port and bring it up based on the width/size of the port
         '''
         port_width = port.width
+        if port.name == "flush":
+            return
         # Port width either has to be in the legal_list or
         # 1 must be in the list - if width is 1, then the size[0] should be 1 as well
         # if port_width in self.legal_widths or (1 in self.legal_widths and port.size[0] == 1):
@@ -220,7 +222,6 @@ class MemoryControllerFlatWrapper(MemoryController):
         new_mem_prt_intf = new_mem_prt.get_port_interface()
         # These interfaces should match directly...
         for (name, sig) in mem_prt.get_port_interface().items():
-            # print(sig)
             # These should all comply anyway, so just need to recreate them
             try:
                 if sig is None:

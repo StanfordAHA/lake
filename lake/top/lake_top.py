@@ -10,7 +10,7 @@ from lake.top.extract_tile_info import extract_top_config
 from lake.utils.sram_macro import SRAMMacroInfo
 import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
-from lake.top.tech_maps import SKY_Tech_Map, TSMC_Tech_Map
+from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.modules.stencil_valid import StencilValid
 from _kratos import create_wrapper_flatten
@@ -31,8 +31,7 @@ class LakeTop(Generator):
                  interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
-                 use_sram_stub=True,
-                 sram_macro_info=SRAMMacroInfo("tsmc_name"),
+                 use_sim_sram=True,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
@@ -46,7 +45,8 @@ class LakeTop(Generator):
                  gen_addr=True,
                  stencil_valid=True,
                  formal_module=None,
-                 do_config_lift=True):
+                 do_config_lift=True,
+                 tech_map=TSMC_Tech_Map(depth=512, width=32)):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -60,8 +60,7 @@ class LakeTop(Generator):
         self.interconnect_output_ports = interconnect_output_ports
         self.mem_input_ports = mem_input_ports
         self.mem_output_ports = mem_output_ports
-        self.use_sram_stub = use_sram_stub
-        self.sram_macro_info = sram_macro_info
+        self.use_sim_sram = use_sim_sram
         self.agg_height = agg_height
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
         assert self.mem_width >= self.data_width, "Data width needs to be smaller than mem"
@@ -75,6 +74,7 @@ class LakeTop(Generator):
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
         self.formal_module = formal_module
+        self.tech_map = tech_map
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -101,16 +101,15 @@ class LakeTop(Generator):
             tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=False),
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
 
-        tech_map = TSMC_Tech_Map()
+        # tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
-        # MTB.set_memory_interface(name_prefix=f"sram_{self.mem_width}_{self.mem_depth}_{len(tsmc_mem)}p",
         MTB.set_memory_interface(name_prefix=name_prefix,
                                  mem_params=memory_params,
                                  ports=tsmc_mem,
-                                 sim_macro_n=True,
-                                 tech_map=tech_map)
+                                 sim_macro_n=self.use_sim_sram,
+                                 tech_map=self.tech_map)
 
         # Now add the controllers in...
         controllers = []
@@ -341,23 +340,35 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='LakeTop')
     parser.add_argument("-f",
                         help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for")
+    parser.add_argument("--fetch_width", type=int, default=4)
+    parser.add_argument("--dual_port", action="store_true")
 
     args = parser.parse_args()
 
+    mem_width = args.fetch_width * 16
+
+    mem_name = "single"
+    rw_same_cycle = False
+    if args.dual_port:
+        rw_same_cycle = True
+        mem_name = "dual"
+
     lake_top = LakeTop(data_width=16,
-                       mem_width=64,
+                       mem_width=mem_width,
                        mem_depth=512,
                        banks=1,
                        fifo_mode=True,
                        add_clk_enable=True,
                        add_flush=True,
                        rw_same_cycle=False,
-                       read_delay=1)
+                       read_delay=1,
+                       use_sim_sram=False,
+                       name=f"LakeTop_width_{args.fetch_width}_{mem_name}")
 
     print(lake_top)
 
     config = extract_top_config(lake_top.dut, verbose=True)
 
     # generate verilog
-    verilog(lake_top.dut, filename=f"lake_top_test.sv",
+    verilog(lake_top.dut, filename=f"LakeTop_width_{args.fetch_width}_{mem_name}.sv",
             optimize_if=False)

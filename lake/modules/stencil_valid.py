@@ -1,10 +1,10 @@
-from typing import List
 from lake.modules.spec.sched_gen import SchedGen
 from lake.modules.for_loop import ForLoop
 from lake.attributes.dedicated_port import DedicatedPortAttribute
 from lake.top.memory_controller import MemoryController
 from kratos import *
 from lake.utils.parse_clkwork_config import map_controller, extract_controller_json
+import kratos as kts
 
 
 class StencilValid(MemoryController):
@@ -16,7 +16,6 @@ class StencilValid(MemoryController):
         self.define_io()
 
         self._cycle_count = self.var("cycle_count", 16)
-        self.add_code(self.cycle_count_inc)
 
         self._loops_stencil_valid = ForLoop(iterator_support=6,
                                             config_width=16)
@@ -38,14 +37,27 @@ class StencilValid(MemoryController):
                        mux_sel=self._loops_stencil_valid.ports.mux_sel_out,
                        finished=self._loops_stencil_valid.ports.restart,
                        valid_output=self._stencil_valid_int)
+
+        self._flush = self.input("flush", 1)
+        self._flushed = self.var("flushed", 1)
         # Wire out internal wire
-        self.wire(self._stencil_valid, self._stencil_valid_int)
+        self.wire(self._stencil_valid, self._stencil_valid_int & self._flushed)
+
+        self.add_code(self.cycle_count_inc)
+        self.add_code(self.flushed_set)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def flushed_set(self):
+        if ~self._rst_n:
+            self._flushed = 0
+        elif self._flush:
+            self._flushed = 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def cycle_count_inc(self):
         if ~self._rst_n:
             self._cycle_count = 0
-        else:
+        elif self._flushed:
             self._cycle_count = self._cycle_count + 1
 
     def define_io(self):
@@ -68,7 +80,7 @@ class StencilValid(MemoryController):
         (config_reg, value) tuples
         '''
         config = []
-        stencil_valid = map_controller(extract_controller_json(config_json), "stencil_valid")
+        stencil_valid = map_controller(extract_controller_json(config_json['stencil_valid']), "stencil_valid")
         config.append((f"stencil_valid_sched_gen_enable", 1))
         config.append((f"stencil_valid_sched_gen_sched_addr_gen_starting_addr", stencil_valid.cyc_strt))
         config.append((f"loops_stencil_valid_dimensionality", stencil_valid.dim))

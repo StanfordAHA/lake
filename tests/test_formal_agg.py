@@ -127,10 +127,9 @@ def test_formal_agg():
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "agg_formal"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":

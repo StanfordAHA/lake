@@ -339,7 +339,9 @@ class StrgRAM(MemoryController):
         return self.base_ports
 
     def get_bitstream(self, config_json):
-        raise NotImplementedError
+        config = []
+        return config
+        # raise NotImplementedError
 
     def get_config_mode_str(self):
         return "ROM"

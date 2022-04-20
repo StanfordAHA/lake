@@ -1,4 +1,4 @@
-def TSMC_Tech_Map() -> dict:
+def TSMC_Tech_Map(depth, width) -> dict:
     '''
     Currently returns the tech map for the single port SRAM, but we can
     procedurally generate different tech maps
@@ -22,8 +22,10 @@ def TSMC_Tech_Map() -> dict:
     ports.append(single_port)
 
     tech_map = {
-        'name': "TS1N16FFCLLSBLVTC512X32M4S",
-        'ports': ports
+        'name': f"TS1N16FFCLLSBLVTC{depth}X{width}M4S",
+        'ports': ports,
+        'depth': depth,
+        'width': width
     }
 
     return tech_map
@@ -66,7 +68,53 @@ def SKY_Tech_Map() -> dict:
 
     tech_map = {
         'name': "sky130_sram_1kbyte_1rw1r_32x256_8",
-        'ports': ports
+        'ports': ports,
+        'depth': 256,
+        'width': 32
+    }
+
+    return tech_map
+
+
+def GF_Tech_Map(depth, width) -> dict:
+    '''
+    Currently returns the tech map for the single port SRAM, but we can
+    procedurally generate different tech maps
+    '''
+    ports = []
+
+    single_port = {
+        'data_in': 'D',
+        'addr': 'A',
+        'write_enable': 'RDWEN',
+        'cen': 'CEN',
+        'clk': 'CLK',
+        'data_out': 'Q',
+        'alt_sigs': {
+            # value, width
+            'T_LOGIC': (0, 1),
+            'T_Q_RST': (0, 1),
+            'MA_SAWL1': (0, 1),
+            'MA_SAWL0': (0, 1),
+            'MA_WL1': (0, 1),
+            'MA_WL0': (0, 1),
+            'MA_WRAS1': (0, 1),
+            'MA_WRAS0': (0, 1),
+            'MA_VD1': (0, 1),
+            'MA_VD0': (0, 1),
+            'MA_WRT': (0, 1),
+            'MA_STABAS1': (0, 1),
+            'MA_STABAS0': (0, 1),
+        }
+    }
+
+    ports.append(single_port)
+
+    tech_map = {
+        'name': f"IN12LP_S1DB_W{depth:05}B{width:03}M04S2_H",
+        'ports': ports,
+        'depth': depth,
+        'width': width
     }
 
     return tech_map

@@ -22,7 +22,7 @@ def test_storage_fifo(mem_width,  # CGRA Params
                       output_iterator_support=6,  # Addr Controllers
                       mem_input_ports=1,
                       mem_output_ports=1,
-                      use_sram_stub=1,
+                      use_sim_sram=1,
                       read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                       rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                       agg_height=4,
@@ -54,13 +54,15 @@ def test_storage_fifo(mem_width,  # CGRA Params
                      interconnect_output_ports=in_out_ports,
                      mem_input_ports=mem_input_ports,
                      mem_output_ports=mem_output_ports,
-                     use_sram_stub=use_sram_stub,
+                     use_sim_sram=use_sim_sram,
                      read_delay=read_delay,
                      rw_same_cycle=rw_same_cycle,
                      agg_height=agg_height,
                      config_data_width=config_data_width,
                      config_addr_width=config_addr_width,
                      fifo_mode=fifo_mode)
+
+    # print(lt_dut)
 
     lt_dut = lt_dut.dut
 
@@ -130,9 +132,9 @@ def test_storage_fifo(mem_width,  # CGRA Params
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
-                               directory="test_output",
+                               directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal", "--trace"])
+                               flags=["-Wno-fatal"])
 
 
 if __name__ == "__main__":
