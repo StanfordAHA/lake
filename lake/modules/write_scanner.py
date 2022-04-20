@@ -364,6 +364,8 @@ class WriteScanner(Generator):
         ComLL = self.scan_fsm.add_state("ComLL")
         UL_WZ = self.scan_fsm.add_state("UL_WZ")
         UL = self.scan_fsm.add_state("UL")
+        FINALIZE1 = self.scan_fsm.add_state("FINALIZE1")
+        FINALIZE2 = self.scan_fsm.add_state("FINALIZE2")
         UL_EMIT_COORD = self.scan_fsm.add_state("UL_EMIT_COORD")
         UL_EMIT_SEG = self.scan_fsm.add_state("UL_EMIT_SEG")
         DONE = self.scan_fsm.add_state("DONE")
@@ -409,7 +411,8 @@ class WriteScanner(Generator):
         # Write the first block...
         # If this is just writing a single structure, end after that
         BLOCK_1_WR.next(BLOCK_2_SZ, (self._block_writes == self._block_size) & ~self._lowest_level)
-        BLOCK_1_WR.next(DONE, (self._block_writes == self._block_size) & self._lowest_level)
+        # BLOCK_1_WR.next(DONE, (self._block_writes == self._block_size) & self._lowest_level)
+        BLOCK_1_WR.next(FINALIZE2, (self._block_writes == self._block_size) & self._lowest_level)
         BLOCK_1_WR.next(BLOCK_1_WR, None)
 
         ####################
@@ -423,7 +426,8 @@ class WriteScanner(Generator):
         # BLOCK_2_WR
         ####################
         # Get the first block size...
-        BLOCK_2_WR.next(DONE, (self._block_writes == self._block_size))
+        # BLOCK_2_WR.next(DONE, (self._block_writes == self._block_size))
+        BLOCK_2_WR.next(FINALIZE1, (self._block_writes == self._block_size))
         BLOCK_2_WR.next(BLOCK_2_WR, None)
 
         ####################
@@ -439,7 +443,8 @@ class WriteScanner(Generator):
         ####################
         # In the compressed state of lowest level, we only need to write the
         # data values in order...just watching for the stop 0 token
-        ComLL.next(DONE, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
+        # ComLL.next(DONE, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
+        ComLL.next(FINALIZE2, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
         ComLL.next(ComLL, None)
 
         ####################
@@ -447,7 +452,8 @@ class WriteScanner(Generator):
         ####################
         # In the uncompressed lowest level, we are writing the data at the specified address, so we are similarly looking
         # for stop 0 token
-        UnLL.next(DONE, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
+        # UnLL.next(DONE, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
+        UnLL.next(FINALIZE2, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
                   (self._data_infifo_data_in == 0) & (self._addr_infifo_data_in == 0))
         UnLL.next(UnLL, None)
 
@@ -482,8 +488,21 @@ class WriteScanner(Generator):
         # Should go to done if we see a stop 0
         # Should only move on once we have drained the subsequent stops and see valid data coming in
         UL_EMIT_SEG.next(UL, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
-        UL_EMIT_SEG.next(DONE, self._full_stop)
+        # UL_EMIT_SEG.next(DONE, self._full_stop)
+        UL_EMIT_SEG.next(FINALIZE1, self._full_stop)
         UL_EMIT_SEG.next(UL_EMIT_SEG, None)
+
+        ####################
+        # FINALIZE1
+        ####################
+        FINALIZE1.next(FINALIZE2, self._join_out_ready)
+        FINALIZE1.next(FINALIZE1, None)
+
+        ####################
+        # FINALIZE2
+        ####################
+        FINALIZE2.next(DONE, self._join_out_ready)
+        FINALIZE2.next(FINALIZE2, None)
 
         ####################
         # DONE
@@ -884,6 +903,60 @@ class WriteScanner(Generator):
         UL_EMIT_SEG.output(self._set_block_size, 0)
         UL_EMIT_SEG.output(self._inc_block_write, 0)
         UL_EMIT_SEG.output(self._clr_block_write, 0)
+
+        #############
+        # FINALIZE1
+        #############
+        FINALIZE1.output(self._data_to_fifo, kts.const(0, self._data_to_fifo.width))
+        FINALIZE1.output(self._op_to_fifo, 0)
+        FINALIZE1.output(self._addr_to_fifo, kts.const(0, self._addr_to_fifo.width))
+        FINALIZE1.output(self._ID_to_fifo, kts.const(1, 16))
+        FINALIZE1.output(self._push_to_outs, 1)
+
+        # DONE.output(self._addr_out, kts.const(0, 16))
+        # DONE.output(self._wen, 0)
+        # DONE.output(self._data_out, kts.const(0, 16))
+        FINALIZE1.output(self._inc_seg_addr, 0)
+        FINALIZE1.output(self._clr_seg_addr, 0)
+        FINALIZE1.output(self._inc_coord_addr, 0)
+        FINALIZE1.output(self._clr_coord_addr, 0)
+        FINALIZE1.output(self._inc_seg_ctr, 0)
+        FINALIZE1.output(self._clr_seg_ctr, 0)
+        FINALIZE1.output(self._set_curr_coord, 0)
+        FINALIZE1.output(self._clr_curr_coord, 0)
+        FINALIZE1.output(self._infifo_pop[0], 0)
+        FINALIZE1.output(self._infifo_pop[1], 0)
+        FINALIZE1.output(self._clr_wen_made, 0)
+        FINALIZE1.output(self._set_block_size, 0)
+        FINALIZE1.output(self._inc_block_write, 0)
+        FINALIZE1.output(self._clr_block_write, 0)
+
+        #############
+        # FINALIZE2
+        #############
+        FINALIZE2.output(self._data_to_fifo, kts.const(0, self._data_to_fifo.width))
+        FINALIZE2.output(self._op_to_fifo, 0)
+        FINALIZE2.output(self._addr_to_fifo, kts.const(0, self._addr_to_fifo.width))
+        FINALIZE2.output(self._ID_to_fifo, kts.const(0, 16))
+        FINALIZE2.output(self._push_to_outs, 1)
+
+        # DONE.output(self._addr_out, kts.const(0, 16))
+        # DONE.output(self._wen, 0)
+        # DONE.output(self._data_out, kts.const(0, 16))
+        FINALIZE2.output(self._inc_seg_addr, 0)
+        FINALIZE2.output(self._clr_seg_addr, 0)
+        FINALIZE2.output(self._inc_coord_addr, 0)
+        FINALIZE2.output(self._clr_coord_addr, 0)
+        FINALIZE2.output(self._inc_seg_ctr, 0)
+        FINALIZE2.output(self._clr_seg_ctr, 0)
+        FINALIZE2.output(self._set_curr_coord, 0)
+        FINALIZE2.output(self._clr_curr_coord, 0)
+        FINALIZE2.output(self._infifo_pop[0], 0)
+        FINALIZE2.output(self._infifo_pop[1], 0)
+        FINALIZE2.output(self._clr_wen_made, 0)
+        FINALIZE2.output(self._set_block_size, 0)
+        FINALIZE2.output(self._inc_block_write, 0)
+        FINALIZE2.output(self._clr_block_write, 0)
 
         #############
         # DONE
