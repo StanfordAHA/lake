@@ -90,6 +90,12 @@ class StrgUBTBOnly(Generator):
                                      packed=True,
                                      explicit_array=True)
 
+        self._tb_read_out = self.output("tb_read_out", self.interconnect_output_ports)
+        self._tb_read_addr_out = self.output("tb_read_addr_out", 2 + clog2(self.agg_height),
+                                             size=self.interconnect_output_ports,
+                                             packed=True,
+                                             explicit_array=True)
+
         ##################################################################################
         # TB RELEVANT SIGNALS
         ##################################################################################
@@ -197,6 +203,7 @@ class StrgUBTBOnly(Generator):
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
                            restart=fl_ctr_tb_rd.ports.restart)
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
+            self.wire(self._tb_read_addr_out[i], _AG.ports.addr_out)
 
             self.add_child(f"tb_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.tb_iter_support,
@@ -208,6 +215,7 @@ class StrgUBTBOnly(Generator):
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
                            finished=fl_ctr_tb_rd.ports.restart,
                            valid_output=self._tb_read[i])
+            self.wire(self._tb_read_out[i], self._tb_read[i])
 
             @always_comb
             def tb_to_out():

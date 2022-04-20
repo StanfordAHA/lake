@@ -86,6 +86,10 @@ class StrgUBAggSRAMShared(Generator):
                                                      size=self.interconnect_input_ports,
                                                      packed=True,
                                                      explicit_array=True)
+        self._update_mode_out = self.output("update_mode_out", 2,
+                                            size=self.interconnect_input_ports,
+                                            packed=True,
+                                            explicit_array=True)
 
         # The SRAM write is just the OR reduction of the aggregator reads
         self._agg_read_out = self.output("agg_read_out", self.interconnect_input_ports)
@@ -111,6 +115,7 @@ class StrgUBAggSRAMShared(Generator):
             self._mode = self.input(f"mode_{i}", 2)
             self._mode.add_attribute(ConfigRegAttr("Mode of agg_sram shared schedule or addressing"))
             self._mode.add_attribute(FormalAttr(f"{self._mode.name}_{i}", FormalSignalConstraint.SOLVE))
+            self.wire(self._mode, self._update_mode_out[i])
 
             # scheduler modules
             self.add_child(f"agg_read_sched_gen_{i}",

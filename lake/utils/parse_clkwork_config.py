@@ -117,7 +117,7 @@ def extract_controller(file_path):
     return ctrl_info
 
 
-def map_controller(controller, name):
+def map_controller(controller, name, flatten=False):
     ctrl_dim = controller.dim
     ctrl_ranges = controller.extent
     ctrl_cyc_strides = controller.cyc_stride
@@ -145,6 +145,50 @@ def map_controller(controller, name):
         print(f"mux data start: {ctrl_mux_data_strt}")
         print(f"mux data stride: {ctrl_mux_data_strides}")
         print()
+
+    if flatten:
+        # flatten iteration domains if possible
+        flatten_iter = []
+        for i in range(ctrl_dim - 1):
+            # for every stride, compare if stride[i] * ctrl_ranges = stride[i+1]
+            if ctrl_cyc_strides[i] * ctrl_ranges[i] != ctrl_cyc_strides[i + 1]:
+                continue
+            if ctrl_in_data_strt is not None:
+                if ctrl_in_data_strides[i] * ctrl_ranges[i] != ctrl_in_data_strides[i + 1]:
+                    continue
+            if ctrl_out_data_strt is not None:
+                if ctrl_out_data_strides[i] * ctrl_ranges[i] != ctrl_out_data_strides[i + 1]:
+                    continue
+            flatten_iter.append(i)
+
+        print("start flattening")
+        print("ctrl_dim", ctrl_dim)
+        print("ctrl_ranges", ctrl_ranges)
+        print("ctrl_cyc_strides", ctrl_cyc_strides)
+        print("ctrl_in_data_strides", ctrl_in_data_strides)
+        print("ctrl_out_data_strides", ctrl_out_data_strides)
+        print("can flatten", flatten_iter)
+        # preprocessing for removals of the lists
+        for i in range(len(flatten_iter)):
+            flatten_iter[i] -= i
+        print("now can flatten", flatten_iter)
+
+        # tranform to the flattened iteration domains
+        ctrl_dim -= len(flatten_iter)
+        for i in flatten_iter:
+            ctrl_ranges[i] = ctrl_ranges[i] * ctrl_ranges[i + 1]
+            ctrl_ranges.pop(i + 1)
+            ctrl_cyc_strides.pop(i + 1)
+            if ctrl_in_data_strt is not None:
+                ctrl_in_data_strides.pop(i + 1)
+            if ctrl_out_data_strt is not None:
+                ctrl_out_data_strides.pop(i + 1)
+        print("finished flattening")
+        print("ctrl_dim", ctrl_dim)
+        print("ctrl_ranges", ctrl_ranges)
+        print("ctrl_cyc_strides", ctrl_cyc_strides)
+        print("ctrl_in_data_strides", ctrl_in_data_strides)
+        print("ctrl_out_data_strides", ctrl_out_data_strides)
 
     # Now transforms ranges and strides
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
