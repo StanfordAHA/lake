@@ -566,7 +566,7 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=Fa
 # Add a simple counter to a design and return the signal
 def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None):
 
-    ctr = generator.var(name, bitwidth)
+    ctr = generator.var(name, bitwidth, packed=True)
 
     if clear is not None:
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
