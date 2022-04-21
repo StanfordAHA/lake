@@ -2,7 +2,7 @@ import kratos as kts
 from kratos import *
 from lake.modules.arbiter import Arbiter
 from lake.passes.passes import lift_config_reg
-from lake.utils.util import register, trim_config_list
+from lake.utils.util import decode, register, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -13,7 +13,8 @@ from lake.modules.reg_fifo import RegFIFO
 class BuffetLike(Generator):
     def __init__(self,
                  data_width=16,
-                 num_ID=2):
+                 num_ID=2,
+                 mem_depth=512):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
@@ -21,6 +22,7 @@ class BuffetLike(Generator):
         self.add_clk_enable = True
         self.add_flush = True
         self.num_ID = num_ID
+        self.mem_depth = mem_depth
 
         self.total_sets = 0
 
@@ -88,6 +90,10 @@ class BuffetLike(Generator):
 
         ### READ SIDE
         # On read side need both a request and response channel
+        # Free or Read
+        self._rd_op_op = self.input("rd_op_op", self.data_width, explicit_array=True, packed=True)
+        self._rd_op_op.add_attribute(ControlSignalAttr(is_control=True))
+
         self._rd_op_ready = self.output("rd_op_ready", 1)
         self._rd_op_ready.add_attribute(ControlSignalAttr(is_control=False))
 
@@ -97,9 +103,11 @@ class BuffetLike(Generator):
         self._rd_addr = self.input("rd_addr", self.data_width, explicit_array=True, packed=True)
         self._rd_addr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        # Free or Read
-        self._rd_op_op = self.input("rd_op_op", 1)
-        self._rd_op_op.add_attribute(ControlSignalAttr(is_control=True))
+        self._rd_addr_ready = self.output("rd_addr_ready", 1)
+        self._rd_addr_ready.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._rd_addr_valid = self.input("rd_addr_valid", 1)
+        self._rd_addr_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         # Read ID
         self._rd_ID_ready = self.output("rd_ID_ready", 1)
@@ -142,6 +150,19 @@ class BuffetLike(Generator):
 
         self._ready_from_mem = self.input("ready_from_mem", 1)
         self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+
+# =============================
+# Miscellaneous forward declarations
+# =============================
+
+        # Handle allocating separate buffets in the same physical memory space
+        base_chunk = self.mem_depth // self.num_ID
+        self._buffet_base = self.var("buffet_base", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
+        [self.wire(self._buffet_base[i], kts.const(base_chunk * i, self._buffet_base[i].width)) for i in range(self.num_ID)]
+
+        # Read block base and bounds...
+        self._blk_base = self.var("blk_base", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
+        self._blk_bounds = self.var("blk_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
 # =============================
 # FIFO inputs
@@ -215,10 +236,9 @@ class BuffetLike(Generator):
         self._rd_op_fifo_pop = self.var("rd_op_fifo_pop", 1)
         self._rd_op_fifo_valid = self.var("rd_op_fifo_valid", 1)
 
-        self._rd_op_fifo_in = kts.concat(self._rd_addr, self._rd_op_op)
+        self._rd_op_fifo_in = kts.concat(self._rd_op_op)
         self._rd_op_infifo = RegFIFO(data_width=self._rd_op_fifo_in.width, width_mult=1, depth=8)
-        self._rd_op_fifo_out_addr = self.var("rd_op_fifo_out_addr", self.data_width, packed=True)
-        self._rd_op_fifo_out_op = self.var("rd_op_fifo_out_op", 1)
+        self._rd_op_fifo_out_op = self.var("rd_op_fifo_out_op", self.data_width, packed=True)
 
         self.add_child(f"rd_op_fifo",
                        self._rd_op_infifo,
@@ -228,10 +248,31 @@ class BuffetLike(Generator):
                        push=self._rd_op_valid,
                        pop=self._rd_op_fifo_pop,
                        data_in=self._rd_op_fifo_in,
-                       data_out=kts.concat(self._rd_op_fifo_out_addr, self._rd_op_fifo_out_op))
+                       data_out=kts.concat(self._rd_op_fifo_out_op))
 
         self.wire(self._rd_op_ready, ~self._rd_op_infifo.ports.full)
         self.wire(self._rd_op_fifo_valid, ~self._rd_op_infifo.ports.empty)
+
+        # RD ADDR fifo
+        self._rd_addr_fifo_pop = self.var("rd_addr_fifo_pop", 1)
+        self._rd_addr_fifo_valid = self.var("rd_addr_fifo_valid", 1)
+
+        self._rd_addr_fifo_in = kts.concat(self._rd_addr)
+        self._rd_addr_infifo = RegFIFO(data_width=self._rd_addr_fifo_in.width, width_mult=1, depth=8)
+        self._rd_addr_fifo_out_addr = self.var("rd_addr_fifo_out_addr", self.data_width, packed=True)
+
+        self.add_child(f"rd_addr_fifo",
+                       self._rd_addr_infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._rd_addr_valid,
+                       pop=self._rd_addr_fifo_pop,
+                       data_in=self._rd_addr_fifo_in,
+                       data_out=kts.concat(self._rd_addr_fifo_out_addr))
+
+        self.wire(self._rd_addr_ready, ~self._rd_addr_infifo.ports.full)
+        self.wire(self._rd_addr_fifo_valid, ~self._rd_addr_infifo.ports.empty)
 
         # RD ID fifo
         self._rd_ID_fifo_pop = self.var("rd_ID_fifo_pop", 1)
@@ -258,6 +299,9 @@ class BuffetLike(Generator):
 # FIFO outputs
 # =============================
 
+        # Size requests al
+        self._size_request_full = self.var("size_request_full", self.num_ID)
+
         self._rd_rsp_fifo_push = self.var("rd_rsp_fifo_push", 1)
         self._rd_rsp_fifo_full = self.var("rd_rsp_fifo_full", 1)
 
@@ -277,7 +321,11 @@ class BuffetLike(Generator):
         self.wire(self._rd_rsp_fifo_full, self._rd_rsp_outfifo.ports.full)
         self.wire(self._rd_rsp_valid, ~self._rd_rsp_outfifo.ports.empty)
 
-        self.wire(self._rd_rsp_fifo_push, self._valid_from_mem)
+        chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
+
+        self.wire(self._rd_rsp_fifo_in_data, kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block))
+
+        self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | self._size_request_full.r_or())
 
 # # =============================
 # #  Join Logic
@@ -295,10 +343,10 @@ class BuffetLike(Generator):
         self.wire(self._pop_in_fifos, self._pop_in_full.r_or())
 
         self._read_joined = self.var("read_joined", 1)
-        self.wire(self._read_joined, self._rd_ID_fifo_valid & self._rd_op_fifo_valid)
+        self.wire(self._read_joined, self._rd_ID_fifo_valid & self._rd_op_fifo_valid & self._rd_addr_fifo_valid)
 
         self._read_pop = self.var("read_pop", 1)
-        self.wire(kts.concat(self._rd_ID_fifo_pop, self._rd_op_fifo_pop), kts.concat(*[self._read_pop for i in range(2)]))
+        self.wire(kts.concat(self._rd_ID_fifo_pop, self._rd_op_fifo_pop, self._rd_addr_fifo_pop), kts.concat(*[self._read_pop for i in range(3)]))
 
         self._read_pop_full = self.var("read_pop_full", self.num_ID)
         self.wire(self._read_pop, self._read_pop_full.r_or())
@@ -306,10 +354,6 @@ class BuffetLike(Generator):
 # # =============================
 # #  FSM
 # # =============================
-
-        # Read block base and bounds...
-        self._blk_base = self.var("blk_base", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
-        self._blk_bounds = self.var("blk_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
         self._wen_full = self.var("wen_full", self.num_ID)
 
@@ -429,6 +473,7 @@ class BuffetLike(Generator):
             # self.read_fsm[ID_idx].output(self._rd_addr_loc[ID_idx])
             self.read_fsm[ID_idx].output(self._ren_full[ID_idx])
             self.read_fsm[ID_idx].output(self._read_pop_full[ID_idx])
+            self.read_fsm[ID_idx].output(self._size_request_full[ID_idx])
 
             ####################
             # RD_START
@@ -437,7 +482,9 @@ class BuffetLike(Generator):
             # Guarantee there's room for the read to land
             RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
             # Pop the op fifo if there is a read that's going through or if it's a free op
-            RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[2 * ID_idx + 1] & ~self._rd_rsp_fifo_full, kts.const(1, 1)) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+            # If it's a size request, only fulfill it if we aren't pushing a read from memory to the output fifo
+            RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 2, ~self._valid_from_mem, kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[2 * ID_idx + 1] & ~self._rd_rsp_fifo_full, kts.const(1, 1))) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+            RD_START[ID_idx].output(self._size_request_full[ID_idx], (self._rd_op_fifo_out_op == 2) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
 
         for i in range(self.num_ID):
             self.write_fsm[i].set_start_state(WR_START[i])
@@ -491,12 +538,12 @@ class BuffetLike(Generator):
         self.wire(self._wen_to_mem, wr_acq.r_or())
 
         # Choose which base block...
-        wr_base = kts.ternary(wr_acq[0], self._curr_base[0], kts.const(0, self._curr_base[0].width))
-        rd_base = kts.ternary(rd_acq[0], self._blk_base[0], kts.const(0, self._blk_base[0].width))
+        wr_base = kts.ternary(wr_acq[0], self._curr_base[0] + self._buffet_base[0], kts.const(0, self._curr_base[0].width))
+        rd_base = kts.ternary(rd_acq[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
         for i in range(self.num_ID - 1):
-            wr_base = kts.ternary(wr_acq[i + 1], self._curr_base[i + 1], wr_base)
-            rd_base = kts.ternary(wr_acq[i + 1], self._blk_base[i + 1], rd_base)
-        self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + wr_base, self._rd_op_fifo_out_addr + rd_base))
+            wr_base = kts.ternary(wr_acq[i + 1], self._curr_base[i + 1] + self._buffet_base[i + 1], wr_base)
+            rd_base = kts.ternary(wr_acq[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
+        self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + wr_base, self._rd_addr_fifo_out_addr + rd_base))
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
@@ -531,7 +578,7 @@ class BuffetLike(Generator):
 
 if __name__ == "__main__":
     buffet_dut = BuffetLike(data_width=16,
-                            num_ID=4)
+                            num_ID=2)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
