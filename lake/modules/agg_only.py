@@ -141,8 +141,6 @@ class StrgUBAggOnly(Generator):
                                           explicit_array=True)
 
         self.wire(self._agg_write_out, self._agg_write)
-        self.wire(self._agg_write_addr_l2b_out[0], self._agg_write_addr[0][1, 0])
-        self.wire(self._agg_write_addr_l2b_out[1], self._agg_write_addr[1][1, 0])
 
         ##################################################################################
         # AGG PATHS
@@ -158,10 +156,12 @@ class StrgUBAggOnly(Generator):
             self._mode = self.var(f"mode_{i}", 2)
             self.wire(self._mode, self._update_mode_in[i])
 
+            self.wire(self._agg_write_addr_l2b_out[i], self._agg_write_addr[i][1, 0])
+
             self._tb_read = self.var(f"tb_read_{i}", 1)
             self._tb_addr = self.var(f"tb_addr_{i}", self._agg_write_addr.width)
-            self.wire(self._tb_read, ternary(self._mode[0], self._tb_read_in[1], self._tb_read_in[0]))
-            self.wire(self._tb_addr, ternary(self._mode[0], self._tb_read_addr_in[1], self._tb_read_addr_in[0]))
+            self.wire(self._tb_read, ternary(self._mode[0], self._tb_read_in[(i + 1) % self.interconnect_input_ports], self._tb_read_in[i % self.interconnect_input_ports]))
+            self.wire(self._tb_addr, ternary(self._mode[0], self._tb_read_addr_in[(i + 1) % self.interconnect_input_ports], self._tb_read_addr_in[i % self.interconnect_input_ports]))
             self._tb_read_shift = self.var(f"tb_read_shift_{i}", 2 ** self.delay_width)
             self._tb_addr_fifo = self.var(f"tb_addr_fifo_{i}", self._agg_write_addr.width,
                                           size=self.addr_fifo_depth,

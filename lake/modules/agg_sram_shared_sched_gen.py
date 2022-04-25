@@ -81,7 +81,7 @@ class AggSramSharedSchedGen(Generator):
         if self._mode[1] == 0:
             self._shifter_in = 0
         else:
-            self._shifter_in = ternary(self._mode[0], self._sram_read[1], self._sram_read[0])
+            self._shifter_in = ternary(self._mode[0], self._sram_read[self.interconnect_input_ports - 1], self._sram_read[0])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_pad_delay(self):

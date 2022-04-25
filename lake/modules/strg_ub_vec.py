@@ -341,9 +341,15 @@ class StrgUBVec(MemoryController):
             out_path = config_path + '/' + out_file_name + c + '.csv'
 
             if os.path.isfile(in_path):
-                controller_objs[i] = map_controller(extract_controller(in_path), c)
+                if "in2agg" in c:
+                    controller_objs[i] = map_controller(extract_controller(in_path), c, True)
+                else:
+                    controller_objs[i] = map_controller(extract_controller(in_path), c)
             elif os.path.isfile(out_path):
-                controller_objs[i] = map_controller(extract_controller(out_path), c)
+                if "in2agg" in c:
+                    controller_objs[i] = map_controller(extract_controller(in_path), c, True)
+                else:
+                    controller_objs[i] = map_controller(extract_controller(out_path), c)
             else:
                 print(f"No {c} file provided. Is this expected?")
 

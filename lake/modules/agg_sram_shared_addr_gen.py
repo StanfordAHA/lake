@@ -60,8 +60,8 @@ class AggSramSharedAddrGen(Generator):
         # GENERATION LOGIC: begin
         # # Calculate address linearly and checks for wrap-around
         self.add_code(self.calculate_address)
-        self.wire(self._addr_fifo_wr_en, ternary(self._mode[0], self._sram_read[1], self._sram_read[0]))
-        self.wire(self._addr_fifo_in, ternary(self._mode[0], self._sram_read_addr[1], self._sram_read_addr[0]))
+        self.wire(self._addr_fifo_wr_en, ternary(self._mode[0], self._sram_read[self.interconnect_input_ports - 1], self._sram_read[0]))
+        self.wire(self._addr_fifo_in, ternary(self._mode[0], self._sram_read_addr[self.interconnect_input_ports - 1], self._sram_read_addr[0]))
         self.add_code(self.update_addr_fifo)
         self.wire(self._addr_out, ternary(self._mode[1], self._addr_fifo_out, self._lin_addr_cnter))
         # GENERATION LOGIC: end
