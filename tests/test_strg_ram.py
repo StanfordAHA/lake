@@ -21,7 +21,7 @@ def test_storage_ram(mem_width,  # CGRA Params
                      output_iterator_support=6,
                      mem_input_ports=1,
                      mem_output_ports=1,
-                     use_sram_stub=1,
+                     use_sim_sram=1,
                      read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                      rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                      agg_height=4,
@@ -36,9 +36,8 @@ def test_storage_ram(mem_width,  # CGRA Params
 
     fw_int = int(mem_width / data_width)
 
-    new_config = {}
-    new_config["mode"] = 2
-    new_config["tile_en"] = 1
+    new_config = {'mode': 'ROM',
+                  'tile_en': 1}
 
     sram_model = SRAMModel(data_width=data_width,
                            width_mult=fw_int,
@@ -56,7 +55,7 @@ def test_storage_ram(mem_width,  # CGRA Params
                      interconnect_output_ports=in_out_ports,
                      mem_input_ports=mem_input_ports,
                      mem_output_ports=mem_output_ports,
-                     use_sram_stub=use_sram_stub,
+                     use_sim_sram=use_sim_sram,
                      num_tiles=num_tiles,
                      read_delay=read_delay,
                      rw_same_cycle=rw_same_cycle,
@@ -64,6 +63,10 @@ def test_storage_ram(mem_width,  # CGRA Params
                      config_data_width=config_data_width,
                      config_addr_width=config_addr_width,
                      fifo_mode=fifo_mode)
+
+    lt_dut = lt_dut.dut
+
+    new_config = lt_dut.get_bitstream(new_config)
 
     magma_dut = kts.util.to_magma(lt_dut,
                                   flatten_array=True,
@@ -74,7 +77,7 @@ def test_storage_ram(mem_width,  # CGRA Params
     tester = fault.Tester(magma_dut, magma_dut.clk)
     tester.zero_inputs()
     ###
-    for key, value in new_config.items():
+    for key, value in new_config:
         setattr(tester.circuit, key, value)
 
     rand.seed(0)
@@ -113,31 +116,38 @@ def test_storage_ram(mem_width,  # CGRA Params
             read = 0
 
         if in_out_ports > 1:
-            tester.circuit.data_in_0 = data_in
-            tester.circuit.addr_in_0 = addr_in
+            tester.circuit.input_width_16_num_0 = data_in
+            tester.circuit.input_width_16_num_1 = addr_in
+            tester.circuit.input_width_16_num_2 = addr_in
         else:
-            tester.circuit.data_in = data_in
-            tester.circuit.addr_in = addr_in
+            tester.circuit.input_width_16_num_0 = data_in
+            tester.circuit.input_width_16_num_1 = addr_in
+            tester.circuit.input_width_16_num_2 = addr_in
 
-        tester.circuit.wen_in[0] = write
-        tester.circuit.ren_in[0] = read
+        tester.circuit.input_width_1_num_0[0] = read
+        tester.circuit.input_width_1_num_1[0] = write
         model_out = sram_model.interact(wen=write, cen=(write | read), addr=addr_in, data=[data_in])
 
         tester.eval()
 
         # # Now check the outputs
-        tester.circuit.valid_out.expect(prev_rd)
+        valid_line = tester.circuit.output_width_1_num_0
+        if fw_int > 1:
+            valid_line = tester.circuit.output_width_1_num_1
+
+        # tester.circuit.output_width_1_num_0.expect(prev_rd)
+        # tester.circuit[f"output_width_1_num_{valid_line}"].expect(prev_rd)
+        valid_line.expect(prev_rd)
         if prev_rd:
             if in_out_ports > 1:
-                tester.circuit.data_out_0.expect(model_out[0])
+                tester.circuit.output_width_16_num_0.expect(model_out[0])
             else:
-                tester.circuit.data_out.expect(model_out[0])
+                tester.circuit.output_width_16_num_0.expect(model_out[0])
 
         tester.step(2)
         prev_rd = read
 
     with tempfile.TemporaryDirectory() as tempdir:
-        # tempdir = "strg_ram_dump"
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",

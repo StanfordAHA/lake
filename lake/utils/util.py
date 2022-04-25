@@ -124,7 +124,7 @@ def extract_formal_annotation(generator, filepath, module_attr="agg"):
             pdir = "output" if str(curr_port.port_direction) == "PortDirection.Out" else "input"
 
             def get_unlabeled_formal_attr(pdir, port_name):
-                if pdir is "input":
+                if pdir == "input":
                     return FormalAttr(port_name, FormalSignalConstraint.SET0)
                 else:
                     return FormalAttr(port_name, FormalSignalConstraint.X)
@@ -251,7 +251,7 @@ def extract_formal_annotation_collat(generator, filepath, mem_names, edges):
                 pdir = "output"
             # If there are 0 or more than one attributes, let's just use the default X attribute
             if len(attrs) != 1:
-                if pdir is "input":
+                if pdir == "input":
                     form_attr = FormalAttr(port_name, FormalSignalConstraint.SET0)
                 else:
                     form_attr = FormalAttr(port_name, FormalSignalConstraint.X)
@@ -499,6 +499,28 @@ def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
     return ctr
 
 
+def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1), name=None):
+    ''' Pass a generator and a signal to create a registered
+        version of any signal easily.
+    '''
+    use_name = signal.name + "_d1"
+    if name is not None:
+        use_name = name
+    reg = generator.var(use_name, signal.width)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def reg_code():
+        if ~generator._rst_n:
+            reg = 0
+        elif clear:
+            reg = 0
+        elif enable:
+            reg = signal
+
+    generator.add_code(reg_code)
+    return reg
+
+
 def add_config_reg(generator, name, description, bitwidth, **kwargs):
     cfg_reg = generator.input(name, bitwidth, **kwargs)
     cfg_reg.add_attribute(ConfigRegAttr(description))
@@ -581,6 +603,45 @@ def decode(generator, sel, signals):
 
     generator.add_code(scan_lowest)
     return ret
+
+
+def get_priority_encode(generator, signal):
+    assert generator is not None
+    assert signal is not None
+    sig_width = signal.width
+    new_sig = None
+    if sig_width == 1:
+        new_sig = generator.var(f"{signal.name}_pri_enc", 1)
+        generator.wire(new_sig, kts.const(0, 1))
+    else:
+        # In the case of a multibit signal, create the encoded signal and then create the assignment
+        new_sig = generator.var(f"{signal.name}_pri_enc", kts.clog2(sig_width))
+        encode_comb = generator.combinational()
+        # create the ifs
+        prev_if = None
+        for i in range(sig_width):
+            first = i == 0
+            last = i == sig_width - 1
+            new_if = None
+            if first:
+                # Create the if chain first
+                new_if = encode_comb.if_(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if = new_if
+            elif last:
+                # At the end, apply the final else as well
+                new_if = IfStmt(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if.else_(new_if)
+                new_if.else_(new_sig.assign(0))
+            else:
+                # In the middle, create new if and chain with the previous
+                new_if = IfStmt(signal[i])
+                new_if.then_(new_sig.assign(i))
+                prev_if.else_(new_if)
+                prev_if = new_if
+
+    return new_sig
 
 
 if __name__ == "__main__":

@@ -160,3 +160,43 @@ def map_controller(controller, name):
                                  mux_data_stride=tform_mux_data_strides)
 
     return mapped_ctrl
+
+
+def configure_controller(prefix, name, controller):
+    """[summary]
+
+    Args:
+        prefix ([string]): [prefix string used for prepending hierarchy]
+        name ([string]): [name of the controller to map]
+        controller ([string]): [controller to map]
+
+    Returns:
+        [list]: [list of tuples of the form (config_variable, value)]
+    """
+    config = []
+
+    if controller is not None:
+        mapped_ctrl, out_n_in = controller
+        if mapped_ctrl is not None:
+            expand_name = prefix + name
+            strt_addr = 0
+            if out_n_in == 1:
+                strt_addr = mapped_ctrl.out_data_strt
+            else:
+                strt_addr = mapped_ctrl.in_data_strt
+
+            config.append((f"{expand_name}_sched_gen_enable", 1))
+            config.append((f"{expand_name}_for_loop_dimensionality", mapped_ctrl.dim))
+            config.append((f"{expand_name}_sched_gen_sched_addr_gen_starting_addr", mapped_ctrl.cyc_strt))
+            config.append((f"{expand_name}_addr_gen_starting_addr", strt_addr))
+            for i in range(mapped_ctrl.dim):
+                addr_stride = 0
+                if out_n_in == 1:
+                    addr_stride = mapped_ctrl.out_data_stride[i]
+                else:
+                    addr_stride = mapped_ctrl.in_data_stride[i]
+                config.append((f"{expand_name}_addr_gen_strides_{i}", addr_stride))
+                config.append((f"{expand_name}_for_loop_ranges_{i}", mapped_ctrl.extent[i]))
+                config.append((f"{expand_name}_sched_gen_sched_addr_gen_strides_{i}", mapped_ctrl.cyc_stride[i]))
+
+    return config
