@@ -92,7 +92,7 @@ class BuffetLike(Generator):
         # On read side need both a request and response channel
         # Free or Read
         self._rd_op_op = self.input("rd_op_op", self.data_width, explicit_array=True, packed=True)
-        self._rd_op_op.add_attribute(ControlSignalAttr(is_control=True))
+        self._rd_op_op.add_attribute(ControlSignalAttr(is_control=False))
 
         self._rd_op_ready = self.output("rd_op_ready", 1)
         self._rd_op_ready.add_attribute(ControlSignalAttr(is_control=False))
