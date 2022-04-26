@@ -136,7 +136,13 @@ class PE(Generator):
         self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_eos)
         self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
-        self.wire(self._eos_out, self._outfifo_out_packed[self.data_wipealu_dut_dut
+        self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
+        self.wire(self._data_out, self._outfifo_out_packed[self.data_width - 1, 0])
+
+        # Push when there's incoming transaction and room to accept it
+        self._outfifo_push = self.var("outfifo_push", 1)
+
+        # Pop when ready to accum more streams
         self._outfifo_pop = self.var("outfifo_pop", 1)
         self._outfifo_full = self.var("outfifo_full", 1)
         # self._outfifo_empty = self.var("outfifo_empty", 1)
