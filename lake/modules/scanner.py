@@ -53,6 +53,9 @@ class Scanner(Generator):
         self._block_mode = self.input("block_mode", 1)
         self._block_mode.add_attribute(ConfigRegAttr("Performing block reads"))
 
+        self._lookup_mode = self.input("lookup", 1)
+        self._lookup_mode.add_attribute(ConfigRegAttr("Random access/lookup mode...."))
+
         # Set the stop token injection level - (default 0 + 1 for root)
         self._stop_lvl = self.input("stop_lvl", 16)
         self._stop_lvl.add_attribute(ConfigRegAttr("What level stop tokens should this scanner inject"))
@@ -176,7 +179,7 @@ class Scanner(Generator):
         self._upstream_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # For input streams, need coord_in, valid_in, eos_in
-        self._infifo_pos_in = self.var("infifo_pos_in", self.data_width)
+        self._infifo_pos_in = self.var("infifo_pos_in", self.data_width, packed=True)
         # self._infifo_coord_in = self.var("infifo_coord_in", self.data_width)
         self._infifo_valid_in = self.var("infifo_valid_in", 1)
         self._infifo_eos_in = self.var("infifo_eos_in", 1)
@@ -454,6 +457,8 @@ class Scanner(Generator):
         READ_1 = self.scan_fsm.add_state("READ_1")
         READ_2 = self.scan_fsm.add_state("READ_2")
 
+        LOOKUP = self.scan_fsm.add_state("LOOKUP")
+
         SEQ_START = self.scan_fsm.add_state("SEQ_START")
         SEQ_ITER = self.scan_fsm.add_state("SEQ_ITER")
         SEQ_DONE = self.scan_fsm.add_state("SEQ_DONE")
@@ -507,8 +512,14 @@ class Scanner(Generator):
 
         # Dummy state for eventual filling block.
         START.next(BLOCK_1_SIZE_REQ, self._block_mode)
+        START.next(LOOKUP, self._lookup_mode)
         START.next(ISSUE_STRM, self._root)
         START.next(ISSUE_STRM_NR, ~self._root)
+
+        # In lookup we pass the address along to the buffet, making sure all reads complete and end up in
+        # the output buffer before passing along stop tokens...
+        LOOKUP.next(PASS_STOP, self._infifo_eos_in & self._infifo_valid_in & (self._num_req_made == self._num_req_rec))
+        LOOKUP.next(LOOKUP, None)
 
         # Completely done at this point
         # ISSUE_STRM.next(DONE, self._out_dim_x == self._max_outer_dim)
@@ -625,7 +636,8 @@ class Scanner(Generator):
 
         # DONE
         # Go to START after sending a free?
-        FREE1.next(FREE2, self._buffet_joined)
+        FREE1.next(FREE2, self._buffet_joined & ~self._lookup_mode)
+        FREE1.next(START, self._buffet_joined & self._lookup_mode)
         FREE1.next(FREE1, None)
 
         FREE2.next(START, self._buffet_joined)
@@ -666,6 +678,40 @@ class Scanner(Generator):
         START.output(self._clr_req_made, 0)
         START.output(self._inc_req_rec, 0)
         START.output(self._clr_req_rec, 0)
+
+        #######
+        # LOOKUP - TODO - Generate general hardware...
+        #######
+        LOOKUP.output(self._addr_out_to_fifo, self._infifo_pos_in)
+        LOOKUP.output(self._op_out_to_fifo, 1)
+        LOOKUP.output(self._ID_out_to_fifo, 0)
+        LOOKUP.output(self._buffet_push, self._infifo_valid_in & ~self._infifo_eos_in)
+        LOOKUP.output(self._rd_rsp_fifo_pop, ~self._fifo_full)
+        LOOKUP.output(self._ptr_reg_en, 0)
+
+        LOOKUP.output(self._valid_inc, 0)
+        LOOKUP.output(self._valid_rst, 0)
+        # Push to the output when we have a valid input
+        LOOKUP.output(self._fifo_push, self._rd_rsp_fifo_valid)
+        LOOKUP.output(self._tag_eos, 0)
+        # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
+        # ISSUE_STRM.output(self._addr_out_to_fifo, kts.const(0, 16))
+        LOOKUP.output(self._next_seq_length, kts.const(0, 16))
+        LOOKUP.output(self._update_seq_state, 0)
+        LOOKUP.output(self._last_valid_accepting, 0)
+        # Pop the input fifo if there is a place to put it and there's no eos
+        LOOKUP.output(self._pop_infifo, self._buffet_joined & ~self._infifo_eos_in)
+        LOOKUP.output(self._inc_fiber_addr, 0)
+        LOOKUP.output(self._clr_fiber_addr, 0)
+        LOOKUP.output(self._inc_rep, 0)
+        LOOKUP.output(self._clr_rep, 0)
+        LOOKUP.output(self._data_to_fifo, kts.const(0, 16))
+        LOOKUP.output(self._en_reg_data_in, 0)
+        LOOKUP.output(self._pos_out_to_fifo, kts.const(0, 16))
+        LOOKUP.output(self._inc_req_made, self._buffet_push)
+        LOOKUP.output(self._clr_req_made, 0)
+        LOOKUP.output(self._inc_req_rec, self._rd_rsp_fifo_valid & ~self._fifo_full)
+        LOOKUP.output(self._clr_req_rec, 0)
 
         #######
         # ISSUE_STRM - TODO - Generate general hardware...
