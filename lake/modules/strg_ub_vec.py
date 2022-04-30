@@ -34,6 +34,8 @@ class StrgUBVec(MemoryController):
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
                  tb_height=2,
+                 in2agg_addr_fifo_depth=8,  # delay fifo for update operation
+                 agg2sram_addr_fifo_depth=4,  # delay fifo for update operation
                  agg_data_top=False):
 
         super().__init__("strg_ub_vec")
@@ -56,6 +58,8 @@ class StrgUBVec(MemoryController):
         self.input_config_width = config_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
+        self.in2agg_addr_fifo_depth = in2agg_addr_fifo_depth
+        self.agg2sram_addr_fifo_depth = agg2sram_addr_fifo_depth
 
         self.input_iterator_support = 6
         self.output_iterator_support = 6
@@ -63,7 +67,7 @@ class StrgUBVec(MemoryController):
         self.default_config_width = 16
         self.sram_iterator_support = 6
         self.agg_rd_addr_gen_width = 8
-        self.agg_iter_support_small = 2
+        self.agg_iter_support_small = 3
 
         ##################################################################################
         # IO
@@ -120,6 +124,7 @@ class StrgUBVec(MemoryController):
                                  input_sched_iterator_support=self.input_iterator_support,
                                  interconnect_input_ports=self.interconnect_input_ports,
                                  interconnect_output_ports=self.interconnect_output_ports,
+                                 addr_fifo_depth=self.in2agg_addr_fifo_depth,
                                  agg_iter_support_small=self.agg_iter_support_small,
                                  agg_height=self.agg_height,
                                  config_width=self.input_config_width)
@@ -134,6 +139,7 @@ class StrgUBVec(MemoryController):
                                               output_sched_iterator_support=self.output_iterator_support,
                                               interconnect_input_ports=self.interconnect_input_ports,
                                               interconnect_output_ports=self.interconnect_output_ports,
+                                              addr_fifo_depth=self.agg2sram_addr_fifo_depth,
                                               read_delay=self.read_delay,
                                               rw_same_cycle=self.rw_same_cycle,
                                               agg_height=self.agg_height,
@@ -437,18 +443,55 @@ class StrgUBVec(MemoryController):
                 assert in2agg_0.dim <= self.agg_iter_support_small, f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_0.dim}"
 
             if agg2sram_0.mode[0] == 2:
-                config.append(("strg_ub_agg_only_delay_0", tb2out_0.cyc_strt - in2agg_0.cyc_strt))
+                in2agg_delay_0 = in2agg_0.cyc_strt - tb2out_0.cyc_strt
+                config.append(("agg_only_delay_0", in2agg_delay_0))
+
+                # check in2agg addr delay fifo size
+                assert in2agg_delay_0 <= self.in2agg_addr_fifo_depth * tb2out_0.cyc_stride[0], \
+                    f"The in2agg_0 delay FIFO (size {self.in2agg_addr_fifo_depth}) for the update operation is too small for {in2agg_delay_0 / tb2out_0.cyc_stride[0]} number of data coming from tb2out_0."
+
+                # check agg2sram addr delay fifo size
+                assert (agg2sram_0.delay[0] + 1) <= self.agg2sram_addr_fifo_depth * sram2tb_0.cyc_stride[0], \
+                    f"The agg2sram_0 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {(agg2sram_0.delay[0] + 1) / sram2tb_0.cyc_stride[0]} number of data coming from sram2tb_0."
             elif agg2sram_0.mode[0] == 3:
-                config.append(("strg_ub_agg_only_delay_0", tb2out_1.cyc_strt - in2agg_0.cyc_strt))
+                in2agg_delay_0 = in2agg_0.cyc_strt - tb2out_1.cyc_strt
+                config.append(("agg_only_delay_0", in2agg_delay_0))
+
+                # check in2agg addr delay fifo size
+                assert in2agg_delay_0 <= self.in2agg_addr_fifo_depth * tb2out_1.cyc_stride[0], \
+                    f"The in2agg_0 delay FIFO (size {self.in2agg_addr_fifo_depth}) for the update operation is too small for {in2agg_delay_0 / tb2out_1.cyc_stride[0]} number of data coming from tb2out_1."
+
+                # check agg2sram addr delay fifo size
+                assert (agg2sram_0.delay[0] + 1) <= self.agg2sram_addr_fifo_depth * sram2tb_1.cyc_stride[0], \
+                    f"The agg2sram_0 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {(agg2sram_0.delay[0] + 1) / sram2tb_1.cyc_stride[0]} number of data coming from sram2tb_1."
 
         if agg2sram_1 is not None:
             if agg2sram_1.mode[0] == 0:
                 assert in2agg_1.dim <= self.agg_iter_support_small, f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_1.dim}"
 
             if agg2sram_1.mode[0] == 2:
-                config.append(("strg_ub_agg_only_delay_1", tb2out_0.cyc_strt - in2agg_1.cyc_strt))
+                in2agg_delay_1 = in2agg_1.cyc_strt - tb2out_0.cyc_strt
+                config.append(("agg_only_delay_1", in2agg_delay_1))
+
+                # check in2agg addr delay fifo size
+                assert in2agg_delay_1 <= self.in2agg_addr_fifo_depth * tb2out_0.cyc_stride[0], \
+                    f"The in2agg_1 delay FIFO (size {self.in2agg_addr_fifo_depth}) for the update operation is too small for {in2agg_delay_1 / tb2out_0.cyc_stride[0]} number of data coming from tb2out_0."
+
+                # check agg2sram addr delay fifo size
+                assert agg2sram_1.delay[0] <= self.agg2sram_addr_fifo_depth * sram2tb_0.cyc_stride[0], \
+                    f"The agg2sram_1 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {agg2sram_1.delay[0] / sram2tb_0.cyc_stride[0]} number of data coming from sram2tb_0."
             elif agg2sram_1.mode[0] == 3:
-                config.append(("strg_ub_agg_only_delay_1", tb2out_1.cyc_strt - in2agg_1.cyc_strt))
+                in2agg_delay_1 = in2agg_1.cyc_strt - tb2out_1.cyc_strt
+                config.append(("agg_only_delay_1", in2agg_delay_1))
+
+                # check in2agg addr delay fifo size
+                print(f"shared mode: 3, tb2out_1.cyc_strt: {tb2out_1.cyc_strt}, in2agg_1.cyc_strt: {in2agg_1.cyc_strt}, in2agg_delay_1: {in2agg_delay_1}")
+                assert in2agg_delay_1 <= self.in2agg_addr_fifo_depth * tb2out_1.cyc_stride[0], \
+                    f"The in2agg_1 delay FIFO (size {self.in2agg_addr_fifo_depth}) for the update operation is too small for {in2agg_delay_1 / tb2out_1.cyc_stride[0]} number of data coming from tb2out_1."
+
+                # check agg2sram addr delay fifo size
+                assert agg2sram_1.delay[0] <= self.agg2sram_addr_fifo_depth * sram2tb_1.cyc_stride[0], \
+                    f"The agg2sram_1 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {agg2sram_1.delay[0] / sram2tb_1.cyc_stride[0]} number of data coming from sram2tb_1."
 
         return config
 
@@ -578,18 +621,55 @@ class StrgUBVec(MemoryController):
                 assert in2agg_0.dim <= self.agg_iter_support_small, f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_0.dim}"
 
             if agg2sram_0.mode[0] == 2:
-                config.append(("agg_only_delay_0", tb2out_0.cyc_strt - in2agg_0.cyc_strt))
+                in2agg_delay_0 = in2agg_0.cyc_strt - tb2out_0.cyc_strt
+                config.append(("agg_only_delay_0", in2agg_delay_0))
+
+                # check in2agg addr delay fifo size
+                assert in2agg_delay_0 <= self.in2agg_addr_fifo_depth * tb2out_0.cyc_stride[0], \
+                    f"The in2agg_0 delay FIFO (size {self.in2agg_addr_fifo_depth}) for the update operation is too small for {in2agg_delay_0 / tb2out_0.cyc_stride[0]} number of data coming from tb2out_0."
+
+                # check agg2sram addr delay fifo size
+                assert (agg2sram_0.delay[0] + 1) <= self.agg2sram_addr_fifo_depth * sram2tb_0.cyc_stride[0], \
+                    f"The agg2sram_0 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {(agg2sram_0.delay[0] + 1) / sram2tb_0.cyc_stride[0]} number of data coming from sram2tb_0."
             elif agg2sram_0.mode[0] == 3:
-                config.append(("agg_only_delay_0", tb2out_1.cyc_strt - in2agg_0.cyc_strt))
+                in2agg_delay_0 = in2agg_0.cyc_strt - tb2out_1.cyc_strt
+                config.append(("agg_only_delay_0", in2agg_delay_0))
+
+                # check in2agg addr delay fifo size
+                assert in2agg_delay_0 <= self.in2agg_addr_fifo_depth * tb2out_1.cyc_stride[0], \
+                    f"The in2agg_0 delay FIFO (size {self.in2agg_addr_fifo_depth}) for the update operation is too small for {in2agg_delay_0 / tb2out_1.cyc_stride[0]} number of data coming from tb2out_1."
+
+                # check agg2sram addr delay fifo size
+                assert (agg2sram_0.delay[0] + 1) <= self.agg2sram_addr_fifo_depth * sram2tb_1.cyc_stride[0], \
+                    f"The agg2sram_0 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {(agg2sram_0.delay[0] + 1) / sram2tb_1.cyc_stride[0]} number of data coming from sram2tb_1."
 
         if agg2sram_1 is not None:
             if agg2sram_1.mode[0] == 0:
-                assert in2agg_1.dim <= self.agg_iter_support_small, f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_1.dim}"
+                assert in2agg_1.dim <= self.agg_iter_support_small, \
+                    f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_1.dim}"
 
             if agg2sram_1.mode[0] == 2:
-                config.append(("agg_only_delay_1", tb2out_0.cyc_strt - in2agg_1.cyc_strt))
+                in2agg_delay_1 = in2agg_1.cyc_strt - tb2out_0.cyc_strt
+                config.append(("agg_only_delay_1", in2agg_delay_1))
+
+                # check in2agg addr delay fifo size
+                assert in2agg_delay_1 <= self.in2agg_addr_fifo_depth * tb2out_0.cyc_stride[0], \
+                    f"The in2agg_1 delay FIFO (size {self.in2agg_addr_fifo_depth}) for the update operation is too small for {in2agg_delay_1 / tb2out_0.cyc_stride[0]} number of data coming from tb2out_0."
+
+                # check agg2sram addr delay fifo size
+                assert agg2sram_1.delay[0] <= self.agg2sram_addr_fifo_depth * sram2tb_0.cyc_stride[0], \
+                    f"The agg2sram_1 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {agg2sram_1.delay[0] / sram2tb_0.cyc_stride[0]} number of data coming from sram2tb_0."
             elif agg2sram_1.mode[0] == 3:
-                config.append(("agg_only_delay_1", tb2out_1.cyc_strt - in2agg_1.cyc_strt))
+                in2agg_delay_1 = in2agg_1.cyc_strt - tb2out_1.cyc_strt
+                config.append(("agg_only_delay_1", in2agg_delay_1))
+
+                # check in2agg addr delay fifo size
+                assert in2agg_delay_1 <= self.in2agg_addr_fifo_depth * tb2out_1.cyc_stride[0], \
+                    f"The in2agg_1 delay FIFO (size {self.in2agg_addr_fifo_depth}) for the update operation is too small for {in2agg_delay_1 / tb2out_1.cyc_stride[0]} number of data coming from tb2out_1."
+
+                # check agg2sram addr delay fifo size
+                assert agg2sram_1.delay[0] <= self.agg2sram_addr_fifo_depth * sram2tb_1.cyc_stride[0], \
+                    f"The agg2sram_1 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {agg2sram_1.delay[0] / sram2tb_1.cyc_stride[0]} number of data coming from sram2tb_1."
 
         return trim_config_list(flattened, config)
 
