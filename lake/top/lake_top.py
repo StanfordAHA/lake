@@ -204,7 +204,7 @@ class LakeTop(Generator):
                 "output_width_16_num_1": "data_out_pond_1",
                 "output_width_1_num_4": "valid_out_pond",
             }
-        elif mode == "UB" and self.read_delay >= 1:
+        elif mode == "UB" and self.read_delay >= 1 and self.fw_int > 1:
             replace_ins = {
                 "input_width_16_num_0": "chain_data_in_0",
                 "input_width_16_num_1": "chain_data_in_1",
