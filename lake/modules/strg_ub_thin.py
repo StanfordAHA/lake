@@ -264,7 +264,7 @@ class StrgUBThin(MemoryController):
         self.wire(self._ren_to_sram, self._read.r_or())
 
         for i in range(self.interconnect_output_ports):
-            self.wire(self._data_out[i], self._data_from_sram)
+            self.wire(self._data_out_int[i], self._data_from_sram)
 
         if self.rw_same_cycle:
             # If we can read and write the same cycle we
