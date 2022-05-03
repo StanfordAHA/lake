@@ -1,3 +1,4 @@
+from lake.modules.chain_accessor import ChainAccessor
 from lake.top.memory_controller import MemoryController
 from lake.top.memory_interface import MemoryPort, MemoryPortType
 from lake.utils.parse_clkwork_config import configure_controller, extract_controller, extract_controller_json, map_controller
@@ -145,12 +146,36 @@ class StrgUBThin(MemoryController):
         self.wire(self._accessor_output, self._read)
 
         self._valid_out = self.output("valid_out", self.interconnect_output_ports)
+        self._valid_out_int = self.var("valid_out_int", self.interconnect_output_ports)
         if self.read_delay == 1:
             self._read_d1 = self.var("read_d1", self.interconnect_output_ports)
             self.add_code(self.delay_read)
-            self.wire(self._valid_out, self._read_d1)
+            self.wire(self._valid_out_int, self._read_d1)
         else:
-            self.wire(self._valid_out, self._read)
+            self.wire(self._valid_out_int, self._read)
+
+        self._data_out_int = self.var("data_out_int", self.data_width,
+                                     size=self.interconnect_output_ports,
+                                     packed=True,
+                                     explicit_array=True)
+
+        # Add chaining in here... since we only use in the UB case...
+        self._chain_data_in = self.input("chain_data_in",
+                                         self.data_width,
+                                         size=self.interconnect_output_ports,
+                                         packed=True,
+                                         explicit_array=True)
+
+        chaining = ChainAccessor(data_width=self.data_width,
+                                 interconnect_output_ports=self.interconnect_output_ports)
+
+        self.add_child(f"chain", chaining,
+                       curr_tile_data_out=self._data_out_int,
+                       chain_data_in=self._chain_data_in,
+                       accessor_output=self._valid_out_int,
+                       data_out_tile=self._data_out)
+
+        self.wire(self._valid_out, self._valid_out_int)
 
         self._write_addr = self.var("write_addr", self.config_width, size=self.interconnect_input_ports, explicit_array=True)
         self._read_addr = self.var("read_addr", self.config_width, size=self.interconnect_output_ports, explicit_array=True)

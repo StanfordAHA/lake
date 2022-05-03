@@ -219,8 +219,10 @@ class LakeTop(Generator):
             }
         elif mode == "UB" and self.fw_int == 1:
             replace_ins = {
-                "input_width_16_num_0": "data_in_0",
-                "input_width_16_num_1": "data_in_1",
+                "input_width_16_num_0": "chain_data_in_0",
+                "input_width_16_num_1": "chain_data_in_1",
+                "input_width_16_num_2": "data_in_0",
+                "input_width_16_num_3": "data_in_1",
             }
             replace_outs = {
                 "output_width_16_num_0": "data_out_0",
