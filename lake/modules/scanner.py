@@ -619,7 +619,8 @@ class Scanner(Generator):
         BLOCK_1_SIZE_REC.next(BLOCK_1_RD, self._buffet_joined & ~self._fifo_full)
         BLOCK_1_SIZE_REC.next(BLOCK_1_SIZE_REQ, None)
 
-        BLOCK_1_RD.next(BLOCK_2_SIZE_REQ, self._num_req_rec == self._ptr_reg)
+        BLOCK_1_RD.next(BLOCK_2_SIZE_REQ, self._num_req_rec == self._ptr_reg & ~self._lookup_mode)
+        BLOCK_1_RD.next(FREE1, self._num_req_rec == self._ptr_reg & self._lookup_mode)
         BLOCK_1_RD.next(BLOCK_1_RD, None)
 
         # BLOCK_2_SIZE_REQ
