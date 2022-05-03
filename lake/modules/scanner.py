@@ -1460,7 +1460,7 @@ class Scanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0, block_mode=0):
+    def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0, block_mode=0, lookup=0):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
@@ -1473,7 +1473,8 @@ class Scanner(Generator):
             ("repeat_outer_inner_n", repeat_outer),
             ("repeat_factor", repeat_factor),
             ("stop_lvl", stop_lvl),
-            ("block_mode", block_mode)]
+            ("block_mode", block_mode),
+            ('lookup', lookup)]
 
         if root:
             dim = len(ranges)

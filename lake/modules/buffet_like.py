@@ -560,18 +560,15 @@ class BuffetLike(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
+    def get_bitstream(self, capacity_0 = 1024, capacity_1 = 1024):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
 
         # Store all configurations here
         config = [
-            ("inner_dim_offset", inner_offset),
-            ("compressed", compressed),
-            ("lowest_level", lowest_level),
-            ("stop_lvl", stop_lvl),
-            ("block_mode", block_mode)]
+            ("buffet_capacity_0", capacity_0),
+            ("buffet_capacity_1", capacity_1)]
 
         return trim_config_list(flattened, config)
 
