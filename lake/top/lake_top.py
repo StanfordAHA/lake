@@ -217,6 +217,16 @@ class LakeTop(Generator):
                 "output_width_16_num_1": "data_out_1",
                 "output_width_1_num_3": "stencil_valid",
             }
+        elif mode == "UB" and self.fw_int == 1:
+            replace_ins = {
+                "input_width_16_num_0": "data_in_0",
+                "input_width_16_num_1": "data_in_1",
+            }
+            replace_outs = {
+                "output_width_16_num_0": "data_out_0",
+                "output_width_16_num_1": "data_out_1",
+                "output_width_1_num_4": "stencil_valid",
+            }
         elif mode == "ROM" and self.fw_int > 1:
             replace_ins = {
                 "input_width_16_num_0": "chain_data_in_0",
@@ -362,7 +372,7 @@ if __name__ == "__main__":
                        add_flush=True,
                        rw_same_cycle=False,
                        read_delay=1,
-                       use_sim_sram=False,
+                       use_sim_sram=True,
                        name=f"LakeTop_width_{args.fetch_width}_{mem_name}")
 
     print(lake_top)
