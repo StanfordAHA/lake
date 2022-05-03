@@ -34,7 +34,7 @@ class LakeTop(Generator):
                  use_sim_sram=True,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=4,
+                 agg_height=2,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,

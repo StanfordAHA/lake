@@ -24,7 +24,7 @@ class StrgUBAggOnly(Generator):
                  delay_width=4,
                  agg_iter_support_small=3,
                  agg_height=4,
-                 agg_addr_width=4,
+                 agg_addr_width=3,
                  tb_height=2):
 
         super().__init__("strg_ub_agg_only")
@@ -59,6 +59,9 @@ class StrgUBAggOnly(Generator):
         self.agg_iter_support_small = agg_iter_support_small
         self.agg_addr_width = agg_addr_width
         self.agg_range_width = 16
+        self.agg_wr_addr_width = 2 + clog2(self.agg_height)
+        self.agg_rd_addr_width = max(1, clog2(self.agg_height))
+        self.id_config_width = 10
 
         ##################################################################################
         # IO
@@ -135,7 +138,7 @@ class StrgUBAggOnly(Generator):
                                                size=self.interconnect_input_ports,
                                                packed=True,
                                                explicit_array=True)
-        self._agg_read_addr_in = self.var("agg_read_addr_in", agg_addr_width,
+        self._agg_read_addr_in = self.var("agg_read_addr_in", max(1, clog2(self.agg_height)),
                                           size=self.interconnect_input_ports,
                                           packed=True,
                                           explicit_array=True)
@@ -205,7 +208,7 @@ class StrgUBAggOnly(Generator):
 
             forloop_ctr = ForLoop(iterator_support=self.agg_iter_support_small,
                                   # config_width=self.default_config_width)
-                                  config_width=self.agg_range_width)
+                                  config_width=self.id_config_width)
             loop_itr = forloop_ctr.get_iter()
             loop_wth = forloop_ctr.get_cfg_width()
 
@@ -221,7 +224,7 @@ class StrgUBAggOnly(Generator):
             self.wire(self._agg_write_restart_out[i], forloop_ctr.ports.restart)
 
             newAG = AddrGen(iterator_support=self.agg_iter_support,
-                            config_width=self.agg_addr_width)
+                            config_width=self.agg_wr_addr_width)
             self.add_child(f"agg_write_addr_gen_{i}",
                            newAG,
                            clk=self._clk,
@@ -256,7 +259,7 @@ class StrgUBAggOnly(Generator):
 
             self.add_code(agg_ctrl)
 
-            self.wire(self._agg_read_addr_in[i], self._sram_read_addr_in[i][self.agg_addr_width - 1, 0])
+            self.wire(self._agg_read_addr_in[i], self._sram_read_addr_in[i][self.agg_rd_addr_width - 1, 0])
             safe_wire(gen=self, w_to=self._agg_read_addr_gen_out[i], w_from=self._agg_read_addr_in[i])
             self.wire(self._agg_read_addr[i], self._agg_read_addr_gen_out[i][self._agg_read_addr.width - 1, 0])
 

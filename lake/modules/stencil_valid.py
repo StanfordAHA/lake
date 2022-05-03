@@ -18,7 +18,7 @@ class StencilValid(MemoryController):
         self._cycle_count = self.var("cycle_count", 16)
 
         self._loops_stencil_valid = ForLoop(iterator_support=6,
-                                            config_width=16)
+                                            config_width=10)
         self._stencil_valid_int = self.var("stencil_valid_internal", 1)
 
         # Loop Iterators for stencil valid...

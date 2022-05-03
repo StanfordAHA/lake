@@ -52,6 +52,7 @@ class StrgUBSRAMTBShared(Generator):
 
         self.default_iterator_support = 6
         self.default_config_width = 16
+        self.id_config_width = 10
         self.sram_iterator_support = 6
         self.agg_rd_addr_gen_width = 8
 
@@ -86,7 +87,7 @@ class StrgUBSRAMTBShared(Generator):
 
             # for loop for sram reads, tb writes
             loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
-                                    config_width=self.default_config_width)
+                                    config_width=self.id_config_width)
 
             self.add_child(f"loops_buf2out_autovec_read_{i}",
                            loops_sram2tb,

@@ -52,6 +52,7 @@ class StrgUBTBOnly(Generator):
 
         self.default_iterator_support = 6
         self.default_config_width = 16
+        self.id_config_width = 10
         self.sram_iterator_support = 6
         self.agg_rd_addr_gen_width = 8
 
@@ -184,7 +185,7 @@ class StrgUBTBOnly(Generator):
             # READ FROM TB
 
             fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
-                                   config_width=self.tb_range_width)
+                                   config_width=self.id_config_width)
 
             self.add_child(f"loops_buf2out_read_{i}",
                            fl_ctr_tb_rd,
@@ -203,7 +204,7 @@ class StrgUBTBOnly(Generator):
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
                            restart=fl_ctr_tb_rd.ports.restart)
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
-            self.wire(self._tb_read_addr_out[i], _AG.ports.addr_out)
+            safe_wire(gen=self, w_to=self._tb_read_addr_out[i], w_from=_AG.ports.addr_out)
 
             self.add_child(f"tb_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.tb_iter_support,
