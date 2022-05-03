@@ -144,7 +144,7 @@ class StorageConfigSeq(MemoryController):
             self._rd_cnt = self.var("rd_cnt", clog2(self.fw_int))
             self.add_code(self.update_cnt)
             self.add_code(self.update_rd_valid).add_attribute("dont_touch")  # don't clock gate
-            self.add_code(self.update_rd_cnt)
+            self.add_code(self.update_rd_cnt).add_attribute("dont_touch")  # don't clock gate
             # Gate wen if not about to finish the word
 
             num = 0
@@ -215,10 +215,10 @@ class StorageConfigSeq(MemoryController):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_rd_cnt(self):
         if ~self._rst_n:
-            self._rd_cnt = 2 ** clog2(self.fw_int) - 1
+            self._rd_cnt = 0
         # Increment only when negedge when reading - making sure
         # that the sequencing is correct from app level!
-        elif ~self._rd_valid & (self._config_rd & self._config_en.r_or()):
+        elif self._rd_valid & (~(self._config_rd & self._config_en.r_or())):
             self._rd_cnt = self._rd_cnt + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))

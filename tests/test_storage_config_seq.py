@@ -230,6 +230,15 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
             tester.circuit.config_read = 1
 
     with tempfile.TemporaryDirectory() as tempdir:
+        # The Xcelium run will fail when we could be reading from non-initialized addresses
+        # and the received data will be XXXX
+        # while Verilator will not fail when comparing XXXX
+        # tester.compile_and_run(target="system-verilog",
+        #                        simulator="xcelium",
+        #                        directory="tempdir",
+        #                        magma_output="verilog",
+        #                        dump_waveforms=True,
+        #                        flags=["-sv"])
         tester.compile_and_run(target="verilator",
                                directory="tempdir",
                                magma_output="verilog",
