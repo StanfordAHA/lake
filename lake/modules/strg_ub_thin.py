@@ -155,9 +155,9 @@ class StrgUBThin(MemoryController):
             self.wire(self._valid_out_int, self._read)
 
         self._data_out_int = self.var("data_out_int", self.data_width,
-                                     size=self.interconnect_output_ports,
-                                     packed=True,
-                                     explicit_array=True)
+                                      size=self.interconnect_output_ports,
+                                      packed=True,
+                                      explicit_array=True)
 
         # Add chaining in here... since we only use in the UB case...
         self._chain_data_in = self.input("chain_data_in",
