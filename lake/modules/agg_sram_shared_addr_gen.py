@@ -33,6 +33,10 @@ class AggSramSharedAddrGen(Generator):
 
         self._step = self.input("step", 1)
 
+        self._starting_addr = self.input("starting_addr", self.config_width)
+        self._starting_addr.add_attribute(ConfigRegAttr("Starting address of address generator"))
+        self._starting_addr.add_attribute(FormalAttr(f"{self._starting_addr.name}", FormalSignalConstraint.SOLVE))
+
         self._sram_read = self.input("sram_read", self.interconnect_input_ports)
         self._sram_read_addr = self.input("sram_read_addr", self.config_width,
                                           size=self.interconnect_input_ports,
@@ -63,7 +67,7 @@ class AggSramSharedAddrGen(Generator):
         self.wire(self._addr_fifo_wr_en, ternary(self._mode[0], self._sram_read[self.interconnect_input_ports - 1], self._sram_read[0]))
         self.wire(self._addr_fifo_in, ternary(self._mode[0], self._sram_read_addr[self.interconnect_input_ports - 1], self._sram_read_addr[0]))
         self.add_code(self.update_addr_fifo)
-        self.wire(self._addr_out, ternary(self._mode[1], self._addr_fifo_out, self._lin_addr_cnter))
+        self.wire(self._addr_out, ternary(self._mode[1], self._addr_fifo_out, (self._lin_addr_cnter + self._starting_addr)))
         # GENERATION LOGIC: end
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
