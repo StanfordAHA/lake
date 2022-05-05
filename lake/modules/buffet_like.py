@@ -529,21 +529,31 @@ class BuffetLike(Generator):
                        resource_ready=self._ready_from_mem)
 
         self.wire(self._data_to_mem, self._wr_data_fifo_out_data)
+        wr_acqs = []
+        rd_acqs = []
         wr_acq = self._mem_acq[0] & self._wen_full[0]
+        wr_acqs.append(self._mem_acq[0] & self._wen_full[0])
         rd_acq = self._mem_acq[1] & self._ren_full[0]
+        rd_acqs.append(self._mem_acq[1] & self._ren_full[0])
         for i in range(self.num_ID - 1):
             wr_acq = kts.concat(wr_acq, self._mem_acq[2 * (i + 1)] & self._wen_full[i + 1])
+            wr_acqs.append(self._mem_acq[2 * (i + 1)] & self._wen_full[i + 1])
             rd_acq = kts.concat(rd_acq, self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
+            rd_acqs.append(self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
         self.wire(self._ren_to_mem, rd_acq.r_or())
         self.wire(self._wen_to_mem, wr_acq.r_or())
 
         # Choose which base block...
-        wr_base = kts.ternary(wr_acq[0], self._curr_base[0] + self._buffet_base[0], kts.const(0, self._curr_base[0].width))
-        rd_base = kts.ternary(rd_acq[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
+        wr_base = kts.ternary(wr_acqs[0], self._curr_base[0] + self._buffet_base[0], kts.const(0, self._curr_base[0].width))
+        rd_base = kts.ternary(rd_acqs[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
         for i in range(self.num_ID - 1):
-            wr_base = kts.ternary(wr_acq[i + 1], self._curr_base[i + 1] + self._buffet_base[i + 1], wr_base)
-            rd_base = kts.ternary(wr_acq[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
-        self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + wr_base, self._rd_addr_fifo_out_addr + rd_base))
+            wr_base = kts.ternary(wr_acqs[i + 1], self._curr_base[i + 1] + self._buffet_base[i + 1], wr_base)
+            rd_base = kts.ternary(rd_acqs[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
+        tmp_wr_base = self.var("tmp_wr_base", self._buffet_base[0].width)
+        tmp_rd_base = self.var("tmp_rd_base", self._buffet_base[0].width)
+        self.wire(tmp_wr_base, wr_base)
+        self.wire(tmp_rd_base, rd_base)
+        self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + tmp_wr_base, self._rd_addr_fifo_out_addr + tmp_rd_base))
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
