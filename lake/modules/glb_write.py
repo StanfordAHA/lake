@@ -3,7 +3,8 @@ import kratos
 class GLBWrite(kratos.Generator):
 
     def __init__(self, ID=0):
-        super().__init__(name=f"glb_write_{ID}")
+        # super().__init__(name=f"glb_write_{ID}")
+        super().__init__(name=f"glb_write")
 
         self.external = True
                 # inputs

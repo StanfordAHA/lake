@@ -3,7 +3,8 @@ import kratos
 class GLBRead(kratos.Generator):
 
     def __init__(self, ID=0):
-        super().__init__(name=f"glb_read_{ID}")
+        # super().__init__(name=f"glb_read_{ID}")
+        super().__init__(name=f"glb_read")
 
         self.external = True
                 # inputs
