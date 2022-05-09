@@ -433,7 +433,7 @@ class BuffetLike(Generator):
             WR_START[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
             WR_START[ID_idx].output(self._en_curr_bounds[ID_idx], 0)
             WR_START[ID_idx].output(self._wen_full[ID_idx], 0)
-            WR_START[ID_idx].output(self._pop_in_full[ID_idx], 0)
+            WR_START[ID_idx].output(self._pop_in_full[ID_idx], (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
             # WR_START.output(self._en_curr_bounds, 0)
 
             ####################
@@ -515,16 +515,19 @@ class BuffetLike(Generator):
         self.port_arbiter = Arbiter(ins=2 * self.num_ID,
                                     algo="RR")
 
-        base_rr = kts.concat(self._wen_full[0], self._ren_full[0])
+        base_rr = kts.concat(self._ren_full[0], self._wen_full[0])
         for i in range(self.num_ID - 1):
-            base_rr = kts.concat(base_rr, self._wen_full[i + 1], self._ren_full[i + 1])
+            base_rr = kts.concat(self._ren_full[i + 1], self._wen_full[i + 1], base_rr)
+
+        brr = self.var("base_rr", 2* self.num_ID)
+        self.wire(brr, base_rr)
 
         self.add_child(f"rr_arbiter",
                        self.port_arbiter,
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       request_in=base_rr,
+                       request_in=brr,
                        grant_out=self._mem_acq,
                        resource_ready=self._ready_from_mem)
 

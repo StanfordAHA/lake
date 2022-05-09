@@ -361,7 +361,7 @@ class Scanner(Generator):
         self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the offset..."))
         # self._coord_in = self.var("coord_in", 8)
         self._ptr_in = self.var("ptr_in", self.data_width, packed=True)
-        self.wire(self._ptr_in, self._rd_rsp_data_in)
+        self.wire(self._ptr_in, self._rd_rsp_fifo_out_data)
         # self.wire(self._ptr_in, self._data_in[15, 8])
 
         # Need to hook up the current and next seqence_length
@@ -383,7 +383,8 @@ class Scanner(Generator):
         self._seq_length_ptr_math = self.var("seq_length_ptr_math", self.data_width)
         # self.wire(self._seq_length_ptr_math[7, 0], self._ptr_in - self._ptr_reg - 1)
         # self.wire(self._seq_length_ptr_math[15, 8], 0)
-        self.wire(self._seq_length_ptr_math, self._ptr_in - self._ptr_reg - 1)
+        # self.wire(self._seq_length_ptr_math, self._ptr_in - self._ptr_reg - 1)
+        self.wire(self._seq_length_ptr_math, self._ptr_in - self._ptr_reg)
 
         self.wire(self._pos_addr, kts.ternary(self._root, kts.const(0, self._pos_addr.width), self._infifo_pos_in))
 
@@ -479,6 +480,8 @@ class Scanner(Generator):
         BLOCK_2_SIZE_REC = self.scan_fsm.add_state("BLOCK_2_SIZE_REC")
         BLOCK_2_RD = self.scan_fsm.add_state("BLOCK_2_RD")
 
+        DONE = self.scan_fsm.add_state("DONE")
+
         self.scan_fsm.output(self._addr_out_to_fifo)
         self.scan_fsm.output(self._op_out_to_fifo)
         self.scan_fsm.output(self._ID_out_to_fifo)
@@ -555,11 +558,11 @@ class Scanner(Generator):
         # READ_1.next(READ_0, (self._coord_in < self._infifo_coord_in) & ~self._root)
         # # Otherwise, proceed
         # READ_1.next(READ_2, (self._coord_in >= self._infifo_coord_in) & ~self._root)
-        READ_1.next(READ_2, self._buffet_joined & self._rd_rsp_valid_in)
+        READ_1.next(READ_2, self._buffet_joined & self._rd_rsp_fifo_valid)
         READ_1.next(READ_1, None)
 
         # Go to this state to see the length, will also have EOS?
-        READ_2.next(SEQ_START, self._rd_rsp_valid_in)
+        READ_2.next(SEQ_START, self._rd_rsp_fifo_valid)
         READ_2.next(READ_2, None)
 
         # At Start, we can either immediately end the stream or go to the iteration phase
@@ -572,8 +575,10 @@ class Scanner(Generator):
         # If we have eos and can push to the fifo, we are done
         # SEQ_ITER.next(SEQ_DONE, self._last_valid_accepting)
         SEQ_ITER.next(REP_INNER_PRE, self._root & self._do_repeat & ~self._repeat_outer_inner_n)
-        SEQ_ITER.next(REP_OUTER, (self._root & self._do_repeat & self._repeat_outer_inner_n) & self._iter_finish)
-        SEQ_ITER.next(SEQ_DONE, self._iter_finish)
+        # SEQ_ITER.next(REP_OUTER, (self._root & self._do_repeat & self._repeat_outer_inner_n) & self._iter_finish)
+        SEQ_ITER.next(REP_OUTER, (self._root & self._do_repeat & self._repeat_outer_inner_n) & (self._num_req_rec == self._seq_length))
+        # SEQ_ITER.next(SEQ_DONE, self._iter_finish)
+        SEQ_ITER.next(SEQ_DONE, (self._num_req_rec == self._seq_length))
         SEQ_ITER.next(SEQ_ITER, None)
 
         # Once done, we need another flush
@@ -641,8 +646,11 @@ class Scanner(Generator):
         FREE1.next(START, self._buffet_joined & self._lookup_mode)
         FREE1.next(FREE1, None)
 
-        FREE2.next(START, self._buffet_joined)
+        FREE2.next(START, self._buffet_joined & ~self._root)
+        FREE2.next(DONE, self._buffet_joined & self._root)
         FREE2.next(FREE2, None)
+
+        DONE.next(DONE, None)
 
         ####################
         # FSM Output Logic
@@ -852,9 +860,9 @@ class Scanner(Generator):
         READ_1.output(self._addr_out_to_fifo, self._pos_addr + 1)
         READ_1.output(self._op_out_to_fifo, 1)
         READ_1.output(self._ID_out_to_fifo, 0)
-        READ_1.output(self._buffet_push, self._rd_rsp_valid_in)
+        READ_1.output(self._buffet_push, self._rd_rsp_fifo_valid)
         READ_1.output(self._rd_rsp_fifo_pop, self._buffet_joined)
-        READ_1.output(self._ptr_reg_en, self._rd_rsp_valid_in & self._buffet_joined)
+        READ_1.output(self._ptr_reg_en, self._rd_rsp_fifo_valid & self._buffet_joined)
 
         READ_1.output(self._valid_inc, 0)
         READ_1.output(self._valid_rst, 0)
@@ -950,21 +958,22 @@ class Scanner(Generator):
         SEQ_ITER.output(self._addr_out_to_fifo, self._fiber_addr)
         SEQ_ITER.output(self._op_out_to_fifo, 1)
         SEQ_ITER.output(self._ID_out_to_fifo, 1)
-        SEQ_ITER.output(self._buffet_push, ~self._join_almost_full)
-        SEQ_ITER.output(self._rd_rsp_fifo_pop, ~self._fifo_full)
+        SEQ_ITER.output(self._buffet_push, ~self._join_almost_full & (self._num_req_made < self._seq_length))
+        SEQ_ITER.output(self._rd_rsp_fifo_pop, ~self._fifo_full & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._ptr_reg_en, 0)
 
-        SEQ_ITER.output(self._valid_inc, self._rd_rsp_fifo_valid & (~self._fifo_full))
+        # SEQ_ITER.output(self._valid_inc, self._rd_rsp_fifo_valid & (~self._fifo_full))
+        SEQ_ITER.output(self._valid_inc, 0)
         SEQ_ITER.output(self._valid_rst, 0)
         # SEQ_ITER.output(self._ren, ~self._join_almost_full)
-        SEQ_ITER.output(self._fifo_push, self._rd_rsp_fifo_valid & (~self._fifo_full))
+        SEQ_ITER.output(self._fifo_push, self._rd_rsp_fifo_valid & (~self._fifo_full) & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._tag_eos, 0)
         # SEQ_ITER.output(self._addr_out_to_fifo, self._fiber_addr)
         SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
         SEQ_ITER.output(self._update_seq_state, 0)
         SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._rd_rsp_fifo_valid))
         SEQ_ITER.output(self._pop_infifo, 0)
-        SEQ_ITER.output(self._inc_fiber_addr, ~self._join_almost_full)
+        SEQ_ITER.output(self._inc_fiber_addr, ~self._join_almost_full & (self._num_req_made < self._seq_length))
         SEQ_ITER.output(self._clr_fiber_addr, 0)
         SEQ_ITER.output(self._inc_rep, 0)
         SEQ_ITER.output(self._clr_rep, 0)
@@ -972,9 +981,9 @@ class Scanner(Generator):
         SEQ_ITER.output(self._en_reg_data_in, 0)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         SEQ_ITER.output(self._pos_out_to_fifo, self._agen_addr_d1 + self._payload_ptr)
-        SEQ_ITER.output(self._inc_req_made, 0)
+        SEQ_ITER.output(self._inc_req_made, ~self._join_almost_full & (self._num_req_made < self._seq_length))
         SEQ_ITER.output(self._clr_req_made, 0)
-        SEQ_ITER.output(self._inc_req_rec, 0)
+        SEQ_ITER.output(self._inc_req_rec, self._rd_rsp_fifo_valid & ~self._fifo_full & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._clr_req_rec, 0)
 
         #############
@@ -1009,9 +1018,9 @@ class Scanner(Generator):
         # SEQ_DONE.output(self._step_outer, 1)
         # SEQ_DONE.output(self._update_previous_outer, 0)
         SEQ_DONE.output(self._inc_req_made, 0)
-        SEQ_DONE.output(self._clr_req_made, 0)
+        SEQ_DONE.output(self._clr_req_made, 1)
         SEQ_DONE.output(self._inc_req_rec, 0)
-        SEQ_DONE.output(self._clr_req_rec, 0)
+        SEQ_DONE.output(self._clr_req_rec, 1)
 
         #############
         # REP_INNER_PRE
@@ -1385,6 +1394,36 @@ class Scanner(Generator):
         FREE2.output(self._clr_req_made, 0)
         FREE2.output(self._inc_req_rec, 0)
         FREE2.output(self._clr_req_rec, 0)
+
+        #############
+        # DONE
+        #############
+        DONE.output(self._addr_out_to_fifo, 0)
+        DONE.output(self._op_out_to_fifo, 0)
+        DONE.output(self._ID_out_to_fifo, 0)
+        DONE.output(self._buffet_push, 0)
+        DONE.output(self._rd_rsp_fifo_pop, 0)
+        DONE.output(self._ptr_reg_en, 0)
+        DONE.output(self._valid_inc, 0)
+        DONE.output(self._valid_rst, 1)
+        DONE.output(self._fifo_push, 0)
+        DONE.output(self._tag_eos, 0)
+        DONE.output(self._next_seq_length, kts.const(0, 16))
+        DONE.output(self._update_seq_state, 0)
+        DONE.output(self._last_valid_accepting, 0)
+        DONE.output(self._pop_infifo, 0)
+        DONE.output(self._inc_fiber_addr, 0)
+        DONE.output(self._clr_fiber_addr, 1)
+        DONE.output(self._inc_rep, 0)
+        DONE.output(self._clr_rep, 1)
+        DONE.output(self._data_to_fifo, kts.const(0, 16))
+        DONE.output(self._en_reg_data_in, 0)
+        DONE.output(self._pos_out_to_fifo, kts.const(0, 16))
+        DONE.output(self._inc_req_made, 0)
+        DONE.output(self._clr_req_made, 0)
+        DONE.output(self._inc_req_rec, 0)
+        DONE.output(self._clr_req_rec, 0)
+
 
         self.scan_fsm.set_start_state(START)
 
