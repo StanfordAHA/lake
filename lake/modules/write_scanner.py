@@ -386,7 +386,7 @@ class WriteScanner(Generator):
         # ALLOCATE1 allocates the lower ID buffet
         ALLOCATE1.next(ALLOCATE1, ~self._join_out_ready)
         ALLOCATE1.next(ALLOCATE2, ~self._lowest_level & self._join_out_ready)
-        ALLOCATE2.next(BLOCK_1_SZ, self._lowest_level & self._block_mode & self._join_out_ready)
+        ALLOCATE1.next(BLOCK_1_SZ, self._lowest_level & self._block_mode & self._join_out_ready)
         ALLOCATE1.next(LL, self._lowest_level & ~self._block_mode & self._join_out_ready)
         # ALLOCATE1.next(UL_WZ, ~self._lowest_level & self._join_out_ready)
 
@@ -544,19 +544,19 @@ class WriteScanner(Generator):
         START.output(self._ID_to_fifo, kts.const(0, 16))
         START.output(self._push_to_outs, 0)
         START.output(self._inc_seg_addr, 0)
-        START.output(self._clr_seg_addr, 0)
+        START.output(self._clr_seg_addr, 1)
         START.output(self._inc_coord_addr, 0)
-        START.output(self._clr_coord_addr, 0)
+        START.output(self._clr_coord_addr, 1)
         START.output(self._inc_seg_ctr, 0)
-        START.output(self._clr_seg_ctr, 0)
+        START.output(self._clr_seg_ctr, 1)
         START.output(self._set_curr_coord, 0)
-        START.output(self._clr_curr_coord, 0)
+        START.output(self._clr_curr_coord, 1)
         START.output(self._infifo_pop[0], 0)
         START.output(self._infifo_pop[1], 0)
-        START.output(self._clr_wen_made, 0)
+        START.output(self._clr_wen_made, 1)
         START.output(self._set_block_size, 0)
         START.output(self._inc_block_write, 0)
-        START.output(self._clr_block_write, 0)
+        START.output(self._clr_block_write, 1)
 
         #######
         # ALLOCATE1 - TODO - Generate general hardware...

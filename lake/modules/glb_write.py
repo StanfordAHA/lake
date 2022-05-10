@@ -1,5 +1,6 @@
 import kratos
 
+
 class GLBWrite(kratos.Generator):
 
     def __init__(self, ID=0):
@@ -7,7 +8,7 @@ class GLBWrite(kratos.Generator):
         super().__init__(name=f"glb_write")
 
         self.external = True
-                # inputs
+        # inputs
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 

@@ -415,7 +415,9 @@ class Scanner(Generator):
         self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
         self._pos_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
 
-        self._fifo_push = self.var("fifo_push", 1)
+        # self._fifo_push = self.var("fifo_push", 1)
+        self._coord_out_fifo_push = self.var("coord_out_fifo_push", 1)
+        self._pos_out_fifo_push = self.var("pos_out_fifo_push", 1)
         self._tag_eos = self.var("tag_eos", 1)
         self._last_valid_accepting = self.var("last_valid_accepting", 1)
 
@@ -491,7 +493,9 @@ class Scanner(Generator):
         self.scan_fsm.output(self._valid_inc)
         self.scan_fsm.output(self._valid_rst)
         # self.scan_fsm.output(self._ren)
-        self.scan_fsm.output(self._fifo_push)
+        # self.scan_fsm.output(self._fifo_push)
+        self.scan_fsm.output(self._coord_out_fifo_push)
+        self.scan_fsm.output(self._pos_out_fifo_push)
         self.scan_fsm.output(self._tag_eos)
         self.scan_fsm.output(self._next_seq_length)
         self.scan_fsm.output(self._update_seq_state)
@@ -514,10 +518,10 @@ class Scanner(Generator):
         ####################
 
         # Dummy state for eventual filling block.
-        START.next(BLOCK_1_SIZE_REQ, self._block_mode)
+        START.next(BLOCK_1_SIZE_REQ, self._block_mode & ~self._lookup_mode)
         START.next(LOOKUP, self._lookup_mode)
-        START.next(ISSUE_STRM, self._root)
-        START.next(ISSUE_STRM_NR, ~self._root)
+        START.next(ISSUE_STRM, self._root & ~self._lookup_mode)
+        START.next(ISSUE_STRM_NR, ~self._root & ~self._lookup_mode)
 
         # In lookup we pass the address along to the buffet, making sure all reads complete and end up in
         # the output buffer before passing along stop tokens...
@@ -539,9 +543,15 @@ class Scanner(Generator):
 
         # In this state, we are passing through stop tokens into
         # the downstream
-        PASS_STOP.next(PASS_STOP, self._infifo_eos_in)
-        PASS_STOP.next(ISSUE_STRM_NR, ~self._infifo_eos_in & ~self._seen_root_eos)
-        PASS_STOP.next(FREE1, ~self._infifo_eos_in & self._seen_root_eos)
+        # Go to free if we see root eos since we are application done
+        PASS_STOP.next(FREE1, self._seen_root_eos)
+        # Otherwise, we are waiting to see a valid in without eos (since we should see one eventually)
+        PASS_STOP.next(ISSUE_STRM_NR, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & ~self._lookup_mode)
+        PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & self._lookup_mode)
+        # PASS_STOP.next(ISSUE_STRM_NR, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & ~self._lookup_mode)
+        # PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & self._lookup_mode)
+        # PASS_STOP.next(FREE1, (~self._infifo_eos_in & self._infifo_valid_in) & self._seen_root_eos)
+        PASS_STOP.next(PASS_STOP, None)
 
         # Can continue on our way in root mode, otherwise we need to
         # bring the pointer up to locate the coordinate. Make sure the first read is emmitted
@@ -621,11 +631,11 @@ class Scanner(Generator):
 
         # BLOCK_1_SIZE_REC
         # Push the size on the line...
-        BLOCK_1_SIZE_REC.next(BLOCK_1_RD, self._buffet_joined & ~self._fifo_full)
-        BLOCK_1_SIZE_REC.next(BLOCK_1_SIZE_REQ, None)
+        BLOCK_1_SIZE_REC.next(BLOCK_1_RD, self._buffet_joined & ~self._fifo_full & self._rd_rsp_fifo_valid)
+        BLOCK_1_SIZE_REC.next(BLOCK_1_SIZE_REC, None)
 
-        BLOCK_1_RD.next(BLOCK_2_SIZE_REQ, self._num_req_rec == self._ptr_reg & ~self._lookup_mode)
-        BLOCK_1_RD.next(FREE1, self._num_req_rec == self._ptr_reg & self._lookup_mode)
+        BLOCK_1_RD.next(BLOCK_2_SIZE_REQ, (self._num_req_rec == self._ptr_reg) & ~self._lookup_mode)
+        BLOCK_1_RD.next(FREE1, (self._num_req_rec == self._ptr_reg) & self._lookup_mode)
         BLOCK_1_RD.next(BLOCK_1_RD, None)
 
         # BLOCK_2_SIZE_REQ
@@ -634,8 +644,8 @@ class Scanner(Generator):
 
         # BLOCK_2_SIZE_REC
         # Push the size on the line...
-        BLOCK_2_SIZE_REC.next(BLOCK_2_RD, self._buffet_joined & ~self._fifo_full)
-        BLOCK_2_SIZE_REC.next(BLOCK_2_SIZE_REQ, None)
+        BLOCK_2_SIZE_REC.next(BLOCK_2_RD, self._buffet_joined & ~self._fifo_full & self._rd_rsp_fifo_valid)
+        BLOCK_2_SIZE_REC.next(BLOCK_2_SIZE_REC, None)
 
         BLOCK_2_RD.next(FREE1, self._num_req_rec == self._ptr_reg)
         BLOCK_2_RD.next(BLOCK_2_RD, None)
@@ -669,7 +679,9 @@ class Scanner(Generator):
         START.output(self._valid_inc, 0)
         START.output(self._valid_rst, 0)
         # START.output(self._ren, 0)
-        START.output(self._fifo_push, 0)
+        # START.output(self._fifo_push, 0)
+        START.output(self._coord_out_fifo_push, 0)
+        START.output(self._pos_out_fifo_push, 0)
         START.output(self._tag_eos, 0)
         # START.output(self._addr_out_to_fifo, kts.const(0, 16))
         START.output(self._next_seq_length, kts.const(0, 16))
@@ -701,7 +713,11 @@ class Scanner(Generator):
         LOOKUP.output(self._valid_inc, 0)
         LOOKUP.output(self._valid_rst, 0)
         # Push to the output when we have a valid input
-        LOOKUP.output(self._fifo_push, self._rd_rsp_fifo_valid)
+        # LOOKUP.output(self._fifo_push, self._rd_rsp_fifo_valid)
+        LOOKUP.output(self._coord_out_fifo_push, self._rd_rsp_fifo_valid)
+        # LOOKUP.output(self._pos_out_fifo_push, self._buffet_push)
+        # Shouldn't use pos out in lookup
+        LOOKUP.output(self._pos_out_fifo_push, 0)
         LOOKUP.output(self._tag_eos, 0)
         # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
         # ISSUE_STRM.output(self._addr_out_to_fifo, kts.const(0, 16))
@@ -714,9 +730,10 @@ class Scanner(Generator):
         LOOKUP.output(self._clr_fiber_addr, 0)
         LOOKUP.output(self._inc_rep, 0)
         LOOKUP.output(self._clr_rep, 0)
-        LOOKUP.output(self._data_to_fifo, kts.const(0, 16))
+        LOOKUP.output(self._data_to_fifo, self._rd_rsp_fifo_out_data)
         LOOKUP.output(self._en_reg_data_in, 0)
-        LOOKUP.output(self._pos_out_to_fifo, kts.const(0, 16))
+        # LOOKUP.output(self._pos_out_to_fifo, kts.const(0, 16))
+        LOOKUP.output(self._pos_out_to_fifo, self._infifo_pos_in)
         LOOKUP.output(self._inc_req_made, self._buffet_push)
         LOOKUP.output(self._clr_req_made, 0)
         LOOKUP.output(self._inc_req_rec, self._rd_rsp_fifo_valid & ~self._fifo_full)
@@ -735,7 +752,9 @@ class Scanner(Generator):
         ISSUE_STRM.output(self._valid_inc, 0)
         ISSUE_STRM.output(self._valid_rst, 0)
         # ISSUE_STRM.output(self._ren, 0)
-        ISSUE_STRM.output(self._fifo_push, 0)
+        # ISSUE_STRM.output(self._fifo_push, 0)
+        ISSUE_STRM.output(self._coord_out_fifo_push, 0)
+        ISSUE_STRM.output(self._pos_out_fifo_push, 0)
         ISSUE_STRM.output(self._tag_eos, 0)
         # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
         # ISSUE_STRM.output(self._addr_out_to_fifo, kts.const(0, 16))
@@ -768,7 +787,10 @@ class Scanner(Generator):
         ISSUE_STRM_NR.output(self._valid_inc, 0)
         ISSUE_STRM_NR.output(self._valid_rst, 0)
         # ISSUE_STRM_NR.output(self._ren, 0)
-        ISSUE_STRM_NR.output(self._fifo_push, 0)
+        # ISSUE_STRM_NR.output(self._fifo_push, 0)
+        ISSUE_STRM_NR.output(self._coord_out_fifo_push, 0)
+        ISSUE_STRM_NR.output(self._pos_out_fifo_push, 0)
+
         ISSUE_STRM_NR.output(self._tag_eos, 0)
         # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
         # ISSUE_STRM_NR.output(self._addr_out_to_fifo, kts.const(0, 16))
@@ -801,7 +823,12 @@ class Scanner(Generator):
         PASS_STOP.output(self._valid_inc, 0)
         PASS_STOP.output(self._valid_rst, 0)
         # PASS_STOP.output(self._ren, 0)
-        PASS_STOP.output(self._fifo_push, self._infifo_eos_in)
+        # PASS_STOP.output(self._fifo_push, self._infifo_eos_in)
+        PASS_STOP.output(self._coord_out_fifo_push, self._infifo_eos_in)
+        # PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in)
+        # Only push it to pos fifo if not in lookup mode...
+        PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in & ~self._lookup_mode)
+
         PASS_STOP.output(self._tag_eos, 1)
         # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
         # PASS_STOP.output(self._addr_out_to_fifo, kts.const(0, 16))
@@ -834,7 +861,10 @@ class Scanner(Generator):
         READ_0.output(self._valid_inc, 0)
         READ_0.output(self._valid_rst, 0)
         # READ_0.output(self._ren, 1)
-        READ_0.output(self._fifo_push, 0)
+        # READ_0.output(self._fifo_push, 0)
+        READ_0.output(self._coord_out_fifo_push, 0)
+        READ_0.output(self._pos_out_fifo_push, 0)
+
         READ_0.output(self._tag_eos, 0)
         # READ_0.output(self._addr_out, self._out_dim_addr)
         # READ_0.output(self._addr_out_to_fifo, self._pos_addr)
@@ -867,7 +897,10 @@ class Scanner(Generator):
         READ_1.output(self._valid_inc, 0)
         READ_1.output(self._valid_rst, 0)
         # READ_1.output(self._ren, 1)
-        READ_1.output(self._fifo_push, 0)
+        # READ_1.output(self._fifo_push, 0)
+        READ_1.output(self._coord_out_fifo_push, 0)
+        READ_1.output(self._pos_out_fifo_push, 0)
+
         READ_1.output(self._tag_eos, 0)
         # READ_1.output(self._addr_out_to_fifo, self._pos_addr + 1)
         READ_1.output(self._next_seq_length, kts.const(2 ** 16 - 1, 16))
@@ -899,7 +932,10 @@ class Scanner(Generator):
         READ_2.output(self._valid_inc, 0)
         READ_2.output(self._valid_rst, 0)
         # READ_2.output(self._ren, 0)
-        READ_2.output(self._fifo_push, 0)
+        # READ_2.output(self._fifo_push, 0)
+        READ_2.output(self._coord_out_fifo_push, 0)
+        READ_2.output(self._pos_out_fifo_push, 0)
+
         READ_2.output(self._tag_eos, 0)
         # Don't increment here - only increment after seeing the second one
         # READ_2.output(self._inc_out_dim_addr, 0)
@@ -933,7 +969,10 @@ class Scanner(Generator):
         SEQ_START.output(self._valid_rst, 0)
         SEQ_START.output(self._valid_inc, 0)
         # SEQ_START.output(self._ren, 0)
-        SEQ_START.output(self._fifo_push, self._seq_length == kts.const(2 ** 16 - 1, 16))
+        # SEQ_START.output(self._fifo_push, self._seq_length == kts.const(2 ** 16 - 1, 16))
+        SEQ_START.output(self._coord_out_fifo_push, self._seq_length == kts.const(2 ** 16 - 1, 16))
+        SEQ_START.output(self._pos_out_fifo_push, self._seq_length == kts.const(2 ** 16 - 1, 16))
+
         SEQ_START.output(self._tag_eos, self._seq_length == kts.const(2 ** 16 - 1, 16))
         # SEQ_START.output(self._addr_out_to_fifo, kts.const(0, 16))
         SEQ_START.output(self._next_seq_length, kts.const(0, 16))
@@ -958,7 +997,8 @@ class Scanner(Generator):
         SEQ_ITER.output(self._addr_out_to_fifo, self._fiber_addr)
         SEQ_ITER.output(self._op_out_to_fifo, 1)
         SEQ_ITER.output(self._ID_out_to_fifo, 1)
-        SEQ_ITER.output(self._buffet_push, ~self._join_almost_full & (self._num_req_made < self._seq_length))
+        # SEQ_ITER.output(self._buffet_push, ~self._join_almost_full & (self._num_req_made < self._seq_length))
+        SEQ_ITER.output(self._buffet_push, self._buffet_joined & (self._num_req_made < self._seq_length))
         SEQ_ITER.output(self._rd_rsp_fifo_pop, ~self._fifo_full & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._ptr_reg_en, 0)
 
@@ -966,22 +1006,26 @@ class Scanner(Generator):
         SEQ_ITER.output(self._valid_inc, 0)
         SEQ_ITER.output(self._valid_rst, 0)
         # SEQ_ITER.output(self._ren, ~self._join_almost_full)
-        SEQ_ITER.output(self._fifo_push, self._rd_rsp_fifo_valid & (~self._fifo_full) & (self._num_req_rec < self._seq_length))
+        # SEQ_ITER.output(self._fifo_push, self._rd_rsp_fifo_valid & (~self._fifo_full) & (self._num_req_rec < self._seq_length))
+        SEQ_ITER.output(self._coord_out_fifo_push, self._rd_rsp_fifo_valid & (~self._fifo_full) & (self._num_req_rec < self._seq_length))
+        SEQ_ITER.output(self._pos_out_fifo_push, self._buffet_joined & (self._num_req_made < self._seq_length))
+
         SEQ_ITER.output(self._tag_eos, 0)
         # SEQ_ITER.output(self._addr_out_to_fifo, self._fiber_addr)
         SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
         SEQ_ITER.output(self._update_seq_state, 0)
         SEQ_ITER.output(self._last_valid_accepting, (self._valid_cnt == self._seq_length) & (self._rd_rsp_fifo_valid))
         SEQ_ITER.output(self._pop_infifo, 0)
-        SEQ_ITER.output(self._inc_fiber_addr, ~self._join_almost_full & (self._num_req_made < self._seq_length))
+        SEQ_ITER.output(self._inc_fiber_addr, self._buffet_joined & (self._num_req_made < self._seq_length))
         SEQ_ITER.output(self._clr_fiber_addr, 0)
         SEQ_ITER.output(self._inc_rep, 0)
         SEQ_ITER.output(self._clr_rep, 0)
         SEQ_ITER.output(self._data_to_fifo, self._rd_rsp_fifo_out_data)
         SEQ_ITER.output(self._en_reg_data_in, 0)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        SEQ_ITER.output(self._pos_out_to_fifo, self._agen_addr_d1 + self._payload_ptr)
-        SEQ_ITER.output(self._inc_req_made, ~self._join_almost_full & (self._num_req_made < self._seq_length))
+        SEQ_ITER.output(self._pos_out_to_fifo, self._fiber_addr)
+        # SEQ_ITER.output(self._pos_out_to_fifo, self._agen_addr_d1 + self._payload_ptr)
+        SEQ_ITER.output(self._inc_req_made, self._buffet_joined & (self._num_req_made < self._seq_length))
         SEQ_ITER.output(self._clr_req_made, 0)
         SEQ_ITER.output(self._inc_req_rec, self._rd_rsp_fifo_valid & ~self._fifo_full & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._clr_req_rec, 0)
@@ -999,7 +1043,10 @@ class Scanner(Generator):
         SEQ_DONE.output(self._valid_inc, 0)
         SEQ_DONE.output(self._valid_rst, 1)
         # SEQ_DONE.output(self._ren, 0)
-        SEQ_DONE.output(self._fifo_push, 1)
+        # SEQ_DONE.output(self._fifo_push, 1)
+        SEQ_DONE.output(self._coord_out_fifo_push, 1)
+        SEQ_DONE.output(self._pos_out_fifo_push, 1)
+
         SEQ_DONE.output(self._tag_eos, 1)
         # SEQ_DONE.output(self._addr_out_to_fifo, kts.const(0, 16))
         SEQ_DONE.output(self._next_seq_length, kts.const(0, 16))
@@ -1035,7 +1082,10 @@ class Scanner(Generator):
         REP_INNER_PRE.output(self._valid_inc, 0)
         REP_INNER_PRE.output(self._valid_rst, 0)
         # REP_INNER_PRE.output(self._ren, 0)
-        REP_INNER_PRE.output(self._fifo_push, 0)
+        # REP_INNER_PRE.output(self._fifo_push, 0)
+        REP_INNER_PRE.output(self._coord_out_fifo_push, 0)
+        REP_INNER_PRE.output(self._pos_out_fifo_push, 0)
+
         REP_INNER_PRE.output(self._tag_eos, 0)
         # REP_INNER_PRE.output(self._addr_out_to_fifo, kts.const(0, 16))
         REP_INNER_PRE.output(self._next_seq_length, kts.const(0, 16))
@@ -1067,7 +1117,10 @@ class Scanner(Generator):
         REP_INNER.output(self._valid_inc, 0)
         REP_INNER.output(self._valid_rst, 0)
         # REP_INNER.output(self._ren, 0)
-        REP_INNER.output(self._fifo_push, 1)
+        # REP_INNER.output(self._fifo_push, 1)
+        REP_INNER.output(self._coord_out_fifo_push, 1)
+        REP_INNER.output(self._pos_out_fifo_push, 1)
+
         REP_INNER.output(self._tag_eos, 0)
         # REP_INNER.output(self._addr_out_to_fifo, kts.const(0, 16))
         REP_INNER.output(self._next_seq_length, kts.const(0, 16))
@@ -1100,7 +1153,10 @@ class Scanner(Generator):
         REP_OUTER.output(self._valid_inc, 0)
         REP_OUTER.output(self._valid_rst, 1)
         # REP_OUTER.output(self._ren, 0)
-        REP_OUTER.output(self._fifo_push, 0)
+        # REP_OUTER.output(self._fifo_push, 0)
+        REP_OUTER.output(self._coord_out_fifo_push, 0)
+        REP_OUTER.output(self._pos_out_fifo_push, 0)
+
         REP_OUTER.output(self._tag_eos, 0)
         # REP_OUTER.output(self._addr_out_to_fifo, kts.const(0, 16))
         REP_OUTER.output(self._next_seq_length, kts.const(0, 16))
@@ -1133,7 +1189,10 @@ class Scanner(Generator):
         REP_STOP.output(self._valid_inc, ~self._repeat_outer_inner_n & ~self._fifo_full)
         REP_STOP.output(self._valid_rst, self._repeat_outer_inner_n)
         # REP_STOP.output(self._ren, 0)
-        REP_STOP.output(self._fifo_push, 1)
+        # REP_STOP.output(self._fifo_push, 1)
+        REP_STOP.output(self._coord_out_fifo_push, 1)
+        REP_STOP.output(self._pos_out_fifo_push, 1)
+
         REP_STOP.output(self._tag_eos, 1)
         # REP_STOP.output(self._addr_out_to_fifo, kts.const(0, 16))
         REP_STOP.output(self._next_seq_length, kts.const(0, 16))
@@ -1166,7 +1225,10 @@ class Scanner(Generator):
 
         BLOCK_1_SIZE_REQ.output(self._valid_inc, 0)
         BLOCK_1_SIZE_REQ.output(self._valid_rst, 0)
-        BLOCK_1_SIZE_REQ.output(self._fifo_push, 0)
+        # BLOCK_1_SIZE_REQ.output(self._fifo_push, 0)
+        BLOCK_1_SIZE_REQ.output(self._coord_out_fifo_push, 0)
+        BLOCK_1_SIZE_REQ.output(self._pos_out_fifo_push, 0)
+
         BLOCK_1_SIZE_REQ.output(self._tag_eos, 0)
         BLOCK_1_SIZE_REQ.output(self._next_seq_length, kts.const(0, 16))
         BLOCK_1_SIZE_REQ.output(self._update_seq_state, 0)
@@ -1196,7 +1258,10 @@ class Scanner(Generator):
 
         BLOCK_1_SIZE_REC.output(self._valid_inc, 0)
         BLOCK_1_SIZE_REC.output(self._valid_rst, 0)
-        BLOCK_1_SIZE_REC.output(self._fifo_push, self._rd_rsp_fifo_valid)
+        # BLOCK_1_SIZE_REC.output(self._fifo_push, self._rd_rsp_fifo_valid)
+        BLOCK_1_SIZE_REC.output(self._coord_out_fifo_push, self._rd_rsp_fifo_valid)
+        BLOCK_1_SIZE_REC.output(self._pos_out_fifo_push, 0)
+
         BLOCK_1_SIZE_REC.output(self._tag_eos, 0)
         BLOCK_1_SIZE_REC.output(self._next_seq_length, kts.const(0, 16))
         BLOCK_1_SIZE_REC.output(self._update_seq_state, 0)
@@ -1206,7 +1271,7 @@ class Scanner(Generator):
         BLOCK_1_SIZE_REC.output(self._clr_fiber_addr, 0)
         BLOCK_1_SIZE_REC.output(self._inc_rep, 0)
         BLOCK_1_SIZE_REC.output(self._clr_rep, 0)
-        BLOCK_1_SIZE_REC.output(self._data_to_fifo, kts.const(0, 16))
+        BLOCK_1_SIZE_REC.output(self._data_to_fifo, self._rd_rsp_fifo_out_data)
         BLOCK_1_SIZE_REC.output(self._en_reg_data_in, 0)
         BLOCK_1_SIZE_REC.output(self._pos_out_to_fifo, kts.const(0, 16))
         BLOCK_1_SIZE_REC.output(self._inc_req_made, 0)
@@ -1226,7 +1291,10 @@ class Scanner(Generator):
 
         BLOCK_1_RD.output(self._valid_inc, 0)
         BLOCK_1_RD.output(self._valid_rst, 0)
-        BLOCK_1_RD.output(self._fifo_push, self._rd_rsp_fifo_valid & (self._num_req_rec < self._ptr_reg))
+        # BLOCK_1_RD.output(self._fifo_push, self._rd_rsp_fifo_valid & (self._num_req_rec < self._ptr_reg))
+        BLOCK_1_RD.output(self._coord_out_fifo_push, self._rd_rsp_fifo_valid & (self._num_req_rec < self._ptr_reg))
+        BLOCK_1_RD.output(self._pos_out_fifo_push, 0)
+
         BLOCK_1_RD.output(self._tag_eos, 0)
         BLOCK_1_RD.output(self._next_seq_length, kts.const(0, 16))
         BLOCK_1_RD.output(self._update_seq_state, 0)
@@ -1236,7 +1304,7 @@ class Scanner(Generator):
         BLOCK_1_RD.output(self._clr_fiber_addr, 0)
         BLOCK_1_RD.output(self._inc_rep, 0)
         BLOCK_1_RD.output(self._clr_rep, 0)
-        BLOCK_1_RD.output(self._data_to_fifo, kts.const(0, 16))
+        BLOCK_1_RD.output(self._data_to_fifo, self._rd_rsp_fifo_out_data)
         BLOCK_1_RD.output(self._en_reg_data_in, 0)
         BLOCK_1_RD.output(self._pos_out_to_fifo, kts.const(0, 16))
         BLOCK_1_RD.output(self._inc_req_made, self._buffet_push & self._buffet_joined)
@@ -1257,7 +1325,10 @@ class Scanner(Generator):
 
         BLOCK_2_SIZE_REQ.output(self._valid_inc, 0)
         BLOCK_2_SIZE_REQ.output(self._valid_rst, 0)
-        BLOCK_2_SIZE_REQ.output(self._fifo_push, 0)
+        # BLOCK_2_SIZE_REQ.output(self._fifo_push, 0)
+        BLOCK_2_SIZE_REQ.output(self._coord_out_fifo_push, 0)
+        BLOCK_2_SIZE_REQ.output(self._pos_out_fifo_push, 0)
+
         BLOCK_2_SIZE_REQ.output(self._tag_eos, 0)
         BLOCK_2_SIZE_REQ.output(self._next_seq_length, kts.const(0, 16))
         BLOCK_2_SIZE_REQ.output(self._update_seq_state, 0)
@@ -1287,7 +1358,10 @@ class Scanner(Generator):
 
         BLOCK_2_SIZE_REC.output(self._valid_inc, 0)
         BLOCK_2_SIZE_REC.output(self._valid_rst, 0)
-        BLOCK_2_SIZE_REC.output(self._fifo_push, self._rd_rsp_fifo_valid)
+        # BLOCK_2_SIZE_REC.output(self._fifo_push, self._rd_rsp_fifo_valid)
+        BLOCK_2_SIZE_REC.output(self._coord_out_fifo_push, self._rd_rsp_fifo_valid)
+        BLOCK_2_SIZE_REC.output(self._pos_out_fifo_push, 0)
+
         BLOCK_2_SIZE_REC.output(self._tag_eos, 0)
         BLOCK_2_SIZE_REC.output(self._next_seq_length, kts.const(0, 16))
         BLOCK_2_SIZE_REC.output(self._update_seq_state, 0)
@@ -1297,7 +1371,7 @@ class Scanner(Generator):
         BLOCK_2_SIZE_REC.output(self._clr_fiber_addr, 0)
         BLOCK_2_SIZE_REC.output(self._inc_rep, 0)
         BLOCK_2_SIZE_REC.output(self._clr_rep, 0)
-        BLOCK_2_SIZE_REC.output(self._data_to_fifo, kts.const(0, 16))
+        BLOCK_2_SIZE_REC.output(self._data_to_fifo, self._rd_rsp_fifo_out_data)
         BLOCK_2_SIZE_REC.output(self._en_reg_data_in, 0)
         BLOCK_2_SIZE_REC.output(self._pos_out_to_fifo, kts.const(0, 16))
         BLOCK_2_SIZE_REC.output(self._inc_req_made, 0)
@@ -1317,7 +1391,10 @@ class Scanner(Generator):
 
         BLOCK_2_RD.output(self._valid_inc, 0)
         BLOCK_2_RD.output(self._valid_rst, 0)
-        BLOCK_2_RD.output(self._fifo_push, self._rd_rsp_fifo_valid & (self._num_req_rec < self._ptr_reg))
+        # BLOCK_2_RD.output(self._fifo_push, self._rd_rsp_fifo_valid & (self._num_req_rec < self._ptr_reg))
+        BLOCK_2_RD.output(self._coord_out_fifo_push, self._rd_rsp_fifo_valid & (self._num_req_rec < self._ptr_reg))
+        BLOCK_2_RD.output(self._pos_out_fifo_push, 0)
+
         BLOCK_2_RD.output(self._tag_eos, 0)
         BLOCK_2_RD.output(self._next_seq_length, kts.const(0, 16))
         BLOCK_2_RD.output(self._update_seq_state, 0)
@@ -1327,7 +1404,7 @@ class Scanner(Generator):
         BLOCK_2_RD.output(self._clr_fiber_addr, 0)
         BLOCK_2_RD.output(self._inc_rep, 0)
         BLOCK_2_RD.output(self._clr_rep, 0)
-        BLOCK_2_RD.output(self._data_to_fifo, kts.const(0, 16))
+        BLOCK_2_RD.output(self._data_to_fifo, self._rd_rsp_fifo_out_data)
         BLOCK_2_RD.output(self._en_reg_data_in, 0)
         BLOCK_2_RD.output(self._pos_out_to_fifo, kts.const(0, 16))
         BLOCK_2_RD.output(self._inc_req_made, self._buffet_push & self._buffet_joined)
@@ -1347,7 +1424,10 @@ class Scanner(Generator):
 
         FREE1.output(self._valid_inc, 0)
         FREE1.output(self._valid_rst, 0)
-        FREE1.output(self._fifo_push, 0)
+        # FREE1.output(self._fifo_push, 0)
+        FREE1.output(self._coord_out_fifo_push, 0)
+        FREE1.output(self._pos_out_fifo_push, 0)
+
         FREE1.output(self._tag_eos, 0)
         FREE1.output(self._next_seq_length, kts.const(0, 16))
         FREE1.output(self._update_seq_state, 0)
@@ -1377,7 +1457,10 @@ class Scanner(Generator):
 
         FREE2.output(self._valid_inc, 0)
         FREE2.output(self._valid_rst, 1)
-        FREE2.output(self._fifo_push, 0)
+        # FREE2.output(self._fifo_push, 0)
+        FREE2.output(self._coord_out_fifo_push, 0)
+        FREE2.output(self._pos_out_fifo_push, 0)
+
         FREE2.output(self._tag_eos, 0)
         FREE2.output(self._next_seq_length, kts.const(0, 16))
         FREE2.output(self._update_seq_state, 0)
@@ -1406,7 +1489,10 @@ class Scanner(Generator):
         DONE.output(self._ptr_reg_en, 0)
         DONE.output(self._valid_inc, 0)
         DONE.output(self._valid_rst, 1)
-        DONE.output(self._fifo_push, 0)
+        # DONE.output(self._fifo_push, 0)
+        DONE.output(self._coord_out_fifo_push, 0)
+        DONE.output(self._pos_out_fifo_push, 0)
+
         DONE.output(self._tag_eos, 0)
         DONE.output(self._next_seq_length, kts.const(0, 16))
         DONE.output(self._update_seq_state, 0)
@@ -1423,7 +1509,6 @@ class Scanner(Generator):
         DONE.output(self._clr_req_made, 0)
         DONE.output(self._inc_req_rec, 0)
         DONE.output(self._clr_req_rec, 0)
-
 
         self.scan_fsm.set_start_state(START)
 
@@ -1450,7 +1535,7 @@ class Scanner(Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._fifo_push,
+                       push=self._coord_out_fifo_push,
                        pop=self._ready_in[0],
                        data_in=self._coord_data_in_packed,
                        data_out=self._coord_data_out_packed)
@@ -1472,7 +1557,7 @@ class Scanner(Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._fifo_push,
+                       push=self._pos_out_fifo_push,
                        pop=self._ready_in[1],
                        data_in=self._pos_data_in_packed,
                        data_out=self._pos_data_out_packed)

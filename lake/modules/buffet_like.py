@@ -323,7 +323,7 @@ class BuffetLike(Generator):
 
         chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
 
-        self.wire(self._rd_rsp_fifo_in_data, kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block))
+        self.wire(self._rd_rsp_fifo_in_data, kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block + 1))
 
         self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | self._size_request_full.r_or())
 
@@ -366,10 +366,11 @@ class BuffetLike(Generator):
 
         self._en_curr_bounds = self.var("en_curr_bounds", self.num_ID)
         # self._curr_bounds = self.var("curr_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
-        self._curr_bounds = [register(self, self._wr_addr, enable=self._en_curr_bounds[i], name=f"curr_bounds_{i}", packed=True) for i in range(self.num_ID)]
+        self._curr_bounds = [register(self, self._wr_addr_fifo_out_data, enable=self._en_curr_bounds[i], name=f"curr_bounds_{i}", packed=True) for i in range(self.num_ID)]
 
         self._en_curr_base = self.var("en_curr_base", self.num_ID)
-        self._curr_base = [register(self, self._wr_addr, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
+        # self._curr_base = [register(self, self._wr_addr, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
+        self._curr_base = [register(self, self._curr_bounds[i] + 1, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
         # self._curr_bounds = register(self, self._bounds_ctr, enable=self._en_curr_bounds)
 
         self._push_blk = self.var("push_blk", self.num_ID)
@@ -430,7 +431,8 @@ class BuffetLike(Generator):
             ####################
 
             WR_START[ID_idx].output(self._push_blk[ID_idx], 0)
-            WR_START[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+            # WR_START[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+            WR_START[ID_idx].output(self._en_curr_base[ID_idx], 0)
             WR_START[ID_idx].output(self._en_curr_bounds[ID_idx], 0)
             WR_START[ID_idx].output(self._wen_full[ID_idx], 0)
             WR_START[ID_idx].output(self._pop_in_full[ID_idx], (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
@@ -444,7 +446,10 @@ class BuffetLike(Generator):
             # WRITING[ID_idx].output(self._inc_bounds_ctr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
             # WRITING[ID_idx].output(self._clr_bounds_ctr, 0)
             WRITING[ID_idx].output(self._push_blk[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-            WRITING[ID_idx].output(self._en_curr_base[ID_idx], 0)
+            # WRITING[ID_idx].output(self._en_curr_base[ID_idx], 0)
+            # On our way back to write start we can set the current base for the next block. it is 0 at reset, so we don't need to deal with it there
+            WRITING[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+            # Any time we make a write to the current block we can update the bounds of the current block
             WRITING[ID_idx].output(self._en_curr_bounds[ID_idx], self._mem_acq[2 * ID_idx + 0] & self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
             # WRITING[ID_idx].output(self._wen_full[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
 
@@ -483,8 +488,8 @@ class BuffetLike(Generator):
             RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
             # Pop the op fifo if there is a read that's going through or if it's a free op
             # If it's a size request, only fulfill it if we aren't pushing a read from memory to the output fifo
-            RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 2, ~self._valid_from_mem, kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[2 * ID_idx + 1] & ~self._rd_rsp_fifo_full, kts.const(1, 1))) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
-            RD_START[ID_idx].output(self._size_request_full[ID_idx], (self._rd_op_fifo_out_op == 2) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+            RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 2, ~self._valid_from_mem & self._blk_valid[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[2 * ID_idx + 1] & ~self._rd_rsp_fifo_full, kts.const(1, 1))) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+            RD_START[ID_idx].output(self._size_request_full[ID_idx], self._blk_valid[ID_idx] & (self._rd_op_fifo_out_op == 2) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
 
         for i in range(self.num_ID):
             self.write_fsm[i].set_start_state(WR_START[i])
@@ -519,7 +524,7 @@ class BuffetLike(Generator):
         for i in range(self.num_ID - 1):
             base_rr = kts.concat(self._ren_full[i + 1], self._wen_full[i + 1], base_rr)
 
-        brr = self.var("base_rr", 2* self.num_ID)
+        brr = self.var("base_rr", 2 * self.num_ID)
         self.wire(brr, base_rr)
 
         self.add_child(f"rr_arbiter",
@@ -573,7 +578,7 @@ class BuffetLike(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, capacity_0 = 1024, capacity_1 = 1024):
+    def get_bitstream(self, capacity_0=1024, capacity_1=1024):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
