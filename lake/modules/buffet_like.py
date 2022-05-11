@@ -306,10 +306,10 @@ class BuffetLike(Generator):
         self._rd_rsp_fifo_full = self.var("rd_rsp_fifo_full", 1)
 
         self._rd_rsp_fifo_in_data = self.var("rd_rsp_fifo_in_data", self.data_width, packed=True)
-        self._rd_rsp_outfifo = RegFIFO(data_width=self._rd_rsp_fifo_in_data.width, width_mult=1, depth=8)
+        self._rd_rsp_out_fifo = RegFIFO(data_width=self._rd_rsp_fifo_in_data.width, width_mult=1, depth=8)
 
         self.add_child(f"rd_rsp_fifo",
-                       self._rd_rsp_outfifo,
+                       self._rd_rsp_out_fifo,
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
@@ -318,8 +318,8 @@ class BuffetLike(Generator):
                        data_in=self._rd_rsp_fifo_in_data,
                        data_out=self._rd_rsp_data)
 
-        self.wire(self._rd_rsp_fifo_full, self._rd_rsp_outfifo.ports.full)
-        self.wire(self._rd_rsp_valid, ~self._rd_rsp_outfifo.ports.empty)
+        self.wire(self._rd_rsp_fifo_full, self._rd_rsp_out_fifo.ports.full)
+        self.wire(self._rd_rsp_valid, ~self._rd_rsp_out_fifo.ports.empty)
 
         chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
 
