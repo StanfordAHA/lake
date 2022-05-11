@@ -523,27 +523,6 @@ class StrgUBVec(MemoryController):
             sram2tb_0, sram2tb_1, tb2out_0, tb2out_1 = \
             controller_objs
 
-        # for camera_pipeline_2x2 to pass aha glb
-        # pre-parser: hack to linearize in2agg and agg2sram data_stride
-        def check_linear_data_stride(data_stride, extent, mem_size):
-            for i in range(len(data_stride) - 1):
-                if (data_stride[i] * extent[i]) % mem_size != data_stride[i + 1] % mem_size:
-                    return False
-            return True
-
-        linearize_data_stride = False
-        if "agg2sram_0" in config_json:
-            if config_json["agg2sram_0"]["mode"][0] == 0:
-                linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
-                linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
-                if not linear_agg_read or not linear_sram_read:
-                    linearize_data_stride = True
-                if (linearize_data_stride):
-                    print("linearization is true")
-                    print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
-                    print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
-                    print("original extent", config_json["agg2sram_0"]["extent"])
-
         # Store all configurations here
         config = []
 
@@ -552,7 +531,7 @@ class StrgUBVec(MemoryController):
             config.append(("chain_chain_en", 1))
 
         if "in2agg_0" in config_json:
-            in2agg_0 = map_controller(extract_controller_json(config_json["in2agg_0"]), "in2agg_0", True, linearize_data_stride)
+            in2agg_0 = map_controller(extract_controller_json(config_json["in2agg_0"]), "in2agg_0", True)
             config.append(("agg_only_agg_write_addr_gen_0_starting_addr", in2agg_0.in_data_strt))
             config.append(("agg_only_agg_write_sched_gen_0_enable", 1))
             config.append(("agg_only_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg_0.cyc_strt))
@@ -563,7 +542,7 @@ class StrgUBVec(MemoryController):
                 config.append((f"agg_only_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg_0.cyc_stride[i]))
 
         if "in2agg_1" in config_json:
-            in2agg_1 = map_controller(extract_controller_json(config_json["in2agg_1"]), "in2agg_1", True, linearize_data_stride)
+            in2agg_1 = map_controller(extract_controller_json(config_json["in2agg_1"]), "in2agg_1", True)
             config.append(("agg_only_agg_write_addr_gen_1_starting_addr", in2agg_1.in_data_strt))
             config.append(("agg_only_agg_write_sched_gen_1_enable", 1))
             config.append(("agg_only_agg_write_sched_gen_1_sched_addr_gen_starting_addr", in2agg_1.cyc_strt))
@@ -574,14 +553,14 @@ class StrgUBVec(MemoryController):
                 config.append((f"agg_only_agg_write_sched_gen_1_sched_addr_gen_strides_{i}", in2agg_1.cyc_stride[i]))
 
         if "agg2sram_0" in config_json:
-            agg2sram_0 = map_controller(extract_controller_json(config_json["agg2sram_0"]), "agg2sram_0", False, linearize_data_stride)
+            agg2sram_0 = map_controller(extract_controller_json(config_json["agg2sram_0"]), "agg2sram_0")
             config.append(("agg_sram_shared_delay_0", agg2sram_0.delay[0]))
             config.append(("agg_sram_shared_mode_0", agg2sram_0.mode[0]))
             config.append(("agg_sram_shared_agg_read_sched_gen_0_agg_read_padding", agg2sram_0.agg_read_padding[0]))
             config.append(("agg_sram_shared_agg_sram_shared_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
 
         if "agg2sram_1" in config_json:
-            agg2sram_1 = map_controller(extract_controller_json(config_json["agg2sram_1"]), "agg2sram_1", False, linearize_data_stride)
+            agg2sram_1 = map_controller(extract_controller_json(config_json["agg2sram_1"]), "agg2sram_1")
             config.append(("agg_sram_shared_delay_1", agg2sram_1.delay[0]))
             config.append(("agg_sram_shared_mode_1", agg2sram_1.mode[0]))
             config.append(("agg_sram_shared_agg_read_sched_gen_1_agg_read_padding", agg2sram_1.agg_read_padding[0]))
@@ -592,7 +571,7 @@ class StrgUBVec(MemoryController):
 
         if "tb2out_0" in config_json:
             num_tbs += 1
-            tb2out_0 = map_controller(extract_controller_json(config_json["tb2out_0"]), "tb2out_0", False, linearize_data_stride)
+            tb2out_0 = map_controller(extract_controller_json(config_json["tb2out_0"]), "tb2out_0")
             config.append(("tb_only_tb_read_sched_gen_0_enable", 1))
             config.append(("tb_only_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out_0.cyc_strt))
             config.append(("tb_only_tb_read_addr_gen_0_starting_addr", tb2out_0.out_data_strt))
@@ -604,7 +583,7 @@ class StrgUBVec(MemoryController):
 
         if "tb2out_1" in config_json:
             num_tbs += 1
-            tb2out_1 = map_controller(extract_controller_json(config_json["tb2out_1"]), "tb2out_1", False, linearize_data_stride)
+            tb2out_1 = map_controller(extract_controller_json(config_json["tb2out_1"]), "tb2out_1")
             config.append(("tb_only_tb_read_sched_gen_1_enable", 1))
             config.append(("tb_only_tb_read_addr_gen_1_starting_addr", tb2out_1.out_data_strt))
             config.append(("tb_only_tb_read_sched_gen_1_sched_addr_gen_starting_addr", tb2out_1.cyc_strt))
@@ -615,7 +594,7 @@ class StrgUBVec(MemoryController):
                 config.append((f"tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_{i}", tb2out_1.cyc_stride[i]))
 
         if "sram2tb_0" in config_json:
-            sram2tb_0 = map_controller(extract_controller_json(config_json["sram2tb_0"]), "sram2tb_0", False, linearize_data_stride)
+            sram2tb_0 = map_controller(extract_controller_json(config_json["sram2tb_0"]), "sram2tb_0")
             config.append(("sram_only_output_addr_gen_0_starting_addr", sram2tb_0.out_data_strt))
             config.append(("tb_only_tb_write_addr_gen_0_starting_addr", sram2tb_0.in_data_strt))
             config.append(("sram_tb_shared_output_sched_gen_0_enable", 1))
@@ -628,7 +607,7 @@ class StrgUBVec(MemoryController):
                 config.append((f"tb_only_tb_write_addr_gen_0_strides_{i}", sram2tb_0.in_data_stride[i]))
 
         if "sram2tb_1" in config_json:
-            sram2tb_1 = map_controller(extract_controller_json(config_json["sram2tb_1"]), "sram2tb_1", False, linearize_data_stride)
+            sram2tb_1 = map_controller(extract_controller_json(config_json["sram2tb_1"]), "sram2tb_1")
             config.append(("sram_only_output_addr_gen_1_starting_addr", sram2tb_1.out_data_strt))
             config.append(("tb_only_tb_write_addr_gen_1_starting_addr", sram2tb_1.in_data_strt))
             config.append(("sram_tb_shared_output_sched_gen_1_enable", 1))

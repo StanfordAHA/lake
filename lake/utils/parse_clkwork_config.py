@@ -117,7 +117,7 @@ def extract_controller(file_path):
     return ctrl_info
 
 
-def map_controller(controller, name, flatten=False, linear_ag=False):
+def map_controller(controller, name, flatten=False):
     ctrl_dim = controller.dim
     ctrl_ranges = controller.extent
     ctrl_cyc_strides = controller.cyc_stride
@@ -194,40 +194,10 @@ def map_controller(controller, name, flatten=False, linear_ag=False):
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
     tform_in_data_strides = None
     if ctrl_in_data_strt is not None:
-        # hack to linearize in2agg and agg2sram data_stride
-        if linear_ag:
-            print(name, "linearization")
-            print("original write data strides:", ctrl_in_data_strides)
-            for i in range(len(ctrl_in_data_strides) - 1):
-                s = ctrl_ranges[i] * ctrl_in_data_strides[i]
-                if "in2agg" in name:
-                    if (s % 4) > 0:
-                        s = (int(s / 4) + 1) * 4
-                elif "agg2sram" in name:
-                    s = s
-                elif "sram2tb" in name:
-                    s = s % 4
-                ctrl_in_data_strides[i + 1] = s
-            print("new write data strides:", ctrl_in_data_strides)
         (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
 
     tform_out_data_strides = None
     if ctrl_out_data_strt is not None:
-        # hack to linearize in2agg and agg2sram data_stride
-        if linear_ag:
-            print(name, "linearization")
-            print("original read data strides:", ctrl_out_data_strides)
-            for i in range(len(ctrl_out_data_strides) - 1):
-                s = ctrl_ranges[i] * ctrl_out_data_strides[i]
-                if "tb2out" in name:
-                    if (s % 4) > 0:
-                        s = (int(s / 4) + 1) * 4
-                elif "agg2sram" in name:
-                    s = s % 4
-                elif "sram2tb" in name:
-                    s = s
-                ctrl_out_data_strides[i + 1] = s
-            print("new read data strides:", ctrl_out_data_strides)
         (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
 
     tform_mux_data_strides = None
