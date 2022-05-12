@@ -461,8 +461,8 @@ class WriteScanner(Generator):
         # UL_WZ
         ####################
         # Need to write a 0 to the segment array first...
-        UL_WZ.next(UL, self._ready_in)
-        UL_WZ.next(UL_WZ, ~self._ready_in)
+        UL_WZ.next(UL, self._join_out_ready)
+        UL_WZ.next(UL_WZ, ~self._join_out_ready)
 
         ####################
         # UL #
