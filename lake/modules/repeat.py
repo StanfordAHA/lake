@@ -165,7 +165,7 @@ class Repeat(Generator):
 # =============================
 # Various Logic
 # =============================
-        # self._seen_root_eos = sticky_flag(self, (self._base_fifo_out_data == 0) & self._base_fifo_out_eos & self._base_fifo_valid, name="seen_root_eos")
+        self._seen_root_eos = sticky_flag(self, (self._proc_fifo_out_data == 0) & self._proc_fifo_out_eos & self._proc_fifo_valid, name="seen_root_eos")
 
 
 # =============================
@@ -191,14 +191,17 @@ class Repeat(Generator):
         #####################
         # PASS_REPEAT
         #####################
-        PASS_REPEAT.next(PASS_STOP, self._base_fifo_out_eos & self._base_fifo_valid)
+        # We can go to the PASS_STOP state when the stream being repeated has an actual stop token
+        PASS_REPEAT.next(PASS_STOP, self._proc_eos_in & self._proc_valid_in)
         PASS_REPEAT.next(PASS_REPEAT, None)
 
         #####################
         # PASS_STOP
         #####################
+        # We are done if we see the root EOS on the proc stream
         PASS_STOP.next(DONE, self._seen_root_eos)
-        PASS_STOP.next(PASS_REPEAT, self._base_fifo_valid & ~self._base_fifo_out_eos)
+        # If we aren't done, we should just wait for the next valid data as one must come eventually
+        PASS_STOP.next(PASS_REPEAT, self._proc_fifo_valid & ~self._proc_fifo_out_eos)
         PASS_STOP.next(PASS_STOP, None)
 
         #####################
@@ -209,10 +212,11 @@ class Repeat(Generator):
 # =============================
 # FSM Output Declaration
 # =============================
-        self.rsg_fsm.output(self._repsig_fifo_in_data)
-        self.rsg_fsm.output(self._repsig_fifo_in_eos)
-        self.rsg_fsm.output(self._repsig_fifo_push)
-        self.rsg_fsm.output(self._base_fifo_pop)
+        self.repeat_fsm.output(self._ref_fifo_in_data)
+        self.repeat_fsm.output(self._ref_fifo_in_eos)
+        self.repeat_fsm.output(self._ref_fifo_push)
+        self.repeat_fsm.output(self._proc_fifo_pop)
+        self.repeat_fsm.output(self._repsig_fifo_pop)
 
 # =============================
 # FSM Output Implementation
@@ -220,38 +224,52 @@ class Repeat(Generator):
         #####################
         # START
         #####################
-        START.output(self._repsig_fifo_in_data, 0)
-        START.output(self._repsig_fifo_in_eos, 0)
-        START.output(self._repsig_fifo_push, 0)
-        START.output(self._base_fifo_pop, 0)
+        START.output(self._ref_fifo_in_data, 0)
+        START.output(self._ref_fifo_in_eos, 0)
+        START.output(self._ref_fifo_push, 0)
+        START.output(self._proc_fifo_pop, 0)
+        START.output(self._repsig_fifo_pop, 0)
 
         #####################
         # PASS_REPEAT
         #####################
-        PASS_REPEAT.output(self._repsig_fifo_in_data, kts.const(1, 16))
-        PASS_REPEAT.output(self._repsig_fifo_in_eos, 0)
-        # Push the data on if it is data
-        PASS_REPEAT.output(self._repsig_fifo_push, ~self._base_fifo_out_eos & self._base_fifo_valid)
-        # Pop the incoming if it is data and there's room in the output fifo
-        PASS_REPEAT.output(self._base_fifo_pop, ~self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full)
+        # Either injecting the original data or the stop token if the repsig is giving an eos
+        PASS_REPEAT.output(self._ref_fifo_in_data, kts.ternary(self._repsig_fifo_out_eos, self._stop_lvl, self._proc_fifo_out_data))
+        PASS_REPEAT.output(self._ref_fifo_in_eos, self._repsig_fifo_out_eos)
+        # We can push to the output fifo whenever there's valid data on both fifos or there's an eos on the repsig
+        # This is because we will either be repeating a data or injecting the stop token
+        PASS_REPEAT.output(self._ref_fifo_push, (self._repsig_fifo_valid & self._proc_fifo_valid) | (self._repsig_fifo_valid & self._repsig_fifo_out_eos))
+        # If we are injecting the repsig stop token, then we should simultaneously pop the proc fifo as we are moving to the next data
+        # I believe it is guaranteed by construction that the proc fifo HAS to have data on its line, it could never be a stop token on the proc fifo at this point
+        PASS_REPEAT.output(self._proc_fifo_pop, (self._repsig_fifo_valid & self._repsig_fifo_out_eos) & ~self._ref_fifo_full)
+        # Only pop the repsig fifo if there's room in the output fifo
+        PASS_REPEAT.output(self._repsig_fifo_pop, ~self._ref_fifo_full)
 
         #####################
         # PASS_STOP
         #####################
-        PASS_STOP.output(self._repsig_fifo_in_data, self._base_fifo_out_data)
-        PASS_STOP.output(self._repsig_fifo_in_eos, 1)
-        PASS_STOP.output(self._repsig_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid)
-        PASS_STOP.output(self._base_fifo_pop, self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full)
+        # Here we are passing on the stop tokens from the proc stream
+        PASS_STOP.output(self._ref_fifo_in_data, self._proc_fifo_out_data)
+        # Since it's only stop tokens here, this can be 1
+        # PASS_STOP.output(self._ref_fifo_in_eos, self._proc_fifo_out_eos)
+        PASS_STOP.output(self._ref_fifo_in_eos, 1)
+        # Push whenever there is valid data
+        PASS_STOP.output(self._ref_fifo_push, self._proc_fifo_valid)
+        # Pop the proc stream whenever there is room on the output fifo
+        PASS_STOP.output(self._proc_fifo_pop, ~self._ref_fifo_full)
+        # We are not touching the repsig stream here...
+        PASS_STOP.output(self._repsig_fifo_pop, 0)
 
         #####################
         # DONE
         #####################
-        DONE.output(self._repsig_fifo_in_data, 0)
-        DONE.output(self._repsig_fifo_in_eos, 0)
-        DONE.output(self._repsig_fifo_push, 0)
-        DONE.output(self._base_fifo_pop, 0)
+        DONE.output(self._ref_fifo_in_data, 0)
+        DONE.output(self._ref_fifo_in_eos, 0)
+        DONE.output(self._ref_fifo_push, 0)
+        DONE.output(self._proc_fifo_pop, 0)
+        DONE.output(self._repsig_fifo_pop, 0)
 
-        self.rsg_fsm.set_start_state(START)
+        self.repeat_fsm.set_start_state(START)
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
@@ -271,10 +289,12 @@ class Repeat(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self):
+    def get_bitstream(self, stop_lvl=0):
 
         # Store all configurations here
-        config = [("tile_en", 1)]
+        config = [("tile_en", 1),
+                  ("stop_lvl", stop_lvl)
+                  ]
         return config
 
 

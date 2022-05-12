@@ -170,7 +170,6 @@ class RepeatSignalGenerator(Generator):
         #####################
         DONE.next(DONE, None)
 
-
 # =============================
 # FSM Output Declaration
 # =============================
@@ -236,10 +235,12 @@ class RepeatSignalGenerator(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self):
+    def get_bitstream(self, stop_lvl=0):
 
         # Store all configurations here
-        config = [("tile_en", 1)]
+        config = [("tile_en", 1),
+                  ("stop_lvl", stop_lvl)
+                  ]
         return config
 
 

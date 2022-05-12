@@ -698,7 +698,7 @@ class Intersect(kts.Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._cmrg_fifo_push[0],
-                       pop=self._ready_in[0],
+                       pop=self._cmrg_ready_in[0],
                        data_in=self._base_outfifo_in_packed,
                        data_out=self._base_outfifo_out_packed)
 
@@ -724,7 +724,7 @@ class Intersect(kts.Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._cmrg_fifo_push[1],
-                       pop=self._ready_in[1],
+                       pop=self._cmrg_ready_in[1],
                        data_in=self._proc_outfifo_in_packed,
                        data_out=self._proc_outfifo_out_packed)
 
