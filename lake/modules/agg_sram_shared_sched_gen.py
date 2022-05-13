@@ -18,7 +18,7 @@ class AggSramSharedSchedGen(Generator):
                  mem_width=64,
                  agg_range_width=16,
                  delay_width=4,
-                 agg_read_padding_width=6,
+                 agg_read_padding_width=8,
                  interconnect_input_ports=2,
                  config_width=16):
 
