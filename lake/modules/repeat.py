@@ -86,6 +86,9 @@ class Repeat(Generator):
         self._stop_lvl = self.input("stop_lvl", self.data_width)
         self._stop_lvl.add_attribute(ConfigRegAttr("What level stop tokens should this scanner inject"))
 
+        # Root mode
+        self._root = self.input("root", 1)
+        self._root.add_attribute(ConfigRegAttr("Is this a root repeater"))
 
 # ==============================
 # INPUT FIFO
@@ -117,7 +120,17 @@ class Repeat(Generator):
         self._proc_fifo_pop = self.var("proc_fifo_pop", 1)
         self._proc_fifo_valid = self.var("proc_fifo_valid", 1)
 
-        self._proc_fifo_in = kts.concat(self._proc_data_in, self._proc_eos_in)
+        self._proc_fifo_push = self.var("proc_fifo_push", 1)
+        self._proc_fifo_full = self.var("proc_fifo_full", 1)
+
+        # Need a path to inject into the input fifo for root mode
+        self._proc_fifo_inject_push = self.var("proc_fifo_inject_push", 1)
+        self._proc_fifo_inject_data = self.var("proc_fifo_inject_data", 16)
+        self._proc_fifo_inject_eos = self.var("proc_fifo_inject_eos", 1)
+
+        self.wire(self._proc_fifo_push, kts.ternary(self._root, self._proc_fifo_inject_push, self._proc_valid_in))
+
+        self._proc_fifo_in = kts.ternary(self._root, kts.concat(self._proc_fifo_inject_data, self._proc_fifo_inject_eos), kts.concat(self._proc_data_in, self._proc_eos_in))
         self._proc_in_fifo = RegFIFO(data_width=self._proc_fifo_in.width, width_mult=1, depth=8)
         self._proc_fifo_out_data = self.var("proc_fifo_out_data", self.data_width, packed=True)
         self._proc_fifo_out_eos = self.var("proc_fifo_out_eos", 1)
@@ -127,12 +140,13 @@ class Repeat(Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._proc_valid_in,
+                       push=self._proc_fifo_push,
                        pop=self._proc_fifo_pop,
                        data_in=self._proc_fifo_in,
                        data_out=kts.concat(self._proc_fifo_out_data, self._proc_fifo_out_eos))
 
         self.wire(self._proc_ready_out, ~self._proc_in_fifo.ports.full)
+        self.wire(self._proc_fifo_full, self._proc_in_fifo.ports.full)
         self.wire(self._proc_fifo_valid, ~self._proc_in_fifo.ports.empty)
 
 
@@ -175,6 +189,8 @@ class Repeat(Generator):
         self.repeat_fsm = self.add_fsm("repeat_fsm", reset_high=False)
 
         START = self.repeat_fsm.add_state("START")
+        INJECT0 = self.repeat_fsm.add_state("INJECT0")
+        INJECT1 = self.repeat_fsm.add_state("INJECT1")
         PASS_REPEAT = self.repeat_fsm.add_state("PASS_REPEAT")
         PASS_STOP = self.repeat_fsm.add_state("PASS_STOP")
         DONE = self.repeat_fsm.add_state("DONE")
@@ -186,7 +202,20 @@ class Repeat(Generator):
         #####################
         # START
         #####################
-        START.next(PASS_REPEAT, kts.const(1, 1))
+        START.next(INJECT0, self._root)
+        START.next(PASS_REPEAT, ~self._root)
+
+        #####################
+        # INJECT0
+        #####################
+        INJECT0.next(INJECT1, ~self._proc_fifo_full)
+        INJECT0.next(INJECT0, None)
+
+        #####################
+        # INJECT1
+        #####################
+        INJECT1.next(PASS_REPEAT, ~self._proc_fifo_full)
+        INJECT1.next(INJECT1, None)
 
         #####################
         # PASS_REPEAT
@@ -212,15 +241,20 @@ class Repeat(Generator):
 # =============================
 # FSM Output Declaration
 # =============================
+
         self.repeat_fsm.output(self._ref_fifo_in_data)
         self.repeat_fsm.output(self._ref_fifo_in_eos)
         self.repeat_fsm.output(self._ref_fifo_push)
         self.repeat_fsm.output(self._proc_fifo_pop)
         self.repeat_fsm.output(self._repsig_fifo_pop)
+        self.repeat_fsm.output(self._proc_fifo_inject_push)
+        self.repeat_fsm.output(self._proc_fifo_inject_data)
+        self.repeat_fsm.output(self._proc_fifo_inject_eos)
 
 # =============================
 # FSM Output Implementation
 # =============================
+
         #####################
         # START
         #####################
@@ -229,6 +263,33 @@ class Repeat(Generator):
         START.output(self._ref_fifo_push, 0)
         START.output(self._proc_fifo_pop, 0)
         START.output(self._repsig_fifo_pop, 0)
+        START.output(self._proc_fifo_inject_push, 0)
+        START.output(self._proc_fifo_inject_data, 0)
+        START.output(self._proc_fifo_inject_eos, 0)
+
+        #####################
+        # INJECT0
+        #####################
+        INJECT0.output(self._ref_fifo_in_data, 0)
+        INJECT0.output(self._ref_fifo_in_eos, 0)
+        INJECT0.output(self._ref_fifo_push, 0)
+        INJECT0.output(self._proc_fifo_pop, 0)
+        INJECT0.output(self._repsig_fifo_pop, 0)
+        INJECT0.output(self._proc_fifo_inject_push, 1)
+        INJECT0.output(self._proc_fifo_inject_data, 0)
+        INJECT0.output(self._proc_fifo_inject_eos, 0)
+
+        #####################
+        # INJECT1
+        #####################
+        INJECT1.output(self._ref_fifo_in_data, 0)
+        INJECT1.output(self._ref_fifo_in_eos, 0)
+        INJECT1.output(self._ref_fifo_push, 0)
+        INJECT1.output(self._proc_fifo_pop, 0)
+        INJECT1.output(self._repsig_fifo_pop, 0)
+        INJECT1.output(self._proc_fifo_inject_push, 1)
+        INJECT1.output(self._proc_fifo_inject_data, 0)
+        INJECT1.output(self._proc_fifo_inject_eos, 1)
 
         #####################
         # PASS_REPEAT
@@ -244,6 +305,9 @@ class Repeat(Generator):
         PASS_REPEAT.output(self._proc_fifo_pop, (self._repsig_fifo_valid & self._repsig_fifo_out_eos) & ~self._ref_fifo_full)
         # Only pop the repsig fifo if there's room in the output fifo
         PASS_REPEAT.output(self._repsig_fifo_pop, ~self._ref_fifo_full)
+        PASS_REPEAT.output(self._proc_fifo_inject_push, 0)
+        PASS_REPEAT.output(self._proc_fifo_inject_data, 0)
+        PASS_REPEAT.output(self._proc_fifo_inject_eos, 0)
 
         #####################
         # PASS_STOP
@@ -259,6 +323,9 @@ class Repeat(Generator):
         PASS_STOP.output(self._proc_fifo_pop, ~self._ref_fifo_full)
         # We are not touching the repsig stream here...
         PASS_STOP.output(self._repsig_fifo_pop, 0)
+        PASS_STOP.output(self._proc_fifo_inject_push, 0)
+        PASS_STOP.output(self._proc_fifo_inject_data, 0)
+        PASS_STOP.output(self._proc_fifo_inject_eos, 0)
 
         #####################
         # DONE
@@ -268,6 +335,9 @@ class Repeat(Generator):
         DONE.output(self._ref_fifo_push, 0)
         DONE.output(self._proc_fifo_pop, 0)
         DONE.output(self._repsig_fifo_pop, 0)
+        DONE.output(self._proc_fifo_inject_push, 0)
+        DONE.output(self._proc_fifo_inject_data, 0)
+        DONE.output(self._proc_fifo_inject_eos, 0)
 
         self.repeat_fsm.set_start_state(START)
 
@@ -289,11 +359,12 @@ class Repeat(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, stop_lvl=0):
+    def get_bitstream(self, stop_lvl=0, root=0):
 
         # Store all configurations here
         config = [("tile_en", 1),
-                  ("stop_lvl", stop_lvl)
+                  ("stop_lvl", stop_lvl),
+                  ("root", root)
                   ]
         return config
 
