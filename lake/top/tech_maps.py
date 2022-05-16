@@ -152,21 +152,16 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
     if dual_port:
         ports.append(dual_port_p0rw)
         ports.append(dual_port_p1r)
-
-        tech_map = {
-            'name': f"IN12LP_SDPB_W{depth:05}B{width:03}M08S2_H",
-            'ports': ports,
-            'depth': depth,
-            'width': width
-        }
+        name = f"IN12LP_SDPB_W{depth:05}B{width:03}M08S2_H"
     else:
         ports.append(single_port)
+        name = f"IN12LP_S1DB_W{depth:05}B{width:03}M04S2_H"
 
-        tech_map = {
-            'name': f"IN12LP_S1DB_W{depth:05}B{width:03}M04S2_H",
-            'ports': ports,
-            'depth': depth,
-            'width': width
-        }
+    tech_map = {
+        'name': name,
+        'ports': ports,
+        'depth': depth,
+        'width': width
+    }
 
     return tech_map
