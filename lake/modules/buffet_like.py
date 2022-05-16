@@ -130,10 +130,10 @@ class BuffetLike(Generator):
         self._rd_rsp_valid.add_attribute(ControlSignalAttr(is_control=False))
 
         # Need interface to memory...
-        self._addr_to_mem = self.output("addr_to_mem", self.data_width)
+        self._addr_to_mem = self.output("addr_to_mem", self.data_width, packed=True, explicit_array=True)
         self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._data_to_mem = self.output("data_to_mem", self.data_width)
+        self._data_to_mem = self.output("data_to_mem", self.data_width, packed=True, explicit_array=True)
         self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._wen_to_mem = self.output("wen_to_mem", 1)
@@ -142,7 +142,7 @@ class BuffetLike(Generator):
         self._ren_to_mem = self.output("ren_to_mem", 1)
         self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._data_from_mem = self.input("data_from_mem", self.data_width)
+        self._data_from_mem = self.input("data_from_mem", self.data_width, packed=True, explicit_array=True)
         self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._valid_from_mem = self.input("valid_from_mem", 1)
