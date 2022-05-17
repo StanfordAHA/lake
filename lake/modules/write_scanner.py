@@ -1016,7 +1016,8 @@ class WriteScanner(Generator):
             ("compressed", compressed),
             ("lowest_level", lowest_level),
             ("stop_lvl", stop_lvl),
-            ("block_mode", block_mode)]
+            ("block_mode", block_mode),
+            ("tile_en", 1)]
 
         return trim_config_list(flattened, config)
 

@@ -1598,7 +1598,9 @@ class Scanner(Generator):
             ("repeat_factor", repeat_factor),
             ("stop_lvl", stop_lvl),
             ("block_mode", block_mode),
-            ('lookup', lookup)]
+            ('lookup', lookup),
+            ('root', root),
+            ('tile_en', 1)]
 
         if root:
             dim = len(ranges)

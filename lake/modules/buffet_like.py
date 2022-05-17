@@ -586,7 +586,8 @@ class BuffetLike(Generator):
         # Store all configurations here
         config = [
             ("buffet_capacity_0", capacity_0),
-            ("buffet_capacity_1", capacity_1)]
+            ("buffet_capacity_1", capacity_1),
+            ("tile_en", 1)]
 
         return trim_config_list(flattened, config)
 
