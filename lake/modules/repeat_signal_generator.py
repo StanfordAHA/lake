@@ -171,7 +171,10 @@ class RepeatSignalGenerator(Generator):
         # Passthru is trivial, just push it when the other one is being pushed
         self.wire(self._passthru_fifo_in_data, self._base_fifo_out_data)
         self.wire(self._passthru_fifo_in_eos, self._base_fifo_out_eos)
-        self.wire(self._passthru_fifo_push, self._repsig_fifo_push)
+        # self.wire(self._passthru_fifo_push, self._repsig_fifo_push)
+
+        self._clr_already_pushed_repsig_eos = self.var("clr_already_pushed_repsig_eos", 1)
+        self._already_pushed_repsig_eos = sticky_flag(self, self._repsig_fifo_push, clear=self._clr_already_pushed_repsig_eos, seq_only=True)
 
 # =============================
 # Instantiate FSM
@@ -218,6 +221,8 @@ class RepeatSignalGenerator(Generator):
         self.rsg_fsm.output(self._repsig_fifo_in_eos)
         self.rsg_fsm.output(self._repsig_fifo_push)
         self.rsg_fsm.output(self._base_fifo_pop)
+        self.rsg_fsm.output(self._passthru_fifo_push)
+        self.rsg_fsm.output(self._clr_already_pushed_repsig_eos)
 
 # =============================
 # FSM Output Implementation
@@ -229,6 +234,8 @@ class RepeatSignalGenerator(Generator):
         START.output(self._repsig_fifo_in_eos, 0)
         START.output(self._repsig_fifo_push, 0)
         START.output(self._base_fifo_pop, 0)
+        START.output(self._passthru_fifo_push, 0)
+        START.output(self._clr_already_pushed_repsig_eos, 0)
 
         #####################
         # PASS_REPEAT
@@ -238,15 +245,22 @@ class RepeatSignalGenerator(Generator):
         # Push the data on if it is data
         PASS_REPEAT.output(self._repsig_fifo_push, ~self._base_fifo_out_eos & self._base_fifo_valid)
         # Pop the incoming if it is data and there's room in the output fifo
-        PASS_REPEAT.output(self._base_fifo_pop, ~self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full)
+        PASS_REPEAT.output(self._base_fifo_pop, ~self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full & ~self._passthru_fifo_full)
+        PASS_REPEAT.output(self._passthru_fifo_push, ~self._base_fifo_out_eos & self._base_fifo_valid)
+        PASS_REPEAT.output(self._clr_already_pushed_repsig_eos, 1)
 
         #####################
         # PASS_STOP
         #####################
         PASS_STOP.output(self._repsig_fifo_in_data, self._base_fifo_out_data)
         PASS_STOP.output(self._repsig_fifo_in_eos, 1)
-        PASS_STOP.output(self._repsig_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid)
-        PASS_STOP.output(self._base_fifo_pop, self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full)
+        # Only pass a single stop token to the repsig line for compliance, by construction the other
+        # stop tokens will reappear on the proc lines of other repeat blocks
+        PASS_STOP.output(self._repsig_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid & ~self._already_pushed_repsig_eos)
+        PASS_STOP.output(self._base_fifo_pop, self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full & ~self._passthru_fifo_full)
+        # Pass all stops to the passthru line
+        PASS_STOP.output(self._passthru_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid)
+        PASS_STOP.output(self._clr_already_pushed_repsig_eos, 0)
 
         #####################
         # DONE
@@ -255,6 +269,8 @@ class RepeatSignalGenerator(Generator):
         DONE.output(self._repsig_fifo_in_eos, 0)
         DONE.output(self._repsig_fifo_push, 0)
         DONE.output(self._base_fifo_pop, 0)
+        DONE.output(self._passthru_fifo_push, 0)
+        DONE.output(self._clr_already_pushed_repsig_eos, 0)
 
         self.rsg_fsm.set_start_state(START)
 
