@@ -824,10 +824,10 @@ class Scanner(Generator):
         PASS_STOP.output(self._valid_rst, 0)
         # PASS_STOP.output(self._ren, 0)
         # PASS_STOP.output(self._fifo_push, self._infifo_eos_in)
-        PASS_STOP.output(self._coord_out_fifo_push, self._infifo_eos_in)
+        PASS_STOP.output(self._coord_out_fifo_push, self._infifo_eos_in & self._infifo_valid_in)
         # PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in)
         # Only push it to pos fifo if not in lookup mode...
-        PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in & ~self._lookup_mode)
+        PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in & self._infifo_valid_in & ~self._lookup_mode)
 
         PASS_STOP.output(self._tag_eos, 1)
         # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
@@ -835,7 +835,7 @@ class Scanner(Generator):
         PASS_STOP.output(self._next_seq_length, kts.const(0, 16))
         PASS_STOP.output(self._update_seq_state, 0)
         PASS_STOP.output(self._last_valid_accepting, 0)
-        PASS_STOP.output(self._pop_infifo, ~self._fifo_full & self._infifo_eos_in)
+        PASS_STOP.output(self._pop_infifo, ~self._fifo_full & self._infifo_eos_in & self._infifo_valid_in)
         PASS_STOP.output(self._inc_fiber_addr, 0)
         PASS_STOP.output(self._clr_fiber_addr, 0)
         PASS_STOP.output(self._inc_rep, 0)

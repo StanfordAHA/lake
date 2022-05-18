@@ -221,7 +221,7 @@ class Repeat(Generator):
         # PASS_REPEAT
         #####################
         # We can go to the PASS_STOP state when the stream being repeated has an actual stop token
-        PASS_REPEAT.next(PASS_STOP, self._proc_eos_in & self._proc_valid_in)
+        PASS_REPEAT.next(PASS_STOP, self._proc_fifo_out_eos & self._proc_fifo_valid)
         PASS_REPEAT.next(PASS_REPEAT, None)
 
         #####################
