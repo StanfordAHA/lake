@@ -128,7 +128,7 @@ class ValidCycleCtrl(Generator):
         ##################################################################################
         # for loop
         cycle_loops = ForLoop(iterator_support=self.cycle_iterator_support,
-                              config_width=self.default_config_width)
+                              config_width=10)
 
         self.add_child("cycle_id",
                        cycle_loops,

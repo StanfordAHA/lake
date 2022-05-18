@@ -185,7 +185,7 @@ class StrgUBTBOnly(Generator):
             self.add_code(tb_ctrl)
 
             # READ FROM TB
-            valid_cycle_tbonly = ValidCycleCtrl(cycle_iterator_support=5)
+            valid_cycle_tbonly = ValidCycleCtrl(cycle_iterator_support=3)
             self.add_child(f"valid_cycle_tbonly_{i}",
                            valid_cycle_tbonly,
                            clk=self._clk,
@@ -210,10 +210,11 @@ class StrgUBTBOnly(Generator):
                            rst_n=self._rst_n,
                            step=self._tb_read[i],
                            # addr_out=self._tb_read_addr[i])
-                           mux_sel=valid_cycle_tbonly.ports.mux_sel_out,
+                           # mux_sel=valid_cycle_tbonly.ports.mux_sel_out,
                            restart=valid_cycle_tbonly.ports.restart_out)
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
             safe_wire(gen=self, w_to=self._tb_read_addr_out[i], w_from=_AG.ports.addr_out)
+            safe_wire(gen=self, w_to=_AG.ports.mux_sel, w_from=valid_cycle_tbonly.ports.mux_sel_out)
 
             # self.add_child(f"tb_read_sched_gen_{i}",
             #                SchedGen(iterator_support=self.tb_iter_support,
