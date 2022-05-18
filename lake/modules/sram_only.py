@@ -61,7 +61,7 @@ class StrgUBSRAMOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        # self._cycle_count = self.input("cycle_count", 16)
 
         # sram to tb for loop
         self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel",

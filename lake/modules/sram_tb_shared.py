@@ -2,9 +2,11 @@ from kratos import *
 from lake.modules.passthru import *
 from lake.modules.register_file import RegisterFile
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.range_group import RangeGroupAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.sram_stub import SRAMStub
+from lake.modules.valid_cycle_ctrl import ValidCycleCtrl
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
@@ -62,7 +64,12 @@ class StrgUBSRAMTBShared(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        # self._cycle_count = self.input("cycle_count", 16)
+
+        self._agg2sram_valid_out = self.input("agg2sram_valid_out", self.interconnect_input_ports)
+        self._sram2tb_validin_sel = self.input("sram2tb_validin_sel", self.interconnect_input_ports)
+        self._sram2tb_validin_sel.add_attribute(ConfigRegAttr("Selects the valid in for the valid-cycle controller"))
+        self._sram2tb_validin_sel.add_attribute(FormalAttr(f"{self._sram2tb_validin_sel.name}", FormalSignalConstraint.SOLVE))
 
         self._loops_sram2tb_mux_sel = self.output("loops_sram2tb_mux_sel",
                                                   width=max(clog2(self.default_iterator_support), 1),
@@ -84,31 +91,43 @@ class StrgUBSRAMTBShared(Generator):
         # TB PATHS
         ##################################################################################
         for i in range(self.interconnect_output_ports):
+            self._sram2tb_valid_in = self.var("sram2tb_valid_in", 1)
+            self._sram2tb_valid_in = ternary(self._sram2tb_validin_sel[i], self._agg2sram_valid_out[1], self._agg2sram_valid_out[0])
 
-            # for loop for sram reads, tb writes
-            loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
-                                    config_width=self.id_config_width)
-
-            self.add_child(f"loops_buf2out_autovec_read_{i}",
-                           loops_sram2tb,
+            valid_cycle_sram2tb = ValidCycleCtrl(cycle_iterator_support=5)
+            self.add_child(f"valid_cycle_sram2tb_{i}",
+                           valid_cycle_sram2tb,
                            clk=self._clk,
                            rst_n=self._rst_n,
+                           valid_in=self._sram2tb_valid_in,
                            step=self._t_read[i])
+            safe_wire(gen=self, w_to=self._loops_sram2tb_mux_sel[i], w_from=valid_cycle_sram2tb.ports.mux_sel_out)
+            self.wire(self._loops_sram2tb_restart[i], valid_cycle_sram2tb.ports.restart_out)
 
-            safe_wire(gen=self, w_to=self._loops_sram2tb_mux_sel[i], w_from=loops_sram2tb.ports.mux_sel_out)
-            self.wire(self._loops_sram2tb_restart[i], loops_sram2tb.ports.restart)
+            # # for loop for sram reads, tb writes
+            # loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
+            #                         config_width=self.default_config_width)
 
-            # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
-            self.add_child(f"output_sched_gen_{i}",
-                           SchedGen(iterator_support=self.default_iterator_support,
-                                    # config_width=self.default_config_width),
-                                    config_width=16),
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           cycle_count=self._cycle_count,
-                           mux_sel=loops_sram2tb.ports.mux_sel_out,
-                           finished=loops_sram2tb.ports.restart,
-                           valid_output=self._t_read[i])
+            # self.add_child(f"loops_buf2out_autovec_read_{i}",
+            #                loops_sram2tb,
+            #                clk=self._clk,
+            #                rst_n=self._rst_n,
+            #                step=self._t_read[i])
+
+            # safe_wire(gen=self, w_to=self._loops_sram2tb_mux_sel[i], w_from=loops_sram2tb.ports.mux_sel_out)
+            # self.wire(self._loops_sram2tb_restart[i], loops_sram2tb.ports.restart)
+
+            # # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
+            # self.add_child(f"output_sched_gen_{i}",
+            #                SchedGen(iterator_support=self.default_iterator_support,
+            #                         # config_width=self.default_config_width),
+            #                         config_width=16),
+            #                clk=self._clk,
+            #                rst_n=self._rst_n,
+            #                cycle_count=self._cycle_count,
+            #                mux_sel=loops_sram2tb.ports.mux_sel_out,
+            #                finished=loops_sram2tb.ports.restart,
+            #                valid_output=self._t_read[i])
 
 
 if __name__ == "__main__":

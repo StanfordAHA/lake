@@ -98,6 +98,7 @@ class StrgUBVec(MemoryController):
                                          size=self.fetch_width,
                                          packed=True)
 
+        self._tile_valid_in = self.input("tile_valid_in", self.interconnect_input_ports)
         self._valid_out = self.output("accessor_output", self.interconnect_output_ports)
         self._valid_out_int = self.var("accessor_output_int", self.interconnect_output_ports)
         self._data_out = self.output("data_out", self.data_width,
@@ -115,7 +116,7 @@ class StrgUBVec(MemoryController):
         ##################################################################################
 
         # Create cycle counter to share...
-        self._cycle_count = add_counter(self, "cycle_count", 16)
+        # self._cycle_count = add_counter(self, "cycle_count", 16)
 
         agg_only = StrgUBAggOnly(data_width=self.data_width,
                                  mem_width=self.mem_width,
@@ -194,7 +195,7 @@ class StrgUBVec(MemoryController):
                        agg_only,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       cycle_count=self._cycle_count,
+                       agg_valid_in=self._tile_valid_in,
                        data_in=self._data_in)
 
         self.add_child("agg_sram_shared",
@@ -206,7 +207,6 @@ class StrgUBVec(MemoryController):
                        sram_only,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       cycle_count=self._cycle_count,
                        wen_to_sram=self._wen_to_sram,
                        #    addr_to_sram=self._addr_to_sram,
                        data_to_sram=self._data_to_sram)
@@ -214,14 +214,12 @@ class StrgUBVec(MemoryController):
         self.add_child("sram_tb_shared",
                        sram_tb_shared,
                        clk=self._clk,
-                       rst_n=self._rst_n,
-                       cycle_count=self._cycle_count)
+                       rst_n=self._rst_n)
 
         self.add_child("tb_only",
                        tb_only,
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       cycle_count=self._cycle_count,
                        sram_read_data=self._data_from_sram,
                        accessor_output=self._valid_out_int,
                        data_out=self._data_out_int)
@@ -238,6 +236,8 @@ class StrgUBVec(MemoryController):
         self.wire(agg_only.ports.agg_write_addr_l2b_out, agg_sram_shared.ports.agg_write_addr_l2b_in)
         self.wire(agg_only.ports.agg_write_mux_sel_out, agg_sram_shared.ports.agg_write_mux_sel_in)
         self.wire(sram_tb_shared.ports.t_read_out, agg_sram_shared.ports.sram_read_in)
+        self.wire(sram_tb_shared.ports.agg2sram_valid_out, agg_sram_shared.ports.agg_read_out)
+        self.wire(sram_tb_shared.ports.t_read_out, tb_only.ports.sram2tb_valid_in)
         self.wire(sram_only.ports.sram_read_addr_out, agg_sram_shared.ports.sram_read_addr_in)
 
         self.wire(sram_only.ports.loops_sram2tb_mux_sel, sram_tb_shared.ports.loops_sram2tb_mux_sel)

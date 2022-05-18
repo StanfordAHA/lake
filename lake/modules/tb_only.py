@@ -8,6 +8,7 @@ from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.modules.valid_cycle_ctrl import ValidCycleCtrl
 from lake.utils.util import safe_wire, add_counter, decode
 import kratos as kts
 
@@ -62,7 +63,8 @@ class StrgUBTBOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        # self._cycle_count = self.input("cycle_count", 16)
+        self._sram2tb_valid_in = self.input("sram2tb_valid_in", self.interconnect_input_ports)
 
         # data from SRAM
         self._sram_read_data = self.input("sram_read_data", self.data_width,
@@ -183,15 +185,22 @@ class StrgUBTBOnly(Generator):
             self.add_code(tb_ctrl)
 
             # READ FROM TB
-
-            fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
-                                   config_width=self.id_config_width)
-
-            self.add_child(f"loops_buf2out_read_{i}",
-                           fl_ctr_tb_rd,
+            valid_cycle_tbonly = ValidCycleCtrl(cycle_iterator_support=5)
+            self.add_child(f"valid_cycle_tbonly_{i}",
+                           valid_cycle_tbonly,
                            clk=self._clk,
                            rst_n=self._rst_n,
+                           valid_in=self._sram2tb_valid_in[i],
                            step=self._tb_read[i])
+
+            # fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
+            #                        config_width=self.id_config_width)
+
+            # self.add_child(f"loops_buf2out_read_{i}",
+            #                fl_ctr_tb_rd,
+            #                clk=self._clk,
+            #                rst_n=self._rst_n,
+            #                step=self._tb_read[i])
 
             _AG = AddrGen(iterator_support=self.tb_iter_support,
                           config_width=self.tb_addr_width)
@@ -201,21 +210,21 @@ class StrgUBTBOnly(Generator):
                            rst_n=self._rst_n,
                            step=self._tb_read[i],
                            # addr_out=self._tb_read_addr[i])
-                           mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
-                           restart=fl_ctr_tb_rd.ports.restart)
+                           mux_sel=valid_cycle_tbonly.ports.mux_sel_out,
+                           restart=valid_cycle_tbonly.ports.restart_out)
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
             safe_wire(gen=self, w_to=self._tb_read_addr_out[i], w_from=_AG.ports.addr_out)
 
-            self.add_child(f"tb_read_sched_gen_{i}",
-                           SchedGen(iterator_support=self.tb_iter_support,
-                                    # config_width=self.tb_addr_width),
-                                    config_width=16),
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           cycle_count=self._cycle_count,
-                           mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
-                           finished=fl_ctr_tb_rd.ports.restart,
-                           valid_output=self._tb_read[i])
+            # self.add_child(f"tb_read_sched_gen_{i}",
+            #                SchedGen(iterator_support=self.tb_iter_support,
+            #                         # config_width=self.tb_addr_width),
+            #                         config_width=16),
+            #                clk=self._clk,
+            #                rst_n=self._rst_n,
+            #                cycle_count=self._cycle_count,
+            #                mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
+            #                finished=fl_ctr_tb_rd.ports.restart,
+            #                valid_output=self._tb_read[i])
             self.wire(self._tb_read_out[i], self._tb_read[i])
 
             @always_comb

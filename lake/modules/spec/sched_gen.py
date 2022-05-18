@@ -16,12 +16,14 @@ class SchedGen(Generator):
     def __init__(self,
                  iterator_support=6,
                  config_width=16,
+                 valid=False,  # for valid count SG
                  use_enable=True):
 
         super().__init__(f"sched_gen_{iterator_support}_{config_width}")
 
         self.iterator_support = iterator_support
         self.config_width = config_width
+        self.valid = valid
         self.use_enable = use_enable
 
         # PORT DEFS: begin
@@ -29,6 +31,13 @@ class SchedGen(Generator):
         # INPUTS
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
+        if self.valid:
+            self._step = self.input("step", 1)
+            self._total_writes = self.input("total_writes", self.config_width)
+            self._total_writes.add_attribute(ConfigRegAttr("Total number of writes"))
+            self._total_writes.add_attribute(FormalAttr(f"{self._total_writes.name}", FormalSignalConstraint.SOLVE))
+        else:
+            self._step = self.var("step", 1)
 
         # OUTPUTS
         self._valid_output = self.output("valid_output", 1)
@@ -71,13 +80,15 @@ class SchedGen(Generator):
 
         # PORT DEFS: end
 
+        if not self.valid:
+            self.wire(self._step, self._valid_out)
+
         self.add_child(f"sched_addr_gen",
                        AddrGen(iterator_support=self.iterator_support,
                                config_width=self.config_width),
-
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       step=self._valid_out,
+                       step=self._step,
                        mux_sel=self._mux_sel,
                        addr_out=self._addr_out,
                        restart=const(0, 1))
@@ -87,7 +98,10 @@ class SchedGen(Generator):
 
     @always_comb
     def set_valid_out(self):
-        self._valid_out = (self._cycle_count == self._addr_out) & self._valid_gate & self._enable
+        if self.valid:
+            self._valid_out = ((self._cycle_count >= self._addr_out) | (self._cycle_count == self._total_writes)) & self._valid_gate & self._enable
+        else:
+            self._valid_out = (self._cycle_count == self._addr_out) & self._valid_gate & self._enable
 
     @always_comb
     def set_valid_output(self):
