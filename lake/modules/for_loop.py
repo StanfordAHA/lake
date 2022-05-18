@@ -60,7 +60,10 @@ class ForLoop(Generator):
         # GENERATION LOGIC: begin
         self._done = self.var("done", 1)
         self._clear = self.var("clear", self.iterator_support)
-        self._inc = self.var("inc", self.iterator_support)
+        self._inc = self.var("inc", 1,
+                             size=self.iterator_support,
+                             packed=True,
+                             explicit_array=True)
 
         self._inced_cnt = self.var("inced_cnt", self._dim_counter.width)
         self.wire(self._inced_cnt, self._dim_counter[self._mux_sel] + 1)
