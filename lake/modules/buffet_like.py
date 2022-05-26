@@ -2,19 +2,22 @@ import kratos as kts
 from kratos import *
 from lake.modules.arbiter import Arbiter
 from lake.passes.passes import lift_config_reg
+from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.utils.util import decode, register, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
+from lake.modules.strg_RAM import StrgRAM
 
 
 class BuffetLike(Generator):
     def __init__(self,
                  data_width=16,
                  num_ID=2,
-                 mem_depth=512):
+                 mem_depth=512,
+                 local_memory=True):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
@@ -23,6 +26,7 @@ class BuffetLike(Generator):
         self.add_flush = True
         self.num_ID = num_ID
         self.mem_depth = mem_depth
+        self.local_memory = local_memory
 
         self.total_sets = 0
 
@@ -75,12 +79,12 @@ class BuffetLike(Generator):
         self._wr_addr_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         # Accept data + op over the line
-        self._wr_data = self.input("wr_data", self.data_width, explicit_array=True, packed=True)
+        self._wr_data = self.input("wr_data", self.data_width + 1, explicit_array=True, packed=True)
         self._wr_data.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         # Indicates allocate/finalize or write
-        self._wr_op = self.input("wr_op", 1)
-        self._wr_op.add_attribute(ControlSignalAttr(is_control=True))
+        # self._wr_op = self.input("wr_op", 1)
+        # self._wr_op.add_attribute(ControlSignalAttr(is_control=True))
 
         self._wr_data_ready = self.output("wr_data_ready", 1)
         self._wr_data_ready.add_attribute(ControlSignalAttr(is_control=False))
@@ -91,7 +95,7 @@ class BuffetLike(Generator):
         ### READ SIDE
         # On read side need both a request and response channel
         # Free or Read
-        self._rd_op_op = self.input("rd_op_op", self.data_width, explicit_array=True, packed=True)
+        self._rd_op_op = self.input("rd_op", self.data_width, explicit_array=True, packed=True)
         self._rd_op_op.add_attribute(ControlSignalAttr(is_control=False))
 
         self._rd_op_ready = self.output("rd_op_ready", 1)
@@ -110,46 +114,115 @@ class BuffetLike(Generator):
         self._rd_addr_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         # Read ID
+        self._rd_ID = self.input("rd_ID", self.data_width, explicit_array=True, packed=True)
+        self._rd_ID.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
         self._rd_ID_ready = self.output("rd_ID_ready", 1)
         self._rd_ID_ready.add_attribute(ControlSignalAttr(is_control=False))
 
         self._rd_ID_valid = self.input("rd_ID_valid", 1)
         self._rd_ID_valid.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._rd_ID = self.input("rd_ID", self.data_width, explicit_array=True, packed=True)
-        self._rd_ID.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
         # Read response channel
         self._rd_rsp_data = self.output("rd_rsp_data", self.data_width, explicit_array=True, packed=True)
         self._rd_rsp_data.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._rd_rsp_ready = self.input("rd_rsp_ready", 1)
+        self._rd_rsp_ready = self.input("rd_rsp_data_ready", 1)
         self._rd_rsp_ready.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._rd_rsp_valid = self.output("rd_rsp_valid", 1)
+        self._rd_rsp_valid = self.output("rd_rsp_data_valid", 1)
         self._rd_rsp_valid.add_attribute(ControlSignalAttr(is_control=False))
 
-        # Need interface to memory...
-        self._addr_to_mem = self.output("addr_to_mem", self.data_width, packed=True, explicit_array=True)
-        self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        if self.local_memory is False:
+            # Need interface to remote memory...
+            self._addr_to_mem = self.output("addr_to_mem", self.data_width, packed=True, explicit_array=True)
+            self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._data_to_mem = self.output("data_to_mem", self.data_width, packed=True, explicit_array=True)
-        self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self._data_to_mem = self.output("data_to_mem", self.data_width, packed=True, explicit_array=True)
+            self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._wen_to_mem = self.output("wen_to_mem", 1)
-        self._wen_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+            self._wen_to_mem = self.output("wen_to_mem", 1)
+            self._wen_to_mem.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._ren_to_mem = self.output("ren_to_mem", 1)
-        self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+            self._ren_to_mem = self.output("ren_to_mem", 1)
+            self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._data_from_mem = self.input("data_from_mem", self.data_width, packed=True, explicit_array=True)
-        self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self._data_from_mem = self.input("data_from_mem", self.data_width, packed=True, explicit_array=True)
+            self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._valid_from_mem = self.input("valid_from_mem", 1)
-        self._valid_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+            self._valid_from_mem = self.input("valid_from_mem", 1)
+            self._valid_from_mem.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._ready_from_mem = self.input("ready_from_mem", 1)
-        self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+            self._ready_from_mem = self.input("ready_from_mem", 1)
+            self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+        else:
+            # Otherwise stamp it out here...
+            self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._addr_to_mem = self.var("addr_to_mem", self.data_width, explicit_array=True)
+
+            self._data_to_mem = self.var("data_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._data_to_mem = self.var("data_to_mem", self.data_width, explicit_array=True)
+
+            self._wen_to_mem = self.var("wen_to_mem", 1)
+
+            self._ren_to_mem = self.var("ren_to_mem", 1)
+
+            self._data_from_mem = self.var("data_from_mem", self.data_width, packed=True, explicit_array=True)
+
+            self._valid_from_mem = self.var("valid_from_mem", 1)
+
+            self._ready_from_mem = self.var("ready_from_mem", 1)
+
+            self.strg_ram_local = StrgRAM()
+
+            self.add_child("memory_ctrl",
+                           # Buffet interface
+                           self.strg_ram_local,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           wen=self._wen_to_mem,
+                           ren=self._ren_to_mem,
+                           data_in=self._data_to_mem,
+                           wr_addr_in=self._addr_to_mem,
+                           rd_addr_in=self._addr_to_mem,
+                           data_out=self._data_from_mem,
+                           valid_out=self._valid_from_mem,
+                           ready=self._ready_from_mem)
+
+            # Get the memory port interface
+            mem_ctrl_port_interface = self.strg_ram_local.get_memory_ports()
+            mem_ctrl_port_interface = mem_ctrl_port_interface[0][0].get_port_interface()
+
+            # print(mem_ctrl_port_interface)
+
+            # Build a simple memory
+            memory_params = {
+                'mem_width': 64,
+                'mem_depth': 512
+            }
+
+            # Create the memory interface based on different params
+            mem_ports = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
+
+            self.mem_intf = MemoryInterface(name="balls",
+                                            mem_params=memory_params,
+                                            ports=mem_ports,
+                                            sim_macro_n=True,
+                                            reset_in_sim=True)
+            # Realize the hardware implementation then add it as a child and wire it up...
+            self.mem_intf.realize_hw()
+            self.add_child('memory_stub',
+                           self.mem_intf)
+
+            actual_mem_port_interface = self.mem_intf.get_ports()[0].get_port_interface()
+
+            # print(actual_mem_port_interface)
+
+            self.wire(self._gclk, self.mem_intf.get_clock())
+            self.wire(self._rst_n, self.mem_intf.get_reset())
+
+            for pname, psignal in mem_ctrl_port_interface.items():
+                self.wire(psignal, actual_mem_port_interface[pname])
 
 # =============================
 # Miscellaneous forward declarations
@@ -172,7 +245,7 @@ class BuffetLike(Generator):
         self._wr_data_fifo_pop = self.var("wr_data_fifo_pop", 1)
         self._wr_data_fifo_valid = self.var("wr_data_fifo_valid", 1)
 
-        self._wr_data_fifo_in = kts.concat(self._wr_data, self._wr_op)
+        self._wr_data_fifo_in = kts.concat(self._wr_data)
         self._wr_data_infifo = RegFIFO(data_width=self._wr_data_fifo_in.width, width_mult=1, depth=8)
         self._wr_data_fifo_out_data = self.var("wr_data_fifo_out_data", self.data_width, packed=True)
         self._wr_data_fifo_out_op = self.var("wr_data_fifo_out_op", 1)
@@ -185,7 +258,8 @@ class BuffetLike(Generator):
                        push=self._wr_data_valid,
                        pop=self._wr_data_fifo_pop,
                        data_in=self._wr_data_fifo_in,
-                       data_out=kts.concat(self._wr_data_fifo_out_data, self._wr_data_fifo_out_op))
+                       # TODO: Make sure this concatenation is right
+                       data_out=kts.concat(self._wr_data_fifo_out_op, self._wr_data_fifo_out_data))
 
         self.wire(self._wr_data_ready, ~self._wr_data_infifo.ports.full)
         self.wire(self._wr_data_fifo_valid, ~self._wr_data_infifo.ports.empty)

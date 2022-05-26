@@ -51,9 +51,9 @@ class StrgRAM(MemoryController):
         # Inputs + Outputs
         self._wen = self.input("wen", 1)
         self._ren = self.input("ren", 1)
-        self._data_in = self.input("data_in", self.data_width)
-        self._wr_addr_in = self.input("wr_addr_in", self.addr_width)
-        self._rd_addr_in = self.input("rd_addr_in", self.addr_width)
+        self._data_in = self.input("data_in", self.data_width, packed=True)
+        self._wr_addr_in = self.input("wr_addr_in", self.addr_width, packed=True)
+        self._rd_addr_in = self.input("rd_addr_in", self.addr_width, packed=True)
 
         self._wr_addr = self.var("wr_addr", self.addr_width)
         self._rd_addr = self.var("rd_addr", self.addr_width)
@@ -67,7 +67,7 @@ class StrgRAM(MemoryController):
             self.wire(self._wr_addr, self._wr_addr_in)
             self.wire(self._rd_addr, self._wr_addr_in)
 
-        self._data_out = self.output("data_out", self.data_width)
+        self._data_out = self.output("data_out", self.data_width, packed=True)
         self._valid_out = self.output("valid_out", 1)
 
         # get relevant signals from the storage banks
@@ -103,9 +103,10 @@ class StrgRAM(MemoryController):
 
         self._rd_bank = self.var("rd_bank", max(1, clog2(self.banks)))
         self.set_read_bank()
-        self._rd_valid = self.var("rd_valid", 1)
-        self.set_read_valid()
         if self.fw_int == 1:
+            # Alternate creating of valid read
+            self._rd_valid = self.var("rd_valid", 1)
+            self.set_read_valid()
             self.wire(self._valid_out, self._rd_valid)
 
         # Fetch width of 1 is simpler...

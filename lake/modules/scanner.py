@@ -65,23 +65,34 @@ class Scanner(Generator):
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
         # OUTPUT STREAMS
-        self._coord_out = self.output("coord_out", self.data_width)
+        self._coord_out = self.output("coord_out", self.data_width + 1)
         self._coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._pos_out = self.output("pos_out", self.data_width)
+        self._coord_out_valid_out = self.output("coord_out_valid", 1)
+        self._coord_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
+
+        self._coord_out_ready_in = self.input("coord_out_ready", 1)
+        self._coord_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._pos_out = self.output("pos_out", self.data_width + 1)
         self._pos_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
+        self._pos_out_valid_out = self.output("pos_out_valid", 1)
+        self._pos_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
+
+        self._pos_out_ready_in = self.input("pos_out_ready", 1)
+        self._pos_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
         # Eos for both streams...
-        self._eos_out = self.output("eos_out", 2)
-        self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._eos_out = self.output("eos_out", 2)
+        # self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Valid out for both streams
-        self._valid_out = self.output("valid_out", 2)
-        self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._valid_out = self.output("valid_out", 2)
+        # self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Ready in for pos and coord
-        self._ready_in = self.input("ready_in", 2)
-        self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
+        # self._ready_in = self.input("ready_in", 2)
+        # self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
         ################################################################################
         # TO BUFFET
@@ -90,40 +101,40 @@ class Scanner(Generator):
         self._addr_out = self.output("addr_out", self.data_width, explicit_array=True, packed=True)
         self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._addr_out_ready_in = self.input("addr_out_ready_in", 1)
+        self._addr_out_ready_in = self.input("addr_out_ready", 1)
         self._addr_out_ready_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-        self._addr_out_valid_out = self.output("addr_out_valid_out", 1)
+        self._addr_out_valid_out = self.output("addr_out_valid", 1)
         self._addr_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         # OP out r/v
         self._op_out = self.output("op_out", self.data_width, explicit_array=True, packed=True)
         self._op_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._op_out_ready_in = self.input("op_out_ready_in", 1)
+        self._op_out_ready_in = self.input("op_out_ready", 1)
         self._op_out_ready_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-        self._op_out_valid_out = self.output("op_out_valid_out", 1)
+        self._op_out_valid_out = self.output("op_out_valid", 1)
         self._op_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         # ID out r/v
         self._ID_out = self.output("ID_out", self.data_width, explicit_array=True, packed=True)
         self._ID_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._ID_out_ready_in = self.input("ID_out_ready_in", 1)
+        self._ID_out_ready_in = self.input("ID_out_ready", 1)
         self._ID_out_ready_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-        self._ID_out_valid_out = self.output("ID_out_valid_out", 1)
+        self._ID_out_valid_out = self.output("ID_out_valid", 1)
         self._ID_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         # Response channel from buffet
         self._rd_rsp_data_in = self.input("rd_rsp_data_in", self.data_width, explicit_array=True, packed=True)
         self._rd_rsp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._rd_rsp_valid_in = self.input("rd_rsp_valid_in", 1)
+        self._rd_rsp_valid_in = self.input("rd_rsp_data_in_valid", 1)
         self._rd_rsp_valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._rd_rsp_ready_out = self.output("rd_rsp_ready_out", 1)
+        self._rd_rsp_ready_out = self.output("rd_rsp_data_in_ready", 1)
         self._rd_rsp_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Intermediate for typing...
@@ -163,19 +174,19 @@ class Scanner(Generator):
         # self._ready_gate = self.var("ready_gate", 1)
 
         # For input streams, need coord_in, valid_in, eos_in
-        self._upstream_pos_in = self.input("us_pos_in", self.data_width)
+        self._upstream_pos_in = self.input("us_pos_in", self.data_width + 1)
         self._upstream_pos_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         # self._upstream_coord_in = self.input("us_coord_in", self.data_width)
         # self._upstream_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._upstream_valid_in = self.input("us_valid_in", 1)
+        self._upstream_valid_in = self.input("us_pos_in_valid", 1)
         self._upstream_valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._upstream_eos_in = self.input("us_eos_in", 1)
-        self._upstream_eos_in.add_attribute(ControlSignalAttr(is_control=True))
+        # self._upstream_eos_in = self.input("us_eos_in", 1)
+        # self._upstream_eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._upstream_ready_out = self.output("us_ready_out", 1)
+        self._upstream_ready_out = self.output("us_pos_in_ready", 1)
         self._upstream_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # For input streams, need coord_in, valid_in, eos_in
@@ -191,8 +202,8 @@ class Scanner(Generator):
         # self.wire(self._pos_in_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2], self._upstream_coord_in)
         # self.wire(self._pos_in_us_packed[self.data_width + 1], self._upstream_valid_in)
         # The EOS tags on the last valid in the stream
-        self.wire(self._pos_in_us_packed[self.data_width], self._upstream_eos_in)
-        self.wire(self._pos_in_us_packed[self.data_width - 1, 0], self._upstream_pos_in)
+        self.wire(self._pos_in_us_packed[self.data_width], self._upstream_pos_in[self.data_width])
+        self.wire(self._pos_in_us_packed[self.data_width - 1, 0], self._upstream_pos_in[self.data_width - 1, 0])
 
         self._data_out_us_packed = self.var("fifo_out_us_packed", 1 * self.data_width + 1, packed=True)
         # self.wire(self._infifo_coord_in, self._data_out_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2])
@@ -1527,8 +1538,8 @@ class Scanner(Generator):
         self.wire(self._coord_data_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
         self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._eos_out[0], self._coord_data_out_packed[self.data_width])
-        self.wire(self._coord_out, self._coord_data_out_packed[self.data_width - 1, 0])
+        self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
+        self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])
 
         self.add_child(f"coordinate_fifo",
                        self._coord_fifo,
@@ -1536,11 +1547,11 @@ class Scanner(Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._coord_out_fifo_push,
-                       pop=self._ready_in[0],
+                       pop=self._coord_out_ready_in,
                        data_in=self._coord_data_in_packed,
                        data_out=self._coord_data_out_packed)
 
-        self.wire(self._valid_out[0], ~self._coord_fifo.ports.empty)
+        self.wire(self._coord_out_valid_out, ~self._coord_fifo.ports.empty)
         self.wire(self._fifo_full_pre[0], self._coord_fifo.ports.full)
 
         ### POS FIFO
@@ -1549,8 +1560,8 @@ class Scanner(Generator):
         self.wire(self._pos_data_in_packed[self.data_width - 1, 0], self._pos_out_to_fifo)
 
         self._pos_data_out_packed = self.var("pos_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._eos_out[1], self._pos_data_out_packed[self.data_width])
-        self.wire(self._pos_out, self._pos_data_out_packed[self.data_width - 1, 0])
+        self.wire(self._pos_out[self.data_width], self._pos_data_out_packed[self.data_width])
+        self.wire(self._pos_out[self.data_width - 1, 0], self._pos_data_out_packed[self.data_width - 1, 0])
 
         self.add_child(f"pos_fifo",
                        self._pos_fifo,
@@ -1558,11 +1569,11 @@ class Scanner(Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._pos_out_fifo_push,
-                       pop=self._ready_in[1],
+                       pop=self._pos_out_ready_in,
                        data_in=self._pos_data_in_packed,
                        data_out=self._pos_data_out_packed)
 
-        self.wire(self._valid_out[1], ~self._pos_fifo.ports.empty)
+        self.wire(self._pos_out_valid_out, ~self._pos_fifo.ports.empty)
         self.wire(self._fifo_full_pre[1], self._pos_fifo.ports.full)
 
         self.wire(self._join_almost_full, self._coord_fifo.ports.almost_full | self._pos_fifo.ports.almost_full)

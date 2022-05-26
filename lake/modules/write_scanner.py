@@ -54,52 +54,64 @@ class WriteScanner(Generator):
         # input data, input valid
         # output address, output valid
         # There is a data in (for lowest level values, other level coordinates) and for address on lowest level when doing dense
-        self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
+        self._data_in = self.input("data_in", self.data_width + 1, packed=True)
         self._data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._valid_in = self.input("valid_in", 2)
-        self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
+        self._data_in_valid_in = self.input("data_in_valid", 1)
+        self._data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._eos_in = self.input("eos_in", 2)
-        self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
+        self._data_in_ready_out = self.output("data_in_ready", 1)
+        self._data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._addr_in = self.input("addr_in", self.data_width + 1, packed=True)
+        self._addr_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._addr_in_valid_in = self.input("addr_in_valid", 1)
+        self._addr_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._addr_in_ready_out = self.output("addr_in_ready", 1)
+        self._addr_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        # self._eos_in = self.input("eos_in", 2)
+        # self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
         # Ready in from the memory
-        self._ready_in = self.input("ready_in", 1)
-        self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
+        # self._ready_in = self.input("ready_in", 1)
+        # self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._ready_out = self.output("ready_out", 2)
-        self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._ready_out = self.output("ready_out", 2)
+        # self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Outputs
         # Data to write to memory (whether its val/coord/metadata)
-        self._data_out = self.output("data_out", self.data_width, packed=True)
+        self._data_out = self.output("data_out", self.data_width + 1, packed=True)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._op_out = self.output("op_out", 1)
-        self._op_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._op_out = self.output("op_out", 1)
+        # self._op_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._data_out_ready_in = self.input("data_out_ready_in", 1)
+        self._data_out_ready_in = self.input("data_out_ready", 1)
         self._data_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._data_out_valid_out = self.output("data_out_valid_out", 1)
+        self._data_out_valid_out = self.output("data_out_valid", 1)
         self._data_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         self._addr_out = self.output("addr_out", self.data_width, packed=True)
         self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._addr_out_ready_in = self.input("addr_out_ready_in", 1)
+        self._addr_out_ready_in = self.input("addr_out_ready", 1)
         self._addr_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._addr_out_valid_out = self.output("addr_out_valid_out", 1)
+        self._addr_out_valid_out = self.output("addr_out_valid", 1)
         self._addr_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         self._ID_out = self.output("ID_out", self.data_width, packed=True)
         self._ID_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._ID_out_ready_in = self.input("ID_out_ready_in", 1)
+        self._ID_out_ready_in = self.input("ID_out_ready", 1)
         self._ID_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._ID_out_valid_out = self.output("ID_out_valid_out", 1)
+        self._ID_out_valid_out = self.output("ID_out_valid", 1)
         self._ID_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # self._outer_coord_out = self.output("outer_coord_out", self.data_width)
@@ -151,8 +163,8 @@ class WriteScanner(Generator):
 
         # Stupid convert
         self._data_infifo_in_packed = self.var("data_infifo_in_packed", 1 * self.data_width + 1, packed=True)
-        self.wire(self._data_infifo_in_packed[self.data_width], self._eos_in[0])
-        self.wire(self._data_infifo_in_packed[self.data_width - 1, 0], self._data_in[0])
+        self.wire(self._data_infifo_in_packed[self.data_width], self._data_in[self.data_width])
+        self.wire(self._data_infifo_in_packed[self.data_width - 1, 0], self._data_in[self.data_width - 1, 0])
         self._data_infifo_out_packed = self.var("data_infifo_out_packed", 1 * self.data_width + 1, packed=True)
         self.wire(self._data_infifo_eos_in, self._data_infifo_out_packed[self.data_width])
         self.wire(self._data_infifo_data_in, self._data_infifo_out_packed[self.data_width - 1, 0])
@@ -162,12 +174,12 @@ class WriteScanner(Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._valid_in[0],
+                       push=self._data_in_valid_in,
                        pop=self._infifo_pop[0],
                        data_in=self._data_infifo_in_packed,
                        data_out=self._data_infifo_out_packed)
 
-        self.wire(self._ready_out[0], ~self._data_infifo.ports.full)
+        self.wire(self._data_in_ready_out, ~self._data_infifo.ports.full)
         self.wire(self._data_infifo_valid_in, ~self._data_infifo.ports.empty)
 
         # For input streams, need coord_in, valid_in, eos_in
@@ -177,8 +189,8 @@ class WriteScanner(Generator):
         self._addr_infifo_eos_in = self.var("addr_infifo_eos_in", 1)
 
         self._addr_infifo_in_packed = self.var("addr_infifo_in_packed", 1 * self.data_width + 1, packed=True)
-        self.wire(self._addr_infifo_in_packed[self.data_width], self._eos_in[1])
-        self.wire(self._addr_infifo_in_packed[self.data_width - 1, 0], self._data_in[1])
+        self.wire(self._addr_infifo_in_packed[self.data_width], self._addr_in[self.data_width])
+        self.wire(self._addr_infifo_in_packed[self.data_width - 1, 0], self._addr_in[self.data_width - 1, 0])
         self._addr_infifo_out_packed = self.var("addr_infifo_out_packed", 1 * self.data_width + 1, packed=True)
         self.wire(self._addr_infifo_eos_in, self._addr_infifo_out_packed[self.data_width])
         self.wire(self._addr_infifo_data_in, self._addr_infifo_out_packed[self.data_width - 1, 0])
@@ -188,12 +200,12 @@ class WriteScanner(Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._valid_in[1],
+                       push=self._addr_in_valid_in,
                        pop=self._infifo_pop[1],
                        data_in=self._addr_infifo_in_packed,
                        data_out=self._addr_infifo_out_packed)
 
-        self.wire(self._ready_out[1], ~self._addr_infifo.ports.full)
+        self.wire(self._addr_in_ready_out, ~self._addr_infifo.ports.full)
         self.wire(self._addr_infifo_valid_in, ~self._addr_infifo.ports.empty)
 
         # State for block writes
@@ -227,7 +239,8 @@ class WriteScanner(Generator):
         out_pushes.append(self._data_out_fifo_push)
 
         # Output FIFOs to the buffet-like
-        data_out_fifo_in = kts.concat(self._data_to_fifo, self._op_to_fifo)
+        # TODO: Make sure this works
+        data_out_fifo_in = kts.concat(self._op_to_fifo, self._data_to_fifo)
         data_out_outfifo = RegFIFO(data_width=data_out_fifo_in.width, width_mult=1, depth=8)
 
         self.add_child(f"data_out_fifo",
@@ -238,7 +251,7 @@ class WriteScanner(Generator):
                        push=self._data_out_fifo_push,
                        pop=self._data_out_ready_in,
                        data_in=data_out_fifo_in,
-                       data_out=kts.concat(self._data_out, self._op_out))
+                       data_out=kts.concat(self._data_out))
         # RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
         self.wire(self._data_out_fifo_full, data_out_outfifo.ports.full)
         self.wire(self._data_out_valid_out, ~data_out_outfifo.ports.empty)
