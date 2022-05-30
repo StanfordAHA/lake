@@ -64,7 +64,7 @@ class IOCore(Generator):
             tmp_f2io_v.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
             f2ios.append((tmp_f2io, tmp_f2io_r, tmp_f2io_v))
 
-            tmp_glb2io = self.input(f"g1b2io_{track_len}", track_len, packed=True)
+            tmp_glb2io = self.input(f"glb2io_{track_len}", track_len, packed=True)
             tmp_glb2io.add_attribute(ControlSignalAttr(is_control=is_control, full_bus=full_bus))
             tmp_glb2io_r = self.output(f"glb2io_{track_len}_ready", 1)
             tmp_glb2io_r.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
