@@ -1,6 +1,7 @@
 from math import e
 import kratos as kts
 from kratos import *
+from numpy import full
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
@@ -48,54 +49,98 @@ class Intersect(kts.Generator):
         # Scanner interface will need
         # input data, input valid
         # output address, output valid
-        self._coord_in = self.input("coord_in", self.data_width,
-                                    size=self.num_streams,
-                                    packed=True,
-                                    explicit_array=True)
-        self._coord_in.add_attribute(ControlSignalAttr(is_control=False))
+        self._coord_in = []
+        self._coord_valid_in = []
+        self._coord_ready_out = []
+        self._coord_eos_in = []
+        self._pos_in = []
+        self._pos_valid_in = []
+        self._pos_ready_out = []
+        self._pos_eos_in = []
 
-        self._pos_in = self.input("pos_in", self.data_width,
-                                  size=self.num_streams,
-                                  packed=True,
-                                  explicit_array=True)
-        self._pos_in.add_attribute(ControlSignalAttr(is_control=False))
+        self._pos_out = []
+        self._pos_out_valid_out = []
+        self._pos_out_ready_in = []
+        # self._pos_out_eos_out = []
+        for i in range(self.num_streams):
 
-        # self._o_coord_in = self.input("o_coord_in", self.data_width,
-        #                               size=self.num_streams,
-        #                               packed=True,
-        #                               explicit_array=True)
-        # self._o_coord_in.add_attribute(ControlSignalAttr(is_control=False))
+            tmp_coord_in = self.input(f"coord_in_{i}", self.data_width + 1,
+                                      packed=True)
+            tmp_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self._coord_in.append(tmp_coord_in)
 
-        # Need offsets for memory access
-        # self._payload_ptr = self.input("payload_ptr", 16,
-        #                                size=self.num_streams,
-        #                                packed=True,
-        #                                explicit_array=True)
-        # self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False))
+            tmp_coord_valid = self.input(f"coord_in_{i}_valid", 1)
+            tmp_coord_valid.add_attribute(ControlSignalAttr(is_control=True))
+            self._coord_valid_in.append(tmp_coord_valid)
 
-        # Are incoming guys valid/eos?
-        self._valid_in = self.input("valid_in", self.num_streams * 2)
-        self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
-        self._eos_in = self.input("eos_in", self.num_streams * 2)
-        self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
+            tmp_coord_ready = self.output(f"coord_in_{i}_ready", 1)
+            tmp_coord_ready.add_attribute(ControlSignalAttr(is_control=False))
+            self._coord_ready_out.append(tmp_coord_ready)
 
-        # Pop the incoming guys
-        self._ready_out = self.output("ready_out", self.num_streams * 2)
-        self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
+            tmp_coord_eos_in = self.var(f"coord_in_{i}_eos", 1)
+            self._coord_eos_in.append(tmp_coord_eos_in)
+            self.wire(tmp_coord_eos_in, tmp_coord_in[self.data_width])
+
+            tmp_pos_in = self.input(f"pos_in_{i}", self.data_width + 1,
+                                    packed=True)
+            tmp_pos_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self._pos_in.append(tmp_pos_in)
+
+            tmp_pos_valid = self.input(f"pos_in_{i}_valid", 1)
+            tmp_pos_valid.add_attribute(ControlSignalAttr(is_control=True))
+            self._pos_valid_in.append(tmp_pos_valid)
+
+            tmp_pos_ready = self.output(f"pos_in_{i}_ready", 1)
+            tmp_pos_ready.add_attribute(ControlSignalAttr(is_control=False))
+            self._pos_ready_out.append(tmp_pos_ready)
+
+            tmp_pos_eos_in = self.var(f"pos_in_{i}_eos", 1)
+            self._pos_eos_in.append(tmp_pos_eos_in)
+            self.wire(tmp_pos_eos_in, tmp_pos_in[self.data_width])
+
+            # POS OUT
+            tmp_pos_out = self.output(f"pos_out_{i}", self.data_width + 1,
+                                      packed=True)
+            tmp_pos_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self._pos_out.append(tmp_pos_out)
+
+            tmp_pos_out_valid = self.output(f"pos_out_{i}_valid", 1)
+            tmp_pos_out_valid.add_attribute(ControlSignalAttr(is_control=False))
+            self._pos_out_valid_out.append(tmp_pos_out_valid)
+
+            tmp_pos_out_ready = self.input(f"pos_out_{i}_ready", 1)
+            tmp_pos_out_ready.add_attribute(ControlSignalAttr(is_control=True))
+            self._pos_out_ready_in.append(tmp_pos_out_ready)
+
+            # # Are incoming guys valid/eos?
+            # self._valid_in = self.input("valid_in", self.num_streams * 2)
+            # self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
+            # self._eos_in = self.input("eos_in", self.num_streams * 2)
+            # self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        # # Pop the incoming guys
+        # self._ready_out = self.output("ready_out", self.num_streams * 2)
+        # self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # BackPRESH, 3 different channels
-        self._ready_in = self.input("ready_in", 3)
-        self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
+        # self._ready_in = self.input("ready_in", 3)
+        # self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
         # only send one common coord out for now.
-        self._coord_out = self.output("coord_out", self.data_width)
+        self._coord_out = self.output("coord_out", self.data_width + 1, packed=True)
         self._coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._coord_out_ready_in = self.input("coord_out_ready", 1)
+        self._coord_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._coord_out_valid_out = self.output("coord_out_valid", 1)
+        self._coord_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
         # but need to send two positions...
-        self._pos_out = self.output("pos_out", self.data_width,
-                                    size=self.num_streams,
-                                    explicit_array=True,
-                                    packed=True)
-        self._pos_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._pos_out = self.output("pos_out", self.data_width,
+        #                             size=self.num_streams,
+        #                             explicit_array=True,
+        #                             packed=True)
+        # self._pos_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # self._o_coord_out = self.output("o_coord_out", self.data_width,
         #                                 size=self.num_streams,
@@ -104,17 +149,17 @@ class Intersect(kts.Generator):
         # self._o_coord_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Can broadcast the valid and eos out
-        self._valid_out = self.output("valid_out", 3)
-        self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._valid_out = self.output("valid_out", 3)
+        # self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._eos_out = self.output("eos_out", 3)
-        self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._eos_out = self.output("eos_out", 3)
+        # self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Create sticky bits for seeing EOS on either side...
         self._eos_in_sticky = self.var("eos_in_sticky", self.num_streams)
         self._clr_eos_sticky = self.var("clr_eos_sticky", self.num_streams)
         for i in range(self.num_streams):
-            tmp_sticky = sticky_flag(self, self._eos_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
+            tmp_sticky = sticky_flag(self, self._coord_eos_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             self.wire(self._eos_in_sticky[i], tmp_sticky)
 
         # Intermediates
@@ -131,7 +176,8 @@ class Intersect(kts.Generator):
 
         self._any_eos = self.var("any_eos", 1)
 
-        self.wire(self._all_valid, self._valid_in.r_and() & ~self._any_eos)
+        all_in_valids = kts.concat(*self._coord_valid_in, *self._pos_valid_in)
+        self.wire(self._all_valid, all_in_valids.r_and() & ~self._any_eos)
         # self._gate_eos = self.var("gate_eos", 2)
         # for i in range(self._gate_eos.width):
         # TODO: Deal with stream of length 0
@@ -139,7 +185,9 @@ class Intersect(kts.Generator):
         # self.wire(self._gate_eos[1], self._eos_in[1] & ((self._coord_in[0] >= self._coord_in[1]) | ~self._valid_in[1]))
         # self.wire(self._any_eos, self._gate_eos.r_or())
 
-        self.wire(self._any_eos, self._eos_in.r_or())
+        all_eos = kts.concat(*self._coord_eos_in, *self._pos_eos_in)
+
+        self.wire(self._any_eos, all_eos.r_or())
 
         # Control Vars from FSM
         self._inc_pos_cnt = self.var("inc_pos_cnt", self.num_streams)
@@ -214,7 +262,7 @@ class Intersect(kts.Generator):
         # The only way to leave DRAIN is to get new data
         # where both streams are valid but not both streams are eos
         # DRAIN.next(DONE, ~self._any_eos & self._all_valid)
-        DRAIN.next(DONE, ~self._eos_in.r_and() & self._valid_in.r_and())
+        DRAIN.next(DONE, ~all_eos.r_and() & all_in_valids.r_and())
         DRAIN.next(DRAIN, None)
 
         # Once done, we need another flush
@@ -251,11 +299,11 @@ class Intersect(kts.Generator):
         ITER.output(self._fifo_push, self._all_valid & (self._coord_in[0] == self._coord_in[1]) & ~self._fifo_full.r_or() & ~self._any_eos)
         ITER.output(self._clr_eos_sticky[0], 0)
         ITER.output(self._clr_eos_sticky[1], 0)
-        ITER.output(self._coord_to_fifo, self._coord_in[0])
+        ITER.output(self._coord_to_fifo, self._coord_in[0][15, 0])
         # ITER.output(self._pos_to_fifo[0], self._pos_cnt[0] + self._payload_ptr[0])
         # ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
-        ITER.output(self._pos_to_fifo[0], self._pos_in[0])
-        ITER.output(self._pos_to_fifo[1], self._pos_in[1])
+        ITER.output(self._pos_to_fifo[0], self._pos_in[0][15, 0])
+        ITER.output(self._pos_to_fifo[1], self._pos_in[1][15, 0])
 
         #######
         # ALIGN
@@ -275,18 +323,18 @@ class Intersect(kts.Generator):
         #######
         # DRAIN
         #######
-        DRAIN.output(self._inc_pos_cnt[0], ~self._fifo_full.r_or() & self._eos_in[0] & self._valid_in.r_and())
-        DRAIN.output(self._inc_pos_cnt[1], ~self._fifo_full.r_or() & self._eos_in[0] & self._valid_in.r_and())
+        DRAIN.output(self._inc_pos_cnt[0], ~self._fifo_full.r_or() & self._coord_eos_in[0] & all_in_valids.r_and())
+        DRAIN.output(self._inc_pos_cnt[1], ~self._fifo_full.r_or() & self._coord_eos_in[0] & all_in_valids.r_and())
         DRAIN.output(self._rst_pos_cnt[0], 0)
         DRAIN.output(self._rst_pos_cnt[1], 0)
         # Keep draining while we have eos in...should be aligned
-        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._eos_in[0] & self._valid_in.r_and())
+        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_eos_in[0] & all_in_valids.r_and())
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
         # TODO
-        DRAIN.output(self._coord_to_fifo, self._coord_in[0])
-        DRAIN.output(self._pos_to_fifo[0], self._coord_in[0])
-        DRAIN.output(self._pos_to_fifo[1], self._coord_in[0])
+        DRAIN.output(self._coord_to_fifo, self._coord_in[0][15, 0])
+        DRAIN.output(self._pos_to_fifo[0], self._coord_in[0][15, 0])
+        DRAIN.output(self._pos_to_fifo[1], self._coord_in[0][15, 0])
 
         #######
         # DONE
@@ -305,10 +353,10 @@ class Intersect(kts.Generator):
         self.intersect_fsm.set_start_state(IDLE)
 
         # Incrementing the pos cnt == popping the incoming stream
-        self.wire(self._ready_out[0], self._inc_pos_cnt[0])
-        self.wire(self._ready_out[1], self._inc_pos_cnt[1])
-        self.wire(self._ready_out[2], self._inc_pos_cnt[0])
-        self.wire(self._ready_out[3], self._inc_pos_cnt[1])
+        self.wire(self._coord_ready_out[0], self._inc_pos_cnt[0])
+        self.wire(self._coord_ready_out[1], self._inc_pos_cnt[1])
+        self.wire(self._pos_ready_out[0], self._inc_pos_cnt[0])
+        self.wire(self._pos_ready_out[1], self._inc_pos_cnt[1])
 # ===================================
 # Dump metadata into fifo
 # ===================================
@@ -322,24 +370,24 @@ class Intersect(kts.Generator):
         self.wire(self._coord_data_in_packed[self.data_width - 1, 0 * self.data_width], self._coord_to_fifo)
 
         self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._eos_out[0], self._coord_data_out_packed[self.data_width])
-        self.wire(self._coord_out, self._coord_data_out_packed[self.data_width - 1, 0 * self.data_width])
+        self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
+        self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0 * self.data_width])
 
         self._pos0_data_in_packed = self.var("pos0_fifo_in_packed", self.data_width + 1, packed=True)
         self.wire(self._pos0_data_in_packed[self.data_width], self._any_eos)
         self.wire(self._pos0_data_in_packed[self.data_width - 1, 0 * self.data_width], self._pos_to_fifo[0])
 
         self._pos0_data_out_packed = self.var("pos0_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._eos_out[1], self._pos0_data_out_packed[self.data_width])
-        self.wire(self._pos_out[0], self._pos0_data_out_packed[self.data_width - 1, 0 * self.data_width])
+        self.wire(self._pos_out[0][self.data_width], self._pos0_data_out_packed[self.data_width])
+        self.wire(self._pos_out[0][self.data_width - 1, 0], self._pos0_data_out_packed[self.data_width - 1, 0 * self.data_width])
 
         self._pos1_data_in_packed = self.var("pos1_fifo_in_packed", self.data_width + 1, packed=True)
         self.wire(self._pos1_data_in_packed[self.data_width], self._any_eos)
         self.wire(self._pos1_data_in_packed[self.data_width - 1, 0 * self.data_width], self._pos_to_fifo[1])
 
         self._pos1_data_out_packed = self.var("pos1_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._eos_out[2], self._pos1_data_out_packed[self.data_width])
-        self.wire(self._pos_out[1], self._pos1_data_out_packed[self.data_width - 1, 0 * self.data_width])
+        self.wire(self._pos_out[1][self.data_width], self._pos1_data_out_packed[self.data_width])
+        self.wire(self._pos_out[1][self.data_width - 1, 0], self._pos1_data_out_packed[self.data_width - 1, 0 * self.data_width])
 
         self.add_child(f"coordinate_fifo",
                        self._coord_fifo,
@@ -347,7 +395,7 @@ class Intersect(kts.Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._fifo_push,
-                       pop=self._ready_in[0],
+                       pop=self._coord_out_ready_in,
                        data_in=self._coord_data_in_packed,
                        data_out=self._coord_data_out_packed,
                        full=self._fifo_full[0])
@@ -358,7 +406,7 @@ class Intersect(kts.Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._fifo_push,
-                       pop=self._ready_in[1],
+                       pop=self._pos_out_ready_in[0],
                        data_in=self._pos0_data_in_packed,
                        data_out=self._pos0_data_out_packed,
                        full=self._fifo_full[1])
@@ -369,14 +417,14 @@ class Intersect(kts.Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._fifo_push,
-                       pop=self._ready_in[2],
+                       pop=self._pos_out_ready_in[1],
                        data_in=self._pos1_data_in_packed,
                        data_out=self._pos1_data_out_packed,
                        full=self._fifo_full[2])
 
-        self.wire(self._valid_out[0], ~self._coord_fifo.ports.empty)
-        self.wire(self._valid_out[1], ~self._pos0_fifo.ports.empty)
-        self.wire(self._valid_out[2], ~self._pos1_fifo.ports.empty)
+        self.wire(self._coord_out_valid_out, ~self._coord_fifo.ports.empty)
+        self.wire(self._pos_out_valid_out[0], ~self._pos0_fifo.ports.empty)
+        self.wire(self._pos_out_valid_out[1], ~self._pos1_fifo.ports.empty)
         # Build in the merging logic.
         if use_merger:
             self.add_merging_logic()
@@ -427,32 +475,73 @@ class Intersect(kts.Generator):
         self._cmrg_enable.add_attribute(ConfigRegAttr("Enable cmrger"))
 
         # Interface to downstream
-        self._cmrg_ready_in = self.input("cmrg_ready_in", 2)
-        self._cmrg_ready_in.add_attribute(ControlSignalAttr(is_control=False))
+        self._cmrg_coord_out = []
+        self._cmrg_coord_out_ready_in = []
+        self._cmrg_coord_out_valid_out = []
 
-        self._cmrg_valid_out = self.output("cmrg_valid_out", 2)
-        self._cmrg_valid_out.add_attribute(ControlSignalAttr(is_control=False))
+        self._cmrg_coord_in = []
+        self._cmrg_coord_in_ready_out = []
+        self._cmrg_coord_in_valid_in = []
+        self._cmrg_coord_in_eos_in = []
 
-        self._cmrg_eos_out = self.output("cmrg_eos_out", 2)
-        self._cmrg_eos_out.add_attribute(ControlSignalAttr(is_control=False))
+        for i in range(2):
 
-        self._cmrg_ready_out = self.output("cmrg_ready_out", 2)
-        self._cmrg_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+            tmp_cmrg_coord_out = self.output(f"cmrg_coord_out_{i}", self.data_width + 1, packed=True)
+            tmp_cmrg_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._cmrg_coord_out = self.output(f"cmrg_coord_out", self.data_width,
-                                           size=2, packed=True, explicit_array=True)
-        self._cmrg_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            tmp_cmrg_coord_out_valid_out = self.output(f"cmrg_coord_out_{i}_valid", 1)
+            tmp_cmrg_coord_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        # Coords in
-        self._cmrg_coord_in = self.input(f"cmrg_coord_in", self.data_width,
-                                         size=2, packed=True, explicit_array=True)
-        self._cmrg_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            tmp_cmrg_coord_out_ready_in = self.input(f"cmrg_coord_out_{i}_ready", 1)
+            tmp_cmrg_coord_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._cmrg_valid_in = self.input("cmrg_valid_in", 2)
-        self._cmrg_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+            # Add to lists
+            self._cmrg_coord_out.append(tmp_cmrg_coord_out)
+            self._cmrg_coord_out_ready_in.append(tmp_cmrg_coord_out_ready_in)
+            self._cmrg_coord_out_valid_out.append(tmp_cmrg_coord_out_valid_out)
 
-        self._cmrg_eos_in = self.input("cmrg_eos_in", 2)
-        self._cmrg_eos_in.add_attribute(ControlSignalAttr(is_control=True))
+            tmp_cmrg_coord_in = self.input(f"cmrg_coord_in_{i}", self.data_width + 1, packed=True)
+            tmp_cmrg_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+            tmp_cmrg_coord_in_valid_in = self.input(f"cmrg_coord_in_{i}_valid", 1)
+            tmp_cmrg_coord_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+
+            tmp_cmrg_coord_in_ready_out = self.output(f"cmrg_coord_in_{i}_ready", 1)
+            tmp_cmrg_coord_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+
+            tmp_cmrg_coord_in_eos_in = self.var(f"cmrg_coord_in_{i}_eos", 1)
+            self.wire(tmp_cmrg_coord_in_eos_in, tmp_cmrg_coord_in[self.data_width])
+
+            self._cmrg_coord_in.append(tmp_cmrg_coord_in)
+            self._cmrg_coord_in_ready_out.append(tmp_cmrg_coord_in_ready_out)
+            self._cmrg_coord_in_valid_in.append(tmp_cmrg_coord_in_valid_in)
+            self._cmrg_coord_in_eos_in.append(tmp_cmrg_coord_in_eos_in)
+        # self._cmrg_ready_in = self.input("cmrg_ready_in", 2)
+        # self._cmrg_ready_in.add_attribute(ControlSignalAttr(is_control=False))
+
+        # self._cmrg_valid_out = self.output("cmrg_valid_out", 2)
+        # self._cmrg_valid_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        # self._cmrg_eos_out = self.output("cmrg_eos_out", 2)
+        # self._cmrg_eos_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        # self._cmrg_ready_out = self.output("cmrg_ready_out", 2)
+        # self._cmrg_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        # self._cmrg_coord_out = self.output(f"cmrg_coord_out", self.data_width,
+        #                                    size=2, packed=True, explicit_array=True)
+        # self._cmrg_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        # # Coords in
+        # self._cmrg_coord_in = self.input(f"cmrg_coord_in", self.data_width,
+        #                                  size=2, packed=True, explicit_array=True)
+        # self._cmrg_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        # self._cmrg_valid_in = self.input("cmrg_valid_in", 2)
+        # self._cmrg_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        # self._cmrg_eos_in = self.input("cmrg_eos_in", 2)
+        # self._cmrg_eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
         ####
         self._cmrg_fifo_push = self.var("cmrg_fifo_push", 2)
@@ -479,8 +568,8 @@ class Intersect(kts.Generator):
         self._base_infifo_in_valid = self.var("base_infifo_in_valid", 1)
         # Stupid convert -
         self._base_infifo_in_packed = self.var(f"base_infifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._base_infifo_in_packed[self.data_width], self._cmrg_eos_in[0])
-        self.wire(self._base_infifo_in_packed[self.data_width - 1, 0], self._cmrg_coord_in[0])
+        self.wire(self._base_infifo_in_packed[self.data_width], self._cmrg_coord_in_eos_in[0])
+        self.wire(self._base_infifo_in_packed[self.data_width - 1, 0], self._cmrg_coord_in[0][self.data_width - 1, 0])
 
         self._base_infifo_out_packed = self.var(f"base_infifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._base_infifo_in_eos, self._base_infifo_out_packed[self.data_width])
@@ -491,13 +580,13 @@ class Intersect(kts.Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._cmrg_valid_in[0],
+                       push=self._cmrg_coord_in_valid_in[0],
                        pop=self._cmrg_fifo_pop[0],
                        data_in=self._base_infifo_in_packed,
                        data_out=self._base_infifo_out_packed)
 
         self.wire(self._base_infifo_in_valid, ~base_infifo.ports.empty)
-        self.wire(self._cmrg_ready_out[0], ~base_infifo.ports.full)
+        self.wire(self._cmrg_coord_in_ready_out[0], ~base_infifo.ports.full)
 
         ##############
         # PROC infifo
@@ -507,8 +596,8 @@ class Intersect(kts.Generator):
         self._proc_infifo_in_valid = self.var("proc_infifo_in_valid", 1)
 
         self._proc_infifo_in_packed = self.var(f"proc_infifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._proc_infifo_in_packed[self.data_width], self._cmrg_eos_in[1])
-        self.wire(self._proc_infifo_in_packed[self.data_width - 1, 0], self._cmrg_coord_in[1])
+        self.wire(self._proc_infifo_in_packed[self.data_width], self._cmrg_coord_in_eos_in[1])
+        self.wire(self._proc_infifo_in_packed[self.data_width - 1, 0], self._cmrg_coord_in[1][self.data_width - 1, 0])
 
         self._proc_infifo_out_packed = self.var(f"proc_infifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._proc_infifo_in_eos, self._proc_infifo_out_packed[self.data_width])
@@ -519,13 +608,13 @@ class Intersect(kts.Generator):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._cmrg_valid_in[1],
+                       push=self._cmrg_coord_in_valid_in[1],
                        pop=self._cmrg_fifo_pop[1],
                        data_in=self._proc_infifo_in_packed,
                        data_out=self._proc_infifo_out_packed)
 
         self.wire(self._proc_infifo_in_valid, ~proc_infifo.ports.empty)
-        self.wire(self._cmrg_ready_out[1], ~proc_infifo.ports.full)
+        self.wire(self._cmrg_coord_in_ready_out[1], ~proc_infifo.ports.full)
 
         ####################
         # HELPER LOGIC FOR FSM
@@ -689,8 +778,8 @@ class Intersect(kts.Generator):
         self.wire(self._base_outfifo_in_packed[self.data_width - 1, 0], self._base_infifo_in_data)
 
         self._base_outfifo_out_packed = self.var(f"base_outfifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._cmrg_eos_out[0], self._base_outfifo_out_packed[self.data_width])
-        self.wire(self._cmrg_coord_out[0], self._base_outfifo_out_packed[self.data_width - 1, 0])
+        self.wire(self._cmrg_coord_out[0][self.data_width], self._base_outfifo_out_packed[self.data_width])
+        self.wire(self._cmrg_coord_out[0][self.data_width - 1, 0], self._base_outfifo_out_packed[self.data_width - 1, 0])
 
         self.add_child(f"base_outfifo",
                        base_outfifo,
@@ -698,11 +787,11 @@ class Intersect(kts.Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._cmrg_fifo_push[0],
-                       pop=self._cmrg_ready_in[0],
+                       pop=self._cmrg_coord_out_ready_in[0],
                        data_in=self._base_outfifo_in_packed,
                        data_out=self._base_outfifo_out_packed)
 
-        self.wire(self._cmrg_valid_out[0], ~base_outfifo.ports.empty)
+        self.wire(self._cmrg_coord_out_valid_out[0], ~base_outfifo.ports.empty)
 
         ##############
         # PROC outfifo
@@ -715,8 +804,8 @@ class Intersect(kts.Generator):
         self.wire(self._proc_outfifo_in_packed[self.data_width - 1, 0], self._proc_infifo_in_data)
 
         self._proc_outfifo_out_packed = self.var(f"proc_outfifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._cmrg_eos_out[1], self._proc_outfifo_out_packed[self.data_width])
-        self.wire(self._cmrg_coord_out[1], self._proc_outfifo_out_packed[self.data_width - 1, 0])
+        self.wire(self._cmrg_coord_out[1][self.data_width], self._proc_outfifo_out_packed[self.data_width])
+        self.wire(self._cmrg_coord_out[1][self.data_width - 1, 0], self._proc_outfifo_out_packed[self.data_width - 1, 0])
 
         self.add_child(f"proc_outfifo",
                        proc_outfifo,
@@ -724,11 +813,11 @@ class Intersect(kts.Generator):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._cmrg_fifo_push[1],
-                       pop=self._cmrg_ready_in[1],
+                       pop=self._cmrg_coord_out_ready_in[1],
                        data_in=self._proc_outfifo_in_packed,
                        data_out=self._proc_outfifo_out_packed)
 
-        self.wire(self._cmrg_valid_out[1], ~proc_outfifo.ports.empty)
+        self.wire(self._cmrg_coord_out_valid_out[1], ~proc_outfifo.ports.empty)
 
 
 if __name__ == "__main__":

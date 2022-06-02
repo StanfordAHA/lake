@@ -37,8 +37,12 @@ class IOCore(Generator):
         self._clk_en = self.clock_en("clk_en", 1)
 
         # Enable/Disable tile
-        self._tile_en = self.input("tile_en", 1)
-        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        self._tile_en = self.var("tile_en", 1)
+        self.wire(self._tile_en, kts.const(1, 1))
+        # self._tile_en = self.input("tile_en", 1)
+        self._tile_en_fake = self.input("tile_en_fake", 1)
+        # self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        self._tile_en_fake.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)

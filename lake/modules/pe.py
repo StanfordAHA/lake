@@ -43,28 +43,45 @@ class PE(Generator):
         # Scanner interface will need
         # input data, input valid
         # output address, output valid
-        self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
-        self._data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        self._data_in = []
+        self._data_in_valid_in = []
+        self._data_in_ready_out = []
+        self._data_in_eos_in = []
 
-        self._valid_in = self.input("valid_in", 2)
-        self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
+        for i in range(2):
 
-        self._ready_out = self.output("ready_out", 2)
-        self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
+            tmp_data_in = self.input(f"data_in_{i}", self.data_width + 1, packed=True)
+            tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            # self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
 
-        self._eos_in = self.input("eos_in", 2)
-        self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
+            tmp_data_in_valid_in = self.input(f"data_in_{i}_valid", 1)
+            tmp_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+            # self._valid_in = self.input("valid_in", 2)
 
-        self._data_out = self.output("data_out", self.data_width)
+            tmp_data_in_ready_out = self.output(f"data_in_{i}_ready", 1)
+            tmp_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+            # self._ready_out = self.output("ready_out", 2)
+
+            tmp_data_in_eos_in = self.var(f"data_in_{i}_eos", 1)
+            # tmp_data_in_eos_in.add_attribute(ControlSignalAttr(is_control=True))
+            self.wire(tmp_data_in_eos_in, tmp_data_in[self.data_width])
+            # self._eos_in = self.input("eos_in", 2)
+
+            self._data_in.append(tmp_data_in)
+            self._data_in_valid_in.append(tmp_data_in_valid_in)
+            self._data_in_ready_out.append(tmp_data_in_ready_out)
+            self._data_in_eos_in.append(tmp_data_in_eos_in)
+
+        self._data_out = self.output("data_out", self.data_width + 1)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._valid_out = self.output("valid_out", 1)
+        self._valid_out = self.output("data_out_valid", 1)
         self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._eos_out = self.output("eos_out", 1)
-        self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._eos_out = self.output("eos_out", 1)
+        # self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._ready_in = self.input("ready_in", 1)
+        self._ready_in = self.input("data_out_ready", 1)
         self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
 # ==============================
@@ -75,8 +92,8 @@ class PE(Generator):
         self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8))
 
         # Ready is just a function of having room in the FIFO
-        self.wire(self._ready_out[0], ~self._infifo[0].ports.full)
-        self.wire(self._ready_out[1], ~self._infifo[1].ports.full)
+        self.wire(self._data_in_ready_out[0], ~self._infifo[0].ports.full)
+        self.wire(self._data_in_ready_out[1], ~self._infifo[1].ports.full)
 
         # Convert to packed
         self._infifo_in_packed = self.var("infifo_in_packed", self.data_width + 1, size=2, explicit_array=True, packed=True)
@@ -87,20 +104,20 @@ class PE(Generator):
         self._infifo_out_data = self.var("infifo_out_data", self.data_width, size=2, explicit_array=True, packed=True)
 
         # indicate valid data as well
-        self.wire(self._infifo_in_packed[0][self.data_width], self._eos_in[0])
-        self.wire(self._infifo_in_packed[0][self.data_width - 1, 0], self._data_in[0])
+        # self.wire(self._infifo_in_packed[0][self.data_width], self._data_in_eos_in[0])
+        self.wire(self._infifo_in_packed[0], self._data_in[0])
         self.wire(self._infifo_out_eos[0], self._infifo_out_packed[0][self.data_width])
         self.wire(self._infifo_out_data[0], self._infifo_out_packed[0][self.data_width - 1, 0])
 
-        self.wire(self._infifo_in_packed[1][self.data_width], self._eos_in[1])
-        self.wire(self._infifo_in_packed[1][self.data_width - 1, 0], self._data_in[1])
+        # self.wire(self._infifo_in_packed[1][self.data_width], self._data_in_eos_in[1])
+        self.wire(self._infifo_in_packed[1], self._data_in[1])
         self.wire(self._infifo_out_eos[1], self._infifo_out_packed[1][self.data_width])
         self.wire(self._infifo_out_data[1], self._infifo_out_packed[1][self.data_width - 1, 0])
 
         # Push when there's incoming transaction and room to accept it
         self._infifo_push = self.var("infifo_push", 2)
-        self.wire(self._infifo_push[0], self._valid_in[0])
-        self.wire(self._infifo_push[1], self._valid_in[1])
+        self.wire(self._infifo_push[0], self._data_in_valid_in[0])
+        self.wire(self._infifo_push[1], self._data_in_valid_in[1])
 
         # Pop when ready to accum more streams
         self._infifo_pop = self.var("infifo_pop", 2)
@@ -136,8 +153,8 @@ class PE(Generator):
         self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_eos)
         self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
-        self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
-        self.wire(self._data_out, self._outfifo_out_packed[self.data_width - 1, 0])
+        # self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
+        self.wire(self._data_out, self._outfifo_out_packed)
 
         # Push when there's incoming transaction and room to accept it
         self._outfifo_push = self.var("outfifo_push", 1)
