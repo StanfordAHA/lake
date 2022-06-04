@@ -1,4 +1,5 @@
 from math import e
+from struct import pack
 import kratos as kts
 from kratos import *
 from numpy import full
@@ -52,11 +53,9 @@ class Intersect(kts.Generator):
         self._coord_in = []
         self._coord_valid_in = []
         self._coord_ready_out = []
-        self._coord_eos_in = []
         self._pos_in = []
         self._pos_valid_in = []
         self._pos_ready_out = []
-        self._pos_eos_in = []
 
         self._pos_out = []
         self._pos_out_valid_out = []
@@ -64,67 +63,45 @@ class Intersect(kts.Generator):
         # self._pos_out_eos_out = []
         for i in range(self.num_streams):
 
-            tmp_coord_in = self.input(f"coord_in_{i}", self.data_width + 1,
-                                      packed=True)
+            tmp_coord_in = self.input(f"coord_in_{i}", self.data_width + 1, packed=True)
             tmp_coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-            self._coord_in.append(tmp_coord_in)
 
             tmp_coord_valid = self.input(f"coord_in_{i}_valid", 1)
             tmp_coord_valid.add_attribute(ControlSignalAttr(is_control=True))
-            self._coord_valid_in.append(tmp_coord_valid)
 
             tmp_coord_ready = self.output(f"coord_in_{i}_ready", 1)
             tmp_coord_ready.add_attribute(ControlSignalAttr(is_control=False))
+
+            self._coord_in.append(tmp_coord_in)
+            self._coord_valid_in.append(tmp_coord_valid)
             self._coord_ready_out.append(tmp_coord_ready)
 
-            tmp_coord_eos_in = self.var(f"coord_in_{i}_eos", 1)
-            self._coord_eos_in.append(tmp_coord_eos_in)
-            self.wire(tmp_coord_eos_in, tmp_coord_in[self.data_width])
-
-            tmp_pos_in = self.input(f"pos_in_{i}", self.data_width + 1,
-                                    packed=True)
+            tmp_pos_in = self.input(f"pos_in_{i}", self.data_width + 1, packed=True)
             tmp_pos_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-            self._pos_in.append(tmp_pos_in)
 
             tmp_pos_valid = self.input(f"pos_in_{i}_valid", 1)
             tmp_pos_valid.add_attribute(ControlSignalAttr(is_control=True))
-            self._pos_valid_in.append(tmp_pos_valid)
 
             tmp_pos_ready = self.output(f"pos_in_{i}_ready", 1)
             tmp_pos_ready.add_attribute(ControlSignalAttr(is_control=False))
+
+            self._pos_in.append(tmp_pos_in)
+            self._pos_valid_in.append(tmp_pos_valid)
             self._pos_ready_out.append(tmp_pos_ready)
 
-            tmp_pos_eos_in = self.var(f"pos_in_{i}_eos", 1)
-            self._pos_eos_in.append(tmp_pos_eos_in)
-            self.wire(tmp_pos_eos_in, tmp_pos_in[self.data_width])
-
             # POS OUT
-            tmp_pos_out = self.output(f"pos_out_{i}", self.data_width + 1,
-                                      packed=True)
+            tmp_pos_out = self.output(f"pos_out_{i}", self.data_width + 1, packed=True)
             tmp_pos_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-            self._pos_out.append(tmp_pos_out)
 
             tmp_pos_out_valid = self.output(f"pos_out_{i}_valid", 1)
             tmp_pos_out_valid.add_attribute(ControlSignalAttr(is_control=False))
-            self._pos_out_valid_out.append(tmp_pos_out_valid)
 
             tmp_pos_out_ready = self.input(f"pos_out_{i}_ready", 1)
             tmp_pos_out_ready.add_attribute(ControlSignalAttr(is_control=True))
+
+            self._pos_out.append(tmp_pos_out)
+            self._pos_out_valid_out.append(tmp_pos_out_valid)
             self._pos_out_ready_in.append(tmp_pos_out_ready)
-
-            # # Are incoming guys valid/eos?
-            # self._valid_in = self.input("valid_in", self.num_streams * 2)
-            # self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
-            # self._eos_in = self.input("eos_in", self.num_streams * 2)
-            # self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
-
-        # # Pop the incoming guys
-        # self._ready_out = self.output("ready_out", self.num_streams * 2)
-        # self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
-
-        # BackPRESH, 3 different channels
-        # self._ready_in = self.input("ready_in", 3)
-        # self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
         # only send one common coord out for now.
         self._coord_out = self.output("coord_out", self.data_width + 1, packed=True)
@@ -135,31 +112,84 @@ class Intersect(kts.Generator):
 
         self._coord_out_valid_out = self.output("coord_out_valid", 1)
         self._coord_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
-        # but need to send two positions...
-        # self._pos_out = self.output("pos_out", self.data_width,
-        #                             size=self.num_streams,
-        #                             explicit_array=True,
-        #                             packed=True)
-        # self._pos_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        # self._o_coord_out = self.output("o_coord_out", self.data_width,
-        #                                 size=self.num_streams,
-        #                                 explicit_array=True,
-        #                                 packed=True)
-        # self._o_coord_out.add_attribute(ControlSignalAttr(is_control=False))
+# ==========================================
+# Main logic begin - FIFO inputs
+# ==========================================
 
-        # Can broadcast the valid and eos out
-        # self._valid_out = self.output("valid_out", 3)
-        # self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
+        self._coord_in_fifo_in = []
+        self._coord_in_fifo_valid_in = []
+        self._coord_in_fifo_eos_in = []
+        self._pos_in_fifo_in = []
+        self._pos_in_fifo_valid_in = []
+        self._pos_in_fifo_eos_in = []
 
-        # self._eos_out = self.output("eos_out", 3)
-        # self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
+        # Control Vars from FSM
+        self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
+        self._inc_pos_cnt = self.var("inc_pos_cnt", self.num_streams)
+
+        for i in range(self.num_streams):
+
+            # COORD IN FIFOS
+            # COORD IN FIFOS
+            tmp_coord_fifo = RegFIFO(data_width=self._coord_in[i].width, width_mult=1, depth=8)
+
+            tmp_coord_in_valid_in = self.var(f"coord_in_{i}_fifo_valid_in", 1)
+
+            tmp_coord_in = self.var(f"coord_in_{i}_fifo_in", self.data_width + 1, packed=True)
+            tmp_coord_in_eos_in = self.var(f"coord_in_{i}_fifo_eos_in", 1, packed=True)
+
+            self.wire(tmp_coord_in_eos_in, tmp_coord_in[self.data_width])
+
+            self.add_child(f"coord_in_fifo_{i}",
+                           tmp_coord_fifo,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           clk_en=self._clk_en,
+                           push=self._coord_valid_in[i],
+                           pop=self._inc_pos_cnt[i],
+                           data_in=self._coord_in[i],
+                           data_out=tmp_coord_in)
+
+            self.wire(self._coord_ready_out[i], ~tmp_coord_fifo.ports.full)
+            self.wire(tmp_coord_in_valid_in, ~tmp_coord_fifo.ports.empty)
+
+            self._coord_in_fifo_in.append(tmp_coord_in)
+            self._coord_in_fifo_valid_in.append(tmp_coord_in_valid_in)
+            self._coord_in_fifo_eos_in.append(tmp_coord_in_eos_in)
+
+            # POS IN FIFOS
+            tmp_pos_fifo = RegFIFO(data_width=self._pos_in[i].width, width_mult=1, depth=8)
+
+            tmp_pos_in_valid_in = self.var(f"pos_in_{i}_fifo_valid_in", 1)
+
+            tmp_pos_in = self.var(f"pos_in_{i}_fifo_in", self.data_width + 1, packed=True)
+            tmp_pos_in_eos_in = self.var(f"pos_in_{i}_fifo_eos_in", 1, packed=True)
+
+            self.wire(tmp_pos_in_eos_in, tmp_pos_in[self.data_width])
+
+            self.add_child(f"pos_in_fifo_{i}",
+                           tmp_pos_fifo,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           clk_en=self._clk_en,
+                           push=self._pos_valid_in[i],
+                           pop=self._inc_pos_cnt[i],
+                           data_in=self._pos_in[i],
+                           data_out=tmp_pos_in)
+
+            self.wire(self._pos_ready_out[i], ~tmp_pos_fifo.ports.full)
+            self.wire(tmp_pos_in_valid_in, ~tmp_pos_fifo.ports.empty)
+
+            self._pos_in_fifo_in.append(tmp_pos_in)
+            self._pos_in_fifo_valid_in.append(tmp_pos_in_valid_in)
+            self._pos_in_fifo_eos_in.append(tmp_pos_in_eos_in)
 
         # Create sticky bits for seeing EOS on either side...
         self._eos_in_sticky = self.var("eos_in_sticky", self.num_streams)
         self._clr_eos_sticky = self.var("clr_eos_sticky", self.num_streams)
         for i in range(self.num_streams):
-            tmp_sticky = sticky_flag(self, self._coord_eos_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
+            tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             self.wire(self._eos_in_sticky[i], tmp_sticky)
 
         # Intermediates
@@ -176,22 +206,13 @@ class Intersect(kts.Generator):
 
         self._any_eos = self.var("any_eos", 1)
 
-        all_in_valids = kts.concat(*self._coord_valid_in, *self._pos_valid_in)
+        # Join valids
+        all_in_valids = kts.concat(*self._coord_in_fifo_valid_in, *self._pos_in_fifo_valid_in)
         self.wire(self._all_valid, all_in_valids.r_and() & ~self._any_eos)
-        # self._gate_eos = self.var("gate_eos", 2)
-        # for i in range(self._gate_eos.width):
-        # TODO: Deal with stream of length 0
-        # self.wire(self._gate_eos[0], self._eos_in[0] & ((self._coord_in[0] <= self._coord_in[1]) | ~self._valid_in[0]))
-        # self.wire(self._gate_eos[1], self._eos_in[1] & ((self._coord_in[0] >= self._coord_in[1]) | ~self._valid_in[1]))
-        # self.wire(self._any_eos, self._gate_eos.r_or())
 
-        all_eos = kts.concat(*self._coord_eos_in, *self._pos_eos_in)
+        all_eos = kts.concat(*self._coord_in_fifo_eos_in, *self._pos_in_fifo_eos_in)
 
         self.wire(self._any_eos, all_eos.r_or())
-
-        # Control Vars from FSM
-        self._inc_pos_cnt = self.var("inc_pos_cnt", self.num_streams)
-        self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
 
         for i in range(self.num_streams):
             @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -291,19 +312,19 @@ class Intersect(kts.Generator):
         #######
         # ITER
         #######
-        ITER.output(self._inc_pos_cnt[0], (self._all_valid & (self._coord_in[0] <= self._coord_in[1])) & ~self._fifo_full.r_or())
-        ITER.output(self._inc_pos_cnt[1], (self._all_valid & (self._coord_in[0] >= self._coord_in[1])) & ~self._fifo_full.r_or())
+        ITER.output(self._inc_pos_cnt[0], (self._all_valid & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        ITER.output(self._inc_pos_cnt[1], (self._all_valid & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         ITER.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full.r_or())
         ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        ITER.output(self._fifo_push, self._all_valid & (self._coord_in[0] == self._coord_in[1]) & ~self._fifo_full.r_or() & ~self._any_eos)
+        ITER.output(self._fifo_push, self._all_valid & (self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or() & ~self._any_eos)
         ITER.output(self._clr_eos_sticky[0], 0)
         ITER.output(self._clr_eos_sticky[1], 0)
-        ITER.output(self._coord_to_fifo, self._coord_in[0][15, 0])
+        ITER.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         # ITER.output(self._pos_to_fifo[0], self._pos_cnt[0] + self._payload_ptr[0])
         # ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
-        ITER.output(self._pos_to_fifo[0], self._pos_in[0][15, 0])
-        ITER.output(self._pos_to_fifo[1], self._pos_in[1][15, 0])
+        ITER.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
+        ITER.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
 
         #######
         # ALIGN
@@ -323,18 +344,18 @@ class Intersect(kts.Generator):
         #######
         # DRAIN
         #######
-        DRAIN.output(self._inc_pos_cnt[0], ~self._fifo_full.r_or() & self._coord_eos_in[0] & all_in_valids.r_and())
-        DRAIN.output(self._inc_pos_cnt[1], ~self._fifo_full.r_or() & self._coord_eos_in[0] & all_in_valids.r_and())
+        DRAIN.output(self._inc_pos_cnt[0], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & all_in_valids.r_and())
+        DRAIN.output(self._inc_pos_cnt[1], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & all_in_valids.r_and())
         DRAIN.output(self._rst_pos_cnt[0], 0)
         DRAIN.output(self._rst_pos_cnt[1], 0)
         # Keep draining while we have eos in...should be aligned
-        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_eos_in[0] & all_in_valids.r_and())
+        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & all_in_valids.r_and())
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
         # TODO
-        DRAIN.output(self._coord_to_fifo, self._coord_in[0][15, 0])
-        DRAIN.output(self._pos_to_fifo[0], self._coord_in[0][15, 0])
-        DRAIN.output(self._pos_to_fifo[1], self._coord_in[0][15, 0])
+        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
+        DRAIN.output(self._pos_to_fifo[0], self._coord_in_fifo_in[0][15, 0])
+        DRAIN.output(self._pos_to_fifo[1], self._coord_in_fifo_in[0][15, 0])
 
         #######
         # DONE
@@ -352,11 +373,6 @@ class Intersect(kts.Generator):
 
         self.intersect_fsm.set_start_state(IDLE)
 
-        # Incrementing the pos cnt == popping the incoming stream
-        self.wire(self._coord_ready_out[0], self._inc_pos_cnt[0])
-        self.wire(self._coord_ready_out[1], self._inc_pos_cnt[1])
-        self.wire(self._pos_ready_out[0], self._inc_pos_cnt[0])
-        self.wire(self._pos_ready_out[1], self._inc_pos_cnt[1])
 # ===================================
 # Dump metadata into fifo
 # ===================================

@@ -46,29 +46,29 @@ class Reg(Generator):
         # Scanner interface will need
         # input data, input valid
         # output address, output valid
-        self._data_in = self.input("data_in", self.data_width)
+        self._data_in = self.input("data_in", self.data_width + 1, packed=True)
         self._data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._valid_in = self.input("valid_in", 1)
+        self._valid_in = self.input("data_in_valid", 1)
         self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._ready_out = self.output("ready_out", 1)
+        self._ready_out = self.output("data_in_ready", 1)
         self._ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._eos_in = self.input("eos_in", 1)
-        self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
+        # self._eos_in = self.input("eos_in", 1)
+        # self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._data_out = self.output("data_out", self.data_width)
+        self._data_out = self.output("data_out", self.data_width + 1)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._valid_out = self.output("valid_out", 1)
+        self._ready_in = self.input("data_out_ready", 1)
+        self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._valid_out = self.output("data_out_valid", 1)
         self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._eos_out = self.output("eos_out", 1)
-        self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
-
-        self._ready_in = self.input("ready_in", 1)
-        self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
+        # self._eos_out = self.output("eos_out", 1)
+        # self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Store the default value...
         self._default_value = self.input("default_value", self.data_width)
@@ -99,9 +99,9 @@ class Reg(Generator):
         self._infifo_out_data = self.var("infifo_out_data", self.data_width)
 
         # indicate valid data as well
-        self.wire(self._infifo_in_packed[self.data_width], self._eos_in)
+        # self.wire(self._infifo_in_packed[self.data_width], self._eos_in)
         # self.wire(self._infifo_in_packed[self.data_width], self._valid_in)
-        self.wire(self._infifo_in_packed[self.data_width - 1, 0], self._data_in)
+        self.wire(self._infifo_in_packed[self.data_width, 0], self._data_in)
 
         self.wire(self._infifo_out_eos, self._infifo_out_packed[self.data_width])
         # self.wire(self._infifo_out_valid, self._infifo_out_packed[self.data_width])
@@ -150,8 +150,8 @@ class Reg(Generator):
         self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
         # self.wire(self._outfifo_out_valid, self._outfifo_out_packed[self.data_width + 1])
-        self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
-        self.wire(self._data_out, self._outfifo_out_packed[self.data_width - 1, 0])
+        # self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
+        self.wire(self._data_out, self._outfifo_out_packed[self.data_width, 0])
 
         self._outfifo_valid_entry = self.var("outfifo_valid_entry", 1)
 

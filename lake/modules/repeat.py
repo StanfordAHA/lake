@@ -42,43 +42,44 @@ class Repeat(Generator):
         # Take in a data stream to do repeats (modifier) and a data stream to process
 
         # REPSIG IN
-        self._repsig_data_in = self.input("repsig_data_in", self.data_width, packed=True)
+        self._repsig_data_in = self.input("repsig_data_in", self.data_width + 1, packed=True)
         self._repsig_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._repsig_eos_in = self.input("repsig_eos_in", 1)
-        self._repsig_eos_in.add_attribute(ControlSignalAttr(is_control=True))
+        # self._repsig_eos_in = self.var("repsig_eos_in", 1)
+        # self.wire(self._repsig_eos_in, self._repsig_data_in[self.data_width])
+        # self._repsig_eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._repsig_ready_out = self.output("repsig_ready_out", 1)
+        self._repsig_ready_out = self.output("repsig_data_in_ready", 1)
         self._repsig_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._repsig_valid_in = self.input("repsig_valid_in", 1)
+        self._repsig_valid_in = self.input("repsig_data_in_valid", 1)
         self._repsig_valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
         # PROC IN
-        self._proc_data_in = self.input("proc_data_in", self.data_width, packed=True)
+        self._proc_data_in = self.input("proc_data_in", self.data_width + 1, packed=True)
         self._proc_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._proc_eos_in = self.input("proc_eos_in", 1)
-        self._proc_eos_in.add_attribute(ControlSignalAttr(is_control=True))
+        # self._proc_eos_in = self.input("proc_eos_in", 1)
+        # self._proc_eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._proc_ready_out = self.output("proc_ready_out", 1)
+        self._proc_ready_out = self.output("proc_data_in_ready", 1)
         self._proc_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._proc_valid_in = self.input("proc_valid_in", 1)
+        self._proc_valid_in = self.input("proc_data_in_valid", 1)
         self._proc_valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
         # Data out (right now its a ref...)
-        self._ref_data_out = self.output("ref_data_out", self.data_width)
+        self._ref_data_out = self.output("ref_data_out", self.data_width + 1, packed=True)
         self._ref_data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._ref_ready_in = self.input("ref_ready_in", 1)
+        self._ref_ready_in = self.input("ref_data_out_ready", 1)
         self._ref_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._ref_valid_out = self.output("ref_valid_out", 1)
+        self._ref_valid_out = self.output("ref_data_out_valid", 1)
         self._ref_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._ref_eos_out = self.output("ref_eos_out", 1)
-        self._ref_eos_out.add_attribute(ControlSignalAttr(is_control=False))
+        # self._ref_eos_out = self.output("ref_eos_out", 1)
+        # self._ref_eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Config regs
 
@@ -98,7 +99,7 @@ class Repeat(Generator):
         self._repsig_fifo_pop = self.var("repsig_fifo_pop", 1)
         self._repsig_fifo_valid = self.var("repsig_fifo_valid", 1)
 
-        self._repsig_fifo_in = kts.concat(self._repsig_data_in, self._repsig_eos_in)
+        self._repsig_fifo_in = kts.concat(self._repsig_data_in)
         self._repsig_in_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=8)
         self._repsig_fifo_out_data = self.var("repsig_fifo_out_data", self.data_width, packed=True)
         self._repsig_fifo_out_eos = self.var("repsig_fifo_out_eos", 1)
@@ -111,7 +112,7 @@ class Repeat(Generator):
                        push=self._repsig_valid_in,
                        pop=self._repsig_fifo_pop,
                        data_in=self._repsig_fifo_in,
-                       data_out=kts.concat(self._repsig_fifo_out_data, self._repsig_fifo_out_eos))
+                       data_out=kts.concat(self._repsig_fifo_out_eos, self._repsig_fifo_out_data))
 
         self.wire(self._repsig_ready_out, ~self._repsig_in_fifo.ports.full)
         self.wire(self._repsig_fifo_valid, ~self._repsig_in_fifo.ports.empty)
@@ -130,7 +131,7 @@ class Repeat(Generator):
 
         self.wire(self._proc_fifo_push, kts.ternary(self._root, self._proc_fifo_inject_push, self._proc_valid_in))
 
-        self._proc_fifo_in = kts.ternary(self._root, kts.concat(self._proc_fifo_inject_data, self._proc_fifo_inject_eos), kts.concat(self._proc_data_in, self._proc_eos_in))
+        self._proc_fifo_in = kts.ternary(self._root, kts.concat(self._proc_fifo_inject_eos, self._proc_fifo_inject_data), kts.concat(self._proc_data_in))
         self._proc_in_fifo = RegFIFO(data_width=self._proc_fifo_in.width, width_mult=1, depth=8)
         self._proc_fifo_out_data = self.var("proc_fifo_out_data", self.data_width, packed=True)
         self._proc_fifo_out_eos = self.var("proc_fifo_out_eos", 1)
@@ -143,7 +144,7 @@ class Repeat(Generator):
                        push=self._proc_fifo_push,
                        pop=self._proc_fifo_pop,
                        data_in=self._proc_fifo_in,
-                       data_out=kts.concat(self._proc_fifo_out_data, self._proc_fifo_out_eos))
+                       data_out=kts.concat(self._proc_fifo_out_eos, self._proc_fifo_out_data))
 
         self.wire(self._proc_ready_out, ~self._proc_in_fifo.ports.full)
         self.wire(self._proc_fifo_full, self._proc_in_fifo.ports.full)
@@ -160,7 +161,7 @@ class Repeat(Generator):
         self._ref_fifo_in_data = self.var("ref_fifo_in_data", self.data_width)
         self._ref_fifo_in_eos = self.var("ref_fifo_in_eos", 1)
 
-        self._ref_fifo_in = kts.concat(self._ref_fifo_in_data, self._ref_fifo_in_eos)
+        self._ref_fifo_in = kts.concat(self._ref_fifo_in_eos, self._ref_fifo_in_data)
         self._ref_out_fifo = RegFIFO(data_width=self._ref_fifo_in.width, width_mult=1, depth=8)
 
         self.add_child(f"ref_out_fifo",
@@ -171,7 +172,7 @@ class Repeat(Generator):
                        push=self._ref_fifo_push,
                        pop=self._ref_ready_in,
                        data_in=self._ref_fifo_in,
-                       data_out=kts.concat(self._ref_data_out, self._ref_eos_out))
+                       data_out=kts.concat(self._ref_data_out))
 
         self.wire(self._ref_fifo_full, self._ref_out_fifo.ports.full)
         self.wire(self._ref_valid_out, ~self._ref_out_fifo.ports.empty)
