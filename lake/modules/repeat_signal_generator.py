@@ -13,13 +13,15 @@ from lake.modules.reg_fifo import RegFIFO
 
 class RepeatSignalGenerator(Generator):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 passthru=True):
 
         super().__init__("RepeatSignalGenerator", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.passthru = passthru
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -67,15 +69,16 @@ class RepeatSignalGenerator(Generator):
         # self._repsig_eos_out = self.output("repsig_eos_out", 1)
         # self._repsig_eos_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        # Passthru out
-        self._passthru_data_out = self.output("passthru_data_out", self.data_width + 1, packed=True)
-        self._passthru_data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        if self.passthru:
+            # Passthru out
+            self._passthru_data_out = self.output("passthru_data_out", self.data_width + 1, packed=True)
+            self._passthru_data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._passthru_ready_in = self.input("passthru_data_out_ready", 1)
-        self._passthru_ready_in.add_attribute(ControlSignalAttr(is_control=True))
+            self._passthru_ready_in = self.input("passthru_data_out_ready", 1)
+            self._passthru_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._passthru_valid_out = self.output("passthru_data_out_valid", 1)
-        self._passthru_valid_out.add_attribute(ControlSignalAttr(is_control=False))
+            self._passthru_valid_out = self.output("passthru_data_out_valid", 1)
+            self._passthru_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # self._passthru_eos_out = self.output("passthru_eos_out", 1)
         # self._passthru_eos_out.add_attribute(ControlSignalAttr(is_control=False))
@@ -140,28 +143,29 @@ class RepeatSignalGenerator(Generator):
         self.wire(self._repsig_fifo_full, self._repsig_out_fifo.ports.full)
         self.wire(self._repsig_valid_out, ~self._repsig_out_fifo.ports.empty)
 
-        # PASSTHRU FIFO
-        self._passthru_fifo_push = self.var("passthru_fifo_push", 1)
-        self._passthru_fifo_full = self.var("passthru_fifo_full", 1)
+        if self.passthru:
+            # PASSTHRU FIFO
+            self._passthru_fifo_push = self.var("passthru_fifo_push", 1)
+            self._passthru_fifo_full = self.var("passthru_fifo_full", 1)
 
-        self._passthru_fifo_in_data = self.var("passthru_fifo_in_data", self.data_width)
-        self._passthru_fifo_in_eos = self.var("passthru_fifo_in_eos", 1)
+            self._passthru_fifo_in_data = self.var("passthru_fifo_in_data", self.data_width)
+            self._passthru_fifo_in_eos = self.var("passthru_fifo_in_eos", 1)
 
-        self._passthru_fifo_in = kts.concat(self._passthru_fifo_in_eos, self._passthru_fifo_in_data)
-        self._passthru_out_fifo = RegFIFO(data_width=self._passthru_fifo_in.width, width_mult=1, depth=8)
+            self._passthru_fifo_in = kts.concat(self._passthru_fifo_in_eos, self._passthru_fifo_in_data)
+            self._passthru_out_fifo = RegFIFO(data_width=self._passthru_fifo_in.width, width_mult=1, depth=8)
 
-        self.add_child(f"passthru_out_fifo",
-                       self._passthru_out_fifo,
-                       clk=self._gclk,
-                       rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       push=self._passthru_fifo_push,
-                       pop=self._passthru_ready_in,
-                       data_in=self._passthru_fifo_in,
-                       data_out=kts.concat(self._passthru_data_out))
+            self.add_child(f"passthru_out_fifo",
+                           self._passthru_out_fifo,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           clk_en=self._clk_en,
+                           push=self._passthru_fifo_push,
+                           pop=self._passthru_ready_in,
+                           data_in=self._passthru_fifo_in,
+                           data_out=kts.concat(self._passthru_data_out))
 
-        self.wire(self._passthru_fifo_full, self._passthru_out_fifo.ports.full)
-        self.wire(self._passthru_valid_out, ~self._passthru_out_fifo.ports.empty)
+            self.wire(self._passthru_fifo_full, self._passthru_out_fifo.ports.full)
+            self.wire(self._passthru_valid_out, ~self._passthru_out_fifo.ports.empty)
 
 # =============================
 # Various Logic
@@ -169,9 +173,9 @@ class RepeatSignalGenerator(Generator):
         self._seen_root_eos = sticky_flag(self, (self._base_fifo_out_data == 0) & self._base_fifo_out_eos & self._base_fifo_valid, name="seen_root_eos")
 
         # Passthru is trivial, just push it when the other one is being pushed
-        self.wire(self._passthru_fifo_in_data, self._base_fifo_out_data)
-        self.wire(self._passthru_fifo_in_eos, self._base_fifo_out_eos)
-        # self.wire(self._passthru_fifo_push, self._repsig_fifo_push)
+        if self.passthru:
+            self.wire(self._passthru_fifo_in_data, self._base_fifo_out_data)
+            self.wire(self._passthru_fifo_in_eos, self._base_fifo_out_eos)
 
         self._clr_already_pushed_repsig_eos = self.var("clr_already_pushed_repsig_eos", 1)
         self._already_pushed_repsig_eos = sticky_flag(self, self._repsig_fifo_push, clear=self._clr_already_pushed_repsig_eos, seq_only=True)
@@ -221,8 +225,9 @@ class RepeatSignalGenerator(Generator):
         self.rsg_fsm.output(self._repsig_fifo_in_eos)
         self.rsg_fsm.output(self._repsig_fifo_push)
         self.rsg_fsm.output(self._base_fifo_pop)
-        self.rsg_fsm.output(self._passthru_fifo_push)
         self.rsg_fsm.output(self._clr_already_pushed_repsig_eos)
+        if self.passthru:
+            self.rsg_fsm.output(self._passthru_fifo_push)
 
 # =============================
 # FSM Output Implementation
@@ -234,8 +239,9 @@ class RepeatSignalGenerator(Generator):
         START.output(self._repsig_fifo_in_eos, 0)
         START.output(self._repsig_fifo_push, 0)
         START.output(self._base_fifo_pop, 0)
-        START.output(self._passthru_fifo_push, 0)
         START.output(self._clr_already_pushed_repsig_eos, 0)
+        if self.passthru:
+            START.output(self._passthru_fifo_push, 0)
 
         #####################
         # PASS_REPEAT
@@ -245,9 +251,12 @@ class RepeatSignalGenerator(Generator):
         # Push the data on if it is data
         PASS_REPEAT.output(self._repsig_fifo_push, ~self._base_fifo_out_eos & self._base_fifo_valid)
         # Pop the incoming if it is data and there's room in the output fifo
-        PASS_REPEAT.output(self._base_fifo_pop, ~self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full & ~self._passthru_fifo_full)
-        PASS_REPEAT.output(self._passthru_fifo_push, ~self._base_fifo_out_eos & self._base_fifo_valid)
         PASS_REPEAT.output(self._clr_already_pushed_repsig_eos, 1)
+        if self.passthru:
+            PASS_REPEAT.output(self._passthru_fifo_push, ~self._base_fifo_out_eos & self._base_fifo_valid)
+            PASS_REPEAT.output(self._base_fifo_pop, ~self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full & ~self._passthru_fifo_full)
+        else:
+            PASS_REPEAT.output(self._base_fifo_pop, ~self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full)
 
         #####################
         # PASS_STOP
@@ -257,10 +266,13 @@ class RepeatSignalGenerator(Generator):
         # Only pass a single stop token to the repsig line for compliance, by construction the other
         # stop tokens will reappear on the proc lines of other repeat blocks
         PASS_STOP.output(self._repsig_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid & ~self._already_pushed_repsig_eos)
-        PASS_STOP.output(self._base_fifo_pop, self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full & ~self._passthru_fifo_full)
         # Pass all stops to the passthru line
-        PASS_STOP.output(self._passthru_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid)
         PASS_STOP.output(self._clr_already_pushed_repsig_eos, 0)
+        if self.passthru:
+            PASS_STOP.output(self._passthru_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid)
+            PASS_STOP.output(self._base_fifo_pop, self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full & ~self._passthru_fifo_full)
+        else:
+            PASS_STOP.output(self._base_fifo_pop, self._base_fifo_out_eos & self._base_fifo_valid & ~self._repsig_fifo_full)
 
         #####################
         # DONE
@@ -269,8 +281,9 @@ class RepeatSignalGenerator(Generator):
         DONE.output(self._repsig_fifo_in_eos, 0)
         DONE.output(self._repsig_fifo_push, 0)
         DONE.output(self._base_fifo_pop, 0)
-        DONE.output(self._passthru_fifo_push, 0)
         DONE.output(self._clr_already_pushed_repsig_eos, 0)
+        if self.passthru:
+            DONE.output(self._passthru_fifo_push, 0)
 
         self.rsg_fsm.set_start_state(START)
 
@@ -303,7 +316,7 @@ class RepeatSignalGenerator(Generator):
 
 if __name__ == "__main__":
 
-    rsg_dut = RepeatSignalGenerator(data_width=16)
+    rsg_dut = RepeatSignalGenerator(data_width=16, passthru=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
