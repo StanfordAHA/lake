@@ -448,7 +448,8 @@ class Scanner(Generator):
         # Define logic for iter_finish + rep_finish
         self._iter_finish = sticky_flag(self, self._last_valid_accepting, clear=self._clr_fiber_addr, name="iter_finish")
         self._rep_finish = sticky_flag(self, (self._num_reps == (self._repeat_factor - 1)) & self._inc_rep, clear=self._clr_rep, name="rep_finish")
-        self._seen_root_eos = sticky_flag(self, self._infifo_eos_in & (self._infifo_pos_in == 0), name="seen_root_eos")
+        self._clr_seen_root_eos = self.var("clr_seen_root_eos", 1)
+        self._seen_root_eos = sticky_flag(self, self._infifo_eos_in & (self._infifo_pos_in == 0), name="seen_root_eos", clear=self._clr_seen_root_eos)
 
         self._en_reg_data_in = self.var("en_reg_data_in", 1)
         self._data_in_d1 = register(self, self._rd_rsp_fifo_out_data, enable=self._en_reg_data_in)
@@ -515,6 +516,7 @@ class Scanner(Generator):
         self.scan_fsm.output(self._last_valid_accepting)
         self.scan_fsm.output(self._pop_infifo)
         self.scan_fsm.output(self._clr_pop_infifo_sticky, default=kts.const(0, 1))
+        self.scan_fsm.output(self._clr_seen_root_eos, default=kts.const(0, 1))
         self.scan_fsm.output(self._inc_fiber_addr)
         self.scan_fsm.output(self._clr_fiber_addr)
         self.scan_fsm.output(self._inc_rep)
@@ -713,6 +715,7 @@ class Scanner(Generator):
         START.output(self._clr_req_made, 0)
         START.output(self._inc_req_rec, 0)
         START.output(self._clr_req_rec, 0)
+        START.output(self._clr_seen_root_eos, 1)
 
         #######
         # LOOKUP - TODO - Generate general hardware...
