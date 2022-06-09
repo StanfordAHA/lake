@@ -561,8 +561,9 @@ class Scanner(Generator):
         # In this state, we are passing through stop tokens into
         # the downstream
         # Go to free if we see root eos since we are application done
-        PASS_STOP.next(FREE1, self._seen_root_eos)
-        # Otherwise, we are waiting to see a valid in without eos (since we should see one eventually)
+        # We need to make sure we only transition if there was somewhere to put an item
+        PASS_STOP.next(FREE1, self._seen_root_eos & ~self._fifo_full)
+        # Otherwise, we are waiting to see a valid in without eos (since we should see one eventually) (not pushing in these cases, don't care about fifo full)
         PASS_STOP.next(ISSUE_STRM_NR, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & ~self._lookup_mode)
         PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & self._lookup_mode)
         # PASS_STOP.next(ISSUE_STRM_NR, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & ~self._lookup_mode)
@@ -844,10 +845,10 @@ class Scanner(Generator):
         PASS_STOP.output(self._valid_rst, 0)
         # PASS_STOP.output(self._ren, 0)
         # PASS_STOP.output(self._fifo_push, self._infifo_eos_in)
-        PASS_STOP.output(self._coord_out_fifo_push, self._infifo_eos_in & self._infifo_valid_in)
+        PASS_STOP.output(self._coord_out_fifo_push, self._infifo_eos_in & self._infifo_valid_in & ~self._fifo_full)
         # PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in)
         # Only push it to pos fifo if not in lookup mode...
-        PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in & self._infifo_valid_in & ~self._lookup_mode)
+        PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in & self._infifo_valid_in & ~self._lookup_mode & ~self._fifo_full)
 
         PASS_STOP.output(self._tag_eos, 1)
         # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
