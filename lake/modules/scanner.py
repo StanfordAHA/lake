@@ -215,6 +215,8 @@ class Scanner(Generator):
         # self._fifo_us_valid_entry = self.var("fifo_us_valid_entry", 1)
         self._fifo_us_full = self.var("fifo_us_full", 1)
         self._pop_infifo = self.var("pop_infifo", 1)
+        self._clr_pop_infifo_sticky = self.var("clr_pop_infifo_sticky", 1)
+        self._pop_infifo_sticky = sticky_flag(self, self._pop_infifo, self._clr_pop_infifo_sticky, 'pop_infifo_sticky', seq_only=True)
 
         self.add_child(f"input_fifo",
                        self._infifo,
@@ -512,6 +514,7 @@ class Scanner(Generator):
         self.scan_fsm.output(self._update_seq_state)
         self.scan_fsm.output(self._last_valid_accepting)
         self.scan_fsm.output(self._pop_infifo)
+        self.scan_fsm.output(self._clr_pop_infifo_sticky, default=kts.const(0, 1))
         self.scan_fsm.output(self._inc_fiber_addr)
         self.scan_fsm.output(self._clr_fiber_addr)
         self.scan_fsm.output(self._inc_rep)
@@ -809,6 +812,8 @@ class Scanner(Generator):
         ISSUE_STRM_NR.output(self._update_seq_state, 0)
         ISSUE_STRM_NR.output(self._last_valid_accepting, 0)
         ISSUE_STRM_NR.output(self._pop_infifo, 0)
+        # Need to clear this flag for popping at the end.
+        ISSUE_STRM_NR.output(self._clr_pop_infifo_sticky, 1)
         ISSUE_STRM_NR.output(self._inc_fiber_addr, 0)
         ISSUE_STRM_NR.output(self._clr_fiber_addr, 0)
         ISSUE_STRM_NR.output(self._inc_rep, 0)
@@ -1064,7 +1069,8 @@ class Scanner(Generator):
         SEQ_DONE.output(self._update_seq_state, 0)
         # SEQ_DONE.output(self._step_agen, 0)
         SEQ_DONE.output(self._last_valid_accepting, 0)
-        SEQ_DONE.output(self._pop_infifo, ~self._root)
+        # Just pop a single
+        SEQ_DONE.output(self._pop_infifo, ~self._root & ~self._pop_infifo_sticky)
         SEQ_DONE.output(self._inc_fiber_addr, 0)
         # Make sure to clear the fiber addr
         SEQ_DONE.output(self._clr_fiber_addr, 1)
