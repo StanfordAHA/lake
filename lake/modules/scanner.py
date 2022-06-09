@@ -431,6 +431,7 @@ class Scanner(Generator):
         # self._fifo_push = self.var("fifo_push", 1)
         self._coord_out_fifo_push = self.var("coord_out_fifo_push", 1)
         self._pos_out_fifo_push = self.var("pos_out_fifo_push", 1)
+
         self._tag_eos = self.var("tag_eos", 1)
         self._last_valid_accepting = self.var("last_valid_accepting", 1)
 
@@ -1063,8 +1064,10 @@ class Scanner(Generator):
         SEQ_DONE.output(self._valid_rst, 1)
         # SEQ_DONE.output(self._ren, 0)
         # SEQ_DONE.output(self._fifo_push, 1)
-        SEQ_DONE.output(self._coord_out_fifo_push, 1)
-        SEQ_DONE.output(self._pos_out_fifo_push, 1)
+        # Only push once...don't push if either is full...the state transition will occur once not full, so we are sure it will
+        # only happen once...
+        SEQ_DONE.output(self._coord_out_fifo_push, ~self._fifo_full)
+        SEQ_DONE.output(self._pos_out_fifo_push, ~self._fifo_full)
 
         SEQ_DONE.output(self._tag_eos, 1)
         # SEQ_DONE.output(self._addr_out_to_fifo, kts.const(0, 16))
