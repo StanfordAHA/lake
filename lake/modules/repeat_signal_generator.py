@@ -178,7 +178,7 @@ class RepeatSignalGenerator(Generator):
             self.wire(self._passthru_fifo_in_eos, self._base_fifo_out_eos)
 
         self._clr_already_pushed_repsig_eos = self.var("clr_already_pushed_repsig_eos", 1)
-        self._already_pushed_repsig_eos = sticky_flag(self, self._repsig_fifo_push, clear=self._clr_already_pushed_repsig_eos, seq_only=True)
+        self._already_pushed_repsig_eos = sticky_flag(self, self._repsig_fifo_push & ~self._repsig_fifo_full, clear=self._clr_already_pushed_repsig_eos, name="already_pushed_repsig_eos", seq_only=True)
 
 # =============================
 # Instantiate FSM
@@ -209,7 +209,7 @@ class RepeatSignalGenerator(Generator):
         #####################
         # PASS_STOP
         #####################
-        PASS_STOP.next(DONE, self._seen_root_eos)
+        PASS_STOP.next(DONE, self._seen_root_eos & ~self._repsig_fifo_full)
         PASS_STOP.next(PASS_REPEAT, self._base_fifo_valid & ~self._base_fifo_out_eos)
         PASS_STOP.next(PASS_STOP, None)
 
