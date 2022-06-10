@@ -229,7 +229,7 @@ class Repeat(Generator):
         # PASS_STOP
         #####################
         # We are done if we see the root EOS on the proc stream
-        PASS_STOP.next(DONE, self._seen_root_eos)
+        PASS_STOP.next(DONE, self._seen_root_eos, ~self._ref_fifo_full)
         # If we aren't done, we should just wait for the next valid data as one must come eventually
         PASS_STOP.next(PASS_REPEAT, self._proc_fifo_valid & ~self._proc_fifo_out_eos)
         PASS_STOP.next(PASS_STOP, None)
