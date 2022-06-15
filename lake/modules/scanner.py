@@ -464,6 +464,11 @@ class Scanner(Generator):
         self._data_in_d1 = register(self, self._rd_rsp_fifo_out_data, enable=self._en_reg_data_in)
         self._agen_addr_d1_cap = register(self, self._agen_addr_d1, enable=self._en_reg_data_in)
 
+        self._done_in = self.var("done_in", 1)
+        self.wire(self._done_in, self._infifo_eos_in & self._infifo_valid_in & (self._infifo_pos_in[9, 8] == kts.const(1, 2)))
+        self._eos_in = self.var("eos_in", 1)
+        self.wire(self._eos_in, self._infifo_eos_in & self._infifo_valid_in & (self._infifo_pos_in[9, 8] == kts.const(0, 2)))
+
         ####### Logic for block reads
         self._inc_req_made = self.var("inc_req_made", 1)
         self._clr_req_made = self.var("clr_req_made", 1)
@@ -490,6 +495,7 @@ class Scanner(Generator):
         SEQ_START = self.scan_fsm.add_state("SEQ_START")
         SEQ_ITER = self.scan_fsm.add_state("SEQ_ITER")
         SEQ_DONE = self.scan_fsm.add_state("SEQ_DONE")
+        SEQ_STOP = self.scan_fsm.add_state("SEQ_STOP")
 
         # REP_INNER_PRE = self.scan_fsm.add_state("REP_INNER_PRE")
         # REP_INNER = self.scan_fsm.add_state("REP_INNER")
@@ -576,7 +582,8 @@ class Scanner(Generator):
 
         # If we are seeing the eos_in this state we need to pass them along to downstream modules
         # If we have valid data in (the input fifo is not empty), then we should issue the corresponding stream
-        ISSUE_STRM_NR.next(PASS_STOP, self._infifo_eos_in & self._infifo_valid_in)
+        # We should have seen all squashable STOP tokens, now we are seeing if it is
+        ISSUE_STRM_NR.next(PASS_STOP, self._done_in)
         ISSUE_STRM_NR.next(READ_0, ~self._infifo_eos_in & self._infifo_valid_in)
         ISSUE_STRM_NR.next(ISSUE_STRM_NR, None)
 
@@ -584,10 +591,10 @@ class Scanner(Generator):
         # the downstream
         # Go to free if we see root eos since we are application done
         # We need to make sure we only transition if there was somewhere to put an item
-        PASS_STOP.next(FREE1, self._seen_root_eos & ~self._fifo_full)
+        PASS_STOP.next(FREE1, self._done_in & ~self._fifo_full)
         # Otherwise, we are waiting to see a valid in without eos (since we should see one eventually) (not pushing in these cases, don't care about fifo full)
-        PASS_STOP.next(ISSUE_STRM_NR, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & ~self._lookup_mode)
-        PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & self._lookup_mode)
+        # PASS_STOP.next(ISSUE_STRM_NR, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & ~self._lookup_mode)
+        PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._done_in & self._lookup_mode)
         # PASS_STOP.next(ISSUE_STRM_NR, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & ~self._lookup_mode)
         # PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._seen_root_eos & self._lookup_mode)
         # PASS_STOP.next(FREE1, (~self._infifo_eos_in & self._infifo_valid_in) & self._seen_root_eos)
@@ -631,15 +638,16 @@ class Scanner(Generator):
         SEQ_ITER.next(SEQ_DONE, (self._num_req_rec == self._seq_length))
         SEQ_ITER.next(SEQ_ITER, None)
 
-        # Once done, we need another flush
-        # SEQ_DONE.next(DONE, ((self._outer_restart | self._outer_length_one) & self._root) | (self._eos_in_seen))
-        # SEQ_DONE.next(ISSUE_STRM, ~self._outer_restart & self._root)
-        SEQ_DONE.next(SEQ_DONE, self._fifo_full)
-        # SEQ_DONE.next(FREE1, self._root & ~self._fifo_full)
-        # SEQ_DONE.next(ISSUE_STRM_NR, ~self._outer_restart & ~self._root)
-        # It might be the case that you should always set up another issue if not at EOS
-        # SEQ_DONE.next(ISSUE_STRM_NR, ~self._root & ~self._fifo_full)
-        SEQ_DONE.next(ISSUE_STRM_NR, ~self._fifo_full)
+        # Once done with the sequence, we should wait to find out if we need to squash together
+        # another stop token or not.
+        # SEQ_DONE.next(ISSUE_STRM_NR, ~self._fifo_full & self._infifo_valid_in & ~self._eos_in)
+        SEQ_DONE.next(SEQ_STOP, kts.const(1, 1))
+        SEQ_DONE.next(SEQ_DONE, None)
+
+        # Can go back once we confirm that it's either not eos, or there's room to inject the eos
+        # SEQ_STOP.next(ISSUE_STRM_NR, self._infifo_valid_in & ((self._eos_in & ~self._fifo_full) | ~self._eos_in))
+        SEQ_STOP.next(ISSUE_STRM_NR, self._infifo_valid_in & ~self._fifo_full)
+        SEQ_STOP.next(SEQ_STOP, None)
 
         # Now handle the repetition states...
 
@@ -927,8 +935,7 @@ class Scanner(Generator):
         INJECT_DONE.output(self._inc_req_rec, 0)
         INJECT_DONE.output(self._clr_req_rec, 0)
         INJECT_DONE.output(self._clr_seen_root_eos, 1)
-        # INJECT_DONE.output(self._us_fifo_inject_data, kts.const(2**8, 16))
-        INJECT_DONE.output(self._us_fifo_inject_data, 0)
+        INJECT_DONE.output(self._us_fifo_inject_data, kts.const(2**8, 16))
         INJECT_DONE.output(self._us_fifo_inject_eos, 1)
         INJECT_DONE.output(self._us_fifo_inject_push, 1)
 
@@ -1167,32 +1174,90 @@ class Scanner(Generator):
         # SEQ_DONE.output(self._ren, 0)
         # SEQ_DONE.output(self._fifo_push, 1)
         # Only push once...don't push if either is full...the state transition will occur once not full, so we are sure it will
-        # only happen once...
-        SEQ_DONE.output(self._coord_out_fifo_push, ~self._fifo_full)
-        SEQ_DONE.output(self._pos_out_fifo_push, ~self._fifo_full)
+        # only happen once...make sure we already popped the last issued coordinate
+        # SEQ_DONE.output(self._coord_out_fifo_push, ~self._fifo_full & self._infifo_valid_in & self._pop_infifo_sticky)
+        SEQ_DONE.output(self._coord_out_fifo_push, 0)
+        # SEQ_DONE.output(self._pos_out_fifo_push, ~self._fifo_full & self._infifo_valid_in & self._pop_infifo_sticky)
+        SEQ_DONE.output(self._pos_out_fifo_push, 0)
 
-        SEQ_DONE.output(self._tag_eos, 1)
+        SEQ_DONE.output(self._tag_eos, 0)
         # SEQ_DONE.output(self._addr_out_to_fifo, kts.const(0, 16))
         SEQ_DONE.output(self._next_seq_length, kts.const(0, 16))
         SEQ_DONE.output(self._update_seq_state, 0)
         # SEQ_DONE.output(self._step_agen, 0)
         SEQ_DONE.output(self._last_valid_accepting, 0)
         # Just pop a single
-        SEQ_DONE.output(self._pop_infifo, ~self._root & ~self._pop_infifo_sticky)
+        # SEQ_DONE.output(self._pop_infifo, ~self._root & ~self._pop_infifo_sticky)
+        # Only pop the input fifo if you've discovered that it's eos in
+        # SEQ_DONE.output(self._pop_infifo, ~self._pop_infifo_sticky & self._eos_in & ~self._fifo_full)
+        # SEQ_DONE.output(self._pop_infifo, ~self._pop_infifo_sticky & self._infifo_valid_in & ~self._fifo_full)
+        SEQ_DONE.output(self._pop_infifo, 1)
         SEQ_DONE.output(self._inc_fiber_addr, 0)
         # Make sure to clear the fiber addr
         SEQ_DONE.output(self._clr_fiber_addr, 1)
         SEQ_DONE.output(self._inc_rep, 0)
         SEQ_DONE.output(self._clr_rep, 0)
-        SEQ_DONE.output(self._data_to_fifo, self._stop_lvl)
+        # Once we know if we are squashing or not, we can inject the stop token
+        SEQ_DONE.output(self._data_to_fifo, kts.const(0, self.data_width))
+        # SEQ_DONE.output(self._data_to_fifo, kts.ternary(self._eos_in, self._infifo_pos_in + 1, kts.const(0, self.data_width)))
+        SEQ_DONE.output(self._pos_out_to_fifo, kts.const(0, self.data_width))
+        # SEQ_DONE.output(self._pos_out_to_fifo, kts.ternary(self._eos_in, self._infifo_pos_in + 1, kts.const(0, self.data_width)))
         SEQ_DONE.output(self._en_reg_data_in, 0)
-        SEQ_DONE.output(self._pos_out_to_fifo, self._stop_lvl)
         # SEQ_DONE.output(self._step_outer, 1)
         # SEQ_DONE.output(self._update_previous_outer, 0)
         SEQ_DONE.output(self._inc_req_made, 0)
         SEQ_DONE.output(self._clr_req_made, 1)
         SEQ_DONE.output(self._inc_req_rec, 0)
         SEQ_DONE.output(self._clr_req_rec, 1)
+
+        #############
+        # SEQ_STOP
+        #############
+        SEQ_STOP.output(self._addr_out_to_fifo, 0)
+        SEQ_STOP.output(self._op_out_to_fifo, 0)
+        SEQ_STOP.output(self._ID_out_to_fifo, 0)
+        SEQ_STOP.output(self._buffet_push, 0)
+        SEQ_STOP.output(self._rd_rsp_fifo_pop, 0)
+        SEQ_STOP.output(self._ptr_reg_en, 0)
+
+        SEQ_STOP.output(self._valid_inc, 0)
+        SEQ_STOP.output(self._valid_rst, 1)
+        # SEQ_DONE.output(self._ren, 0)
+        # SEQ_DONE.output(self._fifo_push, 1)
+        # Only push once...don't push if either is full...the state transition will occur once not full, so we are sure it will
+        # only happen once...make sure we already popped the last issued coordinate
+        # SEQ_STOP.output(self._coord_out_fifo_push, ~self._fifo_full & self._infifo_valid_in & self._pop_infifo_sticky)
+        SEQ_STOP.output(self._coord_out_fifo_push, ~self._fifo_full & self._infifo_valid_in)
+        # SEQ_STOP.output(self._pos_out_fifo_push, ~self._fifo_full & self._infifo_valid_in & self._pop_infifo_sticky)
+        SEQ_STOP.output(self._pos_out_fifo_push, ~self._fifo_full & self._infifo_valid_in)
+
+        SEQ_STOP.output(self._tag_eos, 1)
+        # SEQ_DONE.output(self._addr_out_to_fifo, kts.const(0, 16))
+        SEQ_STOP.output(self._next_seq_length, kts.const(0, 16))
+        SEQ_STOP.output(self._update_seq_state, 0)
+        # SEQ_DONE.output(self._step_agen, 0)
+        SEQ_STOP.output(self._last_valid_accepting, 0)
+        # Just pop a single
+        # SEQ_DONE.output(self._pop_infifo, ~self._root & ~self._pop_infifo_sticky)
+        # Only pop the input fifo if you've discovered that it's eos in
+        # SEQ_DONE.output(self._pop_infifo, ~self._pop_infifo_sticky & self._eos_in & ~self._fifo_full)
+        # SEQ_STOP.output(self._pop_infifo, ~self._pop_infifo_sticky & self._infifo_valid_in & ~self._fifo_full)
+        SEQ_STOP.output(self._pop_infifo, self._eos_in & ~self._fifo_full)
+        SEQ_STOP.output(self._inc_fiber_addr, 0)
+        # Make sure to clear the fiber addr
+        SEQ_STOP.output(self._clr_fiber_addr, 1)
+        SEQ_STOP.output(self._inc_rep, 0)
+        SEQ_STOP.output(self._clr_rep, 0)
+        # Once we know if we are squashing or not, we can inject the stop token
+        SEQ_STOP.output(self._data_to_fifo, kts.ternary(self._eos_in, self._infifo_pos_in + 1, kts.const(0, self.data_width)))
+        SEQ_STOP.output(self._pos_out_to_fifo, kts.ternary(self._eos_in, self._infifo_pos_in + 1, kts.const(0, self.data_width)))
+        SEQ_STOP.output(self._en_reg_data_in, 0)
+        # SEQ_DONE.output(self._step_outer, 1)
+        # SEQ_DONE.output(self._update_previous_outer, 0)
+        SEQ_STOP.output(self._inc_req_made, 0)
+        SEQ_STOP.output(self._clr_req_made, 1)
+        SEQ_STOP.output(self._inc_req_rec, 0)
+        SEQ_STOP.output(self._clr_req_rec, 1)
 
         #############
         # REP_INNER_PRE

@@ -207,6 +207,7 @@ class Reg(Generator):
         ACCUM = self.accum_fsm.add_state("ACCUM")
         OUTPUT = self.accum_fsm.add_state("OUTPUT")
         STOP_PASS = self.accum_fsm.add_state("STOP_PASS")
+        DONE = self.accum_fsm.add_state("DONE")
 
         self.accum_fsm.output(self._infifo_pop)
         self.accum_fsm.output(self._outfifo_push)
@@ -223,14 +224,16 @@ class Reg(Generator):
         # If we see EOS, we know we can consume the stop token
         # If we don't see EOS, we can start accumulating
         START.next(ACCUM, self._infifo_out_valid & ~self._infifo_out_eos)
-        START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
+        START.next(DONE, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(1, 2)))
+        # START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
         START.next(START, None)
         # START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
 
         # In ACCUM, we are just accumulating data as long as we have valids
         # Need to crush lower level stops then move on when we see the appropriate level
-        ACCUM.next(ACCUM, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data > self._stop_lvl))
-        ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data == self._stop_lvl))
+        # ACCUM.next(ACCUM, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data > self._stop_lvl))
+        # ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data == self._stop_lvl))
+        ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
         ACCUM.next(ACCUM, None)
 
         OUTPUT.next(STOP_PASS, ~self._outfifo_full)
@@ -238,8 +241,15 @@ class Reg(Generator):
 
         # Basically pass through until we get a new valid data...otherwise we are technically done
         # Or until we hit a new empty stream which would be indicated by a crushable stop
-        STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data >= self._stop_lvl))))
+        # STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data >= self._stop_lvl))))
+
+        # STOP PASS is basically going to crush stop levels until we see new data or the DONE token
+        STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(1, 2)))))
         STOP_PASS.next(STOP_PASS, None)
+
+        # In DONE, we just pass the DONE token
+        DONE.next(START, ~self._outfifo_full)
+        DONE.next(DONE, None)
 
         #############
         # START
@@ -259,7 +269,8 @@ class Reg(Generator):
         # ACCUM
         #############
         # Pop if we have a valid data or an eos above the stop level to crush
-        ACCUM.output(self._infifo_pop, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & self._infifo_out_data > self._stop_lvl)))
+        # ACCUM.output(self._infifo_pop, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & self._infifo_out_data > self._stop_lvl)))
+        ACCUM.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos)
         ACCUM.output(self._outfifo_push, 0)
         ACCUM.output(self._reg_clr, 0)
         ACCUM.output(self._reg_accum, self._infifo_out_valid & ~self._infifo_out_eos)
@@ -274,27 +285,50 @@ class Reg(Generator):
         # OUTPUT.output(self._infifo_pop, self._infifo_out_valid & ~self._outfifo_full)
         # Don't pop the fifo, just use this state to output a value to the output fifo
         # TODO: Merge states with ACCUM
-        OUTPUT.output(self._infifo_pop, ~self._stop_lvl_sticky)
+        # OUTPUT.output(self._infifo_pop, ~self._stop_lvl_sticky)
+        OUTPUT.output(self._infifo_pop, 0)
         OUTPUT.output(self._outfifo_push, ~self._outfifo_full)
         OUTPUT.output(self._reg_clr, 0)
         OUTPUT.output(self._reg_accum, 0)
         OUTPUT.output(self._data_to_fifo, self._accum_reg)
         OUTPUT.output(self._outfifo_in_eos, 0)
-        OUTPUT.output(self._set_once_popped, ~self._stop_lvl_sticky)
+        # OUTPUT.output(self._set_once_popped, ~self._stop_lvl_sticky)
+        OUTPUT.output(self._set_once_popped, 0)
         OUTPUT.output(self._clr_once_popped, 0)
 
         #############
         # STOP_PASS - Deal with full output...
         #############
         # Only rip the stop off if its below the stop level
-        STOP_PASS.output(self._infifo_pop, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data < self._stop_lvl))
-        STOP_PASS.output(self._outfifo_push, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data < self._stop_lvl))
+        # STOP_PASS.output(self._infifo_pop, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data < self._stop_lvl))
+        # Only pop off stop tokens
+        STOP_PASS.output(self._infifo_pop, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(0, 2)))
+        # STOP_PASS.output(self._outfifo_push, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data < self._stop_lvl))
+        # Only push stop tokens that aren't being completely squashed
+        STOP_PASS.output(self._outfifo_push, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos &
+                         (self._infifo_out_data[9, 8] == 0) & (self._infifo_out_data[7, 0] > 0))
         STOP_PASS.output(self._reg_clr, 1)
         STOP_PASS.output(self._reg_accum, 0)
-        STOP_PASS.output(self._data_to_fifo, self._infifo_out_data)
+        # Reduce the stop level by 1 - if it's 0, the stop token gets squashed
+        STOP_PASS.output(self._data_to_fifo, self._infifo_out_data - 1)
         STOP_PASS.output(self._outfifo_in_eos, self._infifo_out_valid & self._infifo_out_eos)
         STOP_PASS.output(self._set_once_popped, 0)
         STOP_PASS.output(self._clr_once_popped, 1)
+
+        #############
+        # DONE
+        #############
+        '''
+        When in DONE, we are just passing on the DONE token
+        '''
+        DONE.output(self._infifo_pop, 0)
+        DONE.output(self._outfifo_push, 1)
+        DONE.output(self._reg_clr, 1)
+        DONE.output(self._reg_accum, 0)
+        DONE.output(self._data_to_fifo, self._infifo_out_data)
+        DONE.output(self._outfifo_in_eos, self._infifo_out_eos)
+        DONE.output(self._set_once_popped, 0)
+        DONE.output(self._clr_once_popped, 1)
 
         # self._data_written = self.var("data_written", 1)
         # self.wire(self._valid_out, self._data_written | self._write_en)
