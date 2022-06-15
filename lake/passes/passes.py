@@ -24,6 +24,9 @@ def lift_config_reg(generator):
                 ports_ = node.get_port_names()
                 for port_name in ports_:
                     curr_port = node.get_port(port_name)
+                    # Skip config registers that are driven...
+                    if len(curr_port.sources) != 0:
+                        continue
                     attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
                     annotation_attr = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
                     if port_name is "mode":
