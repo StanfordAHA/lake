@@ -232,7 +232,8 @@ class Repeat(Generator):
         # We are done if we see the root EOS on the proc stream
         # PASS_STOP.next(DONE, self._seen_root_eos)
         # Go to DONE on the done signal
-        PASS_STOP.next(DONE, (self._proc_fifo_out_data[9, 8] == kts.const(1, 2)) & self._proc_fifo_valid & self._proc_fifo_out_eos & ~self._ref_fifo_full)
+        PASS_STOP.next(DONE, (self._proc_fifo_out_data[9, 8] == kts.const(1, 2)) & self._proc_fifo_valid & self._proc_fifo_out_eos)
+        # PASS_STOP.next(DONE, (self._proc_fifo_out_data[9, 8] == kts.const(1, 2)) & self._proc_fifo_valid & self._proc_fifo_out_eos & ~self._ref_fifo_full)
         # If we aren't done, we should just wait for the next valid data as one must come eventually - we have to push either way, so make sure it's
         # not full
         PASS_STOP.next(PASS_REPEAT, self._proc_fifo_valid & ~self._proc_fifo_out_eos & ~self._ref_fifo_full)
@@ -241,7 +242,7 @@ class Repeat(Generator):
         #####################
         # DONE
         #####################
-        DONE.next(DONE, None)
+        DONE.next(START, ~self._ref_fifo_full)
 
 # =============================
 # FSM Output Declaration
@@ -330,10 +331,10 @@ class Repeat(Generator):
         # Since it's only stop tokens here, this can be 1
         # PASS_STOP.output(self._ref_fifo_in_eos, self._proc_fifo_out_eos)
         PASS_STOP.output(self._ref_fifo_in_eos, 1)
-        # Push once there is valid data on the proc line and there is room
-        PASS_STOP.output(self._ref_fifo_push, self._proc_fifo_valid & ~self._ref_fifo_full)
+        # Push once there is valid data on the proc line and there is room - unless it's a DONE token
+        PASS_STOP.output(self._ref_fifo_push, self._proc_fifo_valid & ~self._ref_fifo_full & kts.ternary(self._proc_fifo_out_eos, (self._proc_fifo_out_data[9, 8] == kts.const(0, 2)), kts.const(1, 1)))
         # Pop the proc stream only if we get an eos on it
-        PASS_STOP.output(self._proc_fifo_pop, ~self._ref_fifo_full & self._proc_fifo_valid & self._proc_fifo_out_eos & (self._proc_fifo_out_data[9, 8] == kts.const(1, 2)))
+        PASS_STOP.output(self._proc_fifo_pop, ~self._ref_fifo_full & self._proc_fifo_valid & self._proc_fifo_out_eos & (self._proc_fifo_out_data[9, 8] == kts.const(0, 2)))
         # PASS_STOP.output(self._repsig_fifo_pop, 0)
         # Pop the repsig stream once we have the valid on the proc stream
         PASS_STOP.output(self._repsig_fifo_pop, ~self._ref_fifo_full & self._proc_fifo_valid)
@@ -344,9 +345,9 @@ class Repeat(Generator):
         #####################
         # DONE
         #####################
-        DONE.output(self._ref_fifo_in_data, 0)
-        DONE.output(self._ref_fifo_in_eos, 0)
-        DONE.output(self._ref_fifo_push, 0)
+        DONE.output(self._ref_fifo_in_data, self._proc_fifo_out_data)
+        DONE.output(self._ref_fifo_in_eos, 1)
+        DONE.output(self._ref_fifo_push, ~self._ref_fifo_full)
         DONE.output(self._proc_fifo_pop, 0)
         DONE.output(self._repsig_fifo_pop, 0)
         DONE.output(self._proc_fifo_inject_push, 0)

@@ -225,7 +225,7 @@ class Reg(Generator):
         # If we don't see EOS, we can start accumulating
         START.next(ACCUM, self._infifo_out_valid & ~self._infifo_out_eos)
         START.next(DONE, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(1, 2)))
-        # START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
+        START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(0, 2)))
         START.next(START, None)
         # START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
 
@@ -244,7 +244,9 @@ class Reg(Generator):
         # STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data >= self._stop_lvl))))
 
         # STOP PASS is basically going to crush stop levels until we see new data or the DONE token
-        STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(1, 2)))))
+        # STOP_PASS.next(START, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(1, 2)))))
+        # Just crush a single stop
+        STOP_PASS.next(START, ~self._outfifo_full)
         STOP_PASS.next(STOP_PASS, None)
 
         # In DONE, we just pass the DONE token
@@ -311,7 +313,8 @@ class Reg(Generator):
         STOP_PASS.output(self._reg_accum, 0)
         # Reduce the stop level by 1 - if it's 0, the stop token gets squashed
         STOP_PASS.output(self._data_to_fifo, self._infifo_out_data - 1)
-        STOP_PASS.output(self._outfifo_in_eos, self._infifo_out_valid & self._infifo_out_eos)
+        # STOP_PASS.output(self._outfifo_in_eos, self._infifo_out_valid & self._infifo_out_eos)
+        STOP_PASS.output(self._outfifo_in_eos, 1)
         STOP_PASS.output(self._set_once_popped, 0)
         STOP_PASS.output(self._clr_once_popped, 1)
 
