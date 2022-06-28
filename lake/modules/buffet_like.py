@@ -204,7 +204,7 @@ class BuffetLike(Generator):
             # Create the memory interface based on different params
             mem_ports = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
 
-            self.mem_intf = MemoryInterface(name="balls",
+            self.mem_intf = MemoryInterface(name="memory_mod",
                                             mem_params=memory_params,
                                             ports=mem_ports,
                                             sim_macro_n=True,
