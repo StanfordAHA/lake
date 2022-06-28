@@ -170,7 +170,7 @@ class RepeatSignalGenerator(Generator):
 # =============================
 # Various Logic
 # =============================
-        self._seen_root_eos = sticky_flag(self, (self._base_fifo_out_data == 0) & self._base_fifo_out_eos & self._base_fifo_valid, name="seen_root_eos")
+        self._seen_root_eos = sticky_flag(self, (self._base_fifo_out_data[9, 8] == kts.const(1, 2)) & self._base_fifo_out_eos & self._base_fifo_valid, name="seen_root_eos")
 
         # Passthru is trivial, just push it when the other one is being pushed
         if self.passthru:
@@ -209,14 +209,17 @@ class RepeatSignalGenerator(Generator):
         #####################
         # PASS_STOP
         #####################
-        PASS_STOP.next(DONE, self._seen_root_eos & ~self._repsig_fifo_full)
+        # PASS_STOP.next(DONE, self._seen_root_eos & ~self._repsig_fifo_full)
+        # Can be done once we are pushing DONE
+        PASS_STOP.next(DONE, (self._base_fifo_valid & self._base_fifo_out_eos & (self._base_fifo_out_data[9, 8] == kts.const(1, 2))) & ~self._repsig_fifo_full)
+        # If we hit more data, we have to go back to passing repeats
         PASS_STOP.next(PASS_REPEAT, self._base_fifo_valid & ~self._base_fifo_out_eos)
         PASS_STOP.next(PASS_STOP, None)
 
         #####################
         # DONE
         #####################
-        DONE.next(DONE, None)
+        DONE.next(START, None)
 
 # =============================
 # FSM Output Declaration
@@ -261,11 +264,15 @@ class RepeatSignalGenerator(Generator):
         #####################
         # PASS_STOP
         #####################
-        PASS_STOP.output(self._repsig_fifo_in_data, self._base_fifo_out_data)
+        # We are passing along 0 unless it is a done token, in which case we pass it along
+        PASS_STOP.output(self._repsig_fifo_in_data, kts.ternary(self._base_fifo_out_data[9, 8] == kts.const(1, 2),
+                                                                self._base_fifo_out_data, kts.const(0, self.data_width)))
         PASS_STOP.output(self._repsig_fifo_in_eos, 1)
         # Only pass a single stop token to the repsig line for compliance, by construction the other
         # stop tokens will reappear on the proc lines of other repeat blocks
-        PASS_STOP.output(self._repsig_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid & ~self._already_pushed_repsig_eos)
+        # PASS_STOP.output(self._repsig_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid & ~self._already_pushed_repsig_eos)
+        # In the revised form, stop tokens are coalesced, so we only will emit one per input stop token anyway
+        PASS_STOP.output(self._repsig_fifo_push, self._base_fifo_out_eos & self._base_fifo_valid)
         # Pass all stops to the passthru line
         PASS_STOP.output(self._clr_already_pushed_repsig_eos, 0)
         if self.passthru:

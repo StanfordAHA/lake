@@ -353,7 +353,8 @@ class WriteScanner(Generator):
         self.wire(self._full_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
 
         self._matching_stop = self.var("matching_stop", 1)
-        self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == self._stop_lvl))
+        # self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == self._stop_lvl))
+        self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in)
 
         self._clr_wen_made = self.var("clr_wen_made", 1)
         self._wen_made = sticky_flag(self, self._push_to_outs, clear=self._clr_wen_made, name="wen_made", seq_only=True)
@@ -457,7 +458,7 @@ class WriteScanner(Generator):
         # In the compressed state of lowest level, we only need to write the
         # data values in order...just watching for the stop 0 token
         # ComLL.next(DONE, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
-        ComLL.next(FINALIZE2, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
+        ComLL.next(FINALIZE2, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
         ComLL.next(ComLL, None)
 
         ####################
@@ -467,7 +468,7 @@ class WriteScanner(Generator):
         # for stop 0 token
         # UnLL.next(DONE, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
         UnLL.next(FINALIZE2, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
-                  (self._data_infifo_data_in == 0) & (self._addr_infifo_data_in == 0))
+                  (self._data_infifo_data_in[9, 8] == kts.const(1, 2)) & (self._addr_infifo_data_in[9, 8] == kts.const(1, 2)))
         UnLL.next(UnLL, None)
 
         ####################
@@ -502,7 +503,8 @@ class WriteScanner(Generator):
         # Should only move on once we have drained the subsequent stops and see valid data coming in
         UL_EMIT_SEG.next(UL, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
         # UL_EMIT_SEG.next(DONE, self._full_stop)
-        UL_EMIT_SEG.next(FINALIZE1, self._full_stop)
+        # UL_EMIT_SEG.next(FINALIZE1, self._full_stop)
+        UL_EMIT_SEG.next(FINALIZE1, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
         UL_EMIT_SEG.next(UL_EMIT_SEG, None)
 
         ####################
@@ -851,7 +853,10 @@ class WriteScanner(Generator):
         UL.output(self._set_curr_coord, self._new_coord)
         UL.output(self._clr_curr_coord, 0)
         # Pop below the stop level
-        UL.output(self._infifo_pop[0], self._stop_in & (self._data_infifo_data_in > self._stop_lvl))
+        # UL.output(self._infifo_pop[0], self._stop_in & (self._data_infifo_data_in > self._stop_lvl))
+
+        # Don't actually pop
+        UL.output(self._infifo_pop[0], 0)
         # UL.output(self._infifo_pop[0], 0)
         UL.output(self._infifo_pop[1], 0)
         UL.output(self._clr_wen_made, 1)

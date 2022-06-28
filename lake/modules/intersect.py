@@ -641,8 +641,11 @@ class Intersect(kts.Generator):
         self._proc_data_seen = self.var("proc_data_seen", 1)
         self.wire(self._proc_data_seen, self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
 
-        self._eos_seen = self.var("eos_seen", 1)
-        self.wire(self._eos_seen, self._base_infifo_in_valid & self._base_infifo_in_eos)
+        self._eos_seen = self.var("base_eos_seen", 1)
+        self.wire(self._eos_seen, self._base_infifo_in_valid & self._base_infifo_in_eos & (self._base_infifo_in_data[9, 8] == kts.const(0, 2)))
+
+        self._done_seen = self.var("base_done_seen", 1)
+        self.wire(self._done_seen, self._base_infifo_in_valid & self._base_infifo_in_eos & (self._base_infifo_in_data[9, 8] == kts.const(1, 2)))
 
         self._clr_pushed_proc = self.var("clr_pushed_proc", 1)
         self._pushed_proc = sticky_flag(self, self._cmrg_fifo_push[1], clear=self._clr_pushed_proc, name="pushed_proc", seq_only=True)
@@ -651,9 +654,13 @@ class Intersect(kts.Generator):
         self._pushed_stop_lvl = sticky_flag(self, self._cmrg_fifo_push[0] & self._base_infifo_in_valid & self._base_infifo_in_eos,
                                             clear=self._clr_pushed_stop_lvl, name="pushed_stop_lvl", seq_only=True)
 
-        self._pushing_s0 = self.var("pushing_s0", 1)
+        self._both_done = self.var("both_done", 1)
+        self.wire(self._both_done, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos &
+                  (self._base_infifo_in_data[9, 8] == kts.const(1, 2)) & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)))
+
+        self._pushing_s0 = self.var("pushing_done", 1)
         self.wire(self._pushing_s0, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos &
-                  (self._base_infifo_in_data == 0) & (self._proc_infifo_in_data == 0) & ~base_infifo.ports.full & ~proc_infifo.ports.full)
+                  (self._base_infifo_in_data[9, 8] == kts.const(1, 2)) & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)) & ~base_infifo.ports.full & ~proc_infifo.ports.full)
 
         ####################
         # STATE MACHINE TO PROCESS PROC STREAM
@@ -665,6 +672,7 @@ class Intersect(kts.Generator):
         DATA_SEEN = self.proc_fsm.add_state("DATA_SEEN")
         STRIP = self.proc_fsm.add_state("STRIP")
         PASS_STOP = self.proc_fsm.add_state("PASS_STOP")
+        PASS_DONE = self.proc_fsm.add_state("PASS_DONE")
         DONE = self.proc_fsm.add_state("DONEX")
 
         ####################
@@ -679,6 +687,7 @@ class Intersect(kts.Generator):
         # If we hit the EOS without seeing data, we should strip it
         START.next(DATA_SEEN, self._base_data_seen)
         START.next(STRIP, self._eos_seen)
+        START.next(PASS_STOP, self._done_seen)
         START.next(START, None)
 
         ####################
@@ -686,7 +695,9 @@ class Intersect(kts.Generator):
         ####################
         # In DATA SEEN, we want to pass thru any data including the
         # stop token at the correct level, then go to the pass_stop logic. Make sure we also pushed the proc stream once
-        DATA_SEEN.next(PASS_STOP, self._pushed_proc & self._pushed_stop_lvl)
+        # DATA_SEEN.next(PASS_STOP, self._pushed_proc & self._pushed_stop_lvl)
+        DATA_SEEN.next(START, self._pushed_proc & self._pushed_stop_lvl)
+        # DATA_SEEN.next(PASS_STOP, self._pushed_proc & (self._base_infifo_in_eos & self._base_infifo_in_valid & (self._base_infifo_in_data[9, 8] == kts.const(0, 2))))
         DATA_SEEN.next(DATA_SEEN, None)
 
         ####################
@@ -694,7 +705,8 @@ class Intersect(kts.Generator):
         ####################
         # At strip, we just want to strip one data from proc and strip the stop token from base
         # Once that is done, we can move onto draining the stop tokens from both if there are any...
-        STRIP.next(PASS_STOP, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
+        # STRIP.next(PASS_STOP, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
+        STRIP.next(START, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
         STRIP.next(STRIP, None)
 
         ####################
@@ -702,9 +714,18 @@ class Intersect(kts.Generator):
         ####################
         # IN PASS_STOP, there are two possibilities - the proc stream either hits S0 or has data again
         # since every hierarchically issued coordinate has a chance to have a non-null payload
-        PASS_STOP.next(START, self._proc_data_seen)
-        PASS_STOP.next(DONE, self._pushing_s0)
+        # PASS_STOP.next(START, self._proc_data_seen)
+        PASS_STOP.next(PASS_DONE, self._both_done)
         PASS_STOP.next(PASS_STOP, None)
+
+        ####################
+        # PASS_DONE #
+        ####################
+        # IN PASS_STOP, there are two possibilities - the proc stream either hits S0 or has data again
+        # since every hierarchically issued coordinate has a chance to have a non-null payload
+        # PASS_STOP.next(START, self._proc_data_seen)
+        PASS_DONE.next(DONE, self._pushing_s0)
+        PASS_DONE.next(PASS_DONE, None)
 
         ####################
         # DONE #
@@ -737,9 +758,11 @@ class Intersect(kts.Generator):
         # DATA_SEEN
         ################
         DATA_SEEN.output(self._cmrg_fifo_pop[0], ~self._pushed_stop_lvl & ~base_outfifo.ports.full)
+        # DATA_SEEN.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & ~self._base_infifo_in_eos & ~base_outfifo.ports.full)
         DATA_SEEN.output(self._cmrg_fifo_pop[1], ~self._pushed_proc & ~proc_outfifo.ports.full)
         DATA_SEEN.output(self._cmrg_fifo_push[0], ~self._pushed_stop_lvl & self._base_infifo_in_valid)
-        DATA_SEEN.output(self._cmrg_fifo_push[1], ~self._pushed_proc & self._proc_infifo_in_valid)
+        # DATA_SEEN.output(self._cmrg_fifo_push[0],  self._base_infifo_in_valid & ~self._base_infifo_in_eos)
+        DATA_SEEN.output(self._cmrg_fifo_push[1], ~self._pushed_proc & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
         DATA_SEEN.output(self._clr_pushed_proc, 0)
         DATA_SEEN.output(self._clr_pushed_stop_lvl, 0)
 
@@ -758,12 +781,33 @@ class Intersect(kts.Generator):
         # PASS_STOP
         ################
         # TODO
-        PASS_STOP.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_infifo.ports.full & ~proc_infifo.ports.full)
-        PASS_STOP.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_infifo.ports.full & ~proc_infifo.ports.full)
-        PASS_STOP.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & self._proc_infifo_in_valid)
-        PASS_STOP.output(self._cmrg_fifo_push[1], self._base_infifo_in_valid & self._proc_infifo_in_valid)
+        # Here we have base done, need to drain to proc done
+        PASS_STOP.output(self._cmrg_fifo_pop[0], 0)
+        PASS_STOP.output(self._cmrg_fifo_pop[1], self._proc_infifo_in_valid & self._proc_infifo_in_eos & (self._proc_infifo_in_data[9, 8] == kts.const(0, 2)) & ~proc_outfifo.ports.full)
+        PASS_STOP.output(self._cmrg_fifo_push[0], 0)
+        PASS_STOP.output(self._cmrg_fifo_push[1], self._proc_infifo_in_valid & self._proc_infifo_in_eos & (self._proc_infifo_in_data[9, 8] == kts.const(0, 2)))
+        # PASS_STOP.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # PASS_STOP.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # PASS_STOP.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & self._proc_infifo_in_valid)
+        # PASS_STOP.output(self._cmrg_fifo_push[1], self._base_infifo_in_valid & self._proc_infifo_in_valid)
         PASS_STOP.output(self._clr_pushed_proc, 0)
         PASS_STOP.output(self._clr_pushed_stop_lvl, 0)
+
+        ################
+        # PASS_DONE
+        ################
+        # TODO
+        # Here we have base done, need to drain to proc done
+        PASS_DONE.output(self._cmrg_fifo_pop[0], self._pushing_s0)
+        PASS_DONE.output(self._cmrg_fifo_pop[1], self._pushing_s0)
+        PASS_DONE.output(self._cmrg_fifo_push[0], self._pushing_s0)
+        PASS_DONE.output(self._cmrg_fifo_push[1], self._pushing_s0)
+        # PASS_DONE.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # PASS_DONE.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # PASS_DONE.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & self._proc_infifo_in_valid)
+        # PASS_DONE.output(self._cmrg_fifo_push[1], self._base_infifo_in_valid & self._proc_infifo_in_valid)
+        PASS_DONE.output(self._clr_pushed_proc, 0)
+        PASS_DONE.output(self._clr_pushed_stop_lvl, 0)
 
         ################
         # DONE
