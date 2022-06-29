@@ -585,6 +585,7 @@ class Scanner(Generator):
         # We should have seen all squashable STOP tokens, now we are seeing if it is
         ISSUE_STRM_NR.next(PASS_STOP, self._done_in)
         ISSUE_STRM_NR.next(READ_0, ~self._infifo_eos_in & self._infifo_valid_in)
+        ISSUE_STRM_NR.next(SEQ_DONE, self._infifo_eos_in & self._infifo_valid_in & (self._infifo_pos_in[9, 8] == kts.const(2, 2)))
         ISSUE_STRM_NR.next(ISSUE_STRM_NR, None)
 
         # In this state, we are passing through stop tokens into
@@ -602,6 +603,8 @@ class Scanner(Generator):
 
         # Can continue on our way in root mode, otherwise we need to
         # bring the pointer up to locate the coordinate. Make sure the first read is emmitted
+        # Except if we get a maybe input token - then we need to skip the emission of the sequence
+        # READ_0.next(SEQ_DONE, self._infifo_valid_in & self._infifo_eos_in & (self._infifo_pos_in[9, 8] == kts.const(2, 2)))
         READ_0.next(READ_1, self._buffet_joined)
         READ_0.next(READ_0, None)
 
@@ -958,7 +961,9 @@ class Scanner(Generator):
         # Only push it to pos fifo if not in lookup mode...
         PASS_STOP.output(self._pos_out_fifo_push, self._infifo_eos_in & self._infifo_valid_in & ~self._lookup_mode & ~self._fifo_full)
 
-        PASS_STOP.output(self._tag_eos, 1)
+        # PASS_STOP.output(self._tag_eos, 1)
+        PASS_STOP.output(self._tag_eos, kts.ternary(self._infifo_pos_in[9, 8] == kts.const(2, 2),
+                                                    kts.const(0, 1), kts.const(1, 1)))
         # Only increment if we are seeing a new address and the most recent stream wasn't 0 length
         # PASS_STOP.output(self._addr_out_to_fifo, kts.const(0, 16))
         PASS_STOP.output(self._next_seq_length, kts.const(0, 16))
@@ -969,7 +974,9 @@ class Scanner(Generator):
         PASS_STOP.output(self._clr_fiber_addr, 0)
         PASS_STOP.output(self._inc_rep, 0)
         PASS_STOP.output(self._clr_rep, 0)
-        PASS_STOP.output(self._data_to_fifo, self._infifo_pos_in)
+        # With the possibility of a maybe token, we need to pass 0 to the output instead
+        PASS_STOP.output(self._data_to_fifo, kts.ternary(self._infifo_pos_in[9, 8] == kts.const(2, 2),
+                                                         kts.const(0, self.data_width), self._infifo_pos_in))
         PASS_STOP.output(self._en_reg_data_in, 0)
         PASS_STOP.output(self._pos_out_to_fifo, self._infifo_pos_in)
         PASS_STOP.output(self._inc_req_made, 0)

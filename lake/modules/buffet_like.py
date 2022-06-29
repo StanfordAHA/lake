@@ -3,6 +3,7 @@ from kratos import *
 from lake.modules.arbiter import Arbiter
 from lake.passes.passes import lift_config_reg
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
+from lake.top.tech_maps import TSMC_Tech_Map
 from lake.utils.util import decode, register, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
@@ -17,7 +18,8 @@ class BuffetLike(Generator):
                  data_width=16,
                  num_ID=2,
                  mem_depth=512,
-                 local_memory=True):
+                 local_memory=True,
+                 physical_mem=False):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
@@ -27,6 +29,7 @@ class BuffetLike(Generator):
         self.num_ID = num_ID
         self.mem_depth = mem_depth
         self.local_memory = local_memory
+        self.physical_mem = physical_mem
 
         self.total_sets = 0
 
@@ -201,14 +204,17 @@ class BuffetLike(Generator):
                 'mem_depth': 512
             }
 
+            tm = TSMC_Tech_Map(depth=512, width=32)
+
             # Create the memory interface based on different params
             mem_ports = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
 
             self.mem_intf = MemoryInterface(name="memory_mod",
                                             mem_params=memory_params,
                                             ports=mem_ports,
-                                            sim_macro_n=True,
-                                            reset_in_sim=True)
+                                            sim_macro_n=not self.physical_mem,
+                                            reset_in_sim=True,
+                                            tech_map=tm)
             # Realize the hardware implementation then add it as a child and wire it up...
             self.mem_intf.realize_hw()
             self.add_child('memory_stub',
@@ -219,7 +225,8 @@ class BuffetLike(Generator):
             # print(actual_mem_port_interface)
 
             self.wire(self._gclk, self.mem_intf.get_clock())
-            self.wire(self._rst_n, self.mem_intf.get_reset())
+            if not self.physical_mem:
+                self.wire(self._rst_n, self.mem_intf.get_reset())
 
             for pname, psignal in mem_ctrl_port_interface.items():
                 self.wire(psignal, actual_mem_port_interface[pname])
@@ -668,7 +675,8 @@ class BuffetLike(Generator):
 
 if __name__ == "__main__":
     buffet_dut = BuffetLike(data_width=16,
-                            num_ID=2)
+                            num_ID=2,
+                            physical_mem=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

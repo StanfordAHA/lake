@@ -2,16 +2,20 @@ from math import e
 from struct import pack
 import kratos as kts
 from kratos import *
-from numpy import full
 from lake.passes.passes import lift_config_reg
-from lake.modules.for_loop import ForLoop
-from lake.modules.addr_gen import AddrGen
 from lake.utils.util import sticky_flag, trim_config_list, add_counter
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
+from enum import Enum, unique
+
+
+@unique
+class JoinerOp(Enum):
+    INTERSECT = 0
+    UNION = 1
 
 
 class Intersect(kts.Generator):
@@ -46,6 +50,14 @@ class Intersect(kts.Generator):
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
+
+        if len(JoinerOp) == 1:
+            op_bits = 1
+        else:
+            op_bits = kts.clog2(len(JoinerOp))
+
+        self._joiner_op = self.input("joiner_op", op_bits)
+        self._joiner_op.add_attribute(ConfigRegAttr("Operation to perform"))
 
         # Scanner interface will need
         # input data, input valid
@@ -189,7 +201,8 @@ class Intersect(kts.Generator):
         self._eos_in_sticky = self.var("eos_in_sticky", self.num_streams)
         self._clr_eos_sticky = self.var("clr_eos_sticky", self.num_streams)
         for i in range(self.num_streams):
-            tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
+            # tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
+            tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             self.wire(self._eos_in_sticky[i], tmp_sticky)
 
         # Intermediates
@@ -203,16 +216,21 @@ class Intersect(kts.Generator):
 # ==========================================
 
         self._all_valid = self.var("all_valid", 1)
+        self._all_valid_join = self.var("all_valid_join", 1)
 
         self._any_eos = self.var("any_eos", 1)
 
         # Join valids
         all_in_valids = kts.concat(*self._coord_in_fifo_valid_in, *self._pos_in_fifo_valid_in)
         self.wire(self._all_valid, all_in_valids.r_and() & ~self._any_eos)
+        self.wire(self._all_valid_join, all_in_valids.r_and())
 
         all_eos = kts.concat(*self._coord_in_fifo_eos_in, *self._pos_in_fifo_eos_in) & kts.concat(*self._coord_in_fifo_valid_in, *self._pos_in_fifo_valid_in)
 
         self.wire(self._any_eos, all_eos.r_or())
+
+        self._maybe = self.var("maybe", self.data_width)
+        self.wire(self._maybe, kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8)))
 
         for i in range(self.num_streams):
             @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -233,12 +251,17 @@ class Intersect(kts.Generator):
         self._coord_to_fifo = self.var("coord_to_fifo", 16)
         self._pos_to_fifo = self.var("pos_to_fifo", 16, size=self.num_streams, explicit_array=True, packed=True)
 
+        self._coord_to_fifo_eos = self.var("coord_to_fifo_eos", 1)
+        self._pos_to_fifo_eos = self.var("pos_to_fifo_eos", self.num_streams)
+
         # Create FSM
         self.intersect_fsm = self.add_fsm("intersect_seq", reset_high=False)
         IDLE = self.intersect_fsm.add_state("IDLE")
         ITER = self.intersect_fsm.add_state("ITER")
+        UNION = self.intersect_fsm.add_state("UNION")
         DRAIN = self.intersect_fsm.add_state("DRAIN")
         ALIGN = self.intersect_fsm.add_state("ALIGN")
+        # ALIGN_UNION = self.intersect_fsm.add_state("ALIGN_UNION")
         DONE = self.intersect_fsm.add_state("DONE")
 
         self.intersect_fsm.output(self._inc_pos_cnt[0])
@@ -254,8 +277,11 @@ class Intersect(kts.Generator):
         self.intersect_fsm.output(self._clr_eos_sticky[0])
         self.intersect_fsm.output(self._clr_eos_sticky[1])
         self.intersect_fsm.output(self._coord_to_fifo)
+        self.intersect_fsm.output(self._coord_to_fifo_eos)
         self.intersect_fsm.output(self._pos_to_fifo[0])
+        self.intersect_fsm.output(self._pos_to_fifo_eos[0])
         self.intersect_fsm.output(self._pos_to_fifo[1])
+        self.intersect_fsm.output(self._pos_to_fifo_eos[1])
 
         ####################
         # Next State Logic
@@ -263,10 +289,13 @@ class Intersect(kts.Generator):
 
         # In IDLE we stay if the fifo is full, otherwise wait
         # until we have two valids...
-        IDLE.next(IDLE, self._fifo_full.r_or() | (~self._all_valid))
+        IDLE.next(UNION, self._all_valid_join & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)))
         # If either stream is empty, we can skip to drain right away
-        IDLE.next(ALIGN, self._any_eos)
-        IDLE.next(ITER, self._all_valid)
+        IDLE.next(ALIGN, self._any_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)))
+        IDLE.next(ITER, self._all_valid & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)))
+        # IDLE.next(UNION, self._all_valid & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)))
+        # IDLE.next(IDLE, self._fifo_full.r_or() | (~self._all_valid))
+        IDLE.next(IDLE, None)
 
         # In ITER, we go back to idle when the fifo is full to avoid
         # complexity, or if we are looking at one of the eos since we can make the last
@@ -278,6 +307,10 @@ class Intersect(kts.Generator):
         # First we align the streams to both stop tokens
         ALIGN.next(DRAIN, self._eos_in_sticky.r_and())
         ALIGN.next(ALIGN, None)
+
+        # For Union, there is no real early stop, we just can go until both streams hit stop tokens
+        UNION.next(DRAIN, self._eos_in_sticky.r_and())
+        UNION.next(UNION, None)
 
         # Then in DRAIN, we pass thru the stop tokens
         # The only way to leave DRAIN is to get new data
@@ -308,6 +341,9 @@ class Intersect(kts.Generator):
         IDLE.output(self._coord_to_fifo, kts.const(0, 16))
         IDLE.output(self._pos_to_fifo[0], kts.const(0, 16))
         IDLE.output(self._pos_to_fifo[1], kts.const(0, 16))
+        IDLE.output(self._coord_to_fifo_eos, 0)
+        IDLE.output(self._pos_to_fifo_eos[0], 0)
+        IDLE.output(self._pos_to_fifo_eos[1], 0)
 
         #######
         # ITER
@@ -325,6 +361,9 @@ class Intersect(kts.Generator):
         # ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
         ITER.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
         ITER.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
+        ITER.output(self._coord_to_fifo_eos, 0)
+        ITER.output(self._pos_to_fifo_eos[0], 0)
+        ITER.output(self._pos_to_fifo_eos[1], 0)
 
         #######
         # ALIGN
@@ -340,6 +379,57 @@ class Intersect(kts.Generator):
         ALIGN.output(self._coord_to_fifo, kts.const(0, 16))
         ALIGN.output(self._pos_to_fifo[0], kts.const(0, 16))
         ALIGN.output(self._pos_to_fifo[1], kts.const(0, 16))
+        ALIGN.output(self._coord_to_fifo_eos, 0)
+        ALIGN.output(self._pos_to_fifo_eos[0], 0)
+        ALIGN.output(self._pos_to_fifo_eos[1], 0)
+
+        #######
+        # UNION
+        #######
+        # Pop if the lesser coord or the other stream is at eos
+        UNION.output(self._inc_pos_cnt[0], self._all_valid_join & ((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[1]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[0])
+        UNION.output(self._inc_pos_cnt[1], self._all_valid_join & ((self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[0]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[1])
+        UNION.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full.r_or())
+        UNION.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full.r_or())
+        # We need to push any coordinate period as long as there is room and they are not all eos
+        # UNION.output(self._fifo_push, self._all_valid & ~self._fifo_full.r_or() & ~all_eos.r_and())
+        UNION.output(self._fifo_push, self._all_valid_join & ~self._fifo_full.r_or() & ~all_eos.r_and())
+        UNION.output(self._clr_eos_sticky[0], 0)
+        UNION.output(self._clr_eos_sticky[1], 0)
+        # Need to pick which FIFO to pass through
+        # UNION.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
+        UNION.output(self._coord_to_fifo, kts.ternary(self._coord_in_fifo_eos_in[0],
+                                                      self._coord_in_fifo_in[1][15, 0], kts.ternary(self._coord_in_fifo_eos_in[1],
+                                                                                                    self._coord_in_fifo_in[0][15, 0], kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
+                                                                                                                                                  self._coord_in_fifo_in[0][15, 0], self._coord_in_fifo_in[1][15, 0]))))
+        # UNION.output(self._pos_to_fifo[0], self._pos_cnt[0] + self._payload_ptr[0])
+        # UNION.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
+        # UNION.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
+        # Difference in union is we are capable of passing the MAYBE token - only pass the reference if the out coordinate matches the first coordinate
+        # UNION.output(self._pos_to_fifo[0], kts.ternary(self._coord_in_fifo_in[0] == self._coord_to_fifo,
+        #                                                self._pos_in_fifo_in[0][15, 0], kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))))
+        UNION.output(self._pos_to_fifo[0], kts.ternary(self._coord_in_fifo_eos_in[0],
+                                                       self._maybe, kts.ternary(self._coord_in_fifo_eos_in[1],
+                                                                                self._pos_in_fifo_in[0][15, 0], kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
+                                                                                                                            self._pos_in_fifo_in[0][15, 0], self._maybe))))
+        # UNION.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
+        # UNION.output(self._pos_to_fifo[1], kts.ternary(self._coord_in_fifo_in[1] == self._coord_to_fifo,
+        #                                                self._pos_in_fifo_in[1][15, 0], kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))))
+        UNION.output(self._pos_to_fifo[1], kts.ternary(self._coord_in_fifo_eos_in[1],
+                                                       self._maybe, kts.ternary(self._coord_in_fifo_eos_in[0],
+                                                                                self._pos_in_fifo_in[1][15, 0], kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
+                                                                                                                            self._pos_in_fifo_in[1][15, 0], self._maybe))))
+        UNION.output(self._coord_to_fifo_eos, 0)
+        UNION.output(self._pos_to_fifo_eos[0], kts.ternary(self._coord_in_fifo_eos_in[0],
+                                                           kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[1],
+                                                                                        kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
+                                                                                                                     kts.const(0, 1), kts.const(1, 1)))))
+        UNION.output(self._pos_to_fifo_eos[1], kts.ternary(self._coord_in_fifo_eos_in[1],
+                                                           kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[0],
+                                                                                        kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
+                                                                                                                     kts.const(0, 1), kts.const(1, 1)))))
+        # UNION.output(self._pos_to_fifo_eos[0], (self._coord_in_fifo_in[0][15, 0] != self._coord_to_fifo[15, 0]))
+        # UNION.output(self._pos_to_fifo_eos[1], (self._coord_in_fifo_in[1][15, 0] != self._coord_to_fifo[15, 0]))
 
         #######
         # DRAIN
@@ -356,6 +446,9 @@ class Intersect(kts.Generator):
         DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         DRAIN.output(self._pos_to_fifo[0], self._coord_in_fifo_in[0][15, 0])
         DRAIN.output(self._pos_to_fifo[1], self._coord_in_fifo_in[0][15, 0])
+        DRAIN.output(self._coord_to_fifo_eos, self._any_eos)
+        DRAIN.output(self._pos_to_fifo_eos[0], self._any_eos)
+        DRAIN.output(self._pos_to_fifo_eos[1], self._any_eos)
 
         #######
         # DONE
@@ -370,6 +463,9 @@ class Intersect(kts.Generator):
         DONE.output(self._coord_to_fifo, kts.const(0, 16))
         DONE.output(self._pos_to_fifo[0], kts.const(0, 16))
         DONE.output(self._pos_to_fifo[1], kts.const(0, 16))
+        DONE.output(self._coord_to_fifo_eos, 0)
+        DONE.output(self._pos_to_fifo_eos[0], 0)
+        DONE.output(self._pos_to_fifo_eos[1], 0)
 
         self.intersect_fsm.set_start_state(IDLE)
 
@@ -382,7 +478,7 @@ class Intersect(kts.Generator):
 
         # Stupid convert -
         self._coord_data_in_packed = self.var("coord_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._coord_data_in_packed[self.data_width], self._any_eos)
+        self.wire(self._coord_data_in_packed[self.data_width], self._coord_to_fifo_eos)
         self.wire(self._coord_data_in_packed[self.data_width - 1, 0 * self.data_width], self._coord_to_fifo)
 
         self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
@@ -390,7 +486,7 @@ class Intersect(kts.Generator):
         self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0 * self.data_width])
 
         self._pos0_data_in_packed = self.var("pos0_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._pos0_data_in_packed[self.data_width], self._any_eos)
+        self.wire(self._pos0_data_in_packed[self.data_width], self._pos_to_fifo_eos[0])
         self.wire(self._pos0_data_in_packed[self.data_width - 1, 0 * self.data_width], self._pos_to_fifo[0])
 
         self._pos0_data_out_packed = self.var("pos0_fifo_out_packed", self.data_width + 1, packed=True)
@@ -398,7 +494,7 @@ class Intersect(kts.Generator):
         self.wire(self._pos_out[0][self.data_width - 1, 0], self._pos0_data_out_packed[self.data_width - 1, 0 * self.data_width])
 
         self._pos1_data_in_packed = self.var("pos1_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._pos1_data_in_packed[self.data_width], self._any_eos)
+        self.wire(self._pos1_data_in_packed[self.data_width], self._pos_to_fifo_eos[1])
         self.wire(self._pos1_data_in_packed[self.data_width - 1, 0 * self.data_width], self._pos_to_fifo[1])
 
         self._pos1_data_out_packed = self.var("pos1_fifo_out_packed", self.data_width + 1, packed=True)
@@ -463,10 +559,11 @@ class Intersect(kts.Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, cmrg_enable=0, cmrg_stop_lvl=0):
+    def get_bitstream(self, cmrg_enable=0, cmrg_stop_lvl=0, op=JoinerOp.INTERSECT.value):
 
         # Store all configurations here
-        config = [("tile_en", 1)]
+        config = [("tile_en", 1),
+                  ("joiner_op", op)]
 
         if self.use_merger:
             config += [("cmrg_enable", cmrg_enable)]
