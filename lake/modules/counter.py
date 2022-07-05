@@ -15,7 +15,7 @@ class Counter(kts.Generator):
         inc_var = kts.const(1, 1)
         if increment is not None:
             inc_var = increment
-        self.ctr = add_counter(self, f"{name}_ctr", bitwidth, increment=inc_var, clear=None)
+        self.ctr = add_counter(self, f"{name}_ctr", bitwidth, increment=inc_var, clear=None, pos_reset=True)
 
         self._count_out = self.output("count_out", bitwidth)
         self.wire(self._count_out, self.ctr)

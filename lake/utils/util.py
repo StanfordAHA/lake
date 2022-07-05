@@ -564,28 +564,47 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=Fa
 
 
 # Add a simple counter to a design and return the signal
-def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None):
+def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None, pos_reset=False):
 
     ctr = generator.var(name, bitwidth, packed=True)
-
-    if clear is not None:
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def ctr_inc_clr_code():
-            if ~generator._rst_n:
-                ctr = 0
-            elif clear:
-                ctr = 0
-            elif increment:
-                ctr = ctr + 1
-        generator.add_code(ctr_inc_clr_code)
+    if pos_reset is True:
+        if clear is not None:
+            @always_ff((posedge, "clk"), (posedge, "rst_n"))
+            def ctr_inc_clr_code():
+                if generator._rst_n:
+                    ctr = 0
+                elif clear:
+                    ctr = 0
+                elif increment:
+                    ctr = ctr + 1
+            generator.add_code(ctr_inc_clr_code)
+        else:
+            @always_ff((posedge, "clk"), (posedge, "rst_n"))
+            def ctr_inc_code():
+                if generator._rst_n:
+                    ctr = 0
+                elif increment:
+                    ctr = ctr + 1
+            generator.add_code(ctr_inc_code)
     else:
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def ctr_inc_code():
-            if ~generator._rst_n:
-                ctr = 0
-            elif increment:
-                ctr = ctr + 1
-        generator.add_code(ctr_inc_code)
+        if clear is not None:
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
+            def ctr_inc_clr_code():
+                if ~generator._rst_n:
+                    ctr = 0
+                elif clear:
+                    ctr = 0
+                elif increment:
+                    ctr = ctr + 1
+            generator.add_code(ctr_inc_clr_code)
+        else:
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
+            def ctr_inc_code():
+                if ~generator._rst_n:
+                    ctr = 0
+                elif increment:
+                    ctr = ctr + 1
+            generator.add_code(ctr_inc_code)
     return ctr
 
 
