@@ -6,7 +6,8 @@ class Counter(kts.Generator):
 
     def __init__(self, name: str,
                  bitwidth=16,
-                 increment=None):
+                 increment=None,
+                 pos_reset=False):
         super().__init__(name, debug=True)
 
         self._clk = self.clock("clk")
@@ -15,7 +16,7 @@ class Counter(kts.Generator):
         inc_var = kts.const(1, 1)
         if increment is not None:
             inc_var = increment
-        self.ctr = add_counter(self, f"{name}_ctr", bitwidth, increment=inc_var, clear=None, pos_reset=True)
+        self.ctr = add_counter(self, f"{name}_ctr", bitwidth, increment=inc_var, clear=None, pos_reset=pos_reset)
 
         self._count_out = self.output("count_out", bitwidth)
         self.wire(self._count_out, self.ctr)
