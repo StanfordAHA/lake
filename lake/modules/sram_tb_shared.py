@@ -83,9 +83,11 @@ class StrgUBSRAMTBShared(Generator):
                                                   explicit_array=True,
                                                   packed=True)
 
+        self._t_cycle_done_in = self.input("t_cycle_done_in", self.interconnect_output_ports)
+        self._t_cycle_en_out = self.output("t_cycle_en_out", self.interconnect_output_ports)
         self._t_read_out = self.output("t_read_out", self.interconnect_output_ports)
-        self._t_read = self.var("t_read", self.interconnect_output_ports)
-        self.wire(self._t_read_out, self._t_read)
+        # self._t_read = self.var("t_read", self.interconnect_output_ports)
+        # self.wire(self._t_read_out, self._t_read)
 
         ##################################################################################
         # TB PATHS
@@ -100,7 +102,9 @@ class StrgUBSRAMTBShared(Generator):
                            clk=self._clk,
                            rst_n=self._rst_n,
                            valid_in=self._sram2tb_valid_in,
-                           step=self._t_read[i])
+                           tbwrite_en=self._t_read_out[i],
+                           tbread_cycle_done=self._t_cycle_done_in[i],
+                           tbread_cycle_en=self._t_cycle_en_out[i])
             safe_wire(gen=self, w_to=self._loops_sram2tb_mux_sel[i], w_from=valid_cycle_sram2tb.ports.mux_sel_out)
             self.wire(self._loops_sram2tb_restart[i], valid_cycle_sram2tb.ports.restart_out)
 

@@ -3,7 +3,8 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
-from lake.modules.spec.sched_gen import SchedGen
+from lake.modules.spec.cycle_sched_gen import CycleSchedGen
+from lake.modules.spec.valid_sched_gen import ValidSchedGen
 from lake.utils.util import safe_wire
 
 
@@ -59,8 +60,10 @@ class ValidCycleCtrl(Generator):
         self._rst_n = self.reset("rst_n")
 
         self._valid_in = self.input("valid_in", 1)
+        self._tbread_cycle_done = self.input("tbread_cycle_done", 1)
 
-        self._step = self.output("step", 1)
+        self._tbwrite_en = self.output("tbwrite_en", 1)
+        self._tbread_cycle_en = self.output("tbread_cycle_en", 1)
         self._mux_sel_out = self.output("mux_sel_out", max(clog2(self.cycle_iterator_support), 1))
         self._restart_out = self.output("restart_out", 1)
 
@@ -87,17 +90,17 @@ class ValidCycleCtrl(Generator):
         self._cycle_done = self.var("cycle_done", 1)
         self._cycle_sg_en = self.var("cycle_sg_en", 1)
 
-        # local cycle count for relative affine accesses
-        @always_ff((posedge, self._clk), (negedge, "rst_n"))
-        def increment_cycle_count(self):
-            if ~self._rst_n:
-                self._cycle_count = 0
-            elif self._cycle_done:
-                self._cycle_count = 0
-            elif self._valid_sg_en:
-                self._cycle_count = self._cycle_count + 1
+        # # local cycle count for relative affine accesses
+        # @always_ff((posedge, self._clk), (negedge, "rst_n"))
+        # def increment_cycle_count(self):
+        #     if ~self._rst_n:
+        #         self._cycle_count = 0
+        #     elif self._cycle_done:
+        #         self._cycle_count = 0
+        #     elif self._valid_sg_en:
+        #         self._cycle_count = self._cycle_count + 1
 
-        self.add_always(increment_cycle_count)
+        # self.add_always(increment_cycle_count)
 
         valid_loops = ForLoop(iterator_support=1,
                               config_width=self.default_config_width)
@@ -110,13 +113,12 @@ class ValidCycleCtrl(Generator):
                        restart=self._valid_done)
 
         self.add_child("valid_sg",
-                       SchedGen(iterator_support=1,
-                                valid=True,
-                                config_width=self.default_config_width),
+                       ValidSchedGen(iterator_support=1,
+                                     config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._valid_count,
-                       step=self._cycle_done,
+                       step=self._tbread_cycle_done,
                        mux_sel=valid_loops.ports.mux_sel_out,
                        finished=self._valid_done,
                        valid_output=self._valid_sg_en)
@@ -143,16 +145,18 @@ class ValidCycleCtrl(Generator):
         # self.wire(self._restart_out, self._cycle_done)
 
         self.add_child("cycle_sg",
-                       SchedGen(iterator_support=self.cycle_iterator_support,
-                                config_width=self.default_config_width),
+                       CycleSchedGen(iterator_support=self.cycle_iterator_support,
+                                     config_width=self.default_config_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
-                       cycle_count=self._cycle_count,
+                       step=self._valid_sg_en,
                        mux_sel=cycle_loops.ports.mux_sel_out,
                        finished=self._cycle_done,
                        valid_output=self._cycle_sg_en)
 
-        self.wire(self._step, self._cycle_sg_en)
+        self.wire(self._tbwrite_en, self._cycle_sg_en)
+
+        self.wire(self._tbread_cycle_en, self._valid_sg_en)
 
 
 if __name__ == "__main__":
