@@ -14,13 +14,15 @@ from lake.modules.reg_fifo import RegFIFO
 class IOCore(Generator):
     def __init__(self,
                  data_width=16,
-                 tracks_supported: list = None):
+                 tracks_supported: list = None,
+                 fifo_depth=2):
 
         super().__init__("io_core", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.fifo_depth = fifo_depth
 
         if tracks_supported is None:
             self.tracks_supported = []
@@ -94,7 +96,7 @@ class IOCore(Generator):
 
             ### Build in input and output fifos of depth 2
             # f2io -> io2glb fifo
-            f2io_2_io2glb_fifo = RegFIFO(data_width=track_len, width_mult=1, depth=2)
+            f2io_2_io2glb_fifo = RegFIFO(data_width=track_len, width_mult=1, depth=self.fifo_depth)
 
             self.add_child(f"f2io_2_io2glb_{track_len}",
                            f2io_2_io2glb_fifo,
@@ -110,7 +112,7 @@ class IOCore(Generator):
             self.wire(tmp_io2glb_v, ~f2io_2_io2glb_fifo.ports.empty)
 
             # glb2io -> io2f fifo
-            glb2io_2_io2f_fifo = RegFIFO(data_width=track_len, width_mult=1, depth=2)
+            glb2io_2_io2f_fifo = RegFIFO(data_width=track_len, width_mult=1, depth=self.fifo_depth)
 
             self.add_child(f"glb2io_2_io2f_{track_len}",
                            glb2io_2_io2f_fifo,

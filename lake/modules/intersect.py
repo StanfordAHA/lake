@@ -21,7 +21,8 @@ class JoinerOp(Enum):
 class Intersect(kts.Generator):
     def __init__(self,
                  data_width=16,
-                 use_merger=False):
+                 use_merger=False,
+                 fifo_depth=8):
 
         name_str = f"intersect_unit{'_w_merger' if use_merger else ''}"
         super().__init__(name=name_str, debug=True)
@@ -30,6 +31,7 @@ class Intersect(kts.Generator):
         self.add_clk_enable = True
         self.add_flush = True
         self.use_merger = use_merger
+        self.fifo_depth = fifo_depth
 
         # For compatibility with tile integration...
         self.total_sets = 0
@@ -144,7 +146,7 @@ class Intersect(kts.Generator):
 
             # COORD IN FIFOS
             # COORD IN FIFOS
-            tmp_coord_fifo = RegFIFO(data_width=self._coord_in[i].width, width_mult=1, depth=8)
+            tmp_coord_fifo = RegFIFO(data_width=self._coord_in[i].width, width_mult=1, depth=self.fifo_depth)
 
             tmp_coord_in_valid_in = self.var(f"coord_in_{i}_fifo_valid_in", 1)
 
@@ -171,7 +173,7 @@ class Intersect(kts.Generator):
             self._coord_in_fifo_eos_in.append(tmp_coord_in_eos_in)
 
             # POS IN FIFOS
-            tmp_pos_fifo = RegFIFO(data_width=self._pos_in[i].width, width_mult=1, depth=8)
+            tmp_pos_fifo = RegFIFO(data_width=self._pos_in[i].width, width_mult=1, depth=self.fifo_depth)
 
             tmp_pos_in_valid_in = self.var(f"pos_in_{i}_fifo_valid_in", 1)
 
@@ -475,9 +477,9 @@ class Intersect(kts.Generator):
 # ===================================
 # Dump metadata into fifo
 # ===================================
-        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=16)
-        self._pos0_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=16)
-        self._pos1_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=16)
+        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._pos0_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._pos1_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
 
         # Stupid convert -
         self._coord_data_in_packed = self.var("coord_fifo_in_packed", self.data_width + 1, packed=True)
@@ -667,7 +669,7 @@ class Intersect(kts.Generator):
         fifo_kwargs = {
             "data_width": self.data_width + 1,
             "width_mult": 1,
-            "depth": 8
+            "depth": self.fifo_depth
         }
 
         base_infifo = RegFIFO(**fifo_kwargs)

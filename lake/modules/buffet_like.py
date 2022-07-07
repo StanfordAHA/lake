@@ -19,7 +19,8 @@ class BuffetLike(Generator):
                  num_ID=2,
                  mem_depth=512,
                  local_memory=True,
-                 physical_mem=False):
+                 physical_mem=False,
+                 fifo_depth=8):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
@@ -30,6 +31,7 @@ class BuffetLike(Generator):
         self.mem_depth = mem_depth
         self.local_memory = local_memory
         self.physical_mem = physical_mem
+        self.fifo_depth = fifo_depth
 
         self.total_sets = 0
 
@@ -253,7 +255,7 @@ class BuffetLike(Generator):
         self._wr_data_fifo_valid = self.var("wr_data_fifo_valid", 1)
 
         self._wr_data_fifo_in = kts.concat(self._wr_data)
-        self._wr_data_infifo = RegFIFO(data_width=self._wr_data_fifo_in.width, width_mult=1, depth=8)
+        self._wr_data_infifo = RegFIFO(data_width=self._wr_data_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._wr_data_fifo_out_data = self.var("wr_data_fifo_out_data", self.data_width, packed=True)
         self._wr_data_fifo_out_op = self.var("wr_data_fifo_out_op", 1)
 
@@ -276,7 +278,7 @@ class BuffetLike(Generator):
         self._wr_addr_fifo_valid = self.var("wr_addr_fifo_valid", 1)
 
         self._wr_addr_fifo_in = kts.concat(self._wr_addr)
-        self._wr_addr_infifo = RegFIFO(data_width=self._wr_addr_fifo_in.width, width_mult=1, depth=8)
+        self._wr_addr_infifo = RegFIFO(data_width=self._wr_addr_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._wr_addr_fifo_out_data = self.var("wr_addr_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"wr_addr_fifo",
@@ -297,7 +299,7 @@ class BuffetLike(Generator):
         self._wr_ID_fifo_valid = self.var("wr_ID_fifo_valid", 1)
 
         self._wr_ID_fifo_in = kts.concat(self._wr_ID)
-        self._wr_ID_infifo = RegFIFO(data_width=self._wr_ID_fifo_in.width, width_mult=1, depth=8)
+        self._wr_ID_infifo = RegFIFO(data_width=self._wr_ID_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._wr_ID_fifo_out_data = self.var("wr_ID_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"wr_ID_fifo",
@@ -318,7 +320,7 @@ class BuffetLike(Generator):
         self._rd_op_fifo_valid = self.var("rd_op_fifo_valid", 1)
 
         self._rd_op_fifo_in = kts.concat(self._rd_op_op)
-        self._rd_op_infifo = RegFIFO(data_width=self._rd_op_fifo_in.width, width_mult=1, depth=8)
+        self._rd_op_infifo = RegFIFO(data_width=self._rd_op_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._rd_op_fifo_out_op = self.var("rd_op_fifo_out_op", self.data_width, packed=True)
 
         self.add_child(f"rd_op_fifo",
@@ -339,7 +341,7 @@ class BuffetLike(Generator):
         self._rd_addr_fifo_valid = self.var("rd_addr_fifo_valid", 1)
 
         self._rd_addr_fifo_in = kts.concat(self._rd_addr)
-        self._rd_addr_infifo = RegFIFO(data_width=self._rd_addr_fifo_in.width, width_mult=1, depth=8)
+        self._rd_addr_infifo = RegFIFO(data_width=self._rd_addr_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._rd_addr_fifo_out_addr = self.var("rd_addr_fifo_out_addr", self.data_width, packed=True)
 
         self.add_child(f"rd_addr_fifo",
@@ -360,7 +362,7 @@ class BuffetLike(Generator):
         self._rd_ID_fifo_valid = self.var("rd_ID_fifo_valid", 1)
 
         self._rd_ID_fifo_in = kts.concat(self._rd_ID)
-        self._rd_ID_infifo = RegFIFO(data_width=self._rd_ID_fifo_in.width, width_mult=1, depth=8)
+        self._rd_ID_infifo = RegFIFO(data_width=self._rd_ID_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._rd_ID_fifo_out_data = self.var("rd_ID_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"rd_ID_fifo",
@@ -385,9 +387,10 @@ class BuffetLike(Generator):
 
         self._rd_rsp_fifo_push = self.var("rd_rsp_fifo_push", 1)
         self._rd_rsp_fifo_full = self.var("rd_rsp_fifo_full", 1)
+        self._rd_rsp_fifo_almost_full = self.var("rd_rsp_fifo_almost_full", 1)
 
         self._rd_rsp_fifo_in_data = self.var("rd_rsp_fifo_in_data", self.data_width, packed=True)
-        self._rd_rsp_out_fifo = RegFIFO(data_width=self._rd_rsp_fifo_in_data.width, width_mult=1, depth=8)
+        self._rd_rsp_out_fifo = RegFIFO(data_width=self._rd_rsp_fifo_in_data.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"rd_rsp_fifo",
                        self._rd_rsp_out_fifo,
@@ -400,6 +403,7 @@ class BuffetLike(Generator):
                        data_out=self._rd_rsp_data)
 
         self.wire(self._rd_rsp_fifo_full, self._rd_rsp_out_fifo.ports.full)
+        self.wire(self._rd_rsp_fifo_almost_full, self._rd_rsp_out_fifo.ports.almost_full)
         self.wire(self._rd_rsp_valid, ~self._rd_rsp_out_fifo.ports.empty)
 
         chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
@@ -565,8 +569,9 @@ class BuffetLike(Generator):
             # RD_START
             ####################
             RD_START[ID_idx].output(self._pop_blk[ID_idx], (self._rd_op_fifo_out_op == 0) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
-            # Guarantee there's room for the read to land
-            RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+            # Guarantee there's room for the read to land (need to use almost full, not full...)
+            # RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+            RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_almost_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
             # Pop the op fifo if there is a read that's going through or if it's a free op
             # If it's a size request, only fulfill it if we aren't pushing a read from memory to the output fifo
             RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 2, ~self._valid_from_mem & self._blk_valid[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[2 * ID_idx + 1] & ~self._rd_rsp_fifo_full, kts.const(1, 1))) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
@@ -579,7 +584,7 @@ class BuffetLike(Generator):
         for i in range(self.num_ID):
             ### Bookkeeping FIFO
             blk_fifo_in = kts.concat(self._curr_base[i], self._curr_bounds[i])
-            blk_fifo = RegFIFO(data_width=blk_fifo_in.width, width_mult=1, depth=8)
+            blk_fifo = RegFIFO(data_width=blk_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
             self.add_child(f"blk_fifo_{i}",
                            blk_fifo,

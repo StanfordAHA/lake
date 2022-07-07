@@ -9,6 +9,26 @@ from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 
 
+def find_first(generator, signal):
+
+    tmp_done = generator.var("tmp_done", 1)
+    tmp_out = generator.var("tmp_out_first", kts.clog2(signal.width))
+
+    @always_comb
+    def set_outs():
+        tmp_done = 0
+        tmp_out = 0
+        # Iterate through the bits of the signal, find the first one that's high
+        for i in range(signal.width):
+            if ~tmp_done:
+                if signal[i]:
+                    tmp_out = i
+                    tmp_done = 1
+    generator.add_code(set_outs)
+
+    return tmp_out
+
+
 class Arbiter(Generator):
     def __init__(self,
                  ins=1,
@@ -43,6 +63,8 @@ class Arbiter(Generator):
         # self._data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._grant_out = self.output("grant_out", self.ins)
+        self._grant_out_priority = self.var("grant_out_priority", self.ins)
+        self._grant_out_consolation = self.var("grant_out_consolation", self.ins)
         # self._valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
         # Indicate if we should even provide a grant output
@@ -70,7 +92,16 @@ class Arbiter(Generator):
         # Now deal with no request/no ready
         for i in range(self.ins):
             self.wire(self._grant_line_ready[i], self._grant_line[i] & self._resource_ready)
-            self.wire(self._grant_out[i], self._grant_line_ready[i] & self._request_in[i])
+            # This line gets priority
+            self.wire(self._grant_out_priority[i], self._grant_line_ready[i] & self._request_in[i])
+            #
+        # This gives the index of the first request that is high
+        first_request = find_first(self, self._request_in)
+        for i in range(self.ins):
+            # If the resource is ready, the first requestor gets consolation prize by default
+            self.wire(self._grant_out_consolation[i], self._resource_ready & self._request_in[i] & (first_request == i))
+            # The final grant is given to the prioritized one, else we give to consolation
+            self.wire(self._grant_out[i], kts.ternary(self._grant_out_priority.r_or(), self._grant_out_priority[i], self._grant_out_consolation[i]))
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")

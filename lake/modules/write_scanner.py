@@ -14,13 +14,15 @@ from lake.modules.reg_fifo import RegFIFO
 
 class WriteScanner(Generator):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 fifo_depth=8):
 
         super().__init__("write_scanner", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.fifo_depth = fifo_depth
 
         self.total_sets = 0
 
@@ -151,8 +153,8 @@ class WriteScanner(Generator):
 # scanners are driven by upper levels
 # =============================
 
-        self._data_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
-        self._addr_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
+        self._data_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._addr_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth)
         self._infifo_pop = self.var("infifo_pop", 2)
 
         # For input streams, need coord_in, valid_in, eos_in
@@ -241,7 +243,7 @@ class WriteScanner(Generator):
         # Output FIFOs to the buffet-like
         # TODO: Make sure this works
         data_out_fifo_in = kts.concat(self._op_to_fifo, self._data_to_fifo)
-        data_out_outfifo = RegFIFO(data_width=data_out_fifo_in.width, width_mult=1, depth=8)
+        data_out_outfifo = RegFIFO(data_width=data_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"data_out_fifo",
                        data_out_outfifo,
@@ -252,7 +254,6 @@ class WriteScanner(Generator):
                        pop=self._data_out_ready_in,
                        data_in=data_out_fifo_in,
                        data_out=kts.concat(self._data_out))
-        # RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
         self.wire(self._data_out_fifo_full, data_out_outfifo.ports.full)
         self.wire(self._data_out_valid_out, ~data_out_outfifo.ports.empty)
 
@@ -268,7 +269,7 @@ class WriteScanner(Generator):
 
         # Output FIFOs to the buffet-like
         addr_out_fifo_in = kts.concat(self._addr_to_fifo)
-        addr_out_outfifo = RegFIFO(data_width=addr_out_fifo_in.width, width_mult=1, depth=8)
+        addr_out_outfifo = RegFIFO(data_width=addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"addr_out_fifo",
                        addr_out_outfifo,
@@ -279,7 +280,6 @@ class WriteScanner(Generator):
                        pop=self._addr_out_ready_in,
                        data_in=addr_out_fifo_in,
                        data_out=kts.concat(self._addr_out))
-        # RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
         self.wire(self._addr_out_fifo_full, addr_out_outfifo.ports.full)
         self.wire(self._addr_out_valid_out, ~addr_out_outfifo.ports.empty)
 
@@ -295,7 +295,7 @@ class WriteScanner(Generator):
 
         # Output FIFOs to the buffet-like
         ID_out_fifo_in = kts.concat(self._ID_to_fifo)
-        ID_out_outfifo = RegFIFO(data_width=ID_out_fifo_in.width, width_mult=1, depth=8)
+        ID_out_outfifo = RegFIFO(data_width=ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"ID_out_fifo",
                        ID_out_outfifo,
@@ -306,7 +306,6 @@ class WriteScanner(Generator):
                        pop=self._ID_out_ready_in,
                        data_in=ID_out_fifo_in,
                        data_out=kts.concat(self._ID_out))
-        # RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
         self.wire(self._ID_out_fifo_full, ID_out_outfifo.ports.full)
         self.wire(self._ID_out_valid_out, ~ID_out_outfifo.ports.empty)
 

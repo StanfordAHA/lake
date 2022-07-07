@@ -14,13 +14,15 @@ from lake.modules.reg_fifo import RegFIFO
 
 class PE(Generator):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 fifo_depth=8):
 
         super().__init__("PE", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.fifo_depth = fifo_depth
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -88,8 +90,8 @@ class PE(Generator):
 # INPUT FIFO
 # ==============================
         self._infifo = []
-        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8))
-        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8))
+        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth))
+        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth))
 
         # Ready is just a function of having room in the FIFO
         self.wire(self._data_in_ready_out[0], ~self._infifo[0].ports.full)
@@ -144,7 +146,7 @@ class PE(Generator):
         self._pe_output = self.var("pe_output", self.data_width)
         self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
 
-        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
+        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
 
         # Convert to packed
         self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1, packed=True)

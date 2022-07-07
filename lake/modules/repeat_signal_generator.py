@@ -14,7 +14,8 @@ from lake.modules.reg_fifo import RegFIFO
 class RepeatSignalGenerator(Generator):
     def __init__(self,
                  data_width=16,
-                 passthru=True):
+                 passthru=True,
+                 fifo_depth=8):
 
         super().__init__("RepeatSignalGenerator", debug=True)
 
@@ -22,6 +23,7 @@ class RepeatSignalGenerator(Generator):
         self.add_clk_enable = True
         self.add_flush = True
         self.passthru = passthru
+        self.fifo_depth = fifo_depth
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -99,7 +101,7 @@ class RepeatSignalGenerator(Generator):
         self._base_fifo_valid = self.var("base_fifo_valid", 1)
 
         self._base_fifo_in = kts.concat(self._base_data_in)
-        self._base_in_fifo = RegFIFO(data_width=self._base_fifo_in.width, width_mult=1, depth=8)
+        self._base_in_fifo = RegFIFO(data_width=self._base_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._base_fifo_out_data = self.var("base_fifo_out_data", self.data_width, packed=True)
         self._base_fifo_out_eos = self.var("base_fifo_out_eos", 1)
 
@@ -128,7 +130,7 @@ class RepeatSignalGenerator(Generator):
         self._repsig_fifo_in_eos = self.var("repsig_fifo_in_eos", 1)
 
         self._repsig_fifo_in = kts.concat(self._repsig_fifo_in_eos, self._repsig_fifo_in_data)
-        self._repsig_out_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=8)
+        self._repsig_out_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"repsig_out_fifo",
                        self._repsig_out_fifo,
@@ -152,7 +154,7 @@ class RepeatSignalGenerator(Generator):
             self._passthru_fifo_in_eos = self.var("passthru_fifo_in_eos", 1)
 
             self._passthru_fifo_in = kts.concat(self._passthru_fifo_in_eos, self._passthru_fifo_in_data)
-            self._passthru_out_fifo = RegFIFO(data_width=self._passthru_fifo_in.width, width_mult=1, depth=8)
+            self._passthru_out_fifo = RegFIFO(data_width=self._passthru_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
             self.add_child(f"passthru_out_fifo",
                            self._passthru_out_fifo,

@@ -15,13 +15,15 @@ class Reg(Generator):
     def __init__(self,
                  data_width=16,
                  add_dispatcher=False,
-                 dispatcher_size=2):
+                 dispatcher_size=2,
+                 fifo_depth=8):
 
         super().__init__("reg_cr", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.fifo_depth = fifo_depth
 
         self.add_dispatcher = add_dispatcher
         self.dispatcher_size = dispatcher_size
@@ -85,7 +87,7 @@ class Reg(Generator):
 # ==============================
 # INPUT FIFO
 # ==============================
-        self._infifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
+        self._infifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
 
         # Ready is just a function of having room in the FIFO
         self.wire(self._ready_out, ~self._infifo.ports.full)
@@ -132,7 +134,7 @@ class Reg(Generator):
 # ==============================
 # OUTPUT FIFO
 # ==============================
-        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
+        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
 
         # Convert to packed
         self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1, packed=True)

@@ -13,13 +13,15 @@ from lake.modules.reg_fifo import RegFIFO
 
 class Repeat(Generator):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 fifo_depth=8):
 
         super().__init__("Repeat", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.fifo_depth = fifo_depth
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -100,7 +102,7 @@ class Repeat(Generator):
         self._repsig_fifo_valid = self.var("repsig_fifo_valid", 1)
 
         self._repsig_fifo_in = kts.concat(self._repsig_data_in)
-        self._repsig_in_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=8)
+        self._repsig_in_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._repsig_fifo_out_data = self.var("repsig_fifo_out_data", self.data_width, packed=True)
         self._repsig_fifo_out_eos = self.var("repsig_fifo_out_eos", 1)
 
@@ -132,7 +134,7 @@ class Repeat(Generator):
         self.wire(self._proc_fifo_push, kts.ternary(self._root, self._proc_fifo_inject_push, self._proc_valid_in))
 
         self._proc_fifo_in = kts.ternary(self._root, kts.concat(self._proc_fifo_inject_eos, self._proc_fifo_inject_data), kts.concat(self._proc_data_in))
-        self._proc_in_fifo = RegFIFO(data_width=self._proc_fifo_in.width, width_mult=1, depth=8)
+        self._proc_in_fifo = RegFIFO(data_width=self._proc_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._proc_fifo_out_data = self.var("proc_fifo_out_data", self.data_width, packed=True)
         self._proc_fifo_out_eos = self.var("proc_fifo_out_eos", 1)
 
@@ -161,7 +163,7 @@ class Repeat(Generator):
         self._ref_fifo_in_eos = self.var("ref_fifo_in_eos", 1)
 
         self._ref_fifo_in = kts.concat(self._ref_fifo_in_eos, self._ref_fifo_in_data)
-        self._ref_out_fifo = RegFIFO(data_width=self._ref_fifo_in.width, width_mult=1, depth=8)
+        self._ref_out_fifo = RegFIFO(data_width=self._ref_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"ref_out_fifo",
                        self._ref_out_fifo,

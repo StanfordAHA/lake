@@ -13,13 +13,15 @@ from lake.modules.reg_fifo import RegFIFO
 
 class Scanner(Generator):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 fifo_depth=8):
 
         super().__init__("scanner", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.fifo_depth = fifo_depth
 
         self.total_sets = 0
 
@@ -166,7 +168,7 @@ class Scanner(Generator):
 # scanners are driven by upper levels
 # =============================
 
-        self._infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=8)
+        self._infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth)
 
         # Need to know if we've seen eos_in
         # self._eos_in_seen = self.var("eos_in_seen", 1)
@@ -254,7 +256,7 @@ class Scanner(Generator):
         self._rd_rsp_fifo_valid = self.var("rd_rsp_fifo_valid", 1)
 
         self._rd_rsp_fifo_in = kts.concat(self._rd_rsp_data_in)
-        self._rd_rsp_infifo = RegFIFO(data_width=self._rd_rsp_fifo_in.width, width_mult=1, depth=8)
+        self._rd_rsp_infifo = RegFIFO(data_width=self._rd_rsp_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._rd_rsp_fifo_out_data = self.var("rd_rsp_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"rd_rsp_fifo",
@@ -282,7 +284,7 @@ class Scanner(Generator):
         self._addr_out_fifo_push = self.var("addr_out_fifo_push", 1)
         self._addr_out_fifo_full = self.var("addr_out_fifo_full", 1)
         self._addr_out_fifo_in = kts.concat(self._addr_out_to_fifo)
-        self._addr_out_fifo = RegFIFO(data_width=self._addr_out_fifo_in.width, width_mult=1, depth=8)
+        self._addr_out_fifo = RegFIFO(data_width=self._addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"addr_out_fifo",
                        self._addr_out_fifo,
@@ -301,7 +303,7 @@ class Scanner(Generator):
         self._op_out_fifo_push = self.var("op_out_fifo_push", 1)
         self._op_out_fifo_full = self.var("op_out_fifo_full", 1)
         self._op_out_fifo_in = kts.concat(self._op_out_to_fifo)
-        self._op_out_fifo = RegFIFO(data_width=self._op_out_fifo_in.width, width_mult=1, depth=8)
+        self._op_out_fifo = RegFIFO(data_width=self._op_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"op_out_fifo",
                        self._op_out_fifo,
@@ -320,7 +322,7 @@ class Scanner(Generator):
         self._ID_out_fifo_push = self.var("ID_out_fifo_push", 1)
         self._ID_out_fifo_full = self.var("ID_out_fifo_full", 1)
         self._ID_out_fifo_in = kts.concat(self._ID_out_to_fifo)
-        self._ID_out_fifo = RegFIFO(data_width=self._ID_out_fifo_in.width, width_mult=1, depth=8)
+        self._ID_out_fifo = RegFIFO(data_width=self._ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"ID_out_fifo",
                        self._ID_out_fifo,
@@ -433,8 +435,8 @@ class Scanner(Generator):
         self._fiber_addr = self.var("fiber_addr", self.data_width, packed=True)
         self.wire(self._fiber_addr, self._fiber_addr_pre + self._seq_addr)
 
-        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
-        self._pos_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=8)
+        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._pos_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
 
         # self._fifo_push = self.var("fifo_push", 1)
         self._coord_out_fifo_push = self.var("coord_out_fifo_push", 1)
