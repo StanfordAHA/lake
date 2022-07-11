@@ -3,6 +3,7 @@ from kratos import *
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
+from lake.top.memory_controller import MemoryController
 from lake.utils.util import add_counter, safe_wire, register, sticky_flag, transform_strides_and_ranges, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
@@ -11,15 +12,16 @@ from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 
 
-class Scanner(Generator):
+class Scanner(MemoryController):
     def __init__(self,
                  data_width=16,
-                 fifo_depth=8):
+                 fifo_depth=8,
+                 add_clk_enable=False):
 
         super().__init__("scanner", debug=True)
 
         self.data_width = data_width
-        self.add_clk_enable = True
+        self.add_clk_enable = add_clk_enable
         self.add_flush = True
         self.fifo_depth = fifo_depth
 
@@ -1783,6 +1785,12 @@ class Scanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
+    def get_memory_ports(self):
+        '''
+        Use this method to indicate what memory ports this controller has
+        '''
+        return [[None]]
+
     def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0, block_mode=0, lookup=0):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
@@ -1813,6 +1821,9 @@ class Scanner(Generator):
             #     config += [("fiber_outer_addr_starting_addr", 0)]
 
         return trim_config_list(flattened, config)
+
+    def get_config_mode_str(self):
+        return "read_scanner"
 
 
 if __name__ == "__main__":

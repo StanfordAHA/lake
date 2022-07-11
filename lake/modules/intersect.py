@@ -6,6 +6,7 @@ from lake.passes.passes import lift_config_reg
 from lake.utils.util import sticky_flag, trim_config_list, add_counter
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.top.memory_controller import MemoryController
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
@@ -18,7 +19,7 @@ class JoinerOp(Enum):
     UNION = 1
 
 
-class Intersect(kts.Generator):
+class Intersect(MemoryController):
     def __init__(self,
                  data_width=16,
                  use_merger=False,
@@ -980,6 +981,15 @@ class Intersect(kts.Generator):
                        data_out=self._proc_outfifo_out_packed)
 
         self.wire(self._cmrg_coord_out_valid_out[1], ~proc_outfifo.ports.empty)
+
+    def get_memory_ports(self):
+        '''
+        Use this method to indicate what memory ports this controller has
+        '''
+        return [[None]]
+
+    def get_config_mode_str(self):
+        return "intersect"
 
 
 if __name__ == "__main__":

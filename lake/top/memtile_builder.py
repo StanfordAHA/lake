@@ -23,7 +23,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
     # Need to provide legal widths for top level signals - inputs/outputs - for compatibility
     # with the standard routing network on the AHA CGRA
-    legal_widths = [16, 1]
+    legal_widths = [17, 16, 1]
 
     def __init__(self, name, debug, memory_interface: MemoryInterface = None, memory_banks=1, controllers=None):
 
@@ -424,10 +424,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             bc_comb.add_stmt(over_intf[bc_sign].assign(local_intf[bc_sign]))
         # Now hijack the original muxes and add priority override...
         ass_stmt = [local_intf[name].assign(over_intf[name]) for name in mux_list]
+        # Remove the first if, then chain in the override if
         mux_comb.remove_stmt(first_if)
         override_if = IfStmt(self._config_en.r_or())
         override_if.then_(*ass_stmt)
-        override_if.else_(first_if)
+        # If there is no first_if (no controllers using memory), we should wire ins to 0?
+        if first_if is not None:
+            override_if.else_(first_if)
+        else:
+            pass
         mux_comb.add_stmt(override_if)
 
     def realize_controllers(self):
@@ -623,9 +628,20 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         return self.outputs_dict
 
     def __str__(self):
+
+        input_str = ""
+        input_sorted_keys = sorted(self.inputs_dict)
+        for key in input_sorted_keys:
+            input_str += f"{key}: {self.inputs_dict[key]}\n"
+
+        output_str = ""
+        output_sorted_keys = sorted(self.outputs_dict)
+        for key in output_sorted_keys:
+            output_str += f"{key}: {self.outputs_dict[key]}\n"
+
         rep_str = "=====MEMORY TILE BUILDER=====\n===CONTROLLERS===\n"
-        rep_str += f"{self.controllers_flat}\n===INPUTS===\n{self.inputs_dict}\n"
-        rep_str += f"===OUTPUTS===\n{self.outputs_dict}\n===MEMPORTS===\n"
+        rep_str += f"{self.controllers_flat}\n===INPUTS===\n{input_str}"
+        rep_str += f"===OUTPUTS===\n{output_str}===MEMPORTS===\n"
         for i in range(self.memory_banks):
             for j in range(self.memory_interface.get_num_ports()):
                 rep_str += f"BANK: {i}\t PORT: {j}\n"

@@ -64,7 +64,6 @@ class MemoryController(kts.Generator):
                 continue
             if "clk" in curr_port.name or "rst_n" in curr_port.name:
                 liftable.append(curr_port)
-
         return liftable
 
     def get_memory_ports(self):
@@ -121,6 +120,9 @@ class MemoryControllerFlatWrapper(MemoryController):
             elif pname == "rst_n":
                 tmp_rst = self.reset("rst_n")
                 self.wire(tmp_rst, port)
+            elif pname == "clk_en":
+                tmp_clk_en = self.clock_en("clk_en")
+                self.wire(tmp_clk_en, port)
             else:
                 # Need to get the attributes and copy them up...
                 port_attrs = port.attributes
