@@ -17,6 +17,7 @@ from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortTyp
 from lake.modules.stencil_valid import StencilValid
 from _kratos import create_wrapper_flatten
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.top.fiber_access import FiberAccess
 import os
 
 
@@ -311,8 +312,10 @@ if __name__ == "__main__":
                       use_merger=True,
                       fifo_depth=8)
 
-    controllers.append(scan)
-    controllers.append(isect)
+    fib_access = FiberAccess(data_width=data_width)
+    # controllers.append(scan)
+    # controllers.append(isect)
+    controllers.append(fib_access)
     # if fw_int > 1:
 
     #     controllers.append(StrgUBVec(data_width=data_width,

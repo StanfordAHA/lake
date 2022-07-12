@@ -1795,6 +1795,9 @@ class Scanner(MemoryController):
         '''
         return [[None]]
 
+    def get_config_mode_str(self):
+        return "read_scanner"
+
     def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0, block_mode=0, lookup=0):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
@@ -1825,9 +1828,6 @@ class Scanner(MemoryController):
             #     config += [("fiber_outer_addr_starting_addr", 0)]
 
         return trim_config_list(flattened, config)
-
-    def get_config_mode_str(self):
-        return "read_scanner"
 
 
 if __name__ == "__main__":
