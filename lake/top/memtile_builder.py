@@ -533,7 +533,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if any_rvs:
                     # Now create the ready/valid pair and deal with it
                     new_input_valid = self.input(f'input_width_{input_width}_num_{i}_valid', width=1)
+                    new_input_valid.add_attribute(ControlSignalAttr(True))
                     new_input_ready = self.output(f'input_width_{input_width}_num_{i}_ready', width=1)
+                    new_input_ready.add_attribute(ControlSignalAttr(False))
 
                 # Need a mux to output the ready
                 mux_size = len(signal_dict.keys())
@@ -623,7 +625,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if any_rvs:
                     # Now create the ready/valid pair and deal with it
                     new_output_valid = self.output(f'output_width_{output_width}_num_{i}_valid', width=1)
+                    new_output_valid.add_attribute(ControlSignalAttr(False))
                     new_output_ready = self.input(f'output_width_{output_width}_num_{i}_ready', width=1)
+                    new_output_ready.add_attribute(ControlSignalAttr(True))
 
                 # We need to choose which output is hooked up based on the mode...
                 mux_size = len(signal_dict.keys())
