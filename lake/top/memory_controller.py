@@ -10,6 +10,11 @@ class MemoryController(kts.Generator):
     '''
     Provides the utilities to interface a memory controller with a memory interface
     '''
+    def get_port(self, name):
+        int_gen = self.internal_generator
+        ret_port = int_gen.get_port(name)
+        return ret_port
+
     def get_inputs(self):
         '''
         Use this method to return pure inputs to the tile interface

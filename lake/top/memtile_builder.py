@@ -25,7 +25,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     # with the standard routing network on the AHA CGRA
     legal_widths = [17, 16, 1]
 
-    def __init__(self, name, debug, memory_interface: MemoryInterface = None, memory_banks=1, controllers=None):
+    def __init__(self, name, debug, memory_interface: MemoryInterface = None, memory_banks=1, controllers=None, ready_valid=True):
 
         super().__init__(name, debug)
 
@@ -40,6 +40,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.controllers_flat_dict = {}
         self.c_to_flat = {}
         self.flat_to_c = {}
+        self.ready_valid = ready_valid
         for mem_ctrl in self.controllers:
             self.controllers_dict[mem_ctrl.name] = mem_ctrl
             flat_wrap = MemoryControllerFlatWrapper(mem_ctrl=mem_ctrl, legal_list=MemoryTileBuilder.legal_widths)
@@ -56,6 +57,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.inputs_dict = {}
         self.outputs_dict = {}
 
+        self.port_remap_dict = {}
+
         self.dedicated_inputs = {}
         self.dedicated_outputs = {}
 
@@ -63,6 +66,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.mem_port_mux_if = {}
 
         self.ctrl_to_mode = {}
+
+        self.dense = []
+        self.rv = []
 
         self.supports_chaining = True
 
@@ -120,6 +126,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
     def get_memory_interface(self):
         return self.memory_interface
+
+    def get_port_remap(self):
+        return self.port_remap_dict
 
     def finalize_controllers(self):
         self.controllers_finalized = True
@@ -189,6 +198,34 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Go through controllers
         for mem_ctrl in self.controllers_flat:
             ctrl_ins = mem_ctrl.get_inputs()
+            ctrl_outs = mem_ctrl.get_outputs()
+            # Do a pass to block the ready/valids associated with a port
+            # All ready/valid ports will be width 1 - there's probably a better way to do this
+            wider_than_1_in = [(inp, width) for (inp, width) in ctrl_ins if width > 1]
+            wider_than_1_out = [(inp, width) for (inp, width) in ctrl_outs if width > 1]
+            width_1_in = [inp.name for (inp, width) in ctrl_ins if width == 1]
+            width_1_out = [outp.name for (outp, width) in ctrl_outs if width == 1]
+            # Handle main data inputs and get rid of the valid in
+            for (inp, width) in wider_than_1_in:
+                full_name = inp.name
+                stripped_name = full_name.rstrip("_f_")
+                has_rv = f"{stripped_name}_ready_f_" in width_1_out and f"{stripped_name}_valid_f_" in width_1_in
+                if has_rv:
+                    self.rv.append(inp)
+                    valid_p = mem_ctrl.get_port(f"{stripped_name}_valid_f_")
+                    # If this port has rv, remove the rv from the ctrl_ins
+                    ctrl_ins = [(inp_, width) for (inp_, width) in ctrl_ins if not (inp_.name == valid_p.name and width == 1)]
+                else:
+                    self.dense.append(inp)
+            # Handle data outputs to get rid of the input readys...wasteful work
+            for (outp, width) in wider_than_1_out:
+                full_name = outp.name
+                stripped_name = full_name.rstrip("_f_")
+                has_rv = f"{stripped_name}_ready_f_" in width_1_in and f"{stripped_name}_valid_f_" in width_1_out
+                if has_rv:
+                    ready_p = mem_ctrl.get_port(f"{stripped_name}_ready_f_")
+                    ctrl_ins = [(inp_, width) for (inp_, width) in ctrl_ins if not (inp_.name == ready_p.name and width == 1)]
+
             # Separate into dedicated and shared...
             ded = []
             shr = []
@@ -215,6 +252,33 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Go through controllers
         for mem_ctrl in self.controllers_flat:
             ctrl_outs = mem_ctrl.get_outputs()
+            ctrl_ins = mem_ctrl.get_inputs()
+            # Do a pass to block the ready/valids associated with a port
+            # All ready/valid ports will be width 1 - there's probably a better way to do this
+            wider_than_1_in = [(outp, width) for (outp, width) in ctrl_ins if width > 1]
+            wider_than_1_out = [(outp, width) for (outp, width) in ctrl_outs if width > 1]
+            width_1_in = [inp.name for (inp, width) in ctrl_ins if width == 1]
+            width_1_out = [outp.name for (outp, width) in ctrl_outs if width == 1]
+            for (outp, width) in wider_than_1_out:
+                full_name = outp.name
+                stripped_name = full_name.rstrip("_f_")
+                has_rv = f"{stripped_name}_ready_f_" in width_1_in and f"{stripped_name}_valid_f_" in width_1_out
+                if has_rv:
+                    self.rv.append(outp)
+                    valid_p = mem_ctrl.get_port(f"{stripped_name}_valid_f_")
+                    # If this port has rv, remove the rv from the ctrl_ins
+                    ctrl_outs = [(inp_, width) for (inp_, width) in ctrl_outs if not (inp_.name == valid_p.name and width == 1)]
+                else:
+                    self.dense.append(outp)
+            # Handle data inputs to get rid of the output readys...wasteful work
+            for (inp, width) in wider_than_1_in:
+                full_name = inp.name
+                stripped_name = full_name.rstrip("_f_")
+                has_rv = f"{stripped_name}_ready_f_" in width_1_out and f"{stripped_name}_valid_f_" in width_1_in
+                if has_rv:
+                    ready_p = mem_ctrl.get_port(f"{stripped_name}_ready_f_")
+                    ctrl_outs = [(inp_, width) for (inp_, width) in ctrl_outs if not (inp_.name == ready_p.name and width == 1)]
+
             # Create a dict from port width to a list of signals with that width
             ded = []
             shr = []
@@ -460,10 +524,87 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
                 else:
                     new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width)
-                isctrl = input_width == 1
-                new_input.add_attribute(ControlSignalAttr(isctrl))
+                    isctrl = input_width == 1
+                    new_input.add_attribute(ControlSignalAttr(isctrl))
+                # Now to determine if the port is rv/dense
+                # If any signal in this dict is rv, we are going to make it an rv
+                signal_names = signal_dict.values()
+                any_rvs = len([port.name for port in self.rv if port.name in signal_names]) > 0
+                if any_rvs:
+                    # Now create the ready/valid pair and deal with it
+                    new_input_valid = self.input(f'input_width_{input_width}_num_{i}_valid', width=1)
+                    new_input_ready = self.output(f'input_width_{input_width}_num_{i}_ready', width=1)
+
+                # Need a mux to output the ready
+                mux_size = len(signal_dict.keys())
+                mux_comb = self.combinational()
+                prev_stmt = None
+                # Default assign 0 to prevent latches.
+                if any_rvs:
+                    mux_comb.add_stmt(new_input_ready.assign(0))
+                on_first = True
+
                 for (ctrl_name, port) in signal_dict.items():
+
+                    # Handle the input data + valid
+
+                    # Wire data and valid
                     self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
+                    # Check if in ready valid
+                    in_rv = len([port_.name for port_ in self.rv if port_.name == port]) > 0
+                    if in_rv:
+                        port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
+                        self.wire(new_input_valid, self.controllers_flat_dict[ctrl_name].ports[port_valid_name])
+
+                    # Handle the output ready
+
+                    # Only handle the ready output if there are any rvs
+                    if any_rvs:
+                        # We know if the controller is in rv...
+                        port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
+                        if mux_size == 1:
+                            mux_comb.add_stmt(new_input_ready.assign(self.controllers_flat_dict[ctrl_name].ports[port_ready_name]))
+                        else:
+                            # Index is set off the controller mapping
+                            ctrl_name_unflat = self.flat_to_c[ctrl_name]
+                            idx = self.ctrl_to_mode[ctrl_name_unflat]
+                            if on_first is True:
+                                first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
+                                # Figure out if an output from a controller of the mode idx is actually defined or not
+                                if in_rv:
+                                    first_if.then_(new_input_ready.assign(self.controllers_flat_dict[ctrl_name].ports[port_ready_name]))
+                                else:
+                                    first_if.then_(new_input_ready.assign(kts.const(1, 1)))
+                                prev_stmt = first_if
+                                on_first = False
+
+                            else:
+                                chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
+                                if in_rv:
+                                    chain_if.then_(new_input_ready.assign(self.controllers_flat_dict[ctrl_name].ports[port_ready_name]))
+                                else:
+                                    chain_if.then_(new_input_ready.assign(kts.const(1, 1)))
+                                prev_stmt.else_(chain_if)
+                                prev_stmt = chain_if
+
+                    # Handle mapping information
+
+                    # Now check if the input is dense or ready/valid so we can hardwire 1 on the ready/not wire the valid
+                    normal_ctrl_name = self.flat_to_c[ctrl_name]
+                    ctrler = self.controllers_dict[normal_ctrl_name]
+                    ctrl_mode_mapping_name = ctrler.get_config_mode_str()
+                    if ctrl_mode_mapping_name not in self.port_remap_dict:
+                        self.port_remap_dict[ctrl_mode_mapping_name] = {}
+                    # Now get unflat name
+                    # First get flat name and internal generator and find its sink
+                    flat_ig = self.controllers_flat_dict[ctrl_name].internal_generator
+                    flat_ig_port = flat_ig.get_port(port)
+                    flat_ig_port_sinks = flat_ig_port.sinks
+                    assert len(flat_ig_port_sinks) == 1, f"{flat_ig_port} somehow got multiple sinks..."
+                    unflat_name = None
+                    for p in flat_ig_port_sinks:
+                        unflat_name = p.left.name
+                    self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'input_width_{input_width}_num_{i}'
 
     def realize_outputs(self):
         '''
@@ -476,18 +617,40 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 else:
                     new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width)
                 new_output.add_attribute(ControlSignalAttr(False))
+
+                signal_names = signal_dict.values()
+                any_rvs = len([port.name for port in self.rv if port.name in signal_names]) > 0
+                if any_rvs:
+                    # Now create the ready/valid pair and deal with it
+                    new_output_valid = self.output(f'output_width_{output_width}_num_{i}_valid', width=1)
+                    new_output_ready = self.input(f'output_width_{output_width}_num_{i}_ready', width=1)
+
                 # We need to choose which output is hooked up based on the mode...
                 mux_size = len(signal_dict.keys())
                 mux_comb = self.combinational()
                 prev_stmt = None
                 # Default assign 0 to prevent latches.
                 mux_comb.add_stmt(new_output.assign(0))
+                if any_rvs:
+                    mux_comb.add_stmt(new_output_valid.assign(0))
                 on_first = True
                 for (ctrl_name, port) in signal_dict.items():
+
+                    in_rv = len([port_.name for port_ in self.rv if port_.name == port]) > 0
+                    if in_rv:
+                        port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
+                        # Wire ready_in if this is a ready/valid port
+                        self.wire(new_output_ready, self.controllers_flat_dict[ctrl_name].ports[port_ready_name])
+
                     # Create a list of ports/values to wire to based on the existence of the port in the mode
                     # for idx in self.num_modes:
+                    port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
+
                     if mux_size == 1:
                         mux_comb.add_stmt(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                        # If there's any rvs, then this one is in it...can assign it directly
+                        if any_rvs:
+                            mux_comb.add_stmt(new_output_valid.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
                     else:
                         # Index is set off the controller mapping
                         ctrl_name_unflat = self.flat_to_c[ctrl_name]
@@ -495,15 +658,44 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         if on_first is True:
                             first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
                             # Figure out if an output from a controller of the mode idx is actually defined or not
-                            first_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                            assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
+                            if any_rvs:
+                                if in_rv:
+                                    assigns.append(new_output_valid.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
+                                else:
+                                    assigns.append(new_output_valid.assign(kts.const(1, 1)))
+                            first_if.then_(*assigns)
                             prev_stmt = first_if
                             on_first = False
 
                         else:
                             chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
-                            chain_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                            assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
+                            if any_rvs:
+                                if in_rv:
+                                    assigns.append(new_output_valid.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
+                                else:
+                                    assigns.append(new_output_valid.assign(kts.const(1, 1)))
+                            # chain_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                            chain_if.then_(*assigns)
                             prev_stmt.else_(chain_if)
                             prev_stmt = chain_if
+                    # Add mapping information
+                    normal_ctrl_name = self.flat_to_c[ctrl_name]
+                    ctrler = self.controllers_dict[normal_ctrl_name]
+                    ctrl_mode_mapping_name = ctrler.get_config_mode_str()
+                    if ctrl_mode_mapping_name not in self.port_remap_dict:
+                        self.port_remap_dict[ctrl_mode_mapping_name] = {}
+                    # Now get unflat name
+                    # First get flat name and internal generator and find its sink
+                    flat_ig = self.controllers_flat_dict[ctrl_name].internal_generator
+                    flat_ig_port = flat_ig.get_port(port)
+                    flat_ig_port_sources = flat_ig_port.sources
+                    assert len(flat_ig_port_sources) == 1, f"{flat_ig_port} somehow got multiple sinks..."
+                    unflat_name = None
+                    for p in flat_ig_port_sources:
+                        unflat_name = p.right.name
+                    self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'output_width_{output_width}_num_{i}'
 
     def add_mem_port_connection(self, local_port, ctrl_ports):
         '''

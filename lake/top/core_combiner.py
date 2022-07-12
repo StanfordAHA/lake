@@ -375,6 +375,8 @@ if __name__ == "__main__":
                              name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}")
 
     print(core_comb)
+    core_comb_mapping = core_comb.dut.get_port_remap()
+    print(core_comb_mapping)
 
     config = extract_top_config(core_comb.dut, verbose=True)
 
