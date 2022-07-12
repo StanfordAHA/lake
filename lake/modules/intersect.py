@@ -563,7 +563,7 @@ class Intersect(MemoryController):
             flush_port.add_attribute(ControlSignalAttr(True))
 
         # Finally, lift the config regs...
-        lift_config_reg(self.internal_generator)
+        # lift_config_reg(self.internal_generator)
 
     def get_bitstream(self, cmrg_enable=0, cmrg_stop_lvl=0, op=JoinerOp.INTERSECT.value):
 

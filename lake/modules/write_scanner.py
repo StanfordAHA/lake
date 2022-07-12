@@ -98,7 +98,7 @@ class WriteScanner(Generator):
         self._data_out_valid_out = self.output("data_out_valid", 1)
         self._data_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._addr_out = self.output("addr_out", self.data_width, packed=True)
+        self._addr_out = self.output("addr_out", self.data_width + 1, packed=True)
         self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._addr_out_ready_in = self.input("addr_out_ready", 1)
@@ -107,7 +107,7 @@ class WriteScanner(Generator):
         self._addr_out_valid_out = self.output("addr_out_valid", 1)
         self._addr_out_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._ID_out = self.output("ID_out", self.data_width, packed=True)
+        self._ID_out = self.output("ID_out", self.data_width + 1, packed=True)
         self._ID_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._ID_out_ready_in = self.input("ID_out_ready", 1)
@@ -138,8 +138,8 @@ class WriteScanner(Generator):
         # self._payload_ptr = self.output("payload_ptr", 16)
         # self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._inner_dim_offset = self.input("inner_dim_offset", 16)
-        self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the inner level..."))
+        # self._inner_dim_offset = self.input("inner_dim_offset", 16)
+        # self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the inner level..."))
 
         self._block_mode = self.input("block_mode", 1)
         self._block_mode.add_attribute(ConfigRegAttr("Block Writes or Not"))
@@ -268,7 +268,7 @@ class WriteScanner(Generator):
         out_pushes.append(self._addr_out_fifo_push)
 
         # Output FIFOs to the buffet-like
-        addr_out_fifo_in = kts.concat(self._addr_to_fifo)
+        addr_out_fifo_in = kts.concat(kts.const(0, 1), self._addr_to_fifo)
         addr_out_outfifo = RegFIFO(data_width=addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"addr_out_fifo",
@@ -294,7 +294,7 @@ class WriteScanner(Generator):
         out_pushes.append(self._ID_out_fifo_push)
 
         # Output FIFOs to the buffet-like
-        ID_out_fifo_in = kts.concat(self._ID_to_fifo)
+        ID_out_fifo_in = kts.concat(kts.const(0, 1), self._ID_to_fifo)
         ID_out_outfifo = RegFIFO(data_width=ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"ID_out_fifo",
@@ -1022,14 +1022,15 @@ class WriteScanner(Generator):
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, inner_offset, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
+    # def get_bitstream(self, inner_offset, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
+    def get_bitstream(self, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
 
         # Store all configurations here
         config = [
-            ("inner_dim_offset", inner_offset),
+            # ("inner_dim_offset", inner_offset),
             ("compressed", compressed),
             ("lowest_level", lowest_level),
             ("stop_lvl", stop_lvl),

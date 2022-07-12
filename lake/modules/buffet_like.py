@@ -64,7 +64,7 @@ class BuffetLike(Generator):
         # self._random_write.add_attribute(ConfigRegAttr("If we are using random write or linear write..."))
 
         # Accept an address over the line
-        self._wr_ID = self.input("wr_ID", self.data_width, explicit_array=True, packed=True)
+        self._wr_ID = self.input("wr_ID", self.data_width + 1, explicit_array=True, packed=True)
         self._wr_ID.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._wr_ID_ready = self.output("wr_ID_ready", 1)
@@ -74,7 +74,7 @@ class BuffetLike(Generator):
         self._wr_ID_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         # Accept an address over the line
-        self._wr_addr = self.input("wr_addr", self.data_width, explicit_array=True, packed=True)
+        self._wr_addr = self.input("wr_addr", self.data_width + 1, explicit_array=True, packed=True)
         self._wr_addr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._wr_addr_ready = self.output("wr_addr_ready", 1)
@@ -100,7 +100,7 @@ class BuffetLike(Generator):
         ### READ SIDE
         # On read side need both a request and response channel
         # Free or Read
-        self._rd_op_op = self.input("rd_op", self.data_width, explicit_array=True, packed=True)
+        self._rd_op_op = self.input("rd_op", self.data_width + 1, explicit_array=True, packed=True)
         self._rd_op_op.add_attribute(ControlSignalAttr(is_control=False))
 
         self._rd_op_ready = self.output("rd_op_ready", 1)
@@ -109,7 +109,7 @@ class BuffetLike(Generator):
         self._rd_op_valid = self.input("rd_op_valid", 1)
         self._rd_op_valid.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._rd_addr = self.input("rd_addr", self.data_width, explicit_array=True, packed=True)
+        self._rd_addr = self.input("rd_addr", self.data_width + 1, explicit_array=True, packed=True)
         self._rd_addr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._rd_addr_ready = self.output("rd_addr_ready", 1)
@@ -119,7 +119,7 @@ class BuffetLike(Generator):
         self._rd_addr_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         # Read ID
-        self._rd_ID = self.input("rd_ID", self.data_width, explicit_array=True, packed=True)
+        self._rd_ID = self.input("rd_ID", self.data_width + 1, explicit_array=True, packed=True)
         self._rd_ID.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._rd_ID_ready = self.output("rd_ID_ready", 1)
@@ -129,7 +129,7 @@ class BuffetLike(Generator):
         self._rd_ID_valid.add_attribute(ControlSignalAttr(is_control=True))
 
         # Read response channel
-        self._rd_rsp_data = self.output("rd_rsp_data", self.data_width, explicit_array=True, packed=True)
+        self._rd_rsp_data = self.output("rd_rsp_data", self.data_width + 1, explicit_array=True, packed=True)
         self._rd_rsp_data.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._rd_rsp_ready = self.input("rd_rsp_data_ready", 1)
@@ -277,7 +277,7 @@ class BuffetLike(Generator):
         self._wr_addr_fifo_pop = self.var("wr_addr_fifo_pop", 1)
         self._wr_addr_fifo_valid = self.var("wr_addr_fifo_valid", 1)
 
-        self._wr_addr_fifo_in = kts.concat(self._wr_addr)
+        self._wr_addr_fifo_in = kts.concat(self._wr_addr[0][self.data_width - 1, 0])
         self._wr_addr_infifo = RegFIFO(data_width=self._wr_addr_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._wr_addr_fifo_out_data = self.var("wr_addr_fifo_out_data", self.data_width, packed=True)
 
@@ -298,7 +298,7 @@ class BuffetLike(Generator):
         self._wr_ID_fifo_pop = self.var("wr_ID_fifo_pop", 1)
         self._wr_ID_fifo_valid = self.var("wr_ID_fifo_valid", 1)
 
-        self._wr_ID_fifo_in = kts.concat(self._wr_ID)
+        self._wr_ID_fifo_in = kts.concat(self._wr_ID[0][self.data_width - 1, 0])
         self._wr_ID_infifo = RegFIFO(data_width=self._wr_ID_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._wr_ID_fifo_out_data = self.var("wr_ID_fifo_out_data", self.data_width, packed=True)
 
@@ -319,7 +319,7 @@ class BuffetLike(Generator):
         self._rd_op_fifo_pop = self.var("rd_op_fifo_pop", 1)
         self._rd_op_fifo_valid = self.var("rd_op_fifo_valid", 1)
 
-        self._rd_op_fifo_in = kts.concat(self._rd_op_op)
+        self._rd_op_fifo_in = kts.concat(self._rd_op_op[0][self.data_width - 1, 0])
         self._rd_op_infifo = RegFIFO(data_width=self._rd_op_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._rd_op_fifo_out_op = self.var("rd_op_fifo_out_op", self.data_width, packed=True)
 
@@ -340,7 +340,7 @@ class BuffetLike(Generator):
         self._rd_addr_fifo_pop = self.var("rd_addr_fifo_pop", 1)
         self._rd_addr_fifo_valid = self.var("rd_addr_fifo_valid", 1)
 
-        self._rd_addr_fifo_in = kts.concat(self._rd_addr)
+        self._rd_addr_fifo_in = kts.concat(self._rd_addr[0][self.data_width - 1, 0])
         self._rd_addr_infifo = RegFIFO(data_width=self._rd_addr_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._rd_addr_fifo_out_addr = self.var("rd_addr_fifo_out_addr", self.data_width, packed=True)
 
@@ -361,7 +361,7 @@ class BuffetLike(Generator):
         self._rd_ID_fifo_pop = self.var("rd_ID_fifo_pop", 1)
         self._rd_ID_fifo_valid = self.var("rd_ID_fifo_valid", 1)
 
-        self._rd_ID_fifo_in = kts.concat(self._rd_ID)
+        self._rd_ID_fifo_in = kts.concat(self._rd_ID[0][self.data_width - 1, 0])
         self._rd_ID_infifo = RegFIFO(data_width=self._rd_ID_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._rd_ID_fifo_out_data = self.var("rd_ID_fifo_out_data", self.data_width, packed=True)
 
@@ -400,7 +400,10 @@ class BuffetLike(Generator):
                        push=self._rd_rsp_fifo_push,
                        pop=self._rd_rsp_ready,
                        data_in=self._rd_rsp_fifo_in_data,
-                       data_out=self._rd_rsp_data)
+                       data_out=self._rd_rsp_data[0][self.data_width - 1, 0])
+
+        # Wire the last bit to 0
+        self.wire(self._rd_rsp_data[0][self.data_width + 1 - 1], kts.const(0, 1))
 
         self.wire(self._rd_rsp_fifo_full, self._rd_rsp_out_fifo.ports.full)
         self.wire(self._rd_rsp_fifo_almost_full, self._rd_rsp_out_fifo.ports.almost_full)

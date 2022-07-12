@@ -69,7 +69,7 @@ class Scanner(MemoryController):
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
         # OUTPUT STREAMS
-        self._coord_out = self.output("coord_out", self.data_width + 1)
+        self._coord_out = self.output("coord_out", self.data_width + 1, packed=True)
         self._coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._coord_out_valid_out = self.output("coord_out_valid", 1)
@@ -78,7 +78,7 @@ class Scanner(MemoryController):
         self._coord_out_ready_in = self.input("coord_out_ready", 1)
         self._coord_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._pos_out = self.output("pos_out", self.data_width + 1)
+        self._pos_out = self.output("pos_out", self.data_width + 1, packed=True)
         self._pos_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._pos_out_valid_out = self.output("pos_out_valid", 1)
@@ -102,7 +102,7 @@ class Scanner(MemoryController):
         # TO BUFFET
         ################################################################################
         # Addr out r/v
-        self._addr_out = self.output("addr_out", self.data_width, explicit_array=True, packed=True)
+        self._addr_out = self.output("addr_out", self.data_width + 1, explicit_array=True, packed=True)
         self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._addr_out_ready_in = self.input("addr_out_ready", 1)
@@ -112,7 +112,7 @@ class Scanner(MemoryController):
         self._addr_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         # OP out r/v
-        self._op_out = self.output("op_out", self.data_width, explicit_array=True, packed=True)
+        self._op_out = self.output("op_out", self.data_width + 1, explicit_array=True, packed=True)
         self._op_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._op_out_ready_in = self.input("op_out_ready", 1)
@@ -122,7 +122,7 @@ class Scanner(MemoryController):
         self._op_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         # ID out r/v
-        self._ID_out = self.output("ID_out", self.data_width, explicit_array=True, packed=True)
+        self._ID_out = self.output("ID_out", self.data_width + 1, explicit_array=True, packed=True)
         self._ID_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._ID_out_ready_in = self.input("ID_out_ready", 1)
@@ -132,7 +132,7 @@ class Scanner(MemoryController):
         self._ID_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         # Response channel from buffet
-        self._rd_rsp_data_in = self.input("rd_rsp_data_in", self.data_width, explicit_array=True, packed=True)
+        self._rd_rsp_data_in = self.input("rd_rsp_data_in", self.data_width + 1, explicit_array=True, packed=True)
         self._rd_rsp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._rd_rsp_valid_in = self.input("rd_rsp_data_in_valid", 1)
@@ -147,6 +147,10 @@ class Scanner(MemoryController):
         # Point to the row in storage for data recovery
         self._payload_ptr = self.var("payload_ptr", self.data_width)
         # self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        # self.wire(self._addr_out[0][self.data_width + 1 - 1], kts.const(0, 1))
+        # self.wire(self._op_out[0][self.data_width + 1 - 1], kts.const(0, 1))
+        # self.wire(self._ID_out[0][self.data_width + 1 - 1], kts.const(0, 1))
 
 # ==========================================
 # Generate addresses to scan over fiber...
@@ -178,7 +182,7 @@ class Scanner(MemoryController):
         # self._ready_gate = self.var("ready_gate", 1)
 
         # For input streams, need coord_in, valid_in, eos_in
-        self._upstream_pos_in = self.input("us_pos_in", self.data_width + 1)
+        self._upstream_pos_in = self.input("us_pos_in", self.data_width + 1, packed=True)
         self._upstream_pos_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         # self._upstream_coord_in = self.input("us_coord_in", self.data_width)
@@ -257,7 +261,7 @@ class Scanner(MemoryController):
         self._rd_rsp_fifo_pop = self.var("rd_rsp_fifo_pop", 1)
         self._rd_rsp_fifo_valid = self.var("rd_rsp_fifo_valid", 1)
 
-        self._rd_rsp_fifo_in = kts.concat(self._rd_rsp_data_in)
+        self._rd_rsp_fifo_in = kts.concat(self._rd_rsp_data_in[0][self.data_width - 1, 0])
         self._rd_rsp_infifo = RegFIFO(data_width=self._rd_rsp_fifo_in.width, width_mult=1, depth=self.fifo_depth)
         self._rd_rsp_fifo_out_data = self.var("rd_rsp_fifo_out_data", self.data_width, packed=True)
 
@@ -285,7 +289,7 @@ class Scanner(MemoryController):
         # ADDR Outfifo
         self._addr_out_fifo_push = self.var("addr_out_fifo_push", 1)
         self._addr_out_fifo_full = self.var("addr_out_fifo_full", 1)
-        self._addr_out_fifo_in = kts.concat(self._addr_out_to_fifo)
+        self._addr_out_fifo_in = kts.concat(kts.const(0, 1), self._addr_out_to_fifo)
         self._addr_out_fifo = RegFIFO(data_width=self._addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"addr_out_fifo",
@@ -304,7 +308,7 @@ class Scanner(MemoryController):
         # OP Outfifo
         self._op_out_fifo_push = self.var("op_out_fifo_push", 1)
         self._op_out_fifo_full = self.var("op_out_fifo_full", 1)
-        self._op_out_fifo_in = kts.concat(self._op_out_to_fifo)
+        self._op_out_fifo_in = kts.concat(kts.const(0, 1), self._op_out_to_fifo)
         self._op_out_fifo = RegFIFO(data_width=self._op_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"op_out_fifo",
@@ -323,7 +327,7 @@ class Scanner(MemoryController):
         # ID Outfifo
         self._ID_out_fifo_push = self.var("ID_out_fifo_push", 1)
         self._ID_out_fifo_full = self.var("ID_out_fifo_full", 1)
-        self._ID_out_fifo_in = kts.concat(self._ID_out_to_fifo)
+        self._ID_out_fifo_in = kts.concat(kts.const(0, 1), self._ID_out_to_fifo)
         self._ID_out_fifo = RegFIFO(data_width=self._ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
 
         self.add_child(f"ID_out_fifo",
@@ -1783,7 +1787,7 @@ class Scanner(MemoryController):
             flush_port.add_attribute(ControlSignalAttr(True))
 
         # Finally, lift the config regs...
-        lift_config_reg(self.internal_generator)
+        # lift_config_reg(self.internal_generator)
 
     def get_memory_ports(self):
         '''
