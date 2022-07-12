@@ -11,6 +11,7 @@ from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 from lake.modules.strg_RAM import StrgRAM
+from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map
 
 
 class BuffetLike(Generator):
@@ -20,7 +21,8 @@ class BuffetLike(Generator):
                  mem_depth=512,
                  local_memory=True,
                  physical_mem=False,
-                 fifo_depth=8):
+                 fifo_depth=8,
+                 tech_map=TSMC_Tech_Map(depth=512, width=32)):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
@@ -32,6 +34,7 @@ class BuffetLike(Generator):
         self.local_memory = local_memory
         self.physical_mem = physical_mem
         self.fifo_depth = fifo_depth
+        self.tech_map = tech_map
 
         self.total_sets = 0
 
@@ -206,8 +209,6 @@ class BuffetLike(Generator):
                 'mem_depth': 512
             }
 
-            tm = TSMC_Tech_Map(depth=512, width=32)
-
             # Create the memory interface based on different params
             mem_ports = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
 
@@ -216,7 +217,7 @@ class BuffetLike(Generator):
                                             ports=mem_ports,
                                             sim_macro_n=not self.physical_mem,
                                             reset_in_sim=True,
-                                            tech_map=tm)
+                                            tech_map=self.tech_map)
             # Realize the hardware implementation then add it as a child and wire it up...
             self.mem_intf.realize_hw()
             self.add_child('memory_stub',
