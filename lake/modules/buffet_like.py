@@ -2,6 +2,7 @@ import kratos as kts
 from kratos import *
 from lake.modules.arbiter import Arbiter
 from lake.passes.passes import lift_config_reg
+from lake.top.memory_controller import MemoryController
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.top.tech_maps import TSMC_Tech_Map
 from lake.utils.util import decode, register, trim_config_list
@@ -14,7 +15,7 @@ from lake.modules.strg_RAM import StrgRAM
 from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map
 
 
-class BuffetLike(Generator):
+class BuffetLike(MemoryController):
     def __init__(self,
                  data_width=16,
                  num_ID=2,
@@ -667,6 +668,15 @@ class BuffetLike(Generator):
 
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
+
+    def get_memory_ports(self):
+        '''
+        Use this method to indicate what memory ports this controller has
+        '''
+        return [[None]]
+
+    def get_config_mode_str(self):
+        return "buffet"
 
     def get_bitstream(self, capacity_0=1024, capacity_1=1024):
 

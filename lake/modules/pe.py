@@ -4,6 +4,7 @@ from lake.modules.alu import ALU
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
+from lake.top.memory_controller import MemoryController
 from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
@@ -12,7 +13,7 @@ from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 
 
-class PE(Generator):
+class PE(MemoryController):
     def __init__(self,
                  data_width=16,
                  fifo_depth=8):
@@ -239,6 +240,15 @@ class PE(Generator):
 
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
+
+    def get_memory_ports(self):
+        '''
+        Use this method to indicate what memory ports this controller has
+        '''
+        return [[None]]
+
+    def get_config_mode_str(self):
+        return "alu"
 
     def get_bitstream(self, op):
 

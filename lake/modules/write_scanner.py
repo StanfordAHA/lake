@@ -4,6 +4,7 @@ from kratos import *
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
+from lake.top.memory_controller import MemoryController
 from lake.utils.util import add_counter, safe_wire, register, sticky_flag, transform_strides_and_ranges, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
@@ -12,7 +13,7 @@ from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 
 
-class WriteScanner(Generator):
+class WriteScanner(MemoryController):
     def __init__(self,
                  data_width=16,
                  fifo_depth=8):
@@ -1021,6 +1022,15 @@ class WriteScanner(Generator):
 
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
+
+    def get_memory_ports(self):
+        '''
+        Use this method to indicate what memory ports this controller has
+        '''
+        return [[None]]
+
+    def get_config_mode_str(self):
+        return "write_scanner"
 
     # def get_bitstream(self, inner_offset, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
     def get_bitstream(self, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
