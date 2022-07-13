@@ -261,6 +261,9 @@ class CoreCombiner(Generator):
         # Restore the external state
         self.dut.external = False
 
+    def get_modes_supported(self):
+        return self.dut.get_modes_supported()
+
     def get_verilog(self, verilog_name, flattened=False):
         verilog(self.dut, filename=verilog_name, optimize_if=False)
         # Sometimes we need the verilog of the flattened module for a wrapper
@@ -313,57 +316,9 @@ if __name__ == "__main__":
                       fifo_depth=8)
 
     fib_access = FiberAccess(data_width=data_width)
-    # controllers.append(scan)
-    # controllers.append(isect)
-    controllers.append(fib_access)
-    # if fw_int > 1:
-
-    #     controllers.append(StrgUBVec(data_width=data_width,
-    #                                     mem_width=mem_width,
-    #                                     mem_depth=mem_depth,
-    #                                     input_addr_iterator_support=6,
-    #                                     input_sched_iterator_support=6,
-    #                                     interconnect_input_ports=2,
-    #                                     interconnect_output_ports=2,
-    #                                     read_delay=read_delay,
-    #                                     rw_same_cycle=rw_same_cycle,
-    #                                     agg_height=4,
-    #                                     config_width=32,
-    #                                     agg_data_top=(None == "agg")))
-
-    # else:
-
-    #     controllers.append(StrgUBThin(data_width=data_width,
-    #                                     mem_width=mem_width,
-    #                                     mem_depth=mem_depth,
-    #                                     input_addr_iterator_support=6,
-    #                                     input_sched_iterator_support=6,
-    #                                     interconnect_input_ports=2,
-    #                                     interconnect_output_ports=2,
-    #                                     read_delay=read_delay,
-    #                                     rw_same_cycle=rw_same_cycle,
-    #                                     config_width=32))
-
-    # if fifo_mode and (fw_int > 1 or banks > 1):
-    #     controllers.append(StrgFIFO(data_width=data_width,
-    #                                 banks=banks,
-    #                                 memory_width=mem_width,
-    #                                 rw_same_cycle=rw_same_cycle,
-    #                                 read_delay=read_delay,
-    #                                 addr_width=clog2(mem_depth)))
-
-    # controllers.append(StrgRAM(data_width=data_width,
-    #                             banks=banks,
-    #                             memory_width=mem_width,
-    #                             memory_depth=mem_depth,
-    #                             num_tiles=1,
-    #                             rw_same_cycle=rw_same_cycle,
-    #                             read_delay=read_delay,
-    #                             addr_width=data_width,
-    #                             prioritize_write=True))
-
-    # if stencil_valid:
-    #     controllers.append(StencilValid())
+    controllers.append(scan)
+    controllers.append(isect)
+    # controllers.append(fib_access)
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,
@@ -380,8 +335,9 @@ if __name__ == "__main__":
     print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()
     print(core_comb_mapping)
+    print(core_comb.get_modes_supported())
 
-    config = extract_top_config(core_comb.dut, verbose=True)
+    # config = extract_top_config(core_comb.dut, verbose=True)
 
     # generate verilog
     verilog(core_comb.dut, filename=f"CoreCombiner_width_{args.fetch_width}_{mem_name}.sv",

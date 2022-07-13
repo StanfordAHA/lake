@@ -764,13 +764,19 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     self.wire(self._rst_n, self.memories[bank].get_reset())
                 self.add_mem_port_connection(self.memories[bank].get_ports()[port], self.mem_conn[bank][port])
 
+    def get_modes_supported(self):
+        self.get_mode_map()
+        return self.modes_supported
+
     def get_mode_map(self):
         '''
         Sort of hardcoded/hacky way to refer to specific controller types
         '''
         self.mode_map = {}
+        self.modes_supported = []
         for memctrl in self.controllers:
             self.mode_map[memctrl.get_config_mode_str()] = memctrl
+            self.modes_supported.append(memctrl.get_config_mode_str())
         return self.mode_map
 
     def get_bitstream(self, config_json):
