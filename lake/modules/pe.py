@@ -10,14 +10,62 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
-
+from lassen.sim import PE_fc as lassen_fc
+from peak.family import PyFamily, MagmaFamily
+import magma
+import peak
+import os
 
 class PE(Generator):
+    def __init__(self,
+                 data_width=16):
+        super().__init__("PE")
+        self.external = True
+
+        self.data_width = data_width
+        self.config_data_width = 32
+        self.config_addr_width = 8
+        self.inst_width = 84
+
+        ############################
+        # Clock and Reset          #
+        ############################
+        self._clk = self.clock("CLK")
+        self._arst = self.reset("ASYNCRESET")
+        self._clk_en = self.input("clk_en", 1)
+
+        ############################
+        # Inputs                   #
+        ############################
+        self._data0 = self.input("data0", self.data_width)
+        self._data1 = self.input("data1", self.data_width)
+        self._data2 = self.input("data2", self.data_width)
+        self._bit0 = self.input("bit0", 1)
+        self._bit1 = self.input("bit1", 1)
+        self._bit2 = self.input("bit2", 1)
+
+        ############################
+        # Config                   #
+        ############################  
+        self._inst = self.input("inst", self.inst_width)
+        self._config_addr = self.input("config_addr", self.config_addr_width)
+        self._config_data = self.input("config_data", self.config_data_width)
+        self._config_en = self.input("config_en", 1)
+        self._config_data_out = self.output("O2", self.config_data_width)
+        
+        ############################
+        # Outputs                  #
+        ############################
+        self._data_out = self.output("O0", self.data_width)
+        self._bit_data_out = self.output("O1", 1)
+
+
+class SparsePEWrapper(Generator):
     def __init__(self,
                  data_width=16,
                  fifo_depth=8):
 
-        super().__init__("PE", debug=True)
+        super().__init__("Sparse_PE", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
@@ -28,9 +76,9 @@ class PE(Generator):
         self.total_sets = 0
 
         # inputs
-        self._clk = self.clock("clk")
+        self._clk = self.clock("CLK")
         self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
-        self._rst_n = self.reset("rst_n")
+        self._rst_n = self.reset("ASYNCRESET")
         self._rst_n.add_attribute(FormalAttr(f"{self._rst_n.name}", FormalSignalConstraint.RSTN))
         self._clk_en = self.clock_en("clk_en", 1)
 
@@ -52,19 +100,19 @@ class PE(Generator):
 
         for i in range(2):
 
-            tmp_data_in = self.input(f"data_in_{i}", self.data_width + 1, packed=True)
+            tmp_data_in = self.input(f"data{i}", self.data_width + 1, packed=True)
             tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
             # self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
 
-            tmp_data_in_valid_in = self.input(f"data_in_{i}_valid", 1)
+            tmp_data_in_valid_in = self.input(f"data{i}_valid", 1)
             tmp_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
             # self._valid_in = self.input("valid_in", 2)
 
-            tmp_data_in_ready_out = self.output(f"data_in_{i}_ready", 1)
+            tmp_data_in_ready_out = self.output(f"data{i}_ready", 1)
             tmp_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
             # self._ready_out = self.output("ready_out", 2)
 
-            tmp_data_in_eos_in = self.var(f"data_in_{i}_eos", 1)
+            tmp_data_in_eos_in = self.var(f"data{i}_eos", 1)
             # tmp_data_in_eos_in.add_attribute(ControlSignalAttr(is_control=True))
             self.wire(tmp_data_in_eos_in, tmp_data_in[self.data_width])
             # self._eos_in = self.input("eos_in", 2)
@@ -74,7 +122,7 @@ class PE(Generator):
             self._data_in_ready_out.append(tmp_data_in_ready_out)
             self._data_in_eos_in.append(tmp_data_in_eos_in)
 
-        self._data_out = self.output("data_out", self.data_width + 1)
+        self._data_out = self.output("O0", self.data_width + 1)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._valid_out = self.output("data_out_valid", 1)
@@ -186,20 +234,66 @@ class PE(Generator):
 # Instantiate actual PE
 # =============================
 
-        self._execute_op = self.var("execute_op", 1)
-        self.wire(self._execute_op, self._infifo_out_valid.r_and() & ~self._infifo_out_eos.r_or() & ~self._outfifo_full)
+        # self._execute_op = self.var("execute_op", 1)
+        # self.wire(self._execute_op, self._infifo_out_valid.r_and() & ~self._infifo_out_eos.r_or() & ~self._outfifo_full)
 
-        self._op = self.input("op", 1)
-        self._op.add_attribute(ConfigRegAttr("Operation"))
+        # self._op = self.input("op", 1)
+        # self._op.add_attribute(ConfigRegAttr("Operation"))
+        # self.add_child(f"ALU",
+                    #    my_alu,
+                    #    data_in=self._infifo_out_data,
+                    #    data_out=self._pe_output,
+                    #    op=self._op,
+                    #    execute_op=self._execute_op)
 
-        my_alu = ALU(data_width=self.data_width)
+        # Extra inputs for PE
+        self.config_data_width = 32
+        self.config_addr_width = 8
+        self.inst_width = 84
 
-        self.add_child(f"ALU",
-                       my_alu,
-                       data_in=self._infifo_out_data,
-                       data_out=self._pe_output,
-                       op=self._op,
-                       execute_op=self._execute_op)
+        ############################
+        # Inputs                   #
+        ############################
+        self._data2 = self.input("data2", self.data_width)
+        self._bit0 = self.input("bit0", 1)
+        self._bit1 = self.input("bit1", 1)
+        self._bit2 = self.input("bit2", 1)
+
+        ############################
+        # Config                   #
+        ############################  
+        self._inst = self.input("inst", self.inst_width)
+        self._config_addr = self.input("config_addr", self.config_addr_width)
+        self._config_data = self.input("config_data", self.config_data_width)
+        self._config_en = self.input("config_en", 1)
+        self._config_data_out = self.output("O2", self.config_data_width)
+        
+        ############################
+        # Outputs                  #
+        ############################
+        self._bit_data_out = self.output("O1", 1)
+
+        my_pe = PE(data_width=self.data_width)
+
+        self.add_child(f"PE", my_pe,
+                       data0=self._infifo_out_data[0],
+                       data1=self._infifo_out_data[1],
+                       O0=self._pe_output,
+                       ASYNCRESET=self._rst_n,
+                       CLK=self._clk,
+                       clk_en=self._clk_en,
+                       data2=self._data2,
+                       bit0=self._bit0,
+                       bit1=self._bit1,
+                       bit2=self._bit2,
+                       inst=self._inst,
+                       config_addr=self._config_addr,
+                       config_data=self._config_data,
+                       config_en=self._config_en,
+                       O2=self._config_data_out,
+                       O1=self._bit_data_out
+                       )
+
 
         @always_comb
         def fifo_push():
@@ -238,7 +332,7 @@ class PE(Generator):
             flush_port.add_attribute(ControlSignalAttr(True))
 
         # Finally, lift the config regs...
-        lift_config_reg(self.internal_generator)
+        # lift_config_reg(self.internal_generator)
 
     def get_bitstream(self, op):
 
@@ -250,7 +344,7 @@ class PE(Generator):
 
 if __name__ == "__main__":
 
-    pe_dut = PE(data_width=16)
+    pe_dut = SparsePEWrapper(data_width=16)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
