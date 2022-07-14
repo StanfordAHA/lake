@@ -45,6 +45,14 @@ class Scanner(MemoryController):
         self._root = self.input("root", 1)
         self._root.add_attribute(ConfigRegAttr("If this scanner is at the root node, it will dispatch on its own"))
 
+        # Dense scanner
+        self._dense = self.input("dense", 1)
+        self._dense.add_attribute(ConfigRegAttr("This scanner is 'scanning' a dense data structure..."))
+
+        # Dimension Size
+        self._dim_size = self.input("dim_size", 16)
+        self._dim_size.add_attribute(ConfigRegAttr("This scanner is 'scanning' a dense data structure of this size..."))
+
         # Repeat number
         self._do_repeat = self.input("do_repeat", 1)
         self._do_repeat.add_attribute(ConfigRegAttr("If this scanner should do a repeat for creating outer coords"))
@@ -502,6 +510,7 @@ class Scanner(MemoryController):
         READ_2 = self.scan_fsm.add_state("READ_2")
 
         LOOKUP = self.scan_fsm.add_state("LOOKUP")
+        DENSE_STRM = self.scan_fsm.add_state("DENSE_STRM")
 
         SEQ_START = self.scan_fsm.add_state("SEQ_START")
         SEQ_ITER = self.scan_fsm.add_state("SEQ_ITER")
@@ -595,7 +604,8 @@ class Scanner(MemoryController):
         # If we have valid data in (the input fifo is not empty), then we should issue the corresponding stream
         # We should have seen all squashable STOP tokens, now we are seeing if it is
         ISSUE_STRM_NR.next(PASS_STOP, self._done_in)
-        ISSUE_STRM_NR.next(READ_0, ~self._infifo_eos_in & self._infifo_valid_in)
+        ISSUE_STRM_NR.next(READ_0, ~self._infifo_eos_in & self._infifo_valid_in & ~self._dense)
+        ISSUE_STRM_NR.next(DENSE_STRM, ~self._infifo_eos_in & self._infifo_valid_in & self._dense)
         ISSUE_STRM_NR.next(SEQ_DONE, self._infifo_eos_in & self._infifo_valid_in & (self._infifo_pos_in[9, 8] == kts.const(2, 2)))
         ISSUE_STRM_NR.next(ISSUE_STRM_NR, None)
 
@@ -612,7 +622,7 @@ class Scanner(MemoryController):
         # PASS_STOP.next(FREE1, (~self._infifo_eos_in & self._infifo_valid_in) & self._seen_root_eos)
         PASS_STOP.next(PASS_STOP, None)
 
-        # Can continue on our way in root mode, otherwise we need to
+        # Can continue on our way in root mode, otherwise we need toSEQ_START
         # bring the pointer up to locate the coordinate. Make sure the first read is emmitted
         # Except if we get a maybe input token - then we need to skip the emission of the sequence
         # READ_0.next(SEQ_DONE, self._infifo_valid_in & self._infifo_eos_in & (self._infifo_pos_in[9, 8] == kts.const(2, 2)))
@@ -651,6 +661,10 @@ class Scanner(MemoryController):
         # SEQ_ITER.next(SEQ_DONE, self._iter_finish)
         SEQ_ITER.next(SEQ_DONE, (self._num_req_rec == self._seq_length))
         SEQ_ITER.next(SEQ_ITER, None)
+
+        # Basically just use this state instead of sparse reads/streams - use num_req_made as number of pushes to output
+        DENSE_STRM.next(SEQ_DONE, self._num_req_made == self._dim_size)
+        DENSE_STRM.next(DENSE_STRM, None)
 
         # Once done with the sequence, we should wait to find out if we need to squash together
         # another stop token or not.
@@ -1176,6 +1190,38 @@ class Scanner(MemoryController):
         SEQ_ITER.output(self._clr_req_made, 0)
         SEQ_ITER.output(self._inc_req_rec, self._rd_rsp_fifo_valid & ~self._fifo_full & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._clr_req_rec, 0)
+
+        #############
+        # DENSE_STRM
+        #############
+        DENSE_STRM.output(self._addr_out_to_fifo, 0)
+        DENSE_STRM.output(self._op_out_to_fifo, 0)
+        DENSE_STRM.output(self._ID_out_to_fifo, 0)
+        DENSE_STRM.output(self._buffet_push, 0)
+        DENSE_STRM.output(self._rd_rsp_fifo_pop, 0)
+        DENSE_STRM.output(self._ptr_reg_en, 0)
+        DENSE_STRM.output(self._valid_inc, 0)
+        DENSE_STRM.output(self._valid_rst, 0)
+        DENSE_STRM.output(self._coord_out_fifo_push, (self._num_req_made < self._dim_size) & ~self._fifo_full)
+        DENSE_STRM.output(self._pos_out_fifo_push, (self._num_req_made < self._dim_size) & ~self._fifo_full)
+        DENSE_STRM.output(self._tag_eos, 0)
+        DENSE_STRM.output(self._next_seq_length, kts.const(0, 16))
+        DENSE_STRM.output(self._update_seq_state, 0)
+        DENSE_STRM.output(self._last_valid_accepting, 0)
+        DENSE_STRM.output(self._pop_infifo, 0)
+        DENSE_STRM.output(self._inc_fiber_addr, (self._num_req_made < self._dim_size) & ~self._fifo_full)
+        DENSE_STRM.output(self._clr_fiber_addr, 0)
+        DENSE_STRM.output(self._inc_rep, 0)
+        DENSE_STRM.output(self._clr_rep, 0)
+        DENSE_STRM.output(self._en_reg_data_in, 0)
+        # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
+        DENSE_STRM.output(self._data_to_fifo, self._fiber_addr)
+        # Translation to reference.
+        DENSE_STRM.output(self._pos_out_to_fifo, self._fiber_addr + (self._infifo_pos_in * self._dim_size))
+        DENSE_STRM.output(self._inc_req_made, (self._num_req_made < self._dim_size) & ~self._fifo_full)
+        DENSE_STRM.output(self._clr_req_made, 0)
+        DENSE_STRM.output(self._inc_req_rec, 0)
+        DENSE_STRM.output(self._clr_req_rec, 0)
 
         #############
         # SEQ_DONE
