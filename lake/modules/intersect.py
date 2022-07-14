@@ -23,14 +23,18 @@ class Intersect(MemoryController):
     def __init__(self,
                  data_width=16,
                  use_merger=False,
-                 fifo_depth=8):
+                 fifo_depth=8,
+                 add_clk_enable=True,
+                 add_flush=False,
+                 lift_config=False):
 
         name_str = f"intersect_unit{'_w_merger' if use_merger else ''}"
         super().__init__(name=name_str, debug=True)
 
         self.data_width = data_width
-        self.add_clk_enable = True
-        self.add_flush = True
+        self.add_clk_enable = add_clk_enable
+        self.add_flush = add_flush
+        self.lift_config = lift_config
         self.use_merger = use_merger
         self.fifo_depth = fifo_depth
 
@@ -562,8 +566,9 @@ class Intersect(MemoryController):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
-        # Finally, lift the config regs...
-        # lift_config_reg(self.internal_generator)
+        if self.lift_config:
+            # Finally, lift the config regs...
+            lift_config_reg(self.internal_generator)
 
     def get_bitstream(self, cmrg_enable=0, cmrg_stop_lvl=0, op=JoinerOp.INTERSECT.value):
 

@@ -260,6 +260,9 @@ class CoreCombiner(Generator):
         # Restore the external state
         self.dut.external = False
 
+    def get_port_remap(self):
+        return self.dut.get_port_remap()
+
     def get_modes_supported(self):
         return self.dut.get_modes_supported()
 

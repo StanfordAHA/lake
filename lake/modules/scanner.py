@@ -16,14 +16,17 @@ class Scanner(MemoryController):
     def __init__(self,
                  data_width=16,
                  fifo_depth=8,
-                 add_clk_enable=False):
+                 add_clk_enable=False,
+                 add_flush=False,
+                 lift_config=False):
 
         super().__init__("scanner", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = add_clk_enable
-        self.add_flush = True
+        self.add_flush = add_flush
         self.fifo_depth = fifo_depth
+        self.lift_config = lift_config
 
         self.total_sets = 0
 
@@ -1786,8 +1789,9 @@ class Scanner(MemoryController):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
-        # Finally, lift the config regs...
-        # lift_config_reg(self.internal_generator)
+        if self.lift_config:
+            # Finally, lift the config regs...
+            lift_config_reg(self.internal_generator)
 
     def get_memory_ports(self):
         '''
@@ -1798,10 +1802,25 @@ class Scanner(MemoryController):
     def get_config_mode_str(self):
         return "read_scanner"
 
-    def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0, block_mode=0, lookup=0):
+    # def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0, block_mode=0, lookup=0):
+    def get_bitstream(self, config_kwargs):
+
+        print("MADE IT TO SCANNER CONFIG")
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
+
+        inner_offset = config_kwargs['inner_offset']
+        max_out = config_kwargs['max_out']
+        ranges = config_kwargs['ranges']
+        strides = config_kwargs['strides']
+        root = config_kwargs['root']
+        do_repeat = config_kwargs['do_repeat']
+        repeat_outer = config_kwargs['repeat_outer']
+        repeat_factor = config_kwargs['repeat_factor']
+        stop_lvl = config_kwargs['stop_lvl']
+        block_mode = config_kwargs['block_mode']
+        lookup = config_kwargs['lookup']
 
         # Store all configurations here
         config = [
