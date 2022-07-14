@@ -199,9 +199,6 @@ class PhysicalMemoryStub(kts.Generator):
                 port_intf['cen'] = self.input(port_intf['cen'], 1)
                 port_intf['clk'] = self.clock(port_intf['clk'])
             elif port_type == MemoryPortType.READWRITE:
-                print('HERE')
-                print(port_intf)
-                print(port_intf['data_in'])
                 port_intf['data_in'] = self.input(port_intf['data_in'], self.mem_width, packed=True)
                 port_intf['data_out'] = self.output(port_intf['data_out'], self.mem_width, packed=True)
                 port_intf['write_enable'] = self.input(port_intf['write_enable'], 1)
@@ -209,10 +206,7 @@ class PhysicalMemoryStub(kts.Generator):
                 port_intf['cen'] = self.input(port_intf['cen'], 1)
                 port_intf['clk'] = self.clock(port_intf['clk'])
             # For now, assume the alt sigs are all inputs
-            print(port.get_alt_signals())
             for (alt_sig, (value, width)) in port.get_alt_signals().items():
-                print(alt_sig)
-                print(width)
                 port_intf[alt_sig] = self.input(str(alt_sig), width)
 
     def compose_mems(self):

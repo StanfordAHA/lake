@@ -68,7 +68,6 @@ class CoreCombiner(Generator):
         assert controllers is not None
         assert len(controllers) > 0
         self.controllers = controllers
-        print(controllers)
 
         # Create a MemoryTileBuilder
         MTB = MemoryTileBuilder(name, True)

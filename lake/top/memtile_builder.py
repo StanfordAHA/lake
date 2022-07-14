@@ -524,8 +524,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
                 else:
                     new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width)
-                    isctrl = input_width == 1
-                    new_input.add_attribute(ControlSignalAttr(isctrl))
+                isctrl = input_width == 1
+                new_input.add_attribute(ControlSignalAttr(isctrl))
                 # Now to determine if the port is rv/dense
                 # If any signal in this dict is rv, we are going to make it an rv
                 signal_names = signal_dict.values()
