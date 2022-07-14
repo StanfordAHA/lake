@@ -1851,8 +1851,6 @@ class Scanner(MemoryController):
     # def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0, block_mode=0, lookup=0):
     def get_bitstream(self, config_kwargs):
 
-        print("MADE IT TO SCANNER CONFIG")
-
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
 
@@ -1867,6 +1865,8 @@ class Scanner(MemoryController):
         stop_lvl = config_kwargs['stop_lvl']
         block_mode = config_kwargs['block_mode']
         lookup = config_kwargs['lookup']
+        dense = config_kwargs['dense']
+        dim_size = config_kwargs['dim_size']
 
         # Store all configurations here
         config = [
@@ -1879,6 +1879,8 @@ class Scanner(MemoryController):
             ("block_mode", block_mode),
             ('lookup', lookup),
             ('root', root),
+            ('dense', dense),
+            ('dim_size', dim_size),
             ('tile_en', 1)]
 
         if root:
