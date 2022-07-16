@@ -1,9 +1,12 @@
+from concurrent.futures.process import _MAX_WINDOWS_WORKERS
 from lake.modules.chain_accessor import ChainAccessor
+from lake.modules.reg_fifo import RegFIFO
 from lake.top.cgra_tile_builder import CGRATileBuilder
 from lake.modules.storage_config_seq import StorageConfigSeq
 from kratos.stmts import IfStmt
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.top.extract_tile_info import extract_top_config
 from lake.top.memory_interface import *
 from lake.top.memory_controller import *
 from lake.attributes.formal_attr import *
@@ -25,12 +28,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     # with the standard routing network on the AHA CGRA
     legal_widths = [17, 16, 1]
 
-    def __init__(self, name, debug, memory_interface: MemoryInterface = None, memory_banks=1, controllers=None, ready_valid=True):
+    def __init__(self, name, debug, memory_interface: MemoryInterface = None,
+                 memory_banks=1, controllers=None,
+                 ready_valid=True, fifo_depth=8):
 
         super().__init__(name, debug)
 
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
+        self.fifo_depth = fifo_depth
         if controllers is not None:
             self.controllers = controllers
         else:
@@ -69,6 +75,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         self.dense = []
         self.rv = []
+
+        self.fifo_map = {}
 
         self.supports_chaining = True
 
@@ -144,7 +152,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             self.wire(self._mode, tmp0)
 
         # Provide mapping from controller name to mode
+        # Also, while we are here we can set the min depth of all the deferred fifos
+        # and then generate them
         for i, ctrl in enumerate(self.controllers):
+            ctrl_fifos = ctrl.get_fifos()
+            for ctrl_fifo in ctrl_fifos:
+                ctrl_fifo.set_min_depth()
+                ctrl_fifo.generate_hardware()
+            self.fifo_map[ctrl.name] = ctrl.get_fifos()
+            print(self.fifo_map)
             self.ctrl_to_mode[ctrl.name] = i
 
         self.resolve_memports()
@@ -377,8 +393,52 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             self.realize_mem_config()
         if flush:
             self.add_flush()
+        # For now, do this merging of the config regs
         if do_lift_config:
             lift_config_reg(self.internal_generator)
+        # self.merge_config_regs()
+
+    def merge_config_regs(self):
+
+        print("Merging config regs...")
+
+        self.config_sizes = {}
+
+        # First iterate through all controllers and lift their config to the top
+        for flat_name, flat_ctrl in self.controllers_flat_dict.items():
+            flat_ctrl_int_gen = flat_ctrl.internal_generator
+            # ports_bef = flat_ctrl_int_gen.get_port_names()
+            lift_config_reg(flat_ctrl_int_gen, stop_at_gen=True)
+            # ports_aft = flat_ctrl_int_gen.get_port_names()
+
+            # Now get all the config regs
+            # lift_config_reg(flat_ctrl.internal_generator, stop_at_gen=True)
+            cfg_flat_ctrl = extract_top_config(flat_ctrl, verbose=False)
+            for cfg in cfg_flat_ctrl:
+                name, size, width, _ = cfg
+                print(name)
+                # Everything should be flattened down at this point
+                assert len(size) == 1 and size[0] == 1
+                print(width)
+                if flat_name not in self.config_sizes.keys():
+                    tmp_list = []
+                    tmp_list.append(name)
+                    self.config_sizes[flat_name] = (width, tmp_list)
+                else:
+                    width_curr, name_list_curr = self.config_sizes[flat_name]
+                    name_list_curr.append(name)
+                    self.config_sizes[flat_name] = (width_curr + width, name_list_curr)
+
+        print("Config sizes")
+        print(self.config_sizes)
+
+        max_size = 0
+        for name, size_struct in self.config_sizes.items():
+            size, _ = size_struct
+            if size > max_size:
+                max_size = size
+
+        # Take the largest config space and make one fat bus
 
     def realize_mem_config(self):
         '''
@@ -537,6 +597,34 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_input_ready = self.output(f'input_width_{input_width}_num_{i}_ready', width=1)
                     new_input_ready.add_attribute(ControlSignalAttr(False))
 
+                    # Add in the fifo if there are any fifos on this path
+                    new_reg_fifo = RegFIFO(data_width=input_width,
+                                           width_mult=1, depth=self.fifo_depth,
+                                           defer_hrdwr_gen=False)
+
+                    self.add_child(f"input_width_{input_width}_num_{i}_input_fifo",
+                                   new_reg_fifo,
+                                   clk=self._gclk,
+                                   rst_n=self._rst_n,
+                                   #    clk_en=kts.const(1, 1),
+                                   push=new_input_valid,
+                                   data_in=new_input)
+
+                    self.wire(new_input_ready, ~new_reg_fifo.ports.full)
+
+                    # Alias the new input across the fifo boundary
+                    if input_width != 1:
+                        new_input = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width, explicit_array=True, packed=True)
+                    else:
+                        new_input = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width)
+
+                    new_input_valid = self.var(f'input_width_{input_width}_num_{i}_fifo_out_valid', width=1)
+                    new_input_ready = self.var(f'input_width_{input_width}_num_{i}_fifo_out_ready', width=1)
+
+                    self.wire(new_input, new_reg_fifo.ports.data_out)
+                    self.wire(new_input_valid, ~new_reg_fifo.ports.empty)
+                    self.wire(new_reg_fifo.ports.pop, new_input_ready)
+
                 # Need a mux to output the ready
                 mux_size = len(signal_dict.keys())
                 mux_comb = self.combinational()
@@ -628,6 +716,34 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_output_valid.add_attribute(ControlSignalAttr(False))
                     new_output_ready = self.input(f'output_width_{output_width}_num_{i}_ready', width=1)
                     new_output_ready.add_attribute(ControlSignalAttr(True))
+
+                    # Add in the fifo if there are any fifos on this path
+                    new_reg_fifo = RegFIFO(data_width=output_width,
+                                           width_mult=1, depth=self.fifo_depth,
+                                           defer_hrdwr_gen=False)
+
+                    self.add_child(f"output_width_{output_width}_num_{i}_output_fifo",
+                                   new_reg_fifo,
+                                   clk=self._gclk,
+                                   rst_n=self._rst_n,
+                                   #    clk_en=kts.const(1, 1),
+                                   pop=new_output_ready,
+                                   data_out=new_output)
+
+                    self.wire(new_output_valid, ~new_reg_fifo.ports.empty)
+
+                    # Alias the new output across the fifo boundary
+                    if output_width != 1:
+                        new_output = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width, explicit_array=True, packed=True)
+                    else:
+                        new_output = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width)
+
+                    new_output_valid = self.var(f'output_width_{output_width}_num_{i}_fifo_in_valid', width=1)
+                    new_output_ready = self.var(f'output_width_{output_width}_num_{i}_fifo_in_ready', width=1)
+
+                    self.wire(new_output, new_reg_fifo.ports.data_in)
+                    self.wire(new_output_ready, ~new_reg_fifo.ports.full)
+                    self.wire(new_output_valid, new_reg_fifo.ports.push)
 
                 # We need to choose which output is hooked up based on the mode...
                 mux_size = len(signal_dict.keys())

@@ -8,7 +8,7 @@ import _kratos
 
 
 # this is a pass
-def lift_config_reg(generator):
+def lift_config_reg(generator, stop_at_gen=False):
     # if not hasattr(generator, "lifted"):
     #     setattr(generator, "lifted", False)
     # if generator.lifted:
@@ -50,6 +50,8 @@ def lift_config_reg(generator):
                     top_lvl_cfg = parent_gen is None
 
                     while parent_gen is not None:
+                        if stop_at_gen and child_gen == generator:
+                            break
                         # create a port based on the target's definition
                         new_name = child_gen.instance_name + "_" + child_port.name
                         p = parent_gen.port(child_port, new_name, False)

@@ -2,6 +2,7 @@ from math import e
 from struct import pack
 import kratos as kts
 from kratos import *
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 from lake.passes.passes import lift_config_reg
 from lake.utils.util import sticky_flag, trim_config_list, add_counter
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
@@ -26,7 +27,8 @@ class Intersect(MemoryController):
                  fifo_depth=8,
                  add_clk_enable=True,
                  add_flush=False,
-                 lift_config=False):
+                 lift_config=False,
+                 defer_fifos=True):
 
         name_str = f"intersect_unit{'_w_merger' if use_merger else ''}"
         super().__init__(name=name_str, debug=True)
@@ -37,6 +39,7 @@ class Intersect(MemoryController):
         self.lift_config = lift_config
         self.use_merger = use_merger
         self.fifo_depth = fifo_depth
+        self.defer_fifos = defer_fifos
 
         # For compatibility with tile integration...
         self.total_sets = 0
@@ -151,7 +154,8 @@ class Intersect(MemoryController):
 
             # COORD IN FIFOS
             # COORD IN FIFOS
-            tmp_coord_fifo = RegFIFO(data_width=self._coord_in[i].width, width_mult=1, depth=self.fifo_depth)
+            tmp_coord_fifo = RegFIFO(data_width=self._coord_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+            tmp_coord_fifo.add_attribute(SharedFifoAttr(direction="IN"))
 
             tmp_coord_in_valid_in = self.var(f"coord_in_{i}_fifo_valid_in", 1)
 
@@ -178,7 +182,8 @@ class Intersect(MemoryController):
             self._coord_in_fifo_eos_in.append(tmp_coord_in_eos_in)
 
             # POS IN FIFOS
-            tmp_pos_fifo = RegFIFO(data_width=self._pos_in[i].width, width_mult=1, depth=self.fifo_depth)
+            tmp_pos_fifo = RegFIFO(data_width=self._pos_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+            tmp_pos_fifo.add_attribute(SharedFifoAttr(direction="IN"))
 
             tmp_pos_in_valid_in = self.var(f"pos_in_{i}_fifo_valid_in", 1)
 
@@ -482,9 +487,12 @@ class Intersect(MemoryController):
 # ===================================
 # Dump metadata into fifo
 # ===================================
-        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
-        self._pos0_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
-        self._pos1_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._coord_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
+        self._pos0_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._pos0_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
+        self._pos1_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._pos1_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         # Stupid convert -
         self._coord_data_in_packed = self.var("coord_fifo_in_packed", self.data_width + 1, packed=True)
@@ -553,6 +561,11 @@ class Intersect(MemoryController):
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
+
+        if self.defer_fifos is False:
+            all_fifos = self.get_fifos()
+            for child_fifo in all_fifos:
+                child_fifo.generate_hardware()
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
@@ -675,13 +688,18 @@ class Intersect(MemoryController):
         fifo_kwargs = {
             "data_width": self.data_width + 1,
             "width_mult": 1,
-            "depth": self.fifo_depth
+            "depth": self.fifo_depth,
+            'defer_hrdwr_gen': True
         }
 
         base_infifo = RegFIFO(**fifo_kwargs)
+        base_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         proc_infifo = RegFIFO(**fifo_kwargs)
+        proc_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         base_outfifo = RegFIFO(**fifo_kwargs)
+        base_outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
         proc_outfifo = RegFIFO(**fifo_kwargs)
+        proc_outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         ##############
         # BASE infifo

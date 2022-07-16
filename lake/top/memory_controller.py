@@ -94,6 +94,19 @@ class MemoryController(kts.Generator):
     def get_dedicated_clock(self):
         return False
 
+    def get_fifos(self):
+        '''
+        Get the shareable fifos from a generator, even nested submodules
+        - descend the hierarachy to find them
+        '''
+        self.__fifo_list = []
+        children = self.child_generator()
+        for child in children:
+            actual_child = self[child]
+            print(type(actual_child))
+            self.__fifo_list.append(actual_child)
+        return self.__fifo_list
+
     def __str__(self):
         return self.name
 

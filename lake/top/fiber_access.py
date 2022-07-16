@@ -6,16 +6,21 @@ from lake.modules.buffet_like import BuffetLike
 from lake.modules.scanner import Scanner
 from lake.modules.write_scanner import WriteScanner
 from lake.passes.passes import lift_config_reg
+from lake.top.tech_maps import GF_Tech_Map
 
 
 class FiberAccess(MemoryController):
 
-    def __init__(self, data_width=16):
+    def __init__(self, data_width=16,
+                 local_memory=True,
+                 tech_map=GF_Tech_Map(depth=512, width=32)):
         super().__init__(f'fiber_access_{data_width}', debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
         self.add_flush = True
+        self.local_memory = local_memory
+        self.tech_map = tech_map
 
         # inputs
         self._clk = self.clock("clk")
@@ -65,7 +70,9 @@ class FiberAccess(MemoryController):
         self._rd_scan_us_pos_in_valid = self.input("rd_scan_us_pos_in_valid", 1)
         self._rd_scan_us_pos_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-        buffet = BuffetLike(data_width=self.data_width, num_ID=2, mem_depth=512, local_memory=True)
+        buffet = BuffetLike(data_width=self.data_width, num_ID=2, mem_depth=512,
+                            local_memory=self.local_memory,
+                            tech_map=self.tech_map)
 
         wr_scan = WriteScanner(data_width=self.data_width)
 

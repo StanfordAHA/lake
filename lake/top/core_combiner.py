@@ -311,7 +311,8 @@ if __name__ == "__main__":
     controllers = []
 
     scan = Scanner(data_width=data_width,
-                   fifo_depth=8)
+                   fifo_depth=8,
+                   defer_fifos=True)
 
     isect = Intersect(data_width=data_width,
                       use_merger=True,

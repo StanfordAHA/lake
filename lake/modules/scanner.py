@@ -1,10 +1,9 @@
 import kratos as kts
 from kratos import *
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 from lake.passes.passes import lift_config_reg
-from lake.modules.for_loop import ForLoop
-from lake.modules.addr_gen import AddrGen
 from lake.top.memory_controller import MemoryController
-from lake.utils.util import add_counter, safe_wire, register, sticky_flag, transform_strides_and_ranges, trim_config_list
+from lake.utils.util import add_counter, register, sticky_flag, transform_strides_and_ranges, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -18,15 +17,23 @@ class Scanner(MemoryController):
                  fifo_depth=8,
                  add_clk_enable=False,
                  add_flush=False,
-                 lift_config=False):
-
-        super().__init__("scanner", debug=True)
+                 lift_config=False,
+                 defer_fifos=True):
 
         self.data_width = data_width
         self.add_clk_enable = add_clk_enable
         self.add_flush = add_flush
         self.fifo_depth = fifo_depth
         self.lift_config = lift_config
+        self.defer_fifos = defer_fifos
+
+        name_base = "scanner"
+        if self.add_clk_enable:
+            name_base = f"{name_base}_w_clk_enable"
+        if self.add_flush:
+            name_base = f"{name_base}_w_flush"
+
+        super().__init__(name_base, debug=True)
 
         self.total_sets = 0
 
@@ -185,7 +192,9 @@ class Scanner(MemoryController):
 # scanners are driven by upper levels
 # =============================
 
-        self._infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        # Give this thing a min depth of 2 so we can still run the injection routine
+        self._infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True, min_depth=2)
+        self._infifo.add_attribute(SharedFifoAttr(direction="IN"))
 
         # Need to know if we've seen eos_in
         # self._eos_in_seen = self.var("eos_in_seen", 1)
@@ -273,7 +282,8 @@ class Scanner(MemoryController):
         self._rd_rsp_fifo_valid = self.var("rd_rsp_fifo_valid", 1)
 
         self._rd_rsp_fifo_in = kts.concat(self._rd_rsp_data_in[0][self.data_width - 1, 0])
-        self._rd_rsp_infifo = RegFIFO(data_width=self._rd_rsp_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._rd_rsp_infifo = RegFIFO(data_width=self._rd_rsp_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._rd_rsp_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._rd_rsp_fifo_out_data = self.var("rd_rsp_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"rd_rsp_fifo",
@@ -301,7 +311,8 @@ class Scanner(MemoryController):
         self._addr_out_fifo_push = self.var("addr_out_fifo_push", 1)
         self._addr_out_fifo_full = self.var("addr_out_fifo_full", 1)
         self._addr_out_fifo_in = kts.concat(kts.const(0, 1), self._addr_out_to_fifo)
-        self._addr_out_fifo = RegFIFO(data_width=self._addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._addr_out_fifo = RegFIFO(data_width=self._addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._addr_out_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"addr_out_fifo",
                        self._addr_out_fifo,
@@ -320,7 +331,8 @@ class Scanner(MemoryController):
         self._op_out_fifo_push = self.var("op_out_fifo_push", 1)
         self._op_out_fifo_full = self.var("op_out_fifo_full", 1)
         self._op_out_fifo_in = kts.concat(kts.const(0, 1), self._op_out_to_fifo)
-        self._op_out_fifo = RegFIFO(data_width=self._op_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._op_out_fifo = RegFIFO(data_width=self._op_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._op_out_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"op_out_fifo",
                        self._op_out_fifo,
@@ -339,7 +351,8 @@ class Scanner(MemoryController):
         self._ID_out_fifo_push = self.var("ID_out_fifo_push", 1)
         self._ID_out_fifo_full = self.var("ID_out_fifo_full", 1)
         self._ID_out_fifo_in = kts.concat(kts.const(0, 1), self._ID_out_to_fifo)
-        self._ID_out_fifo = RegFIFO(data_width=self._ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._ID_out_fifo = RegFIFO(data_width=self._ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._ID_out_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"ID_out_fifo",
                        self._ID_out_fifo,
@@ -452,8 +465,10 @@ class Scanner(MemoryController):
         self._fiber_addr = self.var("fiber_addr", self.data_width, packed=True)
         self.wire(self._fiber_addr, self._fiber_addr_pre + self._seq_addr)
 
-        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
-        self._pos_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._coord_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
+        self._pos_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._pos_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         # self._fifo_push = self.var("fifo_push", 1)
         self._coord_out_fifo_push = self.var("coord_out_fifo_push", 1)
@@ -466,8 +481,6 @@ class Scanner(MemoryController):
         self._fifo_full_pre = self.var("fifo_full_pre", 2)
         self._fifo_full = self.var("fifo_full", 1)
         self.wire(self._fifo_full, self._fifo_full_pre.r_or())
-
-        self._join_almost_full = self.var("join_almost_full", 1)
 
         self._data_to_fifo = self.var("data_to_fifo", self.data_width)
         # Gate ready after last read in the stream
@@ -1158,19 +1171,15 @@ class Scanner(MemoryController):
         SEQ_ITER.output(self._addr_out_to_fifo, self._fiber_addr)
         SEQ_ITER.output(self._op_out_to_fifo, 1)
         SEQ_ITER.output(self._ID_out_to_fifo, 1)
-        # SEQ_ITER.output(self._buffet_push, ~self._join_almost_full & (self._num_req_made < self._seq_length))
         SEQ_ITER.output(self._buffet_push, self._buffet_joined & (self._num_req_made < self._seq_length) & ~self._fifo_full)
         SEQ_ITER.output(self._rd_rsp_fifo_pop, ~self._fifo_full & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._ptr_reg_en, 0)
-
         # SEQ_ITER.output(self._valid_inc, self._rd_rsp_fifo_valid & (~self._fifo_full))
         SEQ_ITER.output(self._valid_inc, 0)
         SEQ_ITER.output(self._valid_rst, 0)
-        # SEQ_ITER.output(self._ren, ~self._join_almost_full)
         # SEQ_ITER.output(self._fifo_push, self._rd_rsp_fifo_valid & (~self._fifo_full) & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._coord_out_fifo_push, self._rd_rsp_fifo_valid & (~self._fifo_full) & (self._num_req_rec < self._seq_length))
         SEQ_ITER.output(self._pos_out_fifo_push, self._buffet_joined & (self._num_req_made < self._seq_length) & ~self._fifo_full)
-
         SEQ_ITER.output(self._tag_eos, 0)
         # SEQ_ITER.output(self._addr_out_to_fifo, self._fiber_addr)
         SEQ_ITER.output(self._next_seq_length, kts.const(0, 16))
@@ -1819,9 +1828,13 @@ class Scanner(MemoryController):
         self.wire(self._pos_out_valid_out, ~self._pos_fifo.ports.empty)
         self.wire(self._fifo_full_pre[1], self._pos_fifo.ports.full)
 
-        self.wire(self._join_almost_full, self._coord_fifo.ports.almost_full | self._pos_fifo.ports.almost_full)
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
+
+        if self.defer_fifos is False:
+            all_fifos = self.get_fifos()
+            for child_fifo in all_fifos:
+                child_fifo.generate_hardware()
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")

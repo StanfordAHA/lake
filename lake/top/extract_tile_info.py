@@ -22,7 +22,7 @@ def extract_top_config(circuit_gen: kts.Generator, verbose=False):
         if len(attrs) != 1:
             continue
         cr_attr = attrs[0]
-        if verbose is True:
+        if verbose:
             print(port_name)
             print(cr_attr.get_documentation())
         config_list.append(CFG_info(port_name=port_name,
