@@ -161,6 +161,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for ctrl_fifo in ctrl_fifos:
                 ctrl_fifo.set_min_depth()
                 ctrl_fifo.generate_hardware()
+            alt_fifos = ctrl.get_other_fifos()
+            for alt_fifo in alt_fifos:
+                alt_fifo.generate_hardware()
             self.fifo_map[ctrl.name] = ctrl.get_fifos()
             print(self.fifo_map)
             self.ctrl_to_mode[ctrl.name] = i
@@ -409,9 +412,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for flat_name, flat_ctrl in self.controllers_flat_dict.items():
             # print(flat_name)
             flat_ctrl_int_gen = flat_ctrl.internal_generator
-            # ports_bef = flat_ctrl_int_gen.get_port_names()
-            lift_config_reg(flat_ctrl_int_gen, stop_at_gen=True)
-            # ports_aft = flat_ctrl_int_gen.get_port_names()
+            ports_bef = flat_ctrl_int_gen.get_port_names()
+            lift_config_reg(flat_ctrl_int_gen, stop_at_gen=True, flatten=True)
+            ports_aft = flat_ctrl_int_gen.get_port_names()
+            # print(ports_bef)
+            # print(ports_aft)
 
             # Now get all the config regs
             # lift_config_reg(flat_ctrl.internal_generator, stop_at_gen=True)
@@ -419,17 +424,28 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for cfg in cfg_flat_ctrl:
                 name, size, width, _ = cfg
                 # print(name)
-                # Everything should be flattened down at this point
-                assert len(size) == 1 and size[0] == 1
+                # print(size)
                 # print(width)
-                if flat_name not in self.config_sizes.keys():
-                    tmp_list = []
-                    tmp_list.append(name)
-                    self.config_sizes[flat_name] = (width, tmp_list)
-                else:
-                    width_curr, name_list_curr = self.config_sizes[flat_name]
-                    name_list_curr.append(name)
-                    self.config_sizes[flat_name] = (width_curr + width, name_list_curr)
+                # print(_)
+                # Everything should be flattened down at this point
+                # assert len(size) == 1 and size[0] == 1
+                assert len(size) == 1
+                # It's not flattened at this point unfortunately
+                # Handle non flat wires...
+                for idx_ in range(size[0]):
+                    if size[0] > 1:
+                        new_name = f"{name}_{idx_}"
+                    else:
+                        new_name = name
+                # print(width)
+                    if flat_name not in self.config_sizes.keys():
+                        tmp_list = []
+                        tmp_list.append(new_name)
+                        self.config_sizes[flat_name] = (width, tmp_list)
+                    else:
+                        width_curr, name_list_curr = self.config_sizes[flat_name]
+                        name_list_curr.append(new_name)
+                        self.config_sizes[flat_name] = (width_curr + width, name_list_curr)
 
         max_size = 0
         for name, size_struct in self.config_sizes.items():
@@ -451,9 +467,27 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for name, size_struct in self.config_sizes.items():
             # Now wire the chillin
             size, sig_list = size_struct
+            # print(size)
+            # print(sig_list)
             flat_gen = self.controllers_flat_dict[name]
             # flat_ports = flat_gen.internal_generator.get_port()
-            catted_child_signals = [flat_gen.internal_generator.get_port(sig) for sig in sig_list]
+            catted_child_signals = []
+            for sig in sig_list:
+                # Handle the fact that some port might come back as None
+                sig_port = flat_gen.internal_generator.get_port(sig)
+                if sig_port is None:
+                    chopped = sig.rfind('_')
+                    port_idx = int(sig[chopped + 1:])
+                    base_port = sig[:chopped]
+                    print(port_idx)
+                    print(base_port)
+                    sig_port = flat_gen.internal_generator.get_port(base_port)[port_idx]
+                    # It is flattened
+                    catted_child_signals.append(sig_port)
+                    # for flat_prt in range(si)
+                else:
+                    catted_child_signals.append(sig_port)
+            # catted_child_signals = [flat_gen.internal_generator.get_port(sig) for sig in sig_list]
             # Now create the mapping info
             cfg_mapping_name = name[0:-5]
             self.config_mapping[cfg_mapping_name] = {}
@@ -484,6 +518,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             idx += 1
             curr_size += cs_
             self.num_chopped_cfg += 1
+
+        print(self.config_mapping)
 
     def get_config_mapping(self):
         return self.config_mapping

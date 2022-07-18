@@ -3,6 +3,7 @@ from lake.top.memory_interface import MemoryPort, MemoryPortExclusionAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
 from kratos.generator import PortDirection
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 import _kratos
 
 
@@ -94,17 +95,143 @@ class MemoryController(kts.Generator):
     def get_dedicated_clock(self):
         return False
 
+    def __get_other_fifos_helper(self, gen):
+
+        children = gen.child_generator()
+        for child_name, child_gen in children.items():
+            if "RegFIFO" in str(type(child_gen)):
+                if child_gen.get_hardware_genned() is False:
+                    self.__alt_fifos.append(child_gen)
+            else:
+                self.__get_other_fifos_helper(child_gen)
+
+    def get_other_fifos(self):
+
+        self.__alt_fifos = []
+        children = self.child_generator()
+        for child_name, child_gen in children.items():
+            if "RegFIFO" in str(type(child_gen)):
+                if child_gen.get_hardware_genned() is False:
+                    self.__alt_fifos.append(child_gen)
+            else:
+                self.__get_other_fifos_helper(child_gen)
+
+        return self.__alt_fifos
+
     def get_fifos(self):
         '''
         Get the shareable fifos from a generator, even nested submodules
         - descend the hierarachy to find them
         '''
         self.__fifo_list = []
-        children = self.child_generator()
-        for child in children:
-            actual_child = self[child]
-            print(type(actual_child))
-            self.__fifo_list.append(actual_child)
+        # First get ports
+        self_ports = self.internal_generator.get_port_names()
+        # just track the valids
+        valids_in = [self.get_port(port) for port in self_ports if "_valid" in port and "In" in str(self.get_port(port).port_direction)]
+        valids_out = [self.get_port(port) for port in self_ports if "_valid" in port and "Out" in str(self.get_port(port).port_direction)]
+        print(f"VALIDS IN: {valids_in}")
+        print(f"VALIDS OUT: {valids_out}")
+
+        for valid_in in valids_in:
+            sinks = valid_in.sinks
+            print(sinks)
+            # Only use direct connections...
+            if len(sinks) > 1:
+                continue
+            hit_fifo = False
+            use_gen = self
+
+            atg = self
+
+            for actual_sink in sinks:
+                pass
+            while hit_fifo is False:
+                assigned_to = actual_sink.left
+                # print(assigned_to)
+                assigned_to_gen = assigned_to.generator
+                if assigned_to_gen.instance_name != use_gen.instance_name:
+                    atg = use_gen[assigned_to_gen.instance_name]
+                # print(assigned_to_gen.name)
+                # print(atg)
+                # Make sure we are connecting to a signal in a new generator
+                if atg == use_gen:
+                    # print("DESCENDED INTO THE SAME")
+                    # print(assigned_to.sinks)
+                    for actual_sink in assigned_to.sinks:
+                        pass
+                    use_gen = atg
+                elif "RegFIFO" in str(type(atg)):
+                    # print("DESCENDED INTO FIFO ZONE")
+                    rfifo_attr = assigned_to_gen.get_attributes()
+                    # print(rfifo_attr)
+                    for f_attr in rfifo_attr:
+                        str_f_attr = str(type(f_attr))
+                        # print(str_f_attr)
+                        if 'SharedFifoAttr' in str_f_attr:
+                            self.__fifo_list.append(atg)
+                            hit_fifo = True
+                    else:
+                        break
+                else:
+                    # print("DESCENDED INTO ANOTHER INPUT")
+                    for actual_sink in assigned_to.sinks:
+                        pass
+                    use_gen = atg
+
+                # Now we have the generator,
+
+        for valid_out in valids_out:
+            sources = valid_out.sources
+            # print(sources)
+            # Only use direct connections...
+            if len(sources) > 1:
+                continue
+            hit_fifo = False
+            use_gen = self
+
+            for actual_src in sources:
+                pass
+            while hit_fifo is False:
+                assigned_to = actual_src.right
+                # print(assigned_to)
+                assigned_to_gen = assigned_to.generator
+                if assigned_to_gen.instance_name != use_gen.instance_name:
+                    atg = use_gen[assigned_to_gen.instance_name]
+                # print(assigned_to_gen.name)
+                # print(atg)
+                # Make sure we are connecting to a signal in a new generator
+                if atg == use_gen:
+                    # print("DESCENDED INTO THE SAME: OUT")
+                    # print(assigned_to.sources)
+                    for actual_src in assigned_to.sources:
+                        pass
+                    use_gen = atg
+                elif "RegFIFO" in str(type(atg)):
+                    # print("DESCENDED INTO FIFO ZONE: OUT")
+                    rfifo_attr = assigned_to_gen.get_attributes()
+                    # print(rfifo_attr)
+                    for f_attr in rfifo_attr:
+                        str_f_attr = str(type(f_attr))
+                        # print(str_f_attr)
+                        if 'SharedFifoAttr' in str_f_attr:
+                            self.__fifo_list.append(atg)
+                            hit_fifo = True
+                    else:
+                        break
+                else:
+                    # print("DESCENDED INTO ANOTHER INPUT: OUT")
+                    for actual_src in assigned_to.sources:
+                        pass
+                    use_gen = atg
+
+        # for child in children:
+        #     actual_child = self[child]
+        #     print(type(actual_child))
+        #     self.__fifo_list.append(actual_child)
+        for fifo in self.__fifo_list:
+            print(fifo.instance_name)
+            print(fifo.internal_generator.parent_generator().instance_name)
+        print(self.__fifo_list)
         return self.__fifo_list
 
     def __str__(self):
@@ -229,7 +356,9 @@ class MemoryControllerFlatWrapper(MemoryController):
 
     def flatten_inputs(self):
         child_ins = self.mem_ctrl.get_inputs()
+        print("FLATTENING INS")
         for (inp, width) in child_ins:
+            print(inp)
             self.flatten_port(inp, in_outn=True, name=inp.name)
 
     def flatten_outputs(self):

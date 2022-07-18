@@ -322,9 +322,9 @@ if __name__ == "__main__":
                       fifo_depth=8)
 
     fib_access = FiberAccess(data_width=data_width)
-    controllers.append(scan)
-    controllers.append(isect)
-    # controllers.append(fib_access)
+    # controllers.append(scan)
+    # controllers.append(isect)
+    controllers.append(fib_access)
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,

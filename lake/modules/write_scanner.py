@@ -11,6 +11,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 
 
 class WriteScanner(MemoryController):
@@ -154,8 +155,10 @@ class WriteScanner(MemoryController):
 # scanners are driven by upper levels
 # =============================
 
-        self._data_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth)
-        self._addr_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._data_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._data_infifo.add_attribute(SharedFifoAttr(direction="IN"))
+        self._addr_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._addr_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._infifo_pop = self.var("infifo_pop", 2)
 
         # For input streams, need coord_in, valid_in, eos_in
@@ -244,7 +247,8 @@ class WriteScanner(MemoryController):
         # Output FIFOs to the buffet-like
         # TODO: Make sure this works
         data_out_fifo_in = kts.concat(self._op_to_fifo, self._data_to_fifo)
-        data_out_outfifo = RegFIFO(data_width=data_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        data_out_outfifo = RegFIFO(data_width=data_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        data_out_outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"data_out_fifo",
                        data_out_outfifo,
@@ -270,7 +274,8 @@ class WriteScanner(MemoryController):
 
         # Output FIFOs to the buffet-like
         addr_out_fifo_in = kts.concat(kts.const(0, 1), self._addr_to_fifo)
-        addr_out_outfifo = RegFIFO(data_width=addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        addr_out_outfifo = RegFIFO(data_width=addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        addr_out_outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"addr_out_fifo",
                        addr_out_outfifo,
@@ -296,7 +301,8 @@ class WriteScanner(MemoryController):
 
         # Output FIFOs to the buffet-like
         ID_out_fifo_in = kts.concat(kts.const(0, 1), self._ID_to_fifo)
-        ID_out_outfifo = RegFIFO(data_width=ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        ID_out_outfifo = RegFIFO(data_width=ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        ID_out_outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"ID_out_fifo",
                        ID_out_outfifo,

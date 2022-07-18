@@ -8,7 +8,7 @@ import _kratos
 
 
 # this is a pass
-def lift_config_reg(generator, stop_at_gen=False):
+def lift_config_reg(generator, stop_at_gen=False, flatten=False):
     # if not hasattr(generator, "lifted"):
     #     setattr(generator, "lifted", False)
     # if generator.lifted:
