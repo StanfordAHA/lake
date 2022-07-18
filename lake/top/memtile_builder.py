@@ -1,4 +1,6 @@
 from concurrent.futures.process import _MAX_WINDOWS_WORKERS
+
+from numpy import int32
 from lake.modules.chain_accessor import ChainAccessor
 from lake.modules.reg_fifo import RegFIFO
 from lake.top.cgra_tile_builder import CGRATileBuilder
@@ -396,16 +398,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # For now, do this merging of the config regs
         if do_lift_config:
             lift_config_reg(self.internal_generator)
-        # self.merge_config_regs()
+        else:
+            self.merge_config_regs()
 
     def merge_config_regs(self):
-
-        print("Merging config regs...")
 
         self.config_sizes = {}
 
         # First iterate through all controllers and lift their config to the top
         for flat_name, flat_ctrl in self.controllers_flat_dict.items():
+            # print(flat_name)
             flat_ctrl_int_gen = flat_ctrl.internal_generator
             # ports_bef = flat_ctrl_int_gen.get_port_names()
             lift_config_reg(flat_ctrl_int_gen, stop_at_gen=True)
@@ -416,10 +418,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             cfg_flat_ctrl = extract_top_config(flat_ctrl, verbose=False)
             for cfg in cfg_flat_ctrl:
                 name, size, width, _ = cfg
-                print(name)
+                # print(name)
                 # Everything should be flattened down at this point
                 assert len(size) == 1 and size[0] == 1
-                print(width)
+                # print(width)
                 if flat_name not in self.config_sizes.keys():
                     tmp_list = []
                     tmp_list.append(name)
@@ -429,16 +431,62 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     name_list_curr.append(name)
                     self.config_sizes[flat_name] = (width_curr + width, name_list_curr)
 
-        print("Config sizes")
-        print(self.config_sizes)
-
         max_size = 0
         for name, size_struct in self.config_sizes.items():
-            size, _ = size_struct
+            size, sig_list = size_struct
+            # Sort the list...
+            sig_list = sorted(sig_list)
+            self.config_sizes[name] = (size, sig_list)
             if size > max_size:
                 max_size = size
 
+        self.config_mapping = {}
+
         # Take the largest config space and make one fat bus
+        # self.config_space = self.var("CONFIG_SPACE", max_size)
+        self.config_space = self.var("CONFIG_SPACE", max_size)
+        self.config_space.add_attribute(ConfigRegAttr(f"Configuration for children modules"))
+
+        # for flat_name, flat_ctrl in self.controllers_flat_dict.items():
+        for name, size_struct in self.config_sizes.items():
+            # Now wire the chillin
+            size, sig_list = size_struct
+            flat_gen = self.controllers_flat_dict[name]
+            # flat_ports = flat_gen.internal_generator.get_port()
+            catted_child_signals = [flat_gen.internal_generator.get_port(sig) for sig in sig_list]
+            # Now create the mapping info
+            cfg_mapping_name = name[0:-5]
+            self.config_mapping[cfg_mapping_name] = {}
+            running_width = 0
+            # Reversed since concat puts MSBs on the left
+            for sig in reversed(catted_child_signals):
+                sig_w_ = sig.width
+                self.config_mapping[cfg_mapping_name][sig.name] = (running_width + sig_w_ - 1, running_width)
+                running_width += sig_w_
+            kts_catted = kts.concat(*catted_child_signals)
+
+            self.wire(kts_catted, self.config_space[size - 1, 0], )
+
+        self.allowed_reg_size = 32
+        self.num_chopped_cfg = 0
+        curr_size = 0
+        idx = 0
+        self.config_bits = max_size
+        while curr_size < max_size:
+            if max_size - curr_size > self.allowed_reg_size:
+                cs_ = self.allowed_reg_size
+            else:
+                cs_ = max_size - curr_size
+            # tmp_cfg_space = self.input(f"CONFIG_SPACE_{idx}_{curr_size}_{curr_size + cs_ - 1}", cs_)
+            tmp_cfg_space = self.input(f"CONFIG_SPACE_{idx}", cs_)
+            tmp_cfg_space.add_attribute(ConfigRegAttr(f"Configuration for children modules {idx}"))
+            self.wire(self.config_space[curr_size + cs_ - 1, curr_size], tmp_cfg_space)
+            idx += 1
+            curr_size += cs_
+            self.num_chopped_cfg += 1
+
+    def get_config_mapping(self):
+        return self.config_mapping
 
     def realize_mem_config(self):
         '''
@@ -895,6 +943,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             self.modes_supported.append(memctrl.get_config_mode_str())
         return self.mode_map
 
+    def set_bit(self, old_val, bit_to_set, new_bit):
+        new_val = old_val | (new_bit << bit_to_set)
+        return new_val
+
+    def get_bit(self, val, n):
+        return (val >> n & 1)
+
     def get_bitstream(self, config_json):
         '''
         At this level, we can take in the json and figure out which mode we are using
@@ -928,11 +983,50 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             else:
                 ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json)
 
+        # Now need to chop up cfg space
+        tmp_cfg_space = [0 for i in range(self.num_chopped_cfg)]
+
         for (ctrl, conf_for_ctrl) in ctrl_config.items():
+            print(ctrl)
+            print(conf_for_ctrl)
             # Go through each config and prepend the string
             prepend_string = f"mem_ctrl_{ctrl}_flat_{ctrl}_inst_"
             for cfg_reg, val in conf_for_ctrl:
-                config.append((prepend_string + cfg_reg, val))
+                print(cfg_reg)
+                print(val)
+                val_int = int(val)
+                mapping_index = self.config_mapping[ctrl][f"{ctrl}_inst_{cfg_reg}"]
+                print(mapping_index)
+                map_hi, map_lo = mapping_index
+                assert map_hi - map_lo <= 15, f"Failed beacuse reg wider than 16 bits"
+                chunk_hi = map_hi // self.allowed_reg_size
+                chunk_lo = map_lo // self.allowed_reg_size
+                # Either all within one chunk...
+                if chunk_hi == chunk_lo:
+                    bits_hi = map_hi - chunk_hi * self.allowed_reg_size
+                    bits_lo = map_lo - chunk_lo * self.allowed_reg_size
+                    num_bits = bits_hi - bits_lo + 1
+                    tmp_val = tmp_cfg_space[chunk_lo]
+                    for z_ in range(num_bits):
+                        tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
+                    tmp_cfg_space[chunk_lo] = tmp_val
+                # Or across the boundary...
+                else:
+                    bits_hi = map_hi - chunk_hi * self.allowed_reg_size
+                    bits_lo = map_lo - chunk_lo * self.allowed_reg_size
+                    num_bits_lo = self.allowed_reg_size - bits_lo
+                    tmp_val = tmp_cfg_space[chunk_lo]
+                    for z_ in range(num_bits_lo):
+                        tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
+                    tmp_cfg_space[chunk_lo] = tmp_val
+
+                    tmp_val = tmp_cfg_space[chunk_hi]
+                    for z_ in range(bits_hi):
+                        tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, num_bits_lo + z_))
+                    tmp_cfg_space[chunk_hi] = tmp_val
+
+        for idx in range(self.num_chopped_cfg):
+            config.append((f"CONFIG_SPACE_{idx}", tmp_cfg_space[idx]))
         return config
 
     def get_inputs_map(self):

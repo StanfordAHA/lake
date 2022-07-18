@@ -277,6 +277,9 @@ class CoreCombiner(Generator):
             verilog(flattened_gen, filename=f"{self.dut.name}_flat.v")
             self.dut.external = False
 
+    def get_config_mapping(self):
+        return self.dut.get_config_mapping()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='LakeTop')
@@ -333,7 +336,8 @@ if __name__ == "__main__":
                              read_delay=1,
                              use_sim_sram=False,
                              controllers=controllers,
-                             name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}")
+                             name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}",
+                             do_config_lift=False)
 
     print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()
