@@ -17,7 +17,8 @@ from lake.attributes.shared_fifo_attr import SharedFifoAttr
 class WriteScanner(MemoryController):
     def __init__(self,
                  data_width=16,
-                 fifo_depth=8):
+                 fifo_depth=8,
+                 defer_fifos=True):
 
         super().__init__("write_scanner", debug=True)
 
@@ -25,6 +26,7 @@ class WriteScanner(MemoryController):
         self.add_clk_enable = True
         self.add_flush = True
         self.fifo_depth = fifo_depth
+        self.defer_fifos = defer_fifos
 
         self.total_sets = 0
 
@@ -1013,6 +1015,11 @@ class WriteScanner(MemoryController):
 
         # Force FSM realization first so that flush gets added...
         kts.passes.realize_fsm(self.internal_generator)
+
+        if self.defer_fifos is False:
+            all_fifos = self.get_fifos()
+            for child_fifo in all_fifos:
+                child_fifo.generate_hardware()
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
