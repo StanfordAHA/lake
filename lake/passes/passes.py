@@ -51,10 +51,13 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                     top_lvl_cfg = parent_gen is None
 
                     while parent_gen is not None:
+
+                        # if type(child_port) is list:
+
                         if stop_at_gen and child_gen == generator:
                             break
                         # create a port based on the target's definition
-                        if flatten and child_port.size[0] > 1:
+                        if flatten and type(child_port) is not list and child_port.size[0] > 1:
                             p = []
                             for idx_ in range(child_port.size[0]):
                                 new_name = child_gen.instance_name + "_" + child_port.name + f"_{idx_}"
@@ -63,9 +66,18 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                                 p.append(newp_)
                                 parent_gen.wire(child_port[idx_], newp_)
                         else:
-                            new_name = child_gen.instance_name + "_" + child_port.name
-                            p = parent_gen.port(child_port, new_name, False)
-                            parent_gen.wire(child_port, p)
+                            # Handle flattened lists as well...
+                            if type(child_port) is list:
+                                p = []
+                                for cp_ in child_port:
+                                    new_name = child_gen.instance_name + "_" + cp_.name
+                                    newp_ = parent_gen.port(cp_, new_name, False)
+                                    parent_gen.wire(cp_, newp_)
+                                    p.append(newp_)
+                            else:
+                                new_name = child_gen.instance_name + "_" + child_port.name
+                                p = parent_gen.port(child_port, new_name, False)
+                                parent_gen.wire(child_port, p)
 
                         # Now we can check if any other signals in the parent generator
                         # are observing this signal
@@ -88,9 +100,15 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                         else:
                             child_port.add_attribute(child_port_cra)
                         if annotation_attr:
-                            ann_att = annotation_attr[0]
-                            annot_type = ann_att.get_formal_ann()
-                            child_port.add_attribute(FormalAttr(f"{child_port}", annot_type))
+                            if type(child_port) is list:
+                                for cp_ in child_port:
+                                    ann_att = annotation_attr[0]
+                                    annot_type = ann_att.get_formal_ann()
+                                    cp_.add_attribute(FormalAttr(f"{cp_}", annot_type))
+                            else:
+                                ann_att = annotation_attr[0]
+                                annot_type = ann_att.get_formal_ann()
+                                child_port.add_attribute(FormalAttr(f"{child_port}", annot_type))
 
     v = ConfigRegLiftVisitor()
     v.visit_root(generator)

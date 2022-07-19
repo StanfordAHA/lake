@@ -1,3 +1,4 @@
+from threading import local
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.top.memory_interface import MemoryPort, MemoryPortExclusionAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
@@ -11,6 +12,50 @@ class MemoryController(kts.Generator):
     '''
     Provides the utilities to interface a memory controller with a memory interface
     '''
+    def get_child_generator(self, port):
+        if port.generator == self.internal_generator:
+            return self
+        else:
+            children = self.child_generator()
+            for child_name, child_gen in children.items():
+                local_result = self.__get_child_generator_helper(child_gen, port)
+                if local_result is not None:
+                    return local_result
+            return None
+
+    def __get_child_generator_helper(self, generator, port):
+        if port.generator == generator.internal_generator:
+            return generator
+        else:
+            children = generator.child_generator()
+            for child_name, child_gen in children.items():
+                local_result = self.__get_child_generator_helper(child_gen, port)
+                if local_result is not None:
+                    return local_result
+            return None
+
+    def get_child_generator_gen(self, generator):
+        if generator == self.internal_generator:
+            return self
+        else:
+            children = self.child_generator()
+            for child_name, child_gen in children.items():
+                local_result = self.__get_child_generator_gen_helper(child_gen, generator)
+                if local_result is not None:
+                    return local_result
+            return None
+
+    def __get_child_generator_gen_helper(self, search_gen, generator):
+        if generator == search_gen.internal_generator:
+            return search_gen
+        else:
+            children = search_gen.child_generator()
+            for child_name, child_gen in children.items():
+                local_result = self.__get_child_generator_gen_helper(child_gen, generator)
+                if local_result is not None:
+                    return local_result
+            return None
+
     def get_port(self, name):
         int_gen = self.internal_generator
         ret_port = int_gen.get_port(name)
@@ -32,8 +77,6 @@ class MemoryController(kts.Generator):
                 continue
             if port_dir == PortDirection.Out:
                 continue
-            # print("GET INPUTS")
-            # print(curr_port)
             ins.append((curr_port, curr_port.width))
         return ins
 
@@ -131,12 +174,9 @@ class MemoryController(kts.Generator):
         # just track the valids
         valids_in = [self.get_port(port) for port in self_ports if "_valid" in port and "In" in str(self.get_port(port).port_direction)]
         valids_out = [self.get_port(port) for port in self_ports if "_valid" in port and "Out" in str(self.get_port(port).port_direction)]
-        print(f"VALIDS IN: {valids_in}")
-        print(f"VALIDS OUT: {valids_out}")
 
         for valid_in in valids_in:
             sinks = valid_in.sinks
-            # print(sinks)
             # Only use direct connections...
             if len(sinks) > 1:
                 continue
@@ -149,33 +189,24 @@ class MemoryController(kts.Generator):
                 pass
             while hit_fifo is False:
                 assigned_to = actual_sink.left
-                # print(assigned_to)
                 assigned_to_gen = assigned_to.generator
                 if assigned_to_gen.instance_name != use_gen.instance_name:
                     atg = use_gen[assigned_to_gen.instance_name]
-                # print(assigned_to_gen.name)
-                # print(atg)
                 # Make sure we are connecting to a signal in a new generator
                 if atg == use_gen:
-                    # print("DESCENDED INTO THE SAME")
-                    # print(assigned_to.sinks)
                     for actual_sink in assigned_to.sinks:
                         pass
                     use_gen = atg
                 elif "RegFIFO" in str(type(atg)):
-                    # print("DESCENDED INTO FIFO ZONE")
                     rfifo_attr = assigned_to_gen.get_attributes()
-                    # print(rfifo_attr)
                     for f_attr in rfifo_attr:
                         str_f_attr = str(type(f_attr))
-                        # print(str_f_attr)
                         if 'SharedFifoAttr' in str_f_attr:
                             self.__fifo_list.append(atg)
                             hit_fifo = True
                     else:
                         break
                 else:
-                    # print("DESCENDED INTO ANOTHER INPUT")
                     for actual_sink in assigned_to.sinks:
                         pass
                     use_gen = atg
@@ -184,7 +215,6 @@ class MemoryController(kts.Generator):
 
         for valid_out in valids_out:
             sources = valid_out.sources
-            # print(sources)
             # Only use direct connections...
             if len(sources) > 1:
                 continue
@@ -195,40 +225,28 @@ class MemoryController(kts.Generator):
                 pass
             while hit_fifo is False:
                 assigned_to = actual_src.right
-                # print(assigned_to)
                 assigned_to_gen = assigned_to.generator
                 if assigned_to_gen.instance_name != use_gen.instance_name:
                     atg = use_gen[assigned_to_gen.instance_name]
-                # print(assigned_to_gen.name)
-                # print(atg)
                 # Make sure we are connecting to a signal in a new generator
                 if atg == use_gen:
-                    # print("DESCENDED INTO THE SAME: OUT")
-                    # print(assigned_to.sources)
                     for actual_src in assigned_to.sources:
                         pass
                     use_gen = atg
                 elif "RegFIFO" in str(type(atg)):
-                    # print("DESCENDED INTO FIFO ZONE: OUT")
                     rfifo_attr = assigned_to_gen.get_attributes()
-                    # print(rfifo_attr)
                     for f_attr in rfifo_attr:
                         str_f_attr = str(type(f_attr))
-                        # print(str_f_attr)
                         if 'SharedFifoAttr' in str_f_attr:
                             self.__fifo_list.append(atg)
                             hit_fifo = True
                     else:
                         break
                 else:
-                    # print("DESCENDED INTO ANOTHER INPUT: OUT")
                     for actual_src in assigned_to.sources:
                         pass
                     use_gen = atg
 
-        # for fifo in self.__fifo_list:
-            # print(fifo.instance_name)
-            # print(fifo.internal_generator.parent_generator().instance_name)
         return self.__fifo_list
 
     def __str__(self):
@@ -353,9 +371,7 @@ class MemoryControllerFlatWrapper(MemoryController):
 
     def flatten_inputs(self):
         child_ins = self.mem_ctrl.get_inputs()
-        print("FLATTENING INS")
         for (inp, width) in child_ins:
-            print(inp)
             self.flatten_port(inp, in_outn=True, name=inp.name)
 
     def flatten_outputs(self):
@@ -363,37 +379,45 @@ class MemoryControllerFlatWrapper(MemoryController):
         for (outp, width) in child_outs:
             self.flatten_port(outp, in_outn=False, name=outp.name)
 
-    def lift_memory_port(self, mem_prt: MemoryPort):
+    def lift_memory_port(self, mem_prt: MemoryPort, verbose=False):
         new_mem_prt = MemoryPort(mem_prt.get_port_type(), mem_prt.get_port_delay(), mem_prt.get_active_read())
         new_mem_prt_intf = new_mem_prt.get_port_interface()
         # These interfaces should match directly...
         for (name, sig) in mem_prt.get_port_interface().items():
             # These should all comply anyway, so just need to recreate them
-            # try:
-            if sig is None:
-                continue
-            # Check if slice and lift the parent
-            if isinstance(sig, _kratos.VarSlice):
-                sig = sig.parent_var
-            # if self.internal_generator.has_port(f"{sig}_lifted"):
-            #     continue
-            # print("LIFTING")
-            # print(sig)
-            # print(self.instance_name)
-            # print(sig.generator.parent_generator().instance_name)
-            # Lift the port up directly...
-            # if sig.generator.parent_generator() != self.internal_generator:
+            try:
+                if sig is None:
+                    continue
+                # Check if slice and lift the parent
+                if isinstance(sig, _kratos.VarSlice):
+                    sig = sig.parent_var
+                # Lift the port up directly...
+                if sig.generator.parent_generator() != self.internal_generator:
+                    # Make a list of lifting
+                    lifting_gens_int = [sig.generator.parent_generator()]
+                    tmp_gen = sig.generator.parent_generator().parent_generator()
+                    while tmp_gen != self.internal_generator:
+                        lifting_gens_int.append(tmp_gen)
+                        tmp_gen = tmp_gen.parent_generator()
+                    # Lift through the hierarchy first...
+                    for tmp_gen_ in lifting_gens_int:
+                        real_tmp_gen = self.get_child_generator_gen(tmp_gen_)
+                        # tmp_lifted = tmp_gen_.port(sig, f"{sig}_lifted", False)
+                        tmp_lifted = real_tmp_gen.port_from_def(sig, name=f"{sig.generator.instance_name}_{sig}_lifted")
+                        real_tmp_gen.wire(sig, tmp_lifted)
+                        for attr in sig.attributes:
+                            tmp_lifted.add_attribute(attr)
+                        sig = tmp_lifted
 
-            lifted_port = self.port_from_def(sig, name=f"{sig}_lifted")
-            # print("LIFTED PORT")
-            new_mem_prt_intf[name] = lifted_port
-            self.wire(lifted_port, sig)
-            # print("COMPLETED WIRING")
-            for attr in sig.attributes:
-                lifted_port.add_attribute(attr)
-            # except kts.VarException:
-                # print("Port already exists...copying into MemoryPort")
-                # new_mem_prt_intf['read_addr'] = new_mem_prt_intf['write_addr']
+                lifted_port = self.port_from_def(sig, name=f"{sig.generator.instance_name}_{sig}_lifted")
+                new_mem_prt_intf[name] = lifted_port
+                self.wire(sig, lifted_port)
+                for attr in sig.attributes:
+                    lifted_port.add_attribute(attr)
+            except kts.VarException:
+                if verbose:
+                    print("Port already exists...copying into MemoryPort")
+                new_mem_prt_intf['read_addr'] = new_mem_prt_intf['write_addr']
         return new_mem_prt
 
     def handle_duplicate_address(self):

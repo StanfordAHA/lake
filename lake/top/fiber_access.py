@@ -70,16 +70,16 @@ class FiberAccess(MemoryController):
         self._rd_scan_us_pos_in_valid = self.input("rd_scan_us_pos_in_valid", 1)
         self._rd_scan_us_pos_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-        buffet = BuffetLike(data_width=self.data_width, num_ID=2, mem_depth=512,
-                            local_memory=self.local_memory,
-                            tech_map=self.tech_map)
+        self.buffet = BuffetLike(data_width=self.data_width, num_ID=2, mem_depth=512,
+                                 local_memory=self.local_memory,
+                                 tech_map=self.tech_map)
 
         wr_scan = WriteScanner(data_width=self.data_width)
 
         rd_scan = Scanner(data_width=self.data_width)
 
         self.add_child('buffet_like',
-                       buffet,
+                       self.buffet,
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
@@ -101,33 +101,33 @@ class FiberAccess(MemoryController):
 
         # Now wire everything
         # buffet to wr_scan
-        self.wire(buffet.ports.wr_ID, wr_scan.ports.ID_out)
-        self.wire(buffet.ports.wr_ID_ready, wr_scan.ports.ID_out_ready)
-        self.wire(buffet.ports.wr_ID_valid, wr_scan.ports.ID_out_valid)
+        self.wire(self.buffet.ports.wr_ID, wr_scan.ports.ID_out)
+        self.wire(self.buffet.ports.wr_ID_ready, wr_scan.ports.ID_out_ready)
+        self.wire(self.buffet.ports.wr_ID_valid, wr_scan.ports.ID_out_valid)
 
-        self.wire(buffet.ports.wr_addr, wr_scan.ports.addr_out)
-        self.wire(buffet.ports.wr_addr_ready, wr_scan.ports.addr_out_ready)
-        self.wire(buffet.ports.wr_addr_valid, wr_scan.ports.addr_out_valid)
+        self.wire(self.buffet.ports.wr_addr, wr_scan.ports.addr_out)
+        self.wire(self.buffet.ports.wr_addr_ready, wr_scan.ports.addr_out_ready)
+        self.wire(self.buffet.ports.wr_addr_valid, wr_scan.ports.addr_out_valid)
 
-        self.wire(buffet.ports.wr_data, wr_scan.ports.data_out)
-        self.wire(buffet.ports.wr_data_ready, wr_scan.ports.data_out_ready)
-        self.wire(buffet.ports.wr_data_valid, wr_scan.ports.data_out_valid)
+        self.wire(self.buffet.ports.wr_data, wr_scan.ports.data_out)
+        self.wire(self.buffet.ports.wr_data_ready, wr_scan.ports.data_out_ready)
+        self.wire(self.buffet.ports.wr_data_valid, wr_scan.ports.data_out_valid)
 
-        self.wire(buffet.ports.rd_op, rd_scan.ports.op_out)
-        self.wire(buffet.ports.rd_op_ready, rd_scan.ports.op_out_ready)
-        self.wire(buffet.ports.rd_op_valid, rd_scan.ports.op_out_valid)
+        self.wire(self.buffet.ports.rd_op, rd_scan.ports.op_out)
+        self.wire(self.buffet.ports.rd_op_ready, rd_scan.ports.op_out_ready)
+        self.wire(self.buffet.ports.rd_op_valid, rd_scan.ports.op_out_valid)
 
-        self.wire(buffet.ports.rd_addr, rd_scan.ports.addr_out)
-        self.wire(buffet.ports.rd_addr_ready, rd_scan.ports.addr_out_ready)
-        self.wire(buffet.ports.rd_addr_valid, rd_scan.ports.addr_out_valid)
+        self.wire(self.buffet.ports.rd_addr, rd_scan.ports.addr_out)
+        self.wire(self.buffet.ports.rd_addr_ready, rd_scan.ports.addr_out_ready)
+        self.wire(self.buffet.ports.rd_addr_valid, rd_scan.ports.addr_out_valid)
 
-        self.wire(buffet.ports.rd_ID, rd_scan.ports.ID_out)
-        self.wire(buffet.ports.rd_ID_ready, rd_scan.ports.ID_out_ready)
-        self.wire(buffet.ports.rd_ID_valid, rd_scan.ports.ID_out_valid)
+        self.wire(self.buffet.ports.rd_ID, rd_scan.ports.ID_out)
+        self.wire(self.buffet.ports.rd_ID_ready, rd_scan.ports.ID_out_ready)
+        self.wire(self.buffet.ports.rd_ID_valid, rd_scan.ports.ID_out_valid)
 
-        self.wire(buffet.ports.rd_rsp_data, rd_scan.ports.rd_rsp_data_in)
-        self.wire(buffet.ports.rd_rsp_data_ready, rd_scan.ports.rd_rsp_data_in_ready)
-        self.wire(buffet.ports.rd_rsp_data_valid, rd_scan.ports.rd_rsp_data_in_valid)
+        self.wire(self.buffet.ports.rd_rsp_data, rd_scan.ports.rd_rsp_data_in)
+        self.wire(self.buffet.ports.rd_rsp_data_ready, rd_scan.ports.rd_rsp_data_in_ready)
+        self.wire(self.buffet.ports.rd_rsp_data_valid, rd_scan.ports.rd_rsp_data_in_valid)
 
         self.wire(self._wr_scan_data_in, wr_scan.ports.data_in)
         self.wire(self._wr_scan_data_in_ready, wr_scan.ports.data_in_ready)
@@ -171,7 +171,7 @@ class FiberAccess(MemoryController):
         '''
         Use this method to indicate what memory ports this controller has
         '''
-        return [[None]]
+        return self.buffet.get_memory_ports()
 
     def get_config_mode_str(self):
         return "fiber_access"

@@ -157,15 +157,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Also, while we are here we can set the min depth of all the deferred fifos
         # and then generate them
         for i, ctrl in enumerate(self.controllers):
+            # First get the main/shared fifos, minimize their depth and gen them
             ctrl_fifos = ctrl.get_fifos()
             for ctrl_fifo in ctrl_fifos:
                 ctrl_fifo.set_min_depth()
                 ctrl_fifo.generate_hardware()
+            # Clean up the remaining/ungenned fifos and gen them
             alt_fifos = ctrl.get_other_fifos()
             for alt_fifo in alt_fifos:
                 alt_fifo.generate_hardware()
             self.fifo_map[ctrl.name] = ctrl.get_fifos()
-            print(self.fifo_map)
             self.ctrl_to_mode[ctrl.name] = i
 
         self.resolve_memports()
@@ -203,8 +204,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # Now get the port request - controllers should only request ports
             # based on knowledge of the memory system
             memport_req = mem_ctrl.get_memory_ports()
-            print("MEMORY PORTS")
-            print(memport_req[0][0])
             # For each bank and port, the controller will either include its own port interface or None
             for bank in range(len(memport_req)):
                 for port in range(len(memport_req[0])):
@@ -221,7 +220,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Go through controllers
         for mem_ctrl in self.controllers_flat:
             ctrl_ins = mem_ctrl.get_inputs()
-            print(f"inputs: {ctrl_ins}")
+            # print(f"inputs: {ctrl_ins}")
             ctrl_outs = mem_ctrl.get_outputs()
             # Do a pass to block the ready/valids associated with a port
             # All ready/valid ports will be width 1 - there's probably a better way to do this
@@ -413,23 +412,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         # First iterate through all controllers and lift their config to the top
         for flat_name, flat_ctrl in self.controllers_flat_dict.items():
-            # print(flat_name)
             flat_ctrl_int_gen = flat_ctrl.internal_generator
             ports_bef = flat_ctrl_int_gen.get_port_names()
             lift_config_reg(flat_ctrl_int_gen, stop_at_gen=True, flatten=True)
             ports_aft = flat_ctrl_int_gen.get_port_names()
-            # print(ports_bef)
-            # print(ports_aft)
-
             # Now get all the config regs
             # lift_config_reg(flat_ctrl.internal_generator, stop_at_gen=True)
             cfg_flat_ctrl = extract_top_config(flat_ctrl, verbose=False)
             for cfg in cfg_flat_ctrl:
                 name, size, width, _ = cfg
-                # print(name)
-                # print(size)
-                # print(width)
-                # print(_)
                 # Everything should be flattened down at this point
                 # assert len(size) == 1 and size[0] == 1
                 assert len(size) == 1
@@ -440,7 +431,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         new_name = f"{name}_{idx_}"
                     else:
                         new_name = name
-                # print(width)
                     if flat_name not in self.config_sizes.keys():
                         tmp_list = []
                         tmp_list.append(new_name)
@@ -470,22 +460,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for name, size_struct in self.config_sizes.items():
             # Now wire the chillin
             size, sig_list = size_struct
-            # print(size)
-            # print(sig_list)
             flat_gen = self.controllers_flat_dict[name]
             # flat_ports = flat_gen.internal_generator.get_port()
             catted_child_signals = []
-            # print(sig_list)
             for sig in sig_list:
                 # Handle the fact that some port might come back as None
                 sig_port = flat_gen.internal_generator.get_port(sig)
-                # print(sig_port)
                 if sig_port is None:
                     chopped = sig.rfind('_')
                     port_idx = int(sig[chopped + 1:])
                     base_port = sig[:chopped]
-                    # print(port_idx)
-                    # print(base_port)
                     sig_port = flat_gen.internal_generator.get_port(base_port)[port_idx]
                     # It is flattened
                     catted_child_signals.append(sig_port)
@@ -500,9 +484,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # Reversed since concat puts MSBs on the left
             for sig in reversed(catted_child_signals):
                 sig_w_ = sig.width
-                # print("NAME")
-                # print(sig.name)
-                # print(sig)
                 self.config_mapping[cfg_mapping_name][sig.name] = (running_width + sig_w_ - 1, running_width)
                 running_width += sig_w_
             kts_catted = kts.concat(*catted_child_signals)
@@ -526,8 +507,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             idx += 1
             curr_size += cs_
             self.num_chopped_cfg += 1
-
-        print(self.config_mapping)
 
     def get_config_mapping(self):
         return self.config_mapping
@@ -1031,16 +1010,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         tmp_cfg_space = [0 for i in range(self.num_chopped_cfg)]
 
         for (ctrl, conf_for_ctrl) in ctrl_config.items():
-            print(ctrl)
-            print(conf_for_ctrl)
             # Go through each config and prepend the string
             prepend_string = f"mem_ctrl_{ctrl}_flat_{ctrl}_inst_"
             for cfg_reg, val in conf_for_ctrl:
-                print(cfg_reg)
-                print(val)
                 val_int = int(val)
                 mapping_index = self.config_mapping[ctrl][f"{ctrl}_inst_{cfg_reg}"]
-                print(mapping_index)
+                # print(mapping_index)
                 map_hi, map_lo = mapping_index
                 assert map_hi - map_lo <= 15, f"Failed beacuse reg wider than 16 bits"
                 chunk_hi = map_hi // self.allowed_reg_size
