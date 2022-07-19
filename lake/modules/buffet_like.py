@@ -39,6 +39,8 @@ class BuffetLike(MemoryController):
 
         self.total_sets = 0
 
+        self.base_ports = [[None]]
+
         # inputs
         self._clk = self.clock("clk")
         self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
@@ -144,26 +146,65 @@ class BuffetLike(MemoryController):
 
         if self.local_memory is False:
             # Need interface to remote memory...
-            self._addr_to_mem = self.output("addr_to_mem", self.data_width, packed=True, explicit_array=True)
-            self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            # self._addr_to_mem = self.output("addr_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-            self._data_to_mem = self.output("data_to_mem", self.data_width, packed=True, explicit_array=True)
-            self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            # self._data_to_mem = self.output("data_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-            self._wen_to_mem = self.output("wen_to_mem", 1)
-            self._wen_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+            # self._wen_to_mem = self.output("wen_to_mem", 1)
+            # self._wen_to_mem.add_attribute(ControlSignalAttr(is_control=False))
 
-            self._ren_to_mem = self.output("ren_to_mem", 1)
-            self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+            # self._ren_to_mem = self.output("ren_to_mem", 1)
+            # self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
 
-            self._data_from_mem = self.input("data_from_mem", self.data_width, packed=True, explicit_array=True)
-            self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            # self._data_from_mem = self.input("data_from_mem", self.data_width, packed=True, explicit_array=True)
+            # self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-            self._valid_from_mem = self.input("valid_from_mem", 1)
-            self._valid_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+            # self._valid_from_mem = self.input("valid_from_mem", 1)
+            # self._valid_from_mem.add_attribute(ControlSignalAttr(is_control=True))
 
-            self._ready_from_mem = self.input("ready_from_mem", 1)
-            self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+            # self._ready_from_mem = self.input("ready_from_mem", 1)
+            # self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+
+            # Otherwise stamp it out here...
+            self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._addr_to_mem = self.var("addr_to_mem", self.data_width, explicit_array=True)
+
+            self._data_to_mem = self.var("data_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._data_to_mem = self.var("data_to_mem", self.data_width, explicit_array=True)
+
+            self._wen_to_mem = self.var("wen_to_mem", 1)
+
+            self._ren_to_mem = self.var("ren_to_mem", 1)
+
+            self._data_from_mem = self.var("data_from_mem", self.data_width, packed=True, explicit_array=True)
+
+            self._valid_from_mem = self.var("valid_from_mem", 1)
+
+            self._ready_from_mem = self.var("ready_from_mem", 1)
+
+            self.strg_ram_local = StrgRAM(data_width=self.data_width, memory_depth=self.mem_depth)
+
+            self.add_child("memory_ctrl",
+                           # Buffet interface
+                           self.strg_ram_local,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           wen=self._wen_to_mem,
+                           ren=self._ren_to_mem,
+                           data_in=self._data_to_mem,
+                           wr_addr_in=self._addr_to_mem,
+                           rd_addr_in=self._addr_to_mem,
+                           data_out=self._data_from_mem,
+                           valid_out=self._valid_from_mem,
+                           ready=self._ready_from_mem)
+
+            # Get the memory port interface
+            mem_ctrl_port_interface = self.strg_ram_local.get_memory_ports()
+            # mem_ctrl_port_interface = mem_ctrl_port_interface[0][0].get_port_interface()
+            self.base_ports = mem_ctrl_port_interface
+
         else:
             # Otherwise stamp it out here...
             self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
@@ -673,7 +714,7 @@ class BuffetLike(MemoryController):
         '''
         Use this method to indicate what memory ports this controller has
         '''
-        return [[None]]
+        return self.base_ports
 
     def get_config_mode_str(self):
         return "buffet"

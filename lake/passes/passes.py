@@ -5,6 +5,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.sram_port_attr import SRAMPortAttr
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 import _kratos
+# from _kratos import PortDirection
 
 
 # this is a pass
@@ -53,9 +54,18 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                         if stop_at_gen and child_gen == generator:
                             break
                         # create a port based on the target's definition
-                        new_name = child_gen.instance_name + "_" + child_port.name
-                        p = parent_gen.port(child_port, new_name, False)
-                        parent_gen.wire(child_port, p)
+                        if flatten and child_port.size[0] > 1:
+                            p = []
+                            for idx_ in range(child_port.size[0]):
+                                new_name = child_gen.instance_name + "_" + child_port.name + f"_{idx_}"
+                                # p.append(parent_gen.port(child_port[idx_], new_name, False))
+                                newp_ = parent_gen.port(_kratos.PortDirection.In, new_name, child_port[idx_].width)
+                                p.append(newp_)
+                                parent_gen.wire(child_port[idx_], newp_)
+                        else:
+                            new_name = child_gen.instance_name + "_" + child_port.name
+                            p = parent_gen.port(child_port, new_name, False)
+                            parent_gen.wire(child_port, p)
 
                         # Now we can check if any other signals in the parent generator
                         # are observing this signal
@@ -72,7 +82,11 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                     if top_lvl_cfg is False:
                         child_port_cra = ConfigRegAttr()
                         child_port_cra.set_documentation(doc)
-                        child_port.add_attribute(child_port_cra)
+                        if flatten and type(child_port) is list:
+                            for cp_ in child_port:
+                                cp_.add_attribute(child_port_cra)
+                        else:
+                            child_port.add_attribute(child_port_cra)
                         if annotation_attr:
                             ann_att = annotation_attr[0]
                             annot_type = ann_att.get_formal_ann()

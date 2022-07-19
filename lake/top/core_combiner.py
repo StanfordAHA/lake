@@ -1,6 +1,7 @@
 from lake.attributes.formal_attr import *
 import json
 from kratos import *
+from lake.modules.buffet_like import BuffetLike
 from lake.modules.passthru import *
 from lake.modules.strg_ub_vec import StrgUBVec
 from lake.modules.strg_ub_thin import StrgUBThin
@@ -322,9 +323,14 @@ if __name__ == "__main__":
                       fifo_depth=8)
 
     fib_access = FiberAccess(data_width=data_width)
+
+    strg_ub = StrgUBVec(data_width=data_width, mem_width=mem_width, mem_depth=mem_depth)
+    buffet = BuffetLike(data_width=data_width, mem_depth=mem_depth, local_memory=False)
     # controllers.append(scan)
     # controllers.append(isect)
     controllers.append(fib_access)
+    # controllers.append(strg_ub)
+    # controllers.append(buffet)
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,

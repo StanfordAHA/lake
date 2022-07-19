@@ -70,10 +70,18 @@ class StrgUBVec(MemoryController):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._data_in = self.input("data_in", self.data_width,
+        self._data_in = self.input("data_in", self.data_width + 1,
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
+
+        self._data_in_thin = self.var("data_in_thin", self.data_width,
+                                      size=self.interconnect_input_ports,
+                                      packed=True,
+                                      explicit_array=True)
+
+        for idx in range(self.interconnect_input_ports):
+            self.wire(self._data_in_thin[idx], self._data_in[idx][self.data_width - 1, 0])
 
         self._data_from_sram = self.input("data_from_strg", self.data_width,
                                           size=self.fetch_width,
@@ -95,7 +103,7 @@ class StrgUBVec(MemoryController):
 
         self._valid_out = self.output("accessor_output", self.interconnect_output_ports)
         self._valid_out_int = self.var("accessor_output_int", self.interconnect_output_ports)
-        self._data_out = self.output("data_out", self.data_width,
+        self._data_out = self.output("data_out", self.data_width + 1,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
@@ -104,6 +112,15 @@ class StrgUBVec(MemoryController):
                                       size=self.interconnect_output_ports,
                                       packed=True,
                                       explicit_array=True)
+
+        self._data_out_thin = self.var("data_out_int_thin", self.data_width,
+                                       size=self.interconnect_output_ports,
+                                       packed=True,
+                                       explicit_array=True)
+
+        for idx in range(self.interconnect_output_ports):
+            self.wire(self._data_out[idx][self.data_width - 1, 0], self._data_out_thin[idx])
+            self.wire(self._data_out[idx][self.data_width], kts.const(0, 1))
 
         ##################################################################################
         # CYCLE COUNTER
@@ -187,7 +204,7 @@ class StrgUBVec(MemoryController):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
-                       data_in=self._data_in)
+                       data_in=self._data_in_thin)
 
         self.add_child("agg_sram_shared",
                        agg_sram_shared,
@@ -297,19 +314,28 @@ class StrgUBVec(MemoryController):
 
         # Add chaining in here... since we only use in the UB case...
         self._chain_data_in = self.input("chain_data_in",
-                                         self.data_width,
+                                         self.data_width + 1,
                                          size=self.interconnect_output_ports,
                                          packed=True,
                                          explicit_array=True)
+
+        self._chain_data_in_thin = self.var("chain_data_in_thin",
+                                            self.data_width,
+                                            size=self.interconnect_output_ports,
+                                            packed=True,
+                                            explicit_array=True)
+
+        for idx in range(self.interconnect_input_ports):
+            self.wire(self._chain_data_in_thin[idx], self._chain_data_in[idx][self.data_width - 1, 0])
 
         chaining = ChainAccessor(data_width=self.data_width,
                                  interconnect_output_ports=self.interconnect_output_ports)
 
         self.add_child(f"chain", chaining,
                        curr_tile_data_out=self._data_out_int,
-                       chain_data_in=self._chain_data_in,
+                       chain_data_in=self._chain_data_in_thin,
                        accessor_output=self._valid_out_int,
-                       data_out_tile=self._data_out)
+                       data_out_tile=self._data_out_thin)
 
         self.wire(self._valid_out, self._valid_out_int)
 

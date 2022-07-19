@@ -73,6 +73,8 @@ class MemoryPort():
         this helps filter them out during collection passes
         '''
         for (name, signal) in self.port_interface.items():
+            # print("ANNOTATING")
+            # print(signal)
             if signal is not None:
                 signal.add_attribute(MemoryPortExclusionAttr())
                 if isinstance(signal, _kratos.VarSlice):

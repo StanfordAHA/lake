@@ -203,6 +203,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # Now get the port request - controllers should only request ports
             # based on knowledge of the memory system
             memport_req = mem_ctrl.get_memory_ports()
+            print("MEMORY PORTS")
+            print(memport_req[0][0])
             # For each bank and port, the controller will either include its own port interface or None
             for bank in range(len(memport_req)):
                 for port in range(len(memport_req[0])):
@@ -219,6 +221,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Go through controllers
         for mem_ctrl in self.controllers_flat:
             ctrl_ins = mem_ctrl.get_inputs()
+            print(f"inputs: {ctrl_ins}")
             ctrl_outs = mem_ctrl.get_outputs()
             # Do a pass to block the ready/valids associated with a port
             # All ready/valid ports will be width 1 - there's probably a better way to do this
@@ -472,15 +475,17 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             flat_gen = self.controllers_flat_dict[name]
             # flat_ports = flat_gen.internal_generator.get_port()
             catted_child_signals = []
+            # print(sig_list)
             for sig in sig_list:
                 # Handle the fact that some port might come back as None
                 sig_port = flat_gen.internal_generator.get_port(sig)
+                # print(sig_port)
                 if sig_port is None:
                     chopped = sig.rfind('_')
                     port_idx = int(sig[chopped + 1:])
                     base_port = sig[:chopped]
-                    print(port_idx)
-                    print(base_port)
+                    # print(port_idx)
+                    # print(base_port)
                     sig_port = flat_gen.internal_generator.get_port(base_port)[port_idx]
                     # It is flattened
                     catted_child_signals.append(sig_port)
@@ -495,6 +500,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # Reversed since concat puts MSBs on the left
             for sig in reversed(catted_child_signals):
                 sig_w_ = sig.width
+                # print("NAME")
+                # print(sig.name)
+                # print(sig)
                 self.config_mapping[cfg_mapping_name][sig.name] = (running_width + sig_w_ - 1, running_width)
                 running_width += sig_w_
             kts_catted = kts.concat(*catted_child_signals)

@@ -32,6 +32,8 @@ class MemoryController(kts.Generator):
                 continue
             if port_dir == PortDirection.Out:
                 continue
+            # print("GET INPUTS")
+            # print(curr_port)
             ins.append((curr_port, curr_port.width))
         return ins
 
@@ -134,7 +136,7 @@ class MemoryController(kts.Generator):
 
         for valid_in in valids_in:
             sinks = valid_in.sinks
-            print(sinks)
+            # print(sinks)
             # Only use direct connections...
             if len(sinks) > 1:
                 continue
@@ -224,14 +226,9 @@ class MemoryController(kts.Generator):
                         pass
                     use_gen = atg
 
-        # for child in children:
-        #     actual_child = self[child]
-        #     print(type(actual_child))
-        #     self.__fifo_list.append(actual_child)
-        for fifo in self.__fifo_list:
-            print(fifo.instance_name)
-            print(fifo.internal_generator.parent_generator().instance_name)
-        print(self.__fifo_list)
+        # for fifo in self.__fifo_list:
+            # print(fifo.instance_name)
+            # print(fifo.internal_generator.parent_generator().instance_name)
         return self.__fifo_list
 
     def __str__(self):
@@ -372,22 +369,31 @@ class MemoryControllerFlatWrapper(MemoryController):
         # These interfaces should match directly...
         for (name, sig) in mem_prt.get_port_interface().items():
             # These should all comply anyway, so just need to recreate them
-            try:
-                if sig is None:
-                    continue
-                # Check if slice and lift the parent
-                if isinstance(sig, _kratos.VarSlice):
-                    sig = sig.parent_var
-                # if self.internal_generator.has_port(f"{sig}_lifted"):
-                #     continue
-                lifted_port = self.port_from_def(sig, name=f"{sig}_lifted")
-                new_mem_prt_intf[name] = lifted_port
-                self.wire(lifted_port, sig)
-                for attr in sig.attributes:
-                    lifted_port.add_attribute(attr)
-            except kts.VarException:
-                print("Port already exists...copying into MemoryPort")
-                new_mem_prt_intf['read_addr'] = new_mem_prt_intf['write_addr']
+            # try:
+            if sig is None:
+                continue
+            # Check if slice and lift the parent
+            if isinstance(sig, _kratos.VarSlice):
+                sig = sig.parent_var
+            # if self.internal_generator.has_port(f"{sig}_lifted"):
+            #     continue
+            # print("LIFTING")
+            # print(sig)
+            # print(self.instance_name)
+            # print(sig.generator.parent_generator().instance_name)
+            # Lift the port up directly...
+            # if sig.generator.parent_generator() != self.internal_generator:
+
+            lifted_port = self.port_from_def(sig, name=f"{sig}_lifted")
+            # print("LIFTED PORT")
+            new_mem_prt_intf[name] = lifted_port
+            self.wire(lifted_port, sig)
+            # print("COMPLETED WIRING")
+            for attr in sig.attributes:
+                lifted_port.add_attribute(attr)
+            # except kts.VarException:
+                # print("Port already exists...copying into MemoryPort")
+                # new_mem_prt_intf['read_addr'] = new_mem_prt_intf['write_addr']
         return new_mem_prt
 
     def handle_duplicate_address(self):
