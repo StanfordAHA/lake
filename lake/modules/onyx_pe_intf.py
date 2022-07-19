@@ -45,8 +45,6 @@ class OnyxPEInterface(kts.Generator):
         self._O1 = self.output("O1", 1)
         # self._O2 = self.output("O2", 2 * self.data_width)
 
-        lift_config_reg(self.internal_generator)
-
         self.external = True
 
 

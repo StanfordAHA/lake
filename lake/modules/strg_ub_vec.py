@@ -34,7 +34,8 @@ class StrgUBVec(MemoryController):
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
                  tb_height=2,
-                 agg_data_top=False):
+                 agg_data_top=False,
+                 dummy_ready_valid=False):
 
         super().__init__("strg_ub_vec")
 

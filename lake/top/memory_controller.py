@@ -175,6 +175,8 @@ class MemoryController(kts.Generator):
         valids_in = [self.get_port(port) for port in self_ports if "_valid" in port and "In" in str(self.get_port(port).port_direction)]
         valids_out = [self.get_port(port) for port in self_ports if "_valid" in port and "Out" in str(self.get_port(port).port_direction)]
 
+        max_tries = 1000
+
         for valid_in in valids_in:
             sinks = valid_in.sinks
             # Only use direct connections...
@@ -184,10 +186,15 @@ class MemoryController(kts.Generator):
             use_gen = self
 
             atg = self
+            tries = 0
 
             for actual_sink in sinks:
                 pass
             while hit_fifo is False:
+
+                if tries == max_tries:
+                    break
+
                 assigned_to = actual_sink.left
                 assigned_to_gen = assigned_to.generator
                 if assigned_to_gen.instance_name != use_gen.instance_name:
@@ -210,6 +217,8 @@ class MemoryController(kts.Generator):
                     for actual_sink in assigned_to.sinks:
                         pass
                     use_gen = atg
+
+                tries += 1
 
                 # Now we have the generator,
 
@@ -258,11 +267,12 @@ class MemoryControllerFlatWrapper(MemoryController):
     This class exists to take in a memory controller and flatten any
     inputs and outputs, while preserving config registers and memory ports
     '''
-    def __init__(self, mem_ctrl: MemoryController, legal_list=[1, 16]):
+    def __init__(self, mem_ctrl: MemoryController, legal_list=[1, 16], add_rv=True):
         super().__init__(f"{str(mem_ctrl)}_flat", debug=True)
         self.mem_ctrl = mem_ctrl
         self.add_child(f"{mem_ctrl}_inst", mem_ctrl)
         self.legal_widths = legal_list
+        self.add_rv = add_rv
         # Sort the legal widths in descending order...
         self.legal_widths.sort(reverse=True)
         self.lift_ports()
@@ -371,8 +381,10 @@ class MemoryControllerFlatWrapper(MemoryController):
 
     def flatten_inputs(self):
         child_ins = self.mem_ctrl.get_inputs()
+        print(child_ins)
         for (inp, width) in child_ins:
             self.flatten_port(inp, in_outn=True, name=inp.name)
+        print(self.get_inputs())
 
     def flatten_outputs(self):
         child_outs = self.mem_ctrl.get_outputs()

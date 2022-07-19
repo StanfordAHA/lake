@@ -18,7 +18,7 @@ class PE(MemoryController):
                  data_width=16,
                  fifo_depth=8):
 
-        super().__init__("PE", debug=True)
+        super().__init__("PE_fake", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
