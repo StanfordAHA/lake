@@ -653,8 +653,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for (i, signal_dict) in enumerate(signal_dicts):
                 if input_width != 1:
                     new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
+                    og_new_input = new_input
                 else:
                     new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width)
+                    og_new_input = new_input
                 isctrl = input_width == 1
                 new_input.add_attribute(ControlSignalAttr(isctrl))
                 # Now to determine if the port is rv/dense
@@ -665,8 +667,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     # Now create the ready/valid pair and deal with it
                     new_input_valid = self.input(f'input_width_{input_width}_num_{i}_valid', width=1)
                     new_input_valid.add_attribute(ControlSignalAttr(True))
+                    og_new_input_valid = new_input_valid
+
                     new_input_ready = self.output(f'input_width_{input_width}_num_{i}_ready', width=1)
                     new_input_ready.add_attribute(ControlSignalAttr(False))
+                    og_new_input_ready = new_input_ready
 
                     # Add in the fifo if there are any fifos on this path
                     new_reg_fifo = RegFIFO(data_width=input_width,
@@ -681,20 +686,37 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                    push=new_input_valid,
                                    data_in=new_input)
 
-                    self.wire(new_input_ready, ~new_reg_fifo.ports.full)
+                    # self.wire(new_input_ready, ~new_reg_fifo.ports.full)
 
                     # Alias the new input across the fifo boundary
                     if input_width != 1:
-                        new_input = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width, explicit_array=True, packed=True)
+                        new_input_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width, explicit_array=True, packed=True)
                     else:
-                        new_input = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width)
+                        new_input_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width)
 
-                    new_input_valid = self.var(f'input_width_{input_width}_num_{i}_fifo_out_valid', width=1)
-                    new_input_ready = self.var(f'input_width_{input_width}_num_{i}_fifo_out_ready', width=1)
+                    new_input_valid_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out_valid', width=1)
+                    new_input_ready_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out_ready', width=1)
 
-                    self.wire(new_input, new_reg_fifo.ports.data_out)
-                    self.wire(new_input_valid, ~new_reg_fifo.ports.empty)
-                    self.wire(new_reg_fifo.ports.pop, new_input_ready)
+                    self.wire(new_input_fifo, new_reg_fifo.ports.data_out)
+                    self.wire(new_input_valid_fifo, ~new_reg_fifo.ports.empty)
+                    self.wire(new_reg_fifo.ports.pop, new_input_ready_fifo)
+
+                    tmp_bypass_mux_sel = self.input(f'input_width_{input_width}_num_{i}_dense', 1)
+                    tmp_bypass_mux_sel.add_attribute(ConfigRegAttr(f"Choose for input_width_{input_width}_num_{i}_dense to bypass input fifo"))
+
+                    # Then add a bypass mux for those signals that choose to bypass the fifo
+                    if input_width != 1:
+                        new_input = self.var(f'input_width_{input_width}_num_{i}_bypass', width=input_width, explicit_array=True, packed=True)
+                    else:
+                        new_input = self.var(f'input_width_{input_width}_num_{i}_bypass', width=input_width)
+
+                    new_input_valid = self.var(f'input_width_{input_width}_num_{i}_bypass_valid', width=1)
+                    new_input_ready = self.var(f'input_width_{input_width}_num_{i}_bypass_ready', width=1)
+
+                    self.wire(new_input, kts.ternary(tmp_bypass_mux_sel, og_new_input, new_input_fifo))
+                    self.wire(new_input_valid, kts.ternary(tmp_bypass_mux_sel, og_new_input_valid, new_input_valid_fifo))
+                    self.wire(new_input_ready_fifo, new_input_ready)
+                    self.wire(og_new_input_ready, kts.ternary(tmp_bypass_mux_sel, new_input_ready, ~new_reg_fifo.ports.full))
 
                 # Need a mux to output the ready
                 mux_size = len(signal_dict.keys())
@@ -775,8 +797,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for (i, signal_dict) in enumerate(signal_dicts):
                 if output_width != 1:
                     new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width, explicit_array=True, packed=True)
+                    og_new_output = new_output
                 else:
                     new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width)
+                    og_new_output = new_output
                 new_output.add_attribute(ControlSignalAttr(False))
 
                 signal_names = signal_dict.values()
@@ -785,8 +809,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     # Now create the ready/valid pair and deal with it
                     new_output_valid = self.output(f'output_width_{output_width}_num_{i}_valid', width=1)
                     new_output_valid.add_attribute(ControlSignalAttr(False))
+                    og_new_output_valid = new_output_valid
+
                     new_output_ready = self.input(f'output_width_{output_width}_num_{i}_ready', width=1)
                     new_output_ready.add_attribute(ControlSignalAttr(True))
+                    og_new_output_ready = new_output_ready
 
                     # Add in the fifo if there are any fifos on this path
                     new_reg_fifo = RegFIFO(data_width=output_width,
@@ -798,23 +825,42 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                    clk=self._gclk,
                                    rst_n=self._rst_n,
                                    #    clk_en=kts.const(1, 1),
-                                   pop=new_output_ready,
-                                   data_out=new_output)
+                                   pop=og_new_output_ready)
 
-                    self.wire(new_output_valid, ~new_reg_fifo.ports.empty)
+                    # self.wire(new_output_valid, ~new_reg_fifo.ports.empty)
 
                     # Alias the new output across the fifo boundary
                     if output_width != 1:
-                        new_output = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width, explicit_array=True, packed=True)
+                        new_output_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width, explicit_array=True, packed=True)
                     else:
-                        new_output = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width)
+                        new_output_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width)
 
-                    new_output_valid = self.var(f'output_width_{output_width}_num_{i}_fifo_in_valid', width=1)
-                    new_output_ready = self.var(f'output_width_{output_width}_num_{i}_fifo_in_ready', width=1)
+                    new_output_valid_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in_valid', width=1)
+                    new_output_ready_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in_ready', width=1)
 
-                    self.wire(new_output, new_reg_fifo.ports.data_in)
-                    self.wire(new_output_ready, ~new_reg_fifo.ports.full)
-                    self.wire(new_output_valid, new_reg_fifo.ports.push)
+                    self.wire(new_output_fifo, new_reg_fifo.ports.data_in)
+                    self.wire(new_output_ready_fifo, ~new_reg_fifo.ports.full)
+                    self.wire(new_output_valid_fifo, new_reg_fifo.ports.push)
+
+                    tmp_bypass_mux_sel = self.input(f'output_width_{output_width}_num_{i}_dense', 1)
+                    tmp_bypass_mux_sel.add_attribute(ConfigRegAttr(f"Choose for output_width_{output_width}_num_{i}_dense to bypass input fifo"))
+
+                    # Then add a bypass mux for those signals that choose to bypass the fifo
+                    if output_width != 1:
+                        new_output = self.var(f'output_width_{output_width}_num_{i}_bypass', width=output_width, explicit_array=True, packed=True)
+                    else:
+                        new_output = self.var(f'output_width_{output_width}_num_{i}_bypass', width=output_width)
+
+                    new_output_valid = self.var(f'output_width_{output_width}_num_{i}_bypass_valid', width=1)
+                    new_output_ready = self.var(f'output_width_{output_width}_num_{i}_bypass_ready', width=1)
+
+                    self.wire(new_output_fifo, new_output)
+                    self.wire(new_output_valid_fifo, new_output_valid)
+
+                    self.wire(og_new_output, kts.ternary(tmp_bypass_mux_sel, new_output, new_reg_fifo.ports.data_out))
+                    self.wire(og_new_output_valid, kts.ternary(tmp_bypass_mux_sel, new_output_valid, ~new_reg_fifo.ports.empty))
+                    self.wire(new_output_ready, kts.ternary(tmp_bypass_mux_sel, og_new_output_ready, new_output_ready_fifo))
+                    # self.wire(og_new_input_ready, kts.ternary(tmp_bypass_mux_sel, new_input_ready, ~new_reg_fifo.ports.full))
 
                 # We need to choose which output is hooked up based on the mode...
                 mux_size = len(signal_dict.keys())

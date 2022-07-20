@@ -328,9 +328,9 @@ if __name__ == "__main__":
 
     strg_ub = StrgUBVec(data_width=data_width, mem_width=mem_width, mem_depth=mem_depth)
     buffet = BuffetLike(data_width=data_width, mem_depth=mem_depth, local_memory=False)
-    # controllers.append(scan)
+    controllers.append(scan)
     # controllers.append(isect)
-    controllers.append(fib_access)
+    # controllers.append(fib_access)
     controllers.append(strg_ub)
     # controllers.append(buffet)
 
