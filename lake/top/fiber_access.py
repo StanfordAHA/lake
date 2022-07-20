@@ -13,7 +13,8 @@ class FiberAccess(MemoryController):
 
     def __init__(self, data_width=16,
                  local_memory=True,
-                 tech_map=GF_Tech_Map(depth=512, width=32)):
+                 tech_map=GF_Tech_Map(depth=512, width=32),
+                 defer_fifos=True):
         super().__init__(f'fiber_access_{data_width}', debug=True)
 
         self.data_width = data_width
@@ -21,6 +22,7 @@ class FiberAccess(MemoryController):
         self.add_flush = True
         self.local_memory = local_memory
         self.tech_map = tech_map
+        self.defer_fifos = defer_fifos
 
         # inputs
         self._clk = self.clock("clk")
@@ -72,11 +74,14 @@ class FiberAccess(MemoryController):
 
         self.buffet = BuffetLike(data_width=self.data_width, num_ID=2, mem_depth=512,
                                  local_memory=self.local_memory,
-                                 tech_map=self.tech_map)
+                                 tech_map=self.tech_map,
+                                 defer_fifos=self.defer_fifos)
 
-        wr_scan = WriteScanner(data_width=self.data_width)
+        wr_scan = WriteScanner(data_width=self.data_width,
+                               defer_fifos=self.defer_fifos)
 
-        rd_scan = Scanner(data_width=self.data_width)
+        rd_scan = Scanner(data_width=self.data_width,
+                          defer_fifos=self.defer_fifos)
 
         self.add_child('buffet_like',
                        self.buffet,

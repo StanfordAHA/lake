@@ -9,9 +9,14 @@ from lake.modules.reg_fifo import RegFIFO
 
 class OnyxPEInterface(kts.Generator):
     def __init__(self,
-                 data_width=16):
+                 data_width=16,
+                 name_prefix=None):
 
-        super().__init__("PE", debug=True)
+        base_name = "PE"
+        if name_prefix is not None:
+            base_name = f"{name_prefix}{base_name}"
+
+        super().__init__(base_name, debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True

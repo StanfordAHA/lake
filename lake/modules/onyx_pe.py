@@ -19,7 +19,8 @@ class OnyxPE(MemoryController):
     def __init__(self,
                  data_width=16,
                  fifo_depth=8,
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 ext_pe_prefix="PG_"):
 
         super().__init__("PE_onyx", debug=True)
 
@@ -28,6 +29,7 @@ class OnyxPE(MemoryController):
         self.add_flush = True
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
+        self.ext_pe_prefix = ext_pe_prefix
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -242,7 +244,8 @@ class OnyxPE(MemoryController):
         # self._op = self.input("op", 1)
         # self._op.add_attribute(ConfigRegAttr("Operation"))
 
-        my_alu = OnyxPEInterface(data_width=self.data_width)
+        my_alu = OnyxPEInterface(data_width=self.data_width,
+                                 name_prefix=self.ext_pe_prefix)
 
         self.add_child(f"onyxpeintf",
                        my_alu,
