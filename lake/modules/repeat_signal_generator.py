@@ -1,5 +1,6 @@
 import kratos as kts
 from kratos import *
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
@@ -16,7 +17,8 @@ class RepeatSignalGenerator(MemoryController):
     def __init__(self,
                  data_width=16,
                  passthru=True,
-                 fifo_depth=8):
+                 fifo_depth=8,
+                 defer_fifos=True):
 
         super().__init__("RepeatSignalGenerator", debug=True)
 
@@ -25,6 +27,7 @@ class RepeatSignalGenerator(MemoryController):
         self.add_flush = True
         self.passthru = passthru
         self.fifo_depth = fifo_depth
+        self.defer_fifos = defer_fifos
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -102,7 +105,8 @@ class RepeatSignalGenerator(MemoryController):
         self._base_fifo_valid = self.var("base_fifo_valid", 1)
 
         self._base_fifo_in = kts.concat(self._base_data_in)
-        self._base_in_fifo = RegFIFO(data_width=self._base_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._base_in_fifo = RegFIFO(data_width=self._base_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._base_in_fifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._base_fifo_out_data = self.var("base_fifo_out_data", self.data_width, packed=True)
         self._base_fifo_out_eos = self.var("base_fifo_out_eos", 1)
 
@@ -131,7 +135,8 @@ class RepeatSignalGenerator(MemoryController):
         self._repsig_fifo_in_eos = self.var("repsig_fifo_in_eos", 1)
 
         self._repsig_fifo_in = kts.concat(self._repsig_fifo_in_eos, self._repsig_fifo_in_data)
-        self._repsig_out_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._repsig_out_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._repsig_out_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"repsig_out_fifo",
                        self._repsig_out_fifo,
@@ -155,7 +160,8 @@ class RepeatSignalGenerator(MemoryController):
             self._passthru_fifo_in_eos = self.var("passthru_fifo_in_eos", 1)
 
             self._passthru_fifo_in = kts.concat(self._passthru_fifo_in_eos, self._passthru_fifo_in_data)
-            self._passthru_out_fifo = RegFIFO(data_width=self._passthru_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+            self._passthru_out_fifo = RegFIFO(data_width=self._passthru_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+            self._passthru_out_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
             self.add_child(f"passthru_out_fifo",
                            self._passthru_out_fifo,

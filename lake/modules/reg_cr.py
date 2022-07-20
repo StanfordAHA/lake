@@ -1,5 +1,6 @@
 import kratos as kts
 from kratos import *
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
@@ -17,7 +18,8 @@ class Reg(MemoryController):
                  data_width=16,
                  add_dispatcher=False,
                  dispatcher_size=2,
-                 fifo_depth=8):
+                 fifo_depth=8,
+                 defer_fifos=True):
 
         super().__init__("reg_cr", debug=True)
 
@@ -25,6 +27,7 @@ class Reg(MemoryController):
         self.add_clk_enable = True
         self.add_flush = True
         self.fifo_depth = fifo_depth
+        self.defer_fifos = defer_fifos
 
         self.add_dispatcher = add_dispatcher
         self.dispatcher_size = dispatcher_size
@@ -88,7 +91,8 @@ class Reg(MemoryController):
 # ==============================
 # INPUT FIFO
 # ==============================
-        self._infifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._infifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._infifo.add_attribute(SharedFifoAttr(direction="IN"))
 
         # Ready is just a function of having room in the FIFO
         self.wire(self._ready_out, ~self._infifo.ports.full)
@@ -135,7 +139,8 @@ class Reg(MemoryController):
 # ==============================
 # OUTPUT FIFO
 # ==============================
-        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         # Convert to packed
         self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1, packed=True)

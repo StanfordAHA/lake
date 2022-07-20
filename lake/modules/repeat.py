@@ -1,5 +1,6 @@
 import kratos as kts
 from kratos import *
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
@@ -15,7 +16,8 @@ from lake.modules.reg_fifo import RegFIFO
 class Repeat(MemoryController):
     def __init__(self,
                  data_width=16,
-                 fifo_depth=8):
+                 fifo_depth=8,
+                 defer_fifos=True):
 
         super().__init__("Repeat", debug=True)
 
@@ -23,6 +25,7 @@ class Repeat(MemoryController):
         self.add_clk_enable = True
         self.add_flush = True
         self.fifo_depth = fifo_depth
+        self.defer_fifos = defer_fifos
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -103,7 +106,8 @@ class Repeat(MemoryController):
         self._repsig_fifo_valid = self.var("repsig_fifo_valid", 1)
 
         self._repsig_fifo_in = kts.concat(self._repsig_data_in)
-        self._repsig_in_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._repsig_in_fifo = RegFIFO(data_width=self._repsig_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._repsig_in_fifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._repsig_fifo_out_data = self.var("repsig_fifo_out_data", self.data_width, packed=True)
         self._repsig_fifo_out_eos = self.var("repsig_fifo_out_eos", 1)
 
@@ -135,7 +139,8 @@ class Repeat(MemoryController):
         self.wire(self._proc_fifo_push, kts.ternary(self._root, self._proc_fifo_inject_push, self._proc_valid_in))
 
         self._proc_fifo_in = kts.ternary(self._root, kts.concat(self._proc_fifo_inject_eos, self._proc_fifo_inject_data), kts.concat(self._proc_data_in))
-        self._proc_in_fifo = RegFIFO(data_width=self._proc_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._proc_in_fifo = RegFIFO(data_width=self._proc_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._proc_in_fifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._proc_fifo_out_data = self.var("proc_fifo_out_data", self.data_width, packed=True)
         self._proc_fifo_out_eos = self.var("proc_fifo_out_eos", 1)
 
@@ -164,7 +169,8 @@ class Repeat(MemoryController):
         self._ref_fifo_in_eos = self.var("ref_fifo_in_eos", 1)
 
         self._ref_fifo_in = kts.concat(self._ref_fifo_in_eos, self._ref_fifo_in_data)
-        self._ref_out_fifo = RegFIFO(data_width=self._ref_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._ref_out_fifo = RegFIFO(data_width=self._ref_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._ref_out_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"ref_out_fifo",
                        self._ref_out_fifo,

@@ -1,5 +1,6 @@
 import kratos as kts
 from kratos import *
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 from lake.modules.alu import ALU
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
@@ -16,7 +17,8 @@ from lake.modules.reg_fifo import RegFIFO
 class PE(MemoryController):
     def __init__(self,
                  data_width=16,
-                 fifo_depth=8):
+                 fifo_depth=8,
+                 defer_fifos=True):
 
         super().__init__("PE_fake", debug=True)
 
@@ -24,6 +26,7 @@ class PE(MemoryController):
         self.add_clk_enable = True
         self.add_flush = True
         self.fifo_depth = fifo_depth
+        self.defer_fifos = defer_fifos
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -91,8 +94,11 @@ class PE(MemoryController):
 # INPUT FIFO
 # ==============================
         self._infifo = []
-        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth))
-        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth))
+        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos))
+        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos))
+
+        self._infifo[0].add_attribute(SharedFifoAttr(direction="IN"))
+        self._infifo[1].add_attribute(SharedFifoAttr(direction="IN"))
 
         # Ready is just a function of having room in the FIFO
         self.wire(self._data_in_ready_out[0], ~self._infifo[0].ports.full)
@@ -147,7 +153,8 @@ class PE(MemoryController):
         self._pe_output = self.var("pe_output", self.data_width)
         self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
 
-        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth)
+        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         # Convert to packed
         self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1, packed=True)

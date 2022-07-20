@@ -11,7 +11,7 @@ class OnyxPEInterface(kts.Generator):
     def __init__(self,
                  data_width=16):
 
-        super().__init__("onyxPEinterface", debug=True)
+        super().__init__("PE", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
@@ -37,9 +37,9 @@ class OnyxPEInterface(kts.Generator):
         self._bit1 = self.input("bit1", 1)
         self._bit2 = self.input("bit2", 1)
 
-        self._config_addr = self.input("config_addr", 8)
-        self._config_data = self.input("config_data", 32)
-        self._config_en = self.input("config_en", 1)
+        # self._config_addr = self.input("config_addr", 8)
+        # self._config_data = self.input("config_data", 32)
+        # self._config_en = self.input("config_en", 1)
 
         self._O0 = self.output("O0", self.data_width)
         self._O1 = self.output("O1", 1)

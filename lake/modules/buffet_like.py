@@ -13,6 +13,7 @@ from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 from lake.modules.strg_RAM import StrgRAM
 from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map
+from lake.attributes.shared_fifo_attr import SharedFifoAttr
 
 
 class BuffetLike(MemoryController):
@@ -23,7 +24,8 @@ class BuffetLike(MemoryController):
                  local_memory=True,
                  physical_mem=False,
                  fifo_depth=8,
-                 tech_map=TSMC_Tech_Map(depth=512, width=32)):
+                 tech_map=TSMC_Tech_Map(depth=512, width=32),
+                 defer_fifos=True):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
@@ -36,6 +38,7 @@ class BuffetLike(MemoryController):
         self.physical_mem = physical_mem
         self.fifo_depth = fifo_depth
         self.tech_map = tech_map
+        self.defer_fifos = defer_fifos
 
         self.total_sets = 0
 
@@ -298,7 +301,8 @@ class BuffetLike(MemoryController):
         self._wr_data_fifo_valid = self.var("wr_data_fifo_valid", 1)
 
         self._wr_data_fifo_in = kts.concat(self._wr_data)
-        self._wr_data_infifo = RegFIFO(data_width=self._wr_data_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._wr_data_infifo = RegFIFO(data_width=self._wr_data_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._wr_data_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._wr_data_fifo_out_data = self.var("wr_data_fifo_out_data", self.data_width, packed=True)
         self._wr_data_fifo_out_op = self.var("wr_data_fifo_out_op", 1)
 
@@ -321,7 +325,8 @@ class BuffetLike(MemoryController):
         self._wr_addr_fifo_valid = self.var("wr_addr_fifo_valid", 1)
 
         self._wr_addr_fifo_in = kts.concat(self._wr_addr[0][self.data_width - 1, 0])
-        self._wr_addr_infifo = RegFIFO(data_width=self._wr_addr_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._wr_addr_infifo = RegFIFO(data_width=self._wr_addr_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._wr_addr_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._wr_addr_fifo_out_data = self.var("wr_addr_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"wr_addr_fifo",
@@ -342,7 +347,8 @@ class BuffetLike(MemoryController):
         self._wr_ID_fifo_valid = self.var("wr_ID_fifo_valid", 1)
 
         self._wr_ID_fifo_in = kts.concat(self._wr_ID[0][self.data_width - 1, 0])
-        self._wr_ID_infifo = RegFIFO(data_width=self._wr_ID_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._wr_ID_infifo = RegFIFO(data_width=self._wr_ID_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._wr_ID_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._wr_ID_fifo_out_data = self.var("wr_ID_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"wr_ID_fifo",
@@ -363,7 +369,8 @@ class BuffetLike(MemoryController):
         self._rd_op_fifo_valid = self.var("rd_op_fifo_valid", 1)
 
         self._rd_op_fifo_in = kts.concat(self._rd_op_op[0][self.data_width - 1, 0])
-        self._rd_op_infifo = RegFIFO(data_width=self._rd_op_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._rd_op_infifo = RegFIFO(data_width=self._rd_op_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._rd_op_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._rd_op_fifo_out_op = self.var("rd_op_fifo_out_op", self.data_width, packed=True)
 
         self.add_child(f"rd_op_fifo",
@@ -384,7 +391,8 @@ class BuffetLike(MemoryController):
         self._rd_addr_fifo_valid = self.var("rd_addr_fifo_valid", 1)
 
         self._rd_addr_fifo_in = kts.concat(self._rd_addr[0][self.data_width - 1, 0])
-        self._rd_addr_infifo = RegFIFO(data_width=self._rd_addr_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._rd_addr_infifo = RegFIFO(data_width=self._rd_addr_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._rd_addr_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._rd_addr_fifo_out_addr = self.var("rd_addr_fifo_out_addr", self.data_width, packed=True)
 
         self.add_child(f"rd_addr_fifo",
@@ -405,7 +413,8 @@ class BuffetLike(MemoryController):
         self._rd_ID_fifo_valid = self.var("rd_ID_fifo_valid", 1)
 
         self._rd_ID_fifo_in = kts.concat(self._rd_ID[0][self.data_width - 1, 0])
-        self._rd_ID_infifo = RegFIFO(data_width=self._rd_ID_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+        self._rd_ID_infifo = RegFIFO(data_width=self._rd_ID_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._rd_ID_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._rd_ID_fifo_out_data = self.var("rd_ID_fifo_out_data", self.data_width, packed=True)
 
         self.add_child(f"rd_ID_fifo",
@@ -433,7 +442,10 @@ class BuffetLike(MemoryController):
         self._rd_rsp_fifo_almost_full = self.var("rd_rsp_fifo_almost_full", 1)
 
         self._rd_rsp_fifo_in_data = self.var("rd_rsp_fifo_in_data", self.data_width, packed=True)
-        self._rd_rsp_out_fifo = RegFIFO(data_width=self._rd_rsp_fifo_in_data.width, width_mult=1, depth=self.fifo_depth)
+        self._rd_rsp_out_fifo = RegFIFO(data_width=self._rd_rsp_fifo_in_data.width, width_mult=1,
+                                        depth=self.fifo_depth, min_depth=2, defer_hrdwr_gen=self.defer_fifos,
+                                        almost_full_diff=1)
+        self._rd_rsp_out_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self.add_child(f"rd_rsp_fifo",
                        self._rd_rsp_out_fifo,
@@ -630,7 +642,7 @@ class BuffetLike(MemoryController):
         for i in range(self.num_ID):
             ### Bookkeeping FIFO
             blk_fifo_in = kts.concat(self._curr_base[i], self._curr_bounds[i])
-            blk_fifo = RegFIFO(data_width=blk_fifo_in.width, width_mult=1, depth=self.fifo_depth)
+            blk_fifo = RegFIFO(data_width=blk_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=False)
 
             self.add_child(f"blk_fifo_{i}",
                            blk_fifo,
