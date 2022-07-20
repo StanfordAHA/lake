@@ -15,7 +15,8 @@ class IOCore(Generator):
     def __init__(self,
                  data_width=16,
                  tracks_supported: list = None,
-                 fifo_depth=2):
+                 fifo_depth=2,
+                 use_17_to_16_hack=True):
 
         super().__init__("io_core", debug=True)
 
@@ -23,6 +24,7 @@ class IOCore(Generator):
         self.add_clk_enable = True
         self.add_flush = True
         self.fifo_depth = fifo_depth
+        self.hack17_to_16 = use_17_to_16_hack
 
         if tracks_supported is None:
             self.tracks_supported = []
@@ -62,6 +64,12 @@ class IOCore(Generator):
             full_bus = track_len > 1
             is_control = track_len == 1
 
+            using_17b = track_len == 17
+            to_glb_width = track_len
+            if self.hack17_to_16 and using_17b:
+                print("USING 17 to 16 HACK")
+                to_glb_width = 16
+
             tmp_f2io = self.input(f"f2io_{track_len}", track_len, packed=True)
             tmp_f2io.add_attribute(ControlSignalAttr(is_control=is_control, full_bus=full_bus))
             tmp_f2io_r = self.output(f"f2io_{track_len}_ready", 1)
@@ -70,19 +78,19 @@ class IOCore(Generator):
             tmp_f2io_v.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
             f2ios.append((tmp_f2io, tmp_f2io_r, tmp_f2io_v))
 
-            tmp_glb2io = self.input(f"glb2io_{track_len}", track_len, packed=True)
+            tmp_glb2io = self.input(f"glb2io_{to_glb_width}", to_glb_width, packed=True)
             tmp_glb2io.add_attribute(ControlSignalAttr(is_control=is_control, full_bus=full_bus))
-            tmp_glb2io_r = self.output(f"glb2io_{track_len}_ready", 1)
+            tmp_glb2io_r = self.output(f"glb2io_{to_glb_width}_ready", 1)
             tmp_glb2io_r.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-            tmp_glb2io_v = self.input(f"glb2io_{track_len}_valid", 1)
+            tmp_glb2io_v = self.input(f"glb2io_{to_glb_width}_valid", 1)
             tmp_glb2io_v.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
             glb2ios.append((tmp_glb2io, tmp_glb2io_r, tmp_glb2io_v))
 
-            tmp_io2glb = self.output(f"io2glb_{track_len}", track_len, packed=True)
+            tmp_io2glb = self.output(f"io2glb_{to_glb_width}", to_glb_width, packed=True)
             tmp_io2glb.add_attribute(ControlSignalAttr(is_control=False, full_bus=full_bus))
-            tmp_io2glb_r = self.input(f"io2glb_{track_len}_ready", 1)
+            tmp_io2glb_r = self.input(f"io2glb_{to_glb_width}_ready", 1)
             tmp_io2glb_r.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-            tmp_io2glb_v = self.output(f"io2glb_{track_len}_valid", 1)
+            tmp_io2glb_v = self.output(f"io2glb_{to_glb_width}_valid", 1)
             tmp_io2glb_v.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
             io2glbs.append((tmp_io2glb, tmp_io2glb_r, tmp_io2glb_v))
 
@@ -105,8 +113,12 @@ class IOCore(Generator):
                            clk_en=self._clk_en,
                            push=tmp_f2io_v,
                            pop=tmp_io2glb_r,
-                           data_in=tmp_f2io,
-                           data_out=tmp_io2glb)
+                           data_in=tmp_f2io)
+
+            if using_17b:
+                self.wire(tmp_io2glb, f2io_2_io2glb_fifo.ports.data_out[0][to_glb_width - 1, 0])
+            else:
+                self.wire(tmp_io2glb, f2io_2_io2glb_fifo.ports.data_out)
 
             self.wire(tmp_f2io_r, ~f2io_2_io2glb_fifo.ports.full)
             self.wire(tmp_io2glb_v, ~f2io_2_io2glb_fifo.ports.empty)
@@ -121,8 +133,13 @@ class IOCore(Generator):
                            clk_en=self._clk_en,
                            push=tmp_glb2io_v,
                            pop=tmp_io2f_r,
-                           data_in=tmp_glb2io,
                            data_out=tmp_io2f)
+
+            if using_17b:
+                self.wire(glb2io_2_io2f_fifo.ports.data_in[0][to_glb_width - 1, 0], tmp_glb2io)
+                self.wire(glb2io_2_io2f_fifo.ports.data_in[0][to_glb_width], kts.const(0, 1))
+            else:
+                self.wire(glb2io_2_io2f_fifo.ports.data_in, tmp_glb2io)
 
             self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.full)
             self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
@@ -138,7 +155,7 @@ class IOCore(Generator):
 if __name__ == "__main__":
 
     io_core_dut = IOCore(data_width=16,
-                         tracks_supported=[1, 16, 17])
+                         tracks_supported=[1, 17])
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

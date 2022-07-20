@@ -160,6 +160,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # First get the main/shared fifos, minimize their depth and gen them
             ctrl_fifos = ctrl.get_fifos()
             for ctrl_fifo in ctrl_fifos:
+                print("SETTING MIN DEPTH")
                 ctrl_fifo.set_min_depth()
                 ctrl_fifo.generate_hardware()
             # Clean up the remaining/ungenned fifos and gen them

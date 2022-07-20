@@ -324,7 +324,8 @@ if __name__ == "__main__":
                       fifo_depth=8)
 
     fib_access = FiberAccess(data_width=data_width,
-                             local_memory=False)
+                             local_memory=False,
+                             defer_fifos=True)
 
     strg_ub = StrgUBVec(data_width=data_width, mem_width=mem_width, mem_depth=mem_depth)
     buffet = BuffetLike(data_width=data_width, mem_depth=mem_depth, local_memory=False)
