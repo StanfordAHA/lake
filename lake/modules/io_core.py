@@ -115,7 +115,7 @@ class IOCore(Generator):
                            pop=tmp_io2glb_r,
                            data_in=tmp_f2io)
 
-            if using_17b:
+            if self.hack17_to_16 and using_17b:
                 self.wire(tmp_io2glb, f2io_2_io2glb_fifo.ports.data_out[0][to_glb_width - 1, 0])
             else:
                 self.wire(tmp_io2glb, f2io_2_io2glb_fifo.ports.data_out)
@@ -135,7 +135,7 @@ class IOCore(Generator):
                            pop=tmp_io2f_r,
                            data_out=tmp_io2f)
 
-            if using_17b:
+            if self.hack17_to_16 and using_17b:
                 self.wire(glb2io_2_io2f_fifo.ports.data_in[0][to_glb_width - 1, 0], tmp_glb2io)
                 self.wire(glb2io_2_io2f_fifo.ports.data_in[0][to_glb_width], kts.const(0, 1))
             else:
