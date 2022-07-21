@@ -421,7 +421,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # lift_config_reg(flat_ctrl.internal_generator, stop_at_gen=True)
             cfg_flat_ctrl = extract_top_config(flat_ctrl, verbose=False)
             for cfg in cfg_flat_ctrl:
-                name, size, width, _ = cfg
+                name, size, width, _, ro = cfg
                 # Everything should be flattened down at this point
                 # assert len(size) == 1 and size[0] == 1
                 assert len(size) == 1

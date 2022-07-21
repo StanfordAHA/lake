@@ -73,7 +73,7 @@ class OnyxPEInterface(MemoryController):
     def get_bitstream(self, op):
 
         opcode_mapping = {
-            0: int("0x024003d00073ffd4800d4", 16),  # ADD
+            0: int("0x000000000010000400000", 16),  # ADD
             1: int("0x00000005fff17ffc800dc", 16)   # MUL
         }
 
