@@ -80,9 +80,8 @@ class CrdDrop(MemoryController):
         # Store all configurations here
         config = [("tile_en", 1)]
 
-        if self.use_merger:
-            config += [("cmrg_enable", cmrg_enable)]
-            config += [("cmrg_stop_lvl", cmrg_stop_lvl)]
+        config += [("cmrg_enable", cmrg_enable)]
+        config += [("cmrg_stop_lvl", cmrg_stop_lvl)]
 
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
