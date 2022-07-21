@@ -160,7 +160,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # First get the main/shared fifos, minimize their depth and gen them
             ctrl_fifos = ctrl.get_fifos()
             for ctrl_fifo in ctrl_fifos:
-                print("SETTING MIN DEPTH")
                 ctrl_fifo.set_min_depth()
                 ctrl_fifo.generate_hardware()
             # Clean up the remaining/ungenned fifos and gen them
@@ -200,6 +199,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         '''
         # TODO: Eventually want to add heuristics for resolving the memory ports if a designer
         # doesn't want to know ahead of time - for static scheduling, however, it's crucial
+        self.using_mems = True
         for mem_ctrl in self.controllers:
             ctrl_name = str(mem_ctrl)
             # Now get the port request - controllers should only request ports
@@ -210,6 +210,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 for port in range(len(memport_req[0])):
                     if memport_req[bank][port] is not None:
                         self.mem_conn[bank][port][str(mem_ctrl)] = memport_req[bank][port]
+        # Current way to block off mems
+        if len(self.mem_conn[0][0]) == 0:
+            self.using_mems = False
 
     def resolve_inputs(self):
         '''
@@ -221,7 +224,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Go through controllers
         for mem_ctrl in self.controllers_flat:
             ctrl_ins = mem_ctrl.get_inputs()
-            # print(f"inputs: {ctrl_ins}")
             ctrl_outs = mem_ctrl.get_outputs()
             # Do a pass to block the ready/valids associated with a port
             # All ready/valid ports will be width 1 - there's probably a better way to do this
@@ -329,6 +331,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for (width, signal_list) in to_add.items():
             # Just go through and add new signals
             for idx in range(len(signal_list)):
+                if width not in merged_dict:
+                    merged_dict[width] = []
                 merged_dict[width].append({str(mem_ctrl): str(signal_list[idx])})
 
     def merge_io_dicts(self, to_merge, merged_dict, mem_ctrl):
@@ -389,15 +393,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.realize_controllers()
         self.realize_inputs()
         self.realize_outputs()
-        for (idx, mem) in enumerate(self.memories):
-            mem.realize_hw()
-            self.add_child(f"memory_{idx}", mem)
-        self.realize_mem_connections()
+        if self.using_mems:
+            for (idx, mem) in enumerate(self.memories):
+                mem.realize_hw()
+                self.add_child(f"memory_{idx}", mem)
+            self.realize_mem_connections()
 
         # Optionally add in these features to the hardware
         if clock_gate:
             self.add_clock_gate()
-        if mem_config:
+        if mem_config and self.using_mems:
             self.realize_mem_config()
         if flush:
             self.add_flush()
@@ -788,6 +793,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     unflat_name = None
                     for p in flat_ig_port_sinks:
                         unflat_name = p.left.name
+                        if unflat_name == "":
+                            # Then we need to mess with some stuff to flatten the name...
+                            unflat_name = str(p.left)
+                            unflat_base = unflat_name.split("[")[0]
+                            unflat_num = unflat_name.split("[")[1].rstrip(']')
+                            unflat_name = f"{unflat_base}_{unflat_num}"
                     self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'input_width_{input_width}_num_{i}'
 
     def realize_outputs(self):
@@ -933,6 +944,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     unflat_name = None
                     for p in flat_ig_port_sources:
                         unflat_name = p.right.name
+                        if unflat_name == "":
+                            # Then we need to mess with some stuff to flatten the name...
+                            unflat_name = str(p.right)
+                            unflat_base = unflat_name.split("[")[0]
+                            unflat_num = unflat_name.split("[")[1].rstrip(']')
+                            unflat_name = f"{unflat_base}_{unflat_num}"
                     self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'output_width_{output_width}_num_{i}'
 
     def add_mem_port_connection(self, local_port, ctrl_ports):
@@ -1062,7 +1079,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for cfg_reg, val in conf_for_ctrl:
                 val_int = int(val)
                 mapping_index = self.config_mapping[ctrl][f"{ctrl}_inst_{cfg_reg}"]
-                # print(mapping_index)
                 map_hi, map_lo = mapping_index
                 assert map_hi - map_lo <= 15, f"Failed beacuse reg wider than 16 bits"
                 chunk_hi = map_hi // self.allowed_reg_size

@@ -256,6 +256,8 @@ class MemoryController(kts.Generator):
 
                 # Now we have the generator,
 
+        atg = None
+
         for valid_out in valids_out:
             sources = valid_out.sources
             # Only use direct connections...
@@ -264,9 +266,17 @@ class MemoryController(kts.Generator):
             hit_fifo = False
             use_gen = self
 
+            atg = self
+            tries = 0
+
             for actual_src in sources:
                 pass
             while hit_fifo is False:
+
+                # Give a failure if we get through 1000 wires...
+                if tries == max_tries:
+                    break
+
                 assigned_to = actual_src.right
                 assigned_to_gen = assigned_to.generator
                 if assigned_to_gen.instance_name != use_gen.instance_name:
@@ -289,6 +299,8 @@ class MemoryController(kts.Generator):
                     for actual_src in assigned_to.sources:
                         pass
                     use_gen = atg
+
+                tries += 1
 
         return self.__fifo_list
 

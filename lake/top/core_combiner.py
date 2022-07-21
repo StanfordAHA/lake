@@ -3,6 +3,8 @@ from lake.attributes.formal_attr import *
 import json
 from kratos import *
 from lake.modules.buffet_like import BuffetLike
+from lake.modules.crddrop import CrdDrop
+from lake.modules.onyx_pe import OnyxPE
 from lake.modules.passthru import *
 from lake.modules.strg_ub_vec import StrgUBVec
 from lake.modules.strg_ub_thin import StrgUBThin
@@ -20,6 +22,9 @@ from lake.modules.stencil_valid import StencilValid
 from _kratos import create_wrapper_flatten
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.top.fiber_access import FiberAccess
+from lake.modules.repeat import Repeat
+from lake.modules.repeat_signal_generator import RepeatSignalGenerator
+from lake.modules.reg_cr import Reg
 import os
 
 
@@ -329,11 +334,54 @@ if __name__ == "__main__":
 
     strg_ub = StrgUBVec(data_width=data_width, mem_width=mem_width, mem_depth=mem_depth)
     buffet = BuffetLike(data_width=data_width, mem_depth=mem_depth, local_memory=False)
+
+    strg_ram = StrgRAM(data_width=data_width,
+                       banks=banks,
+                       memory_width=mem_width,
+                       memory_depth=mem_depth,
+                       rw_same_cycle=rw_same_cycle,
+                       read_delay=read_delay,
+                       addr_width=16,
+                       prioritize_write=True,
+                       comply_with_17=True)
+
+    stencil_valid = StencilValid()
+
     # controllers.append(scan)
     # controllers.append(isect)
     controllers.append(fib_access)
     # controllers.append(strg_ub)
     # controllers.append(buffet)
+    controllers.append(stencil_valid)
+    controllers.append(strg_ram)
+
+    isect = Intersect(data_width=16,
+                      use_merger=False,
+                      fifo_depth=8,
+                      defer_fifos=True)
+    crd_drop = CrdDrop(data_width=16, fifo_depth=8,
+                       lift_config=True,
+                       defer_fifos=True)
+    onyxpe = OnyxPE(data_width=16, fifo_depth=8, defer_fifos=True, ext_pe_prefix="pe_prefix")
+    repeat = Repeat(data_width=16,
+                    fifo_depth=8,
+                    defer_fifos=True)
+    rsg = RepeatSignalGenerator(data_width=16,
+                                passthru=False,
+                                fifo_depth=8,
+                                defer_fifos=True)
+    regcr = Reg(data_width=16,
+                fifo_depth=8,
+                defer_fifos=True)
+
+    controllers_2 = []
+
+    controllers_2.append(isect)
+    controllers_2.append(crd_drop)
+    controllers_2.append(onyxpe)
+    controllers_2.append(repeat)
+    controllers_2.append(rsg)
+    controllers_2.append(regcr)
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,
@@ -343,7 +391,7 @@ if __name__ == "__main__":
                              add_flush=True,
                              rw_same_cycle=False,
                              read_delay=1,
-                             use_sim_sram=False,
+                             use_sim_sram=True,
                              controllers=controllers,
                              name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}",
                              do_config_lift=False)
