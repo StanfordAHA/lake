@@ -1,17 +1,51 @@
-from threading import local
-from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.top.memory_interface import MemoryPort, MemoryPortExclusionAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
 from kratos.generator import PortDirection
-from lake.attributes.shared_fifo_attr import SharedFifoAttr
 import _kratos
+import math
 
 
 class MemoryController(kts.Generator):
     '''
     Provides the utilities to interface a memory controller with a memory interface
     '''
+    MAXIMUM_CONFIG_REG = 32
+
+    def set_bit(self, old_val, bit_to_set, new_bit):
+        new_val = old_val | (new_bit << bit_to_set)
+        return new_val
+
+    def get_bit(self, val, n):
+        return (val >> n & 1)
+
+    def chop_config(self, config_base):
+        config = []
+        # Go through all of the original configs...
+        for config_tuple in config_base:
+            config_name, config_value = config_tuple
+            cfg_port_width = self.get_port(config_name).width
+            # Chop it if it's too wide...
+            if cfg_port_width > self.MAXIMUM_CONFIG_REG:
+                # The usual suspects - just grab each bit and set it sequentially
+                num_regs = math.ceil(cfg_port_width / self.MAXIMUM_CONFIG_REG)
+                remaining_bits = cfg_port_width
+                for idx_ in range(num_regs):
+                    if remaining_bits > self.MAXIMUM_CONFIG_REG:
+                        use_bits = self.MAXIMUM_CONFIG_REG
+                    else:
+                        use_bits = remaining_bits
+                    chopped_val = 0
+                    for i_ in range(use_bits):
+                        cfg_val_bit = self.get_bit(config_value, idx_ * self.MAXIMUM_CONFIG_REG + i_)
+                        chopped_val = self.set_bit(chopped_val, i_, cfg_val_bit)
+                    config += [(f"{config_name}_{idx_}", chopped_val)]
+                    remaining_bits -= use_bits
+            else:
+                config += [(f"{config_name}", chopped_val)]
+
+        return config
+
     def get_child_generator(self, port):
         if port.generator == self.internal_generator:
             return self

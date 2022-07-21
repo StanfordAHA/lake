@@ -1,13 +1,11 @@
 import kratos as kts
 from kratos import *
-from lake.passes.passes import lift_config_reg
-from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg
+from lake.top.memory_controller import MemoryController
 from lake.attributes.config_reg_attr import ConfigRegAttr
-from _kratos import create_wrapper_flatten
-from lake.modules.reg_fifo import RegFIFO
+import math
 
 
-class OnyxPEInterface(kts.Generator):
+class OnyxPEInterface(MemoryController):
     def __init__(self,
                  data_width=16,
                  name_prefix=None,
@@ -45,13 +43,13 @@ class OnyxPEInterface(kts.Generator):
         self._bit1 = self.input("bit1", 1)
         self._bit2 = self.input("bit2", 1)
 
-        if self.ro_config:
-            self._O2 = self.output("O2", self.data_width)
-            self._O2.add_attribute(ConfigRegAttr("PIPE REG 0", read_only=True))
-            self._O3 = self.output("O3", self.data_width)
-            self._O3.add_attribute(ConfigRegAttr("PIPE REG 1", read_only=True))
-            self._O4 = self.output("O4", self.data_width)
-            self._O4.add_attribute(ConfigRegAttr("PIPE REG 2", read_only=True))
+        # if self.ro_config:
+        #     self._O2 = self.output("O2", self.data_width)
+        #     self._O2.add_attribute(ConfigRegAttr("PIPE REG 0", read_only=True))
+        #     self._O3 = self.output("O3", self.data_width)
+        #     self._O3.add_attribute(ConfigRegAttr("PIPE REG 1", read_only=True))
+        #     self._O4 = self.output("O4", self.data_width)
+        #     self._O4.add_attribute(ConfigRegAttr("PIPE REG 2", read_only=True))
 
         # self._config_addr = self.input("config_addr", 8)
         # self._config_data = self.input("config_data", 32)
@@ -62,6 +60,30 @@ class OnyxPEInterface(kts.Generator):
         # self._O2 = self.output("O2", 2 * self.data_width)
 
         self.external = True
+
+    def get_memory_ports(self):
+        '''
+        Use this method to indicate what memory ports this controller has
+        '''
+        return [[None]]
+
+    def get_config_mode_str(self):
+        return "alu_ext"
+
+    def get_bitstream(self, op):
+
+        opcode_mapping = {
+            0: int("0x024003d00073ffd4800d4", 16),  # ADD
+            1: int("0x00000005fff17ffc800dc", 16)   # MUL
+        }
+
+        if op not in opcode_mapping:
+            raise NotImplementedError
+
+        config_base = [("inst", opcode_mapping[op])]
+        config = self.chop_config(config_base=config_base)
+
+        return config
 
 
 if __name__ == "__main__":

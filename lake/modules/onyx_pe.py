@@ -246,12 +246,12 @@ class OnyxPE(MemoryController):
         # self._op = self.input("op", 1)
         # self._op.add_attribute(ConfigRegAttr("Operation"))
 
-        my_alu = OnyxPEInterface(data_width=self.data_width,
-                                 name_prefix=self.ext_pe_prefix,
-                                 include_RO_cfg=self.pe_ro)
+        self.my_alu = OnyxPEInterface(data_width=self.data_width,
+                                      name_prefix=self.ext_pe_prefix,
+                                      include_RO_cfg=self.pe_ro)
 
         self.add_child(f"onyxpeintf",
-                       my_alu,
+                       self.my_alu,
                        CLK=self._gclk,
                        clk_en=self._clk_en,
                        ASYNCRESET=self._rst_n,
@@ -315,8 +315,13 @@ class OnyxPE(MemoryController):
     def get_bitstream(self, op):
 
         # Store all configurations here
-        config = [("tile_en", 1),
-                  ("op", op)]
+        config = [("tile_en", 1)]
+
+        sub_config = self.my_alu.get_bitstream(op)
+        for config_tuple in sub_config:
+            config_name, config_value = config_tuple
+            config += [(f"{self.my_alu.instance_name}_{config_name}", config_value)]
+
         return config
 
 
