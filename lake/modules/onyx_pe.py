@@ -21,7 +21,8 @@ class OnyxPE(MemoryController):
                  fifo_depth=8,
                  defer_fifos=True,
                  ext_pe_prefix="PG_",
-                 pe_ro=True):
+                 pe_ro=True,
+                 do_config_lift=False):
 
         super().__init__("PE_onyx", debug=True)
 
@@ -32,6 +33,7 @@ class OnyxPE(MemoryController):
         self.defer_fifos = defer_fifos
         self.ext_pe_prefix = ext_pe_prefix
         self.pe_ro = pe_ro
+        self.do_config_lift = do_config_lift
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -301,7 +303,8 @@ class OnyxPE(MemoryController):
             flush_port.add_attribute(ControlSignalAttr(True))
 
         # Finally, lift the config regs...
-        lift_config_reg(self.internal_generator)
+        if self.do_config_lift:
+            lift_config_reg(self.internal_generator)
 
     def get_memory_ports(self):
         '''
@@ -327,7 +330,7 @@ class OnyxPE(MemoryController):
 
 if __name__ == "__main__":
 
-    pe_dut = OnyxPE(data_width=16, defer_fifos=False)
+    pe_dut = OnyxPE(data_width=16, defer_fifos=False, do_config_lift=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
