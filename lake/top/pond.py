@@ -2,6 +2,7 @@ import kratos as kts
 import os
 
 from kratos import *
+from numpy import full
 from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
@@ -34,7 +35,8 @@ class Pond(Generator):
                  cycle_count_width=16,
                  add_clk_enable=True,
                  add_flush=True,
-                 name="pond"):
+                 name="pond",
+                 comply_17=False):
         super().__init__(name=name, debug=True)
 
         self.interconnect_input_ports = interconnect_input_ports
@@ -50,6 +52,8 @@ class Pond(Generator):
         self.cycle_count_width = cycle_count_width
         self.default_iterator_support = default_iterator_support
         self.default_config_width = kts.clog2(self.mem_depth)
+        self.comply_17 = comply_17
+
         # inputs
         self._clk = self.clock("clk")
         self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
@@ -79,12 +83,13 @@ class Pond(Generator):
                                     packed=True)
 
         # Add "_pond" suffix to avoid error during garnet RTL generation
-        self._data_in = self.input("data_in_pond", self.data_width,
+        # self._data_in = self.input("data_in_pond", self.data_width,
+        self._data_in = self.input("data_in_pond", self.data_width + 1,
                                    size=self.interconnect_input_ports,
                                    explicit_array=True,
                                    packed=True)
         self._data_in.add_attribute(FormalAttr(f"{self._data_in.name}", FormalSignalConstraint.SEQUENCE))
-        self._data_in.add_attribute(ControlSignalAttr(is_control=False))
+        self._data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._read = self.var("read", self.mem_output_ports)
         self._t_write = self.var("t_write", self.interconnect_input_ports)
@@ -103,12 +108,13 @@ class Pond(Generator):
                                      explicit_array=True,
                                      packed=True)
 
-        self._data_out = self.output("data_out_pond", self.data_width,
+        # self._data_out = self.output("data_out_pond", self.data_width,
+        self._data_out = self.output("data_out_pond", self.data_width + 1,
                                      size=self.interconnect_output_ports,
                                      explicit_array=True,
                                      packed=True)
         self._data_out.add_attribute(FormalAttr(f"{self._data_out.name}", FormalSignalConstraint.SEQUENCE))
-        self._data_out.add_attribute(ControlSignalAttr(is_control=False))
+        self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._valid_out = self.output("valid_out_pond", self.interconnect_output_ports)
         self._valid_out.add_attribute(FormalAttr(f"{self._valid_out.name}", FormalSignalConstraint.SEQUENCE))
@@ -154,10 +160,12 @@ class Pond(Generator):
                                        packed=True)
 
         if self.interconnect_output_ports == 1:
-            self.wire(self._data_out[0], self._mem_data_out[0])
+            self.wire(self._data_out[0][15, 0], self._mem_data_out[0])
+            self.wire(self._data_out[0][16], kts.const(0, 1))
         else:
             for i in range(self.interconnect_output_ports):
-                self.wire(self._data_out[i], self._mem_data_out[0])
+                self.wire(self._data_out[i][15, 0], self._mem_data_out[0])
+                self.wire(self._data_out[i][16], kts.const(0, 1))
 
         # Valid out is simply passing the read signal through...
         self.wire(self._valid_out, self._t_read)
@@ -351,7 +359,8 @@ class Pond(Generator):
 
         # Opt in for config_data_in
         for i in range(self.interconnect_input_ports):
-            self.wire(self._s_mem_data_in[i], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[i]))
+            # self.wire(self._s_mem_data_in[i], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[i]))
+            self.wire(self._s_mem_data_in[i], kts.ternary(self._config_en.r_or(), self._mem_data_cfg, self._data_in[i][15, 0]))
         self.wire(self.RF_GEN.ports.data_in, self._mem_data_in)
 
         # Opt in for config_addr

@@ -43,13 +43,13 @@ class OnyxPEInterface(MemoryController):
         self._bit1 = self.input("bit1", 1)
         self._bit2 = self.input("bit2", 1)
 
-        # if self.ro_config:
-        #     self._O2 = self.output("O2", self.data_width)
-        #     self._O2.add_attribute(ConfigRegAttr("PIPE REG 0", read_only=True))
-        #     self._O3 = self.output("O3", self.data_width)
-        #     self._O3.add_attribute(ConfigRegAttr("PIPE REG 1", read_only=True))
-        #     self._O4 = self.output("O4", self.data_width)
-        #     self._O4.add_attribute(ConfigRegAttr("PIPE REG 2", read_only=True))
+        if self.ro_config:
+            self._O2 = self.output("O2", self.data_width)
+            self._O2.add_attribute(ConfigRegAttr("PIPE REG 0", read_only=True))
+            self._O3 = self.output("O3", self.data_width)
+            self._O3.add_attribute(ConfigRegAttr("PIPE REG 1", read_only=True))
+            self._O4 = self.output("O4", self.data_width)
+            self._O4.add_attribute(ConfigRegAttr("PIPE REG 2", read_only=True))
 
         # self._config_addr = self.input("config_addr", 8)
         # self._config_data = self.input("config_data", 32)
