@@ -4,12 +4,20 @@ import kratos as kts
 class ConfigRegAttr(kts.Attribute):
 
     def __init__(self,
-                 doc_string=""):
+                 doc_string="",
+                 read_only=False):
         super().__init__()
         self.value = "config_reg"
         self.documentation = doc_string
         self.intercepted = False
+        self.read_only = read_only
         self.observers = []
+
+    def get_read_only(self):
+        return self.read_only
+
+    def set_read_only(self, ro):
+        self.read_only = ro
 
     def set_documentation(self, new_doc):
         self.documentation = new_doc

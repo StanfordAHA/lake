@@ -30,7 +30,7 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                         continue
                     attrs = curr_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
                     annotation_attr = curr_port.find_attribute(lambda a: isinstance(a, FormalAttr))
-                    if port_name is "mode":
+                    if port_name == "mode":
                         print("Found mode...")
                         print(attrs)
                     if len(attrs) != 1:
@@ -62,7 +62,8 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                             for idx_ in range(child_port.size[0]):
                                 new_name = child_gen.instance_name + "_" + child_port.name + f"_{idx_}"
                                 # p.append(parent_gen.port(child_port[idx_], new_name, False))
-                                newp_ = parent_gen.port(_kratos.PortDirection.In, new_name, child_port[idx_].width)
+                                # newp_ = parent_gen.port(_kratos.PortDirection.In, new_name, child_port[idx_].width)
+                                newp_ = parent_gen.port(child_port.port_direction, new_name, child_port[idx_].width)
                                 p.append(newp_)
                                 parent_gen.wire(child_port[idx_], newp_)
                         else:
@@ -77,7 +78,11 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                             else:
                                 new_name = child_gen.instance_name + "_" + child_port.name
                                 p = parent_gen.port(child_port, new_name, False)
-                                parent_gen.wire(child_port, p)
+                                # p = parent_gen.port(child_port.port_direction, new_name, child_port.width)
+                                if str(child_port.port_direction) == "PortDirection.In":
+                                    parent_gen.wire(child_port, p)
+                                else:
+                                    parent_gen.wire(p, child_port)
 
                         # Now we can check if any other signals in the parent generator
                         # are observing this signal
@@ -94,6 +99,8 @@ def lift_config_reg(generator, stop_at_gen=False, flatten=False):
                     if top_lvl_cfg is False:
                         child_port_cra = ConfigRegAttr()
                         child_port_cra.set_documentation(doc)
+                        child_port_cra.set_read_only(cr_attr.get_read_only())
+
                         if flatten and type(child_port) is list:
                             for cp_ in child_port:
                                 cp_.add_attribute(child_port_cra)

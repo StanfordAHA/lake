@@ -20,7 +20,8 @@ class OnyxPE(MemoryController):
                  data_width=16,
                  fifo_depth=8,
                  defer_fifos=True,
-                 ext_pe_prefix="PG_"):
+                 ext_pe_prefix="PG_",
+                 pe_ro=True):
 
         super().__init__("PE_onyx", debug=True)
 
@@ -30,6 +31,7 @@ class OnyxPE(MemoryController):
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
         self.ext_pe_prefix = ext_pe_prefix
+        self.pe_ro = pe_ro
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -245,7 +247,8 @@ class OnyxPE(MemoryController):
         # self._op.add_attribute(ConfigRegAttr("Operation"))
 
         my_alu = OnyxPEInterface(data_width=self.data_width,
-                                 name_prefix=self.ext_pe_prefix)
+                                 name_prefix=self.ext_pe_prefix,
+                                 include_RO_cfg=self.pe_ro)
 
         self.add_child(f"onyxpeintf",
                        my_alu,
@@ -319,12 +322,11 @@ class OnyxPE(MemoryController):
 
 if __name__ == "__main__":
 
-    pe_dut = OnyxPE(data_width=16)
+    pe_dut = OnyxPE(data_width=16, defer_fifos=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
     # extract_formal_annotation(pond_dut, "pond.txt")
 
     verilog(pe_dut, filename="onyxpe.sv",
-            optimize_if=False,
-            additional_passes={"lift config regs": lift_config_reg})
+            optimize_if=False)
