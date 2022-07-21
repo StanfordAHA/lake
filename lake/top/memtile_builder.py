@@ -404,6 +404,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             self.add_clock_gate()
         if mem_config and self.using_mems:
             self.realize_mem_config()
+        else:
+            # Can't forget to set this or core wrapper won't work
+            self.total_sets = 0
         if flush:
             self.add_flush()
         # For now, do this merging of the config regs
