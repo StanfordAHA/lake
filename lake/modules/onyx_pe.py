@@ -127,7 +127,7 @@ class OnyxPE(MemoryController):
 
             self._bit_in.append(tmp_data_in)
 
-        self._data_out = self.output("res", self.data_width + 1)
+        self._data_out = self.output("res", self.data_width + 1, packed=True)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._valid_out = self.output("res_valid", 1)
