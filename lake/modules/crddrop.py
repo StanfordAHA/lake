@@ -250,7 +250,7 @@ class CrdDrop(MemoryController):
 
         self._pushing_s0 = self.var("pushing_done", 1)
         self.wire(self._pushing_s0, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos &
-                  (self._base_infifo_in_data[9, 8] == kts.const(1, 2)) & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)) & ~base_infifo.ports.full & ~proc_infifo.ports.full)
+                  (self._base_infifo_in_data[9, 8] == kts.const(1, 2)) & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)) & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
 
         ####################
         # STATE MACHINE TO PROCESS PROC STREAM
