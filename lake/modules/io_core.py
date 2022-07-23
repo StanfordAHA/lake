@@ -43,7 +43,7 @@ class IOCore(Generator):
         self._clk_en = self.clock_en("clk_en", 1)
 
         # Enable/Disable tile
-        self._tile_en = self.var("tile_en", 1)
+        self._tile_en = self.input("tile_en", 1)
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
         # self.wire(self._tile_en, kts.const(1, 1))
         # self._tile_en = self.input("tile_en", 1)
@@ -174,11 +174,20 @@ class IOCore(Generator):
                 self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.full)
                 self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
 
-    def get_bitstream(self):
+    def get_bitstream(self, config_dict):
 
         # Store all configurations here
-        config = [("tile_en", 1),
-                  ]
+        config = [("tile_en", 1)]
+
+        if self.allow_bypass:
+
+            dense_bypass_val = 0
+
+            if 'dense_bypass' in config_dict:
+                dense_bypass_val = config_dict['dense_bypass']
+
+            config += [("dense_bypass", dense_bypass_val)]
+
         return config
 
 
