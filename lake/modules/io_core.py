@@ -16,7 +16,8 @@ class IOCore(Generator):
                  data_width=16,
                  tracks_supported: list = None,
                  fifo_depth=2,
-                 use_17_to_16_hack=True):
+                 use_17_to_16_hack=True,
+                 allow_bypass=True):
 
         super().__init__("io_core", debug=True)
 
@@ -25,6 +26,7 @@ class IOCore(Generator):
         self.add_flush = True
         self.fifo_depth = fifo_depth
         self.hack17_to_16 = use_17_to_16_hack
+        self.allow_bypass = allow_bypass
 
         if tracks_supported is None:
             self.tracks_supported = []
@@ -42,11 +44,16 @@ class IOCore(Generator):
 
         # Enable/Disable tile
         self._tile_en = self.var("tile_en", 1)
-        self.wire(self._tile_en, kts.const(1, 1))
+        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        # self.wire(self._tile_en, kts.const(1, 1))
         # self._tile_en = self.input("tile_en", 1)
-        self._tile_en_fake = self.input("tile_en_fake", 1)
+        # self._tile_en_fake = self.input("tile_en_fake", 1)
         # self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
-        self._tile_en_fake.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        # self._tile_en_fake.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+
+        if self.allow_bypass:
+            self._dense_bypass = self.input("dense_bypass", 1)
+            self._dense_bypass.add_attribute(ConfigRegAttr("Bypass FIFOS for dense mode..."))
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -67,7 +74,6 @@ class IOCore(Generator):
             using_17b = track_len == 17
             to_glb_width = track_len
             if self.hack17_to_16 is True and using_17b is True:
-                print("USING 17 to 16 HACK")
                 to_glb_width = 16
 
             tmp_f2io = self.input(f"f2io_{track_len}", track_len, packed=True)
@@ -115,13 +121,23 @@ class IOCore(Generator):
                            pop=tmp_io2glb_r,
                            data_in=tmp_f2io)
 
-            if self.hack17_to_16 is True and using_17b is True:
-                self.wire(tmp_io2glb, f2io_2_io2glb_fifo.ports.data_out[0][to_glb_width - 1, 0])
-            else:
-                self.wire(tmp_io2glb, f2io_2_io2glb_fifo.ports.data_out)
+            if self.allow_bypass:
+                self.wire(tmp_io2glb, kts.ternary(self._dense_bypass,
+                                                  tmp_f2io[to_glb_width - 1, 0],
+                                                  f2io_2_io2glb_fifo.ports.data_out[0][to_glb_width - 1, 0]))
 
-            self.wire(tmp_f2io_r, ~f2io_2_io2glb_fifo.ports.full)
-            self.wire(tmp_io2glb_v, ~f2io_2_io2glb_fifo.ports.empty)
+                self.wire(tmp_f2io_r, kts.ternary(self._dense_bypass,
+                                                  tmp_io2glb_r,
+                                                  ~f2io_2_io2glb_fifo.ports.full))
+
+                # self.wire(tmp_io2glb_v, ~f2io_2_io2glb_fifo.ports.empty)
+                self.wire(tmp_io2glb_v, kts.ternary(self._dense_bypass,
+                                                    tmp_f2io_v,
+                                                    ~f2io_2_io2glb_fifo.ports.empty))
+            else:
+                self.wire(tmp_io2glb, f2io_2_io2glb_fifo.ports.data_out[0][to_glb_width - 1, 0])
+                self.wire(tmp_f2io_r, ~f2io_2_io2glb_fifo.ports.full)
+                self.wire(tmp_io2glb_v, ~f2io_2_io2glb_fifo.ports.empty)
 
             # glb2io -> io2f fifo
             glb2io_2_io2f_fifo = RegFIFO(data_width=track_len, width_mult=1, depth=self.fifo_depth)
@@ -132,8 +148,7 @@ class IOCore(Generator):
                            rst_n=self._rst_n,
                            clk_en=self._clk_en,
                            push=tmp_glb2io_v,
-                           pop=tmp_io2f_r,
-                           data_out=tmp_io2f)
+                           pop=tmp_io2f_r)
 
             if self.hack17_to_16 is True and using_17b is True:
                 self.wire(glb2io_2_io2f_fifo.ports.data_in[0][to_glb_width - 1, 0], tmp_glb2io)
@@ -141,8 +156,23 @@ class IOCore(Generator):
             else:
                 self.wire(glb2io_2_io2f_fifo.ports.data_in, tmp_glb2io)
 
-            self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.full)
-            self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
+            if self.allow_bypass:
+                self.wire(tmp_io2f, kts.ternary(self._dense_bypass,
+                                                tmp_glb2io,
+                                                glb2io_2_io2f_fifo.ports.data_out))
+
+                self.wire(tmp_glb2io_r, kts.ternary(self._dense_bypass,
+                                                    tmp_io2f_r,
+                                                    ~glb2io_2_io2f_fifo.ports.full))
+
+                # self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
+                self.wire(tmp_io2f_v, kts.ternary(self._dense_bypass,
+                                                  tmp_glb2io_v,
+                                                  ~glb2io_2_io2f_fifo.ports.empty))
+            else:
+                self.wire(tmp_io2f, glb2io_2_io2f_fifo.ports.data_out)
+                self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.full)
+                self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
 
     def get_bitstream(self):
 
@@ -155,7 +185,8 @@ class IOCore(Generator):
 if __name__ == "__main__":
 
     io_core_dut = IOCore(data_width=16,
-                         tracks_supported=[1, 17])
+                         tracks_supported=[1, 17],
+                         allow_bypass=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
