@@ -47,7 +47,8 @@ class CoreCombiner(Generator):
                  name="CoreCombiner",
                  do_config_lift=True,
                  controllers=None,
-                 tech_map=TSMC_Tech_Map(depth=512, width=32)):
+                 tech_map=TSMC_Tech_Map(depth=512, width=32),
+                 io_prefix=""):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -65,6 +66,7 @@ class CoreCombiner(Generator):
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
         self.tech_map = tech_map
+        self.io_prefix = io_prefix
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -77,7 +79,7 @@ class CoreCombiner(Generator):
         self.controllers = controllers
 
         # Create a MemoryTileBuilder
-        MTB = MemoryTileBuilder(name, True)
+        MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix)
 
         # For our current implementation, we are just using 1 bank of SRAM
         MTB.set_banks(self.banks)
@@ -394,7 +396,8 @@ if __name__ == "__main__":
                              use_sim_sram=True,
                              controllers=controllers,
                              name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}",
-                             do_config_lift=False)
+                             do_config_lift=False,
+                             io_prefix="MEM_")
 
     print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()

@@ -32,13 +32,18 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
     def __init__(self, name, debug, memory_interface: MemoryInterface = None,
                  memory_banks=1, controllers=None,
-                 ready_valid=True, fifo_depth=8):
+                 ready_valid=True, fifo_depth=8,
+                 io_prefix=None):
 
         super().__init__(name, debug)
 
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
         self.fifo_depth = fifo_depth
+        if io_prefix is not None:
+            self.io_prefix = io_prefix
+        else:
+            self.io_prefix = ""
         if controllers is not None:
             self.controllers = controllers
         else:
@@ -661,10 +666,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for (input_width, signal_dicts) in self.inputs_dict.items():
             for (i, signal_dict) in enumerate(signal_dicts):
                 if input_width != 1:
-                    new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
+                    new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
                     og_new_input = new_input
                 else:
-                    new_input = self.input(f'input_width_{input_width}_num_{i}', width=input_width)
+                    new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width)
                     og_new_input = new_input
                 isctrl = input_width == 1
                 new_input.add_attribute(ControlSignalAttr(isctrl))
@@ -674,11 +679,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 any_rvs = len([port.name for port in self.rv if port.name in signal_names]) > 0
                 if any_rvs:
                     # Now create the ready/valid pair and deal with it
-                    new_input_valid = self.input(f'input_width_{input_width}_num_{i}_valid', width=1)
+                    new_input_valid = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}_valid', width=1)
                     new_input_valid.add_attribute(ControlSignalAttr(True))
                     og_new_input_valid = new_input_valid
 
-                    new_input_ready = self.output(f'input_width_{input_width}_num_{i}_ready', width=1)
+                    new_input_ready = self.output(f'{self.io_prefix}input_width_{input_width}_num_{i}_ready', width=1)
                     new_input_ready.add_attribute(ControlSignalAttr(False))
                     og_new_input_ready = new_input_ready
 
@@ -802,7 +807,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                             unflat_base = unflat_name.split("[")[0]
                             unflat_num = unflat_name.split("[")[1].rstrip(']')
                             unflat_name = f"{unflat_base}_{unflat_num}"
-                    self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'input_width_{input_width}_num_{i}'
+                    self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'{self.io_prefix}input_width_{input_width}_num_{i}'
 
     def realize_outputs(self):
         '''
@@ -811,10 +816,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for (output_width, signal_dicts) in self.outputs_dict.items():
             for (i, signal_dict) in enumerate(signal_dicts):
                 if output_width != 1:
-                    new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width, explicit_array=True, packed=True)
+                    new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width, explicit_array=True, packed=True)
                     og_new_output = new_output
                 else:
-                    new_output = self.output(f'output_width_{output_width}_num_{i}', width=output_width)
+                    new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width)
                     og_new_output = new_output
                 new_output.add_attribute(ControlSignalAttr(False))
 
@@ -822,11 +827,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 any_rvs = len([port.name for port in self.rv if port.name in signal_names]) > 0
                 if any_rvs:
                     # Now create the ready/valid pair and deal with it
-                    new_output_valid = self.output(f'output_width_{output_width}_num_{i}_valid', width=1)
+                    new_output_valid = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}_valid', width=1)
                     new_output_valid.add_attribute(ControlSignalAttr(False))
                     og_new_output_valid = new_output_valid
 
-                    new_output_ready = self.input(f'output_width_{output_width}_num_{i}_ready', width=1)
+                    new_output_ready = self.input(f'{self.io_prefix}output_width_{output_width}_num_{i}_ready', width=1)
                     new_output_ready.add_attribute(ControlSignalAttr(True))
                     og_new_output_ready = new_output_ready
 
@@ -953,7 +958,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                             unflat_base = unflat_name.split("[")[0]
                             unflat_num = unflat_name.split("[")[1].rstrip(']')
                             unflat_name = f"{unflat_base}_{unflat_num}"
-                    self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'output_width_{output_width}_num_{i}'
+                    self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'{self.io_prefix}output_width_{output_width}_num_{i}'
 
     def add_mem_port_connection(self, local_port, ctrl_ports):
         '''
