@@ -410,7 +410,7 @@ class ScannerPipe(MemoryController):
         self._ID_out_fifo_push = self.var("ID_out_fifo_push", 1)
         # self._seg_ID_out_fifo_push = self.var("seg_ID_out_fifo_push", 1)
         # self._crd_ID_out_fifo_push = self.var("crd_ID_out_fifo_push", 1)
-        self.wire(self._op_out_fifo_push, self._seg_grant_push | self._crd_grant_push)
+        self.wire(self._ID_out_fifo_push, self._seg_grant_push | self._crd_grant_push)
         self._ID_out_fifo_full = self.var("ID_out_fifo_full", 1)
         self._ID_out_fifo_in = kts.concat(kts.const(0, 1), self._ID_out_to_fifo)
         self._ID_out_fifo = RegFIFO(data_width=self._ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
