@@ -253,6 +253,11 @@ class ScannerPipe(MemoryController):
         # self._fifo_us_valid_entry = self.var("fifo_us_valid_entry", 1)
         self._fifo_us_full = self.var("fifo_us_full", 1)
         self._pop_infifo = self.var("pop_infifo", 1)
+        self._seg_pop_infifo = self.var("seg_pop_infifo", 1)
+        self._crd_pop_infifo = self.var("crd_pop_infifo", 1)
+
+        self.wire(self._pop_infifo, self._seg_pop_infifo | self._crd_pop_infifo)
+
         self._clr_pop_infifo_sticky = self.var("clr_pop_infifo_sticky", 1)
         self._pop_infifo_sticky = sticky_flag(self, self._pop_infifo, self._clr_pop_infifo_sticky, 'pop_infifo_sticky', seq_only=True)
 
@@ -309,7 +314,7 @@ class ScannerPipe(MemoryController):
         self.wire(self._rd_rsp_fifo_valid, ~self._rd_rsp_infifo.ports.empty)
 
 # =============================
-# Output FIFO to BUFFET - 
+# Output FIFO to BUFFET
 # =============================
 
         # These should all get muxed based on a port arbiter from the seg + crd FSM
@@ -336,7 +341,6 @@ class ScannerPipe(MemoryController):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        request_in=brr,
-                    #    grant_out=self._mem_acq,
                        grant_out=kts.concat(self._crd_grant_push, self._seg_grant_push),
                        resource_ready=self._no_outfifo_full)
 
@@ -354,6 +358,8 @@ class ScannerPipe(MemoryController):
 
         # ADDR Outfifo
         self._addr_out_fifo_push = self.var("addr_out_fifo_push", 1)
+        self._seg_addr_out_fifo_push = self.var("seg_addr_out_fifo_push", 1)
+        self._crd_addr_out_fifo_push = self.var("crd_addr_out_fifo_push", 1)
         self._addr_out_fifo_full = self.var("addr_out_fifo_full", 1)
         self._addr_out_fifo_in = kts.concat(kts.const(0, 1), self._addr_out_to_fifo)
         self._addr_out_fifo = RegFIFO(data_width=self._addr_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
@@ -374,6 +380,8 @@ class ScannerPipe(MemoryController):
 
         # OP Outfifo
         self._op_out_fifo_push = self.var("op_out_fifo_push", 1)
+        self._seg_op_out_fifo_push = self.var("seg_op_out_fifo_push", 1)
+        self._crd_op_out_fifo_push = self.var("crd_op_out_fifo_push", 1)
         self._op_out_fifo_full = self.var("op_out_fifo_full", 1)
         self._op_out_fifo_in = kts.concat(kts.const(0, 1), self._op_out_to_fifo)
         self._op_out_fifo = RegFIFO(data_width=self._op_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
@@ -394,6 +402,8 @@ class ScannerPipe(MemoryController):
 
         # ID Outfifo
         self._ID_out_fifo_push = self.var("ID_out_fifo_push", 1)
+        self._seg_ID_out_fifo_push = self.var("seg_ID_out_fifo_push", 1)
+        self._crd_ID_out_fifo_push = self.var("crd_ID_out_fifo_push", 1)
         self._ID_out_fifo_full = self.var("ID_out_fifo_full", 1)
         self._ID_out_fifo_in = kts.concat(kts.const(0, 1), self._ID_out_to_fifo)
         self._ID_out_fifo = RegFIFO(data_width=self._ID_out_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
@@ -445,8 +455,6 @@ class ScannerPipe(MemoryController):
 
         # self._seg_res_fifo_data_out = self.var("seg_res_fifo_data_out", (self.data_width + 1) * 2, packed=True)
         self._seg_res_fifo_data_out = [self.var(f"seg_res_fifo_data_out_{i_}", (self.data_width + 1), packed=True) for i_ in range(2)]
-        # for idx_ in range(2):
-            # self._seg_res_fifo_data_out = self.var("seg_res_fifo_data_out", (self.data_width + 1) * 2, packed=True)
         self._seg_res_fifo_push_alloc = self.var("seg_res_fifo_push_alloc", 1)
         self._seg_res_fifo_push_reserve = self.var("seg_res_fifo_push_reserve", 1)
         self._seg_res_fifo_push_fill = self.var("seg_res_fifo_push_fill", 1)
@@ -491,9 +499,8 @@ class ScannerPipe(MemoryController):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        data_in_0=self._rd_rsp_fifo_out_data,
-                    #    fill_data_in=kts.concat(self._infifo_eos_in, self._infifo_pos_in),
                        fill_data_in=self._seg_res_fifo_data_out[0],
-                       data_out=self._crd_res_fifo_data_out,
+                       data_out_0=self._crd_res_fifo_data_out,
                        push_alloc=self._crd_res_fifo_push_alloc,
                        push_reserve=~self._rd_rsp_fifo_valid & (self._rd_rsp_fifo_out_data[self.data_width] == kts.const(1, 1)),
                        push_fill=self._crd_res_fifo_push_fill,
@@ -630,142 +637,553 @@ class ScannerPipe(MemoryController):
 
         # Create FSM
         self.scan_fsm_seg = self.add_fsm("scan_seq_seg", reset_high=False)
-        self.scan_fsm_crd = self.add_fsm("scan_seq_crd", reset_high=False)
         START_SEG = self.scan_fsm_seg.add_state("START_SEG")
-        # ISSUE_STRM = self.scan_fsm.add_state("ISSUE_STRM")
         INJECT_0 = self.scan_fsm_seg.add_state("INJECT_0")
         INJECT_DONE = self.scan_fsm_seg.add_state("INJECT_DONE")
-        # Non-root dispatch state for separation
-        # ISSUE_STRM_NR = self.scan_fsm.add_state("ISSUE_STRM_NR")
-        PASS_STOP = self.scan_fsm_seg.add_state("PASS_STOP")
         READ = self.scan_fsm_seg.add_state("READ")
-        # READ_1 = self.scan_fsm.add_state("READ_1")
-        # READ_2 = self.scan_fsm.add_state("READ_2")
-        DONE_SEG = self.scan_fsm.add_state("DONE_SEG")
+        READ_ALT = self.scan_fsm_seg.add_state("READ_ALT")
+        LOOKUP = self.scan_fsm_seg.add_state("LOOKUP")
+        PASS_STOP = self.scan_fsm_seg.add_state("PASS_STOP_SEG")
+        FREE_SEG = self.scan_fsm_seg.add_state("FREE_SEG")
+        # Squashing logic
+        # SEQ_DONE_SEG = self.scan_fsm_seg.add_state("SEQ_DONE_SEG")
+        DONE_SEG = self.scan_fsm_seg.add_state("DONE_SEG")
 
-        self.scan_fsm.output(self._seg_addr_out_to_fifo)
-        self.scan_fsm.output(self._seg_op_out_to_fifo)
-        self.scan_fsm.output(self._seg_ID_out_to_fifo)
-        self.scan_fsm.output(self._buffet_push)
-        self.scan_fsm.output(self._rd_rsp_fifo_pop)
-        self.scan_fsm.output(self._ptr_reg_en)
-        self.scan_fsm.output(self._valid_inc)
-        self.scan_fsm.output(self._valid_rst)
-        # self.scan_fsm.output(self._ren)
-        # self.scan_fsm.output(self._fifo_push)
-        self.scan_fsm.output(self._coord_out_fifo_push)
-        self.scan_fsm.output(self._pos_out_fifo_push)
-        self.scan_fsm.output(self._tag_eos)
-        self.scan_fsm.output(self._next_seq_length)
-        self.scan_fsm.output(self._update_seq_state)
-        self.scan_fsm.output(self._last_valid_accepting)
-        self.scan_fsm.output(self._pop_infifo)
-        self.scan_fsm.output(self._clr_pop_infifo_sticky, default=kts.const(0, 1))
-        self.scan_fsm.output(self._clr_seen_root_eos, default=kts.const(0, 1))
-        self.scan_fsm.output(self._inc_fiber_addr)
-        self.scan_fsm.output(self._clr_fiber_addr)
-        self.scan_fsm.output(self._inc_rep)
-        self.scan_fsm.output(self._clr_rep)
-        self.scan_fsm.output(self._data_to_fifo)
-        self.scan_fsm.output(self._en_reg_data_in)
-        self.scan_fsm.output(self._pos_out_to_fifo)
-        self.scan_fsm.output(self._inc_req_made)
-        self.scan_fsm.output(self._clr_req_made)
-        self.scan_fsm.output(self._inc_req_rec)
-        self.scan_fsm.output(self._clr_req_rec)
-        self.scan_fsm.output(self._us_fifo_inject_data, default=kts.const(0, self.data_width))
-        self.scan_fsm.output(self._us_fifo_inject_eos, default=kts.const(0, 1))
-        self.scan_fsm.output(self._us_fifo_inject_push, default=kts.const(0, 1))
+        self.scan_fsm_seg.output(self._seg_addr_out_to_fifo)
+        self.scan_fsm_seg.output(self._seg_op_out_to_fifo)
+        self.scan_fsm_seg.output(self._seg_ID_out_to_fifo)
+        self.scan_fsm_seg.output(self._seg_req_push)
+        self.scan_fsm_seg.output(self._seg_rd_rsp_fifo_pop)
+        self.scan_fsm_seg.output(self._seg_pop_infifo)
+        self.scan_fsm_seg.output(self._inc_req_made_seg)
+        self.scan_fsm_seg.output(self._clr_req_made_seg)
+        self.scan_fsm_seg.output(self._inc_req_rec_seg)
+        self.scan_fsm_seg.output(self._clr_req_rec_seg)
+        self.scan_fsm_seg.output(self._us_fifo_inject_data, default=kts.const(0, self.data_width))
+        self.scan_fsm_seg.output(self._us_fifo_inject_eos, default=kts.const(0, 1))
+        self.scan_fsm_seg.output(self._us_fifo_inject_push, default=kts.const(0, 1))
 
+    # Dummy state for eventual filling block.
+        START_SEG.next(READ, ~self._root & ~self._lookup_mode)
+        START_SEG.next(INJECT_0, self._root & ~self._lookup_mode)
+        START_SEG.next(LOOKUP, ~self._root & self._lookup_mode)
 
+        # Inject a single value into the fifo
+        INJECT_0.next(INJECT_DONE, None)
 
+        # Inject a single done into the fifo
+        INJECT_DONE.next(READ, None)
 
+        # From READ - we have one option
+        # 1. Issue read to first address in seg pair and reserve room in the reservation FIFO and
+        # Pop this thing off so we can have the next data or the EOS token as soon as possible
+        READ.next(READ_ALT, self._seg_grant_push & ~self._seg_res_fifo_full)
+        READ.next(READ, None)
 
+        # In READ_ALT - we are sending the second read request
+        READ_ALT.next(PASS_STOP, self._seg_grant_push & ~self._seg_res_fifo_full)
+        READ_ALT.next(READ_ALT, None)
 
+        LOOKUP.next(LOOKUP, None)
 
+        # In this state, we are passing through stop tokens into
+        # the downstream
+        # Go to free if we see DONE since we are application done
+        # We need to make sure we only transition if there was somewhere to put an item
+        PASS_STOP.next(FREE_SEG, self._done_in & kts.ternary(self._lookup_mode, ~self._coord_fifo.ports.full, ~self._seg_res_fifo_full))
+        # PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._done_in & self._lookup_mode)
+        # Go to lookup if there's room in the final output fifo
+        PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._done_in & self._lookup_mode & ~self._coord_fifo.ports.full)
+        PASS_STOP.next(READ, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._done_in & self._lookup_mode & ~self._seg_res_fifo_full)
 
+        PASS_STOP.next(PASS_STOP, None)
+        # PASS_STOP.next(FREE_SEG, self._done_in & ~self._fifo_full)
+        # PASS_STOP.next(LOOKUP, (~self._infifo_eos_in & self._infifo_valid_in) & ~self._done_in & self._lookup_mode)
+        # PASS_STOP.next(PASS_STOP, None)
 
+        # Free the ID 0 data structure
+        FREE_SEG.next(DONE_SEG, self._seg_grant_push)
 
+        DONE_SEG.next(START_SEG, None)
 
+        #######
+        # START_SEG
+        #######
+        START_SEG.output(self._seg_addr_out_to_fifo, 0)
+        START_SEG.output(self._seg_op_out_to_fifo, 0)
+        START_SEG.output(self._seg_ID_out_to_fifo, 0)
+        START_SEG.output(self._seg_req_push, 0)
+        START_SEG.output(self._seg_rd_rsp_fifo_pop, 0)
+        START_SEG.output(self._seg_pop_infifo, 0)
+        START_SEG.output(self._inc_req_made_seg, 0)
+        START_SEG.output(self._clr_req_made_seg, 0)
+        START_SEG.output(self._inc_req_rec_seg, 0)
+        START_SEG.output(self._clr_req_rec_seg, 0)
+        START_SEG.output(self._us_fifo_inject_data, 0)
+        START_SEG.output(self._us_fifo_inject_eos, 0)
+        START_SEG.output(self._us_fifo_inject_push, 0)
 
+        #######
+        # INJECT_0
+        #######
+        INJECT_0.output(self._seg_addr_out_to_fifo, 0)
+        INJECT_0.output(self._seg_op_out_to_fifo, 0)
+        INJECT_0.output(self._seg_ID_out_to_fifo, 0)
+        INJECT_0.output(self._seg_req_push, 0)
+        INJECT_0.output(self._seg_rd_rsp_fifo_pop, 0)
+        INJECT_0.output(self._seg_pop_infifo, 0)
+        INJECT_0.output(self._inc_req_made_seg, 0)
+        INJECT_0.output(self._clr_req_made_seg, 0)
+        INJECT_0.output(self._inc_req_rec_seg, 0)
+        INJECT_0.output(self._clr_req_rec_seg, 0)
+        INJECT_0.output(self._us_fifo_inject_data, 0)
+        INJECT_0.output(self._us_fifo_inject_eos, 0)
+        INJECT_0.output(self._us_fifo_inject_push, 1)
 
+        #######
+        # INJECT_DONE
+        #######
+        INJECT_DONE.output(self._seg_addr_out_to_fifo, 0)
+        INJECT_DONE.output(self._seg_op_out_to_fifo, 0)
+        INJECT_DONE.output(self._seg_ID_out_to_fifo, 0)
+        INJECT_DONE.output(self._seg_req_push, 0)
+        INJECT_DONE.output(self._seg_rd_rsp_fifo_pop, 0)
+        INJECT_DONE.output(self._seg_pop_infifo, 0)
+        INJECT_DONE.output(self._inc_req_made_seg, 0)
+        INJECT_DONE.output(self._clr_req_made_seg, 0)
+        INJECT_DONE.output(self._inc_req_rec_seg, 0)
+        INJECT_DONE.output(self._clr_req_rec_seg, 0)
+        INJECT_DONE.output(self._us_fifo_inject_data, kts.const(2**8, 16))
+        INJECT_DONE.output(self._us_fifo_inject_eos, 1)
+        INJECT_DONE.output(self._us_fifo_inject_push, 1)
 
+        #######
+        # READ
+        #######
+        READ.output(self._seg_addr_out_to_fifo, 0)
+        READ.output(self._seg_op_out_to_fifo, 0)
+        READ.output(self._seg_ID_out_to_fifo, 0)
+        READ.output(self._seg_req_push, 1)
+        READ.output(self._seg_rd_rsp_fifo_pop, 0)
+        READ.output(self._seg_pop_infifo, 0)
+        READ.output(self._inc_req_made_seg, 0)
+        READ.output(self._clr_req_made_seg, 0)
+        READ.output(self._inc_req_rec_seg, 0)
+        READ.output(self._clr_req_rec_seg, 0)
+        READ.output(self._us_fifo_inject_data, 0)
+        READ.output(self._us_fifo_inject_eos, 0)
+        READ.output(self._us_fifo_inject_push, 0)
 
+        #######
+        # READ_ALT
+        #######
+        READ_ALT.output(self._seg_addr_out_to_fifo, 0)
+        READ_ALT.output(self._seg_op_out_to_fifo, 0)
+        READ_ALT.output(self._seg_ID_out_to_fifo, 0)
+        READ_ALT.output(self._seg_req_push, 0)
+        READ_ALT.output(self._seg_rd_rsp_fifo_pop, 0)
+        READ_ALT.output(self._seg_pop_infifo, 0)
+        READ_ALT.output(self._inc_req_made_seg, 0)
+        READ_ALT.output(self._clr_req_made_seg, 0)
+        READ_ALT.output(self._inc_req_rec_seg, 0)
+        READ_ALT.output(self._clr_req_rec_seg, 0)
+        READ_ALT.output(self._us_fifo_inject_data, 0)
+        READ_ALT.output(self._us_fifo_inject_eos, 0)
+        READ_ALT.output(self._us_fifo_inject_push, 0)
 
+        #######
+        # LOOKUP
+        #######
+        LOOKUP.output(self._seg_addr_out_to_fifo, 0)
+        LOOKUP.output(self._seg_op_out_to_fifo, 0)
+        LOOKUP.output(self._seg_ID_out_to_fifo, 0)
+        LOOKUP.output(self._seg_req_push, 0)
+        LOOKUP.output(self._seg_rd_rsp_fifo_pop, 0)
+        LOOKUP.output(self._seg_pop_infifo, 0)
+        LOOKUP.output(self._inc_req_made_seg, 0)
+        LOOKUP.output(self._clr_req_made_seg, 0)
+        LOOKUP.output(self._inc_req_rec_seg, 0)
+        LOOKUP.output(self._clr_req_rec_seg, 0)
+        LOOKUP.output(self._us_fifo_inject_data, 0)
+        LOOKUP.output(self._us_fifo_inject_eos, 0)
+        LOOKUP.output(self._us_fifo_inject_push, 0)
 
+        #######
+        # PASS_STOP
+        #######
+        PASS_STOP.output(self._seg_addr_out_to_fifo, 0)
+        PASS_STOP.output(self._seg_op_out_to_fifo, 0)
+        PASS_STOP.output(self._seg_ID_out_to_fifo, 0)
+        PASS_STOP.output(self._seg_req_push, 0)
+        PASS_STOP.output(self._seg_rd_rsp_fifo_pop, 0)
+        PASS_STOP.output(self._seg_pop_infifo, 0)
+        PASS_STOP.output(self._inc_req_made_seg, 0)
+        PASS_STOP.output(self._clr_req_made_seg, 0)
+        PASS_STOP.output(self._inc_req_rec_seg, 0)
+        PASS_STOP.output(self._clr_req_rec_seg, 0)
+        PASS_STOP.output(self._us_fifo_inject_data, 0)
+        PASS_STOP.output(self._us_fifo_inject_eos, 0)
+        PASS_STOP.output(self._us_fifo_inject_push, 0)
 
+        #######
+        # FREE_SEG
+        #######
+        FREE_SEG.output(self._seg_addr_out_to_fifo, 0)
+        FREE_SEG.output(self._seg_op_out_to_fifo, 0)
+        FREE_SEG.output(self._seg_ID_out_to_fifo, 0)
+        FREE_SEG.output(self._seg_req_push, 0)
+        FREE_SEG.output(self._seg_rd_rsp_fifo_pop, 0)
+        FREE_SEG.output(self._seg_pop_infifo, 0)
+        FREE_SEG.output(self._inc_req_made_seg, 0)
+        FREE_SEG.output(self._clr_req_made_seg, 0)
+        FREE_SEG.output(self._inc_req_rec_seg, 0)
+        FREE_SEG.output(self._clr_req_rec_seg, 0)
+        FREE_SEG.output(self._us_fifo_inject_data, 0)
+        FREE_SEG.output(self._us_fifo_inject_eos, 0)
+        FREE_SEG.output(self._us_fifo_inject_push, 0)
 
+        #######
+        # DONE_SEG
+        #######
+        DONE_SEG.output(self._seg_addr_out_to_fifo, 0)
+        DONE_SEG.output(self._seg_op_out_to_fifo, 0)
+        DONE_SEG.output(self._seg_ID_out_to_fifo, 0)
+        DONE_SEG.output(self._seg_req_push, 0)
+        DONE_SEG.output(self._seg_rd_rsp_fifo_pop, 0)
+        DONE_SEG.output(self._seg_pop_infifo, 0)
+        DONE_SEG.output(self._inc_req_made_seg, 0)
+        DONE_SEG.output(self._clr_req_made_seg, 0)
+        DONE_SEG.output(self._inc_req_rec_seg, 0)
+        DONE_SEG.output(self._clr_req_rec_seg, 0)
+        DONE_SEG.output(self._us_fifo_inject_data, 0)
+        DONE_SEG.output(self._us_fifo_inject_eos, 0)
+        DONE_SEG.output(self._us_fifo_inject_push, 0)
 
+        self.scan_fsm_seg.set_start_state(START_SEG)
 
+# ================================
+# CRD/Optional FSM
+# ================================
+# This FSM is basically used to read coordinates in compressed mode,
+# do dense streaming, and do the block reads
 
+        self.scan_fsm_crd = self.add_fsm("scan_seq_crd", reset_high=False)
 
+        START_CRD = self.scan_fsm_crd.add_state("START_CRD")
+        DENSE_STRM = self.scan_fsm_crd.add_state("DENSE_STRM")
+        SEQ_STRM = self.scan_fsm_crd.add_state("SEQ_STRM")
+        # SEQ_ITER = self.scan_fsm.add_state("SEQ_ITER")
+        # SEQ_DONE = self.scan_fsm.add_state("SEQ_DONE")
+        # SEQ_STOP = self.scan_fsm.add_state("SEQ_STOP")
 
-
-
-
-        LOOKUP = self.scan_fsm.add_state("LOOKUP")
-        DENSE_STRM = self.scan_fsm.add_state("DENSE_STRM")
-
-        SEQ_START = self.scan_fsm.add_state("SEQ_START")
-        SEQ_ITER = self.scan_fsm.add_state("SEQ_ITER")
-        SEQ_DONE = self.scan_fsm.add_state("SEQ_DONE")
-        SEQ_STOP = self.scan_fsm.add_state("SEQ_STOP")
-
-        # REP_INNER_PRE = self.scan_fsm.add_state("REP_INNER_PRE")
-        # REP_INNER = self.scan_fsm.add_state("REP_INNER")
-        # REP_OUTER = self.scan_fsm.add_state("REP_OUTER")
-        # REP_STOP = self.scan_fsm.add_state("REP_STOP")
-
-        FREE1 = self.scan_fsm.add_state("FREE1")
-        FREE2 = self.scan_fsm.add_state("FREE2")
+        FREE_CRD = self.scan_fsm_crd.add_state("FREE_CRD")
+        # If performing the block reads, need to free both data structures :shrug:
+        FREE_CRD2 = self.scan_fsm_crd.add_state("FREE_CRD2")
 
         # Block readout
-        BLOCK_1_SIZE_REQ = self.scan_fsm.add_state("BLOCK_1_SIZE_REQ")
-        BLOCK_1_SIZE_REC = self.scan_fsm.add_state("BLOCK_1_SIZE_REC")
-        BLOCK_1_RD = self.scan_fsm.add_state("BLOCK_1_RD")
-        BLOCK_2_SIZE_REQ = self.scan_fsm.add_state("BLOCK_2_SIZE_REQ")
-        BLOCK_2_SIZE_REC = self.scan_fsm.add_state("BLOCK_2_SIZE_REC")
-        BLOCK_2_RD = self.scan_fsm.add_state("BLOCK_2_RD")
+        BLOCK_1_SIZE_REQ = self.scan_fsm_crd.add_state("BLOCK_1_SIZE_REQ")
+        BLOCK_1_SIZE_REC = self.scan_fsm_crd.add_state("BLOCK_1_SIZE_REC")
+        BLOCK_1_RD = self.scan_fsm_crd.add_state("BLOCK_1_RD")
+        BLOCK_2_SIZE_REQ = self.scan_fsm_crd.add_state("BLOCK_2_SIZE_REQ")
+        BLOCK_2_SIZE_REC = self.scan_fsm_crd.add_state("BLOCK_2_SIZE_REC")
+        BLOCK_2_RD = self.scan_fsm_crd.add_state("BLOCK_2_RD")
 
-        DONE_CRD = self.scan_fsm.add_state("DONE_CRD")
+        DONE_CRD = self.scan_fsm_crd.add_state("DONE_CRD")
 
-        self.scan_fsm.output(self._addr_out_to_fifo)
-        self.scan_fsm.output(self._op_out_to_fifo)
-        self.scan_fsm.output(self._ID_out_to_fifo)
-        self.scan_fsm.output(self._buffet_push)
-        self.scan_fsm.output(self._rd_rsp_fifo_pop)
-        self.scan_fsm.output(self._ptr_reg_en)
-        self.scan_fsm.output(self._valid_inc)
-        self.scan_fsm.output(self._valid_rst)
+        self.scan_fsm_crd.output(self._crd_addr_out_to_fifo)
+        self.scan_fsm_crd.output(self._crd_op_out_to_fifo)
+        self.scan_fsm_crd.output(self._crd_ID_out_to_fifo)
+        self.scan_fsm_crd.output(self._crd_req_push)
+        self.scan_fsm_crd.output(self._crd_rd_rsp_fifo_pop)
+        self.scan_fsm_crd.output(self._pos_out_fifo_push)
+        self.scan_fsm_crd.output(self._crd_pop_infifo)
+        self.scan_fsm_crd.output(self._en_reg_data_in)
+        self.scan_fsm_crd.output(self._pos_out_to_fifo)
+        self.scan_fsm_crd.output(self._inc_req_made_crd)
+        self.scan_fsm_crd.output(self._clr_req_made_crd)
+        self.scan_fsm_crd.output(self._inc_req_rec_crd)
+        self.scan_fsm_crd.output(self._clr_req_rec_crd)
+        # self.scan_fsm.output(self._ptr_reg_en)
         # self.scan_fsm.output(self._ren)
         # self.scan_fsm.output(self._fifo_push)
-        self.scan_fsm.output(self._coord_out_fifo_push)
-        self.scan_fsm.output(self._pos_out_fifo_push)
-        self.scan_fsm.output(self._tag_eos)
-        self.scan_fsm.output(self._next_seq_length)
-        self.scan_fsm.output(self._update_seq_state)
-        self.scan_fsm.output(self._last_valid_accepting)
-        self.scan_fsm.output(self._pop_infifo)
-        self.scan_fsm.output(self._clr_pop_infifo_sticky, default=kts.const(0, 1))
-        self.scan_fsm.output(self._clr_seen_root_eos, default=kts.const(0, 1))
-        self.scan_fsm.output(self._inc_fiber_addr)
-        self.scan_fsm.output(self._clr_fiber_addr)
-        self.scan_fsm.output(self._inc_rep)
-        self.scan_fsm.output(self._clr_rep)
-        self.scan_fsm.output(self._data_to_fifo)
-        self.scan_fsm.output(self._en_reg_data_in)
-        self.scan_fsm.output(self._pos_out_to_fifo)
-        self.scan_fsm.output(self._inc_req_made)
-        self.scan_fsm.output(self._clr_req_made)
-        self.scan_fsm.output(self._inc_req_rec)
-        self.scan_fsm.output(self._clr_req_rec)
-        self.scan_fsm.output(self._us_fifo_inject_data, default=kts.const(0, self.data_width))
-        self.scan_fsm.output(self._us_fifo_inject_eos, default=kts.const(0, 1))
-        self.scan_fsm.output(self._us_fifo_inject_push, default=kts.const(0, 1))
+        # self.scan_fsm.output(self._coord_out_fifo_push)
+        # self.scan_fsm.output(self._last_valid_accepting)
+        # self.scan_fsm.output(self._tag_eos)
+        # self.scan_fsm.output(self._next_seq_length)
+        # self.scan_fsm.output(self._update_seq_state)
+        # self.scan_fsm.output(self._data_to_fifo)
+        # self.scan_fsm.output(self._clr_pop_infifo_sticky, default=kts.const(0, 1))
+        # self.scan_fsm.output(self._clr_seen_root_eos, default=kts.const(0, 1))
+        # self.scan_fsm.output(self._inc_fiber_addr)
+        # self.scan_fsm.output(self._clr_fiber_addr)
+        # self.scan_fsm.output(self._inc_rep)
+        # self.scan_fsm.output(self._clr_rep)
+        # self.scan_fsm.output(self._us_fifo_inject_data, default=kts.const(0, self.data_width))
+        # self.scan_fsm.output(self._us_fifo_inject_eos, default=kts.const(0, 1))
+        # self.scan_fsm.output(self._us_fifo_inject_push, default=kts.const(0, 1))
 
         ####################
         # Next State Logic
         ####################
+
+        START_CRD.next(DENSE_STRM, self._dense)
+        START_CRD.next(BLOCK_1_SIZE_REQ)
+        START_CRD.next(SEQ_STRM, self._dense)
+
+        # DENSE_STRM = self.scan_fsm_crd.add_state("DENSE_STRM")
+        DENSE_STRM.next(SEQ_STRM, self._num_req_made_crd == self._dim_size)
+        DENSE_STRM.next(DENSE_STRM, None)
+
+        SEQ_STRM.next(self._done_in & ~self._fifo_full)
+
+        # Block readout
+        # BLOCK_1_SIZE_REQ
+        BLOCK_1_SIZE_REQ.next(BLOCK_1_SIZE_REC, self._buffet_joined)
+        BLOCK_1_SIZE_REQ.next(BLOCK_1_SIZE_REQ, None)
+
+        # BLOCK_1_SIZE_REC
+        # Push the size on the line...
+        BLOCK_1_SIZE_REC.next(BLOCK_1_RD, self._buffet_joined & ~self._fifo_full & self._rd_rsp_fifo_valid)
+        BLOCK_1_SIZE_REC.next(BLOCK_1_SIZE_REC, None)
+
+        BLOCK_1_RD.next(BLOCK_2_SIZE_REQ, (self._num_req_rec == self._ptr_reg) & ~self._lookup_mode)
+        BLOCK_1_RD.next(FREE_CRD, (self._num_req_rec == self._ptr_reg) & self._lookup_mode)
+        BLOCK_1_RD.next(BLOCK_1_RD, None)
+
+        # BLOCK_2_SIZE_REQ
+        BLOCK_2_SIZE_REQ.next(BLOCK_2_SIZE_REC, self._buffet_joined)
+        BLOCK_2_SIZE_REQ.next(BLOCK_2_SIZE_REQ, None)
+
+        # BLOCK_2_SIZE_REC
+        # Push the size on the line...
+        BLOCK_2_SIZE_REC.next(BLOCK_2_RD, self._buffet_joined & ~self._fifo_full & self._rd_rsp_fifo_valid)
+        BLOCK_2_SIZE_REC.next(BLOCK_2_SIZE_REC, None)
+
+        BLOCK_2_RD.next(FREE_CRD, self._num_req_rec == self._ptr_reg)
+        BLOCK_2_RD.next(BLOCK_2_RD, None)
+
+        # DONE
+        # Go to START after sending a free?
+        FREE_CRD.next(FREE_CRD2, self._buffet_joined & ~self._lookup_mode)
+        FREE_CRD.next(DONE_CRD, self._buffet_joined & self._lookup_mode)
+        FREE_CRD.next(FREE_CRD, None)
+
+        FREE_CRD2.next(DONE_CRD, self._buffet_joined)
+        # FREE2.next(START, self._buffet_joined & ~self._root)
+        # FREE2.next(DONE, self._buffet_joined & self._root)
+        FREE_CRD2.next(FREE_CRD2, None)
+
+        DONE_CRD.next(START_CRD, None)
+
+        ################
+        # STATE OUTPUTS
+        ################
+
+        ######################
+        # START_CRD
+        ######################
+        START_CRD.output(self._crd_addr_out_to_fifo, 0)
+        START_CRD.output(self._crd_op_out_to_fifo, 0)
+        START_CRD.output(self._crd_ID_out_to_fifo, 0)
+        START_CRD.output(self._crd_req_push, 0)
+        START_CRD.output(self._crd_rd_rsp_fifo_pop, 0)
+        START_CRD.output(self._pos_out_fifo_push, 0)
+        START_CRD.output(self._crd_pop_infifo, 0)
+        START_CRD.output(self._en_reg_data_in, 0)
+        START_CRD.output(self._pos_out_to_fifo, 0)
+        START_CRD.output(self._inc_req_made_crd, 0)
+        START_CRD.output(self._clr_req_made_crd, 0)
+        START_CRD.output(self._inc_req_rec_crd, 0)
+        START_CRD.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # DENSE_STRM
+        ######################
+        DENSE_STRM.output(self._crd_addr_out_to_fifo, 0)
+        DENSE_STRM.output(self._crd_op_out_to_fifo, 0)
+        DENSE_STRM.output(self._crd_ID_out_to_fifo, 0)
+        DENSE_STRM.output(self._crd_req_push, 0)
+        DENSE_STRM.output(self._crd_rd_rsp_fifo_pop, 0)
+        DENSE_STRM.output(self._pos_out_fifo_push, 0)
+        DENSE_STRM.output(self._crd_pop_infifo, 0)
+        DENSE_STRM.output(self._en_reg_data_in, 0)
+        DENSE_STRM.output(self._pos_out_to_fifo, 0)
+        DENSE_STRM.output(self._inc_req_made_crd, 0)
+        DENSE_STRM.output(self._clr_req_made_crd, 0)
+        DENSE_STRM.output(self._inc_req_rec_crd, 0)
+        DENSE_STRM.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # SEQ_STRM
+        ######################
+        SEQ_STRM.output(self._crd_addr_out_to_fifo, 0)
+        SEQ_STRM.output(self._crd_op_out_to_fifo, 0)
+        SEQ_STRM.output(self._crd_ID_out_to_fifo, 0)
+        SEQ_STRM.output(self._crd_req_push, 0)
+        SEQ_STRM.output(self._crd_rd_rsp_fifo_pop, 0)
+        SEQ_STRM.output(self._pos_out_fifo_push, 0)
+        SEQ_STRM.output(self._crd_pop_infifo, 0)
+        SEQ_STRM.output(self._en_reg_data_in, 0)
+        SEQ_STRM.output(self._pos_out_to_fifo, 0)
+        SEQ_STRM.output(self._inc_req_made_crd, 0)
+        SEQ_STRM.output(self._clr_req_made_crd, 0)
+        SEQ_STRM.output(self._inc_req_rec_crd, 0)
+        SEQ_STRM.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # FREE_CRD
+        ######################
+        FREE_CRD.output(self._crd_addr_out_to_fifo, 0)
+        FREE_CRD.output(self._crd_op_out_to_fifo, 0)
+        FREE_CRD.output(self._crd_ID_out_to_fifo, 0)
+        FREE_CRD.output(self._crd_req_push, 0)
+        FREE_CRD.output(self._crd_rd_rsp_fifo_pop, 0)
+        FREE_CRD.output(self._pos_out_fifo_push, 0)
+        FREE_CRD.output(self._crd_pop_infifo, 0)
+        FREE_CRD.output(self._en_reg_data_in, 0)
+        FREE_CRD.output(self._pos_out_to_fifo, 0)
+        FREE_CRD.output(self._inc_req_made_crd, 0)
+        FREE_CRD.output(self._clr_req_made_crd, 0)
+        FREE_CRD.output(self._inc_req_rec_crd, 0)
+        FREE_CRD.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # FREE_CRD2
+        ######################
+        FREE_CRD2.output(self._crd_addr_out_to_fifo, 0)
+        FREE_CRD2.output(self._crd_op_out_to_fifo, 0)
+        FREE_CRD2.output(self._crd_ID_out_to_fifo, 0)
+        FREE_CRD2.output(self._crd_req_push, 0)
+        FREE_CRD2.output(self._crd_rd_rsp_fifo_pop, 0)
+        FREE_CRD2.output(self._pos_out_fifo_push, 0)
+        FREE_CRD2.output(self._crd_pop_infifo, 0)
+        FREE_CRD2.output(self._en_reg_data_in, 0)
+        FREE_CRD2.output(self._pos_out_to_fifo, 0)
+        FREE_CRD2.output(self._inc_req_made_crd, 0)
+        FREE_CRD2.output(self._clr_req_made_crd, 0)
+        FREE_CRD2.output(self._inc_req_rec_crd, 0)
+        FREE_CRD2.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # BLOCK_1_SIZE_REQ
+        ######################
+        BLOCK_1_SIZE_REQ.output(self._crd_addr_out_to_fifo, 0)
+        BLOCK_1_SIZE_REQ.output(self._crd_op_out_to_fifo, 0)
+        BLOCK_1_SIZE_REQ.output(self._crd_ID_out_to_fifo, 0)
+        BLOCK_1_SIZE_REQ.output(self._crd_req_push, 0)
+        BLOCK_1_SIZE_REQ.output(self._crd_rd_rsp_fifo_pop, 0)
+        BLOCK_1_SIZE_REQ.output(self._pos_out_fifo_push, 0)
+        BLOCK_1_SIZE_REQ.output(self._crd_pop_infifo, 0)
+        BLOCK_1_SIZE_REQ.output(self._en_reg_data_in, 0)
+        BLOCK_1_SIZE_REQ.output(self._pos_out_to_fifo, 0)
+        BLOCK_1_SIZE_REQ.output(self._inc_req_made_crd, 0)
+        BLOCK_1_SIZE_REQ.output(self._clr_req_made_crd, 0)
+        BLOCK_1_SIZE_REQ.output(self._inc_req_rec_crd, 0)
+        BLOCK_1_SIZE_REQ.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # BLOCK_1_SIZE_REC
+        ######################
+        BLOCK_1_SIZE_REC.output(self._crd_addr_out_to_fifo, 0)
+        BLOCK_1_SIZE_REC.output(self._crd_op_out_to_fifo, 0)
+        BLOCK_1_SIZE_REC.output(self._crd_ID_out_to_fifo, 0)
+        BLOCK_1_SIZE_REC.output(self._crd_req_push, 0)
+        BLOCK_1_SIZE_REC.output(self._crd_rd_rsp_fifo_pop, 0)
+        BLOCK_1_SIZE_REC.output(self._pos_out_fifo_push, 0)
+        BLOCK_1_SIZE_REC.output(self._crd_pop_infifo, 0)
+        BLOCK_1_SIZE_REC.output(self._en_reg_data_in, 0)
+        BLOCK_1_SIZE_REC.output(self._pos_out_to_fifo, 0)
+        BLOCK_1_SIZE_REC.output(self._inc_req_made_crd, 0)
+        BLOCK_1_SIZE_REC.output(self._clr_req_made_crd, 0)
+        BLOCK_1_SIZE_REC.output(self._inc_req_rec_crd, 0)
+        BLOCK_1_SIZE_REC.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # BLOCK_1_RD
+        ######################
+        BLOCK_1_RD.output(self._crd_addr_out_to_fifo, 0)
+        BLOCK_1_RD.output(self._crd_op_out_to_fifo, 0)
+        BLOCK_1_RD.output(self._crd_ID_out_to_fifo, 0)
+        BLOCK_1_RD.output(self._crd_req_push, 0)
+        BLOCK_1_RD.output(self._crd_rd_rsp_fifo_pop, 0)
+        BLOCK_1_RD.output(self._pos_out_fifo_push, 0)
+        BLOCK_1_RD.output(self._crd_pop_infifo, 0)
+        BLOCK_1_RD.output(self._en_reg_data_in, 0)
+        BLOCK_1_RD.output(self._pos_out_to_fifo, 0)
+        BLOCK_1_RD.output(self._inc_req_made_crd, 0)
+        BLOCK_1_RD.output(self._clr_req_made_crd, 0)
+        BLOCK_1_RD.output(self._inc_req_rec_crd, 0)
+        BLOCK_1_RD.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # BLOCK_2_SIZE_REQ
+        ######################
+        BLOCK_2_SIZE_REQ.output(self._crd_addr_out_to_fifo, 0)
+        BLOCK_2_SIZE_REQ.output(self._crd_op_out_to_fifo, 0)
+        BLOCK_2_SIZE_REQ.output(self._crd_ID_out_to_fifo, 0)
+        BLOCK_2_SIZE_REQ.output(self._crd_req_push, 0)
+        BLOCK_2_SIZE_REQ.output(self._crd_rd_rsp_fifo_pop, 0)
+        BLOCK_2_SIZE_REQ.output(self._pos_out_fifo_push, 0)
+        BLOCK_2_SIZE_REQ.output(self._crd_pop_infifo, 0)
+        BLOCK_2_SIZE_REQ.output(self._en_reg_data_in, 0)
+        BLOCK_2_SIZE_REQ.output(self._pos_out_to_fifo, 0)
+        BLOCK_2_SIZE_REQ.output(self._inc_req_made_crd, 0)
+        BLOCK_2_SIZE_REQ.output(self._clr_req_made_crd, 0)
+        BLOCK_2_SIZE_REQ.output(self._inc_req_rec_crd, 0)
+        BLOCK_2_SIZE_REQ.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # BLOCK_2_SIZE_REC
+        ######################
+        BLOCK_2_SIZE_REC.output(self._crd_addr_out_to_fifo, 0)
+        BLOCK_2_SIZE_REC.output(self._crd_op_out_to_fifo, 0)
+        BLOCK_2_SIZE_REC.output(self._crd_ID_out_to_fifo, 0)
+        BLOCK_2_SIZE_REC.output(self._crd_req_push, 0)
+        BLOCK_2_SIZE_REC.output(self._crd_rd_rsp_fifo_pop, 0)
+        BLOCK_2_SIZE_REC.output(self._pos_out_fifo_push, 0)
+        BLOCK_2_SIZE_REC.output(self._crd_pop_infifo, 0)
+        BLOCK_2_SIZE_REC.output(self._en_reg_data_in, 0)
+        BLOCK_2_SIZE_REC.output(self._pos_out_to_fifo, 0)
+        BLOCK_2_SIZE_REC.output(self._inc_req_made_crd, 0)
+        BLOCK_2_SIZE_REC.output(self._clr_req_made_crd, 0)
+        BLOCK_2_SIZE_REC.output(self._inc_req_rec_crd, 0)
+        BLOCK_2_SIZE_REC.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # BLOCK_2_RD
+        ######################
+        BLOCK_2_RD.output(self._crd_addr_out_to_fifo, 0)
+        BLOCK_2_RD.output(self._crd_op_out_to_fifo, 0)
+        BLOCK_2_RD.output(self._crd_ID_out_to_fifo, 0)
+        BLOCK_2_RD.output(self._crd_req_push, 0)
+        BLOCK_2_RD.output(self._crd_rd_rsp_fifo_pop, 0)
+        BLOCK_2_RD.output(self._pos_out_fifo_push, 0)
+        BLOCK_2_RD.output(self._crd_pop_infifo, 0)
+        BLOCK_2_RD.output(self._en_reg_data_in, 0)
+        BLOCK_2_RD.output(self._pos_out_to_fifo, 0)
+        BLOCK_2_RD.output(self._inc_req_made_crd, 0)
+        BLOCK_2_RD.output(self._clr_req_made_crd, 0)
+        BLOCK_2_RD.output(self._inc_req_rec_crd, 0)
+        BLOCK_2_RD.output(self._clr_req_rec_crd, 0)
+
+        ######################
+        # DONE_CRD
+        ######################
+        DONE_CRD.output(self._crd_addr_out_to_fifo, 0)
+        DONE_CRD.output(self._crd_op_out_to_fifo, 0)
+        DONE_CRD.output(self._crd_ID_out_to_fifo, 0)
+        DONE_CRD.output(self._crd_req_push, 0)
+        DONE_CRD.output(self._crd_rd_rsp_fifo_pop, 0)
+        DONE_CRD.output(self._pos_out_fifo_push, 0)
+        DONE_CRD.output(self._crd_pop_infifo, 0)
+        DONE_CRD.output(self._en_reg_data_in, 0)
+        DONE_CRD.output(self._pos_out_to_fifo, 0)
+        DONE_CRD.output(self._inc_req_made_crd, 0)
+        DONE_CRD.output(self._clr_req_made_crd, 0)
+        DONE_CRD.output(self._inc_req_rec_crd, 0)
+        DONE_CRD.output(self._clr_req_rec_crd, 0)
+
+        self.scan_fsm_crd.set_start_state(START_CRD)
 
         # Dummy state for eventual filling block.
         START.next(BLOCK_1_SIZE_REQ, self._block_mode & ~self._lookup_mode)

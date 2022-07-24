@@ -114,7 +114,8 @@ class IOCore(Generator):
 
             self.add_child(f"f2io_2_io2glb_{track_len}",
                            f2io_2_io2glb_fifo,
-                           clk=self._gclk,
+                           #    clk=self._gclk,
+                           clk=self._clk,
                            rst_n=self._rst_n,
                            clk_en=self._clk_en,
                            push=tmp_f2io_v,
