@@ -385,8 +385,6 @@ class ScannerPipe(MemoryController):
 
         # OP Outfifo
         self._op_out_fifo_push = self.var("op_out_fifo_push", 1)
-        # self._seg_op_out_fifo_push = self.var("seg_op_out_fifo_push", 1)
-        # self._crd_op_out_fifo_push = self.var("crd_op_out_fifo_push", 1)
         self.wire(self._op_out_fifo_push, self._seg_grant_push | self._crd_grant_push)
         self._op_out_fifo_full = self.var("op_out_fifo_full", 1)
         self._op_out_fifo_in = kts.concat(kts.const(0, 1), self._op_out_to_fifo)
@@ -435,24 +433,24 @@ class ScannerPipe(MemoryController):
 # =============================
 # JOIN Logic
 # =============================
-        out_pushes = []
-        out_fulls = []
+        # out_pushes = []
+        # out_fulls = []
 
-        # Broadcast the single push to the buffet out push
-        out_pushes.append(self._addr_out_fifo_push)
-        out_pushes.append(self._op_out_fifo_push)
-        out_pushes.append(self._ID_out_fifo_push)
-        self._buffet_push = self.var("buffet_push", 1)
-        self.wire(kts.concat(*[*out_pushes]), kts.concat(*[self._buffet_push for i in range(len(out_pushes))]))
+        # # Broadcast the single push to the buffet out push
+        # out_pushes.append(self._addr_out_fifo_push)
+        # out_pushes.append(self._op_out_fifo_push)
+        # out_pushes.append(self._ID_out_fifo_push)
+        # self._buffet_push = self.var("buffet_push", 1)
+        # self.wire(kts.concat(*[*out_pushes]), kts.concat(*[self._buffet_push for i in range(len(out_pushes))]))
 
-        self._buffet_joined = self.var("buffet_joined", 1)
+        # self._buffet_joined = self.var("buffet_joined", 1)
 
-        # Join the fulls to a joined ready
-        out_fulls.append(self._addr_out_fifo_full)
-        out_fulls.append(self._op_out_fifo_full)
-        out_fulls.append(self._ID_out_fifo_full)
+        # # Join the fulls to a joined ready
+        # out_fulls.append(self._addr_out_fifo_full)
+        # out_fulls.append(self._op_out_fifo_full)
+        # out_fulls.append(self._ID_out_fifo_full)
 
-        self.wire(self._buffet_joined, (~kts.concat(*out_fulls)).r_and())
+        # self.wire(self._buffet_joined, (~kts.concat(*out_fulls)).r_and())
 
 # =================================
 # Midpoint Reservation FIFOs
@@ -484,7 +482,7 @@ class ScannerPipe(MemoryController):
                        data_out_0=self._seg_res_fifo_data_out[0],
                        data_out_1=self._seg_res_fifo_data_out[1],
                        push_alloc=self._seg_res_fifo_push_alloc,
-                       push_reserve=~self._rd_rsp_fifo_valid & (self._rd_rsp_fifo_out_data[self.data_width] == kts.const(0, 1)),
+                       push_reserve=self._rd_rsp_fifo_valid & (self._rd_rsp_fifo_out_data[self.data_width] == kts.const(0, 1)),
                        push_fill=self._seg_res_fifo_push_fill,
                        pop=self._seg_res_fifo_pop,
                        valid=self._seg_res_fifo_valid,
@@ -511,7 +509,7 @@ class ScannerPipe(MemoryController):
                        fill_data_in=self._seg_res_fifo_data_out[0],
                        data_out_0=self._crd_res_fifo_data_out,
                        push_alloc=self._crd_res_fifo_push_alloc,
-                       push_reserve=~self._rd_rsp_fifo_valid & (self._rd_rsp_fifo_out_data[self.data_width] == kts.const(1, 1)),
+                       push_reserve=self._rd_rsp_fifo_valid & (self._rd_rsp_fifo_out_data[self.data_width] == kts.const(1, 1)),
                        push_fill=self._crd_res_fifo_push_fill,
                        pop=self._crd_res_fifo_pop,
                        valid=self._crd_res_fifo_valid,
