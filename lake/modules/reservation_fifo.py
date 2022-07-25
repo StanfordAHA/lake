@@ -98,7 +98,7 @@ class ReservationFIFO(kts.Generator):
             self._reg_array = 0
         else:
             if self._write_fill:
-                self._reg_array[self._write_ptr] = self._data_in
+                self._reg_array[self._write_ptr] = self._fill_data_in
             if self._write_reserve:
                 self._reg_array[self._reserve_ptr] = self._data_in
 
@@ -108,7 +108,7 @@ class ReservationFIFO(kts.Generator):
             self._reg_array = 0
         else:
             if self._write_fill:
-                self._reg_array[self._write_ptr][0] = self._data_in[0]
+                self._reg_array[self._write_ptr][0] = self._fill_data_in
             if self._write_reserve:
                 self._reg_array[self._reserve_ptr][self._item_ptr] = self._data_in[self._item_ptr]
 
@@ -138,10 +138,11 @@ class ReservationFIFO(kts.Generator):
         self._next_0_valid_low_done = 0
         for idx_ in range(self.depth):
             if ~self._next_0_valid_low_done:
-                if idx_ < self._reserve_ptr and self._valid_mask[idx_] == kts.const(0, 1):
-                    self._next_0_valid_low_found = 1
-                    self._next_0_valid_low = idx_
-                    self._next_0_valid_low_done = 1
+                if (idx_ < self._reserve_ptr):
+                    if (self._valid_mask[idx_] == kts.const(0, 1)):
+                        self._next_0_valid_low_found = 1
+                        self._next_0_valid_low = idx_
+                        self._next_0_valid_low_done = 1
 
     @always_comb
     def find_next_reserve_high(self):
@@ -150,10 +151,11 @@ class ReservationFIFO(kts.Generator):
         self._next_0_valid_high_done = 0
         for idx_ in range(self.depth):
             if ~self._next_0_valid_high_done:
-                if idx_ > self._reserve_ptr and self._valid_mask[idx_] == kts.const(0, 1):
-                    self._next_0_valid_high_found = 1
-                    self._next_0_valid_high = idx_
-                    self._next_0_valid_high_done = 1
+                if (idx_ > self._reserve_ptr):
+                    if (self._valid_mask[idx_] == kts.const(0, 1)):
+                        self._next_0_valid_high_found = 1
+                        self._next_0_valid_high = idx_
+                        self._next_0_valid_high_done = 1
 
     def set_min_depth(self):
         self.set_depth(self.min_depth)

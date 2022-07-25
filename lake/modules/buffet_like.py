@@ -441,7 +441,7 @@ class BuffetLike(MemoryController):
         self._rd_rsp_fifo_full = self.var("rd_rsp_fifo_full", 1)
         self._rd_rsp_fifo_almost_full = self.var("rd_rsp_fifo_almost_full", 1)
 
-        self._rd_rsp_fifo_in_data = self.var("rd_rsp_fifo_in_data", self.data_width, packed=True)
+        self._rd_rsp_fifo_in_data = self.var("rd_rsp_fifo_in_data", self.data_width + 1, packed=True)
         self._rd_rsp_out_fifo = RegFIFO(data_width=self._rd_rsp_fifo_in_data.width, width_mult=1,
                                         depth=self.fifo_depth, min_depth=2, defer_hrdwr_gen=self.defer_fifos,
                                         almost_full_diff=1)
@@ -455,10 +455,11 @@ class BuffetLike(MemoryController):
                        push=self._rd_rsp_fifo_push,
                        pop=self._rd_rsp_ready,
                        data_in=self._rd_rsp_fifo_in_data,
-                       data_out=self._rd_rsp_data[0][self.data_width - 1, 0])
+                       #    data_out=self._rd_rsp_data[0][self.data_width - 1, 0])
+                       data_out=self._rd_rsp_data[0])
 
         # Wire the last bit to 0
-        self.wire(self._rd_rsp_data[0][self.data_width + 1 - 1], kts.const(0, 1))
+        # self.wire(self._rd_rsp_data[0][self.data_width + 1 - 1], kts.const(0, 1))
 
         self.wire(self._rd_rsp_fifo_full, self._rd_rsp_out_fifo.ports.full)
         self.wire(self._rd_rsp_fifo_almost_full, self._rd_rsp_out_fifo.ports.almost_full)
@@ -466,7 +467,7 @@ class BuffetLike(MemoryController):
 
         chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
 
-        self.wire(self._rd_rsp_fifo_in_data, kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block + 1))
+        self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block + 1))
 
         self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | self._size_request_full.r_or())
 
@@ -493,6 +494,10 @@ class BuffetLike(MemoryController):
 
         self._read_pop_full = self.var("read_pop_full", self.num_ID)
         self.wire(self._read_pop, self._read_pop_full.r_or())
+
+        self._read_rsp_ID_reg = register(self, kts.ternary(self._read_pop_full[1], kts.const(1, 1), kts.const(0, 1)), enable=self._read_pop)
+
+        self.wire(self._rd_rsp_fifo_in_data[self.data_width], self._read_rsp_ID_reg)
 
 # # =============================
 # #  FSM
@@ -748,7 +753,8 @@ class BuffetLike(MemoryController):
 if __name__ == "__main__":
     buffet_dut = BuffetLike(data_width=16,
                             num_ID=2,
-                            physical_mem=True)
+                            physical_mem=True,
+                            defer_fifos=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

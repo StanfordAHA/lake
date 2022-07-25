@@ -505,7 +505,8 @@ class ScannerPipe(MemoryController):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       data_in_0=self._rd_rsp_fifo_out_data,
+                    #    data_in_0=self._rd_rsp_fifo_out_data,
+                       data_in_0=kts.concat(kts.const(0, 1), self._rd_rsp_fifo_out_data[self.data_width - 1, 0]),
                        fill_data_in=self._seg_res_fifo_data_out[0],
                        data_out_0=self._crd_res_fifo_data_out,
                        push_alloc=self._crd_res_fifo_push_alloc,
@@ -549,7 +550,7 @@ class ScannerPipe(MemoryController):
         self._ptr_reg_en = self.var("ptr_reg_en", 1)
         self._ptr_reg = register(self, self._ptr_in, enable=self._ptr_reg_en)
         self._agen_addr_d1 = register(self, self._fiber_addr_pre)
-        self._pos_out_to_fifo = self.var("pos_out_to_fifo", self.data_width)
+        self._pos_out_to_fifo = self.var("pos_out_to_fifo", self.data_width + 1)
         # In this way, we can save the relative position of each value in the ptr array for downstream
         # self.wire(self._pos_out_to_fifo, self._agen_addr_d1)
         # self.wire(self._pos_out_to_fifo, (self._agen_addr_d1 - self._inner_dim_offset))
@@ -719,7 +720,8 @@ class ScannerPipe(MemoryController):
         # Free the ID 0 data structure
         FREE_SEG.next(DONE_SEG, self._seg_grant_push)
 
-        DONE_SEG.next(START_SEG, None)
+        # DONE_SEG.next(START_SEG, None)
+        DONE_SEG.next(DONE_SEG, None)
 
         #######
         # START_SEG
@@ -790,7 +792,8 @@ class ScannerPipe(MemoryController):
         READ.output(self._seg_addr_out_to_fifo, self._infifo_pos_in)
         READ.output(self._seg_op_out_to_fifo, 1)
         READ.output(self._seg_ID_out_to_fifo, 0)
-        READ.output(self._seg_req_push, 1)
+        # Only request a push when there's valid, non-eos data on the fifo
+        READ.output(self._seg_req_push, self._infifo_valid_in & ~self._infifo_eos_in)
         READ.output(self._seg_pop_infifo, 0)
         READ.output(self._inc_req_made_seg, 0)
         READ.output(self._clr_req_made_seg, 0)
@@ -813,7 +816,7 @@ class ScannerPipe(MemoryController):
         READ_ALT.output(self._seg_ID_out_to_fifo, 0)
         READ_ALT.output(self._seg_req_push, 1)
         READ_ALT.output(self._seg_rd_rsp_fifo_pop, 1)
-        READ_ALT.output(self._seg_pop_infifo, 0)
+        READ_ALT.output(self._seg_pop_infifo, self._seg_grant_push & ~self._seg_res_fifo_full)
         READ_ALT.output(self._inc_req_made_seg, 0)
         READ_ALT.output(self._clr_req_made_seg, 0)
         READ_ALT.output(self._inc_req_rec_seg, 0)
@@ -986,7 +989,10 @@ class ScannerPipe(MemoryController):
         DENSE_STRM.next(SEQ_STRM, self._num_req_made_crd == self._dim_size)
         DENSE_STRM.next(DENSE_STRM, None)
 
-        SEQ_STRM.next(FREE_CRD, self._done_in & ~self._fifo_full)
+        # SEQ_STRM.next(FREE_CRD, self._done_in & ~self._fifo_full)
+        # only leave SEQ_STRM if we see done
+        SEQ_STRM.next(FREE_CRD, self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width] &
+                      (self._seg_res_fifo_data_out[0][9, 8] == kts.const(1, 2)))
 
         # Block readout
         # BLOCK_1_SIZE_REQ
@@ -1032,7 +1038,8 @@ class ScannerPipe(MemoryController):
         # FREE2.next(DONE, self._buffet_joined & self._root)
         FREE_CRD2.next(FREE_CRD2, None)
 
-        DONE_CRD.next(START_CRD, None)
+        # DONE_CRD.next(START_CRD, None)
+        DONE_CRD.next(DONE_CRD, None)
 
         ################
         # STATE OUTPUTS
@@ -1086,20 +1093,29 @@ class ScannerPipe(MemoryController):
         SEQ_STRM.output(self._crd_addr_out_to_fifo, self._num_req_made_crd + self._seg_res_fifo_data_out[0][self.data_width - 1, 0])
         SEQ_STRM.output(self._crd_op_out_to_fifo, 1)
         SEQ_STRM.output(self._crd_ID_out_to_fifo, 1)
-        SEQ_STRM.output(self._crd_req_push, self._seg_res_fifo_valid)
+        SEQ_STRM.output(self._crd_req_push, self._seg_res_fifo_valid & ~self._seg_res_fifo_data_out[0][self.data_width])
         SEQ_STRM.output(self._crd_rd_rsp_fifo_pop, 1)
-        SEQ_STRM.output(self._pos_out_fifo_push, self._crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid)
+        SEQ_STRM.output(self._pos_out_fifo_push, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
+                                                             ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid,
+                                                             self._crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) &
+                                                                 ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid))
         SEQ_STRM.output(self._crd_pop_infifo, 0)
         SEQ_STRM.output(self._en_reg_data_in, 0)
-        SEQ_STRM.output(self._pos_out_to_fifo, self._num_req_made_crd + self._seg_res_fifo_data_out[0][self.data_width - 1, 0])
+        SEQ_STRM.output(self._pos_out_to_fifo, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
+                                                           self._seg_res_fifo_data_out[0],
+                                                           kts.concat(kts.const(0, 1),
+                                                                      self._num_req_made_crd + self._seg_res_fifo_data_out[0][self.data_width - 1, 0])))
         SEQ_STRM.output(self._inc_req_made_crd, self._crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid)
         SEQ_STRM.output(self._clr_req_made_crd, self._crd_grant_push & (self._num_req_made_crd == (self._seq_length_ptr_math - 1)) & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid)
         SEQ_STRM.output(self._inc_req_rec_crd, 0)
         SEQ_STRM.output(self._clr_req_rec_crd, 0)
-        SEQ_STRM.output(self._crd_res_fifo_push_alloc, self._crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid)
-        SEQ_STRM.output(self._crd_res_fifo_push_fill, 0)
+        SEQ_STRM.output(self._crd_res_fifo_push_alloc, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
+                                                                   ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid,
+                                                                   self._crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) &
+                                                                        ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid))
+        SEQ_STRM.output(self._crd_res_fifo_push_fill, self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width] & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full)
         SEQ_STRM.output(self._ptr_reg_en, 0)
-        SEQ_STRM.output(self._seg_res_fifo_pop, self._clr_req_made_crd)
+        SEQ_STRM.output(self._seg_res_fifo_pop, self._clr_req_made_crd | (self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width] & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full))
 
         ######################
         # FREE_CRD
@@ -2375,8 +2391,9 @@ class ScannerPipe(MemoryController):
 
         ### POS FIFO
         self._pos_data_in_packed = self.var("pos_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._pos_data_in_packed[self.data_width], self._tag_eos)
-        self.wire(self._pos_data_in_packed[self.data_width - 1, 0], self._pos_out_to_fifo)
+        # self.wire(self._pos_data_in_packed[self.data_width], self._tag_eos)
+        # self.wire(self._pos_data_in_packed[self.data_width - 1, 0], self._pos_out_to_fifo)
+        self.wire(self._pos_data_in_packed, self._pos_out_to_fifo)
 
         self._pos_data_out_packed = self.var("pos_fifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._pos_out[self.data_width], self._pos_data_out_packed[self.data_width])
