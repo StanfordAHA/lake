@@ -505,7 +505,6 @@ class ScannerPipe(MemoryController):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                    #    data_in_0=self._rd_rsp_fifo_out_data,
                        data_in_0=kts.concat(kts.const(0, 1), self._rd_rsp_fifo_out_data[self.data_width - 1, 0]),
                        fill_data_in=self._seg_res_fifo_data_out[0],
                        data_out_0=self._crd_res_fifo_data_out,
@@ -1098,7 +1097,7 @@ class ScannerPipe(MemoryController):
         SEQ_STRM.output(self._pos_out_fifo_push, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
                                                              ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid,
                                                              self._crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) &
-                                                                 ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid))
+                                                             ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid))
         SEQ_STRM.output(self._crd_pop_infifo, 0)
         SEQ_STRM.output(self._en_reg_data_in, 0)
         SEQ_STRM.output(self._pos_out_to_fifo, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
@@ -1112,7 +1111,7 @@ class ScannerPipe(MemoryController):
         SEQ_STRM.output(self._crd_res_fifo_push_alloc, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
                                                                    ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid,
                                                                    self._crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) &
-                                                                        ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid))
+                                                                   ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid))
         SEQ_STRM.output(self._crd_res_fifo_push_fill, self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width] & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full)
         SEQ_STRM.output(self._ptr_reg_en, 0)
         SEQ_STRM.output(self._seg_res_fifo_pop, self._clr_req_made_crd | (self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width] & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full))
