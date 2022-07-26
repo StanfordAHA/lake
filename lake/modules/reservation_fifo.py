@@ -246,12 +246,23 @@ class ReservationFIFO(kts.Generator):
         # Actually is a next 0
         self._jump_next_0 = self.var("jump_next_0", 1)
         self.wire(self._jump_next_0, self._next_0_valid_high_found | self._next_0_valid_low_found)
-        # Opt for high over low
-        self.wire(self._next_0_valid, kts.ternary(self._next_0_valid_high_found, self._next_0_valid_high, self._next_0_valid_low))
+
         # Is a next 0 and should actually be jumping
         self._enable_reserve_ptr = self.var("enable_reserve_ptr", 1)
-        self.wire(self._enable_reserve_ptr, self._jump_next_0 & self._write_reserve_final)
+        # self.wire(self._enable_reserve_ptr, self._jump_next_0 & self._write_reserve_final)
+        self.wire(self._enable_reserve_ptr, self._write_reserve_final)
         self._reserve_ptr = register(self, self._next_0_valid, enable=self._enable_reserve_ptr)
+
+        # Complicated.
+        # Firstly, if the reserve pointer is where a fill is happening, just move it along with it
+        # Secondly, if they don't match and there's no place to go, go to the current write_ptr
+        self.wire(self._next_0_valid, kts.ternary(self._write_fill & ((self._reserve_ptr == self._write_ptr) | (~self._next_0_valid_high_found & ~self._next_0_valid_low_found)),
+                                                  self._write_ptr + 1,
+                                                  kts.ternary(~self._next_0_valid_high_found & ~self._next_0_valid_low_found,
+                                                              self._write_ptr,
+                                                              kts.ternary(self._next_0_valid_high_found,
+                                                                          self._next_0_valid_high,
+                                                                          self._next_0_valid_low))))
 
         # self._rd_ptr = self.var("rd_ptr", self.ptr_width)
         # self._wr_ptr = self.var("wr_ptr", self.ptr_width)
@@ -311,7 +322,7 @@ class ReservationFIFO(kts.Generator):
 
 if __name__ == "__main__":
 
-    num_per = 2
+    num_per = 1
 
     dut = ReservationFIFO(data_width=16,
                           depth=64,
