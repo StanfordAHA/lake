@@ -242,12 +242,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 stripped_name = full_name.rstrip("_f_")
                 has_rv = f"{stripped_name}_ready_f_" in width_1_out and f"{stripped_name}_valid_f_" in width_1_in
                 if has_rv:
-                    self.rv.append(inp)
+                    self.rv.append((mem_ctrl.name, inp))
                     valid_p = mem_ctrl.get_port(f"{stripped_name}_valid_f_")
                     # If this port has rv, remove the rv from the ctrl_ins
                     ctrl_ins = [(inp_, width) for (inp_, width) in ctrl_ins if not (inp_.name == valid_p.name and width == 1)]
                 else:
-                    self.dense.append(inp)
+                    self.dense.append((mem_ctrl.name, inp))
             # Handle data outputs to get rid of the input readys...wasteful work
             for (outp, width) in wider_than_1_out:
                 full_name = outp.name
@@ -295,12 +295,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 stripped_name = full_name.rstrip("_f_")
                 has_rv = f"{stripped_name}_ready_f_" in width_1_in and f"{stripped_name}_valid_f_" in width_1_out
                 if has_rv:
-                    self.rv.append(outp)
+                    self.rv.append((mem_ctrl.name, outp))
                     valid_p = mem_ctrl.get_port(f"{stripped_name}_valid_f_")
                     # If this port has rv, remove the rv from the ctrl_ins
                     ctrl_outs = [(inp_, width) for (inp_, width) in ctrl_outs if not (inp_.name == valid_p.name and width == 1)]
                 else:
-                    self.dense.append(outp)
+                    self.dense.append((mem_ctrl.name, outp))
             # Handle data inputs to get rid of the output readys...wasteful work
             for (inp, width) in wider_than_1_in:
                 full_name = inp.name
@@ -675,8 +675,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 new_input.add_attribute(ControlSignalAttr(isctrl))
                 # Now to determine if the port is rv/dense
                 # If any signal in this dict is rv, we are going to make it an rv
-                signal_names = signal_dict.values()
-                any_rvs = len([port.name for port in self.rv if port.name in signal_names]) > 0
+                any_rvs = len([port_.name for ctrl_, port_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]) > 0
                 if any_rvs:
                     # Now create the ready/valid pair and deal with it
                     new_input_valid = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}_valid', width=1)
@@ -689,7 +688,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     new_reg_fifo = RegFIFO(data_width=input_width,
-                                           width_mult=1, depth=self.fifo_depth,
+                                           #    width_mult=1, depth=self.fifo_depth,
+                                           width_mult=1, depth=2,
                                            defer_hrdwr_gen=False)
 
                     self.add_child(f"input_width_{input_width}_num_{i}_input_fifo",
@@ -748,7 +748,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     # Wire data and valid
                     self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
                     # Check if in ready valid
-                    in_rv = len([port_.name for port_ in self.rv if port_.name == port]) > 0
+                    # in_rv = len([port_.name for port_ in self.rv if port_.name == port]) > 0
+                    in_rv = len([port_.name for ctrl_, port_ in self.rv if port_.name == port and ctrl_ == ctrl_name]) > 0
                     if in_rv:
                         port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
                         self.wire(new_input_valid, self.controllers_flat_dict[ctrl_name].ports[port_valid_name])
@@ -823,8 +824,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     og_new_output = new_output
                 new_output.add_attribute(ControlSignalAttr(False))
 
-                signal_names = signal_dict.values()
-                any_rvs = len([port.name for port in self.rv if port.name in signal_names]) > 0
+                # any_rvs = len([port.name for port in self.rv if port.name in signal_names]) > 0
+                any_rvs = len([port_.name for ctrl_, port_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]) > 0
                 if any_rvs:
                     # Now create the ready/valid pair and deal with it
                     new_output_valid = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}_valid', width=1)
@@ -837,7 +838,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     new_reg_fifo = RegFIFO(data_width=output_width,
-                                           width_mult=1, depth=self.fifo_depth,
+                                           #    width_mult=1, depth=self.fifo_depth,
+                                           width_mult=1, depth=2,
                                            defer_hrdwr_gen=False)
 
                     self.add_child(f"output_width_{output_width}_num_{i}_output_fifo",
@@ -893,7 +895,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 on_first = True
                 for (ctrl_name, port) in signal_dict.items():
 
-                    in_rv = len([port_.name for port_ in self.rv if port_.name == port]) > 0
+                    # in_rv = len([port_.name for port_ in self.rv if port_.name == port]) > 0
+                    in_rv = len([port_.name for ctrl_, port_ in self.rv if port_.name == port and ctrl_ == ctrl_name]) > 0
                     if in_rv:
                         port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
                         # Wire ready_in if this is a ready/valid port
