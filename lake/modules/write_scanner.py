@@ -400,7 +400,8 @@ class WriteScanner(MemoryController):
         # START #
         ####################
         # Start state goes to either lowest level or upper level
-        START.next(ALLOCATE1, None)
+        START.next(ALLOCATE1, self._tile_en)
+        START.next(START, None)
 
         ####################
         # ALLOCATE1 #

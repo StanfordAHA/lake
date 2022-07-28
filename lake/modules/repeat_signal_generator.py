@@ -207,7 +207,8 @@ class RepeatSignalGenerator(MemoryController):
         #####################
         # START
         #####################
-        START.next(PASS_REPEAT, kts.const(1, 1))
+        START.next(PASS_REPEAT, self._tile_en)
+        START.next(START, None)
 
         #####################
         # PASS_REPEAT

@@ -210,8 +210,9 @@ class Repeat(MemoryController):
         #####################
         # START
         #####################
-        START.next(INJECT0, self._root)
-        START.next(PASS_REPEAT, ~self._root)
+        START.next(INJECT0, self._root & self._tile_en)
+        START.next(PASS_REPEAT, ~self._root & self._tile_en)
+        START.next(START, None)
 
         #####################
         # INJECT0

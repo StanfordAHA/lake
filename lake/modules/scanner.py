@@ -587,11 +587,12 @@ class Scanner(MemoryController):
         ####################
 
         # Dummy state for eventual filling block.
-        START.next(BLOCK_1_SIZE_REQ, self._block_mode & ~self._lookup_mode)
-        START.next(LOOKUP, self._lookup_mode)
+        START.next(BLOCK_1_SIZE_REQ, self._block_mode & ~self._lookup_mode & self._tile_en)
+        START.next(LOOKUP, self._lookup_mode & self._tile_en)
         # START.next(ISSUE_STRM, self._root & ~self._lookup_mode)
-        START.next(INJECT_0, self._root & ~self._lookup_mode)
-        START.next(ISSUE_STRM_NR, ~self._root & ~self._lookup_mode)
+        START.next(INJECT_0, self._root & ~self._lookup_mode & self._tile_en)
+        START.next(ISSUE_STRM_NR, ~self._root & ~self._lookup_mode & self._tile_en)
+        START.next(START, None)
 
         # In lookup we pass the address along to the buffet, making sure all reads complete and end up in
         # the output buffer before passing along stop tokens...

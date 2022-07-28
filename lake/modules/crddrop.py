@@ -275,9 +275,9 @@ class CrdDrop(MemoryController):
         # IN the START state, we are waiting to see data in a stream
         # to know to pass on the processed stream
         # If we hit the EOS without seeing data, we should strip it
-        START.next(DATA_SEEN, self._base_data_seen)
-        START.next(STRIP, self._eos_seen)
-        START.next(PASS_STOP, self._done_seen)
+        START.next(DATA_SEEN, self._base_data_seen & self._tile_en)
+        START.next(STRIP, self._eos_seen & self._tile_en)
+        START.next(PASS_STOP, self._done_seen & self._tile_en)
         START.next(START, None)
 
         ####################

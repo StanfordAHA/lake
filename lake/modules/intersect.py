@@ -301,13 +301,13 @@ class Intersect(MemoryController):
 
         # In IDLE we stay if the fifo is full, otherwise wait
         # until we have two valids...
-        IDLE.next(UNION, self._all_valid_join & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)))
+        IDLE.next(UNION, self._all_valid_join & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)) & self._tile_en)
         # If either stream is empty, we can skip to drain right away
-        IDLE.next(ALIGN, self._any_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)))
-        IDLE.next(ITER, self._all_valid & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)))
+        IDLE.next(ALIGN, self._any_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
+        IDLE.next(ITER, self._all_valid & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
+        IDLE.next(IDLE, None)
         # IDLE.next(UNION, self._all_valid & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)))
         # IDLE.next(IDLE, self._fifo_full.r_or() | (~self._all_valid))
-        IDLE.next(IDLE, None)
 
         # In ITER, we go back to idle when the fifo is full to avoid
         # complexity, or if we are looking at one of the eos since we can make the last
@@ -811,9 +811,9 @@ class Intersect(MemoryController):
         # IN the START state, we are waiting to see data in a stream
         # to know to pass on the processed stream
         # If we hit the EOS without seeing data, we should strip it
-        START.next(DATA_SEEN, self._base_data_seen)
-        START.next(STRIP, self._eos_seen)
-        START.next(PASS_STOP, self._done_seen)
+        START.next(DATA_SEEN, self._base_data_seen & self._tile_en)
+        START.next(STRIP, self._eos_seen & self._tile_en)
+        START.next(PASS_STOP, self._done_seen & self._tile_en)
         START.next(START, None)
 
         ####################
@@ -1017,7 +1017,8 @@ class Intersect(MemoryController):
 
 if __name__ == "__main__":
     intersect_dut = Intersect(data_width=16,
-                              use_merger=True)
+                              use_merger=False,
+                              defer_fifos=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

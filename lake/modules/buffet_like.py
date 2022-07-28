@@ -560,7 +560,7 @@ class BuffetLike(MemoryController):
             # WR_START #
             ####################
             # Start state gets an allocate command
-            WR_START[ID_idx].next(WRITING[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+            WR_START[ID_idx].next(WRITING[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)) & self._tile_en)
             WR_START[ID_idx].next(WR_START[ID_idx], None)
 
             ####################
