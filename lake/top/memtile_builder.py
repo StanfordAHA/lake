@@ -75,6 +75,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.dedicated_inputs = {}
         self.dedicated_outputs = {}
 
+        self.controls_ded_shared = {}
+
         self.mem_port_code = {}
         self.mem_port_mux_if = {}
 
@@ -317,8 +319,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 dedicated_attr = inp.find_attribute(lambda a: isinstance(a, DedicatedPortAttribute))
                 if len(dedicated_attr) > 0:
                     ded.append((inp, width))
+                    # if mem_ctrl not in self.controls_ded_shared:
+                    # Overwrite to dedicated no matter what
+                    self.controls_ded_shared[self.flat_to_c[mem_ctrl.name]] = "DEDICATED"
                 else:
                     shr.append((inp, width))
+                    if mem_ctrl not in self.controls_ded_shared:
+                        self.controls_ded_shared[self.flat_to_c[mem_ctrl.name]] = "SHARED"
             stop_out = self.size_to_port(shr)
             self.merge_io_dicts(to_merge=stop_out, merged_dict=self.outputs_dict, mem_ctrl=mem_ctrl)
             # Now add in dedicated ports
@@ -424,12 +431,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         self.config_sizes = {}
 
-        # First iterate through all controllers and lift their config to the top
         for flat_name, flat_ctrl in self.controllers_flat_dict.items():
             flat_ctrl_int_gen = flat_ctrl.internal_generator
-            ports_bef = flat_ctrl_int_gen.get_port_names()
             lift_config_reg(flat_ctrl_int_gen, stop_at_gen=True, flatten=True)
-            ports_aft = flat_ctrl_int_gen.get_port_names()
             # Now get all the config regs
             # lift_config_reg(flat_ctrl.internal_generator, stop_at_gen=True)
             cfg_flat_ctrl = extract_top_config(flat_ctrl, verbose=False)
@@ -448,61 +452,77 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     if flat_name not in self.config_sizes.keys():
                         tmp_list = []
                         tmp_list.append(new_name)
-                        self.config_sizes[flat_name] = (width, tmp_list)
+                        self.config_sizes[flat_name] = (width, tmp_list, self.controls_ded_shared[self.flat_to_c[flat_name]])
                     else:
-                        width_curr, name_list_curr = self.config_sizes[flat_name]
+                        width_curr, name_list_curr, ded_shrd = self.config_sizes[flat_name]
                         name_list_curr.append(new_name)
-                        self.config_sizes[flat_name] = (width_curr + width, name_list_curr)
+                        self.config_sizes[flat_name] = (width_curr + width, name_list_curr, ded_shrd)
 
-        max_size = 0
-        for name, size_struct in self.config_sizes.items():
-            size, sig_list = size_struct
-            # Sort the list...
-            sig_list = sorted(sig_list)
-            self.config_sizes[name] = (size, sig_list)
-            if size > max_size:
-                max_size = size
+        max_sizes = []
+
+        ded_ = [[(name, size_struct)] for name, size_struct in self.config_sizes.items() if size_struct[2] == "DEDICATED"]
+        shared_ = [(name, size_struct) for name, size_struct in self.config_sizes.items() if size_struct[2] == "SHARED"]
+
+        combo_ = [shared_, *ded_]
+
+        # Figure out the maximum length for each segment
+        for idx in range(len(combo_)):
+            max_size = 0
+            for ii_, (name, size_struct) in enumerate(combo_[idx]):
+                size, sig_list, _ = size_struct
+                # Sort the list...
+                sig_list = sorted(sig_list)
+                self.config_sizes[name] = (size, sig_list, _)
+                combo_[idx][ii_] = (name, (size, sig_list, _))
+                if size > max_size:
+                    max_size = size
+            max_sizes.append(max_size)
 
         self.config_mapping = {}
 
         # Take the largest config space and make one fat bus
-        # self.config_space = self.var("CONFIG_SPACE", max_size)
-        self.config_space = self.var("CONFIG_SPACE", max_size)
+        self.config_space = self.var("CONFIG_SPACE", sum(max_sizes))
         self.config_space.add_attribute(ConfigRegAttr(f"Configuration for children modules"))
 
         # for flat_name, flat_ctrl in self.controllers_flat_dict.items():
-        for name, size_struct in self.config_sizes.items():
-            # Now wire the chillin
-            size, sig_list = size_struct
-            flat_gen = self.controllers_flat_dict[name]
-            # flat_ports = flat_gen.internal_generator.get_port()
-            catted_child_signals = []
-            for sig in sig_list:
-                # Handle the fact that some port might come back as None
-                sig_port = flat_gen.internal_generator.get_port(sig)
-                if sig_port is None:
-                    chopped = sig.rfind('_')
-                    port_idx = int(sig[chopped + 1:])
-                    base_port = sig[:chopped]
-                    sig_port = flat_gen.internal_generator.get_port(base_port)[port_idx]
-                    # It is flattened
-                    catted_child_signals.append(sig_port)
-                    # for flat_prt in range(si)
-                else:
-                    catted_child_signals.append(sig_port)
-            # catted_child_signals = [flat_gen.internal_generator.get_port(sig) for sig in sig_list]
-            # Now create the mapping info
-            cfg_mapping_name = name[0:-5]
-            self.config_mapping[cfg_mapping_name] = {}
-            running_width = 0
-            # Reversed since concat puts MSBs on the left
-            for sig in reversed(catted_child_signals):
-                sig_w_ = sig.width
-                self.config_mapping[cfg_mapping_name][sig.name] = (running_width + sig_w_ - 1, running_width)
-                running_width += sig_w_
-            kts_catted = kts.concat(*catted_child_signals)
+        # for name, size_struct in self.config_sizes.items():
+        running_width_outer = 0
+        for idx in range(len(combo_)):
+            if idx > 0:
+                running_width_outer = sum(max_sizes[0:idx])
+            for name, size_struct in combo_[idx]:
+                # Now wire the chillin
+                running_width = 0
+                size, sig_list, _ = size_struct
+                flat_gen = self.controllers_flat_dict[name]
+                # flat_ports = flat_gen.internal_generator.get_port()
+                catted_child_signals = []
+                for sig in sig_list:
+                    # Handle the fact that some port might come back as None
+                    sig_port = flat_gen.internal_generator.get_port(sig)
+                    if sig_port is None:
+                        chopped = sig.rfind('_')
+                        port_idx = int(sig[chopped + 1:])
+                        base_port = sig[:chopped]
+                        sig_port = flat_gen.internal_generator.get_port(base_port)[port_idx]
+                        # It is flattened
+                        catted_child_signals.append(sig_port)
+                        # for flat_prt in range(si)
+                    else:
+                        catted_child_signals.append(sig_port)
+                # catted_child_signals = [flat_gen.internal_generator.get_port(sig) for sig in sig_list]
+                # Now create the mapping info
+                cfg_mapping_name = name[0:-5]
+                self.config_mapping[cfg_mapping_name] = {}
 
-            self.wire(kts_catted, self.config_space[size - 1, 0], )
+                # Reversed since concat puts MSBs on the left
+                for sig in reversed(catted_child_signals):
+                    sig_w_ = sig.width
+                    self.config_mapping[cfg_mapping_name][sig.name] = (running_width + sig_w_ - 1 + running_width_outer, running_width + running_width_outer)
+                    running_width += sig_w_
+                kts_catted = kts.concat(*catted_child_signals)
+
+                self.wire(kts_catted, self.config_space[size - 1, 0])
 
         self.allowed_reg_size = 32
         self.num_chopped_cfg = 0

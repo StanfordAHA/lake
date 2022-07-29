@@ -172,7 +172,7 @@ class OnyxPE(MemoryController):
         self.wire(self._infifo_out_data[1], self._infifo_out_packed[1][self.data_width - 1, 0])
 
         # Push when there's incoming transaction and room to accept it
-        self._infifo_push = self.var("infifo_push", 2)
+        self._infifo_push = [self.var(f"infifo_push_{i}", 1) for i in range(2)]
         self.wire(self._infifo_push[0], self._data_in_valid_in[0])
         self.wire(self._infifo_push[1], self._data_in_valid_in[1])
 

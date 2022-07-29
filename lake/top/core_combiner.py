@@ -349,10 +349,10 @@ if __name__ == "__main__":
 
     stencil_valid = StencilValid()
 
-    # controllers.append(scan)
-    # controllers.append(isect)
-    controllers.append(fib_access)
-    # controllers.append(strg_ub)
+    controllers.append(scan)
+    controllers.append(isect)
+    # controllers.append(fib_access)
+    controllers.append(strg_ub)
     # controllers.append(buffet)
     controllers.append(stencil_valid)
     controllers.append(strg_ram)

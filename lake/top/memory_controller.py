@@ -202,6 +202,9 @@ class MemoryController(kts.Generator):
         Get the shareable fifos from a generator, even nested submodules
         - descend the hierarachy to find them
         '''
+
+        # TODO: Handle multibit push signals
+
         self.__fifo_list = []
         # First get ports
         self_ports = self.internal_generator.get_port_names()
@@ -427,10 +430,8 @@ class MemoryControllerFlatWrapper(MemoryController):
 
     def flatten_inputs(self):
         child_ins = self.mem_ctrl.get_inputs()
-        print(child_ins)
         for (inp, width) in child_ins:
             self.flatten_port(inp, in_outn=True, name=inp.name)
-        print(self.get_inputs())
 
     def flatten_outputs(self):
         child_outs = self.mem_ctrl.get_outputs()
