@@ -30,6 +30,8 @@ class StrgUBSRAMTBShared(Generator):
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 area_opt=True,
+                 reduced_id_config_width=10,
                  agg_height=4,
                  tb_height=2):
 
@@ -49,10 +51,11 @@ class StrgUBSRAMTBShared(Generator):
         self.data_width = data_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
+        self.area_opt = area_opt
+        self.reduced_id_config_width = reduced_id_config_width
 
         self.default_iterator_support = 6
         self.default_config_width = 16
-        self.id_config_width = 10
         self.sram_iterator_support = 6
         self.agg_rd_addr_gen_width = 8
 
@@ -86,8 +89,12 @@ class StrgUBSRAMTBShared(Generator):
         for i in range(self.interconnect_output_ports):
 
             # for loop for sram reads, tb writes
-            loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
-                                    config_width=self.id_config_width)
+            if self.area_opt:
+                loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
+                                        config_width=self.reduced_id_config_width)
+            else:
+                loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
+                                        config_width=self.default_config_width)
 
             self.add_child(f"loops_buf2out_autovec_read_{i}",
                            loops_sram2tb,

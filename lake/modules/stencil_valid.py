@@ -8,17 +8,25 @@ import kratos as kts
 
 
 class StencilValid(MemoryController):
-    def __init__(self, name="stencil_valid"):
+    def __init__(self, name="stencil_valid",
+                 area_opt=True,
+                 reduced_id_config_width=10):
         super().__init__(name)
 
         self.stencil_valid_width = 16
+        self.area_opt = area_opt
+        self.reduced_id_config_width = reduced_id_config_width
 
         self.define_io()
 
         self._cycle_count = self.var("cycle_count", 16)
 
-        self._loops_stencil_valid = ForLoop(iterator_support=6,
-                                            config_width=10)
+        if self.area_opt:
+            self._loops_stencil_valid = ForLoop(iterator_support=6,
+                                                config_width=self.reduced_id_config_width)
+        else:
+            self._loops_stencil_valid = ForLoop(iterator_support=6,
+                                                config_width=16)
         self._stencil_valid_int = self.var("stencil_valid_internal", 1)
 
         # Loop Iterators for stencil valid...

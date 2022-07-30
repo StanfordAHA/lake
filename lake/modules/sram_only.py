@@ -28,6 +28,7 @@ class StrgUBSRAMOnly(Generator):
                  mem_output_ports=1,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 area_opt=True,
                  agg_height=4,
                  tb_height=2):
 
@@ -49,6 +50,7 @@ class StrgUBSRAMOnly(Generator):
         self.input_sched_iterator_support = input_sched_iterator_support
         self.rw_same_cycle = rw_same_cycle
         self.mem_addr_width = clog2(self.mem_depth)
+        self.area_opt = area_opt
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -62,6 +64,30 @@ class StrgUBSRAMOnly(Generator):
         self._rst_n = self.reset("rst_n")
 
         self._cycle_count = self.input("cycle_count", 16)
+
+        if self.area_opt:
+            self._sram_read_addr_in = self.input("sram_read_addr_in", self.mem_addr_width,
+                                                 size=self.interconnect_input_ports,
+                                                 packed=True,
+                                                 explicit_array=True)
+
+            self._sram_read_addr_out = self.output("sram_read_addr_out", self.mem_addr_width,
+                                                   size=self.interconnect_input_ports,
+                                                   packed=True,
+                                                   explicit_array=True)
+        else:
+            # agg to sram for loop
+            self._floop_mux_sel = self.input("floop_mux_sel",
+                                             width=max(clog2(self.default_iterator_support), 1),
+                                             size=self.interconnect_input_ports,
+                                             explicit_array=True,
+                                             packed=True)
+
+            self._floop_restart = self.input("floop_restart",
+                                             width=1,
+                                             size=self.interconnect_input_ports,
+                                             explicit_array=True,
+                                             packed=True)
 
         # sram to tb for loop
         self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel",
@@ -78,10 +104,6 @@ class StrgUBSRAMOnly(Generator):
 
         self._agg_read = self.input("agg_read", self.interconnect_input_ports)
         self._t_read = self.input("t_read", self.interconnect_output_ports)
-        self._sram_read_addr_in = self.input("sram_read_addr_in", self.mem_addr_width,
-                                             size=self.interconnect_input_ports,
-                                             packed=True,
-                                             explicit_array=True)
 
         # data from aggs, get decoded for sram_write_data which is wired to data_to_sram
         self._agg_data_out = self.input(f"agg_data_out", self.data_width,
@@ -106,10 +128,6 @@ class StrgUBSRAMOnly(Generator):
         self._data_to_sram = self.output("data_to_sram", self.data_width,
                                          size=self.fetch_width,
                                          packed=True)
-        self._sram_read_addr_out = self.output("sram_read_addr_out", self.mem_addr_width,
-                                               size=self.interconnect_input_ports,
-                                               packed=True,
-                                               explicit_array=True)
 
         ##################################################################################
         # INTERNAL SIGNALS
@@ -134,16 +152,20 @@ class StrgUBSRAMOnly(Generator):
                                          packed=True)
 
         for i in range(self.interconnect_input_ports):
-
-            # _AG = LinearAddrGen(height=self.mem_depth,
-            #                     config_width=self.mem_addr_width)
-            # self.add_child(f"input_addr_gen_{i}",
-            #                _AG,
-            #                clk=self._clk,
-            #                rst_n=self._rst_n,
-            #                step=self._agg_read[i])
-            # safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=_AG.ports.addr_out)
-            safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=self._sram_read_addr_in[i])
+            if self.area_opt:
+                safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=self._sram_read_addr_in[i])
+            else:
+                _AG = AddrGen(iterator_support=self.default_iterator_support,
+                              config_width=self.mem_addr_width)
+                self.add_child(f"input_addr_gen_{i}",
+                               _AG,
+                               clk=self._clk,
+                               rst_n=self._rst_n,
+                               step=self._agg_read[i],
+                               # mux_sel=self._floop_mux_sel[i],
+                               restart=self._floop_restart[i])
+                safe_wire(gen=self, w_to=_AG.ports.mux_sel, w_from=self._floop_mux_sel[i])
+                safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=_AG.ports.addr_out)
 
         ##################################################################################
         # TB PATHS
@@ -161,7 +183,8 @@ class StrgUBSRAMOnly(Generator):
                            restart=self._loops_sram2tb_restart[i])
             safe_wire(gen=self, w_to=_AG.ports.mux_sel, w_from=self._loops_sram2tb_mux_sel[i])
             safe_wire(gen=self, w_to=self._s_read_addr[i], w_from=_AG.ports.addr_out)
-            self.wire(self._sram_read_addr_out[i], _AG.ports.addr_out)
+            if self.area_opt:
+                self.wire(self._sram_read_addr_out[i], _AG.ports.addr_out)
 
         ##################################################################################
         # WIRE TO SRAM INTERFACE
