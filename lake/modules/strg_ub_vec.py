@@ -162,6 +162,7 @@ class StrgUBVec(MemoryController):
                                    #    output_sched_iterator_support=self.output_iterator_support,
                                    interconnect_input_ports=self.interconnect_input_ports,
                                    interconnect_output_ports=self.interconnect_output_ports,
+                                   area_opt=self.area_opt,
                                    read_delay=self.read_delay,
                                    rw_same_cycle=self.rw_same_cycle,
                                    agg_height=self.agg_height,

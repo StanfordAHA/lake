@@ -8,6 +8,9 @@ from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.modules.sram_stub import SRAMStub
 from lake.modules.agg_sram_shared_sched_gen import AggSramSharedSchedGen
 from lake.modules.agg_sram_shared_addr_gen import AggSramSharedAddrGen
+from lake.modules.for_loop import ForLoop
+from lake.modules.addr_gen import AddrGen
+from lake.modules.spec.sched_gen import SchedGen
 from lake.utils.util import safe_wire, add_counter, decode
 import kratos as kts
 
