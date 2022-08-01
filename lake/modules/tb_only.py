@@ -28,6 +28,8 @@ class StrgUBTBOnly(Generator):
                  interconnect_output_ports=2,
                  mem_input_ports=1,
                  mem_output_ports=1,
+                 area_opt=True,
+                 reduced_id_config_width=10,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
@@ -49,6 +51,8 @@ class StrgUBTBOnly(Generator):
         self.data_width = data_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
+        self.area_opt = area_opt
+        self.reduced_id_config_width = reduced_id_config_width
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -89,6 +93,13 @@ class StrgUBTBOnly(Generator):
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
+
+        if self.area_opt:
+            self._tb_read_out = self.output("tb_read_out", self.interconnect_output_ports)
+            self._tb_read_addr_out = self.output("tb_read_addr_out", 2 + clog2(self.agg_height),
+                                                 size=self.interconnect_output_ports,
+                                                 packed=True,
+                                                 explicit_array=True)
 
         ##################################################################################
         # TB RELEVANT SIGNALS
@@ -177,8 +188,12 @@ class StrgUBTBOnly(Generator):
 
             # READ FROM TB
 
-            fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
-                                   config_width=self.tb_range_width)
+            if self.area_opt:
+                fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
+                                       config_width=self.reduced_id_config_width)
+            else:
+                fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
+                                       config_width=self.tb_range_width)
 
             self.add_child(f"loops_buf2out_read_{i}",
                            fl_ctr_tb_rd,
@@ -197,6 +212,8 @@ class StrgUBTBOnly(Generator):
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
                            restart=fl_ctr_tb_rd.ports.restart)
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
+            if self.area_opt:
+                safe_wire(gen=self, w_to=self._tb_read_addr_out[i], w_from=_AG.ports.addr_out)
 
             self.add_child(f"tb_read_sched_gen_{i}",
                            SchedGen(iterator_support=self.tb_iter_support,
@@ -208,6 +225,8 @@ class StrgUBTBOnly(Generator):
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
                            finished=fl_ctr_tb_rd.ports.restart,
                            valid_output=self._tb_read[i])
+            if self.area_opt:
+                self.wire(self._tb_read_out[i], self._tb_read[i])
 
             @always_comb
             def tb_to_out():

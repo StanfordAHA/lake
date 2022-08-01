@@ -46,6 +46,8 @@ class LakeTop(Generator):
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=True,
+                 area_opt=True,
+                 reduced_id_config_width=10,
                  tech_map=TSMC_Tech_Map(depth=512, width=32)):
         super().__init__(name, debug=True)
 
@@ -74,8 +76,12 @@ class LakeTop(Generator):
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
         self.formal_module = formal_module
+        self.area_opt = area_opt
+        self.reduced_id_config_width = reduced_id_config_width
         self.tech_map = tech_map
 
+        if self.area_opt:
+            self.agg_height = 2
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
 
@@ -127,6 +133,8 @@ class LakeTop(Generator):
                                          rw_same_cycle=self.rw_same_cycle,
                                          agg_height=self.agg_height,
                                          config_width=self.config_width,
+                                         area_opt=self.area_opt,
+                                         reduced_id_config_width=self.reduced_id_config_width,
                                          agg_data_top=(self.formal_module == "agg")))
 
         else:
@@ -161,7 +169,8 @@ class LakeTop(Generator):
                                    prioritize_write=True))
 
         if self.stencil_valid:
-            controllers.append(StencilValid())
+            controllers.append(StencilValid(area_opt=self.area_opt,
+                                            reduced_id_config_width=self.reduced_id_config_width))
 
         for ctrl in controllers:
             MTB.add_memory_controller(ctrl)
