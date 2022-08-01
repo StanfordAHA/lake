@@ -36,12 +36,12 @@ class AddrGenModel(Model):
 
     def step(self):
         for i in range(self.config["dimensionality"]):
-            if(i == 0):
+            if (i == 0):
                 update_curr = True
 
             if update_curr:
                 self.dim_cnt[i] = self.dim_cnt[i] + 1
-                if(self.dim_cnt[i] == self.config[f"ranges_{i}"]):
+                if (self.dim_cnt[i] == self.config[f"ranges_{i}"]):
                     self.dim_cnt[i] = 0
                 else:
                     break

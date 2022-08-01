@@ -9,7 +9,7 @@ class PipeRegModel(Model):
         self.stages = stages
 
         self.reg_stage = []
-        if(self.stages > 0):
+        if (self.stages > 0):
             for i in range(self.stages):
                 self.reg_stage.append(0)
 
@@ -18,7 +18,7 @@ class PipeRegModel(Model):
         return
 
     def update_data(self, data_in):
-        if(self.stages == 0):
+        if (self.stages == 0):
             return data_in
         else:
             data_curr = []

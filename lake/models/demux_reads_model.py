@@ -38,7 +38,7 @@ class DemuxReadsModel(Model):
 
         no_valid = True
         for i in range(self.banks):
-            if(valid_in[i]):
+            if (valid_in[i]):
                 no_valid = False
 
         if no_valid:
@@ -46,7 +46,7 @@ class DemuxReadsModel(Model):
 
         for i in range(self.int_out_ports):
             for j in range(self.banks):
-                if(valid_in[j] & (port_in[j] == (1 << i))):
+                if (valid_in[j] & (port_in[j] == (1 << i))):
                     data_out[i] = list(data_in[j])
                     valid_out[i] = 1
                     mem_valid_data_out[i] = mem_valid_data[j]

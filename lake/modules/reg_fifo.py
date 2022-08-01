@@ -181,7 +181,7 @@ class RegFIFO(Generator):
 
     @always_comb
     def data_out_ff(self):
-        if(self._passthru):
+        if (self._passthru):
             self._data_out = self._data_in
         else:
             self._data_out = self._reg_array[self._rd_ptr]

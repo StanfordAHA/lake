@@ -55,12 +55,12 @@ def test_pipe_reg_basic(stages,
         data_out_exp = model_pr.update_data(data_in)
         tester.eval()
 
-        if(stages == 0):
+        if (stages == 0):
             tester.circuit.data_out.expect(data_out_exp)
 
         tester.step(2)
 
-        if(stages > 0):
+        if (stages > 0):
             tester.circuit.data_out.expect(data_out_exp)
 
     with tempfile.TemporaryDirectory() as tempdir:

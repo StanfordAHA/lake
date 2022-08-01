@@ -133,7 +133,7 @@ class LakeTopModel(Model):
             self.config[f"app_ctrl_coarse_prefill_{i}"] = 0
 
         ### INST AGG ALIGNER
-        if(self.agg_height > 0):
+        if (self.agg_height > 0):
             self.agg_aligners = []
             for i in range(self.interconnect_input_ports):
                 self.agg_aligners.append(AggAlignerModel(data_width=self.data_width,

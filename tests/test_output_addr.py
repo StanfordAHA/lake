@@ -113,7 +113,7 @@ def test_output_addr_basic(banks,
 
         tester.eval()
 
-        if(banks == 1):
+        if (banks == 1):
             for k in range(interconnect_output_ports):
                 tester.circuit.ren[k].expect(ren[0][k])
         else:
@@ -121,7 +121,7 @@ def test_output_addr_basic(banks,
                 for k in range(interconnect_output_ports):
                     getattr(tester.circuit, f"ren_{j}")[k].expect(ren[j][k])
 
-        if(interconnect_output_ports == 1):
+        if (interconnect_output_ports == 1):
             tester.circuit.addr_out.expect(addrs[0])
         else:
             for j in range(interconnect_output_ports):

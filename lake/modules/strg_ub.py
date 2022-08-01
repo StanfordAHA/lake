@@ -291,11 +291,11 @@ class StrgUB(Generator):
         self._data_consume = self._data_in
         self._valid_consume = self._wen
         # Zero out if not aligning
-        if(self.agg_height > 0):
+        if (self.agg_height > 0):
             self._align_to_agg = self.var("align_input",
                                           self.interconnect_input_ports)
         # Add the aggregation buffer aligners
-        if(self.align_input):
+        if (self.align_input):
             self._data_consume = self.var("data_consume",
                                           self.data_width,
                                           size=self.interconnect_input_ports,
@@ -330,7 +330,7 @@ class StrgUB(Generator):
         ##### AGG BUFFERS (OPTIONAL) #####
         ##################################
         # Only instantiate agg_buffer if needed
-        if(self.agg_height > 0):
+        if (self.agg_height > 0):
             self._to_iac_dat = self.var("ab_to_mem_dat",
                                         self.mem_width,
                                         size=self.interconnect_input_ports,

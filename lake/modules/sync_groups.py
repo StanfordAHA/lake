@@ -165,7 +165,7 @@ class SyncGroups(Generator):
         for i in range(self.groups):
             # For the port
             for j in range(self.int_out_ports):
-                if(self._sync_group[j] == (1 << i)):
+                if (self._sync_group[j] == (1 << i)):
                     self._sync_agg[i][j] = self._valid_reg[j]
                 else:
                     self._sync_agg[i][j] = 1

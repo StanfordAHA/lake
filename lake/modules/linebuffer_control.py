@@ -45,7 +45,7 @@ class LineBufferControl(Generator):
 
     @always((posedge, "clk"), (posedge, "reset"))
     def threshold_update(self):
-        if(self._reset):
+        if (self._reset):
             self._threshold = 0
         elif self._clk_en:
             if self._flush:
@@ -55,7 +55,7 @@ class LineBufferControl(Generator):
 
     @always((posedge, "clk"), (posedge, "reset"))
     def vg_ctr_update(self):
-        if(self._reset):
+        if (self._reset):
             self._vg_ctr = 0
         elif self._clk_en:
             if self._flush:

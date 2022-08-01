@@ -101,7 +101,7 @@ class OutputAddrCtrl(Generator):
     def set_ren_mult(self):
         self._ren = 0
         for i in range(self.interconnect_output_ports):
-            if(self._valid_in[i]):
+            if (self._valid_in[i]):
                 self._ren[self._local_addrs[i][self.mem_addr_width + self.bank_addr_width - 1,
                                                self.mem_addr_width]][i] = 1
 
@@ -109,7 +109,7 @@ class OutputAddrCtrl(Generator):
     def set_ren_single(self):
         self._ren = 0
         for i in range(self.interconnect_output_ports):
-            if(self._valid_in[i]):
+            if (self._valid_in[i]):
                 self._ren[0][i] = 1
 
     @always_comb

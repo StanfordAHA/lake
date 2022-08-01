@@ -49,8 +49,8 @@ class AggAligner(Generator):
     def update_cnt(self):
         if ~self._rst_n:
             self._cnt = 0
-        elif(self._in_valid):
-            if(self._cnt == decrement(self._line_length, 1)):
+        elif (self._in_valid):
+            if (self._cnt == decrement(self._line_length, 1)):
                 self._cnt = 0
             else:
                 self._cnt = increment(self._cnt, 1)
