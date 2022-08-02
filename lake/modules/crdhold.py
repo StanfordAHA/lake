@@ -277,7 +277,6 @@ class CrdHold(MemoryController):
                 self._hold_reg = self._proc_infifo_in_data
         self.add_code(hold_reg_ff)
 
-
         ####################
         # STATE MACHINE TO PROCESS PROC STREAM
         ####################
@@ -392,7 +391,6 @@ class CrdHold(MemoryController):
         HOLD.output(self._clr_pushed_base, 0)
         HOLD.output(self._reg_clr, 0)
         HOLD.output(self._reg_hold, 0)
-
 
         ################
         # PASS_STOP

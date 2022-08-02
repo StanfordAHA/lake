@@ -520,7 +520,7 @@ def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1), n
     use_name = signal.name + "_d1"
     if name is not None:
         use_name = name
-    reg = generator.var(use_name, signal.width, packed=packed)
+    reg = generator.var(use_name, signal.width, size=signal.size, packed=packed)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_code():
@@ -613,6 +613,23 @@ def add_config_reg(generator, name, description, bitwidth, **kwargs):
     cfg_reg = generator.input(name, bitwidth, **kwargs)
     cfg_reg.add_attribute(ConfigRegAttr(description))
     return cfg_reg
+
+
+def sum_bits(generator, signal, name):
+
+    bits_size = kts.clog2(signal.width)
+    bits_sum = generator.var(f"{name}_sum", bits_size)
+    # bits_sum_done = generator.var(f"{name}_sum_done", 1)
+
+    @always_comb
+    def sum_bits_comb():
+        bits_sum = 0
+        # bits_sum_done = 0
+        for i in range(signal.width):
+            bits_sum = bits_sum + signal[i]
+    generator.add_code(sum_bits_comb)
+
+    return bits_sum
 
 
 def process_line(item):

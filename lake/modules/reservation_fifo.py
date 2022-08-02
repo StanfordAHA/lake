@@ -249,14 +249,25 @@ class ReservationFIFO(kts.Generator):
 
         # Is a next 0 and should actually be jumping
         self._enable_reserve_ptr = self.var("enable_reserve_ptr", 1)
+        self._reserve_ptr_val = self.var("reserve_ptr_val", self.ptr_width)
         # self.wire(self._enable_reserve_ptr, self._jump_next_0 & self._write_reserve_final)
-        self.wire(self._enable_reserve_ptr, self._write_reserve_final)
+        self.wire(self._enable_reserve_ptr, self._write_reserve_final | (self._write_fill & (self._reserve_ptr_val == self._write_ptr)))
+        # self.wire(self._enable_reserve_ptr, self._write_reserve_final | (self._write_fill & ((self._reserve_ptr_val == self._write_ptr) |
+        #                                           (~self._next_0_valid_high_found & ~self._next_0_valid_low_found) |
+        #                                           (kts.ternary(self._next_0_valid_high_found,
+        #                                                        self._next_0_valid_high == self._write_ptr,
+        #                                                        self._next_0_valid_low == self._write_ptr)))))
         self._reserve_ptr = register(self, self._next_0_valid, enable=self._enable_reserve_ptr)
+        self.wire(self._reserve_ptr_val, self._reserve_ptr)
 
         # Complicated.
         # Firstly, if the reserve pointer is where a fill is happening, just move it along with it
         # Secondly, if they don't match and there's no place to go, go to the current write_ptr
-        self.wire(self._next_0_valid, kts.ternary(self._write_fill & ((self._reserve_ptr == self._write_ptr) | (~self._next_0_valid_high_found & ~self._next_0_valid_low_found)),
+        self.wire(self._next_0_valid, kts.ternary(self._write_fill & ((self._reserve_ptr == self._write_ptr) |
+                                                  (~self._next_0_valid_high_found & ~self._next_0_valid_low_found) |
+                                                  (kts.ternary(self._next_0_valid_high_found,
+                                                               self._next_0_valid_high == self._write_ptr,
+                                                               self._next_0_valid_low == self._write_ptr))),
                                                   self._write_ptr + 1,
                                                   kts.ternary(~self._next_0_valid_high_found & ~self._next_0_valid_low_found,
                                                               self._write_ptr,
@@ -313,6 +324,10 @@ class ReservationFIFO(kts.Generator):
         self.add_code(self.valid_mask_ff)
         self.add_code(self.find_next_reserve_high)
         self.add_code(self.find_next_reserve_low)
+
+        self._inc_reserve_count = self.var("inc_reserve_count", 1)
+        self.wire(self._inc_reserve_count, self._write_alloc & ~self._write_fill)
+        self._reserve_count = add_counter(self, "reserve_count", 16, increment=self._inc_reserve_count)
 
         self.hardware_genned = True
 

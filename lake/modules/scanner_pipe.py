@@ -2382,6 +2382,14 @@ class ScannerPipe(MemoryController):
 # Dump metadata into fifo
 # ===================================
 
+        self._inc_requests_made = self.var("inc_requests_made_CRDDD_READ", 1)
+        self.wire(self._inc_requests_made, self._crd_grant_push)
+        self._reads_made = add_counter(self, "READS_MADE", 16, increment=self._inc_requests_made)
+
+        self._inc_requests_made_ = self.var("inc_requests_REC_CRD_READ", 1)
+        self.wire(self._inc_requests_made_, self._rd_rsp_fifo_valid & (self._rd_rsp_fifo_out_data[self.data_width] == kts.const(1, 1)))
+        self._reads_made_ = add_counter(self, "READS_REC_CRD_READ", 16, increment=self._inc_requests_made_)
+
         # self.wire(self._ready_out, self._ren)
         # Include the outer coord as well
         # self._oc_to_fifo = self.var("outer_coord_to_fifo", self.data_width)

@@ -1,3 +1,4 @@
+from struct import pack
 import kratos as kts
 from kratos import *
 from lake.modules.arbiter import Arbiter
@@ -5,7 +6,7 @@ from lake.passes.passes import lift_config_reg
 from lake.top.memory_controller import MemoryController
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.top.tech_maps import TSMC_Tech_Map
-from lake.utils.util import decode, register, trim_config_list
+from lake.utils.util import decode, register, sticky_flag, sum_bits, trim_config_list
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -20,12 +21,14 @@ class BuffetLike(MemoryController):
     def __init__(self,
                  data_width=16,
                  num_ID=2,
+                 mem_width=64,
                  mem_depth=512,
                  local_memory=True,
                  physical_mem=False,
                  fifo_depth=8,
                  tech_map=TSMC_Tech_Map(depth=512, width=32),
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 optimize_wide=False):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
@@ -33,12 +36,14 @@ class BuffetLike(MemoryController):
         self.add_clk_enable = True
         self.add_flush = True
         self.num_ID = num_ID
+        self.mem_width = mem_width
         self.mem_depth = mem_depth
         self.local_memory = local_memory
         self.physical_mem = physical_mem
         self.fifo_depth = fifo_depth
         self.tech_map = tech_map
         self.defer_fifos = defer_fifos
+        self.optimize_wide = optimize_wide
 
         self.total_sets = 0
 
@@ -146,138 +151,6 @@ class BuffetLike(MemoryController):
 
         self._rd_rsp_valid = self.output("rd_rsp_data_valid", 1)
         self._rd_rsp_valid.add_attribute(ControlSignalAttr(is_control=False))
-
-        if self.local_memory is False:
-            # Need interface to remote memory...
-            # self._addr_to_mem = self.output("addr_to_mem", self.data_width, packed=True, explicit_array=True)
-            # self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-            # self._data_to_mem = self.output("data_to_mem", self.data_width, packed=True, explicit_array=True)
-            # self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-            # self._wen_to_mem = self.output("wen_to_mem", 1)
-            # self._wen_to_mem.add_attribute(ControlSignalAttr(is_control=False))
-
-            # self._ren_to_mem = self.output("ren_to_mem", 1)
-            # self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
-
-            # self._data_from_mem = self.input("data_from_mem", self.data_width, packed=True, explicit_array=True)
-            # self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-            # self._valid_from_mem = self.input("valid_from_mem", 1)
-            # self._valid_from_mem.add_attribute(ControlSignalAttr(is_control=True))
-
-            # self._ready_from_mem = self.input("ready_from_mem", 1)
-            # self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
-
-            # Otherwise stamp it out here...
-            self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
-            # self._addr_to_mem = self.var("addr_to_mem", self.data_width, explicit_array=True)
-
-            self._data_to_mem = self.var("data_to_mem", self.data_width, packed=True, explicit_array=True)
-            # self._data_to_mem = self.var("data_to_mem", self.data_width, explicit_array=True)
-
-            self._wen_to_mem = self.var("wen_to_mem", 1)
-
-            self._ren_to_mem = self.var("ren_to_mem", 1)
-
-            self._data_from_mem = self.var("data_from_mem", self.data_width, packed=True, explicit_array=True)
-
-            self._valid_from_mem = self.var("valid_from_mem", 1)
-
-            self._ready_from_mem = self.var("ready_from_mem", 1)
-
-            self.strg_ram_local = StrgRAM(data_width=self.data_width, memory_depth=self.mem_depth)
-
-            self.add_child("memory_ctrl",
-                           # Buffet interface
-                           self.strg_ram_local,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           wen=self._wen_to_mem,
-                           ren=self._ren_to_mem,
-                           data_in=self._data_to_mem,
-                           wr_addr_in=self._addr_to_mem,
-                           rd_addr_in=self._addr_to_mem,
-                           data_out=self._data_from_mem,
-                           valid_out=self._valid_from_mem,
-                           ready=self._ready_from_mem)
-
-            # Get the memory port interface
-            mem_ctrl_port_interface = self.strg_ram_local.get_memory_ports()
-            # mem_ctrl_port_interface = mem_ctrl_port_interface[0][0].get_port_interface()
-            self.base_ports = mem_ctrl_port_interface
-
-        else:
-            # Otherwise stamp it out here...
-            self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
-            # self._addr_to_mem = self.var("addr_to_mem", self.data_width, explicit_array=True)
-
-            self._data_to_mem = self.var("data_to_mem", self.data_width, packed=True, explicit_array=True)
-            # self._data_to_mem = self.var("data_to_mem", self.data_width, explicit_array=True)
-
-            self._wen_to_mem = self.var("wen_to_mem", 1)
-
-            self._ren_to_mem = self.var("ren_to_mem", 1)
-
-            self._data_from_mem = self.var("data_from_mem", self.data_width, packed=True, explicit_array=True)
-
-            self._valid_from_mem = self.var("valid_from_mem", 1)
-
-            self._ready_from_mem = self.var("ready_from_mem", 1)
-
-            self.strg_ram_local = StrgRAM()
-
-            self.add_child("memory_ctrl",
-                           # Buffet interface
-                           self.strg_ram_local,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           wen=self._wen_to_mem,
-                           ren=self._ren_to_mem,
-                           data_in=self._data_to_mem,
-                           wr_addr_in=self._addr_to_mem,
-                           rd_addr_in=self._addr_to_mem,
-                           data_out=self._data_from_mem,
-                           valid_out=self._valid_from_mem,
-                           ready=self._ready_from_mem)
-
-            # Get the memory port interface
-            mem_ctrl_port_interface = self.strg_ram_local.get_memory_ports()
-            mem_ctrl_port_interface = mem_ctrl_port_interface[0][0].get_port_interface()
-
-            # print(mem_ctrl_port_interface)
-
-            # Build a simple memory
-            memory_params = {
-                'mem_width': 64,
-                'mem_depth': 512
-            }
-
-            # Create the memory interface based on different params
-            mem_ports = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
-
-            self.mem_intf = MemoryInterface(name="memory_mod",
-                                            mem_params=memory_params,
-                                            ports=mem_ports,
-                                            sim_macro_n=not self.physical_mem,
-                                            reset_in_sim=True,
-                                            tech_map=self.tech_map)
-            # Realize the hardware implementation then add it as a child and wire it up...
-            self.mem_intf.realize_hw()
-            self.add_child('memory_stub',
-                           self.mem_intf)
-
-            actual_mem_port_interface = self.mem_intf.get_ports()[0].get_port_interface()
-
-            # print(actual_mem_port_interface)
-
-            self.wire(self._gclk, self.mem_intf.get_clock())
-            if not self.physical_mem:
-                self.wire(self._rst_n, self.mem_intf.get_reset())
-
-            for pname, psignal in mem_ctrl_port_interface.items():
-                self.wire(psignal, actual_mem_port_interface[pname])
 
 # =============================
 # Miscellaneous forward declarations
@@ -430,6 +303,263 @@ class BuffetLike(MemoryController):
         self.wire(self._rd_ID_ready, ~self._rd_ID_infifo.ports.full)
         self.wire(self._rd_ID_fifo_valid, ~self._rd_ID_infifo.ports.empty)
 
+        if self.optimize_wide and self.mem_width > self.data_width:
+
+            self.fw_int = self.mem_width // self.data_width
+            self.wide_num_word_bits = kts.clog2(self.fw_int)
+            self.mem_addr_bit_range_outer = (self.data_width - 1, self.wide_num_word_bits)
+            self.mem_addr_bit_range_inner = (self.wide_num_word_bits - 1, 0)
+
+            # Create local memory interface...
+            self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
+            self._data_to_mem = self.var("data_to_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
+            self._data_from_mem = self.var("data_from_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
+            self._wen_to_mem = self.var("wen_to_mem", 1)
+            self._ren_to_mem = self.var("ren_to_mem", 1)
+
+            # Represents the final addr destination for this grouped word
+            self._set_wide_word_addr = [self.var(f"set_wide_word_add_{idx}", 1) for idx in range(self.num_ID)]
+            # self._write_word_addr = [self.var(f"write_word_addr_{idx}", self.data_width) for idx in range(self.num_ID)]
+            self._write_word_addr = [register(self, self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer],
+                                              enable=self._set_wide_word_addr[idx],
+                                              name=f"write_word_addr_reg_{idx}") for idx in range(self.num_ID)]
+
+            self._write_to_sram = [self.var(f"write_to_sram_{idx}", 1) for idx in range(self.num_ID)]
+            # [self.wire(self._write_to_sram[idx], self._write_full_word[idx] | self._write_rmw_word[idx])]
+            self._write_to_wide_word = [self.var(f"write_to_wide_word_{idx}", 1) for idx in range(self.num_ID)]
+
+            # Basically aggregate a wider word. Fill in the items with a mask
+            self._set_write_wide_word = [self.var(f"set_write_wide_word_{idx}", 1) for idx in range(self.num_ID)]
+            self._clr_write_wide_word = [self.var(f"clr_write_wide_word_{idx}", 1) for idx in range(self.num_ID)]
+
+            # Have the current valid mask
+            self._write_wide_word_mask_comb = [self.var(f"write_wide_word_mask_comb_{idx}", self.fw_int) for idx in range(self.num_ID)]
+            self._write_wide_word_mask_reg_out = [self.var(f"write_wide_word_mask_reg_out_{idx}", self.fw_int) for idx in range(self.num_ID)]
+            self._write_wide_word_mask_reg_in = [self.var(f"write_wide_word_mask_reg_in_{idx}", self.fw_int) for idx in range(self.num_ID)]
+            self._write_wide_word_mask_reg = [register(self, self._write_wide_word_mask_reg_in[idx],
+                                                       enable=self._set_write_wide_word[idx],
+                                                    #    clear=self._clr_write_wide_word[idx],
+                                                       name=f"write_wide_word_mask_reg_strg_{idx}") for idx in range(self.num_ID)]
+
+            # self._write_wide_word = [self.var(f"write_wide_word_{idx}", self.data_width, size=self.fw_int, packed=True, explicit_array=True) for idx in range(self.num_ID)]
+            self._write_wide_word_comb = [self.var(f"write_wide_word_comb_{idx}", self.data_width, size=self.fw_int, packed=True, explicit_array=True) for idx in range(self.num_ID)]
+            # Modified version of the sram read for
+            self._write_wide_word_modified = [self.var(f"write_wide_word_modified_{idx}", self.data_width, size=self.fw_int, packed=True, explicit_array=True) for idx in range(self.num_ID)]
+            self._write_wide_word_reg = [register(self, self._write_wide_word_comb[idx], enable=self._set_write_wide_word[idx], name=f"write_wide_word_reg_{idx}", packed=True) for idx in range(self.num_ID)]
+            # For the wide word, send through the data reg if masked, otherwise the fifo
+            for idx_i in range(self.num_ID):
+                for idx_j in range(self.fw_int):
+                    self.wire(self._write_wide_word_comb[idx_i][idx_j], kts.ternary(self._write_wide_word_mask_reg_out[idx_i][idx_j],
+                                                                                    self._write_wide_word_reg[idx_i][idx_j],
+                                                                                    self._wr_data_fifo_out_data))
+            # this is the same thing, but the modified word from SRAM if needed
+            for idx_i in range(self.num_ID):
+                for idx_j in range(self.fw_int):
+                    self.wire(self._write_wide_word_modified[idx_i][idx_j], kts.ternary(self._write_wide_word_mask_reg_out[idx_i][idx_j],
+                                                                                    self._write_wide_word_reg[idx_i][idx_j],
+                                                                                    self._data_from_mem[idx_j]))
+
+            # The valid mask is basically the currently written valid mask + the incoming valid
+            [self.wire(self._write_wide_word_mask_reg_out[idx], self._write_wide_word_mask_reg[idx]) for idx in range(self.num_ID)]
+            # Only consider the combinational 1 if the addresses match
+            [self.wire(self._write_wide_word_mask_comb[idx],
+                       self._write_wide_word_mask_reg_out[idx] | ((kts.ternary(self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx] & (self._wr_ID_fifo_out_data == kts.const(idx, 1)),
+                                                                               kts.const(1, 1),
+                                                                               kts.const(0, 1))) << self._wr_addr_fifo_out_data[self.mem_addr_bit_range_inner])) for idx in range(self.num_ID)]
+
+            [self.wire(self._write_wide_word_mask_reg_in[idx],
+                       kts.ternary(self._clr_write_wide_word[idx],
+                                   kts.const(0, self._write_wide_word_mask_reg_in[idx].width),
+                                   self._write_wide_word_mask_reg_out[idx]) |
+                                  ((kts.ternary((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx]) & (self._wr_ID_fifo_out_data == kts.const(idx, 2)),
+                                                 kts.const(1, self.fw_int),
+                                                 kts.const(0, self.fw_int))) << self._wr_addr_fifo_out_data[self.mem_addr_bit_range_inner])) for idx in range(self.num_ID)]
+
+            self._num_bits_valid_mask = [sum_bits(self, self._write_wide_word_mask_comb[idx], name=f"num_bits_valid_mask_{idx}") for idx in range(self.num_ID)]
+            # This means we have the data to write the full word (or use the rmw option)
+            self._write_full_word = [self.var(f"write_full_word_{idx}", 1) for idx in range(self.num_ID)]
+            self._write_rmw_word = [self.var(f"write_rmw_word_{idx}", 1) for idx in range(self.num_ID)]
+            [self.wire(self._write_full_word[idx], self._num_bits_valid_mask[idx] == kts.const(self.fw_int, self.wide_num_word_bits)) for idx in range(self.num_ID)]
+            [self.wire(self._write_rmw_word[idx], self._num_bits_valid_mask[idx] < kts.const(self.fw_int, self.wide_num_word_bits)) for idx in range(self.num_ID)]
+
+            # This signal will be a product of the fill status of the wide_word
+
+            # Set the wide word addr from later FSM
+
+            # Storage and knowledge of previous read
+            # self._read_wide_word = [self.var(f"read_wide_word_{idx}", self.data_width, size=self.fw_int, packed=True, explicit_array=True) for idx in range(self.num_ID)]
+            self._set_cached_read = [self.var(f"set_cached_read_{idx}", 1) for idx in range(self.num_ID)]
+            self._clr_cached_read = [self.var(f"clr_cached_read_{idx}", 1) for idx in range(self.num_ID)]
+            self._read_wide_word = [register(self, self._data_from_mem, enable=self._set_cached_read[idx], name=f"read_wide_word_{idx}") for idx in range(self.num_ID)]
+            self._read_wide_word_valid = [sticky_flag(self, self._set_cached_read[idx],
+                                                      clear=self._clr_cached_read[idx],
+                                                      name=f"read_wide_word_valid_sticky_{idx}") for idx in range(self.num_ID)]
+
+            # Use the addr to mem as the R-M-W sequence can clobber the data register on the SRAM
+            self._last_read_addr = register(self, self._addr_to_mem, enable=self._ren_to_mem, name="last_read_addr")
+            self._last_read_ID = register(self, self._rd_ID_fifo_out_data, enable=self._ren_to_mem, name="last_read_ID")
+
+            self._set_read_word_addr = [self.var(f"set_read_word_addr_{idx}", 1) for idx in range(self.num_ID)]
+            # self._read_word_addr = [self.var(f"read_word_addr_{idx}", self.data_width) for idx in range(self.num_ID)]
+            self._read_word_addr = [register(self, self._last_read_addr,
+                                             enable=self._set_read_word_addr[idx], name=f"cached_read_word_addr_{idx}") for idx in range(self.num_ID)]
+
+            # Determine whether to use the output register of the SRAM or the cached word
+            self._use_cached_read = [self.var(f"use_cached_read_{idx}", 1) for idx in range(self.num_ID)]
+            # You should use the cached read if the data is already available, else fall back to the data from mem
+            [self.wire(self._use_cached_read[idx], self._read_word_addr[idx][self.mem_addr_bit_range_outer] == self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer]) for idx in range(self.num_ID)]
+
+            self._chosen_read = [self.var(f"chosen_read_{idx}", self.data_width) for idx in range(self.num_ID)]
+            [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx],
+                                                           self._read_word_addr[self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner]],
+                                                           self._data_from_mem[self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
+
+            self._sram_lock = [self.var(f"sram_lock_{idx}", 1) for idx in range(self.num_ID)]
+            self._any_sram_lock = self.var("any_sram_lock", 1)
+            self.wire(self._any_sram_lock, (kts.concat(*self._sram_lock).r_or()))
+
+            # Need interface to memory...
+
+            # self._valid_from_mem = self.input("valid_from_mem", 1)
+            # self._valid_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+
+            # self._ready_from_mem = self.input("ready_from_mem", 1)
+            # self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+
+            # self.base_ports = mem_ctrl_port_interface
+
+        elif self.local_memory is False:
+            # Need interface to remote memory...
+            # self._addr_to_mem = self.output("addr_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+            # self._data_to_mem = self.output("data_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+            # self._wen_to_mem = self.output("wen_to_mem", 1)
+            # self._wen_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+
+            # self._ren_to_mem = self.output("ren_to_mem", 1)
+            # self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+
+            # self._data_from_mem = self.input("data_from_mem", self.data_width, packed=True, explicit_array=True)
+            # self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+            # self._valid_from_mem = self.input("valid_from_mem", 1)
+            # self._valid_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+
+            # self._ready_from_mem = self.input("ready_from_mem", 1)
+            # self._ready_from_mem.add_attribute(ControlSignalAttr(is_control=True))
+
+            # Otherwise stamp it out here...
+            self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._addr_to_mem = self.var("addr_to_mem", self.data_width, explicit_array=True)
+
+            self._data_to_mem = self.var("data_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._data_to_mem = self.var("data_to_mem", self.data_width, explicit_array=True)
+
+            self._wen_to_mem = self.var("wen_to_mem", 1)
+
+            self._ren_to_mem = self.var("ren_to_mem", 1)
+
+            self._data_from_mem = self.var("data_from_mem", self.data_width, packed=True, explicit_array=True)
+
+            self._valid_from_mem = self.var("valid_from_mem", 1)
+
+            self._ready_from_mem = self.var("ready_from_mem", 1)
+
+            self.strg_ram_local = StrgRAM(data_width=self.data_width, memory_depth=self.mem_depth)
+
+            self.add_child("memory_ctrl",
+                           # Buffet interface
+                           self.strg_ram_local,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           wen=self._wen_to_mem,
+                           ren=self._ren_to_mem,
+                           data_in=self._data_to_mem,
+                           wr_addr_in=self._addr_to_mem,
+                           rd_addr_in=self._addr_to_mem,
+                           data_out=self._data_from_mem,
+                           valid_out=self._valid_from_mem,
+                           ready=self._ready_from_mem)
+
+            # Get the memory port interface
+            mem_ctrl_port_interface = self.strg_ram_local.get_memory_ports()
+            # mem_ctrl_port_interface = mem_ctrl_port_interface[0][0].get_port_interface()
+            self.base_ports = mem_ctrl_port_interface
+
+        else:
+            # Otherwise stamp it out here...
+            self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._addr_to_mem = self.var("addr_to_mem", self.data_width, explicit_array=True)
+
+            self._data_to_mem = self.var("data_to_mem", self.data_width, packed=True, explicit_array=True)
+            # self._data_to_mem = self.var("data_to_mem", self.data_width, explicit_array=True)
+
+            self._wen_to_mem = self.var("wen_to_mem", 1)
+
+            self._ren_to_mem = self.var("ren_to_mem", 1)
+
+            self._data_from_mem = self.var("data_from_mem", self.data_width, packed=True, explicit_array=True)
+
+            self._valid_from_mem = self.var("valid_from_mem", 1)
+
+            self._ready_from_mem = self.var("ready_from_mem", 1)
+
+            self.strg_ram_local = StrgRAM()
+
+            self.add_child("memory_ctrl",
+                           # Buffet interface
+                           self.strg_ram_local,
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           wen=self._wen_to_mem,
+                           ren=self._ren_to_mem,
+                           data_in=self._data_to_mem,
+                           wr_addr_in=self._addr_to_mem,
+                           rd_addr_in=self._addr_to_mem,
+                           data_out=self._data_from_mem,
+                           valid_out=self._valid_from_mem,
+                           ready=self._ready_from_mem)
+
+            # Get the memory port interface
+            mem_ctrl_port_interface = self.strg_ram_local.get_memory_ports()
+            mem_ctrl_port_interface = mem_ctrl_port_interface[0][0].get_port_interface()
+
+            # print(mem_ctrl_port_interface)
+
+            # Build a simple memory
+            memory_params = {
+                'mem_width': 64,
+                'mem_depth': 512
+            }
+
+            # Create the memory interface based on different params
+            mem_ports = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
+
+            self.mem_intf = MemoryInterface(name="memory_mod",
+                                            mem_params=memory_params,
+                                            ports=mem_ports,
+                                            sim_macro_n=not self.physical_mem,
+                                            reset_in_sim=True,
+                                            tech_map=self.tech_map)
+            # Realize the hardware implementation then add it as a child and wire it up...
+            self.mem_intf.realize_hw()
+            self.add_child('memory_stub',
+                           self.mem_intf)
+
+            actual_mem_port_interface = self.mem_intf.get_ports()[0].get_port_interface()
+
+            # print(actual_mem_port_interface)
+
+            self.wire(self._gclk, self.mem_intf.get_clock())
+            if not self.physical_mem:
+                self.wire(self._rst_n, self.mem_intf.get_reset())
+
+            for pname, psignal in mem_ctrl_port_interface.items():
+                self.wire(psignal, actual_mem_port_interface[pname])
+
 # =============================
 # FIFO outputs
 # =============================
@@ -539,183 +669,435 @@ class BuffetLike(MemoryController):
 
         [self.add_code(cap_reg, idx=i) for i in range(self.num_ID)]
 
-        # Create FSM
-        self.write_fsm = [self.add_fsm(f"write_fsm_{i}", reset_high=False) for i in range(self.num_ID)]
-        WR_START = [self.write_fsm[i].add_state(f"WR_START_{i}") for i in range(self.num_ID)]
-        WRITING = [self.write_fsm[i].add_state(f"WRITING_{i}") for i in range(self.num_ID)]
+        if self.optimize_wide and self.mem_width > self.data_width:
 
-        ####################
-        # Next State Logic WRITE
-        ####################
-        for ID_idx in range(self.num_ID):
-
-            self.write_fsm[ID_idx].output(self._push_blk[ID_idx])
-            self.write_fsm[ID_idx].output(self._en_curr_base[ID_idx])
-            self.write_fsm[ID_idx].output(self._en_curr_bounds[ID_idx])
-            self.write_fsm[ID_idx].output(self._wen_full[ID_idx])
-            self.write_fsm[ID_idx].output(self._pop_in_full[ID_idx])
-            # self.write_fsm.output(self._en_curr_bounds)
+            # Create FSM
+            self.write_fsm = [self.add_fsm(f"write_fsm_{i}", reset_high=False) for i in range(self.num_ID)]
+            WR_START = [self.write_fsm[i].add_state(f"WR_START_{i}") for i in range(self.num_ID)]
+            WRITING = [self.write_fsm[i].add_state(f"WRITING_{i}") for i in range(self.num_ID)]
+            MODIFY = [self.write_fsm[i].add_state(f"MODIFY_{i}") for i in range(self.num_ID)]
 
             ####################
-            # WR_START #
+            # Next State Logic WRITE
             ####################
-            # Start state gets an allocate command
-            WR_START[ID_idx].next(WRITING[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)) & self._tile_en)
-            WR_START[ID_idx].next(WR_START[ID_idx], None)
+            for ID_idx in range(self.num_ID):
+
+                self.write_fsm[ID_idx].output(self._push_blk[ID_idx])
+                self.write_fsm[ID_idx].output(self._en_curr_base[ID_idx])
+                self.write_fsm[ID_idx].output(self._en_curr_bounds[ID_idx])
+                self.write_fsm[ID_idx].output(self._wen_full[ID_idx])
+                self.write_fsm[ID_idx].output(self._pop_in_full[ID_idx])
+                self.write_fsm[ID_idx].output(self._set_write_wide_word[ID_idx])
+                self.write_fsm[ID_idx].output(self._clr_write_wide_word[ID_idx])
+                self.write_fsm[ID_idx].output(self._write_to_sram[ID_idx])
+                self.write_fsm[ID_idx].output(self._write_to_wide_word[ID_idx])
+                self.write_fsm[ID_idx].output(self._set_wide_word_addr[ID_idx])
+                self.write_fsm[ID_idx].output(self._sram_lock[ID_idx])
+                # self.write_fsm.output(self._en_curr_bounds)
+
+                ####################
+                # WR_START #
+                ####################
+                # Start state gets an allocate command
+                WR_START[ID_idx].next(WRITING[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)) & self._tile_en)
+                WR_START[ID_idx].next(WR_START[ID_idx], None)
+
+                ####################
+                # WRITING #
+                ####################
+                # Writing until we get a finalize...
+                WRITING[ID_idx].next(WR_START[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # Go to modify if we get a change in address on a non-full word (and we get lock access)
+                WRITING[ID_idx].next(MODIFY[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) &
+                                                     (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)) &
+                                                     self._mem_acq[2 * ID_idx + 0] &
+                                                     self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx])
+                WRITING[ID_idx].next(WRITING[ID_idx], None)
+
+                ####################
+                # MODIFY #
+                ####################
+                # Go back to writing when we have finished the modify (which should happen immediately since we have the resource lock)
+                MODIFY[ID_idx].next(WRITING[ID_idx], kts.const(1, 1))
+                MODIFY[ID_idx].next(MODIFY[ID_idx], None)
+
+                ####################
+                # Output Logic WRITE
+                ####################
+
+                ####################
+                # WR_START #
+                ####################
+                WR_START[ID_idx].output(self._push_blk[ID_idx], 0)
+                WR_START[ID_idx].output(self._en_curr_base[ID_idx], 0)
+                WR_START[ID_idx].output(self._en_curr_bounds[ID_idx], 0)
+                WR_START[ID_idx].output(self._wen_full[ID_idx], 0)
+                WR_START[ID_idx].output(self._pop_in_full[ID_idx], (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                WR_START[ID_idx].output(self._set_write_wide_word[ID_idx], 0)
+                WR_START[ID_idx].output(self._clr_write_wide_word[ID_idx], 0)
+                WR_START[ID_idx].output(self._write_to_sram[ID_idx], 0)
+                WR_START[ID_idx].output(self._write_to_wide_word[ID_idx], 0)
+                WR_START[ID_idx].output(self._set_wide_word_addr[ID_idx], 0)
+                WR_START[ID_idx].output(self._sram_lock[ID_idx], 0)
+
+                ####################
+                # WRITING #
+                ####################
+                # Increment wr addr if we get wr access
+                # WRITING[ID_idx].output(self._inc_wr_addr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
+                # WRITING[ID_idx].output(self._inc_bounds_ctr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
+                # WRITING[ID_idx].output(self._clr_bounds_ctr, 0)
+                WRITING[ID_idx].output(self._push_blk[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # WRITING[ID_idx].output(self._en_curr_base[ID_idx], 0)
+                # On our way back to write start we can set the current base for the next block. it is 0 at reset, so we don't need to deal with it there
+                WRITING[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # Any time we make a write to the current block we can update the bounds of the current block
+                WRITING[ID_idx].output(self._en_curr_bounds[ID_idx], self._mem_acq[2 * ID_idx + 0] & self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # WRITING[ID_idx].output(self._wen_full[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
+
+                # Only make the wen when there is room and the proper ID is being addressed
+                WRITING[ID_idx].output(self._wen_full[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                WRITING[ID_idx].output(self._pop_in_full[ID_idx], (self._mem_acq[2 * ID_idx + 0] &
+                                                                  self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
+                                                                  (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) &
+                                                                  (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))) |
+                                                                  (self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] &
+                                                                  (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))))
+                WRITING[ID_idx].output(self._set_write_wide_word[ID_idx], (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[ID_idx]) &
+                                                                          self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
+                                                                          (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # Only clear the word
+                WRITING[ID_idx].output(self._clr_write_wide_word[ID_idx], 0)
+                WRITING[ID_idx].output(self._write_to_sram[ID_idx], 0)
+                WRITING[ID_idx].output(self._write_to_wide_word[ID_idx], 0)
+                WRITING[ID_idx].output(self._set_wide_word_addr[ID_idx], 0)
+                WRITING[ID_idx].output(self._sram_lock[ID_idx], 0)
+                # WRITING.output(self._en_curr_bounds, 0)
+
+                # TODO: deal with a full word write backed up by a new write - need to clear only some of the bits
+
+                ####################
+                # MODIFY #
+                ####################
+                MODIFY[ID_idx].output(self._push_blk[ID_idx], 0)
+                MODIFY[ID_idx].output(self._en_curr_base[ID_idx], 0)
+                MODIFY[ID_idx].output(self._en_curr_bounds[ID_idx], 0)
+                # Simply write with the lock here
+                MODIFY[ID_idx].output(self._wen_full[ID_idx], 1)
+                MODIFY[ID_idx].output(self._pop_in_full[ID_idx], 0)
+                MODIFY[ID_idx].output(self._set_write_wide_word[ID_idx], 0)
+                MODIFY[ID_idx].output(self._clr_write_wide_word[ID_idx], 1)
+                MODIFY[ID_idx].output(self._write_to_sram[ID_idx], 1)
+                MODIFY[ID_idx].output(self._write_to_wide_word[ID_idx], 0)
+                MODIFY[ID_idx].output(self._set_wide_word_addr[ID_idx], 0)
+                MODIFY[ID_idx].output(self._sram_lock[ID_idx], 1)
+
+            ##### Create read side fsm separately.
+
+            #####################
+            # READING #
+            #####################
+
+            self.read_fsm = [self.add_fsm(f"read_fsm_{i}", reset_high=False) for i in range(self.num_ID)]
+            RD_START = [self.read_fsm[i].add_state(f"RD_START_{i}") for i in range(self.num_ID)]
+
+            for ID_idx in range(self.num_ID):
+                ####################
+                # RD_START
+                ####################
+                # Get the first block size...
+                RD_START[ID_idx].next(RD_START[ID_idx], None)
+
+                self.read_fsm[ID_idx].output(self._pop_blk[ID_idx])
+                # self.read_fsm[ID_idx].output(self._rd_addr_loc[ID_idx])
+                self.read_fsm[ID_idx].output(self._ren_full[ID_idx])
+                self.read_fsm[ID_idx].output(self._read_pop_full[ID_idx])
+                self.read_fsm[ID_idx].output(self._size_request_full[ID_idx])
+                self.read_fsm[ID_idx].output(self._set_cached_read[ID_idx])
+                self.read_fsm[ID_idx].output(self._clr_cached_read[ID_idx])
+
+                ####################
+                # RD_START
+                ####################
+                RD_START[ID_idx].output(self._pop_blk[ID_idx], (self._rd_op_fifo_out_op == 0) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                # Guarantee there's room for the read to land (need to use almost full, not full...)
+                # RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_almost_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                # Pop the op fifo if there is a read that's going through or if it's a free op
+                # If it's a size request, only fulfill it if we aren't pushing a read from memory to the output fifo
+                RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 2, ~self._valid_from_mem & self._blk_valid[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[2 * ID_idx + 1] & ~self._rd_rsp_fifo_full, kts.const(1, 1))) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                RD_START[ID_idx].output(self._size_request_full[ID_idx], self._blk_valid[ID_idx] & (self._rd_op_fifo_out_op == 2) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+
+            for i in range(self.num_ID):
+                self.write_fsm[i].set_start_state(WR_START[i])
+                self.read_fsm[i].set_start_state(RD_START[i])
+
+            for i in range(self.num_ID):
+                ### Bookkeeping FIFO
+                blk_fifo_in = kts.concat(self._curr_base[i], self._curr_bounds[i])
+                blk_fifo = RegFIFO(data_width=blk_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=False)
+
+                self.add_child(f"blk_fifo_{i}",
+                            blk_fifo,
+                            clk=self._gclk,
+                            rst_n=self._rst_n,
+                            clk_en=self._clk_en,
+                            push=self._push_blk[i],
+                            pop=self._pop_blk[i],
+                            data_in=blk_fifo_in,
+                            data_out=kts.concat(self._blk_base[i], self._blk_bounds[i]))
+
+                self.wire(self._blk_full[i], blk_fifo.ports.full)
+                self.wire(self._blk_valid[i], ~blk_fifo.ports.empty)
+
+            # Force FSM realization first so that flush gets added...
+            kts.passes.realize_fsm(self.internal_generator)
+
+            # Arbitrate between the write/read side with RR arbiter
+            self.port_arbiter = Arbiter(ins=2 * self.num_ID,
+                                        algo="RR")
+
+            base_rr = kts.concat(self._ren_full[0], self._wen_full[0])
+            for i in range(self.num_ID - 1):
+                base_rr = kts.concat(self._ren_full[i + 1], self._wen_full[i + 1], base_rr)
+
+            brr = self.var("base_rr", 2 * self.num_ID)
+            self.wire(brr, base_rr)
+
+            # The "ready_from_mem" is now based on a resource lock for the rmw stages of the write side
+
+            self.add_child(f"rr_arbiter",
+                        self.port_arbiter,
+                        clk=self._gclk,
+                        rst_n=self._rst_n,
+                        clk_en=self._clk_en,
+                        request_in=brr,
+                        grant_out=self._mem_acq,
+                        # resource_ready=self._ready_from_mem)
+                        resource_ready=~self._any_sram_lock)
+
+            wr_acqs = []
+            rd_acqs = []
+            wr_acq = self._mem_acq[0] & self._wen_full[0]
+            wr_acqs.append(self._mem_acq[0] & self._wen_full[0])
+            rd_acq = self._mem_acq[1] & self._ren_full[0]
+            rd_acqs.append(self._mem_acq[1] & self._ren_full[0])
+            for i in range(self.num_ID - 1):
+                wr_acq = kts.concat(wr_acq, self._mem_acq[2 * (i + 1)] & self._wen_full[i + 1])
+                wr_acqs.append(self._mem_acq[2 * (i + 1)] & self._wen_full[i + 1])
+                rd_acq = kts.concat(rd_acq, self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
+                rd_acqs.append(self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
+            self.wire(self._ren_to_mem, rd_acq.r_or())
+            # This is a little weird, but nothing is going to receive this grant, so just based on the lock held
+            self.wire(self._wen_to_mem, (wr_acq | kts.concat(*self._sram_lock)).r_or())
+
+            # Choose which base block...
+            wr_base = kts.ternary(wr_acqs[0], self._curr_base[0] + self._buffet_base[0], kts.const(0, self._curr_base[0].width))
+            rd_base = kts.ternary(rd_acqs[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
+            for i in range(self.num_ID - 1):
+                wr_base = kts.ternary(wr_acqs[i + 1], self._curr_base[i + 1] + self._buffet_base[i + 1], wr_base)
+                rd_base = kts.ternary(rd_acqs[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
+            tmp_wr_base = self.var("tmp_wr_base", self._buffet_base[0].width)
+            tmp_rd_base = self.var("tmp_rd_base", self._buffet_base[0].width)
+            self.wire(tmp_wr_base, wr_base)
+            self.wire(tmp_rd_base, rd_base)
+            # self.wire(self._data_to_mem, self._wr_data_fifo_out_data)
+            # self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + tmp_wr_base, self._rd_addr_fifo_out_addr + tmp_rd_base))
+            # TODO: Generalize, for now hack
+            self.wire(self._data_to_mem, kts.ternary(wr_acqs[0],
+                                                     self._write_wide_word_comb[0],
+                                                     kts.ternary(wr_acqs[1],
+                                                                 self._write_wide_word_comb[1],
+                                                                 kts.ternary(self._sram_lock[0],
+                                                                             self._write_wide_word_modified[0],
+                                                                             kts.ternary(self._sram_lock[1],
+                                                                                         self._write_wide_word_modified[1],
+                                                                                         kts.const(0, self._data_to_mem.width))))))
+            # self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + tmp_wr_base, self._rd_addr_fifo_out_addr + tmp_rd_base))
+            self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem,
+                                                     kts.ternary(wr_acqs[0],
+                                                                 self._write_word_addr[0],
+                                                                 self._write_word_addr[1]) + tmp_wr_base,
+                                                     self._rd_addr_fifo_out_addr + tmp_rd_base))
+
+        else:
+            # Create FSM
+            self.write_fsm = [self.add_fsm(f"write_fsm_{i}", reset_high=False) for i in range(self.num_ID)]
+            WR_START = [self.write_fsm[i].add_state(f"WR_START_{i}") for i in range(self.num_ID)]
+            WRITING = [self.write_fsm[i].add_state(f"WRITING_{i}") for i in range(self.num_ID)]
 
             ####################
-            # WRITING #
+            # Next State Logic WRITE
             ####################
-            # Writing until we get a finalize...
-            WRITING[ID_idx].next(WR_START[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-            WRITING[ID_idx].next(WRITING[ID_idx], None)
+            for ID_idx in range(self.num_ID):
 
-            ####################
-            # Output Logic WRITE
-            ####################
+                self.write_fsm[ID_idx].output(self._push_blk[ID_idx])
+                self.write_fsm[ID_idx].output(self._en_curr_base[ID_idx])
+                self.write_fsm[ID_idx].output(self._en_curr_bounds[ID_idx])
+                self.write_fsm[ID_idx].output(self._wen_full[ID_idx])
+                self.write_fsm[ID_idx].output(self._pop_in_full[ID_idx])
+                # self.write_fsm.output(self._en_curr_bounds)
 
-            ####################
-            # WR_START #
-            ####################
+                ####################
+                # WR_START #
+                ####################
+                # Start state gets an allocate command
+                WR_START[ID_idx].next(WRITING[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)) & self._tile_en)
+                WR_START[ID_idx].next(WR_START[ID_idx], None)
 
-            WR_START[ID_idx].output(self._push_blk[ID_idx], 0)
-            # WR_START[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-            WR_START[ID_idx].output(self._en_curr_base[ID_idx], 0)
-            WR_START[ID_idx].output(self._en_curr_bounds[ID_idx], 0)
-            WR_START[ID_idx].output(self._wen_full[ID_idx], 0)
-            WR_START[ID_idx].output(self._pop_in_full[ID_idx], (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-            # WR_START.output(self._en_curr_bounds, 0)
+                ####################
+                # WRITING #
+                ####################
+                # Writing until we get a finalize...
+                WRITING[ID_idx].next(WR_START[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                WRITING[ID_idx].next(WRITING[ID_idx], None)
 
-            ####################
-            # WRITING #
-            ####################
-            # Increment wr addr if we get wr access
-            # WRITING[ID_idx].output(self._inc_wr_addr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
-            # WRITING[ID_idx].output(self._inc_bounds_ctr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
-            # WRITING[ID_idx].output(self._clr_bounds_ctr, 0)
-            WRITING[ID_idx].output(self._push_blk[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-            # WRITING[ID_idx].output(self._en_curr_base[ID_idx], 0)
-            # On our way back to write start we can set the current base for the next block. it is 0 at reset, so we don't need to deal with it there
-            WRITING[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-            # Any time we make a write to the current block we can update the bounds of the current block
-            WRITING[ID_idx].output(self._en_curr_bounds[ID_idx], self._mem_acq[2 * ID_idx + 0] & self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-            # WRITING[ID_idx].output(self._wen_full[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
+                ####################
+                # Output Logic WRITE
+                ####################
 
-            # Only make the wen when there is room and the proper ID is being addressed
-            WRITING[ID_idx].output(self._wen_full[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-            WRITING[ID_idx].output(self._pop_in_full[ID_idx], (self._mem_acq[2 * ID_idx + 0] &
-                                                               self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
-                                                               (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) &
-                                                               (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))) |
-                                                               (self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] &
-                                                               (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))))
-            # WRITING.output(self._en_curr_bounds, 0)
+                ####################
+                # WR_START #
+                ####################
 
-        ##### Create read side fsm separately.
+                WR_START[ID_idx].output(self._push_blk[ID_idx], 0)
+                # WR_START[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                WR_START[ID_idx].output(self._en_curr_base[ID_idx], 0)
+                WR_START[ID_idx].output(self._en_curr_bounds[ID_idx], 0)
+                WR_START[ID_idx].output(self._wen_full[ID_idx], 0)
+                WR_START[ID_idx].output(self._pop_in_full[ID_idx], (self._wr_data_fifo_out_op == 0) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # WR_START.output(self._en_curr_bounds, 0)
 
-        #####################
-        # READING #
-        #####################
+                ####################
+                # WRITING #
+                ####################
+                # Increment wr addr if we get wr access
+                # WRITING[ID_idx].output(self._inc_wr_addr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
+                # WRITING[ID_idx].output(self._inc_bounds_ctr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
+                # WRITING[ID_idx].output(self._clr_bounds_ctr, 0)
+                WRITING[ID_idx].output(self._push_blk[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # WRITING[ID_idx].output(self._en_curr_base[ID_idx], 0)
+                # On our way back to write start we can set the current base for the next block. it is 0 at reset, so we don't need to deal with it there
+                WRITING[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # Any time we make a write to the current block we can update the bounds of the current block
+                WRITING[ID_idx].output(self._en_curr_bounds[ID_idx], self._mem_acq[2 * ID_idx + 0] & self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # WRITING[ID_idx].output(self._wen_full[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
 
-        self.read_fsm = [self.add_fsm(f"read_fsm_{i}", reset_high=False) for i in range(self.num_ID)]
-        RD_START = [self.read_fsm[i].add_state(f"RD_START_{i}") for i in range(self.num_ID)]
+                # Only make the wen when there is room and the proper ID is being addressed
+                WRITING[ID_idx].output(self._wen_full[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                WRITING[ID_idx].output(self._pop_in_full[ID_idx], (self._mem_acq[2 * ID_idx + 0] &
+                                                                  self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
+                                                                  (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) &
+                                                                  (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))) |
+                                                                  (self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] &
+                                                                  (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))))
+                # WRITING.output(self._en_curr_bounds, 0)
 
-        for ID_idx in range(self.num_ID):
-            ####################
-            # RD_START
-            ####################
-            # Get the first block size...
-            RD_START[ID_idx].next(RD_START[ID_idx], None)
+            ##### Create read side fsm separately.
 
-            self.read_fsm[ID_idx].output(self._pop_blk[ID_idx])
-            # self.read_fsm[ID_idx].output(self._rd_addr_loc[ID_idx])
-            self.read_fsm[ID_idx].output(self._ren_full[ID_idx])
-            self.read_fsm[ID_idx].output(self._read_pop_full[ID_idx])
-            self.read_fsm[ID_idx].output(self._size_request_full[ID_idx])
+            #####################
+            # READING #
+            #####################
 
-            ####################
-            # RD_START
-            ####################
-            RD_START[ID_idx].output(self._pop_blk[ID_idx], (self._rd_op_fifo_out_op == 0) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
-            # Guarantee there's room for the read to land (need to use almost full, not full...)
-            # RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
-            RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_almost_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
-            # Pop the op fifo if there is a read that's going through or if it's a free op
-            # If it's a size request, only fulfill it if we aren't pushing a read from memory to the output fifo
-            RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 2, ~self._valid_from_mem & self._blk_valid[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[2 * ID_idx + 1] & ~self._rd_rsp_fifo_full, kts.const(1, 1))) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
-            RD_START[ID_idx].output(self._size_request_full[ID_idx], self._blk_valid[ID_idx] & (self._rd_op_fifo_out_op == 2) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+            self.read_fsm = [self.add_fsm(f"read_fsm_{i}", reset_high=False) for i in range(self.num_ID)]
+            RD_START = [self.read_fsm[i].add_state(f"RD_START_{i}") for i in range(self.num_ID)]
 
-        for i in range(self.num_ID):
-            self.write_fsm[i].set_start_state(WR_START[i])
-            self.read_fsm[i].set_start_state(RD_START[i])
+            for ID_idx in range(self.num_ID):
+                ####################
+                # RD_START
+                ####################
+                # Get the first block size...
+                RD_START[ID_idx].next(RD_START[ID_idx], None)
 
-        for i in range(self.num_ID):
-            ### Bookkeeping FIFO
-            blk_fifo_in = kts.concat(self._curr_base[i], self._curr_bounds[i])
-            blk_fifo = RegFIFO(data_width=blk_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=False)
+                self.read_fsm[ID_idx].output(self._pop_blk[ID_idx])
+                # self.read_fsm[ID_idx].output(self._rd_addr_loc[ID_idx])
+                self.read_fsm[ID_idx].output(self._ren_full[ID_idx])
+                self.read_fsm[ID_idx].output(self._read_pop_full[ID_idx])
+                self.read_fsm[ID_idx].output(self._size_request_full[ID_idx])
 
-            self.add_child(f"blk_fifo_{i}",
-                           blk_fifo,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           clk_en=self._clk_en,
-                           push=self._push_blk[i],
-                           pop=self._pop_blk[i],
-                           data_in=blk_fifo_in,
-                           data_out=kts.concat(self._blk_base[i], self._blk_bounds[i]))
+                ####################
+                # RD_START
+                ####################
+                RD_START[ID_idx].output(self._pop_blk[ID_idx], (self._rd_op_fifo_out_op == 0) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                # Guarantee there's room for the read to land (need to use almost full, not full...)
+                # RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_almost_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                # Pop the op fifo if there is a read that's going through or if it's a free op
+                # If it's a size request, only fulfill it if we aren't pushing a read from memory to the output fifo
+                RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 2, ~self._valid_from_mem & self._blk_valid[ID_idx], kts.ternary(self._rd_op_fifo_out_op == 1, self._mem_acq[2 * ID_idx + 1] & ~self._rd_rsp_fifo_full, kts.const(1, 1))) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                RD_START[ID_idx].output(self._size_request_full[ID_idx], self._blk_valid[ID_idx] & (self._rd_op_fifo_out_op == 2) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
 
-            self.wire(self._blk_full[i], blk_fifo.ports.full)
-            self.wire(self._blk_valid[i], ~blk_fifo.ports.empty)
+            for i in range(self.num_ID):
+                self.write_fsm[i].set_start_state(WR_START[i])
+                self.read_fsm[i].set_start_state(RD_START[i])
 
-        # Force FSM realization first so that flush gets added...
-        kts.passes.realize_fsm(self.internal_generator)
+            for i in range(self.num_ID):
+                ### Bookkeeping FIFO
+                blk_fifo_in = kts.concat(self._curr_base[i], self._curr_bounds[i])
+                blk_fifo = RegFIFO(data_width=blk_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=False)
 
-        # Arbitrate between the write/read side with RR arbiter
-        self.port_arbiter = Arbiter(ins=2 * self.num_ID,
-                                    algo="RR")
+                self.add_child(f"blk_fifo_{i}",
+                            blk_fifo,
+                            clk=self._gclk,
+                            rst_n=self._rst_n,
+                            clk_en=self._clk_en,
+                            push=self._push_blk[i],
+                            pop=self._pop_blk[i],
+                            data_in=blk_fifo_in,
+                            data_out=kts.concat(self._blk_base[i], self._blk_bounds[i]))
 
-        base_rr = kts.concat(self._ren_full[0], self._wen_full[0])
-        for i in range(self.num_ID - 1):
-            base_rr = kts.concat(self._ren_full[i + 1], self._wen_full[i + 1], base_rr)
+                self.wire(self._blk_full[i], blk_fifo.ports.full)
+                self.wire(self._blk_valid[i], ~blk_fifo.ports.empty)
 
-        brr = self.var("base_rr", 2 * self.num_ID)
-        self.wire(brr, base_rr)
+            # Force FSM realization first so that flush gets added...
+            kts.passes.realize_fsm(self.internal_generator)
 
-        self.add_child(f"rr_arbiter",
-                       self.port_arbiter,
-                       clk=self._gclk,
-                       rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       request_in=brr,
-                       grant_out=self._mem_acq,
-                       resource_ready=self._ready_from_mem)
+            # Arbitrate between the write/read side with RR arbiter
+            self.port_arbiter = Arbiter(ins=2 * self.num_ID,
+                                        algo="RR")
 
-        self.wire(self._data_to_mem, self._wr_data_fifo_out_data)
-        wr_acqs = []
-        rd_acqs = []
-        wr_acq = self._mem_acq[0] & self._wen_full[0]
-        wr_acqs.append(self._mem_acq[0] & self._wen_full[0])
-        rd_acq = self._mem_acq[1] & self._ren_full[0]
-        rd_acqs.append(self._mem_acq[1] & self._ren_full[0])
-        for i in range(self.num_ID - 1):
-            wr_acq = kts.concat(wr_acq, self._mem_acq[2 * (i + 1)] & self._wen_full[i + 1])
-            wr_acqs.append(self._mem_acq[2 * (i + 1)] & self._wen_full[i + 1])
-            rd_acq = kts.concat(rd_acq, self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
-            rd_acqs.append(self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
-        self.wire(self._ren_to_mem, rd_acq.r_or())
-        self.wire(self._wen_to_mem, wr_acq.r_or())
+            base_rr = kts.concat(self._ren_full[0], self._wen_full[0])
+            for i in range(self.num_ID - 1):
+                base_rr = kts.concat(self._ren_full[i + 1], self._wen_full[i + 1], base_rr)
 
-        # Choose which base block...
-        wr_base = kts.ternary(wr_acqs[0], self._curr_base[0] + self._buffet_base[0], kts.const(0, self._curr_base[0].width))
-        rd_base = kts.ternary(rd_acqs[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
-        for i in range(self.num_ID - 1):
-            wr_base = kts.ternary(wr_acqs[i + 1], self._curr_base[i + 1] + self._buffet_base[i + 1], wr_base)
-            rd_base = kts.ternary(rd_acqs[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
-        tmp_wr_base = self.var("tmp_wr_base", self._buffet_base[0].width)
-        tmp_rd_base = self.var("tmp_rd_base", self._buffet_base[0].width)
-        self.wire(tmp_wr_base, wr_base)
-        self.wire(tmp_rd_base, rd_base)
-        self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + tmp_wr_base, self._rd_addr_fifo_out_addr + tmp_rd_base))
+            brr = self.var("base_rr", 2 * self.num_ID)
+            self.wire(brr, base_rr)
+
+            self.add_child(f"rr_arbiter",
+                        self.port_arbiter,
+                        clk=self._gclk,
+                        rst_n=self._rst_n,
+                        clk_en=self._clk_en,
+                        request_in=brr,
+                        grant_out=self._mem_acq,
+                        resource_ready=self._ready_from_mem)
+
+            self.wire(self._data_to_mem, self._wr_data_fifo_out_data)
+            wr_acqs = []
+            rd_acqs = []
+            wr_acq = self._mem_acq[0] & self._wen_full[0]
+            wr_acqs.append(self._mem_acq[0] & self._wen_full[0])
+            rd_acq = self._mem_acq[1] & self._ren_full[0]
+            rd_acqs.append(self._mem_acq[1] & self._ren_full[0])
+            for i in range(self.num_ID - 1):
+                wr_acq = kts.concat(wr_acq, self._mem_acq[2 * (i + 1)] & self._wen_full[i + 1])
+                wr_acqs.append(self._mem_acq[2 * (i + 1)] & self._wen_full[i + 1])
+                rd_acq = kts.concat(rd_acq, self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
+                rd_acqs.append(self._mem_acq[2 * (i + 1) + 1] & self._ren_full[i + 1])
+            self.wire(self._ren_to_mem, rd_acq.r_or())
+            self.wire(self._wen_to_mem, wr_acq.r_or())
+
+            # Choose which base block...
+            wr_base = kts.ternary(wr_acqs[0], self._curr_base[0] + self._buffet_base[0], kts.const(0, self._curr_base[0].width))
+            rd_base = kts.ternary(rd_acqs[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
+            for i in range(self.num_ID - 1):
+                wr_base = kts.ternary(wr_acqs[i + 1], self._curr_base[i + 1] + self._buffet_base[i + 1], wr_base)
+                rd_base = kts.ternary(rd_acqs[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
+            tmp_wr_base = self.var("tmp_wr_base", self._buffet_base[0].width)
+            tmp_rd_base = self.var("tmp_rd_base", self._buffet_base[0].width)
+            self.wire(tmp_wr_base, wr_base)
+            self.wire(tmp_rd_base, rd_base)
+            self.wire(self._addr_to_mem, kts.ternary(self._wen_to_mem, self._wr_addr_fifo_out_data + tmp_wr_base, self._rd_addr_fifo_out_addr + tmp_rd_base))
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
@@ -759,7 +1141,9 @@ if __name__ == "__main__":
     buffet_dut = BuffetLike(data_width=16,
                             num_ID=2,
                             physical_mem=True,
-                            defer_fifos=False)
+                            defer_fifos=False,
+                            mem_width=64,
+                            optimize_wide=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
