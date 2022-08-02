@@ -65,7 +65,7 @@ def test_rw_arbiter_basic(int_out_ports,
     tester.circuit.clk = 0
     tester.circuit.rst_n = 0
 
-    if(int_out_ports == 1):
+    if (int_out_ports == 1):
         tester.circuit.rd_addr = 0
     else:
         for i in range(int_out_ports):
@@ -151,7 +151,7 @@ def test_rw_arbiter_basic(int_out_ports,
 
         # Check outputs
         tester.circuit.out_valid.expect(model_ov)
-        if(model_ov):
+        if (model_ov):
             tester.circuit.out_port.expect(model_op)
             if fw_int == 1:
                 tester.circuit.out_data_0_0.expect(model_od[0])

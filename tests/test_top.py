@@ -187,7 +187,7 @@ def test_mult_lines_dim1(data_width=16,
         for j in range(interconnect_input_ports):
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             valid_in[j] = rand.randint(0, 1)
-        if(interconnect_input_ports == 1):
+        if (interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
         else:
@@ -202,7 +202,7 @@ def test_mult_lines_dim1(data_width=16,
         tester.eval()
 
         # Now check the outputs
-        if(interconnect_output_ports == 1):
+        if (interconnect_output_ports == 1):
             tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
                 tester.circuit.data_out.expect(mod_do[0][0])
@@ -428,7 +428,7 @@ def test_mult_lines_dim2(tb0_range_outer,
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
             ren_in[j] = ren_tmp
-        if(interconnect_input_ports == 1):
+        if (interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
         else:
@@ -444,7 +444,7 @@ def test_mult_lines_dim2(tb0_range_outer,
         tester.eval()
 
         # Now check the outputs
-        if(interconnect_output_ports == 1):
+        if (interconnect_output_ports == 1):
             tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
                 tester.circuit.data_out.expect(mod_do[0][0])
@@ -652,7 +652,7 @@ def test_chain_mult_tile(num_tiles=2,
             data_in[j] = data_in[j] % 32
             valid_in[j] = 1  # rand.randint(0, 1)
 
-        if(interconnect_input_ports == 1):
+        if (interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
         else:
@@ -809,7 +809,7 @@ def test_chain_3porttile(num_tiles=2,
         for j in range(interconnect_output_ports):
             ren_in[j] = ren_tmp
 
-        if(interconnect_input_ports == 1):
+        if (interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
         else:
@@ -1062,7 +1062,7 @@ def test_identity_stream(data_width=16,
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             valid_in[j] = 1  # rand.randint(0, 1)
 
-        if(interconnect_input_ports == 1):
+        if (interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
         else:
@@ -1083,7 +1083,7 @@ def test_identity_stream(data_width=16,
         tester.eval()
 
         # Now check the outputs
-        if(interconnect_output_ports == 1):
+        if (interconnect_output_ports == 1):
             tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
                 tester.circuit.data_out.expect(mod_do[0][0])
@@ -1316,7 +1316,7 @@ def test_top(read_delay,
         for j in range(interconnect_output_ports):
             ren_in[j] = ren_tmp
 
-        if(interconnect_input_ports == 1):
+        if (interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
         else:
@@ -1334,7 +1334,7 @@ def test_top(read_delay,
         tester.eval()
 
         # Now check the outputs
-        if(interconnect_output_ports == 1):
+        if (interconnect_output_ports == 1):
             tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
                 tester.circuit.data_out.expect(mod_do[0][0])
@@ -1809,7 +1809,7 @@ def test_ports3_stride1(read_delay=1,
         ren_tmp = rand.randint(0, 1)
         for j in range(interconnect_output_ports):
             ren_in[j] = ren_tmp
-        if(interconnect_input_ports == 1):
+        if (interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen = valid_in[0]
         else:
@@ -1828,7 +1828,7 @@ def test_ports3_stride1(read_delay=1,
         tester.eval()
 
         # Now check the outputs
-        if(interconnect_output_ports == 1):
+        if (interconnect_output_ports == 1):
             tester.circuit.valid_out.expect(mod_vo[0])
             if mod_vo[0]:
                 tester.circuit.data_out.expect(mod_do[0][0])
@@ -2083,7 +2083,7 @@ def test_2ports_idstream(data_width=16,
             data_in[j] += 1  # rand.randint(0, 2 ** data_width - 1)
             valid_in[j] = 1  # rand.randint(0, 1)
 
-        if(interconnect_input_ports == 1):
+        if (interconnect_input_ports == 1):
             tester.circuit.data_in = data_in[0]
             tester.circuit.wen_in = valid_in[0]
         else:

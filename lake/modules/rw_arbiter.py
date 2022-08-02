@@ -159,7 +159,7 @@ class RWArbiter(Generator):
         # For demuxing the read ports
         self._done = self.var("done", self.strg_rd_ports)
         self.add_code(self.set_next_read_port_lowest)
-        if(self.strg_rd_ports > 1):
+        if (self.strg_rd_ports > 1):
             self._idx_cnt = self.var("idx_cnt", 5,
                                      size=self.strg_rd_ports - 1,
                                      explicit_array=True,
@@ -223,7 +223,7 @@ class RWArbiter(Generator):
         self._cen_mem[idx] = (self._wen_int[idx] | (self._next_rd_port[idx].r_or()))
         self._data_to_mem[idx] = self._w_data[idx]
         # Consume wr over read
-        if(self._wen_int[idx]):
+        if (self._wen_int[idx]):
             self._addr_to_mem[idx] = self._w_addr[idx]
         else:
             self._addr_to_mem[idx] = self._rd_addr_sel[idx]

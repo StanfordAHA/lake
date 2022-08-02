@@ -34,7 +34,7 @@ class Aggregator(Generator):
                                   packed=True)
 
         # local variables
-        if(mem_word_width > 1):
+        if (mem_word_width > 1):
             self._word_count = self.var("word_count", clog2(mem_word_width))
             self.add_code(self.update_counter_valid)
             self.add_code(self.set_next_full)

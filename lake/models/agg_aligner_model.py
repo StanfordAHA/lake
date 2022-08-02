@@ -35,7 +35,7 @@ class AggAlignerModel(Model):
         else:
             align = 0
             self.count += 1
-            if(self.count == self.config["line_length"]):
+            if (self.count == self.config["line_length"]):
                 self.count = 0
                 align = 1
             return (data_in, 1, align)

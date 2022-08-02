@@ -52,7 +52,7 @@ class TwoPortSRAMStub(Generator):
     ##########################
     @always((posedge, "i_clk"))
     def seq_data_access(self):
-        if(self.i_wen):
+        if (self.i_wen):
             self.data_array[self.i_wr_addr] = self.i_data
 
     @always((posedge, "i_clk"), (negedge, "i_rst_n"))

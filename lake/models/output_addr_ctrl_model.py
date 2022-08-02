@@ -109,8 +109,8 @@ class OutputAddrCtrlModel(Model):
             for j in range(self.interconnect_output_ports):
                 self.ren[i][j] = 0
         for i in range(self.interconnect_output_ports):
-            if(valid[i]):
-                if(self.banks == 1):
+            if (valid[i]):
+                if (self.banks == 1):
                     self.ren[0][i] = 1
                 else:
                     self.ren[self.get_addrs_full()[i] >> (self.mem_addr_width)][i] = 1

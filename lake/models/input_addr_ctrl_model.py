@@ -98,7 +98,7 @@ class InputAddrCtrlModel(Model):
         port_out = self.get_port_out(valid)
         addrs = self.get_addrs(valid)
         self.step_addrs(valid)
-        return(wen, data_out, addrs, port_out)
+        return (wen, data_out, addrs, port_out)
 
     def get_port_out(self, valid):
         for i in range(self.banks):
@@ -125,7 +125,7 @@ class InputAddrCtrlModel(Model):
         for i in range(self.interconnect_input_ports):
             if (valid[i]):
                 to_get = self.addr_gens[i]
-                if(self.banks == 1):
+                if (self.banks == 1):
                     self.addresses[0] = to_get.get_address()
                     break
                 else:
@@ -140,7 +140,7 @@ class InputAddrCtrlModel(Model):
         for i in range(self.interconnect_input_ports):
             if (valid[i]):
                 to_get = self.addr_gens[i]
-                if(self.banks == 1):
+                if (self.banks == 1):
                     self.data_out[0] = data_in[i]
                     break
                 else:
@@ -154,7 +154,7 @@ class InputAddrCtrlModel(Model):
         for i in range(self.interconnect_input_ports):
             if (valid[i]):
                 to_get = self.addr_gens[i]
-                if(self.banks == 1):
+                if (self.banks == 1):
                     self.wen[0] = wen_en[i]
                     break
                 else:

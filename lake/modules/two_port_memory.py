@@ -57,7 +57,7 @@ class TwoPortMemory(Generator):
 
         # Either the difference in address widths or 1 bit if there's no difference
 
-        if(banks_tall > 1):
+        if (banks_tall > 1):
             self.wire(self._bank_sel, self._rd_addr[self.full_addr - 1, self.addr_width_macro])
         else:
             self.wire(self._bank_sel, 0)
@@ -96,7 +96,7 @@ class TwoPortMemory(Generator):
 
                 self.wire(self[f"sram_d{i}_w{j}"].ports.i_rd_addr, self._sub_rd_addr)
                 self.wire(self[f"sram_d{i}_w{j}"].ports.i_wr_addr, self._sub_wr_addr)
-                if(banks_tall > 1):
+                if (banks_tall > 1):
                     self.wire(self[f"sram_d{i}_w{j}"].ports.i_wen,
                               self._wen & (self._wr_addr[self.full_addr - 1,
                                                          self.addr_width_macro] == i))
@@ -112,14 +112,14 @@ class TwoPortMemory(Generator):
                           self._wr_data[((j + 1) * macro_width) - 1, j * macro_width])
 
         for i in range(banks_tall):
-            if(banks_wide > 1):
+            if (banks_wide > 1):
                 self.wire(self._memory_space[i],
                           concat(*[self[f"sram_d{i}_w{j}"].ports.o_data
                                  for j in range(banks_wide - 1, -1, -1)]))
             else:
                 self.wire(self._memory_space, self[f"sram_d{i}_w{j}"].ports.o_data)
 
-        if(banks_tall > 1):
+        if (banks_tall > 1):
             self.wire(self._rd_data, self._memory_space[self._bank_sel_reg])
         else:
             self.wire(self._rd_data, self._memory_space)

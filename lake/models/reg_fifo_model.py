@@ -46,12 +46,12 @@ class RegFIFOModel(Model):
 
     def increment_rd(self):
         self.rd_ptr += 1
-        if(self.rd_ptr == self.depth):
+        if (self.rd_ptr == self.depth):
             self.rd_ptr = 0
 
     def increment_wr(self):
         self.wr_ptr += 1
-        if(self.wr_ptr == self.depth):
+        if (self.wr_ptr == self.depth):
             self.wr_ptr = 0
 
     # Assume full + empty already obeyed
@@ -64,7 +64,7 @@ class RegFIFOModel(Model):
 
         if push and pop:
             # Push and pop on empty passes through
-            if(self.num_items == 0):
+            if (self.num_items == 0):
                 return (data_in, 1, empty_ret, full_ret, mem_valid_data)
             else:
                 dat_out = self.reg_array[self.rd_ptr]
@@ -76,7 +76,7 @@ class RegFIFOModel(Model):
                 return (dat_out, 1, empty_ret, full_ret, mem_valid_data_out)
         elif push and not pop:
             # Not full, push an item
-            if(self.num_items == self.depth):
+            if (self.num_items == self.depth):
                 return ([0], 0, empty_ret, full_ret, 0)
             self.reg_array[self.wr_ptr] = list(data_in)
             self.mvd_array[self.wr_ptr] = mem_valid_data
@@ -85,7 +85,7 @@ class RegFIFOModel(Model):
             # return (self.reg_array[self.rd_ptr], 0, empty_ret, full_ret)
             return ([0], 0, empty_ret, full_ret, 0)
         elif not push and pop:
-            if(self.num_items == 0):
+            if (self.num_items == 0):
                 # return (self.reg_array[self.rd_ptr], 0, empty_ret, full_ret)
                 return ([0], 0, empty_ret, full_ret, 0)
             dat_out = self.reg_array[self.rd_ptr]

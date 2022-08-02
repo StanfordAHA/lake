@@ -46,6 +46,8 @@ class LakeTop(Generator):
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=True,
+                 area_opt=True,
+                 reduced_id_config_width=10,
                  tech_map=TSMC_Tech_Map(depth=512, width=32)):
         super().__init__(name, debug=True)
 
@@ -74,8 +76,12 @@ class LakeTop(Generator):
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
         self.formal_module = formal_module
+        self.area_opt = area_opt
+        self.reduced_id_config_width = reduced_id_config_width
         self.tech_map = tech_map
 
+        if self.area_opt:
+            self.agg_height = 2
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
 
@@ -98,8 +104,8 @@ class LakeTop(Generator):
         tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True)]
 
         if self.rw_same_cycle:
-            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=False),
-                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
+            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True),
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=True)]
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
@@ -127,6 +133,8 @@ class LakeTop(Generator):
                                          rw_same_cycle=self.rw_same_cycle,
                                          agg_height=self.agg_height,
                                          config_width=self.config_width,
+                                         area_opt=self.area_opt,
+                                         reduced_id_config_width=self.reduced_id_config_width,
                                          agg_data_top=(self.formal_module == "agg")))
 
         else:
@@ -161,7 +169,8 @@ class LakeTop(Generator):
                                    prioritize_write=True))
 
         if self.stencil_valid:
-            controllers.append(StencilValid())
+            controllers.append(StencilValid(area_opt=self.area_opt,
+                                            reduced_id_config_width=self.reduced_id_config_width))
 
         for ctrl in controllers:
             MTB.add_memory_controller(ctrl)
@@ -204,7 +213,7 @@ class LakeTop(Generator):
                 "output_width_16_num_1": "data_out_pond_1",
                 "output_width_1_num_4": "valid_out_pond",
             }
-        elif mode == "UB" and self.read_delay >= 1:
+        elif mode == "UB" and self.read_delay >= 1 and self.fw_int > 1:
             replace_ins = {
                 "input_width_16_num_0": "chain_data_in_0",
                 "input_width_16_num_1": "chain_data_in_1",
@@ -216,6 +225,18 @@ class LakeTop(Generator):
                 "output_width_16_num_0": "data_out_0",
                 "output_width_16_num_1": "data_out_1",
                 "output_width_1_num_3": "stencil_valid",
+            }
+        elif mode == "UB" and self.fw_int == 1:
+            replace_ins = {
+                "input_width_16_num_0": "chain_data_in_0",
+                "input_width_16_num_1": "chain_data_in_1",
+                "input_width_16_num_2": "data_in_0",
+                "input_width_16_num_3": "data_in_1",
+            }
+            replace_outs = {
+                "output_width_16_num_0": "data_out_0",
+                "output_width_16_num_1": "data_out_1",
+                "output_width_1_num_4": "stencil_valid",
             }
         elif mode == "ROM" and self.fw_int > 1:
             replace_ins = {
@@ -362,7 +383,7 @@ if __name__ == "__main__":
                        add_flush=True,
                        rw_same_cycle=False,
                        read_delay=1,
-                       use_sim_sram=False,
+                       use_sim_sram=True,
                        name=f"LakeTop_width_{args.fetch_width}_{mem_name}")
 
     print(lake_top)

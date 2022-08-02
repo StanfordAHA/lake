@@ -130,7 +130,7 @@ def test_input_addr_basic(banks,
 
         tester.eval()
 
-        if(banks == 1):
+        if (banks == 1):
             tester.circuit.addr_out_0_0.expect(addrs[0])
             tester.circuit.wen_to_sram.expect(wen[0])
         else:

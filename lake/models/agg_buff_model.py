@@ -44,9 +44,9 @@ class AggBuffModel(Model):
         to_insert = self.aggs[self.config[f"in_sched_{self.in_sched_ptr}"]]
         ag_valid = to_insert.insert(in_data, valid)
 
-        if(ag_valid):
+        if (ag_valid):
             self.in_sched_ptr += 1
-            if(self.in_sched_ptr >= self.config['in_period']):
+            if (self.in_sched_ptr >= self.config['in_period']):
                 self.in_sched_ptr = 0
 
     def get_valid_out(self):
@@ -56,7 +56,7 @@ class AggBuffModel(Model):
     def get_item(self):
         valid_check_agg = self.aggs[self.config[f"out_sched_{self.out_sched_ptr}"]]
         self.out_sched_ptr += 1
-        if(self.out_sched_ptr >= self.config['out_period']):
+        if (self.out_sched_ptr >= self.config['out_period']):
             self.out_sched_ptr = 0
         return valid_check_agg.get_data_out()
 
@@ -85,15 +85,15 @@ class AggBuffModel(Model):
 
         next_full = agg_nf[self.config[f"in_sched_{in_sched_curr}"]]
 
-        if(next_full == 1):
+        if (next_full == 1):
             self.in_sched_ptr += 1
-            if(self.in_sched_ptr >= self.config['in_period']):
+            if (self.in_sched_ptr >= self.config['in_period']):
                 self.in_sched_ptr = 0
 
         # Would be write_act
-        if(ret_valid == 1):
+        if (ret_valid == 1):
             self.out_sched_ptr += 1
-            if(self.out_sched_ptr >= self.config['out_period']):
+            if (self.out_sched_ptr >= self.config['out_period']):
                 self.out_sched_ptr = 0
 
         return (ret_data, ret_valid)

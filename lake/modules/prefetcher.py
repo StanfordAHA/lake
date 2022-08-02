@@ -84,9 +84,9 @@ class Prefetcher(Generator):
     def update_cnt(self):
         if ~self._rst_n:
             self._cnt = 0
-        elif(self._valid_read & ~self._tba_rdy_in & ~self._fifo_full):
+        elif (self._valid_read & ~self._tba_rdy_in & ~self._fifo_full):
             self._cnt = self._cnt + 1
-        elif(~self._valid_read & self._tba_rdy_in & ~self._fifo_empty):
+        elif (~self._valid_read & self._tba_rdy_in & ~self._fifo_empty):
             self._cnt = self._cnt - 1
 
     @always_comb

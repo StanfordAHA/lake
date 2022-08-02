@@ -76,10 +76,13 @@ def SKY_Tech_Map() -> dict:
     return tech_map
 
 
-def GF_Tech_Map(depth, width) -> dict:
+def GF_Tech_Map(depth, width, dual_port=False) -> dict:
     '''
-    Currently returns the tech map for the single port SRAM, but we can
-    procedurally generate different tech maps
+    Currently returns the tech map for the single port SRAM
+    or the dual port SRAM (1rw1r) mux 8 ("M08" in in the inst name)
+        (note that dual port mux 8 supports only the 16bit width
+            width 32 uses mux 4, width 64 uses mux 2),
+    but we can procedurally generate different tech maps
     '''
     ports = []
 
@@ -108,10 +111,54 @@ def GF_Tech_Map(depth, width) -> dict:
         }
     }
 
-    ports.append(single_port)
+    dual_port_p0rw = {
+        # port RW
+        'clk': 'CLK_A',
+        'cen': 'CEN_A',
+        'write_enable': 'RDWEN_A',
+        'addr': 'A_A',
+        'data_in': 'D_A',
+        'data_out': 'Q_A',
+        'alt_sigs': {
+            # value, width
+            'T_Q_RST_A': (0, 1),
+            'T_LOGIC': (0, 1),
+            'MA_SAWL1': (0, 1),
+            'MA_SAWL0': (0, 1),
+            'MA_WL1': (0, 1),
+            'MA_WL0': (0, 1),
+            'MA_WRAS1': (0, 1),
+            'MA_WRAS0': (0, 1),
+            'MA_VD1': (0, 1),
+            'MA_VD0': (0, 1),
+            'MA_WRT': (0, 1),
+        }
+    }
+
+    dual_port_p1r = {
+        # port RW
+        'clk': 'CLK_B',
+        'cen': 'CEN_B',
+        'read_addr': 'A_B',
+        'data_out': 'Q_B',
+        'alt_sigs': {
+            # value, width
+            'T_Q_RST_B': (0, 1),
+            'RDWEN_B': (1, 1),
+            'D_B': (0, width),
+        }
+    }
+
+    if dual_port:
+        ports.append(dual_port_p0rw)
+        ports.append(dual_port_p1r)
+        name = f"IN12LP_SDPB_W{depth:05}B{width:03}M08S2_H"
+    else:
+        ports.append(single_port)
+        name = f"IN12LP_S1DB_W{depth:05}B{width:03}M04S2_H"
 
     tech_map = {
-        'name': f"IN12LP_S1DB_W{depth:05}B{width:03}M04S2_H",
+        'name': name,
         'ports': ports,
         'depth': depth,
         'width': width

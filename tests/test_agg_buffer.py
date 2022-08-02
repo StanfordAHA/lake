@@ -86,7 +86,7 @@ def test_agg_buff_basic(agg_height=4,
         tester.eval()
 
         tester.circuit.valid_out.expect(mod_val)
-        if(mod_val == 1):
+        if (mod_val == 1):
             # Check the data on the output...
             for j in range(num_per_agg):
                 getattr(tester.circuit,
