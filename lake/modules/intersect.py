@@ -432,11 +432,11 @@ class Intersect(MemoryController):
                                                                                 self._pos_in_fifo_in[1][15, 0], kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
                                                                                                                             self._pos_in_fifo_in[1][15, 0], self._maybe))))
         UNION.output(self._coord_to_fifo_eos, 0)
-        UNION.output(self._pos_to_fifo_eos[0], kts.ternary(self._coord_in_fifo_eos_in[0],
+        UNION.output(self._pos_to_fifo_eos[0], self._pos_in_fifo_eos_in[0] | kts.ternary(self._coord_in_fifo_eos_in[0],
                                                            kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[1],
                                                                                         kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
                                                                                                                      kts.const(0, 1), kts.const(1, 1)))))
-        UNION.output(self._pos_to_fifo_eos[1], kts.ternary(self._coord_in_fifo_eos_in[1],
+        UNION.output(self._pos_to_fifo_eos[1], self._pos_in_fifo_eos_in[1] | kts.ternary(self._coord_in_fifo_eos_in[1],
                                                            kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[0],
                                                                                         kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
                                                                                                                      kts.const(0, 1), kts.const(1, 1)))))
