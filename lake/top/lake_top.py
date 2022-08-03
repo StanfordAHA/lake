@@ -150,7 +150,8 @@ class LakeTop(Generator):
                                           rw_same_cycle=self.rw_same_cycle,
                                           config_width=self.config_width))
 
-        if self.fifo_mode and (self.fw_int > 1 or self.banks > 1):
+        if self.fifo_mode:
+        # if self.fifo_mode and (self.fw_int > 1 or self.banks > 1):
             controllers.append(StrgFIFO(data_width=self.data_width,
                                         banks=self.banks,
                                         memory_width=self.mem_width,

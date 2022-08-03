@@ -138,6 +138,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help="append module wrapper to wrapper file")
 
+    parser.add_argument("-f",
+                        action='store_true',
+                        help="add fifo mode")
+
     args = parser.parse_args()
 
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
@@ -159,7 +163,10 @@ if __name__ == "__main__":
         lake_kwargs['output_iterator_support'] = args.oi
         lake_kwargs['read_delay'] = args.rd
         lake_kwargs['name'] = args.vmn
+        lake_kwargs['fifo_mode'] = args.f
         lt_dut = LakeTop(**lake_kwargs)
+        print(lt_dut)
+        exit()
         lt_dut.wrapper(wrapper_vlog_filename=args.wfn,
                        wrapper_vlog_modulename=args.wmn,
                        # vlog_extension="sv",
