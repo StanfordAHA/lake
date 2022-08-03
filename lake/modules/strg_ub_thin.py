@@ -184,12 +184,12 @@ class StrgUBThin(MemoryController):
         # Set up addr/cycle gens for input side
         for i in range(self.interconnect_input_ports):
 
-            FOR_LOOP_WRITE = ForLoop(iterator_support=self.default_iterator_support,
+            FOR_LOOP_WRITE = ForLoop(iterator_support=self.input_sched_iterator_support,
                                      config_width=self.default_config_width)
 
-            ADDR_WRITE = AddrGen(iterator_support=self.default_iterator_support,
+            ADDR_WRITE = AddrGen(iterator_support=self.input_addr_iterator_support,
                                  config_width=self.default_config_width)
-            SCHED_WRITE = SchedGen(iterator_support=self.default_iterator_support,
+            SCHED_WRITE = SchedGen(iterator_support=self.input_sched_iterator_support,
                                    config_width=self.default_config_width)
 
             self.add_child(f"{self.ctrl_in}_{i}_for_loop",
@@ -222,12 +222,12 @@ class StrgUBThin(MemoryController):
         # Set up addr/cycle gens for output side
         for i in range(self.interconnect_output_ports):
 
-            FOR_LOOP_READ = ForLoop(iterator_support=self.default_iterator_support,
+            FOR_LOOP_READ = ForLoop(iterator_support=self.input_sched_iterator_support,
                                     config_width=self.default_config_width)
 
-            ADDR_READ = AddrGen(iterator_support=self.default_iterator_support,
+            ADDR_READ = AddrGen(iterator_support=self.input_addr_iterator_support,
                                 config_width=self.default_config_width)
-            SCHED_READ = SchedGen(iterator_support=self.default_iterator_support,
+            SCHED_READ = SchedGen(iterator_support=self.input_sched_iterator_support,
                                   config_width=self.default_config_width)
 
             self.add_child(f"{self.ctrl_out}_{i}_for_loop",
