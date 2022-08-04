@@ -419,7 +419,7 @@ class BuffetLike(MemoryController):
             # Determine whether to use the output register of the SRAM or the cached word
             self._use_cached_read = [self.var(f"use_cached_read_{idx}", 1) for idx in range(self.num_ID)]
             # You should use the cached read if the data is already available, else fall back to the data from mem
-            [self.wire(self._use_cached_read[idx], self._read_word_addr[idx][self.mem_addr_bit_range_outer] == self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer]) for idx in range(self.num_ID)]
+            [self.wire(self._use_cached_read[idx], self._read_wide_word_valid[idx] & (self._read_word_addr[idx][self.mem_addr_bit_range_outer] == self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer])) for idx in range(self.num_ID)]
 
             self._chosen_read = [self.var(f"chosen_read_{idx}", self.data_width) for idx in range(self.num_ID)]
             [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx] & self._read_wide_word_valid[idx],
