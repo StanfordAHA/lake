@@ -841,8 +841,11 @@ class BuffetLike(MemoryController):
                                                                           self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
                                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 # Only clear the word
-                WRITING[ID_idx].output(self._clr_write_wide_word[ID_idx], (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) &
+                WRITING[ID_idx].output(self._clr_write_wide_word[ID_idx], ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) |
+                                                                                ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[ID_idx]) &
+                                                                                    self._write_full_word[ID_idx])) &
                                                                           self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
+                                                                          self._mem_acq[2 * ID_idx + 0] & 
                                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 # Write to sram if the word is full or address is changing or there is a non-write command
                 WRITING[ID_idx].output(self._write_to_sram[ID_idx], ((((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) | self._write_full_word[ID_idx]) &
