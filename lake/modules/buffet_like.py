@@ -364,7 +364,7 @@ class BuffetLike(MemoryController):
             [self.wire(self._write_wide_word_mask_reg_out[idx], self._write_wide_word_mask_reg[idx]) for idx in range(self.num_ID)]
             # Only consider the combinational 1 if the addresses match
             [self.wire(self._write_wide_word_mask_comb[idx],
-                       self._write_wide_word_mask_reg_out[idx] | ((kts.ternary(self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx] & (self._wr_ID_fifo_out_data == kts.const(idx, 1)),
+                       self._write_wide_word_mask_reg_out[idx] | ((kts.ternary((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx]) & (self._wr_ID_fifo_out_data == kts.const(idx, 1)),
                                                                                kts.const(1, 1),
                                                                                kts.const(0, 1))) << self._wr_addr_fifo_out_data[self.mem_addr_bit_range_inner])) for idx in range(self.num_ID)]
 
