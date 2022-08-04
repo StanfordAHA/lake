@@ -372,7 +372,7 @@ class BuffetLike(MemoryController):
                        kts.ternary(self._clr_write_wide_word[idx],
                                    kts.const(0, self._write_wide_word_mask_reg_in[idx].width),
                                    self._write_wide_word_mask_reg_out[idx]) |
-                                  ((kts.ternary((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx]) & (self._wr_ID_fifo_out_data == kts.const(idx, 2)),
+                                  ((kts.ternary((self._clr_write_wide_word[idx] | (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx])) & (self._wr_ID_fifo_out_data == kts.const(idx, 2)),
                                                  kts.const(1, self.fw_int),
                                                  kts.const(0, self.fw_int))) << self._wr_addr_fifo_out_data[self.mem_addr_bit_range_inner])) for idx in range(self.num_ID)]
 
