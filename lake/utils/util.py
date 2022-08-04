@@ -618,7 +618,7 @@ def add_config_reg(generator, name, description, bitwidth, **kwargs):
 def sum_bits(generator, signal, name):
 
     bits_size = kts.clog2(signal.width)
-    bits_sum = generator.var(f"{name}_sum", bits_size)
+    bits_sum = generator.var(f"{name}_sum", bits_size + 1)
     # bits_sum_done = generator.var(f"{name}_sum_done", 1)
 
     @always_comb
