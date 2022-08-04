@@ -338,7 +338,7 @@ class BuffetLike(MemoryController):
             self._write_wide_word_mask_reg_out = [self.var(f"write_wide_word_mask_reg_out_{idx}", self.fw_int) for idx in range(self.num_ID)]
             self._write_wide_word_mask_reg_in = [self.var(f"write_wide_word_mask_reg_in_{idx}", self.fw_int) for idx in range(self.num_ID)]
             self._write_wide_word_mask_reg = [register(self, self._write_wide_word_mask_reg_in[idx],
-                                                       enable=self._set_write_wide_word[idx],
+                                                       enable=self._set_write_wide_word[idx] | self._clr_write_wide_word[idx],
                                                     #    clear=self._clr_write_wide_word[idx],
                                                        name=f"write_wide_word_mask_reg_strg_{idx}") for idx in range(self.num_ID)]
 
