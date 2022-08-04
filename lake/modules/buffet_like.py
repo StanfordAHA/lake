@@ -368,6 +368,7 @@ class BuffetLike(MemoryController):
                                                                                kts.const(1, 1),
                                                                                kts.const(0, 1))) << self._wr_addr_fifo_out_data[self.mem_addr_bit_range_inner])) for idx in range(self.num_ID)]
 
+            self._write_full_word = [self.var(f"write_full_word_{idx}", 1) for idx in range(self.num_ID)]
             '''
             This gets a full description
 
@@ -389,7 +390,6 @@ class BuffetLike(MemoryController):
 
             self._num_bits_valid_mask = [sum_bits(self, self._write_wide_word_mask_comb[idx], name=f"num_bits_valid_mask_{idx}") for idx in range(self.num_ID)]
             # This means we have the data to write the full word (or use the rmw option)
-            self._write_full_word = [self.var(f"write_full_word_{idx}", 1) for idx in range(self.num_ID)]
             # self._write_rmw_word = [self.var(f"write_rmw_word_{idx}", 1) for idx in range(self.num_ID)]
             [self.wire(self._write_full_word[idx], self._num_bits_valid_mask[idx] == kts.const(self.fw_int, self.wide_num_word_bits + 1)) for idx in range(self.num_ID)]
             # [self.wire(self._write_rmw_word[idx], self._num_bits_valid_mask[idx] < kts.const(self.fw_int, self.wide_num_word_bits + 1)) for idx in range(self.num_ID)]
