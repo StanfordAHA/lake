@@ -644,19 +644,22 @@ class BuffetLike(MemoryController):
         self.wire(self._rd_rsp_valid, ~self._rd_rsp_out_fifo.ports.empty)
 
         chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
-        # self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block + 1))
-        self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0] & (self._rd_ID_fifo_out_data[0] == kts.const(0, 1)),
-                                                                                 self._chosen_read[0],
-                                                                                 kts.ternary(self._use_cached_read[1] & self._read_wide_word_valid[1] & (self._rd_ID_fifo_out_data[0] == kts.const(1, 1)),
-                                                                                             self._chosen_read[1],
-                                                                                             kts.ternary(~self._use_cached_read[0] & self._valid_from_mem & (self._read_ID_d1[0] == kts.const(0, 1)),
-                                                                                                         self._chosen_read[0],
-                                                                                                         kts.ternary(~self._use_cached_read[1] & self._valid_from_mem & (self._read_ID_d1[0] == kts.const(1, 1)),
-                                                                                                                     self._chosen_read[1],
-                                                                                                                     chosen_size_block + 1)))))
 
-        self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | (kts.concat(*self._use_cached_read).r_or()) | self._size_request_full.r_or())
-        # self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | self._size_request_full.r_or())
+        if self.optimize_wide and self.mem_width > self.data_width:
+            self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0] & (self._rd_ID_fifo_out_data[0] == kts.const(0, 1)),
+                                                                                     self._chosen_read[0],
+                                                                                     kts.ternary(self._use_cached_read[1] & self._read_wide_word_valid[1] & (self._rd_ID_fifo_out_data[0] == kts.const(1, 1)),
+                                                                                                 self._chosen_read[1],
+                                                                                                 kts.ternary(~self._use_cached_read[0] & self._valid_from_mem & (self._read_ID_d1[0] == kts.const(0, 1)),
+                                                                                                             self._chosen_read[0],
+                                                                                                             kts.ternary(~self._use_cached_read[1] & self._valid_from_mem & (self._read_ID_d1[0] == kts.const(1, 1)),
+                                                                                                                         self._chosen_read[1],
+                                                                                                                         chosen_size_block + 1)))))
+
+            self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | (kts.concat(*self._use_cached_read).r_or()) | self._size_request_full.r_or())
+        else:
+            self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | self._size_request_full.r_or())
+            self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block + 1))
 
 # # =============================
 # #  Join Logic
