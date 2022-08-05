@@ -9,6 +9,8 @@ from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.attributes.formal_attr import *
 import os
 import kratos as kts
 
@@ -17,17 +19,20 @@ class StrgUBThin(MemoryController):
     def __init__(self,
                  data_width=16,  # CGRA Params
                  mem_width=16,
-                 mem_depth=512,
-                 input_addr_iterator_support=6,
-                 input_sched_iterator_support=6,
-                 output_addr_iterator_support=6,
-                 output_sched_iterator_support=6,
-                 interconnect_input_ports=1,  # Connection to int
-                 interconnect_output_ports=1,
+                 mem_depth=32,
+                 input_addr_iterator_support=4,
+                 input_sched_iterator_support=4,
+                 output_addr_iterator_support=4,
+                 output_sched_iterator_support=4,
+                 interconnect_input_ports=2,  # Connection to int
+                 interconnect_output_ports=2,
                  config_width=16,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=True,
-                 gen_addr=True):
+                 gen_addr=True,
+                 area_opt=True,
+                 area_opt_share=True,
+                 delay_width=4):
 
         super().__init__("strg_ub_thin", debug=True)
 
@@ -49,8 +54,13 @@ class StrgUBThin(MemoryController):
         self.rw_same_cycle = rw_same_cycle
         self.read_delay = read_delay
         self.gen_addr = gen_addr
+        self.area_opt = area_opt
+        self.area_opt_share = area_opt_share
+        self.delay_width = delay_width
+        self.addr_fifo_depth = 2 ** (delay_width - 1)
         self.default_iterator_support = 6
         self.default_config_width = 16
+        self.addr_width = clog2(mem_depth)
         # generation parameters
         # inputs
         self._clk = self.clock("clk")
@@ -81,8 +91,8 @@ class StrgUBThin(MemoryController):
             # read enable, addr data
             self._read = self.input("ren_in", 1)
             self._write = self.input("wen_in", 1)
-            self._write_addr = self.input("write_addr", self.config_width)
-            self._read_addr = self.input("read_addr", self.config_width)
+            self._write_addr = self.input("write_addr", self.addr_width)
+            self._read_addr = self.input("read_addr", self.addr_width)
             # self._cen_to_sram = self.output("cen_to_strg", 1, packed=True)
             self._wen_to_sram = self.output("wen_to_strg", 1, packed=True)
             self._ren_to_sram = self.output("ren_to_strg", 1, packed=True)
@@ -177,58 +187,115 @@ class StrgUBThin(MemoryController):
 
         self.wire(self._valid_out, self._valid_out_int)
 
-        self._write_addr = self.var("write_addr", self.config_width, size=self.interconnect_input_ports, explicit_array=True)
-        self._read_addr = self.var("read_addr", self.config_width, size=self.interconnect_output_ports, explicit_array=True)
+        self._write_addr = self.var("write_addr", self.addr_width, size=self.interconnect_input_ports, explicit_array=True)
+        self._read_addr = self.var("read_addr", self.addr_width, size=self.interconnect_output_ports, explicit_array=True)
         self._addr = self.var("addr", clog2(self.mem_depth))
 
         # Set up addr/cycle gens for input side
         for i in range(self.interconnect_input_ports):
 
-            FOR_LOOP_WRITE = ForLoop(iterator_support=self.input_sched_iterator_support,
-                                     config_width=self.default_config_width)
+            if self.area_opt and i == 1:
+                FOR_LOOP_WRITE = ForLoop(iterator_support=2,
+                                         config_width=self.default_config_width)
+                ADDR_WRITE = AddrGen(iterator_support=2,
+                                     config_width=self.addr_width)
+                SCHED_WRITE = SchedGen(iterator_support=2,
+                                       config_width=self.default_config_width)
+            else:
+                FOR_LOOP_WRITE = ForLoop(iterator_support=self.input_sched_iterator_support,
+                                         config_width=self.default_config_width)
+                ADDR_WRITE = AddrGen(iterator_support=self.input_addr_iterator_support,
+                                     config_width=self.addr_width)
+                SCHED_WRITE = SchedGen(iterator_support=self.input_sched_iterator_support,
+                                       config_width=self.default_config_width)
 
-            ADDR_WRITE = AddrGen(iterator_support=self.input_addr_iterator_support,
-                                 config_width=self.default_config_width)
-            SCHED_WRITE = SchedGen(iterator_support=self.input_sched_iterator_support,
-                                   config_width=self.default_config_width)
+            if self.area_opt and self.area_opt_share and i == 1:
+                # delay configuration register
+                self._delay = self.input(f"delay_{i}", self.delay_width)
+                self._delay.add_attribute(ConfigRegAttr("Delay cycles of shared ctrl for update operation"))
+                self._delay.add_attribute(FormalAttr(f"{self._delay.name}_{i}", FormalSignalConstraint.SOLVE))
 
-            self.add_child(f"{self.ctrl_in}_{i}_for_loop",
-                           FOR_LOOP_WRITE,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           step=self._write[i])
+                self._read_shift = self.var(f"read_shift_{i}", 2 ** self.delay_width)
+                self._addr_fifo = self.var(f"addr_fifo{i}", self.addr_width,
+                                           size=self.addr_fifo_depth,
+                                           packed=True,
+                                           explicit_array=True)
+                self._wr_ptr = self.var(f"wr_ptr_{i}", clog2(self.addr_fifo_depth))
+                self._rd_ptr = self.var(f"rd_ptr_{i}", clog2(self.addr_fifo_depth))
+                self._ctrl_en = self.var(f"ctrl_en_{i}", 1)
+                self._delayed_ctrl_en = self.var(f"delayed_ctrl_en_{i}", 1)
+                self._ctrl_addr = self.var(f"ctrl_addr_{i}", self.addr_width)
+                self._delayed_ctrl_addr = self.var(f"delayed_ctrl_addr_{i}", self.addr_width)
 
-            # Whatever comes through here should hopefully just pipe through seamlessly
-            # addressor modules
-            self.add_child(f"{self.ctrl_in}_{i}_addr_gen",
-                           ADDR_WRITE,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           step=self._write[i],
-                           mux_sel=FOR_LOOP_WRITE.ports.mux_sel_out,
-                           restart=FOR_LOOP_WRITE.ports.restart,
-                           addr_out=self._write_addr[i])
+                @always_ff((posedge, "clk"), (negedge, "rst_n"))
+                def update_delayed_ctrl(self):
+                    if ~self._rst_n:
+                        self._wr_ptr = 0
+                        self._rd_ptr = 0
+                        self._read_shift = 0
+                        self._addr_fifo = 0
+                    elif self._delay > 0:
+                        # wen shift register
+                        self._read_shift = concat(self._read_shift[self._read_shift.width - 2, 1], self._ctrl_en, const(0, 1))
 
-            # scheduler modules
-            self.add_child(f"{self.ctrl_in}_{i}_sched_gen",
-                           SCHED_WRITE,
-                           clk=self._clk,
-                           rst_n=self._rst_n,
-                           cycle_count=self._cycle_count,
-                           mux_sel=FOR_LOOP_WRITE.ports.mux_sel_out,
-                           finished=FOR_LOOP_WRITE.ports.restart,
-                           valid_output=self._write[i])
+                        # addr fifo
+                        if self._ctrl_en:
+                            self._addr_fifo[self._wr_ptr] = self._ctrl_addr
+                            self._wr_ptr = self._wr_ptr + 1
+
+                        if self._delayed_ctrl_en:
+                            self._rd_ptr = self._rd_ptr + 1
+
+                self.add_code(update_delayed_ctrl)
+                self.wire(self._delayed_ctrl_en, self._read_shift[self._delay])
+                self.wire(self._delayed_ctrl_addr, self._addr_fifo[self._rd_ptr])
+                self.wire(self._write[i], self._delayed_ctrl_en)
+                self.wire(self._write_addr[i], self._delayed_ctrl_addr)
+            else:
+                self.add_child(f"{self.ctrl_in}_{i}_for_loop",
+                               FOR_LOOP_WRITE,
+                               clk=self._clk,
+                               rst_n=self._rst_n,
+                               step=self._write[i])
+
+                # Whatever comes through here should hopefully just pipe through seamlessly
+                # addressor modules
+                self.add_child(f"{self.ctrl_in}_{i}_addr_gen",
+                               ADDR_WRITE,
+                               clk=self._clk,
+                               rst_n=self._rst_n,
+                               step=self._write[i],
+                               mux_sel=FOR_LOOP_WRITE.ports.mux_sel_out,
+                               restart=FOR_LOOP_WRITE.ports.restart,
+                               addr_out=self._write_addr[i])
+
+                # scheduler modules
+                self.add_child(f"{self.ctrl_in}_{i}_sched_gen",
+                               SCHED_WRITE,
+                               clk=self._clk,
+                               rst_n=self._rst_n,
+                               cycle_count=self._cycle_count,
+                               mux_sel=FOR_LOOP_WRITE.ports.mux_sel_out,
+                               finished=FOR_LOOP_WRITE.ports.restart,
+                               valid_output=self._write[i])
 
         # Set up addr/cycle gens for output side
         for i in range(self.interconnect_output_ports):
 
-            FOR_LOOP_READ = ForLoop(iterator_support=self.input_sched_iterator_support,
-                                    config_width=self.default_config_width)
-
-            ADDR_READ = AddrGen(iterator_support=self.input_addr_iterator_support,
-                                config_width=self.default_config_width)
-            SCHED_READ = SchedGen(iterator_support=self.input_sched_iterator_support,
-                                  config_width=self.default_config_width)
+            if self.area_opt and i == 1:
+                FOR_LOOP_READ = ForLoop(iterator_support=2,
+                                        config_width=self.default_config_width)
+                ADDR_READ = AddrGen(iterator_support=2,
+                                    config_width=self.addr_width)
+                SCHED_READ = SchedGen(iterator_support=2,
+                                      config_width=self.default_config_width)
+            else:
+                FOR_LOOP_READ = ForLoop(iterator_support=self.input_sched_iterator_support,
+                                        config_width=self.default_config_width)
+                ADDR_READ = AddrGen(iterator_support=self.input_addr_iterator_support,
+                                    config_width=self.addr_width)
+                SCHED_READ = SchedGen(iterator_support=self.input_sched_iterator_support,
+                                      config_width=self.default_config_width)
 
             self.add_child(f"{self.ctrl_out}_{i}_for_loop",
                            FOR_LOOP_READ,
@@ -253,6 +320,10 @@ class StrgUBThin(MemoryController):
                            mux_sel=FOR_LOOP_READ.ports.mux_sel_out,
                            finished=FOR_LOOP_READ.ports.restart,
                            valid_output=self._read[i])
+
+        if self.area_opt and self.area_opt_share and i == 1:
+            self.wire(self._ctrl_en, SCHED_READ.ports.valid_output)
+            self.wire(self._ctrl_addr, ADDR_READ.ports.addr_out)
         # -------------------------------- Delineate new group -------------------------------
 
         # Now deal with dual_port/single_port madness...
