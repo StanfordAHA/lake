@@ -24,6 +24,11 @@ class AddrGen(Generator):
         # INPUTS
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
+        self._flush = self.input("flush", 1)
+        self.add_attribute("sync-reset=flush")
+        # kts.passes.auto_insert_sync_reset(self.internal_generator)
+        # flush_port = self.internal_generator.get_port("flush")
+        # flush_port.add_attribute(ControlSignalAttr(True))
 
         self._restart = self.input("restart", 1)
 
@@ -61,7 +66,8 @@ class AddrGen(Generator):
 
         self._current_addr = self.var("current_addr", self.config_width)
         # Calculate address by taking previous calculation and adding the muxed stride
-        self.wire(self._calc_addr, self._strt_addr + self._current_addr)
+        # self.wire(self._calc_addr, self._strt_addr + self._current_addr)
+        self.wire(self._calc_addr, self._current_addr)
 
         self.add_code(self.calculate_address)
         # GENERATION LOGIC: end
@@ -70,6 +76,8 @@ class AddrGen(Generator):
     def calculate_address(self):
         if ~self._rst_n:
             self._current_addr = 0
+        elif self._flush:
+            self._current_addr = self._strt_addr
         elif self._step:
             # mux_sel as 0 but update means that the machine is resetting.
             if self._restart:
