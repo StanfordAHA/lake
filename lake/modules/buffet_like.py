@@ -777,7 +777,11 @@ class BuffetLike(MemoryController):
                 # WRITING #
                 ####################
                 # Writing until we get a finalize...
-                WRITING[ID_idx].next(WR_START[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                WRITING[ID_idx].next(WR_START[ID_idx], self._joined_in_fifo &
+                                                       (self._wr_data_fifo_out_op == 0) &
+                                                       ~self._blk_full[ID_idx] &
+                                                       self._mem_acq[2 * ID_idx + 0] &
+                                                       (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 # Go to modify if we get a change in address on a non-full word (and we get lock access) or a finalize command
                 # Furthermore, make sure there is at least some data in there.
                 WRITING[ID_idx].next(MODIFY[ID_idx], self._joined_in_fifo &
