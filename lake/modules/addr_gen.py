@@ -81,7 +81,7 @@ class AddrGen(Generator):
         elif self._step:
             # mux_sel as 0 but update means that the machine is resetting.
             if self._restart:
-                self._current_addr = 0
+                self._current_addr = self._strt_addr
             else:
                 self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
