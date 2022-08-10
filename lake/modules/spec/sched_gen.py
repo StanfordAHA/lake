@@ -16,13 +16,21 @@ class SchedGen(Generator):
     def __init__(self,
                  iterator_support=6,
                  config_width=16,
-                 use_enable=True):
+                 use_enable=True,
+                 dual_config=False,
+                 iterator_support2=2):
 
-        super().__init__(f"sched_gen_{iterator_support}_{config_width}")
+        if dual_config:
+            super().__init__(f"sched_gen_dual_config_{iterator_support}_{iterator_support2}_{config_width}")
+        else:
+            super().__init__(f"sched_gen_{iterator_support}_{config_width}")
 
         self.iterator_support = iterator_support
         self.config_width = config_width
         self.use_enable = use_enable
+        self.dual_config = dual_config
+        self.iterator_support2 = iterator_support2
+        self.max_iterator_support = max(self.iterator_support, self.iterator_support2)
 
         # PORT DEFS: begin
 
@@ -36,7 +44,10 @@ class SchedGen(Generator):
         # VARS
         self._valid_out = self.var("valid_out", 1)
         self._cycle_count = self.input("cycle_count", self.config_width)
-        self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
+        if self.dual_config:
+            self._mux_sel = self.input("mux_sel", max(clog2(self.max_iterator_support) + 1, 1))
+        else:
+            self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
         self._addr_out = self.var("addr_out", self.config_width)
 
         # Receive signal on last iteration of looping structure and
@@ -73,7 +84,9 @@ class SchedGen(Generator):
 
         self.add_child(f"sched_addr_gen",
                        AddrGen(iterator_support=self.iterator_support,
-                               config_width=self.config_width),
+                               config_width=self.config_width,
+                               dual_config=self.dual_config,
+                               iterator_support2=self.iterator_support2),
 
                        clk=self._clk,
                        rst_n=self._rst_n,

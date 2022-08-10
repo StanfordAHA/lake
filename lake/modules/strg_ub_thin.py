@@ -30,9 +30,11 @@ class StrgUBThin(MemoryController):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=True,
                  gen_addr=True,
-                 area_opt=True,
-                 area_opt_share=True,
-                 delay_width=4):
+                 area_opt=False,
+                 area_opt_share=False,
+                 area_opt_dual_config=False,
+                 delay_width=4,
+                 iterator_support2=2):
 
         super().__init__("strg_ub_thin", debug=True)
 
@@ -56,7 +58,9 @@ class StrgUBThin(MemoryController):
         self.gen_addr = gen_addr
         self.area_opt = area_opt
         self.area_opt_share = area_opt_share
+        self.area_opt_dual_config = area_opt_dual_config
         self.delay_width = delay_width
+        self.iterator_support2 = iterator_support2
         self.addr_fifo_depth = 2 ** (delay_width - 1)
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -194,13 +198,35 @@ class StrgUBThin(MemoryController):
         # Set up addr/cycle gens for input side
         for i in range(self.interconnect_input_ports):
 
-            if self.area_opt and i == 1:
+            if self.area_opt and self.area_opt_dual_config and i == 1:
+                break
+
+            if self.area_opt and i == 0:
+                FOR_LOOP_WRITE = ForLoop(iterator_support=self.input_sched_iterator_support,
+                                         config_width=self.default_config_width,
+                                         dual_config=self.area_opt_dual_config,
+                                         iterator_support2=self.iterator_support2)
+                ADDR_WRITE = AddrGen(iterator_support=self.input_addr_iterator_support,
+                                     config_width=self.addr_width,
+                                     dual_config=self.area_opt_dual_config,
+                                     iterator_support2=self.iterator_support2)
+                SCHED_WRITE = SchedGen(iterator_support=self.input_sched_iterator_support,
+                                       config_width=self.default_config_width,
+                                       dual_config=self.area_opt_dual_config,
+                                       iterator_support2=self.iterator_support2)
+            elif self.area_opt and i == 1:
                 FOR_LOOP_WRITE = ForLoop(iterator_support=2,
-                                         config_width=self.default_config_width)
+                                         config_width=self.default_config_width,
+                                         dual_config=self.area_opt_dual_config,
+                                         iterator_support2=self.iterator_support2)
                 ADDR_WRITE = AddrGen(iterator_support=2,
-                                     config_width=self.addr_width)
+                                     config_width=self.addr_width,
+                                     dual_config=self.area_opt_dual_config,
+                                     iterator_support2=self.iterator_support2)
                 SCHED_WRITE = SchedGen(iterator_support=2,
-                                       config_width=self.default_config_width)
+                                       config_width=self.default_config_width,
+                                       dual_config=self.area_opt_dual_config,
+                                       iterator_support2=self.iterator_support2)
             else:
                 FOR_LOOP_WRITE = ForLoop(iterator_support=self.input_sched_iterator_support,
                                          config_width=self.default_config_width)
@@ -282,13 +308,35 @@ class StrgUBThin(MemoryController):
         # Set up addr/cycle gens for output side
         for i in range(self.interconnect_output_ports):
 
-            if self.area_opt and i == 1:
+            if self.area_opt and self.area_opt_dual_config and i == 1:
+                break
+
+            if self.area_opt and i == 0:
+                FOR_LOOP_READ = ForLoop(iterator_support=self.input_sched_iterator_support,
+                                        config_width=self.default_config_width,
+                                        dual_config=self.area_opt_dual_config,
+                                        iterator_support2=self.iterator_support2)
+                ADDR_READ = AddrGen(iterator_support=self.input_addr_iterator_support,
+                                    config_width=self.addr_width,
+                                    dual_config=self.area_opt_dual_config,
+                                    iterator_support2=self.iterator_support2)
+                SCHED_READ = SchedGen(iterator_support=self.input_sched_iterator_support,
+                                      config_width=self.default_config_width,
+                                      dual_config=self.area_opt_dual_config,
+                                      iterator_support2=self.iterator_support2)
+            elif self.area_opt and i == 1 and (not self.area_opt_dual_config):
                 FOR_LOOP_READ = ForLoop(iterator_support=2,
-                                        config_width=self.default_config_width)
+                                        config_width=self.default_config_width,
+                                        dual_config=self.area_opt_dual_config,
+                                        iterator_support2=self.iterator_support2)
                 ADDR_READ = AddrGen(iterator_support=2,
-                                    config_width=self.addr_width)
+                                    config_width=self.addr_width,
+                                    dual_config=self.area_opt_dual_config,
+                                    iterator_support2=self.iterator_support2)
                 SCHED_READ = SchedGen(iterator_support=2,
-                                      config_width=self.default_config_width)
+                                      config_width=self.default_config_width,
+                                      dual_config=self.area_opt_dual_config,
+                                      iterator_support2=self.iterator_support2)
             else:
                 FOR_LOOP_READ = ForLoop(iterator_support=self.input_sched_iterator_support,
                                         config_width=self.default_config_width)

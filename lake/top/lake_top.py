@@ -48,6 +48,7 @@ class LakeTop(Generator):
                  do_config_lift=True,
                  area_opt=True,
                  pond_area_opt_share=False,
+                 pond_area_opt_dual_config=False,
                  reduced_id_config_width=10,
                  tech_map=TSMC_Tech_Map(depth=512, width=32)):
         super().__init__(name, debug=True)
@@ -79,6 +80,7 @@ class LakeTop(Generator):
         self.formal_module = formal_module
         self.area_opt = area_opt
         self.pond_area_opt_share = pond_area_opt_share
+        self.pond_area_opt_dual_config = pond_area_opt_dual_config
         self.reduced_id_config_width = reduced_id_config_width
         self.tech_map = tech_map
 
@@ -152,7 +154,8 @@ class LakeTop(Generator):
                                           rw_same_cycle=self.rw_same_cycle,
                                           config_width=self.config_width,
                                           area_opt=self.area_opt,
-                                          area_opt_share=self.pond_area_opt_share))
+                                          area_opt_share=self.pond_area_opt_share,
+                                          area_opt_dual_config=self.pond_area_opt_dual_config))
 
         if self.fifo_mode and (self.fw_int > 1 or self.banks > 1):
             controllers.append(StrgFIFO(data_width=self.data_width,
