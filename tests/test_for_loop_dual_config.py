@@ -10,12 +10,16 @@ import pytest
 import random as rand
 
 
-@pytest.mark.skip
-def test_for_loop_dual_config(config_width=16,
-                              iterator_support=2,
-                              iterator_support2=4,
-                              test_cases=500,
-                              test_seed=0):
+@pytest.mark.parametrize("config_width", [16])
+@pytest.mark.parametrize("iterator_support", [2, 4])
+@pytest.mark.parametrize("iterator_support2", [2, 4])
+@pytest.mark.parametrize("test_cases", [1000])
+@pytest.mark.parametrize("test_seed", [0])
+def test_for_loop_dual_config(config_width,
+                              iterator_support,
+                              iterator_support2,
+                              test_cases,
+                              test_seed):
 
     model_id = ForLoopDualConfigModel(iterator_support=iterator_support,
                                       iterator_support2=iterator_support2,
@@ -88,12 +92,12 @@ def test_for_loop_dual_config(config_width=16,
     with tempfile.TemporaryDirectory() as tempdir:
         # tester.compile_and_run(target="system-verilog",
         #                        simulator="xcelium",
-        #                        directory="tempdir",
+        #                        directory=tempdir,
         #                        magma_output="verilog",
         #                        dump_waveforms=True,
         #                        flags=["-sv"])
         tester.compile_and_run(target="verilator",
-                               directory="tempdir",
+                               directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal"])
 

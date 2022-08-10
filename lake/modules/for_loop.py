@@ -14,7 +14,10 @@ class ForLoop(Generator):
                  dual_config=False,
                  iterator_support2=2):
 
-        super().__init__(f"for_loop_{iterator_support}_{config_width}", debug=True)
+        if dual_config:
+            super().__init__(f"for_loop_dual_config_{iterator_support}_{iterator_support2}_{config_width}", debug=True)
+        else:
+            super().__init__(f"for_loop_{iterator_support}_{config_width}", debug=True)
 
         self.iterator_support = iterator_support
         self.config_width = config_width
@@ -24,9 +27,9 @@ class ForLoop(Generator):
         self.iter_idx_w = max(clog2(self.iterator_support), 1)
         self.iter2_idx_w = max(clog2(self.iterator_support2), 1)
         # Create params for instancing this module...
-        # self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, value=self.iterator_support)
-        # self.iterator_support_par2 = self.param("ITERATOR_SUPPORT2", clog2(iterator_support2) + 1, value=self.iterator_support2)
-        # self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, value=self.config_width)
+        self.iterator_support_par = self.param("ITERATOR_SUPPORT", clog2(iterator_support) + 1, initial_value=self.iterator_support)
+        self.iterator_support_par2 = self.param("ITERATOR_SUPPORT2", clog2(iterator_support2) + 1, initial_value=self.iterator_support2)
+        self.config_width_par = self.param("CONFIG_WIDTH", clog2(config_width) + 1, initial_value=self.config_width)
 
         # PORT DEFS: begin
 
@@ -83,6 +86,7 @@ class ForLoop(Generator):
             self._mux_sel = self.var("mux_sel", max(clog2(self.max_iterator_support) + 1, 1))
             self._mux_sel_out = self.output("mux_sel_out", max(clog2(self.max_iterator_support) + 1, 1))
             self._mux_sel_msb = self.var("mux_sel_msb", 1)
+            self._mux_sel_msb_r = self.var("mux_sel_msb_r", 1)
             self._mux_sel_iter1 = self.var("mux_sel_iter1", self.iter_idx_w)
             self._mux_sel_iter2 = self.var("mux_sel_iter2", self.iter2_idx_w)
             self.wire(self._mux_sel_msb, self._mux_sel[self._mux_sel.width - 1])
@@ -142,7 +146,11 @@ class ForLoop(Generator):
         # GENERATION LOGIC: end
 
         self._restart = self.output("restart", 1)
-        self.wire(self._restart, self._step & (~self._done))
+        if self.dual_config:
+            self.add_code(self.mux_sel_mbs_r_update)
+            self.wire(self._restart, self._step & ((~self._done) | (self._mux_sel_msb & (~self._mux_sel_msb_r))))
+        else:
+            self.wire(self._restart, self._step & (~self._done))
 
     @always_comb
     # Find lowest ready
@@ -251,6 +259,13 @@ class ForLoop(Generator):
                 self._max_value2[idx] = 0
             elif self._inc2[idx]:
                 self._max_value2[idx] = self._maxed_value
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def mux_sel_mbs_r_update(self):
+        if ~self._rst_n:
+            self._mux_sel_msb_r = 0
+        else:
+            self._mux_sel_msb_r = self._mux_sel_msb
 
     def get_iter(self):
         return self.iterator_support
