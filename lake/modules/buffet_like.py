@@ -467,7 +467,7 @@ class BuffetLike(MemoryController):
                                                 #    (self._read_word_addr[idx][self.mem_addr_bit_range_outer] == self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer]) &
                                                    (self._read_word_addr[idx] == self._addr_to_mem) &
                                                    self._read_joined &
-                                                   (kts.ternary())
+                                                #    (kts.ternary())
                                                 #    (self._rd_ID_fifo_out_data == kts.const(idx, 1)) &
                                                    (self._last_read_ID == kts.const(idx, 1)) &
                                                    (self._rd_op_fifo_out_op == kts.const(1, 2))) for idx in range(self.num_ID)]
