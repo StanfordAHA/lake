@@ -822,6 +822,7 @@ class BuffetLike(MemoryController):
                 # WRITING #
                 ####################
                 # Writing until we get a finalize...
+
                 # Additional condition that we are either writing the full word (thus we don't need to do any modify), or
                 # we have no outstanding writes (0 valid bits in the mask)
                 WRITING[ID_idx].next(WR_START[ID_idx], self._joined_in_fifo &
