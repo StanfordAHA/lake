@@ -330,6 +330,9 @@ class BuffetLike(MemoryController):
         # self._curr_base = [register(self, self._wr_addr, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
         self._curr_base = [register(self, self._curr_bounds[i] + 1, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
 
+        self._read_pop_full = self.var("read_pop_full", self.num_ID)
+        self._read_pop = self.var("read_pop", 1)
+
         if self.optimize_wide and self.mem_width > self.data_width:
 
             self.fw_int = self.mem_width // self.data_width
@@ -356,6 +359,10 @@ class BuffetLike(MemoryController):
             self._write_word_addr = [register(self, tmp_addr[idx],
                                               enable=self._set_wide_word_addr[idx],
                                               name=f"write_word_addr_reg_{idx}", packed=True) for idx in range(self.num_ID)]
+            self._write_word_addr_valid = [sticky_flag(self, self._set_wide_word_addr[idx],
+                                                    #    clear=self._clr_cached_read[idx],
+                                                       name=f"write_word_addr_valid_sticky_{idx}",
+                                                       seq_only=True) for idx in range(self.num_ID)]
 
             self._write_to_sram = [self.var(f"write_to_sram_{idx}", 1) for idx in range(self.num_ID)]
             self._read_from_sram_write_side = [self.var(f"read_from_sram_write_side_{idx}", 1) for idx in range(self.num_ID)]
@@ -399,7 +406,8 @@ class BuffetLike(MemoryController):
             [self.wire(self._write_wide_word_mask_reg_out[idx], self._write_wide_word_mask_reg[idx]) for idx in range(self.num_ID)]
             # Only consider the combinational 1 if the addresses match
             [self.wire(self._write_wide_word_mask_comb[idx],
-                       self._write_wide_word_mask_reg_out[idx] | ((kts.ternary((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx]) &
+                    #    self._write_wide_word_mask_reg_out[idx] | ((kts.ternary((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx]) &
+                       self._write_wide_word_mask_reg_out[idx] | ((kts.ternary(((self._curr_base[idx] + self._buffet_base[idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) == self._write_word_addr[idx]) &
                                                                                     self._joined_in_fifo &
                                                                                     (self._wr_data_fifo_out_op == kts.const(1, 1)) &
                                                                                     (self._wr_ID_fifo_out_data == kts.const(idx, 1)),
@@ -421,8 +429,10 @@ class BuffetLike(MemoryController):
                        kts.ternary(self._clr_write_wide_word[idx],
                                    kts.const(0, self._write_wide_word_mask_reg_in[idx].width),
                                    self._write_wide_word_mask_reg_out[idx]) |
-                                  ((kts.ternary(((self._clr_write_wide_word[idx] & (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[idx])) |
-                                                    ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx]) & ~self._write_full_word[idx])) &
+                                #   ((kts.ternary(((self._clr_write_wide_word[idx] & (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[idx])) |
+                                  ((kts.ternary(((self._clr_write_wide_word[idx] & ((self._curr_base[idx] + self._buffet_base[idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) != self._write_word_addr[idx])) |
+                                                    # ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[idx]) & ~self._write_full_word[idx])) &
+                                                    (((self._curr_base[idx] + self._buffet_base[idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) == self._write_word_addr[idx]) & ~self._write_full_word[idx])) &
                                                         # Qualify to be a write as well.
                                                         (self._wr_data_fifo_out_op == kts.const(1, 1)) &
                                                         (self._wr_ID_fifo_out_data == kts.const(idx, 2)),
@@ -452,6 +462,7 @@ class BuffetLike(MemoryController):
             # Use the addr to mem as the R-M-W sequence can clobber the data register on the SRAM
             # self._last_read_addr = register(self, kts.concat(self._addr_to_mem, self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner]), enable=self._ren_to_mem, name="last_read_addr", packed=True)
             self._last_read_addr = register(self, self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner], enable=self._ren_to_mem, name="last_read_addr", packed=True)
+            self._last_read_addr_wide = register(self, self._addr_to_mem, enable=self._ren_to_mem, name="last_read_addr_wide", packed=True)
             self._last_read_ID = register(self, self._rd_ID_fifo_out_data, enable=self._ren_to_mem, name="last_read_ID")
 
             self._set_read_word_addr = [self.var(f"set_read_word_addr_{idx}", 1) for idx in range(self.num_ID)]
@@ -460,18 +471,35 @@ class BuffetLike(MemoryController):
             self._read_word_addr = [register(self, self._addr_to_mem,
                                              enable=self._set_read_word_addr[idx], name=f"cached_read_word_addr_{idx}") for idx in range(self.num_ID)]
 
+            self._valid_from_mem = self.var("valid_from_mem", 1)
+            # Ren full delay...
+            self._ren_full_d1 = [register(self, self._ren_full[idx], enable=kts.const(1, 1), name=f"ren_full_delayed_{idx}") for idx in range(self.num_ID)]
+
             # Determine whether to use the output register of the SRAM or the cached word
             self._use_cached_read = [self.var(f"use_cached_read_{idx}", 1) for idx in range(self.num_ID)]
-            # You should use the cached read if the data is already available, else fall back to the data from mem, also make sure it is in response to a valid read to the correct idx
+            # First, check that the word is valid (which is set when the proper read happens)
+            # Then, if the last read was to this word, we check that the id and addr match (they should)
+            # Otherwise, we check the op, addr, ID and joined read valids
+            # Furthermore, if we are in a cached state, we drop the use_cached_read is valid_from_mem is high
+            # - this is to avoid a situation where we are serving a prior read and get a cached read to serve to the output. Forces the sequence
             [self.wire(self._use_cached_read[idx], self._read_wide_word_valid[idx] &
                                                 #    (self._read_word_addr[idx][self.mem_addr_bit_range_outer] == self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer]) &
-                                                   (self._read_word_addr[idx] == self._addr_to_mem) &
-                                                   self._read_joined &
-                                                #    (kts.ternary())
-                                                #    (self._rd_ID_fifo_out_data == kts.const(idx, 1)) &
-                                                   (self._last_read_ID == kts.const(idx, 1)) &
-                                                   (self._rd_op_fifo_out_op == kts.const(1, 2))) for idx in range(self.num_ID)]
-            self._valid_from_mem = self.var("valid_from_mem", 1)
+                                                #    (self._read_word_addr[idx] == self._addr_to_mem) &
+                                                #    self._read_joined &
+                                                #    kts.ternary((self._valid_from_mem & self._ren_full_d1[idx]),
+                                                   kts.ternary((self._valid_from_mem & self._ren_full_d1[idx]),
+                                                               (self._last_read_ID == kts.const(idx, 1)) &
+                                                                    (self._last_read_addr_wide == self._read_word_addr[idx]),
+                                                               (self._rd_ID_fifo_out_data == kts.const(idx, 1)) &
+                                                            #    ((self._rd_addr_fifo_out_addr + self._blk_base[idx] + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                                                               ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx] + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                                                                    # (self._addr_to_mem == self._read_word_addr[idx]) &
+                                                                    (self._rd_op_fifo_out_op == kts.const(1, 2)) &
+                                                                    ~self._valid_from_mem &
+                                                                    self._read_joined)) for idx in range(self.num_ID)]
+            #  (self._rd_ID_fifo_out_data == kts.const(idx, 1)) &
+            #    (self._last_read_ID == kts.const(idx, 1)) &
+            #    (self._rd_op_fifo_out_op == kts.const(1, 2))) for idx in range(self.num_ID)]
 
             self._chosen_read = [self.var(f"chosen_read_{idx}", self.data_width) for idx in range(self.num_ID)]
             [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx] & self._read_wide_word_valid[idx] & ~self._valid_from_mem,
@@ -711,15 +739,25 @@ class BuffetLike(MemoryController):
         chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
 
         if self.optimize_wide and self.mem_width > self.data_width:
-            self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0] & (self._rd_ID_fifo_out_data[0] == kts.const(0, 1)),
+            # self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0] & (self._rd_ID_fifo_out_data[0] == kts.const(0, 1)),
+            #                                                                          self._chosen_read[0],
+            #                                                                          kts.ternary(self._use_cached_read[1] & self._read_wide_word_valid[1] & (self._rd_ID_fifo_out_data[0] == kts.const(1, 1)),
+            #                                                                                      self._chosen_read[1],
+            #                                                                                      kts.ternary(~self._use_cached_read[0] & self._valid_from_mem & (self._read_ID_d1[0] == kts.const(0, 1)),
+            #                                                                                                  self._chosen_read[0],
+            #                                                                                                  kts.ternary(~self._use_cached_read[1] & self._valid_from_mem & (self._read_ID_d1[0] == kts.const(1, 1)),
+            #                                                                                                              self._chosen_read[1],
+            #                                                                                                              chosen_size_block + 1)))))
+            self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0],
                                                                                      self._chosen_read[0],
-                                                                                     kts.ternary(self._use_cached_read[1] & self._read_wide_word_valid[1] & (self._rd_ID_fifo_out_data[0] == kts.const(1, 1)),
+                                                                                     kts.ternary(self._use_cached_read[1] & self._read_wide_word_valid[1],
                                                                                                  self._chosen_read[1],
-                                                                                                 kts.ternary(~self._use_cached_read[0] & self._valid_from_mem & (self._read_ID_d1[0] == kts.const(0, 1)),
-                                                                                                             self._chosen_read[0],
-                                                                                                             kts.ternary(~self._use_cached_read[1] & self._valid_from_mem & (self._read_ID_d1[0] == kts.const(1, 1)),
-                                                                                                                         self._chosen_read[1],
-                                                                                                                         chosen_size_block + 1)))))
+                                                                                                 chosen_size_block + 1)))
+
+            # self.wire(self._rd_rsp_fifo_in_data[self.data_width], self._read_rsp_ID_reg)
+            self.wire(self._rd_rsp_fifo_in_data[self.data_width], kts.ternary(self._use_cached_read[0],
+                                                                              kts.const(0, 1),
+                                                                              kts.const(1, 1)))
 
             # self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | (kts.concat(*self._use_cached_read).r_or()) | self._size_request_full.r_or())
             self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | (kts.concat(*self._use_cached_read).r_or()) | self._size_request_full.r_or())
@@ -727,6 +765,9 @@ class BuffetLike(MemoryController):
             self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | self._size_request_full.r_or())
             self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block + 1))
 
+            self._read_rsp_ID_reg = register(self, kts.ternary(self._read_pop_full[1], kts.const(1, 1), kts.const(0, 1)), enable=self._read_pop)
+
+            self.wire(self._rd_rsp_fifo_in_data[self.data_width], self._read_rsp_ID_reg)
 # # =============================
 # #  Join Logic
 # # =============================
@@ -741,15 +782,9 @@ class BuffetLike(MemoryController):
         self._pop_in_full = self.var("pop_in_full", self.num_ID)
         self.wire(self._pop_in_fifos, self._pop_in_full.r_or())
 
-        self._read_pop = self.var("read_pop", 1)
         self.wire(kts.concat(self._rd_ID_fifo_pop, self._rd_op_fifo_pop, self._rd_addr_fifo_pop), kts.concat(*[self._read_pop for i in range(3)]))
 
-        self._read_pop_full = self.var("read_pop_full", self.num_ID)
         self.wire(self._read_pop, self._read_pop_full.r_or())
-
-        self._read_rsp_ID_reg = register(self, kts.ternary(self._read_pop_full[1], kts.const(1, 1), kts.const(0, 1)), enable=self._read_pop)
-
-        self.wire(self._rd_rsp_fifo_in_data[self.data_width], self._read_rsp_ID_reg)
 
 # # =============================
 # #  FSM
@@ -838,7 +873,9 @@ class BuffetLike(MemoryController):
                                                      (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)) &
                                                      self._mem_acq[2 * ID_idx + 0] &
                                                      ((self._wr_data_fifo_out_op == kts.const(0, 1)) |
-                                                        ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) &
+                                                        # ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) &
+                                                        # (((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) != self._write_word_addr[ID_idx]) &
+                                                        ((((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) != self._write_word_addr[ID_idx]) & self._write_word_addr_valid[ID_idx]) &
                                                             (self._wr_data_fifo_out_op == kts.const(1, 1)))) &
                                                         (self._num_bits_valid_mask[ID_idx] > 0) &
                                                         ~self._write_full_word[ID_idx])
@@ -850,9 +887,9 @@ class BuffetLike(MemoryController):
                 # Go back to writing when we have finished the modify (which should happen immediately since we have the resource lock)
                 # MODIFY[ID_idx].next(WRITING[ID_idx], kts.const(1, 1))
                 # MODIFY[ID_idx].next(WRITING[ID_idx], self._wr_data_fifo_out_op == kts.const(1, 1))
-                MODIFY[ID_idx].next(WRITING[ID_idx], self._previous_op == kts.const(1, 1))
+                MODIFY[ID_idx].next(WRITING[ID_idx], (self._previous_op == kts.const(1, 1)))
                 # MODIFY[ID_idx].next(WR_START[ID_idx], self._wr_data_fifo_out_op == kts.const(0, 1))
-                MODIFY[ID_idx].next(WR_START[ID_idx], self._previous_op == kts.const(0, 1))
+                MODIFY[ID_idx].next(WR_START[ID_idx], (self._previous_op == kts.const(0, 1)) & ~self._blk_full[ID_idx])
                 MODIFY[ID_idx].next(MODIFY[ID_idx], None)
 
                 ####################
@@ -882,10 +919,19 @@ class BuffetLike(MemoryController):
                 # WRITING[ID_idx].output(self._inc_wr_addr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
                 # WRITING[ID_idx].output(self._inc_bounds_ctr, self._mem_acq[0] & self._wr_data_fifo_valid & (self._wr_data_fifo_out_op == 1))
                 # WRITING[ID_idx].output(self._clr_bounds_ctr, 0)
-                WRITING[ID_idx].output(self._push_blk[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # Only want to push the block if there is room and we are either writing a full word or there are no outstanding writes
+                WRITING[ID_idx].output(self._push_blk[ID_idx], self._joined_in_fifo &
+                                                               (self._wr_data_fifo_out_op == 0) &
+                                                               ~self._blk_full[ID_idx] &
+                                                               ((self._write_full_word[ID_idx] & self._mem_acq[2 * ID_idx + 0]) | (self._num_bits_valid_mask[ID_idx] == 0)) &
+                                                               (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 # WRITING[ID_idx].output(self._en_curr_base[ID_idx], 0)
                 # On our way back to write start we can set the current base for the next block. it is 0 at reset, so we don't need to deal with it there
-                WRITING[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                WRITING[ID_idx].output(self._en_curr_base[ID_idx], self._joined_in_fifo &
+                                                                  (self._wr_data_fifo_out_op == 0) &
+                                                                  ~self._blk_full[ID_idx] &
+                                                                  ((self._write_full_word[ID_idx] & self._mem_acq[2 * ID_idx + 0]) | (self._num_bits_valid_mask[ID_idx] == 0)) &
+                                                                  (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 # Any time we make a write to the current block we can update the bounds of the current block
                 WRITING[ID_idx].output(self._en_curr_bounds[ID_idx], self._mem_acq[2 * ID_idx + 0] & self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 # WRITING[ID_idx].output(self._wen_full[ID_idx], self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) & ~(self._curr_capacity < self._buffet_capacity))
@@ -901,12 +947,13 @@ class BuffetLike(MemoryController):
                                                                   (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))) |
                                                                   (self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] &
                                                                   (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))))
-                WRITING[ID_idx].output(self._set_write_wide_word[ID_idx], (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[ID_idx]) &
+                # WRITING[ID_idx].output(self._set_write_wide_word[ID_idx], (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[ID_idx]) &
+                WRITING[ID_idx].output(self._set_write_wide_word[ID_idx], (((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) == self._write_word_addr[ID_idx]) & self._write_word_addr_valid[ID_idx]) &
                                                                           self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
                                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 # Only clear the word
-                WRITING[ID_idx].output(self._clr_write_wide_word[ID_idx], ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) |
-                                                                                ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[ID_idx]) &
+                WRITING[ID_idx].output(self._clr_write_wide_word[ID_idx], ((((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) != self._write_word_addr[ID_idx]) | ~self._write_word_addr_valid[ID_idx]) |
+                                                                                ((((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) == self._write_word_addr[ID_idx]) & self._write_word_addr_valid[ID_idx]) &
                                                                                     self._write_full_word[ID_idx])) &
                                                                           self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
                                                                           self._mem_acq[2 * ID_idx + 0] &
@@ -922,7 +969,7 @@ class BuffetLike(MemoryController):
                 # WRITING[ID_idx].output(self._write_to_wide_word[ID_idx], (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[ID_idx]) &
                 #                                                           self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
                 #                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
-                WRITING[ID_idx].output(self._set_wide_word_addr[ID_idx], (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) &
+                WRITING[ID_idx].output(self._set_wide_word_addr[ID_idx], (((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) != self._write_word_addr[ID_idx]) | ~self._write_word_addr_valid[ID_idx]) &
                                                                           self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
                                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 WRITING[ID_idx].output(self._sram_lock[ID_idx], 0)
@@ -932,10 +979,12 @@ class BuffetLike(MemoryController):
                                                                                 # self._mem_acq[2 * ID_idx + 0] &
                                                                                 ~self._any_sram_lock &
                                                                                 ((self._wr_data_fifo_out_op == kts.const(0, 1)) |
-                                                                                    ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) &
-                                                                                        (self._wr_data_fifo_out_op == kts.const(1, 1)))) &
-                                                                                    (self._num_bits_valid_mask[ID_idx] > 0) &
-                                                                                    ~self._write_full_word[ID_idx])
+                                                                                    # ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) &
+                                                                                    ((((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) != self._write_word_addr[ID_idx]) &
+                                                                                        self._write_word_addr_valid[ID_idx]) &
+                                                                                    (self._wr_data_fifo_out_op == kts.const(1, 1)))) &
+                                                                                (self._num_bits_valid_mask[ID_idx] > 0) &
+                                                                                ~self._write_full_word[ID_idx])
                 # WRITING.output(self._en_curr_bounds, 0)
 
                 # TODO: deal with a full word write backed up by a new write - need to clear only some of the bits
@@ -943,19 +992,20 @@ class BuffetLike(MemoryController):
                 ####################
                 # MODIFY #
                 ####################
-                MODIFY[ID_idx].output(self._push_blk[ID_idx], 0)
-                MODIFY[ID_idx].output(self._en_curr_base[ID_idx], 0)
+                # MODIFY[ID_idx].output(self._push_blk[ID_idx], 0)
+                MODIFY[ID_idx].output(self._push_blk[ID_idx], (self._previous_op == kts.const(0, 1)) & ~self._blk_full[ID_idx])
+                MODIFY[ID_idx].output(self._en_curr_base[ID_idx], (self._previous_op == kts.const(0, 1)) & ~self._blk_full[ID_idx])
                 MODIFY[ID_idx].output(self._en_curr_bounds[ID_idx], 0)
                 # Simply write with the lock here
-                MODIFY[ID_idx].output(self._wen_full[ID_idx], 1)
+                MODIFY[ID_idx].output(self._wen_full[ID_idx], ~self._blk_full[ID_idx])
                 MODIFY[ID_idx].output(self._pop_in_full[ID_idx], 0)
                 MODIFY[ID_idx].output(self._set_write_wide_word[ID_idx], 0)
-                MODIFY[ID_idx].output(self._clr_write_wide_word[ID_idx], 1)
-                MODIFY[ID_idx].output(self._write_to_sram[ID_idx], 1)
+                MODIFY[ID_idx].output(self._clr_write_wide_word[ID_idx], ~self._blk_full[ID_idx])
+                MODIFY[ID_idx].output(self._write_to_sram[ID_idx], ~self._blk_full[ID_idx])
                 MODIFY[ID_idx].output(self._read_from_sram_write_side[ID_idx], 0)
                 # MODIFY[ID_idx].output(self._write_to_wide_word[ID_idx], 0)
                 MODIFY[ID_idx].output(self._set_wide_word_addr[ID_idx], 0)
-                MODIFY[ID_idx].output(self._sram_lock[ID_idx], 1)
+                MODIFY[ID_idx].output(self._sram_lock[ID_idx], ~self._blk_full[ID_idx])
 
             ##### Create read side fsm separately.
 
@@ -992,6 +1042,7 @@ class BuffetLike(MemoryController):
                                                                 ~self._use_cached_read[ID_idx] &
                                                                 self._read_joined & ~self._rd_rsp_fifo_almost_full &
                                                                 self._blk_valid[ID_idx] &
+                                                                ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] != self._read_word_addr[ID_idx]) | ~self._read_wide_word_valid[ID_idx]) &
                                                                 (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
                 # Pop the op fifo if there is a read that's going through or if it's a free op
                 # If it's a size request, only fulfill it if we aren't pushing a read from memory to the output fifo
@@ -1126,7 +1177,8 @@ class BuffetLike(MemoryController):
                                                     #  kts.ternary(wr_acqs[0],
                                                      kts.ternary(self._mem_acq[0] | self._sram_lock[0],
                                                                  self._write_word_addr[0],
-                                                                 self._write_word_addr[1]) + tmp_wr_base,
+                                                                #  self._write_word_addr[1]) + tmp_wr_base,
+                                                                 self._write_word_addr[1]),
                                                     #  self._rd_addr_fifo_out_addr + tmp_rd_base))
                                                      self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + tmp_rd_base))
 
