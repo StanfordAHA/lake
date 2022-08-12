@@ -92,7 +92,7 @@ def test_for_loop_dual_config(config_width,
     with tempfile.TemporaryDirectory() as tempdir:
         # tester.compile_and_run(target="system-verilog",
         #                        simulator="xcelium",
-        #                        directory=tempdir,
+        #                        directory="tempdir",
         #                        magma_output="verilog",
         #                        dump_waveforms=True,
         #                        flags=["-sv"])
