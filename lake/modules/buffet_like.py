@@ -1035,14 +1035,18 @@ class BuffetLike(MemoryController):
                 ####################
                 # RD_START
                 ####################
-                RD_START[ID_idx].output(self._pop_blk[ID_idx], (self._rd_op_fifo_out_op == 0) & self._read_joined & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
+                RD_START[ID_idx].output(self._pop_blk[ID_idx], (self._rd_op_fifo_out_op == 0) &
+                                                               self._read_joined &
+                                                               (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
                 # Guarantee there's room for the read to land (need to use almost full, not full...)
                 # RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
                 RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) &
                                                                 ~self._use_cached_read[ID_idx] &
-                                                                self._read_joined & ~self._rd_rsp_fifo_almost_full &
+                                                                self._read_joined &
+                                                                ~self._rd_rsp_fifo_almost_full &
                                                                 self._blk_valid[ID_idx] &
-                                                                ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] != self._read_word_addr[ID_idx]) | ~self._read_wide_word_valid[ID_idx]) &
+                                                                # ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] != self._read_word_addr[ID_idx]) | ~self._read_wide_word_valid[ID_idx]) &
+                                                                (((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[ID_idx] + self._buffet_base[ID_idx]) != self._read_word_addr[ID_idx]) | ~self._read_wide_word_valid[ID_idx]) &
                                                                 (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
                 # Pop the op fifo if there is a read that's going through or if it's a free op
                 # If it's a size request, only fulfill it if we aren't pushing a read from memory to the output fifo
@@ -1150,11 +1154,13 @@ class BuffetLike(MemoryController):
             # Choose which base block...
             wr_base = kts.ternary(wr_acqs[0], self._curr_base[0] + self._buffet_base[0], kts.const(0, self._curr_base[0].width))
             # rd_base = kts.ternary(rd_acqs[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
-            rd_base = kts.ternary(rd_acqs[0] | self._use_cached_read[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
+            # rd_base = kts.ternary(rd_acqs[0] | self._use_cached_read[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
+            rd_base = kts.ternary(rd_acqs[0], self._blk_base[0] + self._buffet_base[0], kts.const(0, self._blk_base[0].width))
             for i in range(self.num_ID - 1):
                 wr_base = kts.ternary(wr_acqs[i + 1], self._curr_base[i + 1] + self._buffet_base[i + 1], wr_base)
                 # rd_base = kts.ternary(rd_acqs[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
-                rd_base = kts.ternary(rd_acqs[i + 1] | self._use_cached_read[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
+                # rd_base = kts.ternary(rd_acqs[i + 1] | self._use_cached_read[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
+                rd_base = kts.ternary(rd_acqs[i + 1], self._blk_base[i + 1] + self._buffet_base[i + 1], rd_base)
             tmp_wr_base = self.var("tmp_wr_base", self._buffet_base[0].width)
             tmp_rd_base = self.var("tmp_rd_base", self._buffet_base[0].width)
             self.wire(tmp_wr_base, wr_base)
