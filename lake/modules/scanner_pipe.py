@@ -862,7 +862,10 @@ class ScannerPipe(MemoryController):
         LOOKUP.output(self._seg_res_fifo_push_alloc, ~self._crd_res_fifo_full & (self._seg_grant_push | (self._infifo_valid_in & self._infifo_eos_in)))
         # LOOKUP.output(self._seg_res_fifo_push_fill, 0)
         LOOKUP.output(self._seg_res_fifo_push_fill, self._infifo_valid_in & self._infifo_eos_in & ~self._crd_res_fifo_full)
-        LOOKUP.output(self._seg_res_fifo_fill_data_in, kts.concat(self._infifo_eos_in, self._infifo_pos_in))
+        # LOOKUP.output(self._seg_res_fifo_fill_data_in, kts.concat(self._infifo_eos_in, self._infifo_pos_in))
+        LOOKUP.output(self._seg_res_fifo_fill_data_in, kts.ternary(self._infifo_eos_in & (self._infifo_pos_in[9, 8] == kts.const(2, 2)),
+                                                                   kts.const(0, self._seg_res_fifo_fill_data_in.width),
+                                                                   kts.concat(self._infifo_eos_in, self._infifo_pos_in)))
 
         #######
         # PASS_STOP
