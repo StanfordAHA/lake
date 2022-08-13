@@ -13,10 +13,13 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.formal_attr import *
 import os
 import kratos as kts
+from _kratos import create_wrapper_flatten
+from lake.utils.util import trim_config_list
 
 
 class StrgUBThin(MemoryController):
     def __init__(self,
+                 config_mode_str="pond",
                  data_width=16,  # CGRA Params
                  mem_width=16,
                  mem_depth=32,
@@ -34,7 +37,8 @@ class StrgUBThin(MemoryController):
                  area_opt_share=False,
                  area_opt_dual_config=False,
                  delay_width=4,
-                 iterator_support2=2):
+                 iterator_support2=2  # assumes that this port has smaller iter_support
+                 ):
 
         super().__init__("strg_ub_thin", debug=True)
 
@@ -43,6 +47,7 @@ class StrgUBThin(MemoryController):
         self.ctrl_in = "in2regfile"
         self.ctrl_out = "regfile2out"
 
+        self.config_mode_str = config_mode_str
         self.fetch_width = mem_width // data_width
         self.interconnect_input_ports = interconnect_input_ports
         self.interconnect_output_ports = interconnect_output_ports
@@ -305,6 +310,9 @@ class StrgUBThin(MemoryController):
                                finished=FOR_LOOP_WRITE.ports.restart,
                                valid_output=self._write[i])
 
+                if self.area_opt_dual_config:
+                    self.wire(SCHED_WRITE.ports.mux_sel_msb_init, FOR_LOOP_WRITE.ports.mux_sel_msb_init)
+
         # Set up addr/cycle gens for output side
         for i in range(self.interconnect_output_ports):
 
@@ -368,6 +376,9 @@ class StrgUBThin(MemoryController):
                            mux_sel=FOR_LOOP_READ.ports.mux_sel_out,
                            finished=FOR_LOOP_READ.ports.restart,
                            valid_output=self._read[i])
+
+            if self.area_opt_dual_config:
+                self.wire(SCHED_READ.ports.mux_sel_msb_init, FOR_LOOP_READ.ports.mux_sel_msb_init)
 
         if self.area_opt and self.area_opt_share and i == 1:
             self.wire(self._ctrl_en, SCHED_READ.ports.valid_output)
@@ -499,15 +510,41 @@ class StrgUBThin(MemoryController):
         config = []
         in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
         out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
-        for in_ctrl in in_ctrls:
-            if in_ctrl in config_json:
-                controller_tmp = (map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl), 0)
-                config += configure_controller(prefix="", name=in_ctrl, controller=controller_tmp)
-        for out_ctrl in out_ctrls:
-            if out_ctrl in config_json:
-                controller_tmp = (map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl), 1)
-                config += configure_controller(prefix="", name=out_ctrl, controller=controller_tmp)
-        return config
+
+        if self.area_opt_dual_config:
+            controller_tmp_list = []
+            for in_ctrl in in_ctrls:
+                if in_ctrl in config_json:
+                    controller_tmp = (map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl), 0)
+                    controller_tmp_list.append(controller_tmp)
+            # smart mapping to select port based on the schedule loop dimension
+            controller_tmp_list.sort(key=lambda x: x[0].dim, reverse=True)  # sort from large dim to small
+            config += configure_controller(prefix="", name=f"{self.ctrl_in}_0", suffix="", controller=controller_tmp_list[0])
+            if len(controller_tmp_list) == 2:
+                config += configure_controller(prefix="", name=f"{self.ctrl_in}_0", suffix="2", controller=controller_tmp_list[1])
+
+            controller_tmp_list = []
+            for out_ctrl in out_ctrls:
+                if out_ctrl in config_json:
+                    controller_tmp = (map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl), 1)
+                    controller_tmp_list.append(controller_tmp)
+            controller_tmp_list.sort(key=lambda x: x[0].dim, reverse=True)
+            config += configure_controller(prefix="", name=f"{self.ctrl_out}_0", suffix="", controller=controller_tmp_list[0])
+            if len(controller_tmp_list) == 2:
+                config += configure_controller(prefix="", name=f"{self.ctrl_out}_0", suffix="2", controller=controller_tmp_list[1])
+        else:
+            for in_ctrl in in_ctrls:
+                if in_ctrl in config_json:
+                    controller_tmp = (map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl), 0)
+                    config += configure_controller(prefix="", name=in_ctrl, controller=controller_tmp)
+            for out_ctrl in out_ctrls:
+                if out_ctrl in config_json:
+                    controller_tmp = (map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl), 1)
+                    config += configure_controller(prefix="", name=out_ctrl, controller=controller_tmp)
+        print(config)
+        flattened = create_wrapper_flatten(self.internal_generator.clone(),
+                                           self.name + "_W")
+        return trim_config_list(flattened, config)
 
     def get_memory_ports(self):
         return self.base_ports
@@ -522,7 +559,7 @@ class StrgUBThin(MemoryController):
         return self.name
 
     def get_config_mode_str(self):
-        return "UB"
+        return self.config_mode_str
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ class ForLoopDualConfigModel(Model):
 
         self.config = {}
 
+        self.config["mux_sel_msb_init"] = 0
         self.config["dimensionality"] = 0
         self.config["dimensionality2"] = 0
 
@@ -37,9 +38,16 @@ class ForLoopDualConfigModel(Model):
             else:
                 self.config[key] = config_val
 
-        # a corner case to skip the other config
-        if self.config["dimensionality"] == 0:
+        if self.config["mux_sel_msb_init"] == 1:
             self.mux_sel = self.mux_sel_msb
+            self.config_sel = 1
+
+        if self.config_sel == 0 and self.config["dimensionality"] == 0:
+            self.restart = 1
+            self.config_sel = 1
+        elif self.config_sel == 1 and self.config["dimensionality2"] == 0:
+            self.restart = 1
+            self.config_sel = 0
 
     def get_dim_cnt(self):
         return self.dim_cnt
@@ -58,8 +66,19 @@ class ForLoopDualConfigModel(Model):
                 self.mux_sel = 0
             else:
                 self.mux_sel = self.mux_sel_msb
+
             for i in range(max(self.iterator_support, self.iterator_support2)):
                 self.dim_cnt[i] = 0
+
+            # a corner case to skip the other config
+            if self.config_sel == 0:
+                if self.config["dimensionality"] == 0:
+                    self.restart = 1
+                    self.config_sel = 1
+            else:
+                if self.config["dimensionality2"] == 0:
+                    self.restart = 1
+                    self.config_sel = 0
         # using the first configurations
         elif (self.config_sel == 0) and (self.config["dimensionality"] != 0):
             for i in range(self.config["dimensionality"]):
@@ -77,11 +96,7 @@ class ForLoopDualConfigModel(Model):
                     if (i + 1) == self.config["dimensionality"]:
                         self.restart = 1
                         self.mux_sel = 0
-                        # a corner case to skip the other config
-                        if self.config["dimensionality2"] != 0:
-                            self.config_sel = 1
-                        else:
-                            self.config_sel = 0
+                        self.config_sel = 1
                 else:
                     break
         # same code but uses the second configurations
@@ -100,9 +115,6 @@ class ForLoopDualConfigModel(Model):
                     if (i + 1) == self.config["dimensionality2"]:
                         self.restart = 1
                         self.mux_sel = self.mux_sel_msb
-                        if self.config["dimensionality"] != 0:
-                            self.config_sel = 0
-                        else:
-                            self.config_sel = 1
+                        self.config_sel = 0
                 else:
                     break

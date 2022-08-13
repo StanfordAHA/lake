@@ -11,13 +11,15 @@ import random as rand
 
 
 @pytest.mark.parametrize("config_width", [16])
-@pytest.mark.parametrize("iterator_support", [2, 4])
-@pytest.mark.parametrize("iterator_support2", [2, 4])
+@pytest.mark.parametrize("iterator_support", [4])
+@pytest.mark.parametrize("iterator_support2", [2])
+@pytest.mark.parametrize("mux_sel_msb_init", [0, 1])
 @pytest.mark.parametrize("test_cases", [1000])
-@pytest.mark.parametrize("test_seed", [0])
+@pytest.mark.parametrize("test_seed", [0, 6])
 def test_for_loop_dual_config(config_width,
                               iterator_support,
                               iterator_support2,
+                              mux_sel_msb_init,
                               test_cases,
                               test_seed):
 
@@ -28,14 +30,15 @@ def test_for_loop_dual_config(config_width,
     rand.seed(test_seed)
 
     config_dict = {}
-    config_dict["dimensionality"] = rand.randint(0, iterator_support)
+    config_dict["mux_sel_msb_init"] = mux_sel_msb_init
+    config_dict["dimensionality"] = iterator_support
     for i in range(iterator_support):
         # avoid large ranges that only test 1 of the config
         config_dict[f"ranges_{i}"] = rand.randint(0, 2 ** 5)
         if i > 0:
             config_dict[f"ranges_{i}"] = 0
 
-    config_dict["dimensionality2"] = rand.randint(0, iterator_support2)
+    config_dict["dimensionality2"] = iterator_support2
     for i in range(iterator_support2):
         # avoid large ranges that only test 1 of the config
         config_dict[f"ranges2_{i}"] = rand.randint(0, 2 ** 5)
@@ -49,10 +52,14 @@ def test_for_loop_dual_config(config_width,
                   dual_config=True,
                   iterator_support2=iterator_support2)
 
+    dut.add_attribute("sync-reset=flush")
+    k.passes.auto_insert_sync_reset(dut.internal_generator)
+
     magma_dut = k.util.to_magma(dut, flatten_array=True,
                                 check_flip_flop_always_ff=False)
     tester = fault.Tester(magma_dut, magma_dut.clk)
 
+    tester.circuit.mux_sel_msb_init = config_dict["mux_sel_msb_init"]
     tester.circuit.dimensionality = config_dict["dimensionality"]
     tester.circuit.ranges_0 = config_dict["ranges_0"]
     if iterator_support > 1:
@@ -81,10 +88,21 @@ def test_for_loop_dual_config(config_width,
     tester.eval()
     tester.step(2)
 
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
+    tester.eval()
+    tester.step(2)
+
     for i in range(test_cases):
         tester.circuit.step = 1
+        tester.eval()
         tester.circuit.mux_sel_out.expect(model_id.get_mux_sel())
         tester.circuit.restart.expect(model_id.get_restart())
+        print(model_id.get_restart())
+        print(model_id.get_mux_sel())
+        print(model_id.get_dim_cnt())
         model_id.step()
         tester.eval()
         tester.step(2)

@@ -58,6 +58,9 @@ class AddrGen(Generator):
             self._starting_addr2.add_attribute(ConfigRegAttr("Starting address of address generator"))
             self._starting_addr2.add_attribute(FormalAttr(f"{self._starting_addr2.name}", FormalSignalConstraint.SOLVE))
 
+            self._mux_sel_msb_init = self.output("mux_sel_msb_init", 1)
+            self.wire(self._mux_sel_msb_init, self._starting_addr2 < self._starting_addr)
+
         self._step = self.input("step", 1)
 
         if self.dual_config:

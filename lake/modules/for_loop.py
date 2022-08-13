@@ -58,6 +58,10 @@ class ForLoop(Generator):
             self._dimensionality2.add_attribute(ConfigRegAttr("Dimensionality of address generator"))
             self._dimensionality2.add_attribute(FormalAttr(f"{self._dimensionality2.name}", FormalSignalConstraint.SOLVE))
 
+            self._mux_sel_msb_init = self.input("mux_sel_msb_init", 1)
+            self._flush = self.input("flush", 1)
+            self.add_attribute("sync-reset=flush")
+
         self._step = self.input("step", 1)
         # OUTPUTS
 
@@ -212,6 +216,8 @@ class ForLoop(Generator):
     def mux_sel_mbs_r_update(self):
         if ~self._rst_n:
             self._mux_sel_msb_r = 0
+        elif self._flush:
+            self._mux_sel_msb_r = self._mux_sel_msb_init
         elif self._restart:
             self._mux_sel_msb_r = ~self._mux_sel_msb_r
 
