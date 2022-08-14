@@ -159,19 +159,39 @@ class StrgUBThin(MemoryController):
         self.add_code(self.increment_cycle_count)
 
         # local variables
-        self._write = self.var("write", self.interconnect_input_ports)
-        self._read = self.var("read", self.interconnect_output_ports)
+        if self.area_opt and self.area_opt_dual_config:
+            self._write = self.var("write", 1)
+            self._read = self.var("read", 1)
+            self._write_mux_sel_msb = self.var("write_mux_sel_msb", 1)
+            self._read_mux_sel_msb = self.var("read_mux_sel_msb", 1)
+        else:
+            self._write = self.var("write", self.interconnect_input_ports)
+            self._read = self.var("read", self.interconnect_output_ports)
+
         self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
-        self.wire(self._accessor_output, self._read)
+        if self.area_opt and self.area_opt_dual_config:
+            self.wire(self._accessor_output[0], self._read & ~self._read_mux_sel_msb)
+            self.wire(self._accessor_output[1], self._read & self._read_mux_sel_msb)
+        else:
+            self.wire(self._accessor_output, self._read)
 
         self._valid_out = self.output("valid_out", self.interconnect_output_ports)
         self._valid_out_int = self.var("valid_out_int", self.interconnect_output_ports)
         if self.read_delay == 1:
-            self._read_d1 = self.var("read_d1", self.interconnect_output_ports)
+            if self.area_opt and self.area_opt_dual_config:
+                self._read_d1 = self.var("read_d1", 1)
+                self.wire(self._valid_out_int[0], self._read_d1 & ~self._read_mux_sel_msb)
+                self.wire(self._valid_out_int[1], self._read_d1 & self._read_mux_sel_msb)
+            else:
+                self._read_d1 = self.var("read_d1", self.interconnect_output_ports)
+                self.wire(self._valid_out_int, self._read_d1)
             self.add_code(self.delay_read)
-            self.wire(self._valid_out_int, self._read_d1)
         else:
-            self.wire(self._valid_out_int, self._read)
+            if self.area_opt and self.area_opt_dual_config:
+                self.wire(self._valid_out_int[0], self._read & ~self._read_mux_sel_msb)
+                self.wire(self._valid_out_int[1], self._read & self._read_mux_sel_msb)
+            else:
+                self.wire(self._valid_out_int, self._read)
 
         self._data_out_int = self.var("data_out_int", self.data_width,
                                       size=self.interconnect_output_ports,
@@ -196,8 +216,12 @@ class StrgUBThin(MemoryController):
 
         self.wire(self._valid_out, self._valid_out_int)
 
-        self._write_addr = self.var("write_addr", self.addr_width, size=self.interconnect_input_ports, explicit_array=True)
-        self._read_addr = self.var("read_addr", self.addr_width, size=self.interconnect_output_ports, explicit_array=True)
+        if self.area_opt and self.area_opt_dual_config:
+            self._write_addr = self.var("write_addr", self.addr_width)
+            self._read_addr = self.var("read_addr", self.addr_width)
+        else:
+            self._write_addr = self.var("write_addr", self.addr_width, size=self.interconnect_input_ports, explicit_array=True)
+            self._read_addr = self.var("read_addr", self.addr_width, size=self.interconnect_output_ports, explicit_array=True)
         self._addr = self.var("addr", clog2(self.mem_depth))
 
         # Set up addr/cycle gens for input side
@@ -297,8 +321,7 @@ class StrgUBThin(MemoryController):
                                rst_n=self._rst_n,
                                step=self._write[i],
                                mux_sel=FOR_LOOP_WRITE.ports.mux_sel_out,
-                               restart=FOR_LOOP_WRITE.ports.restart,
-                               addr_out=self._write_addr[i])
+                               restart=FOR_LOOP_WRITE.ports.restart)
 
                 # scheduler modules
                 self.add_child(f"{self.ctrl_in}_{i}_sched_gen",
@@ -310,8 +333,13 @@ class StrgUBThin(MemoryController):
                                finished=FOR_LOOP_WRITE.ports.restart,
                                valid_output=self._write[i])
 
-                if self.area_opt_dual_config:
+                if self.area_opt and self.area_opt_dual_config:
+                    self.wire(self._write_addr, ADDR_WRITE.ports.addr_out)
                     self.wire(SCHED_WRITE.ports.mux_sel_msb_init, FOR_LOOP_WRITE.ports.mux_sel_msb_init)
+                    self.wire(self._write_mux_sel_msb,
+                              FOR_LOOP_WRITE.ports.mux_sel_out[FOR_LOOP_WRITE.ports.mux_sel_out.width - 1])
+                else:
+                    self.wire(self._write_addr[i], ADDR_WRITE.ports.addr_out)
 
         # Set up addr/cycle gens for output side
         for i in range(self.interconnect_output_ports):
@@ -365,8 +393,7 @@ class StrgUBThin(MemoryController):
                            rst_n=self._rst_n,
                            step=self._read[i],
                            mux_sel=FOR_LOOP_READ.ports.mux_sel_out,
-                           restart=FOR_LOOP_READ.ports.restart,
-                           addr_out=self._read_addr[i])
+                           restart=FOR_LOOP_READ.ports.restart)
 
             self.add_child(f"{self.ctrl_out}_{i}_sched_gen",
                            SCHED_READ,
@@ -377,8 +404,13 @@ class StrgUBThin(MemoryController):
                            finished=FOR_LOOP_READ.ports.restart,
                            valid_output=self._read[i])
 
-            if self.area_opt_dual_config:
+            if self.area_opt and self.area_opt_dual_config:
+                self.wire(self._read_addr, ADDR_READ.ports.addr_out)
                 self.wire(SCHED_READ.ports.mux_sel_msb_init, FOR_LOOP_READ.ports.mux_sel_msb_init)
+                self.wire(self._read_mux_sel_msb,
+                          FOR_LOOP_READ.ports.mux_sel_out[FOR_LOOP_READ.ports.mux_sel_out.width - 1])
+            else:
+                self.wire(self._read_addr[i], ADDR_READ.ports.addr_out)
 
         if self.area_opt and self.area_opt_share and i == 1:
             self.wire(self._ctrl_en, SCHED_READ.ports.valid_output)
@@ -403,30 +435,47 @@ class StrgUBThin(MemoryController):
             # Handle write side....
             # Send the address/data based on the lowest writer on the port
             self._wr_addr_to_sram = self.output("wr_addr_out", clog2(self.mem_depth), packed=True)
-            pri_enc_wr = get_priority_encode(self, self._write)
-            self.wire(self._wr_addr_to_sram, self._write_addr[pri_enc_wr][clog2(self.mem_depth) - 1, 0])
-            self.wire(self._data_to_sram, self._data_in[pri_enc_wr])
+            if self.area_opt and self.area_opt_dual_config:
+                pri_enc_wr = self._write_mux_sel_msb
+                self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
+                self.wire(self._data_to_sram, self._data_in[pri_enc_wr])
+            else:
+                pri_enc_wr = get_priority_encode(self, self._write)
+                self.wire(self._wr_addr_to_sram, self._write_addr[pri_enc_wr][clog2(self.mem_depth) - 1, 0])
+                self.wire(self._data_to_sram, self._data_in[pri_enc_wr])
 
             # Read side...
-            pri_enc_rd = get_priority_encode(self, self._read)
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
-            self.wire(self._rd_addr_to_sram, self._read_addr[pri_enc_rd][clog2(self.mem_depth) - 1, 0])
+            if self.area_opt and self.area_opt_dual_config:
+                self.wire(self._rd_addr_to_sram, self._read_addr[clog2(self.mem_depth) - 1, 0])
+            else:
+                pri_enc_rd = get_priority_encode(self, self._read)
+                self.wire(self._rd_addr_to_sram, self._read_addr[pri_enc_rd][clog2(self.mem_depth) - 1, 0])
 
             self.base_ports = [[None, None]]
             tmp0_rdaddr = self.output("tmp0_rdaddr", width=self._rd_addr_to_sram.width)
             tmp0_rden = self.output("tmp0_rden", width=self._ren_to_sram.width)
             self.wire(tmp0_rdaddr, kts.const(0, width=self._rd_addr_to_sram.width))
             self.wire(tmp0_rden, kts.const(0, width=self._ren_to_sram.width))
-            rw_port = MemoryPort(MemoryPortType.READWRITE)
-            rw_port_intf = rw_port.get_port_interface()
-            rw_port_intf['data_in'] = self._data_to_sram
-            rw_port_intf['data_out'] = None
-            rw_port_intf['write_addr'] = self._wr_addr_to_sram
-            rw_port_intf['write_enable'] = self._wen_to_sram
-            rw_port_intf['read_addr'] = tmp0_rdaddr
-            rw_port_intf['read_enable'] = tmp0_rden
-            rw_port.annotate_port_signals()
-            self.base_ports[0][0] = rw_port
+            if self.area_opt and self.area_opt_dual_config:
+                w_port = MemoryPort(MemoryPortType.WRITE)
+                w_port_intf = w_port.get_port_interface()
+                w_port_intf['data_in'] = self._data_to_sram
+                w_port_intf['write_addr'] = self._wr_addr_to_sram
+                w_port_intf['write_enable'] = self._wen_to_sram
+                w_port.annotate_port_signals()
+                self.base_ports[0][0] = w_port
+            else:
+                rw_port = MemoryPort(MemoryPortType.READWRITE)
+                rw_port_intf = rw_port.get_port_interface()
+                rw_port_intf['data_in'] = self._data_to_sram
+                rw_port_intf['data_out'] = None
+                rw_port_intf['write_addr'] = self._wr_addr_to_sram
+                rw_port_intf['write_enable'] = self._wen_to_sram
+                rw_port_intf['read_addr'] = tmp0_rdaddr
+                rw_port_intf['read_enable'] = tmp0_rden
+                rw_port.annotate_port_signals()
+                self.base_ports[0][0] = rw_port
             # Populate second port as just R
             r_port = MemoryPort(MemoryPortType.READ)
             r_port_intf = r_port.get_port_interface()
@@ -511,7 +560,7 @@ class StrgUBThin(MemoryController):
         in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
         out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
 
-        if self.area_opt_dual_config:
+        if self.area_opt and self.area_opt_dual_config:
             controller_tmp_list = []
             for in_ctrl in in_ctrls:
                 if in_ctrl in config_json:

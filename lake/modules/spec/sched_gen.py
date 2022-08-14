@@ -98,12 +98,13 @@ class SchedGen(Generator):
 
         # PORT DEFS: end
 
-        self.add_child(f"sched_addr_gen",
-                       AddrGen(iterator_support=self.iterator_support,
-                               config_width=self.config_width,
-                               dual_config=self.dual_config,
-                               iterator_support2=self.iterator_support2),
+        ADDR_GEN = AddrGen(iterator_support=self.iterator_support,
+                           config_width=self.config_width,
+                           dual_config=self.dual_config,
+                           iterator_support2=self.iterator_support2)
 
+        self.add_child(f"sched_addr_gen",
+                       ADDR_GEN,
                        clk=self._clk,
                        rst_n=self._rst_n,
                        step=self._valid_out,
@@ -112,7 +113,7 @@ class SchedGen(Generator):
                        restart=self._finished)
 
         if self.dual_config:
-            self.wire(self._mux_sel_msb_init, AddrGen.ports.mux_sel_msb_init)
+            self.wire(self._mux_sel_msb_init, ADDR_GEN.ports.mux_sel_msb_init)
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
