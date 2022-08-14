@@ -70,7 +70,11 @@ class Scanner(MemoryController):
 
         # Repeat inner or outer
         self._repeat_factor = self.input("repeat_factor", 16)
-        self._repeat_factor.add_attribute(ConfigRegAttr("How many times this scanner should repeat inside or outside"))
+        self._repeat_factor.add_attribute(ConfigRegAttr("How many times this scanner should repeat/hold onto the data"))
+
+        self._inc_repeat_ctr = self.var("inc_repeat_ctr", 1)
+        self._clr_repeat_ctr = self.var("clr_repeat_ctr", 1)
+        self._repeat_ctr = add_counter(self, "repeat_counter", 16, increment=self._inc_repeat_ctr, clear=self._clr_repeat_ctr)
 
         self._block_mode = self.input("block_mode", 1)
         self._block_mode.add_attribute(ConfigRegAttr("Performing block reads"))

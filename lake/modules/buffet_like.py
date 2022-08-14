@@ -1397,10 +1397,14 @@ class BuffetLike(MemoryController):
     def get_config_mode_str(self):
         return "buffet"
 
-    def get_bitstream(self, capacity_0=1024, capacity_1=1024):
+    # def get_bitstream(self, capacity_0=1024, capacity_1=1024):
+    def get_bitstream(self, config_kwargs):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
+
+        capacity_0 = config_kwargs['capacity_0']
+        capacity_1 = config_kwargs['capacity_1']
 
         # Store all configurations here
         config = [

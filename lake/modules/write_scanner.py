@@ -1047,10 +1047,16 @@ class WriteScanner(MemoryController):
         return "write_scanner"
 
     # def get_bitstream(self, inner_offset, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
-    def get_bitstream(self, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
+    # def get_bitstream(self, compressed=0, lowest_level=0, stop_lvl=0, block_mode=0):
+    def get_bitstream(self, config_kwargs):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
+
+        compressed = config_kwargs['compressed']
+        lowest_level = config_kwargs['lowest_level']
+        stop_lvl = config_kwargs['stop_lvl']
+        block_mode = config_kwargs['block_mode']
 
         # Store all configurations here
         config = [

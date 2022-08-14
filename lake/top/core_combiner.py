@@ -335,7 +335,7 @@ if __name__ == "__main__":
                              defer_fifos=True)
 
     strg_ub = StrgUBVec(data_width=data_width, mem_width=mem_width, mem_depth=mem_depth)
-    buffet = BuffetLike(data_width=data_width, mem_depth=mem_depth, local_memory=False)
+    buffet = BuffetLike(data_width=data_width, mem_depth=mem_depth, local_memory=False, optimize_wide=True)
 
     strg_ram = StrgRAM(data_width=data_width,
                        banks=banks,
@@ -349,13 +349,13 @@ if __name__ == "__main__":
 
     stencil_valid = StencilValid()
 
-    controllers.append(scan)
-    controllers.append(isect)
+    # controllers.append(scan)
+    # controllers.append(isect)
     # controllers.append(fib_access)
-    controllers.append(strg_ub)
-    # controllers.append(buffet)
-    controllers.append(stencil_valid)
-    controllers.append(strg_ram)
+    # controllers.append(strg_ub)
+    controllers.append(buffet)
+    # controllers.append(stencil_valid)
+    # controllers.append(strg_ram)
 
     isect = Intersect(data_width=16,
                       use_merger=False,
