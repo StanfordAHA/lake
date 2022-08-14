@@ -109,8 +109,10 @@ class SchedGen(Generator):
                        step=self._valid_out,
                        mux_sel=self._mux_sel,
                        addr_out=self._addr_out,
-                       restart=self._finished,
-                       mux_sel_msb_init=self._mux_sel_msb_init)
+                       restart=self._finished)
+
+        if self.dual_config:
+            self.wire(self._mux_sel_msb_init, AddrGen.ports.mux_sel_msb_init)
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
