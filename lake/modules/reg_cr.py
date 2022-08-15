@@ -19,13 +19,14 @@ class Reg(MemoryController):
                  add_dispatcher=False,
                  dispatcher_size=2,
                  fifo_depth=8,
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 add_flush=False):
 
         super().__init__("reg_cr", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
-        self.add_flush = True
+        self.add_flush = add_flush
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
 
@@ -469,7 +470,10 @@ class Reg(MemoryController):
         return "reduce"
 
     # No actual config at this level
-    def get_bitstream(self, stop_lvl):
+    # def get_bitstream(self, stop_lvl):
+    def get_bitstream(self, config_kwargs):
+
+        stop_lvl = config_kwargs['stop_lvl']
 
         # Store all configurations here
         config = [("tile_en", 1),

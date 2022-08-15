@@ -75,7 +75,11 @@ class CrdDrop(MemoryController):
             # Finally, lift the config regs...
             lift_config_reg(self.internal_generator)
 
-    def get_bitstream(self, cmrg_enable=0, cmrg_stop_lvl=0):
+    # def get_bitstream(self, cmrg_enable=0, cmrg_stop_lvl=0):
+    def get_bitstream(self, config_kwargs):
+
+        cmrg_enable = config_kwargs['cmrg_enable']
+        cmrg_stop_lvl = config_kwargs['cmrg_stop_lvl']
 
         # Store all configurations here
         config = [("tile_en", 1)]

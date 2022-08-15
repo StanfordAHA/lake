@@ -18,13 +18,14 @@ class WriteScanner(MemoryController):
     def __init__(self,
                  data_width=16,
                  fifo_depth=8,
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 add_flush=False):
 
         super().__init__("write_scanner", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
-        self.add_flush = True
+        self.add_flush = add_flush
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
 

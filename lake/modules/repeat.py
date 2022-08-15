@@ -17,13 +17,14 @@ class Repeat(MemoryController):
     def __init__(self,
                  data_width=16,
                  fifo_depth=8,
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 add_flush=False):
 
         super().__init__("Repeat", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
-        self.add_flush = True
+        self.add_flush = add_flush
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
 
@@ -393,7 +394,11 @@ class Repeat(MemoryController):
     def get_config_mode_str(self):
         return "repeat"
 
-    def get_bitstream(self, stop_lvl=0, root=0):
+#     def get_bitstream(self, stop_lvl=0, root=0):
+    def get_bitstream(self, config_kwargs):
+
+        stop_lvl = config_kwargs['stop_lvl']
+        root = config_kwargs['root']
 
         # Store all configurations here
         config = [("tile_en", 1),

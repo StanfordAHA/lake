@@ -18,7 +18,7 @@ class RegFIFO(Generator):
                  defer_hrdwr_gen=False,
                  min_depth=0):
 
-        super().__init__(f"reg_fifo_depth_{depth}_w_{data_width}", debug=True)
+        super().__init__(f"reg_fifo_depth_{depth}_w_{data_width}_afd_{almost_full_diff}", debug=True)
 
         # self.data_width = self.parameter("data_width", 16)
         # self.data_width.value = data_width
@@ -204,12 +204,12 @@ class RegFIFO(Generator):
         assert new_depth >= self.min_depth, f"Minimum allowed depth {self.min_depth}: Tried to use {new_depth}"
         self.depth = new_depth
         self.ptr_width = max(1, clog2(self.depth))
-        self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}"
+        self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}"
 
     def generate_hardware(self):
         # Routine to do the real hardware generation once the
         # parameters have been finalized
-        self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}"
+        self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}"
 
         # Depth of 0 is basically passthru...
         if self.depth == 0:

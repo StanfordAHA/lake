@@ -28,13 +28,14 @@ class BuffetLike(MemoryController):
                  fifo_depth=8,
                  tech_map=TSMC_Tech_Map(depth=512, width=32),
                  defer_fifos=True,
-                 optimize_wide=False):
+                 optimize_wide=False,
+                 add_flush=False):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
-        self.add_flush = True
+        self.add_flush = add_flush
         self.num_ID = num_ID
         self.mem_width = mem_width
         self.mem_depth = mem_depth
@@ -340,13 +341,31 @@ class BuffetLike(MemoryController):
             self.mem_addr_bit_range_outer = (self.data_width - 1, self.wide_num_word_bits)
             self.mem_addr_bit_range_inner = (self.wide_num_word_bits - 1, 0)
 
+            # Only use based on the mem depth
+            self.mem_addr_width = kts.clog2(self.mem_depth)
+            self.addr_addressing_bits = (self.mem_addr_width - 1, 0)
+
             # Create local memory interface...
             # self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
-            self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True)
-            self._data_to_mem = self.var("data_to_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
-            self._data_from_mem = self.var("data_from_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
-            self._wen_to_mem = self.var("wen_to_mem", 1)
-            self._ren_to_mem = self.var("ren_to_mem", 1)
+            if self.local_memory:
+                self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True)
+                self._addr_to_mem_save = self._addr_to_mem
+                self._data_to_mem = self.var("data_to_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
+                self._data_from_mem = self.var("data_from_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
+                self._wen_to_mem = self.var("wen_to_mem", 1)
+                self._ren_to_mem = self.var("ren_to_mem", 1)
+            else:
+                # self._addr_to_mem = self.output("addr_to_mem", self.mem_addr_width, packed=True)
+                # Do a width bypassing trick...
+                self._addr_to_mem = self.output("addr_to_mem", self.mem_addr_width, packed=True)
+                self._addr_to_mem_save = self._addr_to_mem
+                self._addr_to_mem_local = self.var("addr_to_mem_local", self.data_width, packed=True)
+                self.wire(self._addr_to_mem, self._addr_to_mem_local[self.addr_addressing_bits])
+                self._addr_to_mem = self._addr_to_mem_local
+                self._data_to_mem = self.output("data_to_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
+                self._data_from_mem = self.input("data_from_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
+                self._wen_to_mem = self.output("wen_to_mem", 1)
+                self._ren_to_mem = self.output("ren_to_mem", 1)
 
             # Represents the final addr destination for this grouped word
             self._set_wide_word_addr = [self.var(f"set_wide_word_addr_{idx}", 1) for idx in range(self.num_ID)]
@@ -531,43 +550,41 @@ class BuffetLike(MemoryController):
                 'mem_depth': self.mem_depth
             }
 
-            # Create the memory interface based on different params
-            mem_ports = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
-
-            self.mem_intf = MemoryInterface(name="memory_mod",
-                                            mem_params=memory_params,
-                                            ports=mem_ports,
-                                            sim_macro_n=not self.physical_mem,
-                                            reset_in_sim=True,
-                                            tech_map=self.tech_map)
-            # Realize the hardware implementation then add it as a child and wire it up...
-            self.mem_intf.realize_hw()
-            self.add_child('memory_stub',
-                           self.mem_intf)
-
-            actual_mem_port_interface = self.mem_intf.get_ports()[0].get_port_interface()
-
-            self.addr_addressing_bits = (kts.clog2(self.mem_depth) - 1, 0)
-
             self.base_ports = [[None]]
             rw_port = MemoryPort(MemoryPortType.READWRITE)
             rw_port_intf = rw_port.get_port_interface()
             rw_port_intf['data_in'] = self._data_to_mem
             rw_port_intf['data_out'] = self._data_from_mem
-            rw_port_intf['write_addr'] = self._addr_to_mem[self.addr_addressing_bits]
+            rw_port_intf['write_addr'] = self._addr_to_mem_save[self.addr_addressing_bits]
             rw_port_intf['write_enable'] = self._wen_to_mem
-            rw_port_intf['read_addr'] = self._addr_to_mem[self.addr_addressing_bits]
+            rw_port_intf['read_addr'] = self._addr_to_mem_save[self.addr_addressing_bits]
             rw_port_intf['read_enable'] = self._ren_to_mem
             rw_port.annotate_port_signals()
             self.base_ports[0][0] = rw_port
-            # print(actual_mem_port_interface)
 
-            self.wire(self._gclk, self.mem_intf.get_clock())
-            if not self.physical_mem:
-                self.wire(self._rst_n, self.mem_intf.get_reset())
+            if self.local_memory:
+                # Create the memory interface based on different params
+                mem_ports = [MemoryPort(MemoryPortType.READWRITE, delay=1, active_read=True)]
 
-            for pname, psignal in rw_port_intf.items():
-                self.wire(psignal, actual_mem_port_interface[pname])
+                self.mem_intf = MemoryInterface(name="memory_mod",
+                                                mem_params=memory_params,
+                                                ports=mem_ports,
+                                                sim_macro_n=not self.physical_mem,
+                                                reset_in_sim=True,
+                                                tech_map=self.tech_map)
+                # Realize the hardware implementation then add it as a child and wire it up...
+                self.mem_intf.realize_hw()
+                self.add_child('memory_stub',
+                            self.mem_intf)
+
+                actual_mem_port_interface = self.mem_intf.get_ports()[0].get_port_interface()
+
+                self.wire(self._gclk, self.mem_intf.get_clock())
+                if not self.physical_mem:
+                    self.wire(self._rst_n, self.mem_intf.get_reset())
+
+                for pname, psignal in rw_port_intf.items():
+                    self.wire(psignal, actual_mem_port_interface[pname])
 
         elif self.local_memory is False:
             # Need interface to remote memory...
@@ -1421,6 +1438,8 @@ if __name__ == "__main__":
                             physical_mem=True,
                             defer_fifos=False,
                             mem_width=64,
+                            local_memory=False,
+                            add_flush=True,
                             optimize_wide=True)
 
     # Lift config regs and generate annotation

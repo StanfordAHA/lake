@@ -22,13 +22,14 @@ class OnyxPE(MemoryController):
                  defer_fifos=True,
                  ext_pe_prefix="PG_",
                  pe_ro=True,
-                 do_config_lift=False):
+                 do_config_lift=False,
+                 add_flush=False):
 
         super().__init__("PE_onyx", debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = True
-        self.add_flush = True
+        self.add_flush = add_flush
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
         self.ext_pe_prefix = ext_pe_prefix
@@ -172,6 +173,8 @@ class OnyxPE(MemoryController):
         self.wire(self._infifo_out_data[1], self._infifo_out_packed[1][self.data_width - 1, 0])
 
         # Push when there's incoming transaction and room to accept it
+        # Do this separate naming scheme so that the get_fifos function in the MemoryController
+        # base class will pick them up properly
         self._infifo_push = [self.var(f"infifo_push_{i}", 1) for i in range(2)]
         self.wire(self._infifo_push[0], self._data_in_valid_in[0])
         self.wire(self._infifo_push[1], self._data_in_valid_in[1])
@@ -315,10 +318,13 @@ class OnyxPE(MemoryController):
     def get_config_mode_str(self):
         return "alu"
 
-    def get_bitstream(self, op):
+    # def get_bitstream(self, op):
+    def get_bitstream(self, config_kwargs):
 
         # Store all configurations here
         config = [("tile_en", 1)]
+
+        op = config_kwargs['op']
 
         sub_config = self.my_alu.get_bitstream(op)
         for config_tuple in sub_config:
