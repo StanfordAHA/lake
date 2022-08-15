@@ -1008,12 +1008,17 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             if 'out' not in name:
                 mux_comb.add_stmt(port.assign(0))
 
+        print("Printing mode map...")
+        print(self.ctrl_to_mode)
+
         if mux_size > 0:
             prev_stmt = None
             ctrl_intf = {}
 
             # Go through each signal in the memory port
             for (idx, (ctrl_name, ctrl_port)) in enumerate(ctrl_ports.items()):
+                print(ctrl_name)
+                # exit()
                 ctrl_intf = ctrl_port.get_port_interface()
                 # Broadcast the outputs
                 for bc_sign in bc_list:
@@ -1023,12 +1028,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 # Mux in the inputs
                 if idx == 0:
                     # first_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
-                    first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
+                    # first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
+                    first_if = mux_comb.if_(self._mode == kts.const(self.ctrl_to_mode[ctrl_name], width=self._mode.width))
                     first_if.then_(*ass_stmt)
                     self.mem_port_mux_if[local_port] = first_if
                     prev_stmt = first_if
                 else:
-                    chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
+                    chain_if = IfStmt(self._mode == kts.const(self.ctrl_to_mode[ctrl_name], width=self._mode.width))
                     chain_if.then_(*ass_stmt)
                     prev_stmt.else_(chain_if)
                     prev_stmt = chain_if
