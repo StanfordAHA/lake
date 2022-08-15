@@ -457,25 +457,16 @@ class StrgUBThin(MemoryController):
             tmp0_rden = self.output("tmp0_rden", width=self._ren_to_sram.width)
             self.wire(tmp0_rdaddr, kts.const(0, width=self._rd_addr_to_sram.width))
             self.wire(tmp0_rden, kts.const(0, width=self._ren_to_sram.width))
-            if self.area_opt and self.area_opt_dual_config:
-                w_port = MemoryPort(MemoryPortType.WRITE)
-                w_port_intf = w_port.get_port_interface()
-                w_port_intf['data_in'] = self._data_to_sram
-                w_port_intf['write_addr'] = self._wr_addr_to_sram
-                w_port_intf['write_enable'] = self._wen_to_sram
-                w_port.annotate_port_signals()
-                self.base_ports[0][0] = w_port
-            else:
-                rw_port = MemoryPort(MemoryPortType.READWRITE)
-                rw_port_intf = rw_port.get_port_interface()
-                rw_port_intf['data_in'] = self._data_to_sram
-                rw_port_intf['data_out'] = None
-                rw_port_intf['write_addr'] = self._wr_addr_to_sram
-                rw_port_intf['write_enable'] = self._wen_to_sram
-                rw_port_intf['read_addr'] = tmp0_rdaddr
-                rw_port_intf['read_enable'] = tmp0_rden
-                rw_port.annotate_port_signals()
-                self.base_ports[0][0] = rw_port
+            rw_port = MemoryPort(MemoryPortType.READWRITE)
+            rw_port_intf = rw_port.get_port_interface()
+            rw_port_intf['data_in'] = self._data_to_sram
+            rw_port_intf['data_out'] = None
+            rw_port_intf['write_addr'] = self._wr_addr_to_sram
+            rw_port_intf['write_enable'] = self._wen_to_sram
+            rw_port_intf['read_addr'] = tmp0_rdaddr
+            rw_port_intf['read_enable'] = tmp0_rden
+            rw_port.annotate_port_signals()
+            self.base_ports[0][0] = rw_port
             # Populate second port as just R
             r_port = MemoryPort(MemoryPortType.READ)
             r_port_intf = r_port.get_port_interface()
@@ -560,7 +551,7 @@ class StrgUBThin(MemoryController):
         in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
         out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
 
-        if self.area_opt and self.area_opt_dual_config:
+        if self.area_opt:
             controller_tmp_list = []
             for in_ctrl in in_ctrls:
                 if in_ctrl in config_json:
@@ -570,7 +561,10 @@ class StrgUBThin(MemoryController):
             controller_tmp_list.sort(key=lambda x: x[0].dim, reverse=True)  # sort from large dim to small
             config += configure_controller(prefix="", name=f"{self.ctrl_in}_0", suffix="", controller=controller_tmp_list[0])
             if len(controller_tmp_list) == 2:
-                config += configure_controller(prefix="", name=f"{self.ctrl_in}_0", suffix="2", controller=controller_tmp_list[1])
+                if self.area_opt_dual_config:
+                    config += configure_controller(prefix="", name=f"{self.ctrl_in}_0", suffix="2", controller=controller_tmp_list[1])
+                else:
+                    config += configure_controller(prefix="", name=f"{self.ctrl_in}_1", suffix="", controller=controller_tmp_list[1])
 
             controller_tmp_list = []
             for out_ctrl in out_ctrls:
@@ -580,7 +574,10 @@ class StrgUBThin(MemoryController):
             controller_tmp_list.sort(key=lambda x: x[0].dim, reverse=True)
             config += configure_controller(prefix="", name=f"{self.ctrl_out}_0", suffix="", controller=controller_tmp_list[0])
             if len(controller_tmp_list) == 2:
-                config += configure_controller(prefix="", name=f"{self.ctrl_out}_0", suffix="2", controller=controller_tmp_list[1])
+                if self.area_opt_dual_config:
+                    config += configure_controller(prefix="", name=f"{self.ctrl_out}_0", suffix="2", controller=controller_tmp_list[1])
+                else:
+                    config += configure_controller(prefix="", name=f"{self.ctrl_out}_1", suffix="", controller=controller_tmp_list[1])
         else:
             for in_ctrl in in_ctrls:
                 if in_ctrl in config_json:

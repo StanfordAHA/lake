@@ -14,13 +14,10 @@ add_clk_enable = True
 add_flush = True
 
 
-# @pytest.mark.parametrize("pond_area_opt", [True, False])
-# @pytest.mark.parametrize("pond_area_opt_share", [True, False])
-# @pytest.mark.parametrize("pond_area_opt_dual_config", [True, False])
 @pytest.mark.parametrize("num_ports", [2])
 @pytest.mark.parametrize("pond_area_opt", [True])
-@pytest.mark.parametrize("pond_area_opt_share", [False])
-@pytest.mark.parametrize("pond_area_opt_dual_config", [True])
+@pytest.mark.parametrize("pond_area_opt_share", [False])  # shared not tested
+@pytest.mark.parametrize("pond_area_opt_dual_config", [True, False])
 def test_pond_strg_ub_thin(num_ports,
                            pond_area_opt,
                            pond_area_opt_share,
@@ -50,13 +47,6 @@ def test_pond_strg_ub_thin(num_ports,
                        add_flush=add_flush,
                        stencil_valid=False,
                        name="PondTop")
-
-    # config_file = "/aha/lake/pond_test.json"
-    # # config_file = "/aha/Halide-to-Hardware/apps/hardware_benchmarks/apps/resnet_output_stationary/bin/design_top.json"
-    # with open(config_file) as f:
-    #     config_data = json.load(f)
-    #     # config_data = config_data["namespaces"]["global"]["modules"]["kernel_cgra_stencil_ub"]["instances"]["ub_kernel_cgra_stencil_BANK_0_garnet"]
-    #     pond_config = pond_dut.dut.get_bitstream(config_json=config_data)
 
     config_data = {"ID": "_U133",
                    "config": {"in2regfile_0": {"cycle_starting_addr": [1],
@@ -123,29 +113,38 @@ def test_pond_strg_ub_thin(num_ports,
     valid_in = [0] * interconnect_input_ports
     for i in range(150):
 
-        if i < 4:
-            setattr(tester.circuit, f"input_width_16_num_3", data_in_pond_0[i])
-        if i >= 19 and i < 27:
-            setattr(tester.circuit, f"input_width_16_num_2", data_in_pond_1[i - 19])
+        # first write
+        in_data_idx = i - config_data["config"]["in2regfile_0"]["cycle_starting_addr"][0]
+        if in_data_idx >= 0 and i < 5:
+            setattr(tester.circuit, f"input_width_16_num_3", data_in_pond_0[in_data_idx])
 
-        # if i >= 16:
-        #     if interconnect_output_ports == 1:
-        #         getattr(tester.circuit, f"data_out_pond").expect(((i - 16) % 16) + 1)
-        #     else:
-        #         tester.circuit.data_out_pond_0.expect(((i - 16) % 16) + 1)
+        # second write
+        in_data_idx = i - config_data["config"]["in2regfile_1"]["cycle_starting_addr"][0]
+        if in_data_idx >= 0 and i < 28:
+            setattr(tester.circuit, f"input_width_16_num_2", data_in_pond_1[in_data_idx])
+
+        # first read
+        in_data_idx = i - config_data["config"]["regfile2out_1"]["cycle_starting_addr"][0]
+        if in_data_idx >= 0 and i < 104:
+            getattr(tester.circuit, f"output_width_16_num_1").expect(data_in_pond_0[in_data_idx])
+
+        # second read
+        in_data_idx = i - config_data["config"]["regfile2out_0"]["cycle_starting_addr"][0]
+        if in_data_idx >= 0 and i < 128:
+            getattr(tester.circuit, f"output_width_16_num_0").expect(data_in_pond_1[in_data_idx])
 
         tester.eval()
         tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
-        tempdir = "temp_pondtop"
-        tester.compile_and_run(target="system-verilog",
-                               simulator="xcelium",
-                               directory=tempdir,
-                               magma_output="verilog",
-                               dump_waveforms=True,
-                               flags=["-sv"])
-        # tester.compile_and_run(target="verilator",
+        # tempdir = "temp_pondtop"
+        # tester.compile_and_run(target="system-verilog",
+        #                        simulator="xcelium",
         #                        directory=tempdir,
         #                        magma_output="verilog",
-        #                        flags=["-Wno-fatal"])
+        #                        dump_waveforms=True,
+        #                        flags=["-sv"])
+        tester.compile_and_run(target="verilator",
+                               directory=tempdir,
+                               magma_output="verilog",
+                               flags=["-Wno-fatal"])

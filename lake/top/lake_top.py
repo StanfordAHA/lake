@@ -110,12 +110,8 @@ class LakeTop(Generator):
         tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True)]
 
         if self.rw_same_cycle:
-            if "Pond" in name:
-                tsmc_mem = [MemoryPort(MemoryPortType.WRITE, delay=self.read_delay, active_read=True),
-                            MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=True)]
-            else:
-                tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True),
-                            MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=True)]
+            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True),
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=True)]
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
