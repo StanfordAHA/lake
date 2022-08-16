@@ -65,7 +65,7 @@ class Reg(MemoryController):
         # self._eos_in = self.input("eos_in", 1)
         # self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._data_out = self.output("data_out", self.data_width + 1)
+        self._data_out = self.output("data_out", self.data_width + 1, packed=True)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
         self._ready_in = self.input("data_out_ready", 1)
