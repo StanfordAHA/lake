@@ -1115,9 +1115,22 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             prepend_string = f"mem_ctrl_{ctrl}_flat_{ctrl}_inst_"
             for cfg_reg, val in conf_for_ctrl:
                 val_int = int(val)
-                mapping_index = self.config_mapping[ctrl][f"{ctrl}_inst_{cfg_reg}"]
-                map_hi, map_lo = mapping_index
-                assert map_hi - map_lo <= 15, f"Failed beacuse reg wider than 16 bits"
+                # Hasn't been chopped...
+                if f"{ctrl}_inst_{cfg_reg}" in self.config_mapping[ctrl]:
+                    mapping_index = self.config_mapping[ctrl][f"{ctrl}_inst_{cfg_reg}"]
+                    map_hi, map_lo = mapping_index
+                else:
+                    # Recover the original mapping of the chopped config reg
+                    unchopped_int = cfg_reg.split('_')[-1]
+                    unchopped = cfg_reg.rstrip(f"_{unchopped_int}")
+                    assert f"{ctrl}_inst_{unchopped}" in self.config_mapping[ctrl]
+                    tmp_hi, tmp_lo = self.config_mapping[ctrl][f"{ctrl}_inst_{unchopped}"]
+                    map_lo = self.allowed_reg_size * int(unchopped_int) + tmp_lo
+                    if tmp_hi - map_lo >= self.allowed_reg_size:
+                        map_hi = map_lo + self.allowed_reg_size - 1
+                    else:
+                        map_hi = tmp_hi
+                assert map_hi - map_lo < self.allowed_reg_size, f"Failed beacuse reg wider than {self.allowed_reg_size} bits"
                 chunk_hi = map_hi // self.allowed_reg_size
                 chunk_lo = map_lo // self.allowed_reg_size
                 # Either all within one chunk...
