@@ -140,7 +140,11 @@ class Repeat(MemoryController):
         self.wire(self._proc_fifo_push, kts.ternary(self._root, self._proc_fifo_inject_push, self._proc_valid_in))
 
         self._proc_fifo_in = kts.ternary(self._root, kts.concat(self._proc_fifo_inject_eos, self._proc_fifo_inject_data), kts.concat(self._proc_data_in))
-        self._proc_in_fifo = RegFIFO(data_width=self._proc_fifo_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._proc_in_fifo = RegFIFO(data_width=self._proc_fifo_in.width,
+                                     width_mult=1,
+                                     depth=self.fifo_depth,
+                                     #      min_depth=2)
+                                     defer_hrdwr_gen=self.defer_fifos)
         self._proc_in_fifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._proc_fifo_out_data = self.var("proc_fifo_out_data", self.data_width, packed=True)
         self._proc_fifo_out_eos = self.var("proc_fifo_out_eos", 1)
