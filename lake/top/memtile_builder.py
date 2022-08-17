@@ -275,6 +275,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             stop_ded = self.size_to_port(ded)
             self.add_io_dict(to_add=stop_ded, merged_dict=self.inputs_dict, mem_ctrl=mem_ctrl)
 
+            print("INPUTS DICT")
+            print(self.inputs_dict)
+
     def resolve_outputs(self):
         '''
         This function finds the connections between each controller
@@ -683,28 +686,31 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         '''
         This function creates the inputs to the tile, tags them, and wires them to the ports of the controllers
         '''
+
         for (input_width, signal_dicts) in self.inputs_dict.items():
             for (i, signal_dict) in enumerate(signal_dicts):
                 if input_width != 1:
                     new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
-                    og_new_input = new_input
                 else:
                     new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width)
-                    og_new_input = new_input
                 isctrl = input_width == 1
                 new_input.add_attribute(ControlSignalAttr(isctrl))
                 # Now to determine if the port is rv/dense
                 # If any signal in this dict is rv, we are going to make it an rv
-                any_rvs = len([port_.name for ctrl_, port_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]) > 0
+                rvs = [(ctrl_, port_.name, self.ctrl_to_mode[self.flat_to_c[ctrl_]]) for ctrl_, port_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]
+                any_rvs = len(rvs) > 0
+                dense = [(ctrl_, port_.name, self.ctrl_to_mode[self.flat_to_c[ctrl_]]) for ctrl_, port_ in self.dense if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]
+                any_dense = len(dense) > 0
+                # assert any_rvs or any_dense
+
                 if any_rvs:
+                    # Create the fifo and send all the relevant R/V signals to it
                     # Now create the ready/valid pair and deal with it
                     new_input_valid = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}_valid', width=1)
                     new_input_valid.add_attribute(ControlSignalAttr(True))
-                    og_new_input_valid = new_input_valid
 
                     new_input_ready = self.output(f'{self.io_prefix}input_width_{input_width}_num_{i}_ready', width=1)
                     new_input_ready.add_attribute(ControlSignalAttr(False))
-                    og_new_input_ready = new_input_ready
 
                     # Add in the fifo if there are any fifos on this path
                     new_reg_fifo = RegFIFO(data_width=input_width,
@@ -720,7 +726,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                    push=new_input_valid,
                                    data_in=new_input)
 
-                    # self.wire(new_input_ready, ~new_reg_fifo.ports.full)
+                    self.wire(new_input_ready, ~new_reg_fifo.ports.full)
 
                     # Alias the new input across the fifo boundary
                     if input_width != 1:
@@ -735,78 +741,52 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     self.wire(new_input_valid_fifo, ~new_reg_fifo.ports.empty)
                     self.wire(new_reg_fifo.ports.pop, new_input_ready_fifo)
 
-                    tmp_bypass_mux_sel = self.input(f'input_width_{input_width}_num_{i}_dense', 1)
-                    tmp_bypass_mux_sel.add_attribute(ConfigRegAttr(f"Choose for input_width_{input_width}_num_{i}_dense to bypass input fifo"))
+                    mux_size = len(rvs)
+                    mux_comb = self.combinational()
+                    prev_stmt = None
+                    # Default assign 0 to prevent latches.
+                    mux_comb.add_stmt(new_input_ready_fifo.assign(1))
+                    on_first = True
 
-                    # Then add a bypass mux for those signals that choose to bypass the fifo
-                    if input_width != 1:
-                        new_input = self.var(f'input_width_{input_width}_num_{i}_bypass', width=input_width, explicit_array=True, packed=True)
-                    else:
-                        new_input = self.var(f'input_width_{input_width}_num_{i}_bypass', width=input_width)
+                    # Wire all the inputs to the data/valid, then mux the ready
+                    for (ctrl_name, port, mode_num) in rvs:
 
-                    new_input_valid = self.var(f'input_width_{input_width}_num_{i}_bypass_valid', width=1)
-                    new_input_ready = self.var(f'input_width_{input_width}_num_{i}_bypass_ready', width=1)
+                        port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
+                        port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
+                        self.wire(new_input_fifo, self.controllers_flat_dict[ctrl_name].ports[port])
+                        self.wire(new_input_valid_fifo, self.controllers_flat_dict[ctrl_name].ports[port_valid_name])
 
-                    self.wire(new_input, kts.ternary(tmp_bypass_mux_sel, og_new_input, new_input_fifo))
-                    self.wire(new_input_valid, kts.ternary(tmp_bypass_mux_sel, og_new_input_valid, new_input_valid_fifo))
-                    self.wire(new_input_ready_fifo, new_input_ready)
-                    self.wire(og_new_input_ready, kts.ternary(tmp_bypass_mux_sel, new_input_ready, ~new_reg_fifo.ports.full))
+                        if on_first is True:
+                            first_if = mux_comb.if_(self._mode == kts.const(mode_num, width=self._mode.width))
+                            # Figure out if an output from a controller of the mode idx is actually defined or not
+                            first_if.then_(new_input_ready_fifo.assign(self.controllers_flat_dict[ctrl_name].ports[port_ready_name]))
+                            prev_stmt = first_if
+                            if mux_size == 1:
+                                prev_stmt.else_(new_input_ready_fifo.assign(1))
+                                # mux_comb.add_stmt(new_input_ready_fifo.assign(1))
+                            on_first = False
 
-                # Need a mux to output the ready
-                mux_size = len(signal_dict.keys())
-                mux_comb = self.combinational()
-                prev_stmt = None
-                # Default assign 0 to prevent latches.
-                if any_rvs:
-                    mux_comb.add_stmt(new_input_ready.assign(0))
-                on_first = True
+                        else:
+                            chain_if = IfStmt(self._mode == kts.const(mode_num, width=self._mode.width))
+                            chain_if.then_(new_input_ready_fifo.assign(self.controllers_flat_dict[ctrl_name].ports[port_ready_name]))
+                            prev_stmt.else_(chain_if)
+                            prev_stmt = chain_if
+
+                if any_dense:
+
+                    # Wire all the inputs to the data/valid, then mux the ready
+                    for (ctrl_name, port, mode_num) in dense:
+                        self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
+
+                if not any_dense and not any_rvs:
+                    # We currently don't allow r/v to be 1b signals
+                    # Basically handle 1b inputs w/o r/v
+                    for (ctrl_name, port) in signal_dict.items():
+                        self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
 
                 for (ctrl_name, port) in signal_dict.items():
 
-                    # Handle the input data + valid
-
-                    # Wire data and valid
-                    self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
-                    # Check if in ready valid
-                    # in_rv = len([port_.name for port_ in self.rv if port_.name == port]) > 0
-                    in_rv = len([port_.name for ctrl_, port_ in self.rv if port_.name == port and ctrl_ == ctrl_name]) > 0
-                    if in_rv:
-                        port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
-                        self.wire(new_input_valid, self.controllers_flat_dict[ctrl_name].ports[port_valid_name])
-
-                    # Handle the output ready
-
-                    # Only handle the ready output if there are any rvs
-                    if any_rvs:
-                        # We know if the controller is in rv...
-                        port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
-                        if mux_size == 1:
-                            mux_comb.add_stmt(new_input_ready.assign(self.controllers_flat_dict[ctrl_name].ports[port_ready_name]))
-                        else:
-                            # Index is set off the controller mapping
-                            ctrl_name_unflat = self.flat_to_c[ctrl_name]
-                            idx = self.ctrl_to_mode[ctrl_name_unflat]
-                            if on_first is True:
-                                first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
-                                # Figure out if an output from a controller of the mode idx is actually defined or not
-                                if in_rv:
-                                    first_if.then_(new_input_ready.assign(self.controllers_flat_dict[ctrl_name].ports[port_ready_name]))
-                                else:
-                                    first_if.then_(new_input_ready.assign(kts.const(1, 1)))
-                                prev_stmt = first_if
-                                on_first = False
-
-                            else:
-                                chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
-                                if in_rv:
-                                    chain_if.then_(new_input_ready.assign(self.controllers_flat_dict[ctrl_name].ports[port_ready_name]))
-                                else:
-                                    chain_if.then_(new_input_ready.assign(kts.const(1, 1)))
-                                prev_stmt.else_(chain_if)
-                                prev_stmt = chain_if
-
                     # Handle mapping information
-
                     # Now check if the input is dense or ready/valid so we can hardwire 1 on the ready/not wire the valid
                     normal_ctrl_name = self.flat_to_c[ctrl_name]
                     ctrler = self.controllers_dict[normal_ctrl_name]
@@ -838,23 +818,21 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for (i, signal_dict) in enumerate(signal_dicts):
                 if output_width != 1:
                     new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width, explicit_array=True, packed=True)
-                    og_new_output = new_output
                 else:
                     new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width)
-                    og_new_output = new_output
                 new_output.add_attribute(ControlSignalAttr(False))
 
-                # any_rvs = len([port.name for port in self.rv if port.name in signal_names]) > 0
-                any_rvs = len([port_.name for ctrl_, port_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]) > 0
+                rvs = [(ctrl_, port_.name, self.ctrl_to_mode[self.flat_to_c[ctrl_]]) for ctrl_, port_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]
+                any_rvs = len(rvs) > 0
+                dense = [(ctrl_, port_.name, self.ctrl_to_mode[self.flat_to_c[ctrl_]]) for ctrl_, port_ in self.dense if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]
+                any_dense = len(dense) > 0
                 if any_rvs:
                     # Now create the ready/valid pair and deal with it
                     new_output_valid = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}_valid', width=1)
                     new_output_valid.add_attribute(ControlSignalAttr(False))
-                    og_new_output_valid = new_output_valid
 
                     new_output_ready = self.input(f'{self.io_prefix}output_width_{output_width}_num_{i}_ready', width=1)
                     new_output_ready.add_attribute(ControlSignalAttr(True))
-                    og_new_output_ready = new_output_ready
 
                     # Add in the fifo if there are any fifos on this path
                     new_reg_fifo = RegFIFO(data_width=output_width,
@@ -867,7 +845,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                    clk=self._gclk,
                                    rst_n=self._rst_n,
                                    #    clk_en=kts.const(1, 1),
-                                   pop=og_new_output_ready)
+                                   pop=new_output_ready)
 
                     # self.wire(new_output_valid, ~new_reg_fifo.ports.empty)
 
@@ -884,82 +862,147 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     self.wire(new_output_ready_fifo, ~new_reg_fifo.ports.full)
                     self.wire(new_output_valid_fifo, new_reg_fifo.ports.push)
 
-                    tmp_bypass_mux_sel = self.input(f'output_width_{output_width}_num_{i}_dense', 1)
-                    tmp_bypass_mux_sel.add_attribute(ConfigRegAttr(f"Choose for output_width_{output_width}_num_{i}_dense to bypass input fifo"))
+                    # Mux all the inputs to the fifo, broadcast ready back
+                    mux_size = len(rvs)
+                    mux_comb = self.combinational()
+                    prev_stmt = None
+                    # Default assign 0 to prevent latches.
+                    mux_comb.add_stmt(new_output_fifo.assign(0))
+                    mux_comb.add_stmt(new_output_valid_fifo.assign(0))
+                    on_first = True
 
-                    # Then add a bypass mux for those signals that choose to bypass the fifo
-                    if output_width != 1:
-                        new_output = self.var(f'output_width_{output_width}_num_{i}_bypass', width=output_width, explicit_array=True, packed=True)
-                    else:
-                        new_output = self.var(f'output_width_{output_width}_num_{i}_bypass', width=output_width)
+                    for (ctrl_name, port, mode_num) in rvs:
 
-                    new_output_valid = self.var(f'output_width_{output_width}_num_{i}_bypass_valid', width=1)
-                    new_output_ready = self.var(f'output_width_{output_width}_num_{i}_bypass_ready', width=1)
-
-                    self.wire(new_output_fifo, new_output)
-                    self.wire(new_output_valid_fifo, new_output_valid)
-
-                    self.wire(og_new_output, kts.ternary(tmp_bypass_mux_sel, new_output, new_reg_fifo.ports.data_out))
-                    self.wire(og_new_output_valid, kts.ternary(tmp_bypass_mux_sel, new_output_valid, ~new_reg_fifo.ports.empty))
-                    self.wire(new_output_ready, kts.ternary(tmp_bypass_mux_sel, og_new_output_ready, new_output_ready_fifo))
-                    # self.wire(og_new_input_ready, kts.ternary(tmp_bypass_mux_sel, new_input_ready, ~new_reg_fifo.ports.full))
-
-                # We need to choose which output is hooked up based on the mode...
-                mux_size = len(signal_dict.keys())
-                mux_comb = self.combinational()
-                prev_stmt = None
-                # Default assign 0 to prevent latches.
-                mux_comb.add_stmt(new_output.assign(0))
-                if any_rvs:
-                    mux_comb.add_stmt(new_output_valid.assign(0))
-                on_first = True
-                for (ctrl_name, port) in signal_dict.items():
-
-                    # in_rv = len([port_.name for port_ in self.rv if port_.name == port]) > 0
-                    in_rv = len([port_.name for ctrl_, port_ in self.rv if port_.name == port and ctrl_ == ctrl_name]) > 0
-                    if in_rv:
+                        port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
                         port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
                         # Wire ready_in if this is a ready/valid port
-                        self.wire(new_output_ready, self.controllers_flat_dict[ctrl_name].ports[port_ready_name])
+                        self.wire(new_output_ready_fifo, self.controllers_flat_dict[ctrl_name].ports[port_ready_name])
 
-                    # Create a list of ports/values to wire to based on the existence of the port in the mode
-                    # for idx in self.num_modes:
-                    port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
+                        if mux_size == 1:
+                            # If there's any rvs, then this one is in it...can assign it directly
+                            mux_comb.add_stmt(new_output_fifo.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                            mux_comb.add_stmt(new_output_valid_fifo.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
+                        else:
+                            # Index is set off the controller mapping
+                            # ctrl_name_unflat = self.flat_to_c[ctrl_name]
+                            # idx = self.ctrl_to_mode[ctrl_name_unflat]
+                            if on_first is True:
+                                first_if = mux_comb.if_(self._mode == kts.const(mode_num, width=self._mode.width))
+                                # Figure out if an output from a controller of the mode idx is actually defined or not
+                                assigns = [new_output_fifo.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
+                                assigns.append(new_output_valid_fifo.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
+                                first_if.then_(*assigns)
+                                prev_stmt = first_if
+                                on_first = False
 
-                    if mux_size == 1:
-                        mux_comb.add_stmt(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
-                        # If there's any rvs, then this one is in it...can assign it directly
-                        if any_rvs:
-                            mux_comb.add_stmt(new_output_valid.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
-                    else:
-                        # Index is set off the controller mapping
-                        ctrl_name_unflat = self.flat_to_c[ctrl_name]
-                        idx = self.ctrl_to_mode[ctrl_name_unflat]
+                            else:
+                                chain_if = IfStmt(self._mode == kts.const(mode_num, width=self._mode.width))
+                                assigns = [new_output_fifo.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
+                                assigns.append(new_output_valid_fifo.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
+                                # chain_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                                chain_if.then_(*assigns)
+                                prev_stmt.else_(chain_if)
+                                prev_stmt = chain_if
+
+                # assert any_rvs or any_dense
+
+                # Now that we potentially created the rv...
+                if any_rvs and not any_dense:
+                    # Now we wire the fifo directly out
+                    self.wire(new_output, new_reg_fifo.ports.data_out)
+                    self.wire(new_output_valid, ~new_reg_fifo.ports.empty)
+                # elif not any_rvs and any_dense:
+                elif not any_rvs:
+                    # If just dense, just do a simple mux
+                    mux_size = len(dense)
+                    mux_comb = self.combinational()
+                    prev_stmt = None
+                    # Default assign 0 to prevent latches.
+                    mux_comb.add_stmt(new_output.assign(0))
+                    on_first = True
+
+                    for (ctrl_name, port, mode_num) in dense:
+
+                        if mux_size == 1:
+                            # If there's any rvs, then this one is in it...can assign it directly
+                            mux_comb.add_stmt(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                        else:
+                            # Index is set off the controller mapping
+                            # ctrl_name_unflat = self.flat_to_c[ctrl_name]
+                            # idx = self.ctrl_to_mode[ctrl_name_unflat]
+                            if on_first is True:
+                                first_if = mux_comb.if_(self._mode == kts.const(mode_num, width=self._mode.width))
+                                # Figure out if an output from a controller of the mode idx is actually defined or not
+                                assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
+                                first_if.then_(*assigns)
+                                prev_stmt = first_if
+                                on_first = False
+
+                            else:
+                                chain_if = IfStmt(self._mode == kts.const(mode_num, width=self._mode.width))
+                                assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
+                                # chain_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                                chain_if.then_(*assigns)
+                                prev_stmt.else_(chain_if)
+                                prev_stmt = chain_if
+
+                elif any_rvs and any_dense:
+                    # Here we need to mux between nothing, the rv fifo, and the dense stuff
+                    full_items = [(new_reg_fifo.ports.data_out, mode_num) for (ctrl_, pname, mode_num) in rvs]
+                    full_items += dense
+
+                    mux_size = 1 + len(dense)
+                    mux_comb = self.combinational()
+                    prev_stmt = None
+                    # Default assign 0 to prevent latches.
+                    mux_comb.add_stmt(new_output.assign(0))
+                    mux_comb.add_stmt(new_output_valid.assign(0))
+                    on_first = True
+
+                    for out_item in full_items:
+                        rv = len(out_item) == 2
+                        if rv:
+                            _, mode_num = out_item
+                        else:
+                            ctrl_name, port, mode_num = out_item
+
+                        # idx = self.ctrl_to_mode[ctrl_name_unflat]
                         if on_first is True:
-                            first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
-                            # Figure out if an output from a controller of the mode idx is actually defined or not
-                            assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
-                            if any_rvs:
-                                if in_rv:
-                                    assigns.append(new_output_valid.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
-                                else:
-                                    assigns.append(new_output_valid.assign(kts.const(1, 1)))
+                            first_if = mux_comb.if_(self._mode == kts.const(mode_num, width=self._mode.width))
+                            if rv:
+                                assigns = [new_output.assign(new_reg_fifo.ports.data_out)]
+                                assigns.append(new_output_valid.assign(~new_reg_fifo.ports.empty))
+                            else:
+                                # Figure out if an output from a controller of the mode idx is actually defined or not
+                                assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
+                                assigns.append(new_output_valid.assign(1))
                             first_if.then_(*assigns)
                             prev_stmt = first_if
                             on_first = False
 
                         else:
-                            chain_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
-                            assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
-                            if any_rvs:
-                                if in_rv:
-                                    assigns.append(new_output_valid.assign(self.controllers_flat_dict[ctrl_name].ports[port_valid_name]))
-                                else:
-                                    assigns.append(new_output_valid.assign(kts.const(1, 1)))
+                            chain_if = IfStmt(self._mode == kts.const(mode_num, width=self._mode.width))
+                            # assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
                             # chain_if.then_(new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port]))
+                            if rv:
+                                assigns = [new_output.assign(new_reg_fifo.ports.data_out)]
+                                assigns.append(new_output_valid.assign(~new_reg_fifo.ports.empty))
+                            else:
+                                # Figure out if an output from a controller of the mode idx is actually defined or not
+                                assigns = [new_output.assign(self.controllers_flat_dict[ctrl_name].ports[port])]
+                                assigns.append(new_output_valid.assign(1))
                             chain_if.then_(*assigns)
                             prev_stmt.else_(chain_if)
                             prev_stmt = chain_if
+
+                else:
+                    # This can only happen when there is 1b output that is not ready/valid
+                    # No support for 1b ready valid anyway.
+                    raise NotImplementedError
+
+                # We need to choose which output is hooked up based on the mode...
+                for (ctrl_name, port) in signal_dict.items():
+
                     # Add mapping information
                     normal_ctrl_name = self.flat_to_c[ctrl_name]
                     ctrler = self.controllers_dict[normal_ctrl_name]
