@@ -113,7 +113,18 @@ class SchedGen(Generator):
                        restart=self._finished)
 
         if self.dual_config:
-            self.wire(self._mux_sel_msb_init, ADDR_GEN.ports.mux_sel_msb_init)
+            @always_comb
+            def gen_mux_sel_msb_init():
+                if self._enable & self._enable2:
+                    self._mux_sel_msb_init = ADDR_GEN.ports.mux_sel_msb_init
+                elif self._enable & ~self._enable2:
+                    self._mux_sel_msb_init = 0
+                elif ~self._enable & self._enable2:
+                    self._mux_sel_msb_init = 1
+                else:
+                    self._mux_sel_msb_init = 0
+            self.add_code(gen_mux_sel_msb_init)
+            # self.wire(self._mux_sel_msb_init, ADDR_GEN.ports.mux_sel_msb_init)
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
