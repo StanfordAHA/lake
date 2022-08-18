@@ -235,11 +235,23 @@ class CrdDrop(MemoryController):
         self._proc_data_seen = self.var("proc_data_seen", 1)
         self.wire(self._proc_data_seen, self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
 
+        self._set_pushed_data_lower = self.var("set_pushed_data_lower", 1)
+        self._clr_pushed_data_lower = self.var("clr_pushed_data_lower", 1)
+        self._pushed_data_lower = sticky_flag(self, self._set_pushed_data_lower,
+                                              clear=self._clr_pushed_data_lower, name="pushed_data_sticky",
+                                              seq_only=True)
+
         self._eos_seen = self.var("base_eos_seen", 1)
         self.wire(self._eos_seen, self._base_infifo_in_valid & self._base_infifo_in_eos & (self._base_infifo_in_data[9, 8] == kts.const(0, 2)))
 
         self._done_seen = self.var("base_done_seen", 1)
         self.wire(self._done_seen, self._base_infifo_in_valid & self._base_infifo_in_eos & (self._base_infifo_in_data[9, 8] == kts.const(1, 2)))
+
+        self._base_done = self.var("base_done", 1)
+        self.wire(self._base_done, self._base_infifo_in_valid & self._base_infifo_in_eos & (self._base_infifo_in_data[9, 8] == kts.const(1, 2)))
+
+        self._proc_done = self.var("proc_done", 1)
+        self.wire(self._proc_done, self._proc_infifo_in_valid & self._proc_infifo_in_eos & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)))
 
         self._clr_pushed_proc = self.var("clr_pushed_proc", 1)
         self._pushed_proc = sticky_flag(self, self._cmrg_fifo_push[1], clear=self._clr_pushed_proc, name="pushed_proc", seq_only=True)
@@ -263,11 +275,7 @@ class CrdDrop(MemoryController):
         # Create FSM
         self.proc_fsm = self.add_fsm("proc_seq", reset_high=False)
         START = self.proc_fsm.add_state("START")
-        DATA_SEEN = self.proc_fsm.add_state("DATA_SEEN")
-        STRIP = self.proc_fsm.add_state("STRIP")
-        PASS_STOP = self.proc_fsm.add_state("PASS_STOP")
-        PASS_DONE = self.proc_fsm.add_state("PASS_DONE")
-        DONE = self.proc_fsm.add_state("DONEX")
+        PROCESS = self.proc_fsm.add_state("PROCESS")
 
         ####################
         # Next State Logic
@@ -279,52 +287,17 @@ class CrdDrop(MemoryController):
         # IN the START state, we are waiting to see data in a stream
         # to know to pass on the processed stream
         # If we hit the EOS without seeing data, we should strip it
-        START.next(DATA_SEEN, self._base_data_seen & self._tile_en)
-        START.next(STRIP, self._eos_seen & self._tile_en)
-        START.next(PASS_STOP, self._done_seen & self._tile_en)
+        # START.next(DATA_SEEN, self._base_data_seen & self._tile_en)
+        START.next(PROCESS, self._tile_en)
         START.next(START, None)
 
         ####################
-        # DATA_SEEN #
+        # PROCESS #
         ####################
         # In DATA SEEN, we want to pass thru any data including the
         # stop token at the correct level, then go to the pass_stop logic. Make sure we also pushed the proc stream once
-        # DATA_SEEN.next(PASS_STOP, self._pushed_proc & self._pushed_stop_lvl)
-        DATA_SEEN.next(START, self._pushed_proc & self._pushed_stop_lvl)
-        # DATA_SEEN.next(PASS_STOP, self._pushed_proc & (self._base_infifo_in_eos & self._base_infifo_in_valid & (self._base_infifo_in_data[9, 8] == kts.const(0, 2))))
-        DATA_SEEN.next(DATA_SEEN, None)
-
-        ####################
-        # STRIP #
-        ####################
-        # At strip, we just want to strip one data from proc and strip the stop token from base
-        # Once that is done, we can move onto draining the stop tokens from both if there are any...
-        # STRIP.next(PASS_STOP, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
-        STRIP.next(START, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
-        STRIP.next(STRIP, None)
-
-        ####################
-        # PASS_STOP #
-        ####################
-        # IN PASS_STOP, there are two possibilities - the proc stream either hits S0 or has data again
-        # since every hierarchically issued coordinate has a chance to have a non-null payload
-        # PASS_STOP.next(START, self._proc_data_seen)
-        PASS_STOP.next(PASS_DONE, self._both_done)
-        PASS_STOP.next(PASS_STOP, None)
-
-        ####################
-        # PASS_DONE #
-        ####################
-        # IN PASS_STOP, there are two possibilities - the proc stream either hits S0 or has data again
-        # since every hierarchically issued coordinate has a chance to have a non-null payload
-        # PASS_STOP.next(START, self._proc_data_seen)
-        PASS_DONE.next(DONE, self._pushing_s0)
-        PASS_DONE.next(PASS_DONE, None)
-
-        ####################
-        # DONE #
-        ####################
-        DONE.next(DONE, None)
+        # PROCESS.next(PROCESS, self._pushed_proc & self._pushed_stop_lvl)
+        PROCESS.next(PROCESS, None)
 
         ####################
         # FSM Output Logic
@@ -336,6 +309,8 @@ class CrdDrop(MemoryController):
         self.proc_fsm.output(self._cmrg_fifo_push[1])
         self.proc_fsm.output(self._clr_pushed_proc)
         self.proc_fsm.output(self._clr_pushed_stop_lvl)
+        self.proc_fsm.output(self._set_pushed_data_lower)
+        self.proc_fsm.output(self._clr_pushed_data_lower)
 
         ################
         # START
@@ -347,72 +322,53 @@ class CrdDrop(MemoryController):
         # Force these to 0 (but does this consume power?)
         START.output(self._clr_pushed_proc, 1)
         START.output(self._clr_pushed_stop_lvl, 1)
+        START.output(self._set_pushed_data_lower, 0)
+        START.output(self._clr_pushed_data_lower, 1)
 
         ################
-        # DATA_SEEN
+        # PROCESS
         ################
-        DATA_SEEN.output(self._cmrg_fifo_pop[0], ~self._pushed_stop_lvl & ~base_outfifo.ports.full)
-        # DATA_SEEN.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & ~self._base_infifo_in_eos & ~base_outfifo.ports.full)
-        DATA_SEEN.output(self._cmrg_fifo_pop[1], ~self._pushed_proc & ~proc_outfifo.ports.full)
-        DATA_SEEN.output(self._cmrg_fifo_push[0], ~self._pushed_stop_lvl & self._base_infifo_in_valid)
-        # DATA_SEEN.output(self._cmrg_fifo_push[0],  self._base_infifo_in_valid & ~self._base_infifo_in_eos)
-        DATA_SEEN.output(self._cmrg_fifo_push[1], ~self._pushed_proc & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
-        DATA_SEEN.output(self._clr_pushed_proc, 0)
-        DATA_SEEN.output(self._clr_pushed_stop_lvl, 0)
-
-        ################
-        # STRIP
-        ################
-        # Pop both fifos when they are joined
-        STRIP.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
-        STRIP.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos)
-        STRIP.output(self._cmrg_fifo_push[0], 0)
-        STRIP.output(self._cmrg_fifo_push[1], 0)
-        STRIP.output(self._clr_pushed_proc, 0)
-        STRIP.output(self._clr_pushed_stop_lvl, 0)
-
-        ################
-        # PASS_STOP
-        ################
-        # TODO
-        # Here we have base done, need to drain to proc done
-        PASS_STOP.output(self._cmrg_fifo_pop[0], 0)
-        PASS_STOP.output(self._cmrg_fifo_pop[1], self._proc_infifo_in_valid & self._proc_infifo_in_eos & (self._proc_infifo_in_data[9, 8] == kts.const(0, 2)) & ~proc_outfifo.ports.full)
-        PASS_STOP.output(self._cmrg_fifo_push[0], 0)
-        PASS_STOP.output(self._cmrg_fifo_push[1], self._proc_infifo_in_valid & self._proc_infifo_in_eos & (self._proc_infifo_in_data[9, 8] == kts.const(0, 2)))
-        # PASS_STOP.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
-        # PASS_STOP.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
-        # PASS_STOP.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & self._proc_infifo_in_valid)
-        # PASS_STOP.output(self._cmrg_fifo_push[1], self._base_infifo_in_valid & self._proc_infifo_in_valid)
-        PASS_STOP.output(self._clr_pushed_proc, 0)
-        PASS_STOP.output(self._clr_pushed_stop_lvl, 0)
-
-        ################
-        # PASS_DONE
-        ################
-        # TODO
-        # Here we have base done, need to drain to proc done
-        PASS_DONE.output(self._cmrg_fifo_pop[0], self._pushing_s0)
-        PASS_DONE.output(self._cmrg_fifo_pop[1], self._pushing_s0)
-        PASS_DONE.output(self._cmrg_fifo_push[0], self._pushing_s0)
-        PASS_DONE.output(self._cmrg_fifo_push[1], self._pushing_s0)
-        # PASS_DONE.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
-        # PASS_DONE.output(self._cmrg_fifo_pop[1], self._base_infifo_in_valid & self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
-        # PASS_DONE.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & self._proc_infifo_in_valid)
-        # PASS_DONE.output(self._cmrg_fifo_push[1], self._base_infifo_in_valid & self._proc_infifo_in_valid)
-        PASS_DONE.output(self._clr_pushed_proc, 0)
-        PASS_DONE.output(self._clr_pushed_stop_lvl, 0)
-
-        ################
-        # DONE
-        ################
-        # TODO
-        DONE.output(self._cmrg_fifo_pop[0], 0)
-        DONE.output(self._cmrg_fifo_pop[1], 0)
-        DONE.output(self._cmrg_fifo_push[0], 0)
-        DONE.output(self._cmrg_fifo_push[1], 0)
-        DONE.output(self._clr_pushed_proc, 0)
-        DONE.output(self._clr_pushed_stop_lvl, 0)
+        # To pop the lower one, we want to make sure there is data on it - free to push
+        # if stop on it, need to make sure the upper has valid data on it
+        PROCESS.output(self._cmrg_fifo_pop[0], kts.ternary(self._base_done,
+                                                          self._proc_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                          kts.ternary(self._base_infifo_in_valid & ~self._base_infifo_in_eos,
+                                                                        ~base_outfifo.ports.full,
+                                                                        kts.ternary(self._base_infifo_in_valid & self._base_infifo_in_eos,
+                                                                                    self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                                                    0))))
+        # Only pop the proc fifo if the base level has a stop token and upper has valid, or the upper has a stop token by itself
+        PROCESS.output(self._cmrg_fifo_pop[1], kts.ternary(self._proc_done,
+                                                            self._base_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                            kts.ternary(self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos,
+                                                                        ~base_outfifo.ports.full & (~proc_outfifo.ports.full | ~self._pushed_data_lower),
+                                                                        kts.ternary(self._proc_infifo_in_valid & self._proc_infifo_in_eos,
+                                                                                    ~proc_outfifo.ports.full,
+                                                                                    0))))
+        # The push is basically the same as the pop
+        PROCESS.output(self._cmrg_fifo_push[0], kts.ternary(self._base_done,
+                                                            self._proc_done,
+                                                            kts.ternary(self._base_infifo_in_valid & ~self._base_infifo_in_eos,
+                                                                        ~base_outfifo.ports.full,
+                                                                        kts.ternary(self._base_infifo_in_valid & self._base_infifo_in_eos,
+                                                                                    self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                                                    0))))
+        # Push is similar to pop, but in the case of a real data on proc, we only push it if we pushed a data on the base level
+        PROCESS.output(self._cmrg_fifo_push[1], kts.ternary(self._proc_done,
+                                                            self._base_done,
+                                                            kts.ternary(self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos,
+                                                                        ~base_outfifo.ports.full & ~proc_outfifo.ports.full & self._pushed_data_lower,
+                                                                        kts.ternary(self._proc_infifo_in_valid & self._proc_infifo_in_eos,
+                                                                                    ~proc_outfifo.ports.full,
+                                                                                    0))))
+        # Force these to 0 (but does this consume power?)
+        PROCESS.output(self._clr_pushed_proc, 0)
+        PROCESS.output(self._clr_pushed_stop_lvl, 0)
+        # Set that data is pushed when you're pushing data...
+        PROCESS.output(self._set_pushed_data_lower, self._base_infifo_in_valid & ~self._base_infifo_in_eos & ~base_outfifo.ports.full)
+        # Clear that data has been pushed when you are pushing the stop token of the base line
+        PROCESS.output(self._clr_pushed_data_lower, self._base_done | (self._base_infifo_in_valid & self._base_infifo_in_eos &
+                                                          self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full))
 
         self.proc_fsm.set_start_state(START)
 

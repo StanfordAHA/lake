@@ -11,6 +11,7 @@ from lake.modules.strg_ub_thin import StrgUBThin
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
 from lake.modules.scanner import Scanner
+from lake.modules.scanner_pipe import ScannerPipe
 from lake.modules.intersect import Intersect
 from lake.top.extract_tile_info import extract_top_config
 from lake.utils.sram_macro import SRAMMacroInfo
@@ -322,9 +323,14 @@ if __name__ == "__main__":
 
     controllers = []
 
-    scan = Scanner(data_width=data_width,
-                   fifo_depth=8,
-                   defer_fifos=True)
+    scan = ScannerPipe(data_width=16,
+                       fifo_depth=8,
+                       add_clk_enable=True,
+                       defer_fifos=True,
+                       add_flush=False)
+    # scan = Scanner(data_width=data_width,
+    #                fifo_depth=8,
+    #                defer_fifos=True)
 
     isect = Intersect(data_width=data_width,
                       use_merger=True,
