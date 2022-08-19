@@ -363,8 +363,8 @@ if __name__ == "__main__":
     # controllers.append(fib_access)
     controllers.append(buffet)
     controllers.append(strg_ub)
-    # controllers.append(stencil_valid)
-    # controllers.append(strg_ram)
+    controllers.append(stencil_valid)
+    controllers.append(strg_ram)
 
     isect = Intersect(data_width=16,
                       use_merger=False,

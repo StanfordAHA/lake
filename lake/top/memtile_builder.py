@@ -531,12 +531,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.num_chopped_cfg = 0
         curr_size = 0
         idx = 0
-        self.config_bits = max_size
-        while curr_size < max_size:
-            if max_size - curr_size > self.allowed_reg_size:
+        self.config_bits = sum(max_sizes)
+        while curr_size < self.config_bits:
+            if self.config_bits - curr_size > self.allowed_reg_size:
                 cs_ = self.allowed_reg_size
             else:
-                cs_ = max_size - curr_size
+                cs_ = self.config_bits - curr_size
             # tmp_cfg_space = self.input(f"CONFIG_SPACE_{idx}_{curr_size}_{curr_size + cs_ - 1}", cs_)
             tmp_cfg_space = self.input(f"CONFIG_SPACE_{idx}", cs_)
             tmp_cfg_space.add_attribute(ConfigRegAttr(f"Configuration for children modules {idx}"))
