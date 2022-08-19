@@ -70,17 +70,22 @@ class OnyxPEInterface(MemoryController):
     def get_config_mode_str(self):
         return "alu_ext"
 
-    def get_bitstream(self, op):
+    def get_bitstream(self, op, override_dense=False):
 
         opcode_mapping = {
             0: int("0x000000000010000400000", 16),  # ADD
             1: int("0x00000005fff17ffc800dc", 16)   # MUL
         }
 
-        if op not in opcode_mapping:
-            raise NotImplementedError
+        if override_dense:
+            print(f"OVERRIDE DENSE CONFIG: {op}")
+            op_config = op
+        else:
+            if op not in opcode_mapping:
+                raise NotImplementedError
+            op_config = opcode_mapping[op]
 
-        config_base = [("inst", opcode_mapping[op])]
+        config_base = [("inst", op_config)]
         config = self.chop_config(config_base=config_base)
 
         return config
