@@ -628,6 +628,8 @@ class ScannerPipe(MemoryController):
         self.wire(self._done_in, self._infifo_eos_in & self._infifo_valid_in & (self._infifo_pos_in[9, 8] == kts.const(1, 2)))
         self._eos_in = self.var("eos_in", 1)
         self.wire(self._eos_in, self._infifo_eos_in & self._infifo_valid_in & (self._infifo_pos_in[9, 8] == kts.const(0, 2)))
+        self._maybe_in = self.var("maybe_in", 1)
+        self.wire(self._maybe_in, self._infifo_eos_in & self._infifo_valid_in & (self._infifo_pos_in[9, 8] == kts.const(2, 2)))
 
         ####### Logic for block reads
         self._inc_req_made_seg = self.var("inc_req_made_seg", 1)
@@ -692,6 +694,8 @@ class ScannerPipe(MemoryController):
         # From READ - we have one option
         # 1. Issue read to first address in seg pair and reserve room in the reservation FIFO and
         # Pop this thing off so we can have the next data or the EOS token as soon as possible
+        # READ.next(PASS_STOP, self._maybe_in | ~self._seg_res_fifo_full)
+        READ.next(PASS_STOP, self._maybe_in)
         READ.next(READ_ALT, self._seg_grant_push & ~self._seg_res_fifo_full)
         # For now, just handle PASS_STOP here...
         # READ.next(PASS_STOP, self._infifo_valid_in & self._infifo_eos_in & ~self._done_in)
@@ -803,7 +807,7 @@ class ScannerPipe(MemoryController):
         # Only request a push when there's valid, non-eos data on the fifo
         READ.output(self._seg_req_push, self._infifo_valid_in & ~self._infifo_eos_in & ~self._seg_res_fifo_full)
         READ.output(self._seg_rd_rsp_fifo_pop, 1)
-        READ.output(self._seg_pop_infifo, self._done_in & ~self._seg_res_fifo_full)
+        READ.output(self._seg_pop_infifo, (self._done_in & ~self._seg_res_fifo_full) | self._maybe_in)
         READ.output(self._inc_req_made_seg, 0)
         READ.output(self._clr_req_made_seg, 0)
         READ.output(self._inc_req_rec_seg, 0)
@@ -811,9 +815,11 @@ class ScannerPipe(MemoryController):
         READ.output(self._us_fifo_inject_data, 0)
         READ.output(self._us_fifo_inject_eos, 0)
         READ.output(self._us_fifo_inject_push, 0)
+        # Only push through the done in READ, in conjunction with the fill pulse
         READ.output(self._seg_res_fifo_push_alloc, kts.ternary(self._done_in,
                                                                ~self._seg_res_fifo_full,
-                                                               ~self._seg_res_fifo_full & self._seg_grant_push))
+                                                               (~self._seg_res_fifo_full & self._seg_grant_push) & ~self._maybe_in))
+        # Only fill if we have done_in
         READ.output(self._seg_res_fifo_push_fill, self._done_in & ~self._seg_res_fifo_full)
         READ.output(self._seg_res_fifo_fill_data_in, kts.concat(self._infifo_eos_in, self._infifo_pos_in))
         # READ.output(self._seg_rd_rsp_fifo_pop, self._rd_rsp_fifo_valid & (self._rd_rsp_fifo_out_data[self.data_width] == kts.const(0, 1)))
