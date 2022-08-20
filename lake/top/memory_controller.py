@@ -95,6 +95,13 @@ class MemoryController(kts.Generator):
         ret_port = int_gen.get_port(name)
         return ret_port
 
+    def get_port_attributes(self, port_name, attr_type):
+        int_gen = self.internal_generator
+        ret_port = int_gen.get_port(port_name)
+        # attrs = ret_port.find_attribute(lambda: isinstance(a, ConfigRegAttr))
+        attrs = ret_port.find_attribute(lambda a: isinstance(a, attr_type))
+        return attrs
+
     def get_inputs(self):
         '''
         Use this method to return pure inputs to the tile interface

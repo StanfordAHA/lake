@@ -403,7 +403,7 @@ if __name__ == "__main__":
                              rw_same_cycle=False,
                              read_delay=1,
                              use_sim_sram=True,
-                             controllers=controllers,
+                             controllers=controllers_2,
                              name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}",
                              do_config_lift=False,
                              io_prefix="MEM_")

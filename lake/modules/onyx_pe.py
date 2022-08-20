@@ -1,5 +1,6 @@
 import kratos as kts
 from kratos import *
+from lake.attributes.hybrid_port_attr import HybridPortAddr
 from lake.attributes.shared_fifo_attr import SharedFifoAttr
 from lake.modules.alu import ALU
 from lake.modules.onyx_pe_intf import OnyxPEInterface
@@ -67,6 +68,8 @@ class OnyxPE(MemoryController):
 
             tmp_data_in = self.input(f"data{i}", self.data_width + 1, packed=True)
             tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            # Mark as hybrid port to allow bypassing at the core combiner level
+            tmp_data_in.add_attribute(HybridPortAddr())
             # self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
 
             tmp_data_in_valid_in = self.input(f"data{i}_valid", 1)
@@ -130,6 +133,7 @@ class OnyxPE(MemoryController):
 
         self._data_out = self.output("res", self.data_width + 1, packed=True)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        self._data_out.add_attribute(HybridPortAddr())
 
         self._valid_out = self.output("res_valid", 1)
         self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
