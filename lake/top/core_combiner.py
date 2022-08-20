@@ -26,6 +26,7 @@ from lake.top.fiber_access import FiberAccess
 from lake.modules.repeat import Repeat
 from lake.modules.repeat_signal_generator import RepeatSignalGenerator
 from lake.modules.reg_cr import Reg
+from lake.modules.crdhold import CrdHold
 import os
 
 
@@ -373,6 +374,10 @@ if __name__ == "__main__":
     crd_drop = CrdDrop(data_width=16, fifo_depth=8,
                        lift_config=True,
                        defer_fifos=True)
+    crd_hold = CrdHold(data_width=16, fifo_depth=8,
+                               lift_config=True,
+                               defer_fifos=True,
+                               add_flush=False)
     onyxpe = OnyxPE(data_width=16, fifo_depth=8, defer_fifos=True, ext_pe_prefix="pe_prefix")
     repeat = Repeat(data_width=16,
                     fifo_depth=8,
@@ -389,6 +394,7 @@ if __name__ == "__main__":
 
     controllers_2.append(isect)
     controllers_2.append(crd_drop)
+    controllers_2.append(crd_hold)
     controllers_2.append(onyxpe)
     controllers_2.append(repeat)
     controllers_2.append(rsg)

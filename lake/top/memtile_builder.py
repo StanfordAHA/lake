@@ -787,8 +787,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     for (ctrl_name, port, mode_num, hybrid) in rvs:
 
                         if hybrid is True and hybrid_bypass is None:
-                            hybrid_bypass = self.input(f"input_width_{input_width}_num_{i}_dense", 1)
-                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for input_width_{input_width}_num_{i}_dense to bypass input fifo"))
+                            hybrid_bypass = self.input(f"{self.io_prefix}input_width_{input_width}_num_{i}_dense", 1)
+                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}input_width_{input_width}_num_{i}_dense to bypass input fifo"))
 
                         port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
                         port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
@@ -951,8 +951,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     for (ctrl_name, port, mode_num, hybrid) in rvs:
 
                         if hybrid and hybrid_bypass is None:
-                            hybrid_bypass = self.input(f"output_width_{output_width}_num_{i}_dense", 1)
-                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for output_width_{output_width}_num_{i}_dense to bypass input fifo"))
+                            hybrid_bypass = self.input(f"{self.io_prefix}output_width_{output_width}_num_{i}_dense", 1)
+                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}output_width_{output_width}_num_{i}_dense to bypass input fifo"))
 
                         port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
                         port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
