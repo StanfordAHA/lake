@@ -334,6 +334,7 @@ class OnyxPE(MemoryController):
 
         if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
             override_dense = True
+            config += [("dense_mode", 1)]
         sub_config = self.my_alu.get_bitstream(op, override_dense=override_dense)
         for config_tuple in sub_config:
             config_name, config_value = config_tuple
