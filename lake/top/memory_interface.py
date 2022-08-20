@@ -468,7 +468,7 @@ class MemoryInterface(kts.Generator):
                 port_intf['read_enable'] = self.input(f"read_enable_p{pnum}", 1)
             elif port_type == MemoryPortType.WRITE:
                 port_intf['data_in'] = self.input(f"data_in_p{pnum}", self.mem_width, packed=True)
-                port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_width), packed=True)
+                port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_depth), packed=True)
                 port_intf['write_enable'] = self.input(f"write_enable_p{pnum}", 1)
             elif port_type == MemoryPortType.READWRITE:
                 port_intf['data_out'] = self.output(f"data_out_p{pnum}", self.mem_width, packed=True)
