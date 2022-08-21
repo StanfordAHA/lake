@@ -503,6 +503,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         running_width_outer = 0
         for idx in range(len(combo_)):
             if idx > 0:
+                # This handles the outer window for shared vs dedicated
                 running_width_outer = sum(max_sizes[0:idx])
             for name, size_struct in combo_[idx]:
                 # Now wire the chillin
@@ -536,7 +537,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     running_width += sig_w_
                 kts_catted = kts.concat(*catted_child_signals)
 
-                self.wire(kts_catted, self.config_space[size - 1, 0])
+                # Track the outer running width to make sure the config spaces are separated for
+                # the dedicated controllers
+                self.wire(kts_catted, self.config_space[size - 1 + running_width_outer, running_width_outer])
 
         self.allowed_reg_size = 32
         self.num_chopped_cfg = 0
