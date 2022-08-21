@@ -259,11 +259,14 @@ class OnyxPE(MemoryController):
                                       name_prefix=self.ext_pe_prefix,
                                       include_RO_cfg=self.pe_ro)
 
+        # Need active high reset for PE
+        self._active_high_reset = kts.util.async_reset(~self._rst_n)
+
         self.add_child(f"onyxpeintf",
                        self.my_alu,
                        CLK=self._gclk,
                        clk_en=self._clk_en,
-                       ASYNCRESET=self._rst_n,
+                       ASYNCRESET=self._active_high_reset,
                        data0=kts.ternary(self._dense_mode, self._data_in[0][self.data_width - 1, 0], self._infifo_out_data[0]),
                        data1=kts.ternary(self._dense_mode, self._data_in[1][self.data_width - 1, 0], self._infifo_out_data[1]),
                        data2=self._data_in[2][self.data_width - 1, 0],
