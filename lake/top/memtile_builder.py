@@ -447,6 +447,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             cfg_flat_ctrl = extract_top_config(flat_ctrl, verbose=False)
             for cfg in cfg_flat_ctrl:
                 name, size, width, _, ro = cfg
+                if ro is True:
+                    # Should wire this up to the top
+                    tmp_cfg = self.output(f"{name}", width, size=size)
+                    tmp_cfg.add_attribute(ConfigRegAttr(f"Read only directly brought up... {name}", read_only=True))
+                    self.wire(tmp_cfg, flat_ctrl.ports[name])
+                    continue
                 # Everything should be flattened down at this point
                 # assert len(size) == 1 and size[0] == 1
                 assert len(size) == 1
