@@ -16,18 +16,24 @@ class RegFIFO(Generator):
                  break_out_rd_ptr=False,
                  almost_full_diff=2,
                  defer_hrdwr_gen=False,
+                 mod_name_suffix="",
                  min_depth=0):
 
-        super().__init__(f"reg_fifo_depth_{depth}_w_{data_width}_afd_{almost_full_diff}", debug=True)
+        self.depth = depth
+        self.data_width = data_width
+        self.almost_full_diff = almost_full_diff
+        self.mod_name_suffix = mod_name_suffix
+
+        super().__init__(f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}",
+                         debug=True)
+
+        self.update_name()
 
         # self.data_width = self.parameter("data_width", 16)
         # self.data_width.value = data_width
-        self.data_width = data_width
-        self.depth = depth
         self.width_mult = width_mult
         self.parallel = parallel
         self.break_out_rd_ptr = break_out_rd_ptr
-        self.almost_full_diff = almost_full_diff
         self.defer_hrdwr_gen = defer_hrdwr_gen
         self.min_depth = min_depth
         self.hardware_genned = False
@@ -199,17 +205,22 @@ class RegFIFO(Generator):
     def set_min_depth(self):
         self.set_depth(self.min_depth)
 
+    def update_name(self):
+        self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}"
+
     def set_depth(self, new_depth):
         assert not (new_depth & (new_depth - 1)) or new_depth == 0, "Unsupported depth"
         assert new_depth >= self.min_depth, f"Minimum allowed depth {self.min_depth}: Tried to use {new_depth}"
         self.depth = new_depth
         self.ptr_width = max(1, clog2(self.depth))
-        self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}"
+        self.update_name()
+        # self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}"
 
     def generate_hardware(self):
         # Routine to do the real hardware generation once the
         # parameters have been finalized
-        self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}"
+        self.update_name()
+        # self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}"
 
         # Depth of 0 is basically passthru...
         if self.depth == 0:

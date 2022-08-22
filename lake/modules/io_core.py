@@ -1,3 +1,4 @@
+from operator import mod
 import kratos as kts
 from kratos import *
 from lake.passes.passes import lift_config_reg
@@ -27,6 +28,7 @@ class IOCore(Generator):
         self.fifo_depth = fifo_depth
         self.hack17_to_16 = use_17_to_16_hack
         self.allow_bypass = allow_bypass
+        self.fifo_name_suffix = "_iocore_nof"
 
         if tracks_supported is None:
             self.tracks_supported = []
@@ -110,7 +112,10 @@ class IOCore(Generator):
 
             ### Build in input and output fifos of depth 2
             # f2io -> io2glb fifo
-            f2io_2_io2glb_fifo = RegFIFO(data_width=track_len, width_mult=1, depth=self.fifo_depth)
+            f2io_2_io2glb_fifo = RegFIFO(data_width=track_len,
+                                         width_mult=1,
+                                         depth=self.fifo_depth,
+                                         mod_name_suffix=self.fifo_name_suffix)
 
             self.add_child(f"f2io_2_io2glb_{track_len}",
                            f2io_2_io2glb_fifo,
@@ -141,7 +146,10 @@ class IOCore(Generator):
                 self.wire(tmp_io2glb_v, ~f2io_2_io2glb_fifo.ports.empty)
 
             # glb2io -> io2f fifo
-            glb2io_2_io2f_fifo = RegFIFO(data_width=track_len, width_mult=1, depth=self.fifo_depth)
+            glb2io_2_io2f_fifo = RegFIFO(data_width=track_len,
+                                         width_mult=1,
+                                         depth=self.fifo_depth,
+                                         mod_name_suffix=self.fifo_name_suffix)
 
             self.add_child(f"glb2io_2_io2f_{track_len}",
                            glb2io_2_io2f_fifo,

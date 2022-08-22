@@ -11,6 +11,7 @@ from lake.modules.strg_ub_thin import StrgUBThin
 from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
 from lake.modules.scanner import Scanner
+from lake.modules.write_scanner import WriteScanner
 from lake.modules.scanner_pipe import ScannerPipe
 from lake.modules.intersect import Intersect
 from lake.top.extract_tile_info import extract_top_config
@@ -324,48 +325,55 @@ if __name__ == "__main__":
 
     controllers = []
 
-    scan = ScannerPipe(data_width=16,
-                       fifo_depth=8,
-                       add_clk_enable=True,
-                       defer_fifos=True,
-                       add_flush=False)
-    # scan = Scanner(data_width=data_width,
-    #                fifo_depth=8,
-    #                defer_fifos=True)
+    pipeline_scanner = False
+    fifo_depth = 8
 
-    isect = Intersect(data_width=data_width,
-                      use_merger=True,
-                      fifo_depth=8)
+    if pipeline_scanner:
+        scan = ScannerPipe(data_width=16,
+                            fifo_depth=fifo_depth,
+                            add_clk_enable=True,
+                            defer_fifos=True,
+                            add_flush=False)
+    else:
+        scan = Scanner(data_width=16,
+                        fifo_depth=fifo_depth,
+                        defer_fifos=True,
+                        add_flush=False)
 
-    fib_access = FiberAccess(data_width=data_width,
-                             local_memory=False,
-                             defer_fifos=True)
-
-    strg_ub = StrgUBVec(data_width=data_width, mem_width=mem_width, mem_depth=mem_depth)
-    buffet = BuffetLike(data_width=data_width,
-                        mem_depth=mem_depth,
-                        local_memory=False,
-                        optimize_wide=True)
-
-    strg_ram = StrgRAM(data_width=data_width,
-                       banks=banks,
-                       memory_width=mem_width,
-                       memory_depth=mem_depth,
-                       rw_same_cycle=rw_same_cycle,
-                       read_delay=read_delay,
-                       addr_width=16,
-                       prioritize_write=True,
-                       comply_with_17=True)
+    wscan = WriteScanner(data_width=16, fifo_depth=fifo_depth,
+                            defer_fifos=True,
+                            add_flush=False)
+    strg_ub = StrgUBVec(data_width=16,
+                        mem_width=64,
+                        mem_depth=512)
+    fiber_access = FiberAccess(data_width=16,
+                                local_memory=False,
+                                tech_map=GF_Tech_Map(depth=512, width=32),
+                                defer_fifos=True)
+    buffet = BuffetLike(data_width=16, mem_depth=512, local_memory=False,
+                        tech_map=GF_Tech_Map(depth=512, width=32),
+                        defer_fifos=True,
+                        optimize_wide=True,
+                        add_flush=False)
+    strg_ram = StrgRAM(data_width=16,
+                        banks=1,
+                        memory_width=64,
+                        memory_depth=512,
+                        rw_same_cycle=False,
+                        read_delay=1,
+                        addr_width=16,
+                        prioritize_write=True,
+                        comply_with_17=True)
 
     stencil_valid = StencilValid()
 
     controllers.append(scan)
-    # controllers.append(isect)
-    # controllers.append(fib_access)
+    controllers.append(wscan)
     controllers.append(buffet)
     controllers.append(strg_ub)
-    controllers.append(stencil_valid)
+    # controllers.append(fiber_access)
     controllers.append(strg_ram)
+    controllers.append(stencil_valid)
 
     isect = Intersect(data_width=16,
                       use_merger=False,
@@ -409,7 +417,7 @@ if __name__ == "__main__":
                              rw_same_cycle=False,
                              read_delay=1,
                              use_sim_sram=True,
-                             controllers=controllers_2,
+                             controllers=controllers,
                              name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}",
                              do_config_lift=False,
                              io_prefix="MEM_")
