@@ -1234,9 +1234,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     tmp_cfg_space[chunk_lo] = tmp_val
                 # Or across the boundary...
                 else:
-                    bits_hi = map_hi - chunk_hi * self.allowed_reg_size
+                    bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits_lo = self.allowed_reg_size - bits_lo
+                    assert (bits_hi + num_bits_lo) == (map_hi - map_lo + 1)
                     tmp_val = tmp_cfg_space[chunk_lo]
                     for z_ in range(num_bits_lo):
                         tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
