@@ -59,7 +59,7 @@ class StrgRAM(MemoryController):
         self._rd_addr = self.var("rd_addr", self.addr_width)
 
         # Separate addressing...
-        self.bit_range = (self.data_width - self.add_bits, 0)
+        self.bit_range = (self.data_width - 1, 0)
         if self.rw_same_cycle:
             self.wire(self._wr_addr, self._wr_addr_in[self.bit_range])
             self.wire(self._rd_addr, self._rd_addr_in[self.bit_range])
