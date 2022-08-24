@@ -327,6 +327,9 @@ class Repeat(MemoryController):
         INJECT1.output(self._proc_fifo_inject_data, kts.const(2**8, 16))
         INJECT1.output(self._proc_fifo_inject_eos, 1)
 
+        self._ref_maybe = self.var("ref_maybe", 1)
+        self.wire(self._ref_maybe, self._proc_fifo_valid & self._proc_fifo_out_eos & (self._proc_fifo_out_data[9, 8] == kts.const(2, 2)))
+
         #####################
         # PASS_REPEAT
         #####################
@@ -334,7 +337,8 @@ class Repeat(MemoryController):
         # PASS_REPEAT.output(self._ref_fifo_in_data, kts.ternary(self._repsig_fifo_out_eos, self._stop_lvl, self._proc_fifo_out_data))
         PASS_REPEAT.output(self._ref_fifo_in_data, self._proc_fifo_out_data)
         # PASS_REPEAT.output(self._ref_fifo_in_eos, self._repsig_fifo_out_eos)
-        PASS_REPEAT.output(self._ref_fifo_in_eos, 0)
+        # Pass eos as 1 if there is a maybe
+        PASS_REPEAT.output(self._ref_fifo_in_eos, self._ref_maybe)
         # PASS_REPEAT.output(self._ref_fifo_push, (self._repsig_fifo_valid & self._proc_fifo_valid) | (self._repsig_fifo_valid & self._repsig_fifo_out_eos))
         # We need both inputs to be valid to push out
         PASS_REPEAT.output(self._ref_fifo_push, (self._repsig_fifo_valid & self._proc_fifo_valid) & ~self._repsig_fifo_out_eos & ~self._proc_done)

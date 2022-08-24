@@ -74,7 +74,8 @@ class OnyxPEInterface(MemoryController):
 
         opcode_mapping = {
             0: int("0x000000000010000400000", 16),  # ADD
-            1: int("0x00000005fff17ffc800dc", 16)   # MUL
+            1: int("0x00000005fff17ffc800dc", 16),  # MUL
+            2: int("0x000000000010000400004", 16)   # SUB
         }
 
         if override_dense:

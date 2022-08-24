@@ -333,8 +333,8 @@ class Reg(MemoryController):
         '''
         When in DONE, we are just passing on the DONE token
         '''
-        DONE.output(self._infifo_pop, 0)
-        DONE.output(self._outfifo_push, 1)
+        DONE.output(self._infifo_pop, ~self._outfifo_full)
+        DONE.output(self._outfifo_push, ~self._outfifo_full)
         DONE.output(self._reg_clr, 1)
         DONE.output(self._reg_accum, 0)
         DONE.output(self._data_to_fifo, self._infifo_out_data)
