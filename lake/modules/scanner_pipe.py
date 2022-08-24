@@ -864,17 +864,17 @@ class ScannerPipe(MemoryController):
         LOOKUP.output(self._seg_addr_out_to_fifo, self._infifo_pos_in)
         LOOKUP.output(self._seg_op_out_to_fifo, 1)
         LOOKUP.output(self._seg_ID_out_to_fifo, 0)
-        LOOKUP.output(self._seg_req_push, self._infifo_valid_in & ~self._infifo_eos_in)
-        # LOOKUP.output(self._seg_req_push, self._infifo_valid_in & ~self._infifo_eos_in & ~self._crd_res_fifo_full)
+        # LOOKUP.output(self._seg_req_push, self._infifo_valid_in & ~self._infifo_eos_in)
+        LOOKUP.output(self._seg_req_push, self._infifo_valid_in & ~self._infifo_eos_in & ~self._crd_res_fifo_full)
         LOOKUP.output(self._seg_rd_rsp_fifo_pop, 1)
         # LOOKUP.output(self._seg_pop_infifo, self._infifo_valid_in & ~self._infifo_eos_in & ~self._seg_res_fifo_full & self._seg_grant_push)
         # Pop the infifo if there's room and it's valid
         # If the input is a stop token, we just need room and valid, otherwise we need to make
         # sure that this controller is getting granted read request
-        LOOKUP.output(self._seg_pop_infifo, self._infifo_valid_in & ~self._crd_res_fifo_full)
-        # LOOKUP.output(self._seg_pop_infifo, self._infifo_valid_in & ~self._crd_res_fifo_full & kts.ternary(self._infifo_eos_in,
-        #                                                                                                    kts.const(1, 1),
-        #                                                                                                    self._seg_grant_push))
+        # LOOKUP.output(self._seg_pop_infifo, self._infifo_valid_in & ~self._crd_res_fifo_full)
+        LOOKUP.output(self._seg_pop_infifo, self._infifo_valid_in & ~self._crd_res_fifo_full & kts.ternary(self._infifo_eos_in,
+                                                                                                           kts.const(1, 1),
+                                                                                                           self._seg_grant_push))
         LOOKUP.output(self._inc_req_made_seg, 0)
         LOOKUP.output(self._clr_req_made_seg, 1)
         LOOKUP.output(self._inc_req_rec_seg, 0)
