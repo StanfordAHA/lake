@@ -1207,7 +1207,8 @@ class ScannerPipe(MemoryController):
                                                                       self._num_req_made_crd + self._seg_res_fifo_data_out[0][self.data_width - 1, 0])))
         SEQ_STRM.output(self._crd_out_to_fifo, 0)
         SEQ_STRM.output(self._inc_req_made_crd, self._crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid)
-        SEQ_STRM.output(self._clr_req_made_crd, self._crd_grant_push & (self._num_req_made_crd == (self._seq_length_ptr_math - 1)) & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid)
+        SEQ_STRM.output(self._clr_req_made_crd, ((self._crd_grant_push & (self._num_req_made_crd == (self._seq_length_ptr_math - 1))) | (self._seq_length_ptr_math == 0)) &
+                                                ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid)
         SEQ_STRM.output(self._inc_req_rec_crd, 0)
         SEQ_STRM.output(self._clr_req_rec_crd, 0)
         SEQ_STRM.output(self._crd_res_fifo_push_alloc, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],

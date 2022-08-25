@@ -325,7 +325,9 @@ class BuffetLike(MemoryController):
 
         self._en_curr_bounds = self.var("en_curr_bounds", self.num_ID)
         # self._curr_bounds = self.var("curr_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
-        self._curr_bounds = [register(self, self._wr_addr_fifo_out_data, enable=self._en_curr_bounds[i], name=f"curr_bounds_{i}", packed=True) for i in range(self.num_ID)]
+        self._curr_bounds = [register(self, self._wr_addr_fifo_out_data, enable=self._en_curr_bounds[i],
+                                      name=f"curr_bounds_{i}", packed=True, reset_value=kts.const(int(2**self._wr_addr_fifo_out_data.width) - 1,
+                                                                                                  self._wr_addr_fifo_out_data.width)) for i in range(self.num_ID)]
 
         self._en_curr_base = self.var("en_curr_base", self.num_ID)
         # self._curr_base = [register(self, self._wr_addr, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
@@ -753,7 +755,7 @@ class BuffetLike(MemoryController):
         self.wire(self._rd_rsp_fifo_almost_full, self._rd_rsp_out_fifo.ports.almost_full)
         self.wire(self._rd_rsp_valid, ~self._rd_rsp_out_fifo.ports.empty)
 
-        chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
+        chosen_size_block = decode(self, self._size_request_full, self._blk_bounds) + 1
 
         if self.optimize_wide and self.mem_width > self.data_width:
             # self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0] & (self._rd_ID_fifo_out_data[0] == kts.const(0, 1)),
@@ -769,7 +771,7 @@ class BuffetLike(MemoryController):
                                                                                      self._chosen_read[0],
                                                                                      kts.ternary(self._use_cached_read[1] & self._read_wide_word_valid[1],
                                                                                                  self._chosen_read[1],
-                                                                                                 chosen_size_block + 1)))
+                                                                                                 chosen_size_block)))
 
             # self.wire(self._rd_rsp_fifo_in_data[self.data_width], self._read_rsp_ID_reg)
             self.wire(self._rd_rsp_fifo_in_data[self.data_width], kts.ternary(self._use_cached_read[0],
@@ -780,7 +782,7 @@ class BuffetLike(MemoryController):
             self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | (kts.concat(*self._use_cached_read).r_or()) | self._size_request_full.r_or())
         else:
             self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | self._size_request_full.r_or())
-            self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block + 1))
+            self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._valid_from_mem, self._data_from_mem, chosen_size_block))
 
             self._read_rsp_ID_reg = register(self, kts.ternary(self._read_pop_full[1], kts.const(1, 1), kts.const(0, 1)), enable=self._read_pop)
 
