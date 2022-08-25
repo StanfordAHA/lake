@@ -289,7 +289,9 @@ class ScannerPipe(MemoryController):
         self._seg_rd_rsp_fifo_pop = self.var("seg_rd_rsp_fifo_pop", 1)
         self._crd_rd_rsp_fifo_pop = self.var("crd_rd_rsp_fifo_pop", 1)
 
-        self.wire(self._rd_rsp_fifo_pop, self._seg_rd_rsp_fifo_pop | self._crd_rd_rsp_fifo_pop)
+        # Every response has preallocated room - should be able to wire to 1
+        # self.wire(self._rd_rsp_fifo_pop, self._seg_rd_rsp_fifo_pop | self._crd_rd_rsp_fifo_pop)
+        self.wire(self._rd_rsp_fifo_pop, kts.const(1, 1))
 
         self._rd_rsp_fifo_valid = self.var("rd_rsp_fifo_valid", 1)
 
@@ -742,8 +744,15 @@ class ScannerPipe(MemoryController):
         # Free the ID 0 data structure
         FREE_SEG.next(DONE_SEG, self._seg_grant_push)
 
+        self._crd_in_done_state = self.var("crd_in_done_state", 1)
         # DONE_SEG.next(START_SEG, None)
-        DONE_SEG.next(DONE_SEG, None)
+        # In the case of non lookup mode, need to wait for the coordinate side to
+        # finish before we can get the next data
+        # DONE_SEG.next(START_SEG, (~self._dense & ~self._lookup_mode & self._crd_in_done_state) | self._lookup_mode)
+        DONE_SEG.next(START_SEG, kts.ternary(self._lookup_mode,
+                                             kts.const(1, 1),
+                                             ~self._dense & self._crd_in_done_state))
+        # DONE_SEG.next(DONE_SEG, None)
 
         #######
         # START_SEG
@@ -1005,6 +1014,7 @@ class ScannerPipe(MemoryController):
         self.scan_fsm_crd.output(self._crd_res_fifo_push_fill)
         self.scan_fsm_crd.output(self._ptr_reg_en)
         self.scan_fsm_crd.output(self._seg_res_fifo_pop)
+        self.scan_fsm_crd.output(self._crd_in_done_state, default=kts.const(0, 1))
         # self.scan_fsm.output(self._ren)
         # self.scan_fsm.output(self._fifo_push)
         # self.scan_fsm.output(self._coord_out_fifo_push)
@@ -1027,8 +1037,8 @@ class ScannerPipe(MemoryController):
         # Next State Logic
         ####################
         START_CRD.next(BLOCK_1_SIZE_REQ, self._block_mode)
-        START_CRD.next(DENSE_STRM, self._dense)
-        START_CRD.next(SEQ_STRM, ~self._dense)
+        START_CRD.next(DENSE_STRM, self._dense & ~self._lookup_mode)
+        START_CRD.next(SEQ_STRM, ~self._dense & ~self._lookup_mode)
 
         self._seg_res_fifo_done_out = self.var("seg_res_fifo_done_out", 1)
         self.wire(self._seg_res_fifo_done_out, self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width] &
@@ -1079,9 +1089,14 @@ class ScannerPipe(MemoryController):
 
         # DONE
         # Go to START after sending a free?
-        FREE_CRD.next(FREE_CRD2, self._crd_grant_push & ~self._lookup_mode)
         # FREE_CRD.next(FREE_CRD2, sel  READ = 4'h6,f._buffet_joined & ~self._lookup_mode)
-        FREE_CRD.next(DONE_CRD, self._crd_grant_push & self._lookup_mode)
+        # Since the block mode is handled by the crd side - free the second data structure
+
+        # only if in block mode and not lookup
+        FREE_CRD.next(FREE_CRD2, self._crd_grant_push & self._block_mode & ~self._lookup_mode)
+        # Move on if not in block mode (or in lookup block mode) as in the dense case we never get here, and in any non-dense,
+        # non block mode, we wouldn't handle freeing more than 1 ds
+        FREE_CRD.next(DONE_CRD, self._crd_grant_push)
         # FREE_CRD.next(DONE_CRD, self._buffet_joined & self._lookup_mode)
         FREE_CRD.next(FREE_CRD, None)
 
@@ -1091,8 +1106,8 @@ class ScannerPipe(MemoryController):
         # FREE2.next(DONE, self._buffet_joined & self._root)
         FREE_CRD2.next(FREE_CRD2, None)
 
-        # DONE_CRD.next(START_CRD, None)
-        DONE_CRD.next(DONE_CRD, None)
+        DONE_CRD.next(START_CRD, None)
+        # DONE_CRD.next(DONE_CRD, None)
 
         ################
         # STATE OUTPUTS
@@ -1208,7 +1223,12 @@ class ScannerPipe(MemoryController):
         ######################
         FREE_CRD.output(self._crd_addr_out_to_fifo, 0)
         FREE_CRD.output(self._crd_op_out_to_fifo, 0)
-        FREE_CRD.output(self._crd_ID_out_to_fifo, 1)
+        # FREE_CRD.output(self._crd_ID_out_to_fifo, 1)
+        # In block mode, we are always freeing the 0 id here
+        # else, we are just handling the crd structure
+        FREE_CRD.output(self._crd_ID_out_to_fifo, kts.ternary(self._block_mode,
+                                                              kts.const(0, self._crd_ID_out_to_fifo.width),
+                                                              kts.const(1, self._crd_ID_out_to_fifo.width)))
         FREE_CRD.output(self._crd_req_push, 1)
         FREE_CRD.output(self._crd_rd_rsp_fifo_pop, 0)
         FREE_CRD.output(self._pos_out_fifo_push, 0)
@@ -1228,9 +1248,10 @@ class ScannerPipe(MemoryController):
         ######################
         # FREE_CRD2
         ######################
+        # Always free the ID=1 data structure here, so we can handle freeing 0 or 1 in the first state
         FREE_CRD2.output(self._crd_addr_out_to_fifo, 0)
         FREE_CRD2.output(self._crd_op_out_to_fifo, 0)
-        FREE_CRD2.output(self._crd_ID_out_to_fifo, 0)
+        FREE_CRD2.output(self._crd_ID_out_to_fifo, 1)
         FREE_CRD2.output(self._crd_req_push, 1)
         FREE_CRD2.output(self._crd_rd_rsp_fifo_pop, 0)
         FREE_CRD2.output(self._pos_out_fifo_push, 0)
@@ -1401,6 +1422,7 @@ class ScannerPipe(MemoryController):
         DONE_CRD.output(self._crd_res_fifo_push_fill, 0)
         DONE_CRD.output(self._ptr_reg_en, 0)
         DONE_CRD.output(self._seg_res_fifo_pop, 0)
+        DONE_CRD.output(self._crd_in_done_state, 1)
 
         self.scan_fsm_crd.set_start_state(START_CRD)
 

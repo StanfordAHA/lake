@@ -877,11 +877,16 @@ class BuffetLike(MemoryController):
 
                 # Additional condition that we are either writing the full word (thus we don't need to do any modify), or
                 # we have no outstanding writes (0 valid bits in the mask)
+                # WRITING[ID_idx].next(WR_START[ID_idx], self._joined_in_fifo &
+                #                                        (self._wr_data_fifo_out_op == 0) &
+                #                                        self._mem_acq[2 * ID_idx + 0] &
+                #                                        ~self._blk_full[ID_idx] &
+                #                                        (self._write_full_word[ID_idx] | (self._num_bits_valid_mask[ID_idx] == 0)) &
+                #                                        (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 WRITING[ID_idx].next(WR_START[ID_idx], self._joined_in_fifo &
                                                        (self._wr_data_fifo_out_op == 0) &
-                                                       self._mem_acq[2 * ID_idx + 0] &
                                                        ~self._blk_full[ID_idx] &
-                                                       (self._write_full_word[ID_idx] | (self._num_bits_valid_mask[ID_idx] == 0)) &
+                                                       ((self._write_full_word[ID_idx] & self._mem_acq[2 * ID_idx + 0]) | (self._num_bits_valid_mask[ID_idx] == 0)) &
                                                        (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 # Go to modify if we get a change in address on a non-full word (and we get lock access) or a finalize command
                 # Furthermore, make sure there is at least some data in there.
@@ -958,11 +963,14 @@ class BuffetLike(MemoryController):
                                                                (self._wr_data_fifo_out_op == 1) &
                                                                (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) &
                                                                (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                # This is horrendous to look at, but if we are in the case where we are needing to push the blk, we need to make sure there are no outstanding
+                # writes as well
                 WRITING[ID_idx].output(self._pop_in_full[ID_idx], (self._mem_acq[2 * ID_idx + 0] &
                                                                   self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
                                                                   (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) &
                                                                   (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))) |
                                                                   (self._joined_in_fifo & (self._wr_data_fifo_out_op == 0) & ~self._blk_full[ID_idx] &
+                                                                  ((self._write_full_word[ID_idx] & self._mem_acq[2 * ID_idx + 0]) | (self._num_bits_valid_mask[ID_idx] == 0)) &
                                                                   (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width))))
                 # WRITING[ID_idx].output(self._set_write_wide_word[ID_idx], (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] == self._write_word_addr[ID_idx]) &
                 WRITING[ID_idx].output(self._set_write_wide_word[ID_idx], (((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) == self._write_word_addr[ID_idx]) & self._write_word_addr_valid[ID_idx]) &
@@ -1015,7 +1023,8 @@ class BuffetLike(MemoryController):
                 MODIFY[ID_idx].output(self._en_curr_bounds[ID_idx], 0)
                 # Simply write with the lock here
                 MODIFY[ID_idx].output(self._wen_full[ID_idx], ~self._blk_full[ID_idx])
-                MODIFY[ID_idx].output(self._pop_in_full[ID_idx], 0)
+                # MODIFY[ID_idx].output(self._pop_in_full[ID_idx], 0)
+                MODIFY[ID_idx].output(self._pop_in_full[ID_idx], ~self._blk_full[ID_idx])
                 MODIFY[ID_idx].output(self._set_write_wide_word[ID_idx], 0)
                 MODIFY[ID_idx].output(self._clr_write_wide_word[ID_idx], ~self._blk_full[ID_idx])
                 MODIFY[ID_idx].output(self._write_to_sram[ID_idx], ~self._blk_full[ID_idx])
@@ -1082,7 +1091,10 @@ class BuffetLike(MemoryController):
                 # The caching is a cycle behind because it is not activated until the read returns
                 RD_START[ID_idx].output(self._set_cached_read[ID_idx], self._valid_from_mem &
                                                                        (self._read_ID_d1 == kts.const(ID_idx, 1)))
-                RD_START[ID_idx].output(self._clr_cached_read[ID_idx], 0)
+                # We clear the cached read if we are popping the block.
+                RD_START[ID_idx].output(self._clr_cached_read[ID_idx], (self._rd_op_fifo_out_op == 0) &
+                                                                       self._read_joined &
+                                                                       (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
                 # Set the read word's addr if we have a valid back to the same ID and the address is different
                 # RD_START[ID_idx].output(self._set_read_word_addr[ID_idx], self._valid_from_mem &
                 #                                                           (self._last_read_addr[self.mem_addr_bit_range_outer] != self._read_word_addr[ID_idx][self.mem_addr_bit_range_outer]) &
