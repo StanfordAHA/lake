@@ -18,7 +18,8 @@ class IOCore(Generator):
                  tracks_supported: list = None,
                  fifo_depth=2,
                  use_17_to_16_hack=True,
-                 allow_bypass=True):
+                 allow_bypass=True,
+                 use_almost_full=False):
 
         super().__init__("io_core", debug=True)
 
@@ -29,6 +30,7 @@ class IOCore(Generator):
         self.hack17_to_16 = use_17_to_16_hack
         self.allow_bypass = allow_bypass
         self.fifo_name_suffix = "_iocore_nof"
+        self.use_almost_full = use_almost_full
 
         if tracks_supported is None:
             self.tracks_supported = []
@@ -115,7 +117,8 @@ class IOCore(Generator):
             f2io_2_io2glb_fifo = RegFIFO(data_width=track_len,
                                          width_mult=1,
                                          depth=self.fifo_depth,
-                                         mod_name_suffix=self.fifo_name_suffix)
+                                         mod_name_suffix=self.fifo_name_suffix,
+                                         almost_full_diff=1)
 
             self.add_child(f"f2io_2_io2glb_{track_len}",
                            f2io_2_io2glb_fifo,
@@ -149,7 +152,8 @@ class IOCore(Generator):
             glb2io_2_io2f_fifo = RegFIFO(data_width=track_len,
                                          width_mult=1,
                                          depth=self.fifo_depth,
-                                         mod_name_suffix=self.fifo_name_suffix)
+                                         mod_name_suffix=self.fifo_name_suffix,
+                                         almost_full_diff=1)
 
             self.add_child(f"glb2io_2_io2f_{track_len}",
                            glb2io_2_io2f_fifo,
@@ -170,9 +174,14 @@ class IOCore(Generator):
                                                 tmp_glb2io,
                                                 glb2io_2_io2f_fifo.ports.data_out))
 
-                self.wire(tmp_glb2io_r, kts.ternary(self._dense_bypass,
-                                                    tmp_io2f_r,
-                                                    ~glb2io_2_io2f_fifo.ports.full))
+                if self.use_almost_full:
+                    self.wire(tmp_glb2io_r, kts.ternary(self._dense_bypass,
+                                                        tmp_io2f_r,
+                                                        ~glb2io_2_io2f_fifo.ports.almost_full))
+                else:
+                    self.wire(tmp_glb2io_r, kts.ternary(self._dense_bypass,
+                                                        tmp_io2f_r,
+                                                        ~glb2io_2_io2f_fifo.ports.full))
 
                 # self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
                 self.wire(tmp_io2f_v, kts.ternary(self._dense_bypass,
@@ -180,7 +189,10 @@ class IOCore(Generator):
                                                   ~glb2io_2_io2f_fifo.ports.empty))
             else:
                 self.wire(tmp_io2f, glb2io_2_io2f_fifo.ports.data_out)
-                self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.full)
+                if self.use_almost_full:
+                    self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.almost_full)
+                else:
+                    self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.full)
                 self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
 
     def get_bitstream(self, config_dict):
