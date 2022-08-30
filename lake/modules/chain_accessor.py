@@ -9,7 +9,7 @@ class ChainAccessor(Generator):
     def __init__(self,
                  data_width,
                  interconnect_output_ports):
-        super().__init__("Chain", debug=True)
+        super().__init__(f"Chain_{interconnect_output_ports}_{data_width}", debug=True)
 
         # generator parameters
         self.data_width = data_width

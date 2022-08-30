@@ -46,7 +46,11 @@ class LakeTop(Generator):
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=True,
+                 comply_with_17=False,
                  area_opt=True,
+                 pond_area_opt_share=False,
+                 pond_area_opt_dual_config=False,
+                 iterator_support2=2,
                  reduced_id_config_width=10,
                  tech_map=TSMC_Tech_Map(depth=512, width=32)):
         super().__init__(name, debug=True)
@@ -76,7 +80,11 @@ class LakeTop(Generator):
         self.gen_addr = gen_addr
         self.stencil_valid = stencil_valid
         self.formal_module = formal_module
+        self.comply_with_17 = comply_with_17
         self.area_opt = area_opt
+        self.pond_area_opt_share = pond_area_opt_share
+        self.pond_area_opt_dual_config = pond_area_opt_dual_config
+        self.iterator_support2 = iterator_support2
         self.reduced_id_config_width = reduced_id_config_width
         self.tech_map = tech_map
 
@@ -148,7 +156,12 @@ class LakeTop(Generator):
                                           interconnect_output_ports=self.interconnect_output_ports,
                                           read_delay=self.read_delay,
                                           rw_same_cycle=self.rw_same_cycle,
-                                          config_width=self.config_width))
+                                          config_width=self.config_width,
+                                          comply_with_17=self.comply_with_17,
+                                          area_opt=self.area_opt,
+                                          area_opt_share=self.pond_area_opt_share,
+                                          area_opt_dual_config=self.pond_area_opt_dual_config,
+                                          iterator_support2=self.iterator_support2))
 
         if self.fifo_mode:
             controllers.append(StrgFIFO(data_width=self.data_width,
@@ -166,7 +179,8 @@ class LakeTop(Generator):
                                    rw_same_cycle=self.rw_same_cycle,
                                    read_delay=self.read_delay,
                                    addr_width=16,
-                                   prioritize_write=True))
+                                   prioritize_write=True,
+                                   comply_with_17=self.comply_with_17))
 
         if self.stencil_valid:
             controllers.append(StencilValid(area_opt=self.area_opt,
