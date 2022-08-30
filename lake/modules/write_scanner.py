@@ -149,6 +149,17 @@ class WriteScanner(MemoryController):
         self._block_mode = self.input("block_mode", 1)
         self._block_mode.add_attribute(ConfigRegAttr("Block Writes or Not"))
 
+        self._spacc_mode = self.input("spacc_mode", 1)
+        self._spacc_mode.add_attribute(ConfigRegAttr("Sparse Accum Mode or Not"))
+
+        self._init_blank = self.input("init_blank", 1)
+        self._init_blank.add_attribute(ConfigRegAttr("Init blank fiber (for sparse accum)"))
+
+        self._set_blank_done = self.var("set_blank_done", 1)
+        self._clr_blank_done = self.var("clr_blank_done", 1)
+        self._blank_done = sticky_flag(self, self._set_blank_done,
+                                       clear=self._clr_blank_done, name='blank_done_stick', seq_only=True)
+
 # =============================
 # Input FIFO
 #
@@ -331,6 +342,17 @@ class WriteScanner(MemoryController):
 # SCAN FSM
 # =============================
 
+        # Indicate if the incoming stop token is geq than the programmed stop lvl
+        self._stop_lvl_geq = self.var("stop_lvl_geq", 1)
+        self.wire(self._stop_lvl_geq, self._data_infifo_eos_in & self._data_infifo_valid_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.STOP_CODE) &
+                                      (self._data_infifo_data_in[self.STOP_BT] >= self._stop_lvl[self.STOP_BT]))
+
+        self._data_done_in = self.var("data_done_in", 1)
+        self.wire(self._data_done_in, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.DONE_CODE))
+
+        self._addr_done_in = self.var("addr_done_in", 1)
+        self.wire(self._addr_done_in, self._addr_infifo_valid_in & self._addr_infifo_eos_in & (self._addr_infifo_data_in[self.OPCODE_BT] == self.DONE_CODE))
+
         # Address for writing segment
         self._inc_seg_addr = self.var("inc_seg_addr", 1)
         self._clr_seg_addr = self.var("clr_seg_addr", 1)
@@ -358,8 +380,8 @@ class WriteScanner(MemoryController):
         self._stop_in = self.var("stop_in", 1)
         self.wire(self._stop_in, self._data_infifo_valid_in & self._data_infifo_eos_in)
 
-        self._full_stop = self.var("full_stop", 1)
-        self.wire(self._full_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
+        # self._full_stop = self.var("full_stop", 1)
+        # self.wire(self._full_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
 
         self._matching_stop = self.var("matching_stop", 1)
         # self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == self._stop_lvl))
@@ -459,8 +481,11 @@ class WriteScanner(MemoryController):
         ####################
         # Redundant state but helpful in my head
         # Go to compressed or uncompressed from here
-        LL.next(ComLL, self._compressed)
-        LL.next(UnLL, ~self._compressed)
+        # Unless we are doing spacc mode - want to go straight to finalize
+        # if we haven't already done so...
+        LL.next(FINALIZE2, (self._init_blank & ~self._blank_done))
+        LL.next(ComLL, self._compressed & (~self._init_blank | self._blank_done))
+        LL.next(UnLL, ~self._compressed & (~self._init_blank | self._blank_done))
 
         ####################
         # ComLL
@@ -468,7 +493,9 @@ class WriteScanner(MemoryController):
         # In the compressed state of lowest level, we only need to write the
         # data values in order...just watching for the stop 0 token
         # ComLL.next(DONE, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
-        ComLL.next(FINALIZE2, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
+        # ComLL.next(FINALIZE2, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
+        # ComLL.next(FINALIZE2, self._data_done_in)
+        ComLL.next(FINALIZE2, self._data_done_in | (self._spacc_mode & self._stop_lvl_geq))
         ComLL.next(ComLL, None)
 
         ####################
@@ -477,8 +504,9 @@ class WriteScanner(MemoryController):
         # In the uncompressed lowest level, we are writing the data at the specified address, so we are similarly looking
         # for stop 0 token
         # UnLL.next(DONE, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
-        UnLL.next(FINALIZE2, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
-                  (self._data_infifo_data_in[9, 8] == kts.const(1, 2)) & (self._addr_infifo_data_in[9, 8] == kts.const(1, 2)))
+        # UnLL.next(FINALIZE2, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
+        #           (self._data_infifo_data_in[9, 8] == kts.const(1, 2)) & (self._addr_infifo_data_in[9, 8] == kts.const(1, 2)))
+        UnLL.next(FINALIZE2, (self._data_done_in & self._addr_done_in) | (self._spacc_mode & self._stop_lvl_geq))
         UnLL.next(UnLL, None)
 
         ####################
@@ -494,7 +522,8 @@ class WriteScanner(MemoryController):
         # ASSUMED TO BE COMPRESSED - OTHERWISE DFG LOOKS DIFFERENT - PERFORMS MATH ON COORDINATES
         # In the upper level, we will emit new coordinates linearly as we see new ones, reset tracking at stop_lvl
         UL.next(UL_EMIT_COORD, self._new_coord)
-        UL.next(UL_EMIT_SEG, self._matching_stop)
+        # Only can be in emit seg upon creation of blank fiber or stop token...
+        UL.next(UL_EMIT_SEG, self._matching_stop | (self._init_blank & ~self._blank_done))
         UL.next(UL, None)
 
         ####################
@@ -511,10 +540,21 @@ class WriteScanner(MemoryController):
         # From the emit seg, we will send out the writes to the segment array, will clear all the state
         # Should go to done if we see a stop 0
         # Should only move on once we have drained the subsequent stops and see valid data coming in
-        UL_EMIT_SEG.next(UL, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
+        # UL_EMIT_SEG.next(UL, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
+        UL_EMIT_SEG.next(UL, kts.ternary(self._init_blank,
+                                         self._data_infifo_valid_in & ~self._data_infifo_eos_in & self._blank_done,
+                                         self._data_infifo_valid_in & ~self._data_infifo_eos_in))
         # UL_EMIT_SEG.next(DONE, self._full_stop)
         # UL_EMIT_SEG.next(FINALIZE1, self._full_stop)
-        UL_EMIT_SEG.next(FINALIZE1, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
+        # UL_EMIT_SEG.next(FINALIZE1, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
+        # UL_EMIT_SEG.next(FINALIZE1, kts.ternary(self._init_blank,
+        #                                         (self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2))) | (~self._blank_done),
+        #                                         self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2))))
+    
+        # In sparse accum mode, we go to finalize when we have the geq stop
+        UL_EMIT_SEG.next(FINALIZE1, kts.ternary(self._spacc_mode,
+                                                (self._data_done_in) | (self._init_blank & ~self._blank_done) | self._stop_lvl_geq,
+                                                self._data_done_in))
         UL_EMIT_SEG.next(UL_EMIT_SEG, None)
 
         ####################
@@ -559,6 +599,8 @@ class WriteScanner(MemoryController):
         self.scan_fsm.output(self._set_block_size)
         self.scan_fsm.output(self._inc_block_write)
         self.scan_fsm.output(self._clr_block_write)
+        self.scan_fsm.output(self._set_blank_done, default=kts.const(0, 1))
+        self.scan_fsm.output(self._clr_blank_done, default=kts.const(0, 1))
 
         #######
         # START - TODO - Generate general hardware...
@@ -925,7 +967,7 @@ class WriteScanner(MemoryController):
         UL_EMIT_SEG.output(self._clr_curr_coord, 1)
         # Assumption is that valid sets of coordinates are always passed here so I should be able to hit new data
         # Pop until we have data in thats not a stop (or we fall through to DONE)
-        UL_EMIT_SEG.output(self._infifo_pop[0], self._data_infifo_valid_in & self._data_infifo_eos_in)
+        UL_EMIT_SEG.output(self._infifo_pop[0], self._data_infifo_valid_in & self._data_infifo_eos_in & ~(self._init_blank & ~self._blank_done) & ~self._data_done_in)
         UL_EMIT_SEG.output(self._infifo_pop[1], 0)
         UL_EMIT_SEG.output(self._clr_wen_made, 0)
         UL_EMIT_SEG.output(self._set_block_size, 0)
@@ -1006,12 +1048,18 @@ class WriteScanner(MemoryController):
         DONE.output(self._clr_seg_ctr, 0)
         DONE.output(self._set_curr_coord, 0)
         DONE.output(self._clr_curr_coord, 0)
-        DONE.output(self._infifo_pop[0], 0)
+        # DONE.output(self._infifo_pop[0], 0)
+        DONE.output(self._infifo_pop[0], self._data_done_in)
         DONE.output(self._infifo_pop[1], 0)
         DONE.output(self._clr_wen_made, 0)
         DONE.output(self._set_block_size, 0)
         DONE.output(self._inc_block_write, 0)
         DONE.output(self._clr_block_write, 0)
+        # If doing the blank is not done and should be, we set it here then
+        # let the write scanner do its thing
+        DONE.output(self._set_blank_done, self._init_blank & ~self._blank_done)
+        # We should only clear this for next tile - meaning we get the real done in
+        DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._data_done_in)
 
         self.scan_fsm.set_start_state(START)
 
@@ -1058,6 +1106,8 @@ class WriteScanner(MemoryController):
         lowest_level = config_kwargs['lowest_level']
         stop_lvl = config_kwargs['stop_lvl']
         block_mode = config_kwargs['block_mode']
+        spacc_mode = config_kwargs['spacc_mode']
+        init_blank = config_kwargs['init_blank']
 
         # Store all configurations here
         config = [
@@ -1066,13 +1116,15 @@ class WriteScanner(MemoryController):
             ("lowest_level", lowest_level),
             ("stop_lvl", stop_lvl),
             ("block_mode", block_mode),
+            ("spacc_mode", spacc_mode),
+            ("init_blank", init_blank),
             ("tile_en", 1)]
 
         return trim_config_list(flattened, config)
 
 
 if __name__ == "__main__":
-    scanner_dut = WriteScanner(data_width=16)
+    scanner_dut = WriteScanner(data_width=16, defer_fifos=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
