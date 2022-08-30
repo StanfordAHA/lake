@@ -21,7 +21,8 @@ class StrgRAM(MemoryController):
                  rw_same_cycle=False,  # Same as separate addresses
                  read_delay=1,
                  addr_width=16,
-                 prioritize_write=True):
+                 prioritize_write=True,
+                 comply_with_17=False):
         super().__init__(f"strg_ram_{memory_width}_{memory_depth}_delay{read_delay}", debug=True)
 
         # Generation parameters
