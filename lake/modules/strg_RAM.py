@@ -23,6 +23,7 @@ class StrgRAM(MemoryController):
                  addr_width=16,
                  prioritize_write=True,
                  comply_with_17=False):
+
         super().__init__(f"strg_ram_{memory_width}_{memory_depth}_delay{read_delay}", debug=True)
 
         # Generation parameters
@@ -67,8 +68,8 @@ class StrgRAM(MemoryController):
         # Separate addressing...
         self.bit_range = (self.data_width - 1, 0)
         if self.rw_same_cycle:
-            self.wire(self._wr_addr, self._wr_addr_in)
-            self.wire(self._rd_addr, self._rd_addr_in)
+            self.wire(self._wr_addr, self._wr_addr_in[self.bit_range])
+            self.wire(self._rd_addr, self._rd_addr_in[self.bit_range])
         # Use the wr addr for both in this case...
         else:
             self.wire(self._wr_addr, self._wr_addr_in[self.bit_range])

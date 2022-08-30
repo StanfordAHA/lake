@@ -11,6 +11,13 @@ class MemoryController(kts.Generator):
     Provides the utilities to interface a memory controller with a memory interface
     '''
     MAXIMUM_CONFIG_REG = 32
+    OPCODE_WIDTH = 2
+    OPCODE_BASE = 8
+    OPCODE_BT = (OPCODE_BASE + OPCODE_WIDTH - 1, OPCODE_BASE)
+    STOP_CODE = 0
+    STOP_BT = (OPCODE_BASE - 1, 0)
+    DONE_CODE = 1
+    MAYBE_CODE = 2
 
     def set_bit(self, old_val, bit_to_set, new_bit):
         new_val = old_val | (new_bit << bit_to_set)
