@@ -83,7 +83,7 @@ class StrgUBThin(MemoryController):
         if self.comply_with_17:
             self.add_bits = 1
         self.core_io_width = self.data_width + self.add_bits
-        self.bit_range = (self.data_width - self.add_bits, 0)
+        self.bit_range = (self.data_width - 1, 0)
 
         self._data_in = self.input("data_in", self.core_io_width,
                                    size=self.interconnect_input_ports,
