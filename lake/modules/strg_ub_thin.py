@@ -33,9 +33,10 @@ class StrgUBThin(MemoryController):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=True,
                  gen_addr=True,
-                 area_opt=False,
+                 comply_with_17=True,
+                 area_opt=True,
                  area_opt_share=False,
-                 area_opt_dual_config=False,
+                 area_opt_dual_config=True,
                  delay_width=4,
                  iterator_support2=2  # assumes that this port has smaller iter_support
                  ):
@@ -61,6 +62,7 @@ class StrgUBThin(MemoryController):
         self.rw_same_cycle = rw_same_cycle
         self.read_delay = read_delay
         self.gen_addr = gen_addr
+        self.comply_with_17 = comply_with_17
         self.area_opt = area_opt
         self.area_opt_share = area_opt_share
         self.area_opt_dual_config = area_opt_dual_config
@@ -77,23 +79,43 @@ class StrgUBThin(MemoryController):
 
         self.base_ports = [[None]]
 
-        self._data_in = self.input("data_in", self.data_width,
+        self.add_bits = 0
+        if self.comply_with_17:
+            self.add_bits = 1
+        self.core_io_width = self.data_width + self.add_bits
+        self.bit_range = (self.data_width - self.add_bits, 0)
+
+        self._data_in = self.input("data_in", self.core_io_width,
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
 
         # outputs
-        self._data_out = self.output("data_out", self.data_width,
+        self._data_out = self.output("data_out", self.core_io_width,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
-
         self._data_to_sram = self.output("data_to_strg", self.data_width,
                                          size=self.fetch_width,
                                          packed=True)
         self._data_from_sram = self.input("data_from_strg", self.data_width,
                                           size=self.fetch_width,
                                           packed=True)
+
+        # wires used for comply17
+        self._data_in_thin = self.var("data_in_thin", self.data_width,
+                                      size=self.interconnect_input_ports,
+                                      packed=True,
+                                      explicit_array=True)
+
+        for idx in range(self.interconnect_input_ports):
+            self.wire(self._data_in_thin[idx], self._data_in[idx][self.data_width - 1, 0])
+
+        self._data_out_thin = self.var("data_out_int_thin", self.data_width,
+                                       size=self.interconnect_output_ports,
+                                       packed=True,
+                                       explicit_array=True)
+
         # Early out in case...
         if self.gen_addr is False:
             # Pass through write enable, addr data and
@@ -112,8 +134,15 @@ class StrgUBThin(MemoryController):
             # self.wire(self._cen_to_sram, self._write | self._read)
             self.wire(self._wen_to_sram, self._write)
             self.wire(self._ren_to_sram, self._read)
-            self.wire(self._data_out, self._data_from_sram)
-            self.wire(self._data_in, self._data_to_sram)
+            if self.comply_with_17:
+                for i in range(self.interconnect_output_ports):
+                    self.wire(self._data_out[i][self.bit_range], self._data_from_sram[0])
+                    for i_ in range(self.add_bits):
+                        self.wire(self._data_out[self.data_width + i_], kts.const(0, 1))
+                self.wire(self._data_in_thin, self._data_to_sram)
+            else:
+                self.wire(self._data_out, self._data_from_sram)
+                self.wire(self._data_in, self._data_to_sram)
             self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
             self.wire(self._rd_addr_to_sram, self._read_addr[clog2(self.mem_depth) - 1, 0])
 
@@ -200,19 +229,34 @@ class StrgUBThin(MemoryController):
 
         # Add chaining in here... since we only use in the UB case...
         self._chain_data_in = self.input("chain_data_in",
-                                         self.data_width,
+                                         self.core_io_width,
                                          size=self.interconnect_output_ports,
                                          packed=True,
                                          explicit_array=True)
+
+        self._chain_data_in_thin = self.var("chain_data_in_thin",
+                                            self.data_width,
+                                            size=self.interconnect_output_ports,
+                                            packed=True,
+                                            explicit_array=True)
+
+        for idx in range(self.interconnect_input_ports):
+            self.wire(self._chain_data_in_thin[idx], self._chain_data_in[idx][self.data_width - 1, 0])
 
         chaining = ChainAccessor(data_width=self.data_width,
                                  interconnect_output_ports=self.interconnect_output_ports)
 
         self.add_child(f"chain", chaining,
                        curr_tile_data_out=self._data_out_int,
-                       chain_data_in=self._chain_data_in,
+                       chain_data_in=self._chain_data_in_thin,
                        accessor_output=self._valid_out_int,
-                       data_out_tile=self._data_out)
+                       data_out_tile=self._data_out_thin)
+
+        for idx in range(self.interconnect_output_ports):
+            self.wire(self._data_out[idx][self.bit_range], self._data_out_thin[idx])
+            if self.comply_with_17:
+                for i_ in range(self.add_bits):
+                    self.wire(self._data_out[idx][self.data_width + i_], kts.const(0, 1))
 
         self.wire(self._valid_out, self._valid_out_int)
 
@@ -438,11 +482,11 @@ class StrgUBThin(MemoryController):
             if self.area_opt and self.area_opt_dual_config:
                 pri_enc_wr = self._write_mux_sel_msb
                 self.wire(self._wr_addr_to_sram, self._write_addr[clog2(self.mem_depth) - 1, 0])
-                self.wire(self._data_to_sram, self._data_in[pri_enc_wr])
+                self.wire(self._data_to_sram, self._data_in_thin[pri_enc_wr])
             else:
                 pri_enc_wr = get_priority_encode(self, self._write)
                 self.wire(self._wr_addr_to_sram, self._write_addr[pri_enc_wr][clog2(self.mem_depth) - 1, 0])
-                self.wire(self._data_to_sram, self._data_in[pri_enc_wr])
+                self.wire(self._data_to_sram, self._data_in_thin[pri_enc_wr])
 
             # Read side...
             self._rd_addr_to_sram = self.output("rd_addr_out", clog2(self.mem_depth), packed=True)
@@ -480,7 +524,7 @@ class StrgUBThin(MemoryController):
             self._addr_to_sram = self.output("addr_out", clog2(self.mem_depth), packed=True)
             pri_enc_wr = get_priority_encode(self, self._write)
             pri_enc_rd = get_priority_encode(self, self._read)
-            self.wire(self._data_to_sram, self._data_in[0])
+            self.wire(self._data_to_sram, self._data_in_thin[0])
             self.wire(self._addr_to_sram, self._addr)
 
             @always_comb
