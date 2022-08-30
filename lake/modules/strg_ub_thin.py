@@ -112,9 +112,9 @@ class StrgUBThin(MemoryController):
             self.wire(self._data_in_thin[idx], self._data_in[idx][self.data_width - 1, 0])
 
         self._data_out_thin = self.var("data_out_int_thin", self.data_width,
-                                        size=self.interconnect_output_ports,
-                                        packed=True,
-                                        explicit_array=True)
+                                       size=self.interconnect_output_ports,
+                                       packed=True,
+                                       explicit_array=True)
 
         # Early out in case...
         if self.gen_addr is False:
