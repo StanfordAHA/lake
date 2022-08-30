@@ -114,7 +114,7 @@ def extract_controller(file_path):
     return ctrl_info
 
 
-def map_controller(controller, name, flatten=False):
+def map_controller(controller, name, flatten=False, linear_ag=False):
     ctrl_dim = controller.dim
     ctrl_ranges = controller.extent
     ctrl_cyc_strides = controller.cyc_stride
@@ -191,10 +191,40 @@ def map_controller(controller, name, flatten=False):
     (tform_extent, tform_cyc_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_cyc_strides, ctrl_dim)
     tform_in_data_strides = None
     if ctrl_in_data_strt is not None:
+        # hack to linearize in2agg and agg2sram data_stride
+        if linear_ag:
+            print(name, "linearization")
+            print("original write data strides:", ctrl_in_data_strides)
+            for i in range(len(ctrl_in_data_strides) - 1):
+                s = ctrl_ranges[i] * ctrl_in_data_strides[i]
+                if "in2agg" in name:
+                    if (s % 4) > 0:
+                        s = (int(s / 4) + 1) * 4
+                elif "agg2sram" in name:
+                    s = s
+                elif "sram2tb" in name:
+                    s = s % 4
+                ctrl_in_data_strides[i + 1] = s
+            print("new write data strides:", ctrl_in_data_strides)
         (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
 
     tform_out_data_strides = None
     if ctrl_out_data_strt is not None:
+        # hack to linearize in2agg and agg2sram data_stride
+        if linear_ag:
+            print(name, "linearization")
+            print("original read data strides:", ctrl_out_data_strides)
+            for i in range(len(ctrl_out_data_strides) - 1):
+                s = ctrl_ranges[i] * ctrl_out_data_strides[i]
+                if "tb2out" in name:
+                    if (s % 4) > 0:
+                        s = (int(s / 4) + 1) * 4
+                elif "agg2sram" in name:
+                    s = s % 4
+                elif "sram2tb" in name:
+                    s = s
+                ctrl_out_data_strides[i + 1] = s
+            print("new read data strides:", ctrl_out_data_strides)
         (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
 
     tform_mux_data_strides = None
@@ -221,12 +251,13 @@ def map_controller(controller, name, flatten=False):
     return mapped_ctrl
 
 
-def configure_controller(prefix, name, controller):
+def configure_controller(prefix="", name="", suffix="", controller=None):
     """[summary]
 
     Args:
         prefix ([string]): [prefix string used for prepending hierarchy]
         name ([string]): [name of the controller to map]
+        prefix ([string]): [suffix string used for postpending dual configurations (for Pond)]
         controller ([string]): [controller to map]
 
     Returns:
@@ -244,18 +275,18 @@ def configure_controller(prefix, name, controller):
             else:
                 strt_addr = mapped_ctrl.in_data_strt
 
-            config.append((f"{expand_name}_sched_gen_enable", 1))
-            config.append((f"{expand_name}_for_loop_dimensionality", mapped_ctrl.dim))
-            config.append((f"{expand_name}_sched_gen_sched_addr_gen_starting_addr", mapped_ctrl.cyc_strt))
-            config.append((f"{expand_name}_addr_gen_starting_addr", strt_addr))
+            config.append((f"{expand_name}_sched_gen_enable{suffix}", 1))
+            config.append((f"{expand_name}_for_loop_dimensionality{suffix}", mapped_ctrl.dim))
+            config.append((f"{expand_name}_sched_gen_sched_addr_gen_starting_addr{suffix}", mapped_ctrl.cyc_strt))
+            config.append((f"{expand_name}_addr_gen_starting_addr{suffix}", strt_addr))
             for i in range(mapped_ctrl.dim):
                 addr_stride = 0
                 if out_n_in == 1:
                     addr_stride = mapped_ctrl.out_data_stride[i]
                 else:
                     addr_stride = mapped_ctrl.in_data_stride[i]
-                config.append((f"{expand_name}_addr_gen_strides_{i}", addr_stride))
-                config.append((f"{expand_name}_for_loop_ranges_{i}", mapped_ctrl.extent[i]))
-                config.append((f"{expand_name}_sched_gen_sched_addr_gen_strides_{i}", mapped_ctrl.cyc_stride[i]))
+                config.append((f"{expand_name}_addr_gen_strides{suffix}_{i}", addr_stride))
+                config.append((f"{expand_name}_for_loop_ranges{suffix}_{i}", mapped_ctrl.extent[i]))
+                config.append((f"{expand_name}_sched_gen_sched_addr_gen_strides{suffix}_{i}", mapped_ctrl.cyc_stride[i]))
 
     return config

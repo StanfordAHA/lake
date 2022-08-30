@@ -23,7 +23,7 @@ class StrgRAM(MemoryController):
                  addr_width=16,
                  prioritize_write=True,
                  comply_with_17=False):
-        super().__init__("strg_ram", debug=True)
+        super().__init__(f"strg_ram_{memory_width}_{memory_depth}_delay{read_delay}", debug=True)
 
         # Generation parameters
         self.banks = banks
