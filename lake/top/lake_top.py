@@ -179,7 +179,8 @@ class LakeTop(Generator):
                                    rw_same_cycle=self.rw_same_cycle,
                                    read_delay=self.read_delay,
                                    addr_width=16,
-                                   prioritize_write=True))
+                                   prioritize_write=True,
+                                   comply_with_17=self.comply_with_17))
 
         if self.stencil_valid:
             controllers.append(StencilValid(area_opt=self.area_opt,
