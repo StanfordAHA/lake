@@ -25,6 +25,7 @@ class StrgUBAggOnly(Generator):
                  addr_fifo_depth=8,
                  delay_width=4,
                  agg_iter_support_small=3,
+                 sched_gen_width=16,
                  agg_height=4,
                  agg_addr_width=3,
                  tb_height=2):
@@ -53,6 +54,7 @@ class StrgUBAggOnly(Generator):
         self.reduced_id_config_width = reduced_id_config_width
         self.addr_fifo_depth = addr_fifo_depth
         self.delay_width = delay_width
+        self.sched_gen_width = sched_gen_width
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -72,7 +74,7 @@ class StrgUBAggOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.sched_gen_width)
 
         self._data_in = self.input("data_in", self.data_width,
                                    size=self.interconnect_input_ports,
@@ -261,7 +263,7 @@ class StrgUBAggOnly(Generator):
 
                 newSG = SchedGen(iterator_support=self.agg_iter_support,
                                  # config_width=self.agg_addr_width)
-                                 config_width=16)
+                                 config_width=sched_gen_width)
 
                 self.add_child(f"agg_write_sched_gen_{i}",
                                newSG,
@@ -297,7 +299,7 @@ class StrgUBAggOnly(Generator):
 
                 newSG = SchedGen(iterator_support=self.agg_iter_support,
                                  # config_width=self.agg_addr_width)
-                                 config_width=16)
+                                 config_width=sched_gen_width)
                 self.add_child(f"agg_write_sched_gen_{i}",
                                newSG,
                                clk=self._clk,

@@ -29,6 +29,7 @@ class StrgUBSRAMOnly(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  area_opt=True,
+                 sched_gen_width=16,
                  agg_height=4,
                  tb_height=2):
 
@@ -51,6 +52,7 @@ class StrgUBSRAMOnly(Generator):
         self.rw_same_cycle = rw_same_cycle
         self.mem_addr_width = clog2(self.mem_depth)
         self.area_opt = area_opt
+        self.sched_gen_width = sched_gen_width
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -63,7 +65,7 @@ class StrgUBSRAMOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.sched_gen_width)
 
         if self.area_opt:
             self._sram_read_addr_in = self.input("sram_read_addr_in", self.mem_addr_width,

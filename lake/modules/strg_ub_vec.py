@@ -38,6 +38,7 @@ class StrgUBVec(MemoryController):
                  reduced_id_config_width=10,
                  in2agg_addr_fifo_depth=8,  # delay fifo for update operation
                  agg2sram_addr_fifo_depth=4,  # delay fifo for update operation
+                 sched_gen_width=18,
                  agg_data_top=False):
 
         super().__init__("strg_ub_vec")
@@ -64,6 +65,7 @@ class StrgUBVec(MemoryController):
         self.reduced_id_config_width = reduced_id_config_width
         self.in2agg_addr_fifo_depth = in2agg_addr_fifo_depth
         self.agg2sram_addr_fifo_depth = agg2sram_addr_fifo_depth
+        self.sched_gen_width = sched_gen_width
 
         self.input_iterator_support = 6
         self.output_iterator_support = 6
@@ -119,7 +121,7 @@ class StrgUBVec(MemoryController):
         ##################################################################################
 
         # Create cycle counter to share...
-        self._cycle_count = add_counter(self, "cycle_count", 16)
+        self._cycle_count = add_counter(self, "cycle_count", self.sched_gen_width)
 
         agg_only = StrgUBAggOnly(data_width=self.data_width,
                                  mem_width=self.mem_width,
@@ -132,6 +134,7 @@ class StrgUBVec(MemoryController):
                                  reduced_id_config_width=self.reduced_id_config_width,
                                  addr_fifo_depth=self.in2agg_addr_fifo_depth,
                                  agg_iter_support_small=self.agg_iter_support_small,
+                                 sched_gen_width=self.sched_gen_width,
                                  agg_height=self.agg_height,
                                  config_width=self.input_config_width)
 
@@ -149,6 +152,7 @@ class StrgUBVec(MemoryController):
                                               addr_fifo_depth=self.agg2sram_addr_fifo_depth,
                                               read_delay=self.read_delay,
                                               rw_same_cycle=self.rw_same_cycle,
+                                              sched_gen_width=self.sched_gen_width,
                                               agg_height=self.agg_height,
                                               config_width=self.input_config_width)
 
@@ -163,6 +167,7 @@ class StrgUBVec(MemoryController):
                                    interconnect_input_ports=self.interconnect_input_ports,
                                    interconnect_output_ports=self.interconnect_output_ports,
                                    area_opt=self.area_opt,
+                                   sched_gen_width=self.sched_gen_width,
                                    read_delay=self.read_delay,
                                    rw_same_cycle=self.rw_same_cycle,
                                    agg_height=self.agg_height,
@@ -180,6 +185,7 @@ class StrgUBVec(MemoryController):
                                             interconnect_output_ports=self.interconnect_output_ports,
                                             area_opt=self.area_opt,
                                             reduced_id_config_width=self.reduced_id_config_width,
+                                            sched_gen_width=self.sched_gen_width,
                                             read_delay=self.read_delay,
                                             rw_same_cycle=self.rw_same_cycle,
                                             agg_height=self.agg_height,
@@ -197,6 +203,7 @@ class StrgUBVec(MemoryController):
                                interconnect_output_ports=self.interconnect_output_ports,
                                area_opt=self.area_opt,
                                reduced_id_config_width=self.reduced_id_config_width,
+                               sched_gen_width=self.sched_gen_width,
                                read_delay=self.read_delay,
                                rw_same_cycle=self.rw_same_cycle,
                                agg_height=self.agg_height,

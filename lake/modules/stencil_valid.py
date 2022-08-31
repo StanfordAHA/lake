@@ -10,16 +10,18 @@ import kratos as kts
 class StencilValid(MemoryController):
     def __init__(self, name="stencil_valid",
                  area_opt=True,
+                 sched_gen_width=16,
                  reduced_id_config_width=10):
         super().__init__(name)
 
         self.stencil_valid_width = 16
         self.area_opt = area_opt
         self.reduced_id_config_width = reduced_id_config_width
+        self.sched_gen_width = sched_gen_width
 
         self.define_io()
 
-        self._cycle_count = self.var("cycle_count", 16)
+        self._cycle_count = self.var("cycle_count", self.sched_gen_width)
 
         if self.area_opt:
             self._loops_stencil_valid = ForLoop(iterator_support=6,
@@ -38,7 +40,7 @@ class StencilValid(MemoryController):
         # Schedule Generator for stencil valid...
         self.add_child(f"stencil_valid_sched_gen",
                        SchedGen(iterator_support=6,
-                                config_width=16),
+                                config_width=self.sched_gen_width),
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,

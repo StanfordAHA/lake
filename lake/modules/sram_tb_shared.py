@@ -32,6 +32,7 @@ class StrgUBSRAMTBShared(Generator):
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  area_opt=True,
                  reduced_id_config_width=10,
+                 sched_gen_width=16,
                  agg_height=4,
                  tb_height=2):
 
@@ -53,6 +54,7 @@ class StrgUBSRAMTBShared(Generator):
         self.input_sched_iterator_support = input_sched_iterator_support
         self.area_opt = area_opt
         self.reduced_id_config_width = reduced_id_config_width
+        self.sched_gen_width = sched_gen_width
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -65,7 +67,7 @@ class StrgUBSRAMTBShared(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.sched_gen_width)
 
         self._loops_sram2tb_mux_sel = self.output("loops_sram2tb_mux_sel",
                                                   width=max(clog2(self.default_iterator_support), 1),
@@ -109,7 +111,7 @@ class StrgUBSRAMTBShared(Generator):
             self.add_child(f"output_sched_gen_{i}",
                            SchedGen(iterator_support=self.default_iterator_support,
                                     # config_width=self.default_config_width),
-                                    config_width=16),
+                                    config_width=self.sched_gen_width),
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,

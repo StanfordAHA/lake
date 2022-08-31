@@ -36,6 +36,7 @@ class StrgUBAggSRAMShared(Generator):
                  area_opt=True,
                  addr_fifo_depth=4,
                  delay_width=4,
+                 sched_gen_width=16,
                  agg_height=4,
                  tb_height=2):
 
@@ -58,6 +59,7 @@ class StrgUBAggSRAMShared(Generator):
         self.area_opt = area_opt
         self.addr_fifo_depth = addr_fifo_depth
         self.delay_width = delay_width
+        self.sched_gen_width = sched_gen_width
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -97,7 +99,7 @@ class StrgUBAggSRAMShared(Generator):
                                                 packed=True,
                                                 explicit_array=True)
         else:
-            self._cycle_count = self.input("cycle_count", 16)
+            self._cycle_count = self.input("cycle_count", self.sched_gen_width)
 
             self._floop_mux_sel = self.output("floop_mux_sel",
                                               width=max(clog2(self.default_iterator_support), 1),
@@ -188,7 +190,7 @@ class StrgUBAggSRAMShared(Generator):
                 self.add_child(f"agg_read_sched_gen_{i}",
                                SchedGen(iterator_support=self.default_iterator_support,
                                         # config_width=self.mem_addr_width),
-                                        config_width=16),
+                                        config_width=sched_gen_width),
                                clk=self._clk,
                                rst_n=self._rst_n,
                                cycle_count=self._cycle_count,
