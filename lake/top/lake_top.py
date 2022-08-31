@@ -97,7 +97,7 @@ class LakeTop(Generator):
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
         # Create a MemoryTileBuilder
-        MTB = MemoryTileBuilder(name, True)
+        MTB = MemoryTileBuilder(name, True, io_prefix=name+"_")
 
         # For our current implementation, we are just using 1 bank of SRAM
         MTB.set_banks(self.banks)
