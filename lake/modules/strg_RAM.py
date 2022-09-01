@@ -21,8 +21,9 @@ class StrgRAM(MemoryController):
                  rw_same_cycle=False,  # Same as separate addresses
                  read_delay=1,
                  addr_width=16,
-                 prioritize_write=True):
-        super().__init__("strg_ram", debug=True)
+                 prioritize_write=True,
+                 comply_with_17=False):
+        super().__init__(f"strg_ram_{memory_width}_{memory_depth}_delay{read_delay}", debug=True)
 
         # Generation parameters
         self.banks = banks
@@ -59,9 +60,10 @@ class StrgRAM(MemoryController):
         self._rd_addr = self.var("rd_addr", self.addr_width)
 
         # Separate addressing...
+        self.bit_range = (self.data_width - 1, 0)
         if self.rw_same_cycle:
-            self.wire(self._wr_addr, self._wr_addr_in)
-            self.wire(self._rd_addr, self._rd_addr_in)
+            self.wire(self._wr_addr, self._wr_addr_in[self.bit_range])
+            self.wire(self._rd_addr, self._rd_addr_in[self.bit_range])
         # Use the wr addr for both in this case...
         else:
             self.wire(self._wr_addr, self._wr_addr_in)

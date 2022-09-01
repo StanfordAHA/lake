@@ -21,7 +21,7 @@ class StorageConfigSeq(MemoryController):
                  total_sets,
                  sets_per_macro,
                  memory_interface: MemoryInterface = None):
-        super().__init__("storage_config_seq")
+        super().__init__(f"storage_config_seq_{total_sets}_{fetch_width}_{data_width}")
 
         self.data_width = data_width
         self.config_addr_width = config_addr_width
