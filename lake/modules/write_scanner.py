@@ -550,7 +550,7 @@ class WriteScanner(MemoryController):
         # UL_EMIT_SEG.next(FINALIZE1, kts.ternary(self._init_blank,
         #                                         (self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2))) | (~self._blank_done),
         #                                         self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2))))
-    
+
         # In sparse accum mode, we go to finalize when we have the geq stop
         UL_EMIT_SEG.next(FINALIZE1, kts.ternary(self._spacc_mode,
                                                 (self._data_done_in) | (self._init_blank & ~self._blank_done) | self._stop_lvl_geq,
@@ -1057,9 +1057,9 @@ class WriteScanner(MemoryController):
         DONE.output(self._clr_block_write, 0)
         # If doing the blank is not done and should be, we set it here then
         # let the write scanner do its thing
-        DONE.output(self._set_blank_done, self._init_blank & ~self._blank_done)
+        DONE.output(self._set_blank_done, self._init_blank & ~self._blank_done & self._spacc_mode)
         # We should only clear this for next tile - meaning we get the real done in
-        DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._data_done_in)
+        DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._data_done_in & self._spacc_mode)
 
         self.scan_fsm.set_start_state(START)
 
