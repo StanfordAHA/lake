@@ -163,6 +163,7 @@ class LakeTop(Generator):
                                           area_opt=self.area_opt,
                                           area_opt_share=self.pond_area_opt_share,
                                           area_opt_dual_config=self.pond_area_opt_dual_config,
+                                          reduced_id_config_width=self.reduced_id_config_width,
                                           iterator_support2=self.iterator_support2))
 
         if self.fifo_mode and (self.fw_int > 1 or self.banks > 1):
