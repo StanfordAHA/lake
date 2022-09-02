@@ -97,8 +97,10 @@ class AddrGen(Generator):
         # LOCAL VARIABLES: end
         # GENERATION LOGIC: begin
         if self.dual_config:
+            self._restart_addr = self.var("restart_addr", self.config_width)
             self.wire(self._mux_sel_msb, self._mux_sel[self._mux_sel.width - 1])
             self.wire(self._strt_addr, ternary(self._mux_sel_msb, self._starting_addr2, self._starting_addr))
+            self.wire(self._restart_addr, ternary(~self._mux_sel_msb, self._starting_addr2, self._starting_addr))
             self.wire(self._cur_stride, ternary(self._mux_sel_msb, self._strides2[self._mux_sel_iter2], self._strides[self._mux_sel_iter1]))
         else:
             self.wire(self._strt_addr, self._starting_addr)
@@ -121,7 +123,7 @@ class AddrGen(Generator):
         elif self._step:
             # mux_sel as 0 but update means that the machine is resetting.
             if self._restart:
-                self._current_addr = self._strt_addr
+                self._current_addr = self._restart_addr
             else:
                 if self.dual_config:
                     self._current_addr = self._current_addr + self._cur_stride

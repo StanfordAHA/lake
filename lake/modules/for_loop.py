@@ -93,14 +93,16 @@ class ForLoop(Generator):
             self._cur_dimensionality = self.var("cur_dimensionality", 1 + clog2(self.max_iterator_support))
             self._mux_sel = self.var("mux_sel", max(clog2(self.max_iterator_support), 1))
             self._mux_sel_out = self.output("mux_sel_out", max(clog2(self.max_iterator_support) + 1, 1))
+            self._mux_sel_msb = self.var("mux_sel_msb", 1)
             self._mux_sel_msb_r = self.var("mux_sel_msb_r", 1)
             self._mux_sel_iter1 = self.var("mux_sel_iter1", self.iter_idx_w)
             self._mux_sel_iter2 = self.var("mux_sel_iter2", self.iter2_idx_w)
 
-            self.wire(self._cur_dimensionality, ternary(self._mux_sel_msb_r, self._dimensionality2, self._dimensionality))
+            self.wire(self._mux_sel_msb, ternary(self._flush, self._mux_sel_msb_init, self._mux_sel_msb_r))
+            self.wire(self._cur_dimensionality, ternary(self._mux_sel_msb, self._dimensionality2, self._dimensionality))
             self.wire(self._mux_sel_iter1, self._mux_sel[self.iter_idx_w - 1, 0])
             self.wire(self._mux_sel_iter2, self._mux_sel[self.iter2_idx_w - 1, 0])
-            self.wire(self._mux_sel_out, concat(self._mux_sel_msb_r, self._mux_sel))
+            self.wire(self._mux_sel_out, concat(self._mux_sel_msb, self._mux_sel))
         else:
             self._mux_sel = self.var("mux_sel", max(clog2(self.iterator_support), 1))
             self._mux_sel_out = self.output("mux_sel_out", max(clog2(self.iterator_support), 1))
@@ -121,7 +123,7 @@ class ForLoop(Generator):
         self._maxed_value = self.var("maxed_value", 1)
         if self.dual_config:
             self._cur_range = self.var("cur_range", self.config_width)
-            self.wire(self._cur_range, ternary(self._mux_sel_msb_r,
+            self.wire(self._cur_range, ternary(self._mux_sel_msb,
                                                self._ranges2[self._mux_sel_iter2],
                                                self._ranges[self._mux_sel_iter1]))
             self.wire(self._maxed_value, (self._dim_counter[self._mux_sel] ==
