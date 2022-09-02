@@ -60,7 +60,7 @@ def test_pond_basic():
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
-                               directory="tempdir",
+                               directory=tempdir,
                                magma_output="verilog",
                                flags=["-Wno-fatal", "--trace"])
 
