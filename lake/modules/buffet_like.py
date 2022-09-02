@@ -1021,6 +1021,7 @@ class BuffetLike(MemoryController):
                                                                                 (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)) &
                                                                                 # self._mem_acq[2 * ID_idx + 0] &
                                                                                 ~self._any_sram_lock &
+                                                                                (self._wr_addr_fifo_out_data < (self._buffet_capacity[ID_idx] - self._curr_capacity_pre[ID_idx])) &
                                                                                 ((self._wr_data_fifo_out_op == kts.const(0, 1)) |
                                                                                     # ((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] != self._write_word_addr[ID_idx]) &
                                                                                     ((((self._curr_base[ID_idx] + self._buffet_base[ID_idx] + self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer]) != self._write_word_addr[ID_idx]) &

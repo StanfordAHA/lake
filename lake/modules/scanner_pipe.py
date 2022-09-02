@@ -483,7 +483,8 @@ class ScannerPipe(MemoryController):
         self._clr_readout_loop_crd = self.var("clr_readout_loop_crd", 1)
 
         self._readout_loop = sticky_flag(self, self._set_readout_loop_seg | self._set_readout_loop_crd,
-                                         clear=self._clr_readout_loop_seg | self._clr_readout_loop_crd, name="readout_loop_sticky")
+                                         clear=self._clr_readout_loop_seg | self._clr_readout_loop_crd, name="readout_loop_sticky",
+                                         seq_only=True)
 
 # =================================
 # Midpoint Reservation FIFOs
@@ -767,7 +768,11 @@ class ScannerPipe(MemoryController):
         # In LOOKUP mode, we need to direct everything to the crd reservation fifo
         # LOOKUP.next(FREE_SEG, self._done_in & ~self._crd_res_fifo_full)
         # Go to free seg if we have a done token, or we are pushing an appropriate stop level
-        LOOKUP.next(FREE_SEG, (self._done_in | (self._spacc_mode & self._seg_stop_lvl_geq)) & ~self._crd_res_fifo_full)
+        # In spacc mode, we don't want to free the seg on done, we actually just want to wait for the readout loop to end
+        # LOOKUP.next(FREE_SEG, (self._done_in | (self._spacc_mode & self._seg_stop_lvl_geq)) & ~self._crd_res_fifo_full)
+        LOOKUP.next(FREE_SEG, ((self._done_in & ~self._spacc_mode) |
+                                    (self._spacc_mode & self._seg_stop_lvl_geq & self._infifo_valid_in & ~self._pushed_done)) &
+                               ~self._crd_res_fifo_full)
         LOOKUP.next(LOOKUP, None)
 
         # In this state, we are passing through stop tokens into
