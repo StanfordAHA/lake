@@ -123,7 +123,10 @@ class AddrGen(Generator):
         elif self._step:
             # mux_sel as 0 but update means that the machine is resetting.
             if self._restart:
-                self._current_addr = self._restart_addr
+                if self.dual_config:
+                    self._current_addr = self._restart_addr
+                else:
+                    self._current_addr = self._strt_addr
             else:
                 if self.dual_config:
                     self._current_addr = self._current_addr + self._cur_stride
