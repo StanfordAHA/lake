@@ -211,6 +211,9 @@ class LakeTop(Generator):
         # loaded_json["mode"] = "UB"
         return loaded_json
 
+    def get_port_remap(self):
+        return self.dut.get_port_remap()
+
     def make_wrapper(self, to_wrap, mode="UB", cfg_dict={}, wrapper_name="default_wrapper"):
 
         replace_ins = {}
