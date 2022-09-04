@@ -203,6 +203,8 @@ class Repeat(MemoryController):
         self.wire(self._proc_stop, (self._proc_fifo_out_data[9, 8] == kts.const(0, 2)) & self._proc_fifo_out_eos & self._proc_fifo_valid)
         self._proc_done = self.var("proc_done", 1)
         self.wire(self._proc_done, (self._proc_fifo_out_data[9, 8] == kts.const(1, 2)) & self._proc_fifo_out_eos & self._proc_fifo_valid)
+        self._repsig_done = self.var("repsig_done", 1)
+        self.wire(self._repsig_done, (self._repsig_fifo_out_data[9, 8] == kts.const(1, 2)) & self._repsig_fifo_out_eos & self._repsig_fifo_valid)
 
 # =============================
 # Instantiate FSM
@@ -271,7 +273,8 @@ class Repeat(MemoryController):
         #####################
         # DONE
         #####################
-        DONE.next(START, ~self._ref_fifo_full)
+        # Enforce DONE to align
+        DONE.next(START, ~self._ref_fifo_full & self._proc_done & self._repsig_done)
 
 # =============================
 # FSM Output Declaration
@@ -393,9 +396,9 @@ class Repeat(MemoryController):
         #####################
         DONE.output(self._ref_fifo_in_data, self._proc_fifo_out_data)
         DONE.output(self._ref_fifo_in_eos, 1)
-        DONE.output(self._ref_fifo_push, ~self._ref_fifo_full)
-        DONE.output(self._proc_fifo_pop, ~self._ref_fifo_full)
-        DONE.output(self._repsig_fifo_pop, 0)
+        DONE.output(self._ref_fifo_push, ~self._ref_fifo_full & self._proc_done & self._repsig_done)
+        DONE.output(self._proc_fifo_pop, ~self._ref_fifo_full & self._proc_done & self._repsig_done)
+        DONE.output(self._repsig_fifo_pop, ~self._ref_fifo_full & self._proc_done & self._repsig_done)
         DONE.output(self._proc_fifo_inject_push, 0)
         DONE.output(self._proc_fifo_inject_data, 0)
         DONE.output(self._proc_fifo_inject_eos, 0)

@@ -259,6 +259,10 @@ class OnyxPE(MemoryController):
                                       name_prefix=self.ext_pe_prefix,
                                       include_RO_cfg=self.pe_ro)
 
+        self._infifo_out_maybe = [self.var(f"infifo_out_maybe_{idx}", 1) for idx in range(2)]
+        [self.wire(self._infifo_out_maybe[idx], self._infifo_out_eos[idx] & self._infifo_out_valid[idx] &
+            (self._infifo_out_data[idx][self.OPCODE_BT] == self.MAYBE_CODE)) for idx in range(2)]
+
         # Need active high reset for PE
         self._active_high_reset = kts.util.async_reset(~self._rst_n)
 
@@ -267,8 +271,16 @@ class OnyxPE(MemoryController):
                        CLK=self._gclk,
                        clk_en=self._clk_en,
                        ASYNCRESET=self._active_high_reset,
-                       data0=kts.ternary(self._dense_mode, self._data_in[0][self.data_width - 1, 0], self._infifo_out_data[0]),
-                       data1=kts.ternary(self._dense_mode, self._data_in[1][self.data_width - 1, 0], self._infifo_out_data[1]),
+                       data0=kts.ternary(self._dense_mode,
+                                         self._data_in[0][self.data_width - 1, 0],
+                                         kts.ternary(self._infifo_out_maybe[0],
+                                                     0,
+                                                     self._infifo_out_data[0])),
+                       data1=kts.ternary(self._dense_mode,
+                                         self._data_in[1][self.data_width - 1, 0],
+                                         kts.ternary(self._infifo_out_maybe[1],
+                                                     0,
+                                                     self._infifo_out_data[1])),
                        data2=self._data_in[2][self.data_width - 1, 0],
                        bit0=self._bit_in[0],
                        bit1=self._bit_in[1],
