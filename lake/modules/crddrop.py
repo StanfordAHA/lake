@@ -346,12 +346,16 @@ class CrdDrop(MemoryController):
                                                                                     ~proc_outfifo.ports.full,
                                                                                     0))))
         # The push is basically the same as the pop
+        # But we only want to push the STOP token if we have previously pushed data on the line, otherwise we are dropping the fiber from both
+        # levels of the hierarchy
         PROCESS.output(self._cmrg_fifo_push[0], kts.ternary(self._base_done,
                                                             self._proc_done,
                                                             kts.ternary(self._base_infifo_in_valid & ~self._base_infifo_in_eos,
                                                                         ~base_outfifo.ports.full,
                                                                         kts.ternary(self._base_infifo_in_valid & self._base_infifo_in_eos,
-                                                                                    self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                                                    # self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                                                    self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full &
+                                                                                        self._pushed_data_lower & ~proc_outfifo.ports.full,
                                                                                     0))))
         # Push is similar to pop, but in the case of a real data on proc, we only push it if we pushed a data on the base level
         PROCESS.output(self._cmrg_fifo_push[1], kts.ternary(self._proc_done,
