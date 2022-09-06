@@ -49,7 +49,7 @@ class LakeTop(Generator):
                  comply_with_17=False,
                  area_opt=True,
                  pond_area_opt_share=False,
-                 pond_area_opt_dual_config=False,
+                 pond_area_opt_dual_config=True,
                  iterator_support2=2,
                  reduced_id_config_width=10,
                  enable_ram_mode=True,
