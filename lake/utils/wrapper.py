@@ -142,6 +142,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help="add fifo mode")
 
+    parser.add_argument("-onyx",
+                        action='store_true',
+                        help="onyx pond configuration")
+
     args = parser.parse_args()
 
     usage = "File usage: python wrapper.py [-c / --csv_file] [csv_file path relative to LAKE_CONTROLLERS environment variable]"
@@ -154,6 +158,17 @@ if __name__ == "__main__":
     lake_kwargs = {}
 
     if args.p is False:
+        if args.onyx is True:
+            lake_kwargs['area_opt'] = True
+            lake_kwargs['pond_area_opt_share'] = False
+            lake_kwargs['pond_area_opt_dual_config'] = True
+            lake_kwargs['reduced_id_config_width'] = 16
+            lake_kwargs['interconnect_input_ports'] = 2
+            lake_kwargs['interconnect_output_ports'] = 2
+            lake_kwargs['fifo_mode'] = False
+            lake_kwargs['add_flush'] = True
+            lake_kwargs['use_sim_sram'] = True
+            lake_kwargs['rw_same_cycle'] = True
         # Use updated codepath for wrapper generation of laketop
         lake_kwargs['stencil_valid'] = args.s
         lake_kwargs['mem_width'] = args.mw
@@ -162,15 +177,6 @@ if __name__ == "__main__":
         lake_kwargs['input_iterator_support'] = args.ii
         lake_kwargs['output_iterator_support'] = args.oi
         lake_kwargs['read_delay'] = args.rd
-        lake_kwargs['area_opt'] = True
-        lake_kwargs['pond_area_opt_share'] = False
-        lake_kwargs['pond_area_opt_dual_config'] = True
-        lake_kwargs['interconnect_input_ports'] = 2
-        lake_kwargs['interconnect_output_ports'] = 2
-        lake_kwargs['fifo_mode'] = False
-        lake_kwargs['add_flush'] = True
-        lake_kwargs['use_sim_sram'] = True
-        lake_kwargs['rw_same_cycle'] = True
         lake_kwargs['name'] = args.vmn
         lake_kwargs['fifo_mode'] = args.f
         lt_dut = LakeTop(**lake_kwargs)
