@@ -45,6 +45,8 @@ def test_pond_strg_ub_thin(num_ports,
                        fifo_mode=True,
                        add_clk_enable=add_clk_enable,
                        add_flush=add_flush,
+                       enable_ram_mode=False,
+                       comply_with_17=False,
                        stencil_valid=False,
                        name="PondTop")
 
@@ -116,12 +118,12 @@ def test_pond_strg_ub_thin(num_ports,
         # first write
         in_data_idx = i - config_data["config"]["in2regfile_0"]["cycle_starting_addr"][0]
         if in_data_idx >= 0 and i < 5:
-            setattr(tester.circuit, f"input_width_16_num_3", data_in_pond_0[in_data_idx])
+            setattr(tester.circuit, f"input_width_16_num_1", data_in_pond_0[in_data_idx])
 
         # second write
         in_data_idx = i - config_data["config"]["in2regfile_1"]["cycle_starting_addr"][0]
         if in_data_idx >= 0 and i < 28:
-            setattr(tester.circuit, f"input_width_16_num_2", data_in_pond_1[in_data_idx])
+            setattr(tester.circuit, f"input_width_16_num_0", data_in_pond_1[in_data_idx])
 
         # first read
         in_data_idx = i - config_data["config"]["regfile2out_1"]["cycle_starting_addr"][0]

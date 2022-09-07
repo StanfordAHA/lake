@@ -52,6 +52,7 @@ class LakeTop(Generator):
                  pond_area_opt_dual_config=False,
                  iterator_support2=2,
                  reduced_id_config_width=10,
+                 enable_ram_mode=True,
                  tech_map=TSMC_Tech_Map(depth=512, width=32)):
         super().__init__(name, debug=True)
 
@@ -86,6 +87,7 @@ class LakeTop(Generator):
         self.pond_area_opt_dual_config = pond_area_opt_dual_config
         self.iterator_support2 = iterator_support2
         self.reduced_id_config_width = reduced_id_config_width
+        self.enable_ram_mode = enable_ram_mode
         self.tech_map = tech_map
 
         if self.area_opt:
@@ -161,6 +163,7 @@ class LakeTop(Generator):
                                           area_opt=self.area_opt,
                                           area_opt_share=self.pond_area_opt_share,
                                           area_opt_dual_config=self.pond_area_opt_dual_config,
+                                          reduced_id_config_width=self.reduced_id_config_width,
                                           iterator_support2=self.iterator_support2))
 
         if self.fifo_mode:
@@ -171,16 +174,17 @@ class LakeTop(Generator):
                                         read_delay=self.read_delay,
                                         addr_width=clog2(self.mem_depth)))
 
-        controllers.append(StrgRAM(data_width=self.data_width,
-                                   banks=self.banks,
-                                   memory_width=self.mem_width,
-                                   memory_depth=self.mem_depth,
-                                   num_tiles=self.num_tiles,
-                                   rw_same_cycle=self.rw_same_cycle,
-                                   read_delay=self.read_delay,
-                                   addr_width=16,
-                                   prioritize_write=True,
-                                   comply_with_17=self.comply_with_17))
+        if self.enable_ram_mode:
+            controllers.append(StrgRAM(data_width=self.data_width,
+                                       banks=self.banks,
+                                       memory_width=self.mem_width,
+                                       memory_depth=self.mem_depth,
+                                       num_tiles=self.num_tiles,
+                                       rw_same_cycle=self.rw_same_cycle,
+                                       read_delay=self.read_delay,
+                                       addr_width=16,
+                                       prioritize_write=True,
+                                       comply_with_17=self.comply_with_17))
 
         if self.stencil_valid:
             controllers.append(StencilValid(area_opt=self.area_opt,

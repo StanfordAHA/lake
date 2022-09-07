@@ -32,6 +32,8 @@ def test_sram_formal():
                           rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                           agg_height=4)
 
+    sram_dut.add_attribute("sync-reset=flush")
+    k.passes.auto_insert_sync_reset(sram_dut.internal_generator)
     lift_config_reg(sram_dut.internal_generator)
 
     magma_dut = k.util.to_magma(sram_dut, flatten_array=True, check_flip_flop_always_ff=False)

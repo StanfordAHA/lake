@@ -61,6 +61,11 @@ def test_pond_b2b_read(num_ports):
     tester.step(1)
     tester.circuit.clk_en = 1
 
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
+
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     for i in range(32):
@@ -143,6 +148,11 @@ def test_pond_acc(interconnect_input_ports,
     tester.step(1)
     tester.circuit.clk_en = 1
 
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
+
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
 
@@ -214,6 +224,11 @@ def test_pond_strided_read(num_ports):
     tester.step(1)
     tester.circuit.clk_en = 1
 
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
+
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
     for i in range(24):
@@ -283,6 +298,11 @@ def test_pond_b2b_read(num_ports):
     tester.circuit.rst_n = 1
     tester.step(1)
     tester.circuit.clk_en = 1
+
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
 
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
@@ -379,6 +399,11 @@ def test_pond_basic_2addressors(data_width=16,  # CGRA Params
     tester.circuit.rst_n = 1
     tester.step(1)
     tester.circuit.clk_en = 1
+
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
 
     data_in_pond = [0] * interconnect_input_ports
     valid_in = [0] * interconnect_input_ports
