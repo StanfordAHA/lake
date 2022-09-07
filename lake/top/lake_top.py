@@ -51,7 +51,7 @@ class LakeTop(Generator):
                  pond_area_opt_share=False,
                  pond_area_opt_dual_config=False,
                  iterator_support2=2,
-                 reduced_id_config_width=10,
+                 reduced_id_config_width=11,
                  enable_ram_mode=True,
                  tech_map=TSMC_Tech_Map(depth=512, width=32)):
         super().__init__(name, debug=True)
