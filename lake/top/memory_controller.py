@@ -18,6 +18,11 @@ class MemoryController(kts.Generator):
     STOP_BT = (OPCODE_BASE - 1, 0)
     DONE_CODE = 1
     MAYBE_CODE = 2
+    EOS_BIT = 16
+    DONE_PROXY = kts.concat(kts.const(1, 1),
+                            kts.const(0, EOS_BIT - (OPCODE_WIDTH + OPCODE_BASE)),
+                            kts.const(DONE_CODE, OPCODE_WIDTH),
+                            kts.const(0, OPCODE_BASE))
 
     def set_bit(self, old_val, bit_to_set, new_bit):
         new_val = old_val | (new_bit << bit_to_set)
