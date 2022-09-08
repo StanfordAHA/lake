@@ -98,7 +98,8 @@ class ForLoop(Generator):
             self._mux_sel_iter1 = self.var("mux_sel_iter1", self.iter_idx_w)
             self._mux_sel_iter2 = self.var("mux_sel_iter2", self.iter2_idx_w)
 
-            self.wire(self._mux_sel_msb, ternary(self._flush, self._mux_sel_msb_init, self._mux_sel_msb_r))
+            self.wire(self._mux_sel_msb, self._mux_sel_msb_r)
+            # self.wire(self._mux_sel_msb, ternary(self._flush, self._mux_sel_msb_init, self._mux_sel_msb_r))
             self.wire(self._cur_dimensionality, ternary(self._mux_sel_msb, self._dimensionality2, self._dimensionality))
             self.wire(self._mux_sel_iter1, self._mux_sel[self.iter_idx_w - 1, 0])
             self.wire(self._mux_sel_iter2, self._mux_sel[self.iter2_idx_w - 1, 0])
