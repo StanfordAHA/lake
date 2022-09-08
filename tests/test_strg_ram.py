@@ -44,6 +44,13 @@ def test_storage_ram(mem_width,  # CGRA Params
                            depth=mem_depth,
                            num_tiles=num_tiles)
 
+    if in_out_ports == 1:
+        pond_area_opt = False
+        pond_area_opt_dual_config = False
+    else:
+        pond_area_opt = True
+        pond_area_opt_dual_config = True
+
     # DUT
     lt_dut = LakeTop(data_width=data_width,
                      mem_width=mem_width,
@@ -62,6 +69,8 @@ def test_storage_ram(mem_width,  # CGRA Params
                      agg_height=agg_height,
                      config_data_width=config_data_width,
                      config_addr_width=config_addr_width,
+                     area_opt=pond_area_opt,
+                     pond_area_opt_dual_config=pond_area_opt_dual_config,
                      fifo_mode=fifo_mode)
 
     lt_dut = lt_dut.dut
