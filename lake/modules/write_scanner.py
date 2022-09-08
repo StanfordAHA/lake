@@ -347,8 +347,19 @@ class WriteScanner(MemoryController):
         self.wire(self._stop_lvl_geq, self._data_infifo_eos_in & self._data_infifo_valid_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.STOP_CODE) &
                                       (self._data_infifo_data_in[self.STOP_BT] >= self._stop_lvl[self.STOP_BT]))
 
+        self._stop_lvl_geq_p1 = self.var("stop_lvl_geq_p1", 1)
+        self.wire(self._stop_lvl_geq_p1, self._data_infifo_eos_in & self._data_infifo_valid_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.STOP_CODE) &
+                                      (self._data_infifo_data_in[self.STOP_BT] >= (self._stop_lvl[self.STOP_BT] + 1)))
+
+        self._stop_lvl_geq_p1_sticky = sticky_flag(self, self._stop_lvl_geq_p1, clear=self._clr_blank_done,
+                                                   name="stop_lvl_new_blank_sticky", seq_only=True)
+
         self._data_done_in = self.var("data_done_in", 1)
         self.wire(self._data_done_in, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.DONE_CODE))
+
+        # self._data_done_in = self.var("data_done_in", 1)
+        # self.wire(self._data_done_in, (self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.DONE_CODE)) |
+        #                               (self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.STOP_CODE) & (self._data_infifo_data_in[self.STOP_BT] >= (self._stop_lvl + 1))))
 
         self._addr_done_in = self.var("addr_done_in", 1)
         self.wire(self._addr_done_in, self._addr_infifo_valid_in & self._addr_infifo_eos_in & (self._addr_infifo_data_in[self.OPCODE_BT] == self.DONE_CODE))
@@ -496,6 +507,7 @@ class WriteScanner(MemoryController):
         # ComLL.next(FINALIZE2, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
         # ComLL.next(FINALIZE2, self._data_done_in)
         ComLL.next(FINALIZE2, self._data_done_in | (self._spacc_mode & self._stop_lvl_geq))
+        # ComLL.next(FINALIZE2, (self._data_done_in & ~self._spacc_mode) | (self._spacc_mode & self._stop_lvl_geq))
         ComLL.next(ComLL, None)
 
         ####################
@@ -507,6 +519,7 @@ class WriteScanner(MemoryController):
         # UnLL.next(FINALIZE2, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
         #           (self._data_infifo_data_in[9, 8] == kts.const(1, 2)) & (self._addr_infifo_data_in[9, 8] == kts.const(1, 2)))
         UnLL.next(FINALIZE2, (self._data_done_in & self._addr_done_in) | (self._spacc_mode & self._stop_lvl_geq))
+        # UnLL.next(FINALIZE2, (self._data_done_in & self._addr_done_in & ~self._spacc_mode) | (self._spacc_mode & self._stop_lvl_geq))
         UnLL.next(UnLL, None)
 
         ####################
@@ -554,6 +567,7 @@ class WriteScanner(MemoryController):
         # In sparse accum mode, we go to finalize when we have the geq stop
         UL_EMIT_SEG.next(FINALIZE1, kts.ternary(self._spacc_mode,
                                                 (self._data_done_in) | (self._init_blank & ~self._blank_done) | self._stop_lvl_geq,
+                                                # (self._init_blank & ~self._blank_done) | self._stop_lvl_geq,
                                                 self._data_done_in))
         UL_EMIT_SEG.next(UL_EMIT_SEG, None)
 
@@ -574,6 +588,7 @@ class WriteScanner(MemoryController):
         ####################
         # We are done...
         # TODO: Accept multiple blocks
+        # Could probably drop the DONE here.
         DONE.next(START, None)
 
         ####################
@@ -1059,7 +1074,9 @@ class WriteScanner(MemoryController):
         # let the write scanner do its thing
         DONE.output(self._set_blank_done, self._init_blank & ~self._blank_done & self._spacc_mode)
         # We should only clear this for next tile - meaning we get the real done in
-        DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._data_done_in & self._spacc_mode)
+        # JK we should clear the blank done when we get the appropriate stop token in.
+        # DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._data_done_in & self._spacc_mode)
+        DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._stop_lvl_geq_p1_sticky & self._spacc_mode)
 
         self.scan_fsm.set_start_state(START)
 

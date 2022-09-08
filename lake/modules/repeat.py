@@ -98,6 +98,9 @@ class Repeat(MemoryController):
         self._root = self.input("root", 1)
         self._root.add_attribute(ConfigRegAttr("Is this a root repeater"))
 
+        self._spacc_mode = self.input("spacc_mode", 1)
+        self._spacc_mode.add_attribute(ConfigRegAttr("Is this in spacc mode?"))
+
 # ==============================
 # INPUT FIFO
 # ==============================
@@ -349,7 +352,8 @@ class Repeat(MemoryController):
         # I believe it is guaranteed by construction that the proc fifo HAS to have data on its line, it could never be a stop token on the proc fifo at this point
         # PASS_REPEAT.output(self._proc_fifo_pop, (self._repsig_fifo_valid & self._repsig_fifo_out_eos) & ~self._ref_fifo_full)
         # Just rip the data off once the stop token on the repsig line is hit
-        PASS_REPEAT.output(self._proc_fifo_pop, (self._repsig_fifo_valid & self._repsig_fifo_out_eos) & ~self._proc_done)
+        # PASS_REPEAT.output(self._proc_fifo_pop, (self._repsig_fifo_valid & self._repsig_fifo_out_eos) & ~self._proc_done)
+        PASS_REPEAT.output(self._proc_fifo_pop, ((self._repsig_fifo_valid & self._repsig_fifo_out_eos & ~self._spacc_mode) | (self._spacc_mode & self._repsig_done)) & ~self._proc_done)
         # Only pop the repsig fifo if there's room in the output fifo and join of input fifos (and not EOS)
         PASS_REPEAT.output(self._repsig_fifo_pop, ~self._ref_fifo_full & (self._repsig_fifo_valid & ~self._repsig_fifo_out_eos) & self._proc_fifo_valid & ~self._proc_done)
         PASS_REPEAT.output(self._proc_fifo_inject_push, 0)
@@ -437,11 +441,14 @@ class Repeat(MemoryController):
 
         stop_lvl = config_kwargs['stop_lvl']
         root = config_kwargs['root']
+        if 'spacc_mode' in config_kwargs:
+            spacc_mode = config_kwargs['spacc_mode']
 
         # Store all configurations here
         config = [("tile_en", 1),
                   ("stop_lvl", stop_lvl),
-                  ("root", root)
+                  ("root", root),
+                  ("spacc_mode", spacc_mode)
                   ]
         return config
 
