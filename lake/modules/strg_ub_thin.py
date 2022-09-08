@@ -385,6 +385,7 @@ class StrgUBThin(MemoryController):
                 if self.area_opt and self.area_opt_dual_config:
                     self.wire(self._write_addr, ADDR_WRITE.ports.addr_out)
                     self.wire(SCHED_WRITE.ports.mux_sel_msb_init, FOR_LOOP_WRITE.ports.mux_sel_msb_init)
+                    self.wire(SCHED_WRITE.ports.mux_sel_msb_init, ADDR_WRITE.ports.mux_sel_msb_init)
                     self.wire(self._write_mux_sel_msb,
                               FOR_LOOP_WRITE.ports.mux_sel_out[FOR_LOOP_WRITE.ports.mux_sel_out.width - 1])
                 else:
@@ -456,6 +457,7 @@ class StrgUBThin(MemoryController):
             if self.area_opt and self.area_opt_dual_config:
                 self.wire(self._read_addr, ADDR_READ.ports.addr_out)
                 self.wire(SCHED_READ.ports.mux_sel_msb_init, FOR_LOOP_READ.ports.mux_sel_msb_init)
+                self.wire(SCHED_READ.ports.mux_sel_msb_init, ADDR_READ.ports.mux_sel_msb_init)
                 self.wire(self._read_mux_sel_msb,
                           FOR_LOOP_READ.ports.mux_sel_out[FOR_LOOP_READ.ports.mux_sel_out.width - 1])
             else:
