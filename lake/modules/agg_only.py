@@ -23,7 +23,7 @@ class StrgUBAggOnly(Generator):
                  area_opt=True,
                  reduced_id_config_width=10,
                  addr_fifo_depth=8,
-                 delay_width=4,
+                 delay_width=8,
                  agg_iter_support_small=3,
                  agg_height=4,
                  agg_addr_width=3,

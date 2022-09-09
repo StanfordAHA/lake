@@ -35,7 +35,7 @@ class StrgUBAggSRAMShared(Generator):
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  area_opt=True,
                  addr_fifo_depth=4,
-                 delay_width=4,
+                 delay_width=8,
                  agg_height=4,
                  tb_height=2):
 
