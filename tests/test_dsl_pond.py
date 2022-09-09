@@ -39,6 +39,11 @@ def test_pond_basic():
     tester.step(1)
     tester.circuit.clk_en = 1
 
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
+
     data_in_pond = [0]
     valid_in = [0]
     for i in range(32):
@@ -57,7 +62,7 @@ def test_pond_basic():
         tester.compile_and_run(target="verilator",
                                directory=tempdir,
                                magma_output="verilog",
-                               flags=["-Wno-fatal"])
+                               flags=["-Wno-fatal", "--trace"])
 
 
 def test_pond_strided_read():
@@ -80,6 +85,11 @@ def test_pond_strided_read():
     tester.circuit.rst_n = 1
     tester.step(1)
     tester.circuit.clk_en = 1
+
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
 
     data_in_pond = [0]
     valid_in = [0]
@@ -122,6 +132,11 @@ def test_pond_b2b_read():
     tester.circuit.rst_n = 1
     tester.step(1)
     tester.circuit.clk_en = 1
+
+    tester.circuit.flush = 1
+    tester.eval()
+    tester.step(2)
+    tester.circuit.flush = 0
 
     data_in_pond = [0]
     valid_in = [0]

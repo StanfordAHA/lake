@@ -248,18 +248,18 @@ class StrgUBAggOnly(Generator):
                 self.wire(self._agg_write_mux_sel_out[i], self._fl_mux_sel)
                 self.wire(self._agg_write_restart_out[i], forloop_ctr.ports.restart)
 
-                newAG = AddrGen(iterator_support=self.agg_iter_support,
+                newAG = AddrGen(iterator_support=self.agg_iter_support_small,
                                 config_width=self.agg_wr_addr_width)
                 self.add_child(f"agg_write_addr_gen_{i}",
                                newAG,
                                clk=self._clk,
                                rst_n=self._rst_n,
                                step=self._agg_write[i],
-                               mux_sel=self._fl_mux_sel,
+                               mux_sel=forloop_ctr.ports.mux_sel_out,
                                restart=forloop_ctr.ports.restart)
                 safe_wire(gen=self, w_to=self._agg_write_addr[i], w_from=ternary(self._mode[1], self._tb_shared_addr, newAG.ports.addr_out))
 
-                newSG = SchedGen(iterator_support=self.agg_iter_support,
+                newSG = SchedGen(iterator_support=self.agg_iter_support_small,
                                  # config_width=self.agg_addr_width)
                                  config_width=16)
 
@@ -267,7 +267,7 @@ class StrgUBAggOnly(Generator):
                                newSG,
                                clk=self._clk,
                                rst_n=self._rst_n,
-                               mux_sel=self._fl_mux_sel,
+                               mux_sel=forloop_ctr.ports.mux_sel_out,
                                finished=forloop_ctr.ports.restart,
                                cycle_count=self._cycle_count)
                 self.wire(self._agg_write[i], ternary(self._mode[1], self._tb_shared_wen, newSG.ports.valid_output))

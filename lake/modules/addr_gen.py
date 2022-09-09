@@ -34,6 +34,11 @@ class AddrGen(Generator):
         # INPUTS
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
+        self._flush = self.input("flush", 1)
+        self.add_attribute("sync-reset=flush")
+        # kts.passes.auto_insert_sync_reset(self.internal_generator)
+        # flush_port = self.internal_generator.get_port("flush")
+        # flush_port.add_attribute(ControlSignalAttr(True))
 
         self._restart = self.input("restart", 1)
 
@@ -92,8 +97,10 @@ class AddrGen(Generator):
         # LOCAL VARIABLES: end
         # GENERATION LOGIC: begin
         if self.dual_config:
+            self._restart_addr = self.var("restart_addr", self.config_width)
             self.wire(self._mux_sel_msb, self._mux_sel[self._mux_sel.width - 1])
             self.wire(self._strt_addr, ternary(self._mux_sel_msb, self._starting_addr2, self._starting_addr))
+            self.wire(self._restart_addr, ternary(~self._mux_sel_msb, self._starting_addr2, self._starting_addr))
             self.wire(self._cur_stride, ternary(self._mux_sel_msb, self._strides2[self._mux_sel_iter2], self._strides[self._mux_sel_iter1]))
         else:
             self.wire(self._strt_addr, self._starting_addr)
@@ -101,7 +108,8 @@ class AddrGen(Generator):
 
         self._current_addr = self.var("current_addr", self.config_width)
         # Calculate address by taking previous calculation and adding the muxed stride
-        self.wire(self._calc_addr, self._strt_addr + self._current_addr)
+        # self.wire(self._calc_addr, self._strt_addr + self._current_addr)
+        self.wire(self._calc_addr, self._current_addr)
 
         self.add_code(self.calculate_address)
         # GENERATION LOGIC: end
@@ -110,10 +118,15 @@ class AddrGen(Generator):
     def calculate_address(self):
         if ~self._rst_n:
             self._current_addr = 0
+        elif self._flush:
+            self._current_addr = self._strt_addr
         elif self._step:
             # mux_sel as 0 but update means that the machine is resetting.
             if self._restart:
-                self._current_addr = 0
+                if self.dual_config:
+                    self._current_addr = self._restart_addr
+                else:
+                    self._current_addr = self._strt_addr
             else:
                 if self.dual_config:
                     self._current_addr = self._current_addr + self._cur_stride

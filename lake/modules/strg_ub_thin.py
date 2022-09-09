@@ -37,6 +37,8 @@ class StrgUBThin(MemoryController):
                  area_opt=True,
                  area_opt_share=False,
                  area_opt_dual_config=True,
+                 chaining=False,
+                 reduced_id_config_width=10,
                  delay_width=4,
                  iterator_support2=2  # assumes that this port has smaller iter_support
                  ):
@@ -66,6 +68,8 @@ class StrgUBThin(MemoryController):
         self.area_opt = area_opt
         self.area_opt_share = area_opt_share
         self.area_opt_dual_config = area_opt_dual_config
+        self.chaining = chaining
+        self.reduced_id_config_width = reduced_id_config_width
         self.delay_width = delay_width
         self.iterator_support2 = iterator_support2
         self.addr_fifo_depth = 2 ** (delay_width - 1)
@@ -83,7 +87,7 @@ class StrgUBThin(MemoryController):
         if self.comply_with_17:
             self.add_bits = 1
         self.core_io_width = self.data_width + self.add_bits
-        self.bit_range = (self.data_width - self.add_bits, 0)
+        self.bit_range = (self.data_width - 1, 0)
 
         self._data_in = self.input("data_in", self.core_io_width,
                                    size=self.interconnect_input_ports,
@@ -197,11 +201,9 @@ class StrgUBThin(MemoryController):
             self._write = self.var("write", self.interconnect_input_ports)
             self._read = self.var("read", self.interconnect_output_ports)
 
-        self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
-        if self.area_opt and self.area_opt_dual_config:
-            self.wire(self._accessor_output[0], self._read & ~self._read_mux_sel_msb)
-            self.wire(self._accessor_output[1], self._read & self._read_mux_sel_msb)
-        else:
+        # disable accessor signals in Pond
+        if not self.area_opt:
+            self._accessor_output = self.output("accessor_output", self.interconnect_output_ports)
             self.wire(self._accessor_output, self._read)
 
         self._valid_out = self.output("valid_out", self.interconnect_output_ports)
@@ -227,30 +229,33 @@ class StrgUBThin(MemoryController):
                                       packed=True,
                                       explicit_array=True)
 
-        # Add chaining in here... since we only use in the UB case...
-        self._chain_data_in = self.input("chain_data_in",
-                                         self.core_io_width,
-                                         size=self.interconnect_output_ports,
-                                         packed=True,
-                                         explicit_array=True)
+        if self.chaining:
+            # Add chaining in here... since we only use in the UB case...
+            self._chain_data_in = self.input("chain_data_in",
+                                             self.core_io_width,
+                                             size=self.interconnect_output_ports,
+                                             packed=True,
+                                             explicit_array=True)
 
-        self._chain_data_in_thin = self.var("chain_data_in_thin",
-                                            self.data_width,
-                                            size=self.interconnect_output_ports,
-                                            packed=True,
-                                            explicit_array=True)
+            self._chain_data_in_thin = self.var("chain_data_in_thin",
+                                                self.data_width,
+                                                size=self.interconnect_output_ports,
+                                                packed=True,
+                                                explicit_array=True)
 
-        for idx in range(self.interconnect_input_ports):
-            self.wire(self._chain_data_in_thin[idx], self._chain_data_in[idx][self.data_width - 1, 0])
+            for idx in range(self.interconnect_input_ports):
+                self.wire(self._chain_data_in_thin[idx], self._chain_data_in[idx][self.data_width - 1, 0])
 
-        chaining = ChainAccessor(data_width=self.data_width,
-                                 interconnect_output_ports=self.interconnect_output_ports)
+            chaining = ChainAccessor(data_width=self.data_width,
+                                     interconnect_output_ports=self.interconnect_output_ports)
 
-        self.add_child(f"chain", chaining,
-                       curr_tile_data_out=self._data_out_int,
-                       chain_data_in=self._chain_data_in_thin,
-                       accessor_output=self._valid_out_int,
-                       data_out_tile=self._data_out_thin)
+            self.add_child(f"chain", chaining,
+                           curr_tile_data_out=self._data_out_int,
+                           chain_data_in=self._chain_data_in_thin,
+                           accessor_output=self._valid_out_int,
+                           data_out_tile=self._data_out_thin)
+        else:
+            self.wire(self._data_out_thin, self._data_out_int)
 
         for idx in range(self.interconnect_output_ports):
             self.wire(self._data_out[idx][self.bit_range], self._data_out_thin[idx])
@@ -276,7 +281,7 @@ class StrgUBThin(MemoryController):
 
             if self.area_opt and i == 0:
                 FOR_LOOP_WRITE = ForLoop(iterator_support=self.input_sched_iterator_support,
-                                         config_width=self.default_config_width,
+                                         config_width=self.reduced_id_config_width,
                                          dual_config=self.area_opt_dual_config,
                                          iterator_support2=self.iterator_support2)
                 ADDR_WRITE = AddrGen(iterator_support=self.input_addr_iterator_support,
@@ -289,7 +294,7 @@ class StrgUBThin(MemoryController):
                                        iterator_support2=self.iterator_support2)
             elif self.area_opt and i == 1:
                 FOR_LOOP_WRITE = ForLoop(iterator_support=2,
-                                         config_width=self.default_config_width,
+                                         config_width=self.reduced_id_config_width,
                                          dual_config=self.area_opt_dual_config,
                                          iterator_support2=self.iterator_support2)
                 ADDR_WRITE = AddrGen(iterator_support=2,
@@ -393,7 +398,7 @@ class StrgUBThin(MemoryController):
 
             if self.area_opt and i == 0:
                 FOR_LOOP_READ = ForLoop(iterator_support=self.input_sched_iterator_support,
-                                        config_width=self.default_config_width,
+                                        config_width=self.reduced_id_config_width,
                                         dual_config=self.area_opt_dual_config,
                                         iterator_support2=self.iterator_support2)
                 ADDR_READ = AddrGen(iterator_support=self.input_addr_iterator_support,
@@ -406,7 +411,7 @@ class StrgUBThin(MemoryController):
                                       iterator_support2=self.iterator_support2)
             elif self.area_opt and i == 1 and (not self.area_opt_dual_config):
                 FOR_LOOP_READ = ForLoop(iterator_support=2,
-                                        config_width=self.default_config_width,
+                                        config_width=self.reduced_id_config_width,
                                         dual_config=self.area_opt_dual_config,
                                         iterator_support2=self.iterator_support2)
                 ADDR_READ = AddrGen(iterator_support=2,
@@ -504,19 +509,19 @@ class StrgUBThin(MemoryController):
             rw_port = MemoryPort(MemoryPortType.READWRITE)
             rw_port_intf = rw_port.get_port_interface()
             rw_port_intf['data_in'] = self._data_to_sram
-            rw_port_intf['data_out'] = None
+            rw_port_intf['data_out'] = self._data_from_sram
             rw_port_intf['write_addr'] = self._wr_addr_to_sram
             rw_port_intf['write_enable'] = self._wen_to_sram
-            rw_port_intf['read_addr'] = tmp0_rdaddr
-            rw_port_intf['read_enable'] = tmp0_rden
+            rw_port_intf['read_addr'] = self._rd_addr_to_sram
+            rw_port_intf['read_enable'] = self._ren_to_sram
             rw_port.annotate_port_signals()
             self.base_ports[0][0] = rw_port
             # Populate second port as just R
             r_port = MemoryPort(MemoryPortType.READ)
             r_port_intf = r_port.get_port_interface()
-            r_port_intf['data_out'] = self._data_from_sram
-            r_port_intf['read_addr'] = self._rd_addr_to_sram
-            r_port_intf['read_enable'] = self._ren_to_sram
+            r_port_intf['data_out'] = None
+            r_port_intf['read_addr'] = tmp0_rdaddr
+            r_port_intf['read_enable'] = tmp0_rden
             r_port.annotate_port_signals()
             self.base_ports[0][1] = r_port
 
