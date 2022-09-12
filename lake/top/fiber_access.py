@@ -17,7 +17,8 @@ class FiberAccess(MemoryController):
                  tech_map=GF_Tech_Map(depth=512, width=32),
                  defer_fifos=True,
                  use_pipelined_scanner=False,
-                 add_flush=False):
+                 add_flush=False,
+                 fifo_depth=2):
         super().__init__(f'fiber_access_{data_width}', debug=True)
 
         self.wr_scan_pre = "write_scanner"
@@ -31,6 +32,7 @@ class FiberAccess(MemoryController):
         self.tech_map = tech_map
         self.defer_fifos = defer_fifos
         self.use_pipelined_scanner = use_pipelined_scanner
+        self.fifo_depth = fifo_depth
 
         # inputs
         self._clk = self.clock("clk")
@@ -83,17 +85,21 @@ class FiberAccess(MemoryController):
         self.buffet = BuffetLike(data_width=self.data_width, num_ID=2, mem_depth=512,
                                  local_memory=self.local_memory,
                                  tech_map=self.tech_map,
-                                 defer_fifos=self.defer_fifos)
+                                 defer_fifos=self.defer_fifos,
+                                 fifo_depth=self.fifo_depth)
 
         self.wr_scan = WriteScanner(data_width=self.data_width,
-                                    defer_fifos=self.defer_fifos)
+                                    defer_fifos=self.defer_fifos,
+                                    fifo_depth=self.fifo_depth)
 
         if self.use_pipelined_scanner:
             self.rd_scan = ScannerPipe(data_width=self.data_width,
-                                       defer_fifos=self.defer_fifos)
+                                       defer_fifos=self.defer_fifos,
+                                       fifo_depth=self.fifo_depth)
         else:
             self.rd_scan = Scanner(data_width=self.data_width,
-                                   defer_fifos=self.defer_fifos)
+                                   defer_fifos=self.defer_fifos,
+                                   fifo_depth=self.fifo_depth)
 
         self.add_child(self.buffet_pre,
                        self.buffet,
@@ -241,7 +247,8 @@ class FiberAccess(MemoryController):
 if __name__ == "__main__":
     fiber_access_dut = FiberAccess(data_width=16,
                                    defer_fifos=False,
-                                   use_pipelined_scanner=True)
+                                   use_pipelined_scanner=True,
+                                   add_flush=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
