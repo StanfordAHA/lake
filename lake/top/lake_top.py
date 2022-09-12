@@ -220,7 +220,7 @@ class LakeTop(Generator):
         replace_ins = {}
         replace_outs = {}
 
-        if mode == "UB" and self.read_delay == 0:
+        if (mode == "UB" and self.read_delay == 0) or (mode == "pond"):
             replace_ins = {
                 "input_width_16_num_0": "data_in_pond_0",
                 "input_width_16_num_1": "data_in_pond_1",
