@@ -64,6 +64,8 @@ class StrgUBVec(MemoryController):
         self.reduced_id_config_width = reduced_id_config_width
         self.in2agg_addr_fifo_depth = in2agg_addr_fifo_depth
         self.agg2sram_addr_fifo_depth = agg2sram_addr_fifo_depth
+        if self.area_opt:
+            self.agg_height = 2
 
         self.input_iterator_support = 6
         self.output_iterator_support = 6
