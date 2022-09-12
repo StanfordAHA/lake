@@ -33,7 +33,7 @@ class StrgUBTBOnly(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
-                 tb_height=2):
+                 tb_height=4):
 
         super().__init__("strg_ub_tb_only")
 
@@ -182,7 +182,7 @@ class StrgUBTBOnly(Generator):
             @always_ff((posedge, "clk"))
             def tb_ctrl():
                 if self._t_read_d1[i]:
-                    self._tb[i][self._tb_write_addr[i][0]] = \
+                    self._tb[i][self._tb_write_addr[i][clog2(tb_height)-1,0]] = \
                         self._sram_read_data
             self.add_code(tb_ctrl)
 
