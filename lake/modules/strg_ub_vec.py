@@ -491,8 +491,9 @@ class StrgUBVec(MemoryController):
 
         if agg2sram_0 is not None:
             if self.area_opt:
-                config.append(("strg_ub_agg_sram_shared_delay_0", agg2sram_0.delay[0]))
                 config.append(("strg_ub_agg_sram_shared_mode_0", agg2sram_0.mode[0]))
+                config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_delay_q", (agg2sram_0.delay[0] - 1) / agg2sram_0.cyc_stride[0]))
+                config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_delay_r", (agg2sram_0.delay[0] - 1) % agg2sram_0.cyc_stride[0]))
                 config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_agg_read_padding", agg2sram_0.agg_read_padding[0]))
                 config.append(("agg_sram_shared_agg_sram_shared_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
             else:
@@ -509,8 +510,9 @@ class StrgUBVec(MemoryController):
 
         if agg2sram_1 is not None:
             if self.area_opt:
-                config.append(("strg_ub_agg_sram_shared_delay_1", agg2sram_1.delay[0]))
                 config.append(("strg_ub_agg_sram_shared_mode_1", agg2sram_1.mode[0]))
+                config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_delay_q", (agg2sram_1.delay[0] - 1) / agg2sram_1.cyc_stride[0]))
+                config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_delay_r", (agg2sram_1.delay[0] - 1) % agg2sram_1.cyc_stride[0]))
                 config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_agg_read_padding", agg2sram_1.agg_read_padding[0]))
                 config.append(("agg_sram_shared_agg_sram_shared_addr_gen_1_starting_addr", agg2sram_1.in_data_strt))
             else:
@@ -716,8 +718,9 @@ class StrgUBVec(MemoryController):
         if "agg2sram_0" in config_json:
             agg2sram_0 = map_controller(extract_controller_json(config_json["agg2sram_0"]), "agg2sram_0", flatten=False, linear_ag=linearize_data_stride)
             if self.area_opt:
-                config.append(("agg_sram_shared_delay_0", agg2sram_0.delay[0]))
                 config.append(("agg_sram_shared_mode_0", agg2sram_0.mode[0]))
+                config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_delay_q", (agg2sram_0.delay[0] - 1) / agg2sram_0.cyc_stride[0]))
+                config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_delay_r", (agg2sram_0.delay[0] - 1) % agg2sram_0.cyc_stride[0]))
                 config.append(("agg_sram_shared_agg_read_sched_gen_0_agg_read_padding", agg2sram_0.agg_read_padding[0]))
                 config.append(("agg_sram_shared_agg_sram_shared_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
             else:
@@ -735,8 +738,9 @@ class StrgUBVec(MemoryController):
         if "agg2sram_1" in config_json:
             agg2sram_1 = map_controller(extract_controller_json(config_json["agg2sram_1"]), "agg2sram_1", flatten=False, linear_ag=linearize_data_stride)
             if self.area_opt:
-                config.append(("agg_sram_shared_delay_1", agg2sram_1.delay[0]))
                 config.append(("agg_sram_shared_mode_1", agg2sram_1.mode[0]))
+                config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_delay_q", (agg2sram_1.delay[0] - 1) / agg2sram_1.cyc_stride[0]))
+                config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_delay_r", (agg2sram_1.delay[0] - 1) % agg2sram_1.cyc_stride[0]))
                 config.append(("agg_sram_shared_agg_read_sched_gen_1_agg_read_padding", agg2sram_1.agg_read_padding[0]))
                 config.append(("agg_sram_shared_agg_sram_shared_addr_gen_1_starting_addr", agg2sram_1.in_data_strt))
             else:

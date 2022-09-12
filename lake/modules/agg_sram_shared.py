@@ -127,11 +127,6 @@ class StrgUBAggSRAMShared(Generator):
             self.agg_range_width = 16
 
             if self.area_opt:
-                # delay configuration register
-                self._delay = self.input(f"delay_{i}", self.delay_width)
-                self._delay.add_attribute(ConfigRegAttr("Delay cycles of agg_sram shared schedule"))
-                self._delay.add_attribute(FormalAttr(f"{self._delay.name}_{i}", FormalSignalConstraint.SOLVE))
-
                 # linear or reuse mode configuration register
                 self._mode = self.input(f"mode_{i}", 2)
                 self._mode.add_attribute(ConfigRegAttr("Mode of agg_sram shared schedule or addressing"))
@@ -139,13 +134,15 @@ class StrgUBAggSRAMShared(Generator):
                 self.wire(self._mode, self._update_mode_out[i])
 
                 # scheduler modules
+                shared_sg = AggSramSharedSchedGen(data_width=self.data_width,
+                                                  mem_width=self.mem_width,
+                                                  agg_range_width=self.agg_range_width,
+                                                  delay_width=self.delay_width,
+                                                  addr_fifo_depth=self.addr_fifo_depth,
+                                                  interconnect_input_ports=interconnect_input_ports,
+                                                  config_width=self.config_width)
                 self.add_child(f"agg_read_sched_gen_{i}",
-                               AggSramSharedSchedGen(data_width=self.data_width,
-                                                     mem_width=self.mem_width,
-                                                     agg_range_width=self.agg_range_width,
-                                                     delay_width=self.delay_width,
-                                                     interconnect_input_ports=interconnect_input_ports,
-                                                     config_width=self.config_width),
+                               shared_sg,
                                clk=self._clk,
                                rst_n=self._rst_n,
                                agg_write_restart=self._agg_write_restart_in[i],
@@ -153,16 +150,16 @@ class StrgUBAggSRAMShared(Generator):
                                agg_write_addr_l2b=self._agg_write_addr_l2b_in[i],
                                agg_write_mux_sel=self._agg_write_mux_sel_in[i],
                                sram_read=self._sram_read_in,
-                               delay=self._delay,
                                mode=self._mode,
                                valid_output=self._agg_read[i])
 
-                # scheduler modules
+                # addr gen modules
+                shared_ag = AggSramSharedAddrGen(height=self.mem_depth,
+                                                 addr_fifo_depth=self.addr_fifo_depth,
+                                                 interconnect_input_ports=interconnect_input_ports,
+                                                 config_width=self.mem_addr_width)
                 self.add_child(f"agg_sram_shared_addr_gen_{i}",
-                               AggSramSharedAddrGen(height=self.mem_depth,
-                                                    addr_fifo_depth=self.addr_fifo_depth,
-                                                    interconnect_input_ports=interconnect_input_ports,
-                                                    config_width=self.mem_addr_width),
+                               shared_ag,
                                clk=self._clk,
                                rst_n=self._rst_n,
                                step=self._agg_read[i],
@@ -170,6 +167,9 @@ class StrgUBAggSRAMShared(Generator):
                                sram_read_addr=self._sram_read_addr_in,
                                mode=self._mode,
                                addr_out=self._agg_sram_shared_addr_out[i])
+
+                self.wire(shared_ag.ports.wr_ptr_out, shared_sg.ports.wr_ptr)
+                self.wire(shared_ag.ports.rd_ptr_out, shared_sg.ports.rd_ptr)
             else:
                 # Create for loop counters that can be shared across the input port selection and SRAM write
                 fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,

@@ -18,6 +18,7 @@ class AggSramSharedSchedGen(Generator):
                  mem_width=64,
                  agg_range_width=16,
                  delay_width=4,
+                 addr_fifo_depth=4,
                  agg_read_padding_width=8,
                  interconnect_input_ports=2,
                  config_width=16):
@@ -29,6 +30,7 @@ class AggSramSharedSchedGen(Generator):
         self.fetch_width = mem_width // data_width
         self.agg_range_width = agg_range_width
         self.delay_width = delay_width
+        self.addr_fifo_depth = addr_fifo_depth
         self.agg_read_padding_width = agg_read_padding_width
         self.interconnect_input_ports = interconnect_input_ports
 
@@ -45,7 +47,13 @@ class AggSramSharedSchedGen(Generator):
         self._sram_read = self.input("sram_read", self.interconnect_input_ports)
 
         # delay configuration register
-        self._delay = self.input("delay", self.delay_width)
+        self._delay_q = self.input(f"delay_q", self.delay_width)
+        self._delay_q.add_attribute(ConfigRegAttr("Delay quotient of agg_sram shared schedule"))
+        self._delay_q.add_attribute(FormalAttr(self._delay_q.name, FormalSignalConstraint.SOLVE))
+
+        self._delay_r = self.input("delay_r", self.delay_width)
+        self._delay_r.add_attribute(ConfigRegAttr("Delay remainder of agg_sram shared schedule"))
+        self._delay_r.add_attribute(FormalAttr(self._delay_r.name, FormalSignalConstraint.SOLVE))
 
         # linear or reuse mode configuration register
         self._mode = self.input("mode", 2)
@@ -56,32 +64,33 @@ class AggSramSharedSchedGen(Generator):
         self._agg_read_padding.add_attribute(ConfigRegAttr("Start cycle to read from Agg after writing the first 4 words to Agg"))
         self._agg_read_padding.add_attribute(FormalAttr(f"{self._agg_read_padding.name}", FormalSignalConstraint.SOLVE))
 
+        self._wr_ptr = self.input("wr_ptr", clog2(self.addr_fifo_depth))
+        self._rd_ptr = self.input("rd_ptr", clog2(self.addr_fifo_depth))
+
         # OUTPUTS
         self._valid_output = self.output("valid_output", 1)
 
         # VARS
 
         # new
-        # self._delay_cnt = self.var("delay_cnt", clog2(self.fetch_width))
-        self._shifter = self.var("shifter", 2 ** self.delay_width)
-        self._shifter_in = self.var("shifter_in", 1)
+        self._delay_cnt = self.var("delay_cnt", self.delay_width)
+        # self._shifter_in = self.var("shifter_in", 1)
         self._agg_write_4_r = self.var("agg_write_4_r", 1)
         self._pad_cnt = self.var("pad_cnt", self.agg_read_padding_width)
         self._pad_cnt_en = self.var("pad_cnt_en", 1)
 
         self.add_code(self.update_agg_write_4_r)
         self.add_code(self.update_pad_delay)
-        self.add_code(self.shifter_in_sel)
-        # self.add_code(self.update_delay_cnt)
-        self.add_code(self.update_shifter)
+        # self.add_code(self.shifter_in_sel)
+        self.add_code(self.update_delay_cnt)
         self.add_code(self.set_valid_output)
 
-    @always_comb
-    def shifter_in_sel(self):
-        if self._mode[1] == 0:
-            self._shifter_in = 0
-        else:
-            self._shifter_in = ternary(self._mode[0], self._sram_read[self.interconnect_input_ports - 1], self._sram_read[0])
+    # @always_comb
+    # def shifter_in_sel(self):
+    #     if self._mode[1] == 0:
+    #         self._shifter_in = 0
+    #     else:
+    #         self._shifter_in = ternary(self._mode[0], self._sram_read[self.interconnect_input_ports - 1], self._sram_read[0])
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def update_pad_delay(self):
@@ -107,11 +116,15 @@ class AggSramSharedSchedGen(Generator):
             self._agg_write_4_r = self._agg_write & self._agg_write_addr_l2b.r_and()
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def update_shifter(self):
+    def update_delay_cnt(self):
         if ~self._rst_n:
-            self._shifter = 0
+            self._delay_cnt = 0
         elif self._mode[1] != 0:
-            self._shifter = concat(self._shifter[self._shifter.width - 2, 0], self._shifter_in)
+            if self._delay_cnt == 0:
+                self._delay_cnt = self._delay_r
+            elif (self._wr_ptr - self._rd_ptr) > self._delay_q or \
+                    self._delay_cnt < self._delay_r:
+                self._delay_cnt = self._delay_cnt - 1
 
     @always_comb
     def set_valid_output(self):
@@ -121,7 +134,7 @@ class AggSramSharedSchedGen(Generator):
             else:
                 self._valid_output = self._agg_write_4_r
         else:
-            self._valid_output = self._shifter[self._delay]
+            self._valid_output = ((self._wr_ptr - self._rd_ptr) > self._delay_q) & (self._delay_cnt == 0)
 
 
 if __name__ == "__main__":

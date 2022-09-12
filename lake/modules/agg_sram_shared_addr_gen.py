@@ -45,6 +45,8 @@ class AggSramSharedAddrGen(Generator):
 
         # linear or reuse mode configuration register
         self._mode = self.input("mode", 2)
+        self._wr_ptr_out = self.output("wr_ptr_out", clog2(self.addr_fifo_depth))
+        self._rd_ptr_out = self.output("rd_ptr_out", clog2(self.addr_fifo_depth))
 
         # OUTPUTS
         self._addr_out = self.output("addr_out", self.config_width)
@@ -63,6 +65,8 @@ class AggSramSharedAddrGen(Generator):
 
         # GENERATION LOGIC: begin
         # # Calculate address linearly and checks for wrap-around
+        self.wire(self._wr_ptr, self._wr_ptr_out)
+        self.wire(self._rd_ptr, self._rd_ptr_out)
         self.add_code(self.calculate_address)
         self.wire(self._addr_fifo_wr_en, ternary(self._mode[0], self._sram_read[self.interconnect_input_ports - 1], self._sram_read[0]))
         self.wire(self._addr_fifo_in, ternary(self._mode[0], self._sram_read_addr[self.interconnect_input_ports - 1], self._sram_read_addr[0]))
