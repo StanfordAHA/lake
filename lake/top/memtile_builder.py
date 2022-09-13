@@ -757,8 +757,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     new_reg_fifo = RegFIFO(data_width=input_width,
-                                           #    width_mult=1, depth=self.fifo_depth,
-                                           width_mult=1, depth=2,
+                                           width_mult=1, depth=self.fifo_depth,
                                            defer_hrdwr_gen=False)
 
                     self.add_child(f"input_width_{input_width}_num_{i}_input_fifo",
@@ -922,8 +921,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     new_reg_fifo = RegFIFO(data_width=output_width,
-                                           #    width_mult=1, depth=self.fifo_depth,
-                                           width_mult=1, depth=2,
+                                           width_mult=1, depth=self.fifo_depth,
                                            defer_hrdwr_gen=False)
 
                     self.add_child(f"output_width_{output_width}_num_{i}_output_fifo",
