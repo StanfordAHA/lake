@@ -3,6 +3,10 @@ from kratos import *
 from lake.top.memory_controller import MemoryController
 from lake.attributes.config_reg_attr import ConfigRegAttr
 import math
+from peak.assembler import Assembler
+from hwtypes.modifiers import strip_modifiers
+from lassen.sim import PE_fc as lassen_fc
+import lassen.asm as asm
 
 
 class OnyxPEInterface(MemoryController):
@@ -72,10 +76,13 @@ class OnyxPEInterface(MemoryController):
 
     def get_bitstream(self, op, override_dense=False):
 
+        instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
+        asm_ = Assembler(instr_type)
+
         opcode_mapping = {
-            0: int("0x000000000010000400000", 16),  # ADD
-            1: int("0x00000005fff17ffc800dc", 16),  # MUL
-            2: int("0x000000000010000400004", 16)   # SUB
+            0: asm.add(),  # ADD
+            1: asm.umult0(),  # MUL
+            2: asm.sub()   # SUB
         }
 
         if override_dense:
@@ -84,7 +91,8 @@ class OnyxPEInterface(MemoryController):
         else:
             if op not in opcode_mapping:
                 raise NotImplementedError
-            op_config = opcode_mapping[op]
+            pe_bs = asm_.assemble(opcode_mapping[op])
+            op_config = int(pe_bs)
 
         config_base = [("inst", op_config)]
         config = self.chop_config(config_base=config_base)
