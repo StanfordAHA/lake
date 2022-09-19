@@ -35,7 +35,7 @@ class StrgUBVec(MemoryController):
                  agg_height=4,
                  tb_height=2,
                  area_opt=True,
-                 reduced_id_config_width=10,
+                 reduced_id_config_width=11,
                  in2agg_addr_fifo_depth=8,  # delay fifo for update operation
                  agg2sram_addr_fifo_depth=4,  # delay fifo for update operation
                  agg_data_top=False):
