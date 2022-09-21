@@ -74,8 +74,19 @@ class BuffetLike(MemoryController):
         # self._ID = self.input("ID", self.data_width)
         # self._ID.add_attribute(ConfigRegAttr("Identifier for the buffet controller being addressed"))
 
-        self._buffet_capacity = self.input("buffet_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
-        self._buffet_capacity.add_attribute(ConfigRegAttr("Capacity of buffet..."))
+        capacity_log = kts.clog2(self.data_width)
+        self._buffet_capacity_log = self.input("buffet_capacity_log", capacity_log, size=self.num_ID, explicit_array=True, packed=True)
+        self._buffet_capacity_log.add_attribute(ConfigRegAttr("Capacity of buffet..."))
+
+        self._buffet_capacity_mask = self.var("buffet_capacity_mask", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
+        for i in range(self.num_ID):
+            for j in range(self.data_width):
+                self.wire(self._buffet_capacity_mask[i][j], (j < (self._buffet_capacity_log[i])) & (self._buffet_capacity_log[i] != 0))
+
+        self._buffet_capacity = self.var("buffet_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
+        [self.wire(self._buffet_capacity[idx], kts.ternary(self._buffet_capacity_log[idx] == 0,
+                                                           kts.const(0, self.data_width),
+                                                           (kts.const(1, self.data_width) << (self._buffet_capacity_log[idx] + self.subword_addr_bits)))) for idx in range(self.num_ID)]
 
         ### WRITE SIDE
         # self._random_write = self.input("random_write")
@@ -390,7 +401,9 @@ class BuffetLike(MemoryController):
             # [self.wire(self._tmp_wr_addr[idx], (self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] + self._curr_base[idx] + self._buffet_base[idx])) for idx in range(self.num_ID)]
             # [self.wire(self._tmp_wr_addr[idx], (((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] + self._curr_base[idx]) % (self._buffet_capacity[idx] >> self.subword_addr_bits)) +
             #                                 self._buffet_base[idx])) for idx in range(self.num_ID)]
-            [self.wire(self._tmp_wr_addr[idx], (((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] + self._curr_base[idx]) % (self._buffet_capacity[idx] >> self.subword_addr_bits)) +
+            # [self.wire(self._tmp_wr_addr[idx], (((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] + self._curr_base[idx]) % (self._buffet_capacity[idx] >> self.subword_addr_bits)) +
+            # [self.wire(self._tmp_wr_addr[idx], (((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] + self._curr_base[idx]) >> self._buffet_capacity_log[idx]) +
+            [self.wire(self._tmp_wr_addr[idx], (((self._wr_addr_fifo_out_data[self.mem_addr_bit_range_outer] + self._curr_base[idx]) & self._buffet_capacity_mask[idx]) +
                                             self._buffet_base[idx])) for idx in range(self.num_ID)]
             self._write_word_addr = [register(self, self._tmp_wr_addr[idx],
                                               enable=self._set_wide_word_addr[idx],
@@ -537,7 +550,9 @@ class BuffetLike(MemoryController):
                                                                (self._rd_ID_fifo_out_data == kts.const(idx, 1)) &
                                                             #    ((self._rd_addr_fifo_out_addr + self._blk_base[idx] + self._buffet_base[idx]) == self._read_word_addr[idx]) &
                                                             #    ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx] + self._buffet_base[idx]) == self._read_word_addr[idx]) &
-                                                               ((((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx]) % (self._buffet_capacity[idx] >> self.subword_addr_bits)) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                                                            #    ((((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx]) % (self._buffet_capacity[idx] >> self.subword_addr_bits)) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                                                            #    ((((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx]) >> self._buffet_capacity_log[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                                                               ((((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx]) & self._buffet_capacity_mask[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
                                                                     # (self._addr_to_mem == self._read_word_addr[idx]) &
                                                                     (self._rd_op_fifo_out_op == kts.const(1, 2)) &
                                                                     ~self._valid_from_mem &
@@ -1260,8 +1275,12 @@ class BuffetLike(MemoryController):
                                                                  self._write_word_addr[1]),
                                                     #  self._rd_addr_fifo_out_addr + tmp_rd_base))
                                                      kts.ternary(rd_acqs[0],
-                                                                 (self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[0]) % (self._buffet_capacity[0] >> self.subword_addr_bits) + self._buffet_base[0],
-                                                                 (self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[1]) % (self._buffet_capacity[1] >> self.subword_addr_bits) + self._buffet_base[1])))
+                                                                #  (self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[0]) % (self._buffet_capacity[0] >> self.subword_addr_bits) + self._buffet_base[0],
+                                                                #  (self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[1]) % (self._buffet_capacity[1] >> self.subword_addr_bits) + self._buffet_base[1])))
+                                                                #  ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[0]) >> self._buffet_capacity_log[0]) + self._buffet_base[0],
+                                                                #  ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[1]) >> self._buffet_capacity_log[1]) + self._buffet_base[1])))
+                                                                 ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[0]) & self._buffet_capacity_mask[0]) + self._buffet_base[0],
+                                                                 ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[1]) & self._buffet_capacity_mask[1]) + self._buffet_base[1])))
 
         else:
             # Create FSM
@@ -1483,8 +1502,10 @@ class BuffetLike(MemoryController):
 
         # Store all configurations here
         config = [
-            ("buffet_capacity_0", capacity_0),
-            ("buffet_capacity_1", capacity_1),
+            # ("buffet_capacity_0", capacity_0),
+            # ("buffet_capacity_1", capacity_1),
+            ("buffet_capacity_log_0", capacity_0),
+            ("buffet_capacity_log_1", capacity_1),
             ("tile_en", 1)]
 
         return trim_config_list(flattened, config)
