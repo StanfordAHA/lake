@@ -182,8 +182,14 @@ class StrgUBTBOnly(Generator):
             @always_ff((posedge, "clk"))
             def tb_ctrl():
                 if self._t_read_d1[i]:
-                    self._tb[i][self._tb_write_addr[i][0]] = \
-                        self._sram_read_data
+                    if self._tb_write_addr[i][1]:
+                        # switch to the other TB
+                        self._tb[abs(1 - i)][self._tb_write_addr[i][0]] = \
+                            self._sram_read_data
+                    else:
+                        # write to its own TB
+                        self._tb[abs(0 - i)][self._tb_write_addr[i][0]] = \
+                            self._sram_read_data
             self.add_code(tb_ctrl)
 
             # READ FROM TB
@@ -232,7 +238,8 @@ class StrgUBTBOnly(Generator):
             def tb_to_out():
                 self._data_out[i] = self._tb[i][self._tb_read_addr[i][clog2(self.tb_height) +
                                                                       clog2(self.fetch_width) - 1,
-                                                                      clog2(self.fetch_width)]][self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
+                                                                      clog2(self.fetch_width)]] \
+                                               [self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
             self.add_code(tb_to_out)
 
 
