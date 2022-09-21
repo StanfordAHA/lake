@@ -277,7 +277,8 @@ class RepeatSignalGenerator(MemoryController):
         #####################
         # We are passing along 0 unless it is a done token, in which case we pass it along
         PASS_STOP.output(self._repsig_fifo_in_data, kts.ternary(self._base_fifo_out_data[9, 8] == kts.const(1, 2),
-                                                                self._base_fifo_out_data, kts.const(0, self.data_width)))
+                                                                # self._base_fifo_out_data, kts.const(0, self.data_width)))
+                                                                self._base_fifo_out_data, self._base_fifo_out_data))
         PASS_STOP.output(self._repsig_fifo_in_eos, 1)
         # Only pass a single stop token to the repsig line for compliance, by construction the other
         # stop tokens will reappear on the proc lines of other repeat blocks

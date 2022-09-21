@@ -246,8 +246,11 @@ class CrdHold(MemoryController):
         self.wire(self._proc_eos_seen, self._proc_infifo_in_valid & self._proc_infifo_in_eos &
                   (self._proc_infifo_in_data[9, 8] == kts.const(0, 2)))
 
-        self._done_seen = self.var("base_done_seen", 1)
-        self.wire(self._done_seen, self._base_infifo_in_valid & self._base_infifo_in_eos & (self._base_infifo_in_data[9, 8] == kts.const(1, 2)))
+        self._base_done_seen = self.var("base_done_seen", 1)
+        self.wire(self._base_done_seen, self._base_infifo_in_valid & self._base_infifo_in_eos & (self._base_infifo_in_data[9, 8] == kts.const(1, 2)))
+
+        self._proc_done_seen = self.var("proc_done_seen", 1)
+        self.wire(self._proc_done_seen, self._proc_infifo_in_valid & self._proc_infifo_in_eos & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)))
 
         self._clr_pushed_proc = self.var("clr_pushed_proc", 1)
         self._pushed_proc = sticky_flag(self, self._cmrg_fifo_push[1], clear=self._clr_pushed_proc, name="pushed_proc", seq_only=True)
@@ -289,9 +292,9 @@ class CrdHold(MemoryController):
         self.proc_fsm = self.add_fsm("proc_seq", reset_high=False)
         START = self.proc_fsm.add_state("START")
         DATA_SEEN = self.proc_fsm.add_state("DATA_SEEN")
-        HOLD = self.proc_fsm.add_state("HOLD")
-        PASS_STOP = self.proc_fsm.add_state("PASS_STOP")
-        PASS_DONE = self.proc_fsm.add_state("PASS_DONE")
+        # HOLD = self.proc_fsm.add_state("HOLD")
+        # PASS_STOP = self.proc_fsm.add_state("PASS_STOP")
+        # PASS_DONE = self.proc_fsm.add_state("PASS_DONE")
         DONE = self.proc_fsm.add_state("DONE")
 
         ####################
@@ -303,9 +306,10 @@ class CrdHold(MemoryController):
         ####################
         # IN the START state, we are waiting to see data in a stream
         # to know to pass on the processed stream
-        START.next(PASS_DONE, self._done_seen)
-        START.next(PASS_STOP, self._base_eos_seen)
-        START.next(DATA_SEEN, self._base_infifo_in_valid)
+        # START.next(PASS_DONE, self._done_seen)
+        # START.next(PASS_STOP, self._base_eos_seen)
+        # START.next(DATA_SEEN, self._base_infifo_in_valid & ~self._base_infifo_in_eos)
+        START.next(DATA_SEEN, self._tile_en)
         # START.next(DONE, self._done_seen)
         START.next(START, None)
 
@@ -313,30 +317,32 @@ class CrdHold(MemoryController):
         # DATA_SEEN #
         ####################
         # In DATA SEEN, we want to trigger the hold register and pass through any base data.
-        DATA_SEEN.next(HOLD, self._base_infifo_in_valid & ~self._proc_infifo_in_eos & ~self._base_infifo_in_eos)
-        DATA_SEEN.next(PASS_STOP, self._base_eos_seen)
+        # DATA_SEEN.next(HOLD, self._base_infifo_in_valid & ~self._proc_infifo_in_eos & ~self._base_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # DATA_SEEN.next(PASS_STOP, self._base_eos_seen & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        DATA_SEEN.next(DONE, self._both_done)
         DATA_SEEN.next(DATA_SEEN, None)
 
-        HOLD.next(PASS_STOP, self._base_eos_seen)
-        HOLD.next(HOLD, None)
-        ####################
-        # PASS_STOP #
-        ####################
-        # IN PASS_STOP, we pass the base stop to the proc stream then go to done
-        PASS_STOP.next(PASS_DONE, self._both_done)
-        PASS_STOP.next(START, self._pushed_proc)
-        PASS_STOP.next(PASS_STOP, None)
+        # HOLD.next(PASS_STOP, self._base_eos_seen & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # HOLD.next(HOLD, None)
+        # ####################
+        # # PASS_STOP #
+        # ####################
+        # # IN PASS_STOP, we pass the base stop to the proc stream then go to done
+        # PASS_STOP.next(PASS_DONE, self._both_done)
+        # # PASS_STOP.next(START, self._pushed_proc)
+        # PASS_STOP.next(START, self._pushed_proc & ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        # PASS_STOP.next(PASS_STOP, None)
 
-        ####################
-        # PASS_DONE #
-        ####################
-        PASS_DONE.next(DONE, self._pushing_done)
-        PASS_DONE.next(PASS_DONE, None)
+        # ####################
+        # # PASS_DONE #
+        # ####################
+        # PASS_DONE.next(DONE, self._pushing_done)
+        # PASS_DONE.next(PASS_DONE, None)
 
         ####################
         # DONE #
         ####################
-        DONE.next(DONE, None)
+        DONE.next(START, ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
 
         ####################
         # FSM Output Logic
@@ -371,75 +377,117 @@ class CrdHold(MemoryController):
         ################
         # DATA_SEEN
         ################
-        DATA_SEEN.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & ~base_outfifo.ports.full)
-        DATA_SEEN.output(self._cmrg_fifo_pop[1], self._proc_infifo_in_valid & ~proc_outfifo.ports.full)
-        DATA_SEEN.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & ~self._base_infifo_in_eos)
-        DATA_SEEN.output(self._cmrg_fifo_push[1], self._proc_infifo_in_valid & ~self._base_infifo_in_eos)
-        DATA_SEEN.output(self._data_to_procfifo, self._proc_infifo_in_data)
-        DATA_SEEN.output(self._eos_to_procfifo, 0)
-        DATA_SEEN.output(self._clr_pushed_proc, 0)
-        DATA_SEEN.output(self._clr_pushed_base, 0)
-        DATA_SEEN.output(self._reg_clr, 0)
-        DATA_SEEN.output(self._reg_hold, 1)
+        # DATA_SEEN.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # DATA_SEEN.output(self._cmrg_fifo_pop[1], self._proc_infifo_in_valid & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # DATA_SEEN.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & ~self._base_infifo_in_eos)
+        # DATA_SEEN.output(self._cmrg_fifo_push[1], self._proc_infifo_in_valid & ~self._base_infifo_in_eos)
+        # DATA_SEEN.output(self._data_to_procfifo, self._proc_infifo_in_data)
+        # DATA_SEEN.output(self._eos_to_procfifo, 0)
+        # DATA_SEEN.output(self._clr_pushed_proc, 0)
+        # DATA_SEEN.output(self._clr_pushed_base, 0)
+        # DATA_SEEN.output(self._reg_clr, 0)
+        # DATA_SEEN.output(self._reg_hold, 1)
+        # Pop the base if there's room in the output and the proc isn't eos
+        # DATA_SEEN.output(self._cmrg_fifo_pop[0], ~self._proc_eos_seen & ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_done_seen)
+        DATA_SEEN.output(self._cmrg_fifo_pop[0], kts.ternary(self._base_eos_seen,
+                                                             kts.const(1, 1),
+                                                             self._base_infifo_in_valid & ~self._base_infifo_in_eos &
+                                                                self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) &
+                                                                    ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_done_seen)
+        # Pop proc if it is eos itself (dump it) or if the base has eos on it
+        DATA_SEEN.output(self._cmrg_fifo_pop[1], kts.ternary(self._proc_eos_seen,
+                                                             kts.const(1, 1),
+                                                             self._base_eos_seen & ~base_outfifo.ports.full & ~proc_outfifo.ports.full) & ~self._proc_done_seen)
+        # Push the bottom if there is room and the bottom is valid
+        DATA_SEEN.output(self._cmrg_fifo_push[0], kts.ternary(self._base_eos_seen,
+                                                              kts.const(1, 1),
+                                                              self._base_infifo_in_valid & ~self._base_infifo_in_eos &
+                                                                self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) &
+                                                                    ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_done_seen)
+        # If the bottom is eos, push, if the bottom is not eos, push if the top also not eos
+        DATA_SEEN.output(self._cmrg_fifo_push[1], kts.ternary(self._base_eos_seen,
+                                                              kts.const(1, 1),
+                                                              self._base_infifo_in_valid & ~self._base_infifo_in_eos &
+                                                                self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) &
+                                                                    ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_done_seen)
+        # If base is eos, send through base, otherwise safe to send through proc
+        DATA_SEEN.output(self._data_to_procfifo, kts.ternary(self._base_infifo_in_eos, self._base_infifo_in_data, self._proc_infifo_in_data))
+        DATA_SEEN.output(self._eos_to_procfifo, self._base_infifo_in_eos)
+        DATA_SEEN.output(self._clr_pushed_proc, 1)
+        DATA_SEEN.output(self._clr_pushed_base, 1)
+        DATA_SEEN.output(self._reg_clr, 1)
+        DATA_SEEN.output(self._reg_hold, 0)
 
-        ################
-        # HOLD
-        ################
-        HOLD.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & ~self._base_infifo_in_eos & ~base_outfifo.ports.full)
-        HOLD.output(self._cmrg_fifo_pop[1], 0)
-        HOLD.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & ~self._base_infifo_in_eos)
-        HOLD.output(self._cmrg_fifo_push[1], self._base_infifo_in_valid & ~self._base_infifo_in_eos)
-        HOLD.output(self._data_to_procfifo, self._hold_reg)
-        HOLD.output(self._eos_to_procfifo, 0)
-        HOLD.output(self._clr_pushed_proc, 1)
-        HOLD.output(self._clr_pushed_base, 0)
-        HOLD.output(self._reg_clr, 0)
-        HOLD.output(self._reg_hold, 0)
+        # ################
+        # # HOLD
+        # ################
+        # HOLD.output(self._cmrg_fifo_pop[0], self._base_infifo_in_valid & ~self._base_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # HOLD.output(self._cmrg_fifo_pop[1], 0)
+        # HOLD.output(self._cmrg_fifo_push[0], self._base_infifo_in_valid & ~self._base_infifo_in_eos)
+        # HOLD.output(self._cmrg_fifo_push[1], self._base_infifo_in_valid & ~self._base_infifo_in_eos)
+        # HOLD.output(self._data_to_procfifo, self._hold_reg)
+        # HOLD.output(self._eos_to_procfifo, 0)
+        # HOLD.output(self._clr_pushed_proc, 1)
+        # HOLD.output(self._clr_pushed_base, 0)
+        # HOLD.output(self._reg_clr, 0)
+        # HOLD.output(self._reg_hold, 0)
 
-        ################
-        # PASS_STOP
-        ################
-        # Here we have to pass base eos to both base and proc
-        PASS_STOP.output(self._cmrg_fifo_pop[0], self._base_eos_seen & ~base_outfifo.ports.full)
-        PASS_STOP.output(self._cmrg_fifo_pop[1], self._proc_eos_seen & ~proc_outfifo.ports.full)
-        PASS_STOP.output(self._cmrg_fifo_push[0], self._base_eos_seen)
-        PASS_STOP.output(self._cmrg_fifo_push[1], self._base_eos_seen)
-        PASS_STOP.output(self._data_to_procfifo, self._base_infifo_in_data)
-        PASS_STOP.output(self._eos_to_procfifo, self._base_infifo_in_eos)
-        PASS_STOP.output(self._clr_pushed_proc, 0)
-        PASS_STOP.output(self._clr_pushed_base, 0)
-        PASS_STOP.output(self._reg_clr, 1)
-        PASS_STOP.output(self._reg_hold, 0)
+        # ################
+        # # PASS_STOP
+        # ################
+        # # Here we have to pass base eos to both base and proc
+        # PASS_STOP.output(self._cmrg_fifo_pop[0], self._base_eos_seen & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
+        # # PASS_STOP.output(self._cmrg_fifo_pop[1], self._proc_eos_seen & ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        # PASS_STOP.output(self._cmrg_fifo_pop[1], self._proc_eos_seen & ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        # PASS_STOP.output(self._cmrg_fifo_push[0], self._base_eos_seen)
+        # PASS_STOP.output(self._cmrg_fifo_push[1], self._base_eos_seen)
+        # PASS_STOP.output(self._data_to_procfifo, self._base_infifo_in_data)
+        # PASS_STOP.output(self._eos_to_procfifo, self._base_infifo_in_eos)
+        # PASS_STOP.output(self._clr_pushed_proc, 0)
+        # PASS_STOP.output(self._clr_pushed_base, 0)
+        # PASS_STOP.output(self._reg_clr, 1)
+        # PASS_STOP.output(self._reg_hold, 0)
 
-        ################
-        # PASS_DONE
-        ################
-        # TODO
-        PASS_DONE.output(self._cmrg_fifo_pop[0], self._pushing_done)
-        PASS_DONE.output(self._cmrg_fifo_pop[1], self._pushing_done)
-        PASS_DONE.output(self._cmrg_fifo_push[0], self._pushing_done)
-        PASS_DONE.output(self._cmrg_fifo_push[1], self._pushing_done)
-        PASS_DONE.output(self._data_to_procfifo, self._base_infifo_in_data)
-        PASS_DONE.output(self._eos_to_procfifo, self._base_infifo_in_eos)
-        PASS_DONE.output(self._clr_pushed_proc, 0)
-        PASS_DONE.output(self._clr_pushed_base, 0)
-        PASS_DONE.output(self._reg_clr, 0)
-        PASS_DONE.output(self._reg_hold, 0)
+        # ################
+        # # PASS_DONE
+        # ################
+        # # TODO
+        # PASS_DONE.output(self._cmrg_fifo_pop[0], self._pushing_done)
+        # PASS_DONE.output(self._cmrg_fifo_pop[1], self._pushing_done)
+        # PASS_DONE.output(self._cmrg_fifo_push[0], self._pushing_done)
+        # PASS_DONE.output(self._cmrg_fifo_push[1], self._pushing_done)
+        # PASS_DONE.output(self._data_to_procfifo, self._base_infifo_in_data)
+        # PASS_DONE.output(self._eos_to_procfifo, self._base_infifo_in_eos)
+        # PASS_DONE.output(self._clr_pushed_proc, 0)
+        # PASS_DONE.output(self._clr_pushed_base, 0)
+        # PASS_DONE.output(self._reg_clr, 0)
+        # PASS_DONE.output(self._reg_hold, 0)
 
         ################
         # DONE
         ################
         # TODO
-        DONE.output(self._cmrg_fifo_pop[0], 0)
-        DONE.output(self._cmrg_fifo_pop[1], 0)
-        DONE.output(self._cmrg_fifo_push[0], 0)
-        DONE.output(self._cmrg_fifo_push[1], 0)
-        DONE.output(self._data_to_procfifo, kts.const(0, 16))
-        DONE.output(self._eos_to_procfifo, 0)
-        DONE.output(self._clr_pushed_proc, 0)
-        DONE.output(self._clr_pushed_base, 0)
-        DONE.output(self._reg_clr, 0)
+        DONE.output(self._cmrg_fifo_pop[0], ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        DONE.output(self._cmrg_fifo_pop[1], ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        DONE.output(self._cmrg_fifo_push[0], ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        DONE.output(self._cmrg_fifo_push[1], ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        DONE.output(self._data_to_procfifo, self._base_infifo_in_data)
+        DONE.output(self._eos_to_procfifo, 1)
+        DONE.output(self._clr_pushed_proc, 1)
+        DONE.output(self._clr_pushed_base, 1)
+        DONE.output(self._reg_clr, 1)
         DONE.output(self._reg_hold, 0)
+        # # TODO
+        # DONE.output(self._cmrg_fifo_pop[0], ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        # DONE.output(self._cmrg_fifo_pop[1], ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        # DONE.output(self._cmrg_fifo_push[0], ~proc_outfifo.ports.full & ~base_outfifo.ports.full)
+        # DONE.output(self._cmrg_fifo_push[1], 0)
+        # DONE.output(self._data_to_procfifo, kts.const(0, 16))
+        # DONE.output(self._eos_to_procfifo, 0)
+        # DONE.output(self._clr_pushed_proc, 0)
+        # DONE.output(self._clr_pushed_base, 0)
+        # DONE.output(self._reg_clr, 0)
+        # DONE.output(self._reg_hold, 0)
 
         self.proc_fsm.set_start_state(START)
 
