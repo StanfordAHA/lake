@@ -79,6 +79,15 @@ class WriteScanner(MemoryController):
         self._addr_in_ready_out = self.output("addr_in_ready", 1)
         self._addr_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
+        self._block_wr_in = self.input("block_wr_in", self.data_width + 1, packed=True)
+        self._block_wr_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        self._block_wr_in_valid_in = self.input("block_wr_in_valid", 1)
+        self._block_wr_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        self._block_wr_in_ready_out = self.output("block_wr_in_ready", 1)
+        self._block_wr_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+
         # self._eos_in = self.input("eos_in", 2)
         # self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
@@ -173,6 +182,8 @@ class WriteScanner(MemoryController):
         self._data_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._addr_infifo = RegFIFO(data_width=1 * self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
         self._addr_infifo.add_attribute(SharedFifoAttr(direction="IN"))
+        self._block_wr_infifo = RegFIFO(data_width=self.data_width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
+        self._block_wr_infifo.add_attribute(SharedFifoAttr(direction="IN"))
         self._infifo_pop = self.var("infifo_pop", 2)
 
         # For input streams, need coord_in, valid_in, eos_in
@@ -228,9 +239,28 @@ class WriteScanner(MemoryController):
         self.wire(self._addr_in_ready_out, ~self._addr_infifo.ports.full)
         self.wire(self._addr_infifo_valid_in, ~self._addr_infifo.ports.empty)
 
+        # Block WR FIFO
+
+        self._block_wr_fifo_data_out = self.var("block_wr_fifo_data_out", 1 * self.data_width, packed=True)
+
+        self._pop_block_wr = self.var("pop_block_wr", 1)
+        self._block_wr_fifo_valid = self.var("block_wr_fifo_valid", 1)
+        self.add_child(f"block_wr_input_fifo",
+                       self._block_wr_infifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._block_wr_in_valid_in,
+                       pop=self._pop_block_wr,
+                       data_in=self._block_wr_in[self.data_width - 1, 0])
+
+        self.wire(self._block_wr_in_ready_out, ~self._block_wr_infifo.ports.full)
+        self.wire(self._block_wr_fifo_valid, ~self._block_wr_infifo.ports.empty)
+
         # State for block writes
         self._set_block_size = self.var("set_block_size", 1)
-        self._block_size = register(self, self._data_infifo_data_in, self._set_block_size, name="block_size")
+        # self._block_size = register(self, self._data_infifo_data_in, self._set_block_size, name="block_size")
+        self._block_size = register(self, self._block_wr_infifo.ports.data_out, self._set_block_size, name="block_size", packed=True)
 
         self._inc_block_write = self.var("inc_block_write", 1)
         self._clr_block_write = self.var("clr_block_write", 1)
@@ -459,7 +489,8 @@ class WriteScanner(MemoryController):
         # BLOCK_1_SZ
         ####################
         # Get the first block size...
-        BLOCK_1_SZ.next(BLOCK_1_WR, self._data_infifo_valid_in)
+        # BLOCK_1_SZ.next(BLOCK_1_WR, self._data_infifo_valid_in)
+        BLOCK_1_SZ.next(BLOCK_1_WR, self._block_wr_fifo_valid)
         BLOCK_1_SZ.next(BLOCK_1_SZ, None)
 
         ####################
@@ -476,7 +507,8 @@ class WriteScanner(MemoryController):
         # BLOCK_2_SZ
         ####################
         # Get the second block size...
-        BLOCK_2_SZ.next(BLOCK_2_WR, self._data_infifo_valid_in)
+        # BLOCK_2_SZ.next(BLOCK_2_WR, self._data_infifo_valid_in)
+        BLOCK_2_SZ.next(BLOCK_2_WR, self._block_wr_fifo_valid)
         BLOCK_2_SZ.next(BLOCK_2_SZ, None)
 
         ####################
@@ -616,6 +648,7 @@ class WriteScanner(MemoryController):
         self.scan_fsm.output(self._clr_block_write)
         self.scan_fsm.output(self._set_blank_done, default=kts.const(0, 1))
         self.scan_fsm.output(self._clr_blank_done, default=kts.const(0, 1))
+        self.scan_fsm.output(self._pop_block_wr, default=kts.const(0, 1))
 
         #######
         # START - TODO - Generate general hardware...
@@ -702,21 +735,26 @@ class WriteScanner(MemoryController):
         BLOCK_1_SZ.output(self._clr_seg_ctr, 0)
         BLOCK_1_SZ.output(self._set_curr_coord, 0)
         BLOCK_1_SZ.output(self._clr_curr_coord, 0)
-        BLOCK_1_SZ.output(self._infifo_pop[0], self._data_infifo_valid_in)
+        # BLOCK_1_SZ.output(self._infifo_pop[0], self._data_infifo_valid_in)
+        BLOCK_1_SZ.output(self._infifo_pop[0], 0)
         BLOCK_1_SZ.output(self._infifo_pop[1], 0)
         BLOCK_1_SZ.output(self._clr_wen_made, 0)
-        BLOCK_1_SZ.output(self._set_block_size, self._data_infifo_valid_in)
+        # BLOCK_1_SZ.output(self._set_block_size, self._data_infifo_valid_in)
+        BLOCK_1_SZ.output(self._set_block_size, self._block_wr_fifo_valid)
         BLOCK_1_SZ.output(self._inc_block_write, 0)
         BLOCK_1_SZ.output(self._clr_block_write, 1)
+        BLOCK_1_SZ.output(self._pop_block_wr, self._block_wr_fifo_valid)
 
         #######
         # BLOCK_1_WR
         #######
-        BLOCK_1_WR.output(self._data_to_fifo, self._data_infifo_data_in)
+        # BLOCK_1_WR.output(self._data_to_fifo, self._data_infifo_data_in)
+        BLOCK_1_WR.output(self._data_to_fifo, self._block_wr_infifo.ports.data_out)
         BLOCK_1_WR.output(self._op_to_fifo, 1)
         BLOCK_1_WR.output(self._addr_to_fifo, self._block_writes)
         BLOCK_1_WR.output(self._ID_to_fifo, kts.const(0, 16))
-        BLOCK_1_WR.output(self._push_to_outs, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        # BLOCK_1_WR.output(self._push_to_outs, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        BLOCK_1_WR.output(self._push_to_outs, self._block_wr_fifo_valid & (self._block_writes < self._block_size))
         # BLOCK_1_WR.output(self._addr_out, self._block_writes)
         # BLOCK_1_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
         # BLOCK_1_WR.output(self._data_out, self._data_infifo_data_in)
@@ -728,12 +766,15 @@ class WriteScanner(MemoryController):
         BLOCK_1_WR.output(self._clr_seg_ctr, 0)
         BLOCK_1_WR.output(self._set_curr_coord, 0)
         BLOCK_1_WR.output(self._clr_curr_coord, 0)
-        BLOCK_1_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
+        # BLOCK_1_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
+        BLOCK_1_WR.output(self._infifo_pop[0], 0)
         BLOCK_1_WR.output(self._infifo_pop[1], 0)
         BLOCK_1_WR.output(self._clr_wen_made, 0)
         BLOCK_1_WR.output(self._set_block_size, 0)
-        BLOCK_1_WR.output(self._inc_block_write, self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
+        # BLOCK_1_WR.output(self._inc_block_write, self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
+        BLOCK_1_WR.output(self._inc_block_write, self._block_wr_fifo_valid & (self._block_writes < self._block_size) & self._join_out_ready)
         BLOCK_1_WR.output(self._clr_block_write, 0)
+        BLOCK_1_WR.output(self._pop_block_wr, self._block_wr_fifo_valid & (self._block_writes < self._block_size) & self._join_out_ready)
 
         #######
         # BLOCK_2_SZ
@@ -754,21 +795,26 @@ class WriteScanner(MemoryController):
         BLOCK_2_SZ.output(self._clr_seg_ctr, 0)
         BLOCK_2_SZ.output(self._set_curr_coord, 0)
         BLOCK_2_SZ.output(self._clr_curr_coord, 0)
-        BLOCK_2_SZ.output(self._infifo_pop[0], self._data_infifo_valid_in)
+        # BLOCK_2_SZ.output(self._infifo_pop[0], self._data_infifo_valid_in)
+        BLOCK_2_SZ.output(self._infifo_pop[0], 0)
         BLOCK_2_SZ.output(self._infifo_pop[1], 0)
         BLOCK_2_SZ.output(self._clr_wen_made, 0)
-        BLOCK_2_SZ.output(self._set_block_size, self._data_infifo_valid_in)
+        # BLOCK_2_SZ.output(self._set_block_size, self._data_infifo_valid_in)
+        BLOCK_2_SZ.output(self._set_block_size, self._block_wr_fifo_valid)
         BLOCK_2_SZ.output(self._inc_block_write, 0)
         BLOCK_2_SZ.output(self._clr_block_write, 1)
+        BLOCK_2_SZ.output(self._pop_block_wr, self._block_wr_fifo_valid)
 
         #######
         # BLOCK_2_WR
         #######
-        BLOCK_2_WR.output(self._data_to_fifo, self._data_infifo_data_in)
+        # BLOCK_2_WR.output(self._data_to_fifo, self._data_infifo_data_in)
+        BLOCK_2_WR.output(self._data_to_fifo, self._block_wr_infifo.ports.data_out)
         BLOCK_2_WR.output(self._op_to_fifo, 1)
         BLOCK_2_WR.output(self._addr_to_fifo, self._block_writes)
         BLOCK_2_WR.output(self._ID_to_fifo, kts.const(1, 16))
-        BLOCK_2_WR.output(self._push_to_outs, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        # BLOCK_2_WR.output(self._push_to_outs, self._data_infifo_valid_in & (self._block_writes < self._block_size))
+        BLOCK_2_WR.output(self._push_to_outs, self._block_wr_fifo_valid & (self._block_writes < self._block_size))
         # BLOCK_2_WR.output(self._addr_out, self._block_writes + self._inner_dim_offset)
         # BLOCK_2_WR.output(self._wen, self._data_infifo_valid_in & (self._block_writes < self._block_size))
         # BLOCK_2_WR.output(self._data_out, self._data_infifo_data_in)
@@ -780,12 +826,15 @@ class WriteScanner(MemoryController):
         BLOCK_2_WR.output(self._clr_seg_ctr, 0)
         BLOCK_2_WR.output(self._set_curr_coord, 0)
         BLOCK_2_WR.output(self._clr_curr_coord, 0)
-        BLOCK_2_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
+        # BLOCK_2_WR.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
+        BLOCK_2_WR.output(self._infifo_pop[0], 0)
         BLOCK_2_WR.output(self._infifo_pop[1], 0)
         BLOCK_2_WR.output(self._clr_wen_made, 0)
         BLOCK_2_WR.output(self._set_block_size, 0)
-        BLOCK_2_WR.output(self._inc_block_write, self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
+        # BLOCK_2_WR.output(self._inc_block_write, self._data_infifo_valid_in & (self._block_writes < self._block_size) & self._join_out_ready)
+        BLOCK_2_WR.output(self._inc_block_write, self._block_wr_fifo_valid & (self._block_writes < self._block_size) & self._join_out_ready)
         BLOCK_2_WR.output(self._clr_block_write, 0)
+        BLOCK_2_WR.output(self._pop_block_wr, self._block_wr_fifo_valid & (self._block_writes < self._block_size) & self._join_out_ready)
 
         #######
         # LL

@@ -18,7 +18,8 @@ class FiberAccess(MemoryController):
                  defer_fifos=True,
                  use_pipelined_scanner=False,
                  add_flush=False,
-                 fifo_depth=2):
+                 fifo_depth=2,
+                 buffet_optimize_wide=False):
         super().__init__(f'fiber_access_{data_width}', debug=True)
 
         self.wr_scan_pre = "write_scanner"
@@ -33,6 +34,7 @@ class FiberAccess(MemoryController):
         self.defer_fifos = defer_fifos
         self.use_pipelined_scanner = use_pipelined_scanner
         self.fifo_depth = fifo_depth
+        self.buffet_optimize_wide = buffet_optimize_wide
 
         # inputs
         self._clk = self.clock("clk")
@@ -61,6 +63,13 @@ class FiberAccess(MemoryController):
         self._wr_scan_addr_in_valid = self.input(f"{self.wr_scan_pre}_addr_in_valid", 1)
         self._wr_scan_addr_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
+        self._wr_scan_block_wr_in = self.input(f"{self.wr_scan_pre}_block_wr_in", self.data_width + 1, packed=True)
+        self._wr_scan_block_wr_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        self._wr_scan_block_wr_in_ready = self.output(f"{self.wr_scan_pre}_block_wr_in_ready", 1)
+        self._wr_scan_block_wr_in_ready.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
+        self._wr_scan_block_wr_in_valid = self.input(f"{self.wr_scan_pre}_block_wr_in_valid", 1)
+        self._wr_scan_block_wr_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+
         self._rd_scan_coord_out = self.output(f"{self.rd_scan_pre}_coord_out", self.data_width + 1, packed=True)
         self._rd_scan_coord_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         self._rd_scan_coord_out_ready = self.input(f"{self.rd_scan_pre}_coord_out_ready", 1)
@@ -86,7 +95,8 @@ class FiberAccess(MemoryController):
                                  local_memory=self.local_memory,
                                  tech_map=self.tech_map,
                                  defer_fifos=self.defer_fifos,
-                                 fifo_depth=self.fifo_depth)
+                                 fifo_depth=self.fifo_depth,
+                                 optimize_wide=self.buffet_optimize_wide)
 
         self.wr_scan = WriteScanner(data_width=self.data_width,
                                     defer_fifos=self.defer_fifos,
@@ -168,6 +178,10 @@ class FiberAccess(MemoryController):
         self.wire(self._wr_scan_addr_in, self.wr_scan.ports.addr_in)
         self.wire(self._wr_scan_addr_in_ready, self.wr_scan.ports.addr_in_ready)
         self.wire(self._wr_scan_addr_in_valid, self.wr_scan.ports.addr_in_valid)
+
+        self.wire(self._wr_scan_block_wr_in, self.wr_scan.ports.block_wr_in)
+        self.wire(self._wr_scan_block_wr_in_ready, self.wr_scan.ports.block_wr_in_ready)
+        self.wire(self._wr_scan_block_wr_in_valid, self.wr_scan.ports.block_wr_in_valid)
 
         self.wire(self._rd_scan_coord_out, self.rd_scan.ports.coord_out)
         self.wire(self._rd_scan_coord_out_ready, self.rd_scan.ports.coord_out_ready)
