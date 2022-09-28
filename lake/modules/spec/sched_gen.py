@@ -47,6 +47,7 @@ class SchedGen(Generator):
         if self.dual_config:
             self._mux_sel = self.input("mux_sel", max(clog2(self.max_iterator_support) + 1, 1))
             self._mux_sel_msb_init = self.output("mux_sel_msb_init", 1)
+            self._mux_sel_msb_init_w = self.var("mux_sel_msb_init_w", 1)
         else:
             self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
         self._addr_out = self.var("addr_out", self.config_width)
@@ -114,17 +115,18 @@ class SchedGen(Generator):
 
         if self.dual_config:
             @always_comb
-            def gen_mux_sel_msb_init():
+            def gen_mux_sel_msb_init_w():
                 if self._enable & self._enable2:
-                    self._mux_sel_msb_init = ADDR_GEN.ports.mux_sel_msb_init
+                    self._mux_sel_msb_init_w = ADDR_GEN.ports.starting_addr_comp
                 elif self._enable & ~self._enable2:
-                    self._mux_sel_msb_init = 0
+                    self._mux_sel_msb_init_w = 0
                 elif ~self._enable & self._enable2:
-                    self._mux_sel_msb_init = 1
+                    self._mux_sel_msb_init_w = 1
                 else:
-                    self._mux_sel_msb_init = 0
-            self.add_code(gen_mux_sel_msb_init)
-            # self.wire(self._mux_sel_msb_init, ADDR_GEN.ports.mux_sel_msb_init)
+                    self._mux_sel_msb_init_w = 0
+            self.add_code(gen_mux_sel_msb_init_w)
+            self.wire(self._mux_sel_msb_init, self._mux_sel_msb_init_w)
+            self.wire(ADDR_GEN.ports.mux_sel_msb_init, self._mux_sel_msb_init_w)
 
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)

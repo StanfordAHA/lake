@@ -10,7 +10,7 @@ import kratos as kts
 class StencilValid(MemoryController):
     def __init__(self, name="stencil_valid",
                  area_opt=True,
-                 reduced_id_config_width=10):
+                 reduced_id_config_width=11):
         super().__init__(name)
 
         self.stencil_valid_width = 16
