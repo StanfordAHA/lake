@@ -807,11 +807,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                                                                                      new_input,
                                                                                                      new_input_fifo))
                             self.wire(self.controllers_flat_dict[ctrl_name].ports[port_valid_name], kts.ternary(hybrid_bypass,
-                                                                                                                new_input_valid,
+                                                                                                                # new_input_valid,
+                                                                                                                kts.const(1, 1),
                                                                                                                 new_input_valid_fifo))
                             # The ready out for this selection should also be ternary
                             tmp_ready_choose = (kts.ternary(hybrid_bypass,
-                                                           self.controllers_flat_dict[ctrl_name].ports[port_ready_name],
+                                                        #    self.controllers_flat_dict[ctrl_name].ports[port_ready_name],
+                                                           kts.const(1, 1),
                                                            ~new_reg_fifo.ports.full), mode_num)
                         else:
                             # Otherwise, we can simply directly wire them
@@ -966,11 +968,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         # Wire ready_in if this is a ready/valid port
                         if hybrid:
                             self.wire(self.controllers_flat_dict[ctrl_name].ports[port_ready_name], kts.ternary(hybrid_bypass,
-                                                                                                                new_output_ready,
+                                                                                                                # new_output_ready,
+                                                                                                                kts.const(1, 1),
                                                                                                                 new_output_ready_fifo))
                             # Choose between the controller's valid or the fifo valid
                             tmp_valid_choose = (kts.ternary(hybrid_bypass,
-                                                            self.controllers_flat_dict[ctrl_name].ports[port_valid_name],
+                                                            # self.controllers_flat_dict[ctrl_name].ports[port_valid_name],
+                                                            kts.const(1, 1),
                                                             ~new_reg_fifo.ports.empty), mode_num)
                             tmp_data_choose = (kts.ternary(hybrid_bypass,
                                                             self.controllers_flat_dict[ctrl_name].ports[port],
