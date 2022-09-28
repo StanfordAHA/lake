@@ -29,11 +29,12 @@ class StrgUBTBOnly(Generator):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  area_opt=True,
+                 addr_fifo_depth=4,
                  reduced_id_config_width=10,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=4,
-                 tb_height=4):
+                 agg_height=2,
+                 tb_height=2):
 
         super().__init__("strg_ub_tb_only")
 
@@ -52,6 +53,7 @@ class StrgUBTBOnly(Generator):
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
         self.area_opt = area_opt
+        self.addr_fifo_depth = addr_fifo_depth
         self.reduced_id_config_width = reduced_id_config_width
 
         self.default_iterator_support = 6
@@ -95,11 +97,11 @@ class StrgUBTBOnly(Generator):
                                      explicit_array=True)
 
         if self.area_opt:
-            self._tb_read_out = self.output("tb_read_out", self.interconnect_output_ports)
-            self._tb_read_addr_out = self.output("tb_read_addr_out", 2 + clog2(self.agg_height),
-                                                 size=self.interconnect_output_ports,
-                                                 packed=True,
-                                                 explicit_array=True)
+            self._tb_read_d_out = self.output("tb_read_d_out", self.interconnect_output_ports)
+            self._tb_read_addr_d_out = self.output("tb_read_addr_d_out", 2 + clog2(self.agg_height),
+                                                   size=self.interconnect_output_ports,
+                                                   packed=True,
+                                                   explicit_array=True)
 
         ##################################################################################
         # TB RELEVANT SIGNALS
@@ -212,13 +214,14 @@ class StrgUBTBOnly(Generator):
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
                            restart=fl_ctr_tb_rd.ports.restart)
             safe_wire(gen=self, w_to=self._tb_read_addr[i], w_from=_AG.ports.addr_out)
-            if self.area_opt:
-                safe_wire(gen=self, w_to=self._tb_read_addr_out[i], w_from=_AG.ports.addr_out)
 
+            tb2out_sg = SchedGen(iterator_support=self.tb_iter_support,
+                                 # config_width=self.tb_addr_width),
+                                 delay_addr=self.area_opt,
+                                 addr_fifo_depth=self.addr_fifo_depth,
+                                 config_width=16)
             self.add_child(f"tb_read_sched_gen_{i}",
-                           SchedGen(iterator_support=self.tb_iter_support,
-                                    # config_width=self.tb_addr_width),
-                                    config_width=16),
+                           tb2out_sg,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,
@@ -226,7 +229,39 @@ class StrgUBTBOnly(Generator):
                            finished=fl_ctr_tb_rd.ports.restart,
                            valid_output=self._tb_read[i])
             if self.area_opt:
-                self.wire(self._tb_read_out[i], self._tb_read[i])
+                self._delay_en = self.var(f"delay_en_{i}", 1)
+                self._tb_addr_fifo = self.var(f"tb_addr_fifo_{i}", 2 + clog2(self.agg_height),
+                                              size=self.addr_fifo_depth,
+                                              packed=True,
+                                              explicit_array=True)
+                self._addr_fifo_in = self.var(f"addr_fifo_in_{i}", 2 + clog2(self.agg_height))
+                self._wr_ptr = self.var(f"wr_ptr_{i}", clog2(self.addr_fifo_depth))
+                self._rd_ptr = self.var(f"rd_ptr_{i}", clog2(self.addr_fifo_depth))
+
+                self.wire(self._delay_en, tb2out_sg.ports.delay_en_out)
+                safe_wire(gen=self, w_to=self._addr_fifo_in, w_from=_AG.ports.addr_out)
+
+                @always_ff((posedge, "clk"), (negedge, "rst_n"))
+                def update_delayed_tb_addr_in():
+                    if ~self._rst_n:
+                        self._wr_ptr = 0
+                        self._rd_ptr = 0
+                        self._tb_addr_fifo = 0
+                    elif self._delay_en:
+                        if self._tb_read[i]:
+                            self._tb_addr_fifo[self._wr_ptr] = self._addr_fifo_in
+                            self._wr_ptr = self._wr_ptr + 1
+
+                        if tb2out_sg.ports.valid_output_d:
+                            self._rd_ptr = self._rd_ptr + 1
+                self.add_code(update_delayed_tb_addr_in)
+
+                self.wire(self._tb_read_d_out[i], ternary(self._delay_en,
+                                                          tb2out_sg.ports.valid_output_d,
+                                                          self._tb_read[i]))
+                self.wire(self._tb_read_addr_d_out[i], ternary(self._delay_en,
+                                                               self._tb_addr_fifo[self._rd_ptr],
+                                                               self._addr_fifo_in))
 
             @always_comb
             def tb_to_out():

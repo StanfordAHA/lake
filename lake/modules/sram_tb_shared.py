@@ -82,6 +82,8 @@ class StrgUBSRAMTBShared(Generator):
         self._t_read_out = self.output("t_read_out", self.interconnect_output_ports)
         self._t_read = self.var("t_read", self.interconnect_output_ports)
         self.wire(self._t_read_out, self._t_read)
+        if self.area_opt:
+            self._sram_read_d = self.output("sram_read_d", self.interconnect_output_ports)
 
         ##################################################################################
         # TB PATHS
@@ -106,16 +108,21 @@ class StrgUBSRAMTBShared(Generator):
             self.wire(self._loops_sram2tb_restart[i], loops_sram2tb.ports.restart)
 
             # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
+            sram2tb_sg = SchedGen(iterator_support=self.default_iterator_support,
+                                  # config_width=self.default_config_width),
+                                  delay_addr=self.area_opt,
+                                  config_width=16)
             self.add_child(f"output_sched_gen_{i}",
-                           SchedGen(iterator_support=self.default_iterator_support,
-                                    # config_width=self.default_config_width),
-                                    config_width=16),
+                           sram2tb_sg,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            cycle_count=self._cycle_count,
                            mux_sel=loops_sram2tb.ports.mux_sel_out,
                            finished=loops_sram2tb.ports.restart,
                            valid_output=self._t_read[i])
+
+            if self.area_opt:
+                self.wire(self._sram_read_d[i], sram2tb_sg.ports.valid_output_d)
 
 
 if __name__ == "__main__":

@@ -18,6 +18,9 @@ class SchedGen(Generator):
                  config_width=16,
                  use_enable=True,
                  dual_config=False,
+                 delay_addr=False,
+                 delay_width=8,
+                 addr_fifo_depth=4,
                  iterator_support2=2):
 
         if dual_config:
@@ -29,6 +32,9 @@ class SchedGen(Generator):
         self.config_width = config_width
         self.use_enable = use_enable
         self.dual_config = dual_config
+        self.delay_addr = delay_addr
+        self.delay_width = delay_width
+        self.addr_fifo_depth = addr_fifo_depth
         self.iterator_support2 = iterator_support2
         self.max_iterator_support = max(self.iterator_support, self.iterator_support2)
 
@@ -40,6 +46,11 @@ class SchedGen(Generator):
 
         # OUTPUTS
         self._valid_output = self.output("valid_output", 1)
+        if self.delay_addr:
+            self._delay_en_out = self.output("delay_en_out", 1)
+            self._delay_en = self.var("delay_en", 1)
+            self._valid_output_d = self.output("valid_output_d", 1)
+            self._valid_out_d = self.var("valid_out_d", 1)
 
         # VARS
         self._valid_out = self.var("valid_out", 1)
@@ -51,6 +62,8 @@ class SchedGen(Generator):
         else:
             self._mux_sel = self.input("mux_sel", max(clog2(self.iterator_support), 1))
         self._addr_out = self.var("addr_out", self.config_width)
+        if self.delay_addr:
+            self._addr_out_d = self.var("addr_out_d", self.config_width)
 
         # Receive signal on last iteration of looping structure and
         # gate the output...
@@ -102,6 +115,8 @@ class SchedGen(Generator):
         ADDR_GEN = AddrGen(iterator_support=self.iterator_support,
                            config_width=self.config_width,
                            dual_config=self.dual_config,
+                           delay_addr=self.delay_addr,
+                           delay_width=self.delay_width,
                            iterator_support2=self.iterator_support2)
 
         self.add_child(f"sched_addr_gen",
@@ -128,6 +143,26 @@ class SchedGen(Generator):
             self.wire(self._mux_sel_msb_init, self._mux_sel_msb_init_w)
             self.wire(ADDR_GEN.ports.mux_sel_msb_init, self._mux_sel_msb_init_w)
 
+        if self.delay_addr:
+            self._addr_fifo = self.var("addr_fifo", self.delay_width + 1,
+                                       size=self.addr_fifo_depth,
+                                       packed=True,
+                                       explicit_array=True)
+            self._addr_fifo_wr_en = self.var("addr_fifo_wr_en", 1)
+            self._addr_fifo_in = self.var("addr_fifo_in", self.delay_width + 1)
+            self._addr_fifo_out = self.var("addr_fifo_out", self.delay_width + 1)
+            self._wr_ptr = self.var("wr_ptr", clog2(self.addr_fifo_depth))
+            self._rd_ptr = self.var("rd_ptr", clog2(self.addr_fifo_depth))
+
+            self.wire(self._delay_en_out, self._delay_en)
+            self.wire(self._delay_en, ADDR_GEN.ports.delay_out > 0)
+            self.wire(self._addr_out_d, ADDR_GEN.ports.delayed_addr_out)
+            self.wire(self._addr_fifo_wr_en, self._valid_out)
+            self.wire(self._addr_fifo_in, self._addr_out_d[self.delay_width, 0])
+            self.wire(self._addr_fifo_out, self._addr_fifo[self._rd_ptr])
+            self.add_code(self.update_addr_fifo)
+            self.add_code(self.set_delayed_valid_output)
+
         self.add_code(self.set_valid_out)
         self.add_code(self.set_valid_output)
 
@@ -141,6 +176,30 @@ class SchedGen(Generator):
     @always_comb
     def set_valid_output(self):
         self._valid_output = self._valid_out
+
+    @always_comb
+    def set_delayed_valid_output(self):
+        if self.dual_config:
+            self._valid_out_d = (self._cycle_count[self.delay_width, 0] == self._addr_fifo_out) & \
+                                (self._wr_ptr != self._rd_ptr) & self._cur_enable
+        else:
+            self._valid_out_d = (self._cycle_count[self.delay_width, 0] == self._addr_fifo_out) & \
+                                (self._wr_ptr != self._rd_ptr) & self._enable
+        self._valid_output_d = self._valid_out_d
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def update_addr_fifo(self):
+        if ~self._rst_n:
+            self._wr_ptr = 0
+            self._rd_ptr = 0
+            self._addr_fifo = 0
+        elif self._delay_en:
+            if self._addr_fifo_wr_en:
+                self._wr_ptr = self._wr_ptr + 1
+                self._addr_fifo[self._wr_ptr] = self._addr_fifo_in
+
+            if self._valid_out_d:
+                self._rd_ptr = self._rd_ptr + 1
 
 
 if __name__ == "__main__":
