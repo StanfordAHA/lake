@@ -58,7 +58,9 @@ module intersect_unit_tb;
 		gold_pos_out_0 = gold_pos0[addr];
 		gold_pos_out_1 = gold_pos1[addr];
 		addr = addr + 1;
-		
+	end
+	if (rst_n)
+	begin
 		$display("time, clk, addr, ut_cd, out_ref1, out_ref2, gold_crd, gold_ref1, gold_ref2");
 	  	$display("%10b, %10b, %10b, %10b,      %10b,	%10b,	%10b,	%10b,		%10b", $time, clk, addr, coord_out, pos_out_0, pos_out_1, gold_coord_out, gold_pos_out_0, gold_pos_out_1);
 	end
@@ -83,9 +85,11 @@ module intersect_unit_tb;
 	  addr = 0;
 	  #20;
 
-	  coord_in_0_valid = 1'b1;
+	  tile_en = 1'b1;
+	  #20;
 	  coord_in_1_valid = 1'b1;
-  	  joiner_op = 1'b0;
+	  coord_in_0_valid = 1'b1;
+  	  joiner_op = 1'h0;
 	  pos_in_0_valid = 1'b1;
 	  pos_in_1_valid = 1'b1;
 
