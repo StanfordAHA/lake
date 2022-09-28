@@ -23,10 +23,12 @@ class SchedGen(Generator):
                  addr_fifo_depth=4,
                  iterator_support2=2):
 
+        module_name = f"sched_gen_{iterator_support}_{config_width}"
         if dual_config:
-            super().__init__(f"sched_gen_dual_config_{iterator_support}_{iterator_support2}_{config_width}")
-        else:
-            super().__init__(f"sched_gen_{iterator_support}_{config_width}")
+            module_name += f"_dual_config_{iterator_support2}"
+        if delay_addr:
+            module_name += f"_delay_addr_{delay_width}_{addr_fifo_depth}"
+        super().__init__(module_name)
 
         self.iterator_support = iterator_support
         self.config_width = config_width

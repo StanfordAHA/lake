@@ -230,6 +230,7 @@ class StrgUBTBOnly(Generator):
                            valid_output=self._tb_read[i])
             if self.area_opt:
                 self._delay_en = self.var(f"delay_en_{i}", 1)
+                self._tb_read_d = self.var(f"tb_read_d_{i}", 1)
                 self._tb_addr_fifo = self.var(f"tb_addr_fifo_{i}", 2 + clog2(self.agg_height),
                                               size=self.addr_fifo_depth,
                                               packed=True,
@@ -239,6 +240,7 @@ class StrgUBTBOnly(Generator):
                 self._rd_ptr = self.var(f"rd_ptr_{i}", clog2(self.addr_fifo_depth))
 
                 self.wire(self._delay_en, tb2out_sg.ports.delay_en_out)
+                self.wire(self._tb_read_d, tb2out_sg.ports.valid_output_d)
                 safe_wire(gen=self, w_to=self._addr_fifo_in, w_from=_AG.ports.addr_out)
 
                 @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -252,12 +254,12 @@ class StrgUBTBOnly(Generator):
                             self._tb_addr_fifo[self._wr_ptr] = self._addr_fifo_in
                             self._wr_ptr = self._wr_ptr + 1
 
-                        if tb2out_sg.ports.valid_output_d:
+                        if self._tb_read_d:
                             self._rd_ptr = self._rd_ptr + 1
                 self.add_code(update_delayed_tb_addr_in)
 
                 self.wire(self._tb_read_d_out[i], ternary(self._delay_en,
-                                                          tb2out_sg.ports.valid_output_d,
+                                                          self._tb_read_d,
                                                           self._tb_read[i]))
                 self.wire(self._tb_read_addr_d_out[i], ternary(self._delay_en,
                                                                self._tb_addr_fifo[self._rd_ptr],
