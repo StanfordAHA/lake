@@ -17,10 +17,12 @@ class AddrGen(Generator):
                  delay_width=8,
                  iterator_support2=2):
 
+        module_name = f"addr_gen_{iterator_support}_{config_width}"
         if dual_config:
-            super().__init__(f"addr_gen_dual_config_{iterator_support}_{iterator_support2}_{config_width}", debug=True)
-        else:
-            super().__init__(f"addr_gen_{iterator_support}_{config_width}", debug=True)
+            module_name += f"_dual_config_{iterator_support2}"
+        if delay_addr:
+            module_name += f"_delay_addr_{delay_width}"
+        super().__init__(module_name)
 
         # Store local...
         self.iterator_support = iterator_support
