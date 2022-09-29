@@ -150,7 +150,20 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
     def finalize_controllers(self):
         self.controllers_finalized = True
-        self.num_modes = len(self.controllers)
+        bulk_ctrl = 0
+        exclusive_ctrl = 0
+        for ctrl in self.controllers:
+            print(ctrl)
+            if ctrl.get_exclusive():
+                print("FOUND EXCLUSIVE")
+                self.ctrl_to_mode[ctrl.name] = (exclusive_ctrl, "excl")
+                exclusive_ctrl += 1
+            else:
+                print("FOUND BULK")
+                self.ctrl_to_mode[ctrl.name] = (bulk_ctrl, "bulk")
+                bulk_ctrl += 1
+        # self.num_modes = len(self.controllers)
+        self.num_modes = bulk_ctrl
         # Create the mode config reg if we have multiple controllers,
         # otherwise we can just wire it to 0 and let synth handle it?
         if self.num_modes > 1:
@@ -160,6 +173,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             self._mode = self.var("mode", 1)
             tmp0 = kts.const(0, 1)
             self.wire(self._mode, tmp0)
+
+        self.num_modes_excl = exclusive_ctrl
+        if self.num_modes_excl > 0:
+            self._mode_excl = self.input("mode_excl", self.num_modes_excl)
+            self._mode_excl.add_attribute(ConfigRegAttr("MODE EXCLUSIVE!"))
 
         # Provide mapping from controller name to mode
         # Also, while we are here we can set the min depth of all the deferred fifos
@@ -175,7 +193,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             for alt_fifo in alt_fifos:
                 alt_fifo.generate_hardware()
             self.fifo_map[ctrl.name] = ctrl.get_fifos()
-            self.ctrl_to_mode[ctrl.name] = i
+            # self.ctrl_to_mode[ctrl.name] = i
 
         self.resolve_memports()
         self.resolve_inputs()
@@ -704,8 +722,26 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         mux_comb.add_stmt(out_sig.assign(default))
         on_first = True
 
+        # This is probably an exclusive port...
+        if len(items) == 1 and len(items[0]) == 3 and items[0][2] == "excl":
+            print("Exclusive port...")
+            signal_, mode_bit_, excl_ = items[0]
+            first_if = mux_comb.if_(self._mode_excl[mode_bit_] == kts.const(1, 1))
+            # Figure out if an output from a controller of the mode idx is actually defined or not
+            first_if.then_(out_sig.assign(signal_))
+            first_if.else_(out_sig.assign(default))
+            return
+
         # Wire all the inputs to the data/valid, then mux the ready
-        for (signal_, mode_num_) in items:
+        # for (signal_, mode_num_) in items:
+        for item_ in items:
+
+            if len(item_) == 2:
+                signal_, mode_num_ = item_
+            elif len(item_) == 3:
+                signal_, mode_num_, b_ex_ = item_
+            else:
+                raise NotImplementedError
 
             if on_first is True:
                 first_if = mux_comb.if_(self._mode == kts.const(mode_num_, width=self._mode.width))
@@ -792,7 +828,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     on_first = True
 
                     # Wire all the inputs to the data/valid, then mux the ready
-                    for (ctrl_name, port, mode_num, hybrid) in rvs:
+                    # for (ctrl_name, port, mode_num, hybrid) in rvs:
+                    for (ctrl_name, port, (mode_num, b_ex), hybrid) in rvs:
 
                         if hybrid is True and hybrid_bypass is None:
                             hybrid_bypass = self.input(f"{self.io_prefix}input_width_{input_width}_num_{i}_dense", 1)
@@ -849,7 +886,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 elif any_dense and any_rvs:
 
                     # Wire all the inputs to the data/valid, then mux the ready
-                    for (ctrl_name, port, mode_num, _) in dense:
+                    for (ctrl_name, port, (mode_num, b_ex), _) in dense:
                         self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
                         tmp_ready_choose = (kts.const(1, 1), mode_num)
                         output_ready_map.append(tmp_ready_choose)
@@ -957,7 +994,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     mux_comb.add_stmt(new_output_valid_fifo.assign(0))
                     on_first = True
 
-                    for (ctrl_name, port, mode_num, hybrid) in rvs:
+                    # for (ctrl_name, port, mode_num, hybrid) in rvs:
+                    for (ctrl_name, port, (mode_num, b_ex), hybrid) in rvs:
 
                         if hybrid and hybrid_bypass is None:
                             hybrid_bypass = self.input(f"{self.io_prefix}output_width_{output_width}_num_{i}_dense", 1)
@@ -1023,16 +1061,21 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 # elif not any_rvs and any_dense:
                 elif not any_rvs:
 
+                    # TODO: Generalize - getting stencil_valid working here...
+
                     # If just dense, just do a simple mux - assumed 1b here
                     for (ctrl_name, port) in signal_dict.items():
                         unflat_name = self.flat_to_c[ctrl_name]
-                        mode_num = self.ctrl_to_mode[unflat_name]
-                        tmp_data_choose = (self.controllers_flat_dict[ctrl_name].ports[port], mode_num)
+                        # if "stencil_valid" in unflat_name:
+                        #     print("GOT STENCIL VALID")
+                        # print(self.controllers_dict[unflat_name].get_exclusive())
+                        mode_num, b_ex = self.ctrl_to_mode[unflat_name]
+                        tmp_data_choose = (self.controllers_flat_dict[ctrl_name].ports[port], mode_num, b_ex)
                         output_data_map.append(tmp_data_choose)
 
                 elif any_rvs and any_dense:
 
-                    for (ctrl_name, port, mode_num, hybrid_) in dense:
+                    for (ctrl_name, port, (mode_num, b_ex), hybrid_) in dense:
                         tmp_data_choose = (self.controllers_flat_dict[ctrl_name].ports[port], mode_num)
                         output_data_map.append(tmp_data_choose)
                         tmp_valid_choose = (kts.const(1, 1), mode_num)
@@ -1121,12 +1164,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if idx == 0:
                     # first_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
                     # first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
-                    first_if = mux_comb.if_(self._mode == kts.const(self.ctrl_to_mode[ctrl_name], width=self._mode.width))
+                    # first_if = mux_comb.if_(self._mode == kts.const(self.ctrl_to_mode[ctrl_name], width=self._mode.width))
+                    mode_num, b_ex = self.ctrl_to_mode[ctrl_name]
+                    first_if = mux_comb.if_(self._mode == kts.const(mode_num, width=self._mode.width))
                     first_if.then_(*ass_stmt)
                     self.mem_port_mux_if[local_port] = first_if
                     prev_stmt = first_if
                 else:
-                    chain_if = IfStmt(self._mode == kts.const(self.ctrl_to_mode[ctrl_name], width=self._mode.width))
+                    mode_num, b_ex = self.ctrl_to_mode[ctrl_name]
+                    chain_if = IfStmt(self._mode == kts.const(mode_num, width=self._mode.width))
                     chain_if.then_(*ass_stmt)
                     prev_stmt.else_(chain_if)
                     prev_stmt = chain_if
