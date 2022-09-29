@@ -1227,6 +1227,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Check for stencil valid
         if 'stencil_valid' in config_json and 'stencil_valid' in mode_map:
             ctrl_config['stencil_valid'] = mode_map['stencil_valid'].get_bitstream(config_json)
+            config.append(("mode_excl", 1))
 
         if 'mode' in config_json:
             mode_used = config_json['mode']
