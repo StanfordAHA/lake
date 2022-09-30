@@ -8,6 +8,7 @@ from lake.modules.sram_stub import SRAMStub
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.modules.spec.sched_gen import SchedGen
+from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.utils.util import safe_wire, add_counter, decode
 import kratos as kts
 
@@ -117,7 +118,7 @@ class StrgUBTBOnly(Generator):
                                        packed=True,
                                        explicit_array=True)
 
-        self._tb_read_addr = self.var("tb_read_addr", 2 + max(1, clog2(self.tb_height)),
+        self._tb_read_addr = self.var("tb_read_addr", 3 + max(1, clog2(self.tb_height)),
                                       size=self.interconnect_output_ports,
                                       packed=True,
                                       explicit_array=True)
@@ -158,6 +159,25 @@ class StrgUBTBOnly(Generator):
                     self._restart_d1[i] = self._loops_sram2tb_restart[i]
             self.add_code(delay_read)
 
+        if self.area_opt:
+            # configuration register for port 0 to make TB shared (depth 4 virtually)
+            self._shared_tb_0 = self.input(f"shared_tb_0", 1)
+            self._shared_tb_0.add_attribute(ConfigRegAttr("Treat the TB's as shared"))
+            self._shared_tb_0.add_attribute(FormalAttr(self._shared_tb_0.name, FormalSignalConstraint.SOLVE))
+
+            self._tb_write_sel_0 = self.var("tb_write_sel_0", clog2(self.interconnect_output_ports))
+            self._tb_read_sel_0 = self.var("tb_read_sel_0", clog2(self.interconnect_output_ports))
+            self.wire(self._tb_write_sel_0,
+                      ternary(self._shared_tb_0,
+                              self._tb_write_addr[0][clog2(tb_height) + clog2(self.interconnect_output_ports) - 1,
+                                                     clog2(tb_height)],
+                              const(0, self._tb_write_sel_0.width)))
+            self.wire(self._tb_read_sel_0,
+                      ternary(self._shared_tb_0,
+                              self._tb_read_addr[0][clog2(tb_height) + clog2(self.fetch_width) + clog2(self.interconnect_output_ports) - 1,
+                                                    clog2(tb_height) + clog2(self.fetch_width)],
+                              const(0, self._tb_read_sel_0.width)))
+
         ##################################################################################
         # TB PATHS
         ##################################################################################
@@ -182,8 +202,13 @@ class StrgUBTBOnly(Generator):
             @always_ff((posedge, "clk"))
             def tb_ctrl():
                 if self._t_read_d1[i]:
-                    self._tb[i][self._tb_write_addr[i][clog2(tb_height)-1,0]] = \
-                        self._sram_read_data
+                    if i == 0:
+                        # shared TB case for port 0 only
+                        self._tb[self._tb_write_sel_0][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = \
+                            self._sram_read_data
+                    else:
+                        self._tb[i][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = \
+                            self._sram_read_data
             self.add_code(tb_ctrl)
 
             # READ FROM TB
@@ -230,9 +255,16 @@ class StrgUBTBOnly(Generator):
 
             @always_comb
             def tb_to_out():
-                self._data_out[i] = self._tb[i][self._tb_read_addr[i][clog2(self.tb_height) +
-                                                                      clog2(self.fetch_width) - 1,
-                                                                      clog2(self.fetch_width)]][self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
+                if i == 0:
+                    self._data_out[i] = \
+                        self._tb[self._tb_read_sel_0] \
+                        [self._tb_read_addr[i][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]] \
+                        [self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
+                else:
+                    self._data_out[i] = \
+                        self._tb[i] \
+                        [self._tb_read_addr[i][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]] \
+                        [self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
             self.add_code(tb_to_out)
 
 
