@@ -1,6 +1,3 @@
-from concurrent.futures.process import _MAX_WINDOWS_WORKERS
-
-from numpy import int32
 from lake.attributes.hybrid_port_attr import HybridPortAddr
 from lake.modules.chain_accessor import ChainAccessor
 from lake.modules.reg_fifo import RegFIFO
