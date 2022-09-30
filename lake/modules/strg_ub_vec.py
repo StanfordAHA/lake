@@ -760,6 +760,8 @@ class StrgUBVec(MemoryController):
         if "tb2out_0" in config_json:
             num_tbs += 1
             tb2out_0 = map_controller(extract_controller_json(config_json["tb2out_0"]), "tb2out_0", flatten=False, linear_ag=linearize_data_stride)
+            if self.area_opt:
+                config.append(("tb_only_shared_tb_0", tb2out_0.tb_share[0]))
             config.append(("tb_only_tb_read_sched_gen_0_enable", 1))
             config.append(("tb_only_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out_0.cyc_strt))
             config.append(("tb_only_tb_read_addr_gen_0_starting_addr", tb2out_0.out_data_strt))
