@@ -33,8 +33,8 @@ class StrgUBTBOnly(Generator):
                  reduced_id_config_width=10,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
-                 agg_height=4,
-                 tb_height=4):
+                 agg_height=2,
+                 tb_height=2):
 
         super().__init__("strg_ub_tb_only")
 
