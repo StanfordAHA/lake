@@ -45,7 +45,7 @@ class LakeTop(Generator):
                  gen_addr=True,
                  stencil_valid=True,
                  formal_module=None,
-                 do_config_lift=True,
+                 do_config_lift=False,
                  comply_with_17=False,
                  area_opt=True,
                  pond_area_opt_share=False,
@@ -223,29 +223,43 @@ class LakeTop(Generator):
         replace_ins = {}
         replace_outs = {}
 
-        if mode == "UB" and self.read_delay == 0:
+        if mode == "UB" and self.read_delay == 0 or mode == "pond":
             replace_ins = {
-                "input_width_16_num_0": "data_in_pond_0",
-                "input_width_16_num_1": "data_in_pond_1",
+                "PondTop_input_width_16_num_0": "data_in_pond_0",
+                "PondTop_input_width_16_num_1": "data_in_pond_1",
             }
 
             replace_outs = {
-                "output_width_16_num_0": "data_out_pond_0",
-                "output_width_16_num_1": "data_out_pond_1",
-                "output_width_1_num_4": "valid_out_pond",
+                "PondTop_output_width_16_num_0": "data_out_pond_0",
+                "PondTop_output_width_16_num_1": "data_out_pond_1",
+                "PondTop_output_width_1_num_4": "valid_out_pond",
             }
         elif mode == "UB" and self.read_delay >= 1 and self.fw_int > 1:
             replace_ins = {
-                "input_width_16_num_0": "chain_data_in_0",
-                "input_width_16_num_1": "chain_data_in_1",
-                "input_width_16_num_2": "data_in_0",
-                "input_width_16_num_3": "data_in_1",
+                "LakeTop_input_width_17_num_0": "chain_data_in_0",
+                "LakeTop_input_width_17_num_1": "chain_data_in_1",
+                "LakeTop_input_width_17_num_2": "data_in_0",
+                "LakeTop_input_width_17_num_3": "data_in_1",
             }
 
             replace_outs = {
-                "output_width_16_num_0": "data_out_0",
-                "output_width_16_num_1": "data_out_1",
-                "output_width_1_num_3": "stencil_valid",
+                "LakeTop_output_width_17_num_0": "data_out_0",
+                "LakeTop_output_width_17_num_1": "data_out_1",
+                "LakeTop_output_width_1_num_2": "stencil_valid",
+            }
+
+        elif mode == "stencil_valid":
+            replace_ins = {
+                "LakeTop_input_width_17_num_0": "chain_data_in_0",
+                "LakeTop_input_width_17_num_1": "chain_data_in_1",
+                "LakeTop_input_width_17_num_2": "data_in_0",
+                "LakeTop_input_width_17_num_3": "data_in_1",
+            }
+
+            replace_outs = {
+                "LakeTop_output_width_17_num_0": "data_out_0",
+                "LakeTop_output_width_17_num_1": "data_out_1",
+                "LakeTop_output_width_1_num_2": "stencil_valid",
             }
         elif mode == "UB" and self.fw_int == 1:
             replace_ins = {

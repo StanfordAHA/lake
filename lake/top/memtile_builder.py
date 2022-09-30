@@ -449,6 +449,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             self.add_flush()
         # For now, do this merging of the config regs
         if do_lift_config:
+            self.num_chopped_cfg = 0
             lift_config_reg(self.internal_generator)
         else:
             self.merge_config_regs()
