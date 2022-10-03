@@ -180,8 +180,6 @@ if __name__ == "__main__":
         lake_kwargs['name'] = args.vmn
         lake_kwargs['fifo_mode'] = args.f
         lt_dut = LakeTop(**lake_kwargs)
-        print(lt_dut)
-        exit()
         lt_dut.wrapper(wrapper_vlog_filename=args.wfn,
                        wrapper_vlog_modulename=args.wmn,
                        # vlog_extension="sv",

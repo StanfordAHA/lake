@@ -24,6 +24,17 @@ class MemoryController(kts.Generator):
                             kts.const(DONE_CODE, OPCODE_WIDTH),
                             kts.const(0, OPCODE_BASE))
 
+    def __init__(self, name: str,
+                 debug: bool = False,
+                 is_clone: bool = False,
+                 internal_generator=None,
+                 exclusive: bool = False):
+        super().__init__(name, debug, is_clone, internal_generator)
+        self.exclusive = exclusive
+
+    def get_exclusive(self):
+        return self.exclusive
+
     def set_bit(self, old_val, bit_to_set, new_bit):
         new_val = old_val | (new_bit << bit_to_set)
         return new_val

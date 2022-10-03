@@ -11,7 +11,7 @@ class StencilValid(MemoryController):
     def __init__(self, name="stencil_valid",
                  area_opt=True,
                  reduced_id_config_width=11):
-        super().__init__(name)
+        super().__init__(name, exclusive=True)
 
         self.stencil_valid_width = 16
         self.area_opt = area_opt
