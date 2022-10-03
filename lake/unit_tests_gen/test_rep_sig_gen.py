@@ -16,11 +16,6 @@ def write_arr(str_list, name):
         for item in str_list:
             wr_file.write(f"{item}\n")
 
-    in_ref_ = convert_stream_to_onyx_interp(in_ref)
-    in_repeat_ = convert_stream_to_onyx_interp(in_repeat)
-    write_arr(i_repeat_, name = "test_in_repeat")
-    write_arr(gold_, name = "test_gold")
-
 
 ####################
 # Test Repeat Signal Generator

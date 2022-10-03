@@ -55,7 +55,7 @@ def test_repeat_direct(n, debug_sim):
     gold_ = convert_stream_to_onyx_interp(gold)
 
     write_arr(in_ref_, name = "test_in_ref")
-    write_arr(i_repeat_, name = "test_in_repeat")
+    write_arr(in_repeat_, name = "test_in_repeat")
     write_arr(gold_, name = "test_gold")
 
     while not done and time < TIMEOUT:
