@@ -199,18 +199,6 @@ class StrgUBTBOnly(Generator):
                            restart=self._restart_d1[i])
             safe_wire(gen=self, w_to=self._tb_write_addr[i], w_from=_AG.ports.addr_out)
 
-            @always_ff((posedge, "clk"))
-            def tb_ctrl():
-                if self._t_read_d1[i]:
-                    if i == 0:
-                        # shared TB case for port 0 only
-                        self._tb[self._tb_write_sel_0][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = \
-                            self._sram_read_data
-                    else:
-                        self._tb[i][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = \
-                            self._sram_read_data
-            self.add_code(tb_ctrl)
-
             # READ FROM TB
 
             if self.area_opt:
@@ -266,6 +254,18 @@ class StrgUBTBOnly(Generator):
                         [self._tb_read_addr[i][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]] \
                         [self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
             self.add_code(tb_to_out)
+
+        @always_ff((posedge, "clk"))
+        def tb_ctrl():
+            for i in range(self.interconnect_output_ports):
+                if self._t_read_d1[i]:
+                    if i == 0:
+                        # shared TB case for port 0 only
+                        self._tb[self._tb_write_sel_0][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = self._sram_read_data
+                    else:
+                        # regular TB access
+                        self._tb[i][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = self._sram_read_data
+        self.add_code(tb_ctrl)
 
 
 if __name__ == "__main__":
