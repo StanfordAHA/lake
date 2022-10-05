@@ -29,7 +29,7 @@ class StrgUBTBOnly(Generator):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  area_opt=True,
-                 addr_fifo_depth=4,
+                 addr_fifo_depth=8,
                  reduced_id_config_width=10,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
