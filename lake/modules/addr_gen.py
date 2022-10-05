@@ -14,7 +14,7 @@ class AddrGen(Generator):
                  config_width=16,
                  dual_config=False,
                  delay_addr=False,
-                 delay_width=8,
+                 delay_width=10,
                  iterator_support2=2):
 
         module_name = f"addr_gen_{iterator_support}_{config_width}"

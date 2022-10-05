@@ -19,7 +19,7 @@ class SchedGen(Generator):
                  use_enable=True,
                  dual_config=False,
                  delay_addr=False,
-                 delay_width=8,
+                 delay_width=10,
                  addr_fifo_depth=4,
                  iterator_support2=2):
 

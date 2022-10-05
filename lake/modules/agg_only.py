@@ -23,7 +23,6 @@ class StrgUBAggOnly(Generator):
                  area_opt=True,
                  reduced_id_config_width=10,
                  addr_fifo_depth=8,
-                 delay_width=4,
                  agg_iter_support_small=3,
                  agg_height=4,
                  agg_addr_width=3,
@@ -52,7 +51,6 @@ class StrgUBAggOnly(Generator):
         self.area_opt = area_opt
         self.reduced_id_config_width = reduced_id_config_width
         self.addr_fifo_depth = addr_fifo_depth
-        self.delay_width = delay_width
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -175,11 +173,6 @@ class StrgUBAggOnly(Generator):
             self.agg_range_width = 16
 
             if self.area_opt:
-                # # delay configuration register
-                # self._delay = self.input(f"delay_{i}", self.delay_width)
-                # self._delay.add_attribute(ConfigRegAttr("Delay cycles of shared tb ctrl for update operation"))
-                # self._delay.add_attribute(FormalAttr(f"{self._delay.name}_{i}", FormalSignalConstraint.SOLVE))
-
                 # mode=1 for update operation mode
                 self._mode = self.var(f"mode_{i}", 2)
                 self.wire(self._mode, self._update_mode_in[i])
@@ -194,43 +187,6 @@ class StrgUBAggOnly(Generator):
                 else:
                     self.wire(self._tb_read, ternary(self._mode[0], self._tb_read_d_in[1], self._tb_read_d_in[0]))
                     self.wire(self._tb_addr, ternary(self._mode[0], self._tb_read_addr_d_in[1], self._tb_read_addr_d_in[0]))
-                # self._tb_read_shift = self.var(f"tb_read_shift_{i}", 2 ** self.delay_width)
-                # self._tb_addr_fifo = self.var(f"tb_addr_fifo_{i}", self._agg_write_addr.width,
-                #                               size=self.addr_fifo_depth,
-                #                               packed=True,
-                #                               explicit_array=True)
-                # self._wr_ptr = self.var(f"wr_ptr_{i}", clog2(self.addr_fifo_depth))
-                # self._rd_ptr = self.var(f"rd_ptr_{i}", clog2(self.addr_fifo_depth))
-                # self._tb_read_delayed = self.var(f"tb_read_delayed_{i}", 1)
-                # self._tb_addr_delayed = self.var(f"tb_addr_delayed_{i}", self._agg_write_addr.width)
-                # self._tb_shared_wen = self.var(f"tb_shared_wen_{i}", 1)
-                # self._tb_shared_addr = self.var(f"tb_shared_addr_{i}", self._agg_write_addr.width)
-
-                # @always_ff((posedge, "clk"), (negedge, "rst_n"))
-                # def update_delayed_tb_in(self):
-                #     if ~self._rst_n:
-                #         self._wr_ptr = 0
-                #         self._rd_ptr = 0
-                #         self._tb_read_shift = 0
-                #         self._tb_addr_fifo = 0
-                #     elif (self._mode[1] == 1) & (self._delay > 0):
-                #         # wen shift register
-                #         self._tb_read_shift = concat(self._tb_read_shift[self._tb_read_shift.width - 2, 1], self._tb_read, const(0, 1))
-
-                #         # addr fifo
-                #         if self._tb_read:
-                #             self._tb_addr_fifo[self._wr_ptr] = self._tb_addr
-                #             self._wr_ptr = self._wr_ptr + 1
-
-                #         if self._tb_read_delayed:
-                #             self._rd_ptr = self._rd_ptr + 1
-                # self.add_code(update_delayed_tb_in)
-
-                # self.wire(self._tb_read_delayed, self._tb_read_shift[self._delay])
-                # self.wire(self._tb_read_delayed, ternary(self._mode[0], self._tb_read_d_in[1], self._tb_read_d_in[0]))
-                # self.wire(self._tb_addr_delayed, self._tb_addr_fifo[self._rd_ptr])
-                # self.wire(self._tb_shared_wen, ternary(self._delay > 0, self._tb_read_delayed, self._tb_read))
-                # self.wire(self._tb_shared_addr, ternary(self._delay > 0, self._tb_addr_delayed, self._tb_addr))
 
                 forloop_ctr = ForLoop(iterator_support=self.agg_iter_support_small,
                                       # config_width=self.default_config_width)
