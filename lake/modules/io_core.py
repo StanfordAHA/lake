@@ -19,13 +19,15 @@ class IOCore(Generator):
                  fifo_depth=2,
                  use_17_to_16_hack=True,
                  allow_bypass=True,
-                 use_almost_full=False):
+                 use_almost_full=False,
+                 add_flush=False,
+                 add_clk_en=True):
 
         super().__init__("io_core", debug=True)
 
         self.data_width = data_width
-        self.add_clk_enable = True
-        self.add_flush = True
+        self.add_clk_enable = add_clk_en
+        self.add_flush = add_flush
         self.fifo_depth = fifo_depth
         self.hack17_to_16 = use_17_to_16_hack
         self.allow_bypass = allow_bypass
@@ -194,6 +196,17 @@ class IOCore(Generator):
                 else:
                     self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.full)
                 self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
+
+        if self.add_clk_enable:
+            kts.passes.auto_insert_clock_enable(self.internal_generator)
+            clk_en_port = self.internal_generator.get_port("clk_en")
+            clk_en_port.add_attribute(ControlSignalAttr(False))
+
+        if self.add_flush:
+            self.add_attribute("sync-reset=flush")
+            kts.passes.auto_insert_sync_reset(self.internal_generator)
+            flush_port = self.internal_generator.get_port("flush")
+            flush_port.add_attribute(ControlSignalAttr(True))
 
     def get_bitstream(self, config_dict):
 
