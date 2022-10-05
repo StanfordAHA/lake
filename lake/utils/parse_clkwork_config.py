@@ -4,7 +4,7 @@ from lake.utils.util import transform_strides_and_ranges
 verbose_controller_info = False
 ControllerInfo = collections.namedtuple('ControllerInfo',
                                         'dim extent cyc_stride in_data_stride cyc_strt delay mode agg_read_padding \
-                                            in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt')
+                                            in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt tb_share')
 
 
 def search_for_config(cfg_file, key):
@@ -54,6 +54,7 @@ def extract_controller_json(control_node):
     delay = get_property(control_node, "delay")
     mode = get_property(control_node, "mode")
     agg_read_padding = get_property(control_node, "agg_read_padding")
+    tb_share = get_property(control_node, "tb_share")
 
     ctrl_info = ControllerInfo(dim=dim,
                                cyc_strt=cyc_strt,
@@ -67,6 +68,7 @@ def extract_controller_json(control_node):
                                delay=delay,
                                mode=mode,
                                agg_read_padding=agg_read_padding,
+                               tb_share=tb_share,
                                mux_data_strt=mux_data_strt)
     return ctrl_info
 
@@ -84,6 +86,7 @@ def extract_controller(file_path):
     delay = search_for_config(file_lines, 'delay')
     mode = search_for_config(file_lines, 'mode')
     agg_read_padding = search_for_config(file_lines, 'agg_read_padding')
+    tb_share = search_for_config(file_lines, 'tb_share')
 
     ranges = []
     cyc_strides = []
@@ -108,6 +111,7 @@ def extract_controller(file_path):
                                delay=delay,
                                mode=mode,
                                agg_read_padding=agg_read_padding,
+                               tb_share=tb_share,
                                out_data_stride=out_data_strides,
                                mux_data_stride=mux_data_strides,
                                mux_data_strt=mux_data_strt)
@@ -128,6 +132,7 @@ def map_controller(controller, name, flatten=False, linear_ag=False):
     ctrl_delay = controller.delay
     ctrl_mode = controller.mode
     ctrl_agg_read_padding = controller.agg_read_padding
+    ctrl_tb_share = controller.tb_share
 
     if verbose_controller_info:
         print(f"extracted controller for: {name}")
@@ -244,6 +249,7 @@ def map_controller(controller, name, flatten=False, linear_ag=False):
                                  delay=ctrl_delay,
                                  mode=ctrl_mode,
                                  agg_read_padding=ctrl_agg_read_padding,
+                                 tb_share=ctrl_tb_share,
                                  out_data_stride=tform_out_data_strides,
                                  mux_data_strt=ctrl_mux_data_strt,
                                  mux_data_stride=tform_mux_data_strides)

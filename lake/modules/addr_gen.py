@@ -13,17 +13,23 @@ class AddrGen(Generator):
                  iterator_support=6,
                  config_width=16,
                  dual_config=False,
+                 delay_addr=False,
+                 delay_width=10,
                  iterator_support2=2):
 
+        module_name = f"addr_gen_{iterator_support}_{config_width}"
         if dual_config:
-            super().__init__(f"addr_gen_dual_config_{iterator_support}_{iterator_support2}_{config_width}", debug=True)
-        else:
-            super().__init__(f"addr_gen_{iterator_support}_{config_width}", debug=True)
+            module_name += f"_dual_config_{iterator_support2}"
+        if delay_addr:
+            module_name += f"_delay_addr_{delay_width}"
+        super().__init__(module_name)
 
         # Store local...
         self.iterator_support = iterator_support
         self.config_width = config_width
         self.dual_config = dual_config
+        self.delay_addr = delay_addr
+        self.delay_width = delay_width
         self.iterator_support2 = iterator_support2
         self.max_iterator_support = max(self.iterator_support, self.iterator_support2)
         self.iter_idx_w = max(clog2(self.iterator_support), 1)
@@ -52,6 +58,14 @@ class AddrGen(Generator):
         self._starting_addr.add_attribute(ConfigRegAttr("Starting address of address generator"))
         self._starting_addr.add_attribute(FormalAttr(f"{self._starting_addr.name}", FormalSignalConstraint.SOLVE))
 
+        if self.delay_addr:
+            # delay configuration register
+            self._delay = self.input(f"delay", self.delay_width)
+            self._delay.add_attribute(ConfigRegAttr("Delayed schedule"))
+            self._delay.add_attribute(FormalAttr(self._delay.name, FormalSignalConstraint.SOLVE))
+            self._delay_out = self.output(f"delay_out", self.delay_width)
+            self.wire(self._delay_out, self._delay)
+
         if self.dual_config:
             self._strides2 = self.input("strides2", self.config_width,
                                         size=self.iterator_support2,
@@ -78,6 +92,8 @@ class AddrGen(Generator):
         # OUTPUTS
         # TODO why is this config width instead of address width?
         self._addr_out = self.output("addr_out", self.config_width)
+        if self.delay_addr:
+            self._delayed_addr_out = self.output("delayed_addr_out", self.config_width)
 
         # PORT DEFS: end
 
@@ -114,6 +130,8 @@ class AddrGen(Generator):
         # Calculate address by taking previous calculation and adding the muxed stride
         # self.wire(self._calc_addr, self._strt_addr + self._current_addr)
         self.wire(self._calc_addr, self._current_addr)
+        if self.delay_addr:
+            self.wire(self._delayed_addr_out, self._current_addr + self._delay)
 
         self.add_code(self.calculate_address)
         # GENERATION LOGIC: end
