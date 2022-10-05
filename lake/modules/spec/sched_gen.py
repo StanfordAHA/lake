@@ -153,11 +153,14 @@ class SchedGen(Generator):
             self._addr_fifo_wr_en = self.var("addr_fifo_wr_en", 1)
             self._addr_fifo_in = self.var("addr_fifo_in", self.delay_width + 1)
             self._addr_fifo_out = self.var("addr_fifo_out", self.delay_width + 1)
+            self._addr_fifo_empty_n = self.var("addr_fifo_empty_n", 1)
             self._wr_ptr = self.var("wr_ptr", clog2(self.addr_fifo_depth))
             self._rd_ptr = self.var("rd_ptr", clog2(self.addr_fifo_depth))
+            self._next_rd_ptr = self.var("next_rd_ptr", clog2(self.addr_fifo_depth))
 
             self.wire(self._delay_en_out, self._delay_en)
             self.wire(self._delay_en, ADDR_GEN.ports.delay_out > 0)
+            self.wire(self._next_rd_ptr, self._rd_ptr + 1)
             self.wire(self._addr_out_d, ADDR_GEN.ports.delayed_addr_out)
             self.wire(self._addr_fifo_wr_en, self._valid_out)
             self.wire(self._addr_fifo_in, self._addr_out_d[self.delay_width, 0])
@@ -182,11 +185,11 @@ class SchedGen(Generator):
     @always_comb
     def set_delayed_valid_output(self):
         if self.dual_config:
-            self._valid_out_d = (self._cycle_count[self.delay_width, 0] == self._addr_fifo_out) & \
-                                (self._wr_ptr != self._rd_ptr) & self._cur_enable
+            self._valid_out_d = ((self._cycle_count[self.delay_width, 0] == self._addr_fifo_out) &
+                                 self._addr_fifo_empty_n & self._cur_enable)
         else:
-            self._valid_out_d = (self._cycle_count[self.delay_width, 0] == self._addr_fifo_out) & \
-                                (self._wr_ptr != self._rd_ptr) & self._enable
+            self._valid_out_d = ((self._cycle_count[self.delay_width, 0] == self._addr_fifo_out) &
+                                 self._addr_fifo_empty_n & self._enable)
         self._valid_output_d = self._valid_out_d
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -195,13 +198,21 @@ class SchedGen(Generator):
             self._wr_ptr = 0
             self._rd_ptr = 0
             self._addr_fifo = 0
+            self._addr_fifo_empty_n = 0
         elif self._delay_en:
             if self._addr_fifo_wr_en:
                 self._wr_ptr = self._wr_ptr + 1
                 self._addr_fifo[self._wr_ptr] = self._addr_fifo_in
 
             if self._valid_out_d:
-                self._rd_ptr = self._rd_ptr + 1
+                self._rd_ptr = self._next_rd_ptr
+
+            if self._addr_fifo_wr_en:
+                self._addr_fifo_empty_n = 1
+            elif self._valid_out_d:
+                self._addr_fifo_empty_n = ~(self._next_rd_ptr == self._wr_ptr)
+            else:
+                self._addr_fifo_empty_n = self._addr_fifo_empty_n
 
 
 if __name__ == "__main__":
