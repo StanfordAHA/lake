@@ -20,7 +20,7 @@ class IOCore(Generator):
                  use_17_to_16_hack=True,
                  allow_bypass=True,
                  use_almost_full=False,
-                 add_flush=False,
+                 add_flush=True,
                  add_clk_en=True):
 
         super().__init__("io_core", debug=True)
