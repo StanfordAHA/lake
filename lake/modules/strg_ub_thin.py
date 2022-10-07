@@ -611,7 +611,7 @@ class StrgUBThin(MemoryController):
                         if i == 1:
                             ctrl_suffix = "2"
                     else:
-                        ctrl_name = out_ctrl
+                        ctrl_name = in_ctrl
                         ctrl_suffix = ""
                     config += configure_controller(prefix="", name=ctrl_name, suffix=ctrl_suffix, controller=controller_tmp)
 

@@ -27,7 +27,7 @@ class RegFIFOModel(Model):
             for j in range(self.width_mult):
                 row.append(0)
             self.reg_array.append(row)
-            self.mvd_array.append(row)
+            self.mvd_array.append(0)
 
         self.full = 0
         self.empty = 1
@@ -93,4 +93,5 @@ class RegFIFOModel(Model):
         valid_out = int(self.num_items != 0)
         empty_ret = int(self.num_items == 0)
         full_ret = int(self.num_items == self.depth)
+        mem_valid_data_out = self.mvd_array[self.rd_ptr]
         return (dat_out, valid_out, empty_ret, full_ret, mem_valid_data_out)
