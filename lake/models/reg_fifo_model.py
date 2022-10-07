@@ -27,7 +27,7 @@ class RegFIFOModel(Model):
             for j in range(self.width_mult):
                 row.append(0)
             self.reg_array.append(row)
-            self.mvd_array.append(rpw)
+            self.mvd_array.append(row)
 
         self.full = 0
         self.empty = 1
