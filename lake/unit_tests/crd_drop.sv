@@ -179,17 +179,17 @@ always_comb begin
     PROCESS: begin :proc_seq_PROCESS_Output
         cmrg_fifo_pop[0] = base_done ? proc_done & (~base_outfifo_full) & (~proc_outfifo_full):
             (base_infifo_in_valid & (~base_infifo_in_eos)) ? ~base_outfifo_full:
-            (base_infifo_in_valid & base_infifo_in_eos) ? proc_infifo_in_valid &
-            (~proc_infifo_in_eos) & (~base_outfifo_full) & (~proc_outfifo_full): 1'h0;
+            (base_infifo_in_valid & base_infifo_in_eos) ? (proc_done | (proc_infifo_in_valid
+            & (~proc_infifo_in_eos))) & (~base_outfifo_full) & (~proc_outfifo_full): 1'h0;
         cmrg_fifo_pop[1] = proc_done ? base_done & (~base_outfifo_full) & (~proc_outfifo_full):
             (base_infifo_in_valid & base_infifo_in_eos & proc_infifo_in_valid &
             (~proc_infifo_in_eos)) ? (~base_outfifo_full) & ((~proc_outfifo_full) |
             (~pushed_data_sticky_sticky)): (proc_infifo_in_valid & proc_infifo_in_eos) ?
             ~proc_outfifo_full: 1'h0;
         cmrg_fifo_push[0] = base_done ? proc_done: (base_infifo_in_valid & (~base_infifo_in_eos)) ?
-            ~base_outfifo_full: (base_infifo_in_valid & base_infifo_in_eos) ?
-            proc_infifo_in_valid & (~proc_infifo_in_eos) & (~base_outfifo_full) &
-            pushed_data_sticky_sticky & (~proc_outfifo_full): 1'h0;
+            ~base_outfifo_full: (base_infifo_in_valid & base_infifo_in_eos) ? (proc_done |
+            (proc_infifo_in_valid & (~proc_infifo_in_eos) & pushed_data_sticky_sticky)) &
+            (~base_outfifo_full) & (~proc_outfifo_full): 1'h0;
         cmrg_fifo_push[1] = proc_done ? base_done: (base_infifo_in_valid & base_infifo_in_eos &
             proc_infifo_in_valid & (~proc_infifo_in_eos)) ? (~base_outfifo_full) &
             (~proc_outfifo_full) & pushed_data_sticky_sticky: (proc_infifo_in_valid &
