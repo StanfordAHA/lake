@@ -47,6 +47,7 @@ module reg_tb;
   always @(posedge clk)
   begin
 	time_cycles += 1;
+	
 	if (data_in_valid)
 	begin
 		data_in = data[addr];
@@ -58,10 +59,15 @@ module reg_tb;
 		$finish;
 	end
   end
+  reg gold_val;
 
   //reg[16:0] out_coord_out[16:0];
   always @(posedge clk)
   begin
+	$display("	Cycle, 	Data Valid, gold_value,   out_value,	  out_addr, output size");
+	$display("%d,    %10d, %10d, %10d,     %10d", time_cycles, data_out_valid, gold_out_d[out_addr], data_out, out_addr, gld_addr);
+	
+	gold_val = gold_out_d[out_addr]
 	if (data_out_valid)
 	begin
 		if (out_addr < gld_addr)

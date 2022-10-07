@@ -25,7 +25,7 @@ arrs_dict1 = {'in_val': [1, 2, 3, 4, 5, 6, 7, 8, 9, 'S2', 'D'],
               'gold_val': [45, 'S1', 'D']}
 arrs_dict2 = {'in_val': [5, 5, 'S0', 'S0', 4, 8, 'S0', 4, 3, 'S0', 4, 3, 'S1', 'D'],
               'gold_val': [10, 0, 12, 7, 7, 'S0', 'D']}
-arrs_dict2 = {'in_val': [5, 5, 'S0', 'S0', 4, 8, 'S0', 4, 3, 'S0', 'S1', 'D'],
+arrs_dict3 = {'in_val': [5, 5, 'S0', 'S0', 4, 8, 'S0', 4, 3, 'S0', 'S1', 'D'],
               'gold_val': [10, 0, 12, 7, 0, 'S0', 'D']}
 
 def test_reduce_direct_nd(n, debug_sim):
@@ -33,6 +33,11 @@ def test_reduce_direct_nd(n, debug_sim):
         arrs=arrs_dict0
     if n == 1:
         arrs=arrs_dict1
+    if n == 2:
+        arrs=arrs_dict2
+    if n == 3:
+        arrs=arrs_dict3
+
     
     in_val = copy.deepcopy(arrs['in_val'])
     gold_val = copy.deepcopy(arrs['gold_val'])
@@ -66,7 +71,7 @@ def test_reduce_direct_nd(n, debug_sim):
 @pytest.mark.parametrize("dim", [4, 16, 32, 64])
 def test_reduce_random_2d(n, debug_sim, max_val=1000, fill=0):
     dim_arr = [4, 16, 32, 64]
-    dim = dim_arr[n-2]
+    dim = dim_arr[n-4]
     in_mat_crds1, in_mat_segs1 = gen_n_comp_arrs(2, dim)
     in_mat_vals1 = gen_val_arr(len(in_mat_crds1[-1]), max_val, -max_val)
 
@@ -146,6 +151,10 @@ def test_reduce_random_2d(n, debug_sim, max_val=1000, fill=0):
     gold_val_ = convert_stream_to_onyx_interp(gold_val_arr)
     write_arr(in_val_, name = "test_1_val")
     write_arr(gold_val_, name = "test_1_gold")
+    print(in_val_arr)
+    print(in_val_)
+    print(gold_val_arr)
+    print(gold_val_)
 
     if debug_sim:
         print(out_segs)
@@ -159,8 +168,8 @@ def test_reduce_random_2d(n, debug_sim, max_val=1000, fill=0):
     #    assert (check_point_tuple(out_tup, gold_tup))
 
 if __name__ == "__main__":
-    if int(sys.argv[1]) < 2:
+    if int(sys.argv[1]) < 4:
         test_reduce_direct_nd(int(sys.argv[1]), False)
-    if int(sys.argv[1]) < 6:
+    elif int(sys.argv[1]) < 8:
         test_reduce_random_2d(int(sys.argv[1]), False)
 

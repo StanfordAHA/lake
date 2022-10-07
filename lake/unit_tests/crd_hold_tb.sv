@@ -1,4 +1,4 @@
-module crd_drop_tb;
+module crd_hold_tb;
 
   reg clk, clk_en, cmrg_coord_in_0_valid, cmrg_coord_in_1_valid, cmrg_coord_out_0_ready, cmrg_coord_out_1_ready, cmrg_enable, rst_n, tile_en;
   reg [16:0] cmrg_coord_in_0;
@@ -9,9 +9,9 @@ module crd_drop_tb;
   reg [16:0] cmrg_coord_out_0;
   reg [16:0] cmrg_coord_out_1;
 
-  crddrop drop (.clk(clk), .clk_en(clk_en), .cmrg_coord_in_0(cmrg_coord_in_0), .cmrg_coord_in_0_valid(cmrg_coord_in_0_valid), .cmrg_coord_in_1(cmrg_coord_in_1), .cmrg_coord_in_1_valid(cmrg_coord_in_1_valid), .cmrg_coord_out_0_ready(cmrg_coord_out_0_ready), .cmrg_coord_out_1_ready(cmrg_coord_out_1_ready), .cmrg_enable(cmrg_enable), .cmrg_stop_lvl(cmrg_stop_lvl), .rst_n(rst_n), .tile_en(tile_en),  .cmrg_coord_in_0_ready(cmrg_coord_in_0_ready), .cmrg_coord_in_1_ready(cmrg_coord_in_1_ready), .cmrg_coord_out_0(cmrg_coord_out_0), .cmrg_coord_out_0_valid(cmrg_coord_out_0_valid), .cmrg_coord_out_1(cmrg_coord_out_1), .cmrg_coord_out_1_valid(cmrg_coord_out_1_valid));
+  crdhold hold (.clk(clk), .clk_en(clk_en), .cmrg_coord_in_0(cmrg_coord_in_0), .cmrg_coord_in_0_valid(cmrg_coord_in_0_valid), .cmrg_coord_in_1(cmrg_coord_in_1), .cmrg_coord_in_1_valid(cmrg_coord_in_1_valid), .cmrg_coord_out_0_ready(cmrg_coord_out_0_ready), .cmrg_coord_out_1_ready(cmrg_coord_out_1_ready), .cmrg_enable(cmrg_enable), .cmrg_stop_lvl(cmrg_stop_lvl), .rst_n(rst_n), .tile_en(tile_en),  .cmrg_coord_in_0_ready(cmrg_coord_in_0_ready), .cmrg_coord_in_1_ready(cmrg_coord_in_1_ready), .cmrg_coord_out_0(cmrg_coord_out_0), .cmrg_coord_out_0_valid(cmrg_coord_out_0_valid), .cmrg_coord_out_1(cmrg_coord_out_1), .cmrg_coord_out_1_valid(cmrg_coord_out_1_valid));
 
-  int time_out = 100;
+  int time_out = 1000;
   int time_cycles = 0;
 
   string line;
@@ -27,8 +27,14 @@ module crd_drop_tb;
   reg [16:0] cmrg_coord_out_0_arr[16:0];
   reg [16:0] cmrg_coord_out_1_arr_gld[16:0];
 
+  /*initial
+  begin
+	  $dumpfile("waveforms.vcd");
+	  $dumpvars(0,top);
+  end*/
+
   initial begin
-	//$dumpfile("test2.vcd");
+	//$dumpfile("test.vcd");
 	$dumpvars;
   	  fd = $fopen("/aha/lake/lake/unit_tests_gen/temp_rit/test_icrd", "r");
 	in_addr = 0;
@@ -74,7 +80,6 @@ module crd_drop_tb;
 	end
 	if (time_cycles > time_out)
 	begin
-		//$dumpfile("t.vcd");
 		$display("Error: TIME OUT");
 		$finish;
 	end
@@ -98,7 +103,7 @@ module crd_drop_tb;
 		if (out_addr <= gld_addr)
 		begin
 		       //gold_out_d[out_addr] = data_out;
-		       if (cmrg_coord_out_1_arr_gld[out_addr] != cmrg_coord_out_1)
+		       if ((cmrg_coord_out_1_arr_gld[out_addr] != cmrg_coord_out_1) && (gold_crd0_val != cmrg_coord_out_0))
 		       begin
 			       $display("Error");
 			       $finish;
@@ -109,7 +114,6 @@ module crd_drop_tb;
        if (out_addr >= gld_addr)
        begin
 	       //$dumpfile("temp.vcs");
-	       //$dumpvars;
 	       $display("Simulation Done");
 	       $finish;
        end

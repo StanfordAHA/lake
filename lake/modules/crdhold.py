@@ -562,5 +562,5 @@ if __name__ == "__main__":
     # lift_config_reg(pond_dut.internal_generator)
     # extract_formal_annotation(pond_dut, "pond.txt")
 
-    verilog(crdhold_dut, filename="crd_drop.sv",
+    verilog(crdhold_dut, filename="crd_hold.sv",
             optimize_if=False)

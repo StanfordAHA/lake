@@ -18,8 +18,6 @@ def write_arr(str_list, name):
             wr_file.write(f"{item}\n")
 
 
-
-
 arrs_dict1 = {'ocrd_in': [0, 1, 'S0', 'D'],
               'icrd_in': [1, 'S0', 'S1', 'D'],
               'gold': [0, 'S0', 'D']}
@@ -61,8 +59,8 @@ def test_crd_drop_1d(n, debug_sim):
     write_arr(i_crd_, name = "test_icrd")
     write_arr(gold_, name = "test_gold")
 
-    print(icrd_gold)
-    print(icrd)
+    #print(icrd_gold)
+    #print(icrd)
 
     done = False
     time = 0
@@ -74,7 +72,7 @@ def test_crd_drop_1d(n, debug_sim):
         if len(ocrd) > 0:
             cd.set_outer_crd(ocrd.pop(0))
         cd.update()
-        print("Timestep", time, "\t Done:", cd.out_done(), "\t Out:", cd.out_crd_outer())
+        #print("Timestep", time, "\t Done:", cd.out_done(), "\t Out:", cd.out_crd_outer())
         out_outer.append(cd.out_crd_outer())
         out_inner.append(cd.out_crd_inner())
         done = cd.out_done()
@@ -93,6 +91,7 @@ arrs_dict0 = {"ocrd_in": ['', 0, 1, '', '', 'S0', 'D', '', '', '', ''],
 
 @pytest.mark.parametrize("arrs", [arrs_dict0])
 def test_crd_drop_emptystr_1d(arrs, debug_sim):
+    arrs = arrs_dict0
     icrd = copy.deepcopy(arrs['icrd_in'])
     icrd_gold = copy.deepcopy(arrs['icrd_in'])
     ocrd = copy.deepcopy(arrs['ocrd_in'])
@@ -105,13 +104,23 @@ def test_crd_drop_emptystr_1d(arrs, debug_sim):
     time = 0
     out_outer = []
     out_inner = []
+
+    o_crd_ = convert_stream_to_onyx_interp(ocrd)
+    i_crd_ = convert_stream_to_onyx_interp(icrd)
+    gold_ = convert_stream_to_onyx_interp(gold)
+
+    write_arr(o_crd_, name = "test_ocrd")
+    write_arr(i_crd_, name = "test_icrd")
+    write_arr(gold_, name = "test_gold")
+
+ 
     while not done and time < TIMEOUT:
         if len(icrd) > 0:
             cd.set_inner_crd(icrd.pop(0))
         if len(ocrd) > 0:
             cd.set_outer_crd(ocrd.pop(0))
         cd.update()
-        print("Timestep", time, "\t Done:", cd.out_done(), "\t Out:", cd.out_crd_outer())
+        #print("Timestep", time, "\t Done:", cd.out_done(), "\t Out:", cd.out_crd_outer())
         out_outer.append(cd.out_crd_outer())
         out_inner.append(cd.out_crd_inner())
         done = cd.out_done()
@@ -123,4 +132,7 @@ def test_crd_drop_emptystr_1d(arrs, debug_sim):
     assert (out_inner == remove_emptystr(icrd_gold))
 
 if __name__ == "__main__":
-    test_crd_drop_1d(int(sys.argv[1]), False)
+    if int(sys.argv[1]) < 4:
+        test_crd_drop_1d(int(sys.argv[1]), False)
+    else:
+        test_crd_drop_emptystr_1d(5, False)

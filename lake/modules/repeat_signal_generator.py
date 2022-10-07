@@ -18,7 +18,7 @@ class RepeatSignalGenerator(MemoryController):
                  data_width=16,
                  passthru=True,
                  fifo_depth=8,
-                 defer_fifos=True,
+                 defer_fifos=False,
                  add_flush=False):
 
         super().__init__("RepeatSignalGenerator", debug=True)

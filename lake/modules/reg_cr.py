@@ -19,7 +19,7 @@ class Reg(MemoryController):
                  add_dispatcher=False,
                  dispatcher_size=2,
                  fifo_depth=8,
-                 defer_fifos=True,
+                 defer_fifos=False,
                  add_flush=False):
 
         super().__init__("reg_cr", debug=True)
