@@ -9,7 +9,6 @@ from lake.modules.strg_fifo import StrgFIFO
 from lake.models.reg_fifo_model import RegFIFOModel
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize("mem_width", [16, 64])
 @pytest.mark.parametrize("in_out_ports", [1, 2])
 @pytest.mark.parametrize("depth", [16, 100])
@@ -40,9 +39,11 @@ def test_storage_fifo(mem_width,  # CGRA Params
                    'fifo_depth': depth,
                    'tile_en': 1}
 
+    # FIFO mode controller does not support pass through by default
     model_rf = RegFIFOModel(data_width=data_width,
                             width_mult=fw_int,
-                            depth=depth)
+                            depth=depth,
+                            passthrough=False)
 
     # DUT
     lt_dut = LakeTop(data_width=data_width,
@@ -118,18 +119,17 @@ def test_storage_fifo(mem_width,  # CGRA Params
         pop_cnt = pop_cnt + pop
 
         tester.eval()
+        tester.step(2)
 
         tester.circuit.LakeTop_output_width_1_num_0.expect(model_empty)
         tester.circuit.LakeTop_output_width_1_num_1.expect(model_full)
         # Now check the outputs
-        tester.circuit.LakeTop_output_width_1_num_2.expect(model_val)
-        if model_val:
+        tester.circuit.LakeTop_output_width_1_num_2.expect(model_val_x)
+        if model_val_x:
             if in_out_ports > 1:
                 tester.circuit.LakeTop_output_width_16_num_0.expect(model_out[0])
             else:
                 tester.circuit.LakeTop_output_width_16_num_0.expect(model_out[0])
-
-        tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",

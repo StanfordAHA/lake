@@ -177,9 +177,11 @@ class StrgFIFO(MemoryController):
 
         self._back_pop = self.var("back_pop", 1)
         if self.fw_int == 1:
-            self.wire(self._back_pop, self._pop & (~self._empty | self._push) & ~self._back_pl)
+            # self.wire(self._back_pop, self._pop & (~self._empty | self._push) & ~self._back_pl)
+            self.wire(self._back_pop, self._pop & self._back_valid & ~self._back_pl)
         else:
-            self.wire(self._back_pop, self._pop & (~self._empty | self._push))
+            # self.wire(self._back_pop, self._pop & (~self._empty | self._push))
+            self.wire(self._back_pop, self._pop & self._back_valid)
 
         self.add_child("back_rf", self._back_rf,
                        clk=self._clk,
@@ -226,7 +228,7 @@ class StrgFIFO(MemoryController):
         # Wire the thin output from front to thin input to back
         self.wire(self._back_data_in, self._front_data_out)
         # Back can only be directly pushed when there's nothing in memory
-        self.wire(self._back_push, (self._front_valid & (self._num_words_mem == 0)) & (~self._back_full | self._back_pop))
+        self.wire(self._back_push, (self._front_valid & (self._num_words_mem == 0)) & (~self._back_full) & ~self._front_par_read)
         self.add_code(self.set_front_pop)
 
         # Queue writes
@@ -452,8 +454,9 @@ class StrgFIFO(MemoryController):
         self._front_pop = (((self._num_words_mem == 0) | ((self._num_words_mem == 1) & self._back_pl)) &
                            # You can pop the front if the memory read is being entirely bypassed (fw == 1)
                            (~self._back_pl | (self._back_pl & (self._back_num_load == 0))) &
-                           (~(self._back_occ == self.fw_int) | self._pop) &
-                           (~(self._front_occ == 0) | self._push))
+                           (~(self._back_occ == self.fw_int)) &
+                           (~self._front_empty) &
+                           (~(self._front_full & self._push)))
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_write_queue(self, idx):
