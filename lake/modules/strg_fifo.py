@@ -177,10 +177,8 @@ class StrgFIFO(MemoryController):
 
         self._back_pop = self.var("back_pop", 1)
         if self.fw_int == 1:
-            # self.wire(self._back_pop, self._pop & (~self._empty | self._push) & ~self._back_pl)
             self.wire(self._back_pop, self._pop & self._back_valid & ~self._back_pl)
         else:
-            # self.wire(self._back_pop, self._pop & (~self._empty | self._push))
             self.wire(self._back_pop, self._pop & self._back_valid)
 
         self.add_child("back_rf", self._back_rf,
