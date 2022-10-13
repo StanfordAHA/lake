@@ -253,6 +253,7 @@ class RegFIFO(Generator):
             # self.wire(self._full, (self._wr_ptr + 1) == self._rd_ptr)
             self.wire(self._full, self._num_items == self.depth)
             # Experiment to cover latency
+            assert self.depth > 1 or self.width_mult > 1, "FIFO depth or width_mult needs to be larger than 1"
             self.wire(self._almost_full, self._num_items >= (self.depth - self.almost_full_diff))
             # self.wire(self._empty, self._wr_ptr == self._rd_ptr)
             self.wire(self._empty, self._num_items == 0)
