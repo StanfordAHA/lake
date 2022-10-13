@@ -24,7 +24,9 @@ class StrgFIFO(MemoryController):
                  memory_width=64,
                  rw_same_cycle=False,
                  read_delay=1,
-                 addr_width=9):
+                 addr_width=9,
+                 regfifo_passthrough=False,
+                 regfifo_push_full=False):
         super().__init__("strg_fifo")
 
         # Generation parameters
@@ -35,6 +37,8 @@ class StrgFIFO(MemoryController):
         self.read_delay = read_delay
         self.addr_width = addr_width
         self.fw_int = int(self.memory_width / self.data_width)
+        self.regfifo_passthrough = regfifo_passthrough  # reg_fifo allows push and pop when empty
+        self.regfifo_push_full = regfifo_push_full  # reg_fifo allows push and pop when full
 
         assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
             "Can't sustain throughput with this setup. Need potential bandwidth for " + \
@@ -177,9 +181,15 @@ class StrgFIFO(MemoryController):
 
         self._back_pop = self.var("back_pop", 1)
         if self.fw_int == 1:
-            self.wire(self._back_pop, self._pop & (~self._empty | self._push) & ~self._back_pl)
+            if self.regfifo_passthrough:
+                self.wire(self._back_pop, self._pop & (~self._empty | self._push) & ~self._back_pl)
+            else:
+                self.wire(self._back_pop, self._pop & self._back_valid & ~self._back_pl)
         else:
-            self.wire(self._back_pop, self._pop & (~self._empty | self._push))
+            if self.regfifo_passthrough:
+                self.wire(self._back_pop, self._pop & (~self._empty | self._push))
+            else:
+                self.wire(self._back_pop, self._pop & self._back_valid)
 
         self.add_child("back_rf", self._back_rf,
                        clk=self._clk,
@@ -226,7 +236,10 @@ class StrgFIFO(MemoryController):
         # Wire the thin output from front to thin input to back
         self.wire(self._back_data_in, self._front_data_out)
         # Back can only be directly pushed when there's nothing in memory
-        self.wire(self._back_push, (self._front_valid & (self._num_words_mem == 0)) & (~self._back_full | self._back_pop))
+        if self.regfifo_push_full:
+            self.wire(self._back_push, (self._front_valid & (self._num_words_mem == 0)) & (~self._back_full | self._back_pop))
+        else:
+            self.wire(self._back_push, (self._front_valid & (self._num_words_mem == 0)) & (~self._back_full) & ~self._front_par_read)
         self.add_code(self.set_front_pop)
 
         # Queue writes
@@ -451,9 +464,18 @@ class StrgFIFO(MemoryController):
     def set_front_pop(self):
         self._front_pop = (((self._num_words_mem == 0) | ((self._num_words_mem == 1) & self._back_pl)) &
                            # You can pop the front if the memory read is being entirely bypassed (fw == 1)
-                           (~self._back_pl | (self._back_pl & (self._back_num_load == 0))) &
-                           (~(self._back_occ == self.fw_int) | self._pop) &
-                           (~(self._front_occ == 0) | self._push))
+                           (~self._back_pl | (self._back_pl & (self._back_num_load == 0))))
+
+        if self.regfifo_passthrough:
+            self._front_pop &= (~(self._front_occ == 0) | self._push)
+        else:
+            self._front_pop &= (~self._front_empty)
+
+        if self.regfifo_push_full:
+            self._front_pop &= (~(self._back_occ == self.fw_int) | self._pop)
+        else:
+            self._front_pop &= ((~(self._back_occ == self.fw_int)) &
+                                (~(self._front_full & self._push)))
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_write_queue(self, idx):

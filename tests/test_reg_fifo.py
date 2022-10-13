@@ -53,8 +53,8 @@ def test_reg_fifo_basic(width_mult,
         # Generate new input
         push = rand.randint(0, 1)
         pop = rand.randint(0, 1)
-        empty = model_rf.get_empty(push, pop)
-        full = model_rf.get_full(push, pop)
+        empty = model_rf.get_empty()
+        full = model_rf.get_full()
         for i in range(width_mult):
             data_in[i] = rand.randint(0, 2 ** data_width - 1)
 
@@ -76,6 +76,7 @@ def test_reg_fifo_basic(width_mult,
                 setattr(tester.circuit, f"data_in_{i}", data_in[i])
 
         tester.eval()
+        tester.step(2)
 
         tester.circuit.valid.expect(model_val)
         if model_val:
@@ -86,8 +87,6 @@ def test_reg_fifo_basic(width_mult,
             else:
                 for i in range(width_mult):
                     getattr(tester.circuit, f"data_out_{i}").expect(model_out[i])
-
-        tester.step(2)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",

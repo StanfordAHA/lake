@@ -42,7 +42,7 @@ def test_pond_strg_ub_thin(num_ports,
                        pond_area_opt_share=pond_area_opt_share,
                        pond_area_opt_dual_config=pond_area_opt_dual_config,
                        iterator_support2=2,
-                       fifo_mode=True,
+                       fifo_mode=False,
                        add_clk_enable=add_clk_enable,
                        add_flush=add_flush,
                        enable_ram_mode=False,
@@ -50,14 +50,16 @@ def test_pond_strg_ub_thin(num_ports,
                        stencil_valid=False,
                        name="PondTop")
 
+    pond_dut_port_remap = pond_dut.get_port_remap()['pond']
+
     config_data = {"ID": "_U133",
-                   "config": {"in2regfile_0": {"cycle_starting_addr": [1],
+                   "config": {"in2regfile_1": {"cycle_starting_addr": [1],
                                                "cycle_stride": [1, 2],
                                                "dimensionality": 2,
                                                "extent": [2, 2],
                                                "write_data_starting_addr": [0],
                                                "write_data_stride": [1, 2]},
-                              "in2regfile_1": {"cycle_starting_addr": [20],
+                              "in2regfile_0": {"cycle_starting_addr": [20],
                                                "cycle_stride": [1, 2, 4],
                                                "dimensionality": 3,
                                                "extent": [2, 2, 2],
@@ -116,24 +118,24 @@ def test_pond_strg_ub_thin(num_ports,
     for i in range(150):
 
         # first write
-        in_data_idx = i - config_data["config"]["in2regfile_0"]["cycle_starting_addr"][0]
+        in_data_idx = i - config_data["config"]["in2regfile_1"]["cycle_starting_addr"][0]
         if in_data_idx >= 0 and i < 5:
-            setattr(tester.circuit, f"input_width_16_num_1", data_in_pond_0[in_data_idx])
+            setattr(tester.circuit, pond_dut_port_remap["data_in_1"], data_in_pond_0[in_data_idx])
 
         # second write
-        in_data_idx = i - config_data["config"]["in2regfile_1"]["cycle_starting_addr"][0]
+        in_data_idx = i - config_data["config"]["in2regfile_0"]["cycle_starting_addr"][0]
         if in_data_idx >= 0 and i < 28:
-            setattr(tester.circuit, f"input_width_16_num_0", data_in_pond_1[in_data_idx])
+            setattr(tester.circuit, pond_dut_port_remap["data_in_0"], data_in_pond_1[in_data_idx])
 
         # first read
         in_data_idx = i - config_data["config"]["regfile2out_1"]["cycle_starting_addr"][0]
         if in_data_idx >= 0 and i < 104:
-            getattr(tester.circuit, f"output_width_16_num_1").expect(data_in_pond_0[in_data_idx])
+            getattr(tester.circuit, pond_dut_port_remap["data_out_1"]).expect(data_in_pond_0[in_data_idx])
 
         # second read
         in_data_idx = i - config_data["config"]["regfile2out_0"]["cycle_starting_addr"][0]
         if in_data_idx >= 0 and i < 128:
-            getattr(tester.circuit, f"output_width_16_num_0").expect(data_in_pond_1[in_data_idx])
+            getattr(tester.circuit, pond_dut_port_remap["data_out_0"]).expect(data_in_pond_1[in_data_idx])
 
         tester.eval()
         tester.step(2)
