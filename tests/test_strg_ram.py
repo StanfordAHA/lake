@@ -74,6 +74,7 @@ def test_storage_ram(mem_width,  # CGRA Params
                      fifo_mode=fifo_mode)
 
     lt_dut = lt_dut.dut
+    dut_port_remap = lt_dut.get_port_remap()["ROM"]
 
     new_config = lt_dut.get_bitstream(new_config)
 
@@ -124,34 +125,24 @@ def test_storage_ram(mem_width,  # CGRA Params
             prev_wr = 1
             read = 0
 
-        if in_out_ports > 1:
-            tester.circuit.LakeTop_input_width_17_num_0 = data_in
-            tester.circuit.LakeTop_input_width_17_num_1 = addr_in
-            tester.circuit.LakeTop_input_width_17_num_2 = addr_in
-        else:
-            tester.circuit.LakeTop_input_width_17_num_0 = data_in
-            tester.circuit.LakeTop_input_width_17_num_1 = addr_in
-            tester.circuit.LakeTop_input_width_17_num_2 = addr_in
+        setattr(tester.circuit, dut_port_remap["data_in"], data_in)
+        setattr(tester.circuit, dut_port_remap["rd_addr_in"], addr_in)
+        setattr(tester.circuit, dut_port_remap["wr_addr_in"], addr_in)
 
-        tester.circuit.LakeTop_input_width_1_num_0[0] = read
-        tester.circuit.LakeTop_input_width_1_num_1[0] = write
+        setattr(tester.circuit, dut_port_remap["ren"], read)
+        setattr(tester.circuit, dut_port_remap["wen"], write)
         model_out = sram_model.interact(wen=write, cen=(write | read), addr=addr_in, data=[data_in])
 
         tester.eval()
 
-        # # Now check the outputs
-        valid_line = tester.circuit.LakeTop_output_width_1_num_0
-        if fw_int > 1:
-            valid_line = tester.circuit.LakeTop_output_width_1_num_1
+        # Now check the outputs
+        valid_line = getattr(tester.circuit, dut_port_remap["valid_out"], write)
 
         # tester.circuit.output_width_1_num_0.expect(prev_rd)
         # tester.circuit[f"output_width_1_num_{valid_line}"].expect(prev_rd)
         valid_line.expect(prev_rd)
         if prev_rd:
-            if in_out_ports > 1:
-                tester.circuit.LakeTop_output_width_17_num_0.expect(model_out[0])
-            else:
-                tester.circuit.LakeTop_output_width_17_num_0.expect(model_out[0])
+            getattr(tester.circuit, dut_port_remap["data_out"], write).expect(model_out[0])
 
         tester.step(2)
         prev_rd = read

@@ -64,6 +64,7 @@ def test_storage_fifo(mem_width,  # CGRA Params
                      config_addr_width=config_addr_width,
                      fifo_mode=fifo_mode)
 
+    dut_port_remap = lt_dut.get_port_remap()["FIFO"]
     # print(lt_dut)
 
     lt_dut = lt_dut.dut
@@ -101,13 +102,10 @@ def test_storage_fifo(mem_width,  # CGRA Params
         push = rand.randint(0, 1)
         pop = rand.randint(0, 1)
 
-        if in_out_ports > 1:
-            tester.circuit.LakeTop_input_width_16_num_0 = data_in
-        else:
-            tester.circuit.LakeTop_input_width_16_num_0 = data_in
+        setattr(tester.circuit, dut_port_remap["data_in_f__intercept"], data_in)
 
-        tester.circuit.LakeTop_input_width_1_num_0[0] = pop
-        tester.circuit.LakeTop_input_width_1_num_1[0] = push
+        setattr(tester.circuit, dut_port_remap["pop"], pop)
+        setattr(tester.circuit, dut_port_remap["push"], push)
 
         (model_out,
          model_val_x,
@@ -121,15 +119,12 @@ def test_storage_fifo(mem_width,  # CGRA Params
         tester.eval()
         tester.step(2)
 
-        tester.circuit.LakeTop_output_width_1_num_0.expect(model_empty)
-        tester.circuit.LakeTop_output_width_1_num_1.expect(model_full)
+        getattr(tester.circuit, dut_port_remap["empty"]).expect(model_empty)
+        getattr(tester.circuit, dut_port_remap["full"]).expect(model_full)
         # Now check the outputs
-        tester.circuit.LakeTop_output_width_1_num_2.expect(model_val_x)
+        getattr(tester.circuit, dut_port_remap["valid_out"]).expect(model_val_x)
         if model_val_x:
-            if in_out_ports > 1:
-                tester.circuit.LakeTop_output_width_16_num_0.expect(model_out[0])
-            else:
-                tester.circuit.LakeTop_output_width_16_num_0.expect(model_out[0])
+            getattr(tester.circuit, dut_port_remap["data_out_f__intercept"]).expect(model_out[0])
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",
