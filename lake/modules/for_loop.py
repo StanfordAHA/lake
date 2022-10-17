@@ -43,7 +43,7 @@ class ForLoop(Generator):
         self._ranges.add_attribute(ConfigRegAttr("Ranges of address generator"))
         self._ranges.add_attribute(FormalAttr(f"{self._ranges.name}", FormalSignalConstraint.SOLVE))
 
-        self._dimensionality = self.input("dimensionality", 1 + clog2(self.iterator_support))
+        self._dimensionality = self.input("dimensionality", max(1, clog2(self.iterator_support)))
         self._dimensionality.add_attribute(ConfigRegAttr("Dimensionality of address generator"))
         self._dimensionality.add_attribute(FormalAttr(f"{self._dimensionality.name}", FormalSignalConstraint.SOLVE))
 
@@ -54,7 +54,7 @@ class ForLoop(Generator):
             self._ranges2.add_attribute(ConfigRegAttr("Ranges of address generator"))
             self._ranges2.add_attribute(FormalAttr(f"{self._ranges2.name}", FormalSignalConstraint.SOLVE))
 
-            self._dimensionality2 = self.input("dimensionality2", 1 + clog2(self.iterator_support2))
+            self._dimensionality2 = self.input("dimensionality2", max(1, clog2(self.iterator_support2)))
             self._dimensionality2.add_attribute(ConfigRegAttr("Dimensionality of address generator"))
             self._dimensionality2.add_attribute(FormalAttr(f"{self._dimensionality2.name}", FormalSignalConstraint.SOLVE))
 
@@ -90,7 +90,7 @@ class ForLoop(Generator):
             self._max_value = self.var("max_value", self.iterator_support)
 
         if self.dual_config:
-            self._cur_dimensionality = self.var("cur_dimensionality", 1 + clog2(self.max_iterator_support))
+            self._cur_dimensionality = self.var("cur_dimensionality", max(1, clog2(self.max_iterator_support)))
             self._mux_sel = self.var("mux_sel", max(clog2(self.max_iterator_support), 1))
             self._mux_sel_out = self.output("mux_sel_out", max(clog2(self.max_iterator_support) + 1, 1))
             self._mux_sel_msb = self.var("mux_sel_msb", 1)
