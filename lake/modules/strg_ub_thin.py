@@ -568,8 +568,10 @@ class StrgUBThin(MemoryController):
             self._cycle_count = self._cycle_count + 1
 
     def get_static_bitstream(self, config_path, in_file_name, out_file_name):
-
         config = []
+        if "chain_en" in config_json:
+            config.append(("chain_chain_en", 1))
+
         in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
         out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
         controller_objs = {}
@@ -599,6 +601,8 @@ class StrgUBThin(MemoryController):
     def get_bitstream(self, config_json, prefix=""):
         # return super().get_bitstream(config_json, prefix=prefix)
         config = []
+        if "chain_en" in config_json:
+            config.append(("chain_chain_en", 1))
 
         if self.area_opt:
             for i in range(self.interconnect_input_ports):
