@@ -16,7 +16,7 @@ class UBModel(Model):
         self.rd_reg = []
         for i in range(self.out_width):
             self.rd_reg.append(0)
-        
+
         self.mem = []
         for i in range(self.mem_depth):
             if self.mem_width != 1:
@@ -42,7 +42,7 @@ class UBModel(Model):
             addr = addr * self.in_width
             if self.in_width != 1:
                 for a in range(addr, addr + self.in_width):
-                    self.mem[a] = data[a-addr]
+                    self.mem[a] = data[a - addr]
             else:
                 self.mem[addr] = data
 
@@ -51,7 +51,7 @@ class UBModel(Model):
             addr = addr * self.out_width
             if self.out_width != 1:
                 rd_reg = []
-                for a in range(addr, addr+ self.out_width):
+                for a in range(addr, addr + self.out_width):
                     rd_reg.append(self.mem[a])
             else:
                 rd_reg = self.mem[addr]
