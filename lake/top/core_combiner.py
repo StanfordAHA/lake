@@ -152,7 +152,7 @@ class CoreCombiner(Generator):
             replace_outs = {
                 "output_width_16_num_0": "data_out_pond_0",
                 "output_width_16_num_1": "data_out_pond_1",
-                "output_width_1_num_4": "valid_out_pond",
+                "output_width_1_num_4": "stencil_valid",
             }
         elif mode == "UB" and self.read_delay >= 1:
             replace_ins = {
