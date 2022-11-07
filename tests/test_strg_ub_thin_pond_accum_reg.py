@@ -42,13 +42,15 @@ def test_pond_strg_ub_thin(num_ports,
                        pond_area_opt_share=pond_area_opt_share,
                        pond_area_opt_dual_config=pond_area_opt_dual_config,
                        iterator_support2=2,
-                       fifo_mode=True,
+                       fifo_mode=False,
                        add_clk_enable=add_clk_enable,
                        add_flush=add_flush,
                        enable_ram_mode=False,
                        comply_with_17=False,
                        stencil_valid=False,
                        name="PondTop")
+
+    pond_dut_port_remap = pond_dut.get_port_remap()['pond']
 
     config_data = {"ID": "_U133",
                    "config": {"in2regfile_0": {"cycle_starting_addr": [1],
@@ -104,9 +106,9 @@ def test_pond_strg_ub_thin(num_ports,
     tester.step(2)
     tester.circuit.flush = 0
 
-    setattr(tester.circuit, f"input_width_16_num_1", 0)
+    setattr(tester.circuit, pond_dut_port_remap["data_in_1"], 0)
     for i in range(150):
-        setattr(tester.circuit, f"input_width_16_num_0", i)
+        setattr(tester.circuit, pond_dut_port_remap["data_in_0"], i)
         if i % 4 == 3:
             tester.circuit.flush = 1
         else:
@@ -121,7 +123,7 @@ def test_pond_strg_ub_thin(num_ports,
                 # in2regfile_0 data
                 gold_data = i - 1
             print(gold_data)
-            getattr(tester.circuit, f"output_width_16_num_0").expect(gold_data)
+            getattr(tester.circuit, pond_dut_port_remap["data_out_0"]).expect(gold_data)
 
         tester.eval()
         tester.step(2)
