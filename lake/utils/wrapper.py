@@ -159,9 +159,11 @@ if __name__ == "__main__":
 
     if args.p is False:
         if args.onyx is True:
-            lake_kwargs['area_opt'] = True
+            #This should be marked as true
+            lake_kwargs['area_opt'] = False
             lake_kwargs['pond_area_opt_share'] = False
-            lake_kwargs['pond_area_opt_dual_config'] = True
+            #This should be marked as true
+            lake_kwargs['pond_area_opt_dual_config'] = False
             lake_kwargs['reduced_id_config_width'] = 16
             lake_kwargs['interconnect_input_ports'] = 2
             lake_kwargs['interconnect_output_ports'] = 2
@@ -169,6 +171,11 @@ if __name__ == "__main__":
             lake_kwargs['add_flush'] = True
             lake_kwargs['use_sim_sram'] = True
             lake_kwargs['rw_same_cycle'] = True
+            lake_kwargs['chaining'] = False
+        elif args.dp:
+            lake_kwargs['reduced_id_config_width'] = 16
+            lake_kwargs['pond_area_opt_dual_config'] = False
+            lake_kwargs['area_opt'] = False
         # Use updated codepath for wrapper generation of laketop
         lake_kwargs['stencil_valid'] = args.s
         lake_kwargs['mem_width'] = args.mw

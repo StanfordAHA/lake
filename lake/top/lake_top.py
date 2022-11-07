@@ -48,6 +48,7 @@ class LakeTop(Generator):
                  do_config_lift=False,
                  comply_with_17=True,
                  area_opt=True,
+                 chaining=True,
                  pond_area_opt_share=False,
                  pond_area_opt_dual_config=True,
                  iterator_support2=2,
@@ -59,6 +60,7 @@ class LakeTop(Generator):
         self.data_width = data_width
         self.mem_width = mem_width
         self.mem_depth = mem_depth
+        self.chaining = chaining
         self.banks = banks
         self.input_iterator_support = input_iterator_support
         self.output_iterator_support = output_iterator_support
@@ -156,6 +158,7 @@ class LakeTop(Generator):
                                           input_sched_iterator_support=self.input_iterator_support,
                                           interconnect_input_ports=self.interconnect_input_ports,
                                           interconnect_output_ports=self.interconnect_output_ports,
+                                          chaining = self.chaining,
                                           read_delay=self.read_delay,
                                           rw_same_cycle=self.rw_same_cycle,
                                           config_width=self.config_width,
@@ -223,16 +226,17 @@ class LakeTop(Generator):
         replace_ins = {}
         replace_outs = {}
 
-        if mode == "UB" and self.read_delay == 0 or mode == "pond":
+        if (mode == "UB" and self.read_delay == 0) or (mode == "pond" and self.read_delay == 0):
             replace_ins = {
-                "PondTop_input_width_16_num_0": "data_in_pond_0",
-                "PondTop_input_width_16_num_1": "data_in_pond_1",
+                "PondTop_input_width_17_num_0": "data_in_pond_0",
+                "PondTop_input_width_17_num_1": "data_in_pond_1",
             }
 
             replace_outs = {
-                "PondTop_output_width_16_num_0": "data_out_pond_0",
-                "PondTop_output_width_16_num_1": "data_out_pond_1",
-                "PondTop_output_width_1_num_4": "valid_out_pond",
+                "PondTop_output_width_17_num_0": "data_out_pond_0",
+                "PondTop_output_width_17_num_1": "data_out_pond_1",
+                #Pond for CGRA does not have stencil VAlid
+                #"PondTop_output_width_1_num_4": "stencil_valid",
             }
         elif mode == "UB" and self.read_delay >= 1 and self.fw_int > 1:
             replace_ins = {
@@ -261,17 +265,17 @@ class LakeTop(Generator):
                 "LakeTop_output_width_17_num_1": "data_out_1",
                 "LakeTop_output_width_1_num_2": "stencil_valid",
             }
-        elif mode == "UB" and self.fw_int == 1:
+        elif mode == "pond" and self.fw_int == 1:
             replace_ins = {
-                "input_width_16_num_0": "chain_data_in_0",
-                "input_width_16_num_1": "chain_data_in_1",
-                "input_width_16_num_2": "data_in_0",
-                "input_width_16_num_3": "data_in_1",
+                "LakeTop_input_width_17_num_0": "chain_data_in_0",
+                "LakeTop_input_width_17_num_1": "chain_data_in_1",
+                "LakeTop_input_width_17_num_2": "data_in_0",
+                "LakeTop_input_width_17_num_3": "data_in_1",
             }
             replace_outs = {
-                "output_width_16_num_0": "data_out_0",
-                "output_width_16_num_1": "data_out_1",
-                "output_width_1_num_4": "stencil_valid",
+                "LakeTop_output_width_17_num_0": "data_out_0",
+                "LakeTop_output_width_17_num_1": "data_out_1",
+                "LakeTop_output_width_1_num_4": "stencil_valid",
             }
         elif mode == "ROM" and self.fw_int > 1:
             replace_ins = {
