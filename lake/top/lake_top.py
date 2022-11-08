@@ -226,7 +226,9 @@ class LakeTop(Generator):
         replace_ins = {}
         replace_outs = {}
 
-        if (mode == "UB" and self.read_delay == 0) or (mode == "pond" and self.read_delay == 0):
+        if (mode == "UB" and self.read_delay == 0) \
+          or (mode == "pond" and self.read_delay == 0):
+            assert(self.chaining == False, "Clockwork does not support pond with chaining")
             replace_ins = {
                 "PondTop_input_width_17_num_0": "data_in_pond_0",
                 "PondTop_input_width_17_num_1": "data_in_pond_1",
