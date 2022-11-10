@@ -512,19 +512,19 @@ class StrgUBThin(MemoryController):
             rw_port = MemoryPort(MemoryPortType.READWRITE)
             rw_port_intf = rw_port.get_port_interface()
             rw_port_intf['data_in'] = self._data_to_sram
-            rw_port_intf['data_out'] = self._data_from_sram
+            rw_port_intf['data_out'] = None
             rw_port_intf['write_addr'] = self._wr_addr_to_sram
             rw_port_intf['write_enable'] = self._wen_to_sram
-            rw_port_intf['read_addr'] = self._rd_addr_to_sram
-            rw_port_intf['read_enable'] = self._ren_to_sram
+            rw_port_intf['read_addr'] = tmp0_rdaddr
+            rw_port_intf['read_enable'] = tmp0_rden
             rw_port.annotate_port_signals()
             self.base_ports[0][0] = rw_port
             # Populate second port as just R
             r_port = MemoryPort(MemoryPortType.READ)
             r_port_intf = r_port.get_port_interface()
-            r_port_intf['data_out'] = None
-            r_port_intf['read_addr'] = tmp0_rdaddr
-            r_port_intf['read_enable'] = tmp0_rden
+            r_port_intf['data_out'] = self._data_from_sram
+            r_port_intf['read_addr'] = self._rd_addr_to_sram
+            r_port_intf['read_enable'] = self._ren_to_sram
             r_port.annotate_port_signals()
             self.base_ports[0][1] = r_port
 
