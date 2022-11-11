@@ -59,7 +59,8 @@ class StrgUBTBOnly(Generator):
 
         self.default_iterator_support = 6
         self.default_config_width = 16
-        self.sram_iterator_support = 6
+        # self.sram_iterator_support = 6
+        self.sram_iterator_support = input_addr_iterator_support
         self.agg_rd_addr_gen_width = 8
 
         ##################################################################################
@@ -68,7 +69,8 @@ class StrgUBTBOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        # self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.config_width)  # config_width
 
         # data from SRAM
         self._sram_read_data = self.input("sram_read_data", self.data_width,
@@ -80,7 +82,8 @@ class StrgUBTBOnly(Generator):
 
         # sram to tb for loop
         self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel",
-                                                 width=max(clog2(self.default_iterator_support), 1),
+                                                 # width=max(clog2(self.default_iterator_support), 1),
+                                                 width=max(clog2(self.input_addr_iterator_support), 1),
                                                  size=self.interconnect_output_ports,
                                                  explicit_array=True,
                                                  packed=True)
@@ -135,8 +138,13 @@ class StrgUBTBOnly(Generator):
 
         # delayed input mux_sel and restart signals from sram read/tb write
         # for loop and scheduling
+        if self.input_addr_iterator_support == 1:
+            mux_sel_width = 1
+        else:
+            mux_sel_width = kts.clog2(self.input_addr_iterator_support)
         self._mux_sel_d1 = self.var("mux_sel_d1",
-                                    kts.clog2(self.default_iterator_support),
+                                    # kts.clog2(self.default_iterator_support),
+                                    mux_sel_width,
                                     size=self.interconnect_output_ports,
                                     packed=True,
                                     explicit_array=True)
@@ -189,11 +197,14 @@ class StrgUBTBOnly(Generator):
         ##################################################################################
         for i in range(self.interconnect_output_ports):
 
-            self.tb_iter_support = 6
+            # self.tb_iter_support = 6
+            self.tb_iter_support = self.input_addr_iterator_support
             self.tb_addr_width = 4
-            self.tb_range_width = 16
+            # self.tb_range_width = 16
+            self.tb_range_width = self.config_width
 
-            _AG = AddrGen(iterator_support=self.default_iterator_support,
+            # _AG = AddrGen(iterator_support=self.default_iterator_support,
+            _AG = AddrGen(iterator_support=self.input_addr_iterator_support,
                           config_width=self.tb_addr_width)
 
             self.add_child(f"tb_write_addr_gen_{i}",
@@ -212,7 +223,8 @@ class StrgUBTBOnly(Generator):
                                        config_width=self.reduced_id_config_width)
             else:
                 fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
-                                       config_width=self.tb_range_width)
+                                       # config_width=self.tb_range_width)
+                                       config_width=self.config_width)  # config_bw
 
             self.add_child(f"loops_buf2out_read_{i}",
                            fl_ctr_tb_rd,
@@ -236,7 +248,8 @@ class StrgUBTBOnly(Generator):
                                  # config_width=self.tb_addr_width),
                                  delay_addr=self.area_opt,
                                  addr_fifo_depth=self.addr_fifo_depth,
-                                 config_width=16)
+                                 # config_width=16)
+                                 config_width=self.config_width)  # config_bw
             self.add_child(f"tb_read_sched_gen_{i}",
                            tb2out_sg,
                            clk=self._clk,

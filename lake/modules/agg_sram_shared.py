@@ -59,7 +59,8 @@ class StrgUBAggSRAMShared(Generator):
 
         self.default_iterator_support = 6
         self.default_config_width = 16
-        self.sram_iterator_support = 6
+        # self.sram_iterator_support = 6
+        self.sram_iterator_support = input_addr_iterator_support
         self.agg_rd_addr_gen_width = 8
         self.mem_addr_width = clog2(self.mem_depth)
 
@@ -76,7 +77,8 @@ class StrgUBAggSRAMShared(Generator):
                                                      size=self.interconnect_input_ports,
                                                      packed=True,
                                                      explicit_array=True)
-            self._agg_write_mux_sel_in = self.input("agg_write_mux_sel_in", max(clog2(self.default_iterator_support), 1),
+            # self._agg_write_mux_sel_in = self.input("agg_write_mux_sel_in", max(clog2(self.default_iterator_support), 1),
+            self._agg_write_mux_sel_in = self.input("agg_write_mux_sel_in", max(clog2(self.input_addr_iterator_support), 1),
                                                     size=self.interconnect_input_ports,
                                                     packed=True,
                                                     explicit_array=True)
@@ -96,10 +98,12 @@ class StrgUBAggSRAMShared(Generator):
                                                 packed=True,
                                                 explicit_array=True)
         else:
-            self._cycle_count = self.input("cycle_count", 16)
+            # self._cycle_count = self.input("cycle_count", 16)
+            self._cycle_count = self.input("cycle_count", self.config_width)  # config_bw
 
             self._floop_mux_sel = self.output("floop_mux_sel",
-                                              width=max(clog2(self.default_iterator_support), 1),
+                                              # width=max(clog2(self.default_iterator_support), 1),
+                                              width=max(clog2(self.input_addr_iterator_support), 1),
                                               size=self.interconnect_input_ports,
                                               explicit_array=True,
                                               packed=True)
@@ -121,9 +125,11 @@ class StrgUBAggSRAMShared(Generator):
         ##################################################################################
         for i in range(self.interconnect_input_ports):
 
-            self.agg_iter_support = 6
+            # self.agg_iter_support = 6
+            self.agg_iter_support = self.input_addr_iterator_support  # id_dim
             self.agg_addr_width = 4
-            self.agg_range_width = 16
+            # self.agg_range_width = 16
+            self.agg_range_width = self.config_width    # config_bw
 
             if self.area_opt:
                 # linear or reuse mode configuration register
@@ -138,6 +144,7 @@ class StrgUBAggSRAMShared(Generator):
                                                   agg_range_width=self.agg_range_width,
                                                   addr_fifo_depth=self.addr_fifo_depth,
                                                   interconnect_input_ports=interconnect_input_ports,
+                                                  iterator_support=self.agg_iter_support,       # id_dim
                                                   config_width=self.config_width)
                 self.add_child(f"agg_read_sched_gen_{i}",
                                shared_sg,
@@ -168,8 +175,10 @@ class StrgUBAggSRAMShared(Generator):
 
             else:
                 # Create for loop counters that can be shared across the input port selection and SRAM write
-                fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,
-                                         config_width=self.default_config_width)
+                # fl_ctr_sram_wr = ForLoop(iterator_support=self.default_iterator_support,
+                fl_ctr_sram_wr = ForLoop(iterator_support=self.input_addr_iterator_support,
+                                         # config_width=self.default_config_width)
+                                         config_width=self.config_width)  # config_bw
 
                 self.add_child(f"loops_in2buf_autovec_write_{i}",
                                fl_ctr_sram_wr,
@@ -182,9 +191,11 @@ class StrgUBAggSRAMShared(Generator):
 
                 # scheduler modules
                 self.add_child(f"agg_read_sched_gen_{i}",
-                               SchedGen(iterator_support=self.default_iterator_support,
+                               # SchedGen(iterator_support=self.default_iterator_support,
+                               SchedGen(iterator_support=self.input_addr_iterator_support,
                                         # config_width=self.mem_addr_width),
-                                        config_width=16),
+                                        # config_width=16),
+                                        config_width=self.config_width),   # config_bw
                                clk=self._clk,
                                rst_n=self._rst_n,
                                cycle_count=self._cycle_count,

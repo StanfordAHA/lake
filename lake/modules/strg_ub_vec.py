@@ -26,7 +26,7 @@ class StrgUBVec(MemoryController):
                  banks=1,
                  input_addr_iterator_support=6,
                  input_sched_iterator_support=6,
-                 config_width=16,
+                 config_width=16,       # config_bw
                  #  output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
@@ -67,13 +67,16 @@ class StrgUBVec(MemoryController):
         if self.area_opt:
             self.agg_height = 2
 
-        self.input_iterator_support = 6
-        self.output_iterator_support = 6
+        # self.input_iterator_support = 6
+        self.input_iterator_support = input_addr_iterator_support
+        # self.output_iterator_support = 6
+        self.output_iterator_support = input_addr_iterator_support
         self.default_iterator_support = 6
         self.default_config_width = 16
-        self.sram_iterator_support = 6
+        # self.sram_iterator_support = 6
+        self.sram_iterator_support = input_addr_iterator_support  # actually not used
         self.agg_rd_addr_gen_width = 8
-        self.agg_iter_support_small = 3
+        self.agg_iter_support_small = 3  # AGG ID dim fix at 3
 
         ##################################################################################
         # IO
@@ -138,7 +141,10 @@ class StrgUBVec(MemoryController):
         ##################################################################################
 
         # Create cycle counter to share...
-        self._cycle_count = add_counter(self, "cycle_count", 16)
+        # self._cycle_count = add_counter(self, "cycle_count", 16)
+        self._cycle_count = add_counter(self, "cycle_count", self.config_width)  # config_bw
+        print("\n==== config_width: ", self.config_width, "====\n")
+        print("\n==== id_dim: ", self.input_iterator_support, "====\n")
 
         agg_only = StrgUBAggOnly(data_width=self.data_width,
                                  mem_width=self.mem_width,
@@ -148,11 +154,11 @@ class StrgUBVec(MemoryController):
                                  interconnect_input_ports=self.interconnect_input_ports,
                                  interconnect_output_ports=self.interconnect_output_ports,
                                  area_opt=self.area_opt,
-                                 reduced_id_config_width=self.reduced_id_config_width,
+                                 reduced_id_config_width=self.reduced_id_config_width,  # config_bw
                                  addr_fifo_depth=self.in2agg_addr_fifo_depth,
-                                 agg_iter_support_small=self.agg_iter_support_small,
+                                 agg_iter_support_small=self.agg_iter_support_small,    # id_dim
                                  agg_height=self.agg_height,
-                                 config_width=self.input_config_width)
+                                 config_width=self.input_config_width)  # config_bw
 
         agg_sram_shared = StrgUBAggSRAMShared(data_width=self.data_width,
                                               mem_width=self.mem_width,
@@ -169,7 +175,7 @@ class StrgUBVec(MemoryController):
                                               read_delay=self.read_delay,
                                               rw_same_cycle=self.rw_same_cycle,
                                               agg_height=self.agg_height,
-                                              config_width=self.input_config_width)
+                                              config_width=self.input_config_width)  # config_bw
 
         sram_only = StrgUBSRAMOnly(data_width=self.data_width,
                                    mem_width=self.mem_width,
@@ -185,7 +191,7 @@ class StrgUBVec(MemoryController):
                                    read_delay=self.read_delay,
                                    rw_same_cycle=self.rw_same_cycle,
                                    agg_height=self.agg_height,
-                                   config_width=self.input_config_width)
+                                   config_width=self.input_config_width)    # config_bw
 
         sram_tb_shared = StrgUBSRAMTBShared(data_width=self.data_width,
                                             mem_width=self.mem_width,
@@ -198,11 +204,11 @@ class StrgUBVec(MemoryController):
                                             interconnect_input_ports=self.interconnect_input_ports,
                                             interconnect_output_ports=self.interconnect_output_ports,
                                             area_opt=self.area_opt,
-                                            reduced_id_config_width=self.reduced_id_config_width,
+                                            reduced_id_config_width=self.reduced_id_config_width,   # config_bw
                                             read_delay=self.read_delay,
                                             rw_same_cycle=self.rw_same_cycle,
                                             agg_height=self.agg_height,
-                                            config_width=self.input_config_width)
+                                            config_width=self.input_config_width)   # config_bw
 
         tb_only = StrgUBTBOnly(data_width=self.data_width,
                                mem_width=self.mem_width,
@@ -215,11 +221,11 @@ class StrgUBVec(MemoryController):
                                interconnect_input_ports=self.interconnect_input_ports,
                                interconnect_output_ports=self.interconnect_output_ports,
                                area_opt=self.area_opt,
-                               reduced_id_config_width=self.reduced_id_config_width,
+                               reduced_id_config_width=self.reduced_id_config_width,    # config_bw
                                read_delay=self.read_delay,
                                rw_same_cycle=self.rw_same_cycle,
                                agg_height=self.agg_height,
-                               config_width=self.input_config_width)
+                               config_width=self.input_config_width)    # config_bw
 
         self.add_child("agg_only",
                        agg_only,

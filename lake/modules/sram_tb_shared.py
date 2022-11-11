@@ -56,7 +56,8 @@ class StrgUBSRAMTBShared(Generator):
 
         self.default_iterator_support = 6
         self.default_config_width = 16
-        self.sram_iterator_support = 6
+        # self.sram_iterator_support = 6
+        self.sram_iterator_support = input_addr_iterator_support
         self.agg_rd_addr_gen_width = 8
 
         ##################################################################################
@@ -65,10 +66,12 @@ class StrgUBSRAMTBShared(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        # self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.config_width)  # config_bw
 
         self._loops_sram2tb_mux_sel = self.output("loops_sram2tb_mux_sel",
-                                                  width=max(clog2(self.default_iterator_support), 1),
+                                                  # width=max(clog2(self.default_iterator_support), 1),
+                                                  width=max(clog2(self.input_addr_iterator_support), 1),
                                                   size=self.interconnect_output_ports,
                                                   explicit_array=True,
                                                   packed=True)
@@ -92,11 +95,14 @@ class StrgUBSRAMTBShared(Generator):
 
             # for loop for sram reads, tb writes
             if self.area_opt:
-                loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
+                # loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
+                loops_sram2tb = ForLoop(iterator_support=self.input_addr_iterator_support,
                                         config_width=self.reduced_id_config_width)
             else:
-                loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
-                                        config_width=self.default_config_width)
+                # loops_sram2tb = ForLoop(iterator_support=self.default_iterator_support,
+                loops_sram2tb = ForLoop(iterator_support=self.input_addr_iterator_support,
+                                        # config_width=self.default_config_width)
+                                        config_width=self.config_width)
 
             self.add_child(f"loops_buf2out_autovec_read_{i}",
                            loops_sram2tb,
@@ -108,10 +114,12 @@ class StrgUBSRAMTBShared(Generator):
             self.wire(self._loops_sram2tb_restart[i], loops_sram2tb.ports.restart)
 
             # sram read schedule, delay by 1 clock cycle for tb write schedule (done in tb_only)
-            sram2tb_sg = SchedGen(iterator_support=self.default_iterator_support,
+            # sram2tb_sg = SchedGen(iterator_support=self.default_iterator_support,
+            sram2tb_sg = SchedGen(iterator_support=self.input_addr_iterator_support,
                                   # config_width=self.default_config_width),
                                   delay_addr=self.area_opt,
-                                  config_width=16)
+                                  # config_width=16)
+                                  config_width=self.config_width)
             self.add_child(f"output_sched_gen_{i}",
                            sram2tb_sg,
                            clk=self._clk,

@@ -16,12 +16,12 @@ class StrgUBAggOnly(Generator):
                  mem_depth=512,
                  input_addr_iterator_support=6,
                  input_sched_iterator_support=6,
-                 config_width=16,
+                 config_width=16,               # config_bw
                  #  output_config_width=16,
                  interconnect_input_ports=2,  # Connection to int
                  interconnect_output_ports=2,
                  area_opt=True,
-                 reduced_id_config_width=10,
+                 reduced_id_config_width=10,    # config_bw
                  addr_fifo_depth=8,
                  agg_iter_support_small=3,
                  agg_height=4,
@@ -54,13 +54,16 @@ class StrgUBAggOnly(Generator):
 
         self.default_iterator_support = 6
         self.default_config_width = 16
-        self.sram_iterator_support = 6
+        # self.sram_iterator_support = 6
+        self.sram_iterator_support = input_addr_iterator_support  # id_dim
         self.agg_rd_addr_gen_width = 8
 
-        self.agg_iter_support = 6
+        # self.agg_iter_support = 6
+        self.agg_iter_support = input_addr_iterator_support       # id_dim
         self.agg_iter_support_small = agg_iter_support_small
         self.agg_addr_width = agg_addr_width
-        self.agg_range_width = 16
+        # self.agg_range_width = 16
+        self.agg_range_width = config_width
         self.agg_wr_addr_width = 2 + clog2(self.agg_height)
         self.agg_rd_addr_width = max(1, clog2(self.agg_height))
 
@@ -70,7 +73,8 @@ class StrgUBAggOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        # self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.config_width)  # config_bw
 
         self._data_in = self.input("data_in", self.data_width,
                                    size=self.interconnect_input_ports,
@@ -107,7 +111,8 @@ class StrgUBAggOnly(Generator):
 
         else:
             self._floop_mux_sel = self.input("floop_mux_sel",
-                                             width=max(clog2(self.default_iterator_support), 1),
+                                             # width=max(clog2(self.default_iterator_support), 1),
+                                             width=max(clog2(self.agg_iterator_support), 1),  # id_dim
                                              size=self.interconnect_input_ports,
                                              explicit_array=True,
                                              packed=True)
@@ -168,9 +173,9 @@ class StrgUBAggOnly(Generator):
         ##################################################################################
         for i in range(self.interconnect_input_ports):
 
-            self.agg_iter_support = 6
+            # self.agg_iter_support = 6
             self.agg_addr_width = 4
-            self.agg_range_width = 16
+            # self.agg_range_width = 16
 
             if self.area_opt:
                 # mode=1 for update operation mode
@@ -190,7 +195,7 @@ class StrgUBAggOnly(Generator):
 
                 forloop_ctr = ForLoop(iterator_support=self.agg_iter_support_small,
                                       # config_width=self.default_config_width)
-                                      config_width=self.reduced_id_config_width)
+                                      config_width=self.reduced_id_config_width)   # config_bw
                 loop_itr = forloop_ctr.get_iter()
                 loop_wth = forloop_ctr.get_cfg_width()
 
@@ -200,7 +205,7 @@ class StrgUBAggOnly(Generator):
                                rst_n=self._rst_n,
                                step=self._agg_write[i])
                 # create a wire to match the small loop ctrl's mux_sel width to the regular size (6 levels)
-                self._fl_mux_sel = self.var(f"fl_mux_sel_{i}", max(clog2(self.agg_iter_support), 1))
+                self._fl_mux_sel = self.var(f"fl_mux_sel_{i}", max(clog2(self.agg_iter_support), 1))  # id_dim
                 safe_wire(gen=self, w_to=self._fl_mux_sel, w_from=forloop_ctr.ports.mux_sel_out)
                 self.wire(self._agg_write_mux_sel_out[i], self._fl_mux_sel)
                 self.wire(self._agg_write_restart_out[i], forloop_ctr.ports.restart)
@@ -218,7 +223,8 @@ class StrgUBAggOnly(Generator):
 
                 newSG = SchedGen(iterator_support=self.agg_iter_support_small,
                                  # config_width=self.agg_addr_width)
-                                 config_width=16)
+                                 # config_width=16)
+                                 config_width=self.config_width)   # config_bw
 
                 self.add_child(f"agg_write_sched_gen_{i}",
                                newSG,
@@ -254,7 +260,8 @@ class StrgUBAggOnly(Generator):
 
                 newSG = SchedGen(iterator_support=self.agg_iter_support,
                                  # config_width=self.agg_addr_width)
-                                 config_width=16)
+                                 # config_width=16)
+                                 config_width=self.config_width)   # config_bw
                 self.add_child(f"agg_write_sched_gen_{i}",
                                newSG,
                                clk=self._clk,
@@ -280,7 +287,8 @@ class StrgUBAggOnly(Generator):
                 self.wire(self._agg_read_addr_in[i], self._sram_read_addr_in[i][self.agg_rd_addr_width - 1, 0])
                 safe_wire(gen=self, w_to=self._agg_read_addr_gen_out[i], w_from=self._agg_read_addr_in[i])
             else:
-                newAG = AddrGen(iterator_support=self.default_iterator_support,
+                # newAG = AddrGen(iterator_support=self.default_iterator_support,
+                newAG = AddrGen(iterator_support=self.agg_iter_support,
                                 config_width=self.agg_addr_width)
 
                 self.add_child(f"agg_read_addr_gen_{i}",

@@ -54,7 +54,8 @@ class StrgUBSRAMOnly(Generator):
 
         self.default_iterator_support = 6
         self.default_config_width = 16
-        self.sram_iterator_support = 6
+        # self.sram_iterator_support = 6
+        self.sram_iterator_support = input_addr_iterator_support
         self.agg_rd_addr_gen_width = 8
 
         ##################################################################################
@@ -63,7 +64,8 @@ class StrgUBSRAMOnly(Generator):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._cycle_count = self.input("cycle_count", 16)
+        # self._cycle_count = self.input("cycle_count", 16)
+        self._cycle_count = self.input("cycle_count", self.config_width)  # config_bw
 
         if self.area_opt:
             self._sram_read_addr_in = self.input("sram_read_addr_in", self.mem_addr_width,
@@ -78,7 +80,8 @@ class StrgUBSRAMOnly(Generator):
         else:
             # agg to sram for loop
             self._floop_mux_sel = self.input("floop_mux_sel",
-                                             width=max(clog2(self.default_iterator_support), 1),
+                                             # width=max(clog2(self.default_iterator_support), 1),
+                                             width=max(clog2(self.input_addr_iterator_support), 1),
                                              size=self.interconnect_input_ports,
                                              explicit_array=True,
                                              packed=True)
@@ -91,7 +94,8 @@ class StrgUBSRAMOnly(Generator):
 
         # sram to tb for loop
         self._loops_sram2tb_mux_sel = self.input("loops_sram2tb_mux_sel",
-                                                 width=max(clog2(self.default_iterator_support), 1),
+                                                 # width=max(clog2(self.default_iterator_support), 1),
+                                                 width=max(clog2(self.input_addr_iterator_support), 1),
                                                  size=self.interconnect_output_ports,
                                                  explicit_array=True,
                                                  packed=True)
@@ -155,7 +159,8 @@ class StrgUBSRAMOnly(Generator):
             if self.area_opt:
                 safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=self._sram_read_addr_in[i])
             else:
-                _AG = AddrGen(iterator_support=self.default_iterator_support,
+                # _AG = AddrGen(iterator_support=self.default_iterator_support,
+                _AG = AddrGen(iterator_support=self.input_addr_iterator_support,
                               config_width=self.mem_addr_width)
                 self.add_child(f"input_addr_gen_{i}",
                                _AG,
@@ -172,7 +177,8 @@ class StrgUBSRAMOnly(Generator):
         ##################################################################################
         for i in range(self.interconnect_output_ports):
 
-            _AG = AddrGen(iterator_support=self.default_iterator_support,
+            # _AG = AddrGen(iterator_support=self.default_iterator_support,
+            _AG = AddrGen(iterator_support=self.input_addr_iterator_support,
                           config_width=self.mem_addr_width)
             self.add_child(f"output_addr_gen_{i}",
                            _AG,
