@@ -29,6 +29,8 @@ class StrgUBSRAMOnly(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  area_opt=True,
+                 in2agg_en=True,
+                 agg2sram_en=True,
                  agg_height=4,
                  tb_height=2):
 
@@ -51,6 +53,8 @@ class StrgUBSRAMOnly(Generator):
         self.rw_same_cycle = rw_same_cycle
         self.mem_addr_width = clog2(self.mem_depth)
         self.area_opt = area_opt
+        self.in2agg_en = in2agg_en
+        self.agg2sram_en = agg2sram_en
 
         self.default_iterator_support = 6
         self.default_config_width = 16
@@ -67,7 +71,7 @@ class StrgUBSRAMOnly(Generator):
         # self._cycle_count = self.input("cycle_count", 16)
         self._cycle_count = self.input("cycle_count", self.config_width)  # config_bw
 
-        if self.area_opt:
+        if self.area_opt and self.agg2sram_en:
             self._sram_read_addr_in = self.input("sram_read_addr_in", self.mem_addr_width,
                                                  size=self.interconnect_input_ports,
                                                  packed=True,
@@ -156,7 +160,7 @@ class StrgUBSRAMOnly(Generator):
                                          packed=True)
 
         for i in range(self.interconnect_input_ports):
-            if self.area_opt:
+            if self.area_opt and self.agg2sram_en:
                 safe_wire(gen=self, w_to=self._s_write_addr[i], w_from=self._sram_read_addr_in[i])
             else:
                 # _AG = AddrGen(iterator_support=self.default_iterator_support,
@@ -189,7 +193,7 @@ class StrgUBSRAMOnly(Generator):
                            restart=self._loops_sram2tb_restart[i])
             safe_wire(gen=self, w_to=_AG.ports.mux_sel, w_from=self._loops_sram2tb_mux_sel[i])
             safe_wire(gen=self, w_to=self._s_read_addr[i], w_from=_AG.ports.addr_out)
-            if self.area_opt:
+            if self.area_opt and self.agg2sram_en:
                 self.wire(self._sram_read_addr_out[i], _AG.ports.addr_out)
 
         ##################################################################################

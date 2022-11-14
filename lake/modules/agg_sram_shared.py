@@ -34,6 +34,8 @@ class StrgUBAggSRAMShared(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  area_opt=True,
+                 in2agg_en=True,
+                 agg2sram_en=True,
                  addr_fifo_depth=4,
                  agg_height=4,
                  tb_height=2):
@@ -55,6 +57,8 @@ class StrgUBAggSRAMShared(Generator):
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
         self.area_opt = area_opt
+        self.in2agg_en = in2agg_en
+        self.agg2sram_en = agg2sram_en
         self.addr_fifo_depth = addr_fifo_depth
 
         self.default_iterator_support = 6
@@ -71,6 +75,11 @@ class StrgUBAggSRAMShared(Generator):
         self._rst_n = self.reset("rst_n")
 
         if self.area_opt:
+            self._update_mode_out = self.output("update_mode_out", 2,
+                                                size=self.interconnect_input_ports,
+                                                packed=True,
+                                                explicit_array=True)
+        if self.area_opt and self.agg2sram_en:
             self._agg_write_restart_in = self.input("agg_write_restart_in", self.interconnect_input_ports)
             self._agg_write_in = self.input("agg_write_in", self.interconnect_input_ports)
             self._agg_write_addr_l2b_in = self.input("agg_write_addr_l2b_in", 2,
@@ -88,15 +97,10 @@ class StrgUBAggSRAMShared(Generator):
                                                  size=self.interconnect_input_ports,
                                                  packed=True,
                                                  explicit_array=True)
-
             self._agg_sram_shared_addr_out = self.output("agg_sram_shared_addr_out", self.mem_addr_width,
                                                          size=self.interconnect_input_ports,
                                                          packed=True,
                                                          explicit_array=True)
-            self._update_mode_out = self.output("update_mode_out", 2,
-                                                size=self.interconnect_input_ports,
-                                                packed=True,
-                                                explicit_array=True)
         else:
             # self._cycle_count = self.input("cycle_count", 16)
             self._cycle_count = self.input("cycle_count", self.config_width)  # config_bw
@@ -138,6 +142,7 @@ class StrgUBAggSRAMShared(Generator):
                 self._mode.add_attribute(FormalAttr(f"{self._mode.name}_{i}", FormalSignalConstraint.SOLVE))
                 self.wire(self._mode, self._update_mode_out[i])
 
+            if self.area_opt and self.agg2sram_en:
                 # scheduler modules
                 shared_sg = AggSramSharedSchedGen(data_width=self.data_width,
                                                   mem_width=self.mem_width,

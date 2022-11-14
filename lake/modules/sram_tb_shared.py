@@ -31,6 +31,8 @@ class StrgUBSRAMTBShared(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  area_opt=True,
+                 in2agg_en=True,
+                 agg2sram_en=True,
                  reduced_id_config_width=10,
                  agg_height=4,
                  tb_height=2):
@@ -52,6 +54,8 @@ class StrgUBSRAMTBShared(Generator):
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
         self.area_opt = area_opt
+        self.in2agg_en = in2agg_en
+        self.agg2sram_en = agg2sram_en
         self.reduced_id_config_width = reduced_id_config_width
 
         self.default_iterator_support = 6
@@ -85,7 +89,7 @@ class StrgUBSRAMTBShared(Generator):
         self._t_read_out = self.output("t_read_out", self.interconnect_output_ports)
         self._t_read = self.var("t_read", self.interconnect_output_ports)
         self.wire(self._t_read_out, self._t_read)
-        if self.area_opt:
+        if self.area_opt and self.agg2sram_en:
             self._sram_read_d = self.output("sram_read_d", self.interconnect_output_ports)
 
         ##################################################################################
@@ -129,7 +133,7 @@ class StrgUBSRAMTBShared(Generator):
                            finished=loops_sram2tb.ports.restart,
                            valid_output=self._t_read[i])
 
-            if self.area_opt:
+            if self.area_opt and self.agg2sram_en:
                 self.wire(self._sram_read_d[i], sram2tb_sg.ports.valid_output_d)
 
 

@@ -30,6 +30,8 @@ class StrgUBTBOnly(Generator):
                  mem_input_ports=1,
                  mem_output_ports=1,
                  area_opt=True,
+                 in2agg_en=True,
+                 agg2sram_en=True,
                  addr_fifo_depth=8,
                  reduced_id_config_width=10,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
@@ -54,6 +56,8 @@ class StrgUBTBOnly(Generator):
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
         self.area_opt = area_opt
+        self.in2agg_en = in2agg_en
+        self.agg2sram_en = agg2sram_en
         self.addr_fifo_depth = addr_fifo_depth
         self.reduced_id_config_width = reduced_id_config_width
 
@@ -100,7 +104,7 @@ class StrgUBTBOnly(Generator):
                                      packed=True,
                                      explicit_array=True)
 
-        if self.area_opt:
+        if self.area_opt and self.in2agg_en:
             self._tb_read_d_out = self.output("tb_read_d_out", self.interconnect_output_ports)
             self._tb_read_addr_d_out = self.output("tb_read_addr_d_out", 2 + clog2(self.agg_height),
                                                    size=self.interconnect_output_ports,
@@ -218,7 +222,7 @@ class StrgUBTBOnly(Generator):
 
             # READ FROM TB
 
-            if self.area_opt:
+            if self.area_opt and self.in2agg_en:
                 fl_ctr_tb_rd = ForLoop(iterator_support=self.tb_iter_support,
                                        config_width=self.reduced_id_config_width)
             else:
@@ -258,7 +262,7 @@ class StrgUBTBOnly(Generator):
                            mux_sel=fl_ctr_tb_rd.ports.mux_sel_out,
                            finished=fl_ctr_tb_rd.ports.restart,
                            valid_output=self._tb_read[i])
-            if self.area_opt:
+            if self.area_opt and self.in2agg_en:
                 self._delay_en = self.var(f"delay_en_{i}", 1)
                 self._tb_read_d = self.var(f"tb_read_d_{i}", 1)
                 self._tb_addr_fifo = self.var(f"tb_addr_fifo_{i}", 2 + clog2(self.agg_height),
