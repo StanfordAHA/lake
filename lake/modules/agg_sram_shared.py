@@ -72,7 +72,7 @@ class StrgUBAggSRAMShared(Generator):
         if self.area_opt:
             self._agg_write_restart_in = self.input("agg_write_restart_in", self.interconnect_input_ports)
             self._agg_write_in = self.input("agg_write_in", self.interconnect_input_ports)
-            self._agg_write_addr_l2b_in = self.input("agg_write_addr_l2b_in", 2,
+            self._agg_write_addr_lxb_in = self.input("agg_write_addr_lxb_in", clog2(self.fetch_width),
                                                      size=self.interconnect_input_ports,
                                                      packed=True,
                                                      explicit_array=True)
@@ -145,7 +145,7 @@ class StrgUBAggSRAMShared(Generator):
                                rst_n=self._rst_n,
                                agg_write_restart=self._agg_write_restart_in[i],
                                agg_write=self._agg_write_in[i],
-                               agg_write_addr_l2b=self._agg_write_addr_l2b_in[i],
+                               agg_write_addr_lxb=self._agg_write_addr_lxb_in[i],
                                agg_write_mux_sel=self._agg_write_mux_sel_in[i],
                                sram_read_d=self._sram_read_d_in,
                                mode=self._mode,

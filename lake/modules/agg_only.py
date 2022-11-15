@@ -96,7 +96,7 @@ class StrgUBAggOnly(Generator):
 
             self._agg_write_restart_out = self.output("agg_write_restart_out", self.interconnect_input_ports)
             self._agg_write_out = self.output("agg_write_out", self.interconnect_input_ports)
-            self._agg_write_addr_l2b_out = self.output("agg_write_addr_l2b_out", 2,
+            self._agg_write_addr_lxb_out = self.output("agg_write_addr_lxb_out", clog2(self.fetch_width),
                                                        size=self.interconnect_input_ports,
                                                        packed=True,
                                                        explicit_array=True)
@@ -177,7 +177,7 @@ class StrgUBAggOnly(Generator):
                 self._mode = self.var(f"mode_{i}", 2)
                 self.wire(self._mode, self._update_mode_in[i])
 
-                self.wire(self._agg_write_addr_l2b_out[i], self._agg_write_addr[i][1, 0])
+                self.wire(self._agg_write_addr_lxb_out[i], self._agg_write_addr[i][clog2(self.fetch_width) - 1, 0])
 
                 self._tb_read = self.var(f"tb_read_{i}", 1)
                 self._tb_addr = self.var(f"tb_addr_{i}", self._agg_write_addr.width)
