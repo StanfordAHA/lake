@@ -99,7 +99,7 @@ class StrgUBTBOnly(Generator):
 
         if self.area_opt:
             self._tb_read_d_out = self.output("tb_read_d_out", self.interconnect_output_ports)
-            self._tb_read_addr_d_out = self.output("tb_read_addr_d_out", 2 + clog2(self.agg_height),
+            self._tb_read_addr_d_out = self.output("tb_read_addr_d_out", clog2(self.fetch_width) + clog2(self.agg_height),
                                                    size=self.interconnect_output_ports,
                                                    packed=True,
                                                    explicit_array=True)
@@ -115,12 +115,12 @@ class StrgUBTBOnly(Generator):
                             packed=True,
                             explicit_array=True)
 
-        self._tb_write_addr = self.var("tb_write_addr", 2 + max(1, clog2(self.tb_height)),
+        self._tb_write_addr = self.var("tb_write_addr", 1 + clog2(self.tb_height),
                                        size=self.interconnect_output_ports,
                                        packed=True,
                                        explicit_array=True)
 
-        self._tb_read_addr = self.var("tb_read_addr", 3 + max(1, clog2(self.tb_height)),
+        self._tb_read_addr = self.var("tb_read_addr", 1 + clog2(self.fetch_width) + clog2(self.tb_height),
                                       size=self.interconnect_output_ports,
                                       packed=True,
                                       explicit_array=True)
@@ -248,11 +248,11 @@ class StrgUBTBOnly(Generator):
             if self.area_opt:
                 self._delay_en = self.var(f"delay_en_{i}", 1)
                 self._tb_read_d = self.var(f"tb_read_d_{i}", 1)
-                self._tb_addr_fifo = self.var(f"tb_addr_fifo_{i}", 2 + clog2(self.agg_height),
+                self._tb_addr_fifo = self.var(f"tb_addr_fifo_{i}", clog2(self.fetch_width) + clog2(self.agg_height),
                                               size=self.addr_fifo_depth,
                                               packed=True,
                                               explicit_array=True)
-                self._addr_fifo_in = self.var(f"addr_fifo_in_{i}", 2 + clog2(self.agg_height))
+                self._addr_fifo_in = self.var(f"addr_fifo_in_{i}", clog2(self.fetch_width) + clog2(self.agg_height))
                 self._wr_ptr = self.var(f"wr_ptr_{i}", clog2(self.addr_fifo_depth))
                 self._rd_ptr = self.var(f"rd_ptr_{i}", clog2(self.addr_fifo_depth))
 

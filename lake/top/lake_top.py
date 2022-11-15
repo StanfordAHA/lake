@@ -158,7 +158,7 @@ class LakeTop(Generator):
                                           input_sched_iterator_support=self.input_iterator_support,
                                           interconnect_input_ports=self.interconnect_input_ports,
                                           interconnect_output_ports=self.interconnect_output_ports,
-                                          chaining = self.chaining,
+                                          chaining=self.chaining,
                                           read_delay=self.read_delay,
                                           rw_same_cycle=self.rw_same_cycle,
                                           config_width=self.config_width,
@@ -228,7 +228,7 @@ class LakeTop(Generator):
 
         if (mode == "UB" and self.read_delay == 0) \
           or (mode == "pond" and self.read_delay == 0):
-            assert(self.chaining == False, "Clockwork does not support pond with chaining")
+            assert self.chaining is False, "Clockwork does not support pond with chaining"
             replace_ins = {
                 "PondTop_input_width_17_num_0": "data_in_pond_0",
                 "PondTop_input_width_17_num_1": "data_in_pond_1",
@@ -237,8 +237,8 @@ class LakeTop(Generator):
             replace_outs = {
                 "PondTop_output_width_17_num_0": "data_out_pond_0",
                 "PondTop_output_width_17_num_1": "data_out_pond_1",
-                #Pond for CGRA does not have stencil VAlid
-                #"PondTop_output_width_1_num_4": "stencil_valid",
+                # Pond for CGRA does not have stencil VAlid
+                # "PondTop_output_width_1_num_4": "stencil_valid",
             }
         elif mode == "UB" and self.read_delay >= 1 and self.fw_int > 1:
             replace_ins = {

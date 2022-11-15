@@ -66,6 +66,8 @@ class StrgUBVec(MemoryController):
         self.agg2sram_addr_fifo_depth = agg2sram_addr_fifo_depth
         if self.area_opt:
             self.agg_height = 2
+        self.agg_height = self.agg_height * (4 // self.fetch_width)  # FIXME remove hardcoded 4
+        self.tb_height = self.tb_height * (4 // self.fetch_width)  # FIXME remove hardcoded 4
 
         self.input_iterator_support = 6
         self.output_iterator_support = 6
@@ -214,6 +216,7 @@ class StrgUBVec(MemoryController):
                                output_sched_iterator_support=self.output_iterator_support,
                                interconnect_input_ports=self.interconnect_input_ports,
                                interconnect_output_ports=self.interconnect_output_ports,
+                               tb_height=self.tb_height,
                                area_opt=self.area_opt,
                                reduced_id_config_width=self.reduced_id_config_width,
                                read_delay=self.read_delay,
