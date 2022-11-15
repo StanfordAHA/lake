@@ -43,6 +43,7 @@ class CoreCombiner(Generator):
                  use_sim_sram=True,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 rf=False,
                  config_data_width=32,
                  config_addr_width=8,
                  add_clk_enable=True,
@@ -72,6 +73,7 @@ class CoreCombiner(Generator):
         self.tech_map = tech_map
         self.io_prefix = io_prefix
         self.fifo_depth = fifo_depth
+        self.rf = rf
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -99,8 +101,8 @@ class CoreCombiner(Generator):
         tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=True)]
 
         if self.rw_same_cycle:
-            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=False),
-                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=False)]
+            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=not rf),
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
@@ -305,6 +307,7 @@ if __name__ == "__main__":
     parser.add_argument("--dual_port", action="store_true")
     parser.add_argument("--fifo_mode", action="store_true")
     parser.add_argument("--stencil_valid", action="store_true")
+    parser.add_argument("--rf", action="store_true")
 
     args = parser.parse_args()
 
@@ -315,13 +318,15 @@ if __name__ == "__main__":
     banks = args.banks
     fifo_mode = args.fifo_mode
     stencil_valid = args.stencil_valid
+    rf = args.rf
 
     mem_name = "single"
     rw_same_cycle = False
     if args.dual_port:
         rw_same_cycle = True
         mem_name = "dual"
-        read_delay = 0
+        if rf:
+            read_delay = 0
 
     fw_int = args.fetch_width
 
@@ -331,36 +336,62 @@ if __name__ == "__main__":
     fifo_depth = 8
 
     if pipeline_scanner:
-        scan = ScannerPipe(data_width=16,
+        scan = ScannerPipe(data_width=data_width,
                             fifo_depth=fifo_depth,
                             add_clk_enable=True,
                             defer_fifos=True,
                             add_flush=False)
     else:
-        scan = Scanner(data_width=16,
+        scan = Scanner(data_width=data_width,
                         fifo_depth=fifo_depth,
                         defer_fifos=True,
                         add_flush=False)
 
-    wscan = WriteScanner(data_width=16, fifo_depth=fifo_depth,
+    wscan = WriteScanner(data_width=data_width,
+                            fifo_depth=fifo_depth,
                             defer_fifos=True,
                             add_flush=False)
-    strg_ub = StrgUBVec(data_width=16,
-                        mem_width=64,
-                        mem_depth=512)
+    strg_ub = StrgUBThin(
+        config_mode_str="pond",
+        data_width=data_width,  # CGRA Params
+        mem_width=mem_width,
+        mem_depth=mem_depth,
+        input_addr_iterator_support=6,
+        input_sched_iterator_support=6,
+        output_addr_iterator_support=6,
+        output_sched_iterator_support=6,
+        interconnect_input_ports=1,  # Connection to int
+        interconnect_output_ports=1,
+        config_width=16,
+        read_delay=read_delay,  # Cycle delay in read (SRAM vs Register File)
+        rw_same_cycle=rw_same_cycle,
+        gen_addr=True,
+        comply_with_17=True,
+        area_opt=False,
+        area_opt_share=False,
+        area_opt_dual_config=False,
+        chaining=True,
+        reduced_id_config_width=16,
+        delay_width=4,
+        iterator_support2=2  # assumes that this port has smaller iter_support
+    )
+    # strg_ub = StrgUBVec(data_width=16,
+    #                     mem_width=64,
+    #                     mem_depth=512)
     fiber_access = FiberAccess(data_width=16,
                                 local_memory=False,
-                                tech_map=GF_Tech_Map(depth=512, width=32),
+                                tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
                                 defer_fifos=True)
-    buffet = BuffetLike(data_width=16, mem_depth=512, local_memory=False,
-                        tech_map=GF_Tech_Map(depth=512, width=32),
+    buffet = BuffetLike(data_width=16, mem_depth=mem_depth, local_memory=False,
+                        tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
+                        mem_width=mem_width,
                         defer_fifos=True,
                         optimize_wide=True,
                         add_flush=False)
     strg_ram = StrgRAM(data_width=16,
                         banks=1,
-                        memory_width=64,
-                        memory_depth=512,
+                        memory_width=mem_width,
+                        memory_depth=mem_depth,
                         rw_same_cycle=False,
                         read_delay=1,
                         addr_width=16,
@@ -371,7 +402,7 @@ if __name__ == "__main__":
 
     controllers.append(scan)
     controllers.append(wscan)
-    controllers.append(buffet)
+    # controllers.append(buffet)
     controllers.append(strg_ub)
     # controllers.append(fiber_access)
     controllers.append(strg_ram)
@@ -412,12 +443,12 @@ if __name__ == "__main__":
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,
-                             mem_depth=512,
+                             mem_depth=mem_depth,
                              banks=1,
                              add_clk_enable=True,
                              add_flush=True,
-                             rw_same_cycle=False,
-                             read_delay=1,
+                             rw_same_cycle=rw_same_cycle,
+                             read_delay=read_delay,
                              use_sim_sram=True,
                              controllers=controllers,
                              name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}",

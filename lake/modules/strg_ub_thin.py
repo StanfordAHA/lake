@@ -39,11 +39,12 @@ class StrgUBThin(MemoryController):
                  area_opt_dual_config=True,
                  chaining=False,
                  reduced_id_config_width=11,
+                 name_suffix="",
                  delay_width=4,
                  iterator_support2=2  # assumes that this port has smaller iter_support
                  ):
 
-        super().__init__("strg_ub_thin", debug=True)
+        super().__init__(f"strg_ub_thin{name_suffix}", debug=True)
 
         assert mem_width == data_width, f"This module should only be used when the fetch width is 1!"
 
