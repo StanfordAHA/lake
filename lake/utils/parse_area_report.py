@@ -1,5 +1,6 @@
 import glob
 import csv
+import argparse
 
 
 def parse_area(filename):
@@ -16,9 +17,12 @@ def parse_area(filename):
 
     # print(area_dict)
     return_dict["SRAM_macro"] = float(area_dict["memory_0"])
-    return_dict["controller"] = float(area_dict["strg_ub_vec_inst"])    # strg_ub_vec
+    return_dict["UB_controller"] = float(area_dict["strg_ub_vec_inst"])    # strg_ub_vec
     return_dict["config_register"] = float(area_dict["MemCore_inst0"]) - float(area_dict["MemCore_inner_W_inst0"])
-    return_dict["total_area"] = float(area_dict["MemCore_inst0"])
+    return_dict["other_controller_mode"] = float(area_dict["mem_ctrl_stencil_valid_flat"]) + float(area_dict["mem_ctrl_strg_ram_64_512_delay1_flat"])
+    return_dict["sparse_feature"] = float(area_dict["MemCore_inner"]) - return_dict["SRAM_macro"] - return_dict["UB_controller"] - return_dict["other_controller_mode"]
+    return_dict["CBSB"] = float(area_dict["Tile_MemCore"]) - float(area_dict["MemCore_inst0"])
+    return_dict["total_area"] = float(area_dict["Tile_MemCore"])
 
     return return_dict
 
@@ -26,7 +30,7 @@ def parse_area(filename):
 def exp_result(foldername):
     total_table = {}
     total_names = []
-    files = glob.glob(f"./{foldername}/*")
+    files = glob.glob(f"./{foldername}/*.rpt")
     files.sort()
     for filename in files:
         name = filename.split("/")[-1].split("_")[:-1]
@@ -34,11 +38,11 @@ def exp_result(foldername):
         total_table[name] = parse_area(filename)
         total_names.append(name)
 
-    [print(key, ':', value) for key, value in total_table.items()]
+    # [print(key, ':', value) for key, value in total_table.items()]
 
-    with open(f'{foldername}.csv', 'w', ) as myfile:
+    with open(f'./{foldername}/{foldername}.csv', 'w', ) as myfile:
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-        head = ["config_bitwidth", "config_register", "controller", "total_area"]
+        head = ["optimization", "SRAM_macro", "config_register", "UB_controller", "other_controller_mode", "sparse_feature", "CBSB", "total_area"]
         wr.writerow(head)
         print(total_names)
         for name in total_names:
@@ -49,6 +53,10 @@ def exp_result(foldername):
 
 
 if __name__ == "__main__":
-    exp_result("id_dim_out")
-    exp_result("config_bitwidth_out")
-    exp_result("sharing_out")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--name', type=str, required=True)
+    args = parser.parse_args()
+    # exp_result("id_dim_out")
+    # exp_result("config_bitwidth_out")
+    # exp_result("sharing_out")
+    exp_result(args.name)
