@@ -76,13 +76,14 @@ def parse_power(filename, fence_width=32):
     # now power_dict is the detail info for each tile
     # [print(key,':',value) for key, value in power_dict.items()]
 
-    for tile_content in power_dict.values():
+    for keyword in ["MemCore", "SB", "CB", "PE", "Other", "PondCore", "total"]:
+        return_dict[keyword] = 0
+    for k, tile_content in power_dict.items():
         for keyword in ["MemCore", "SB", "CB", "PE", "Other", "PondCore"]:
-            if tile_content.get(keyword) is not None:
-                if return_dict.get(keyword) is not None:
-                    return_dict[keyword] += tile_content[keyword]
-                else:
-                    return_dict[keyword] = tile_content[keyword]
+            if tile_content.get(keyword) is not None: 
+                return_dict[keyword] += tile_content[keyword]
+                return_dict["total"] += tile_content[keyword]
+    print(return_dict)
     return power_dict, return_dict
 
 def exp_result(foldername, fence_width=32):
