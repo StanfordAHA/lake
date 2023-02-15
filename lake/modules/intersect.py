@@ -28,7 +28,8 @@ class Intersect(MemoryController):
                  add_clk_enable=True,
                  add_flush=False,
                  lift_config=False,
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 perf_debug=False):
 
         name_str = f"intersect_unit{'_w_crddrop' if use_merger else ''}"
         super().__init__(name=name_str, debug=True)
@@ -40,6 +41,7 @@ class Intersect(MemoryController):
         self.use_merger = use_merger
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
+        self.perf_debug = perf_debug
 
         # For compatibility with tile integration...
         self.total_sets = 0
@@ -219,6 +221,12 @@ class Intersect(MemoryController):
             tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i] & self._pos_in_fifo_eos_in[i] & self._pos_in_fifo_valid_in[i],
                                     clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             self.wire(self._eos_in_sticky[i], tmp_sticky)
+
+        if self.perf_debug:
+            self._start_signal = sticky_flag(self, kts.concat((*[self._coord_in_fifo_valid_in[i] for i in range(self.num_streams)])).r_or(),
+                                            name='start_indicator')
+
+            self.add_performance_indicator(self._start_signal)
 
         # Intermediates
         self._pos_cnt = self.var("pos_cnt", self.data_width,

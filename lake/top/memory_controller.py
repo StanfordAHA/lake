@@ -1,7 +1,7 @@
 from lake.top.memory_interface import MemoryPort, MemoryPortExclusionAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
-from kratos.generator import PortDirection
+from kratos.generator import PortDirection, InitialCodeBlock
 import _kratos
 import math
 
@@ -112,6 +112,16 @@ class MemoryController(kts.Generator):
                 if local_result is not None:
                     return local_result
             return None
+
+    def add_performance_indicator(self, signal, edge='posedge'):
+
+        # Create inital block...
+        ib = InitialCodeBlock(self)
+
+        raw_stmt = kts.RawStringStmt('// balls')
+        ib.add_stmt(raw_stmt)
+
+        self.add_code(ib)
 
     def get_port(self, name):
         int_gen = self.internal_generator
