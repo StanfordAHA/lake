@@ -378,16 +378,16 @@ if __name__ == "__main__":
     # strg_ub = StrgUBVec(data_width=16,
     #                     mem_width=64,
     #                     mem_depth=512)
-    fiber_access = FiberAccess(data_width=16,
-                                local_memory=False,
-                                tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
-                                defer_fifos=True)
-    buffet = BuffetLike(data_width=16, mem_depth=mem_depth, local_memory=False,
-                        tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
-                        mem_width=mem_width,
-                        defer_fifos=True,
-                        optimize_wide=True,
-                        add_flush=False)
+    # fiber_access = FiberAccess(data_width=16,
+    #                             local_memory=False,
+    #                             tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
+    #                             defer_fifos=True)
+    # buffet = BuffetLike(data_width=16, mem_depth=mem_depth, local_memory=False,
+    #                     tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
+    #                     mem_width=mem_width,
+    #                     defer_fifos=True,
+    #                     optimize_wide=True,
+    #                     add_flush=False)
     strg_ram = StrgRAM(data_width=16,
                         banks=1,
                         memory_width=mem_width,

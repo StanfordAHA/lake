@@ -29,7 +29,7 @@ class Intersect(MemoryController):
                  add_flush=False,
                  lift_config=False,
                  defer_fifos=True,
-                 perf_debug=False):
+                 perf_debug=True):
 
         name_str = f"intersect_unit{'_w_crddrop' if use_merger else ''}"
         super().__init__(name=name_str, debug=True)

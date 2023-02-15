@@ -196,6 +196,10 @@ class Reg(MemoryController):
 # ACCUM FSM
 # =============================
 
+        self._set_accum_happened = self.var("set_accum_happened", 1)
+        self._clr_accum_happened = self.var("clr_accum_happened", 1)
+        self._accum_happened = sticky_flag(self, self._set_accum_happened, clear=self._clr_accum_happened, name='accum_happened_reg')
+
         self._reg_clr = self.var("reg_clr", 1)
         self._reg_accum = self.var("reg_accum", 1)
 
@@ -226,6 +230,8 @@ class Reg(MemoryController):
         self.accum_fsm.output(self._outfifo_in_eos)
         self.accum_fsm.output(self._set_once_popped)
         self.accum_fsm.output(self._clr_once_popped)
+        self.accum_fsm.output(self._set_accum_happened)
+        self.accum_fsm.output(self._clr_accum_happened)
 
         # State Transitions
 
@@ -245,7 +251,8 @@ class Reg(MemoryController):
         ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
         ACCUM.next(ACCUM, None)
 
-        OUTPUT.next(STOP_PASS, ~self._outfifo_full)
+        # OUTPUT.next(STOP_PASS, ~self._outfifo_full)
+        OUTPUT.next(STOP_PASS, ~self._outfifo_full | ~self._accum_happened)
         OUTPUT.next(OUTPUT, None)
 
         # Basically pass through until we get a new valid data...otherwise we are technically done
@@ -275,6 +282,8 @@ class Reg(MemoryController):
         START.output(self._outfifo_in_eos, 0)
         START.output(self._set_once_popped, 0)
         START.output(self._clr_once_popped, 0)
+        START.output(self._set_accum_happened, 0)
+        START.output(self._clr_accum_happened, 0)
 
         #############
         # ACCUM
@@ -289,6 +298,8 @@ class Reg(MemoryController):
         ACCUM.output(self._outfifo_in_eos, 0)
         ACCUM.output(self._set_once_popped, 0)
         ACCUM.output(self._clr_once_popped, 0)
+        ACCUM.output(self._set_accum_happened, self._infifo_out_valid & ~self._infifo_out_eos)
+        ACCUM.output(self._clr_accum_happened, 0)
 
         #############
         # OUTPUT
@@ -298,7 +309,8 @@ class Reg(MemoryController):
         # TODO: Merge states with ACCUM
         # OUTPUT.output(self._infifo_pop, ~self._stop_lvl_sticky)
         OUTPUT.output(self._infifo_pop, 0)
-        OUTPUT.output(self._outfifo_push, ~self._outfifo_full)
+        # OUTPUT.output(self._outfifo_push, ~self._outfifo_full)
+        OUTPUT.output(self._outfifo_push, ~self._outfifo_full & self._accum_happened)
         OUTPUT.output(self._reg_clr, 0)
         OUTPUT.output(self._reg_accum, 0)
         OUTPUT.output(self._data_to_fifo, self._accum_reg)
@@ -306,6 +318,8 @@ class Reg(MemoryController):
         # OUTPUT.output(self._set_once_popped, ~self._stop_lvl_sticky)
         OUTPUT.output(self._set_once_popped, 0)
         OUTPUT.output(self._clr_once_popped, 0)
+        OUTPUT.output(self._set_accum_happened, 0)
+        OUTPUT.output(self._clr_accum_happened, 0)
 
         #############
         # STOP_PASS - Deal with full output...
@@ -326,6 +340,8 @@ class Reg(MemoryController):
         STOP_PASS.output(self._outfifo_in_eos, 1)
         STOP_PASS.output(self._set_once_popped, 0)
         STOP_PASS.output(self._clr_once_popped, 1)
+        STOP_PASS.output(self._set_accum_happened, 0)
+        STOP_PASS.output(self._clr_accum_happened, 1)
 
         #############
         # DONE
@@ -341,6 +357,8 @@ class Reg(MemoryController):
         DONE.output(self._outfifo_in_eos, self._infifo_out_eos)
         DONE.output(self._set_once_popped, 0)
         DONE.output(self._clr_once_popped, 1)
+        DONE.output(self._set_accum_happened, 0)
+        DONE.output(self._clr_accum_happened, 1)
 
         # self._data_written = self.var("data_written", 1)
         # self.wire(self._valid_out, self._data_written | self._write_en)
