@@ -118,7 +118,7 @@ class MemoryController(kts.Generator):
         # Create inital block...
         ib = InitialCodeBlock(self)
 
-        raw_stmt = kts.RawStringStmt('// balls')
+        raw_stmt = kts.RawStringStmt('// benign')
         ib.add_stmt(raw_stmt)
 
         self.add_code(ib)
