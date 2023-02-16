@@ -20,7 +20,8 @@ class ScannerPipe(MemoryController):
                  add_clk_enable=False,
                  add_flush=False,
                  lift_config=False,
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 perf_debug=False):
 
         self.data_width = data_width
         self.add_clk_enable = add_clk_enable
@@ -28,6 +29,7 @@ class ScannerPipe(MemoryController):
         self.fifo_depth = fifo_depth
         self.lift_config = lift_config
         self.defer_fifos = defer_fifos
+        self.perf_debug = perf_debug
 
         name_base = "scanner_pipe"
         if self.add_clk_enable:
@@ -35,7 +37,7 @@ class ScannerPipe(MemoryController):
         if self.add_flush:
             name_base = f"{name_base}_w_flush"
 
-        super().__init__(name_base, debug=True)
+        super().__init__(name_base, debug=False)
 
         self.total_sets = 0
 
@@ -1963,7 +1965,8 @@ if __name__ == "__main__":
                               defer_fifos=False,
                               lift_config=True,
                               add_flush=True,
-                              add_clk_enable=True)
+                              add_clk_enable=True,
+                              perf_debug=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

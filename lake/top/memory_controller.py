@@ -118,7 +118,7 @@ class MemoryController(kts.Generator):
         # assert cycle_count is not None
 
         # Create inital block...
-        ib = InitialCodeBlock(self)
+        ib = self.initial()
 
         if edge == 'posedge':
             raw_text_posedge = f'// benign\nval = 0;\nwhile(val == 0) begin\nval = {signal.name};\nend\n$display(%m_{label}_%d, {cycle_count.name});\n'
