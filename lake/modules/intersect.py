@@ -12,6 +12,7 @@ from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
 from enum import Enum, unique
+from lake.utils.util import add_counter
 
 
 @unique
@@ -223,10 +224,19 @@ class Intersect(MemoryController):
             self.wire(self._eos_in_sticky[i], tmp_sticky)
 
         if self.perf_debug:
-            self._start_signal = sticky_flag(self, kts.concat((*[self._coord_in_fifo_valid_in[i] for i in range(self.num_streams)])).r_or(),
-                                            name='start_indicator')
 
-            self.add_performance_indicator(self._start_signal)
+            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
+
+            # Start when any of the coord inputs is valid
+            self._start_signal = sticky_flag(self, kts.concat((*[self._coord_in_fifo_valid_in[i] for i in range(self.num_streams)])).r_or(),
+                                             name='start_indicator')
+            self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
+
+            # End when we see DONE on the output ref signal
+            self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) &
+                                                    self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
+                                                    name='done_indicator')
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 
         # Intermediates
         self._pos_cnt = self.var("pos_cnt", self.data_width,

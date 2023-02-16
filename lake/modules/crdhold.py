@@ -4,7 +4,7 @@ import kratos as kts
 from kratos import *
 from lake.attributes.shared_fifo_attr import SharedFifoAttr
 from lake.passes.passes import lift_config_reg
-from lake.utils.util import sticky_flag, trim_config_list
+from lake.utils.util import sticky_flag, trim_config_list, add_counter
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.top.memory_controller import MemoryController
@@ -20,7 +20,8 @@ class CrdHold(MemoryController):
                  add_clk_enable=True,
                  add_flush=False,
                  lift_config=False,
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 perf_debug=False):
 
         name_str = f"crdhold"
         super().__init__(name=name_str, debug=True)
@@ -31,6 +32,7 @@ class CrdHold(MemoryController):
         self.lift_config = lift_config
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
+        self.perf_debug = perf_debug
 
         # For compatibility with tile integration...
         self.total_sets = 0
@@ -151,6 +153,21 @@ class CrdHold(MemoryController):
             self._cmrg_coord_in_ready_out.append(tmp_cmrg_coord_in_ready_out)
             self._cmrg_coord_in_valid_in.append(tmp_cmrg_coord_in_valid_in)
             self._cmrg_coord_in_eos_in.append(tmp_cmrg_coord_in_eos_in)
+
+        if self.perf_debug:
+
+            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
+
+            # Start when any of the coord inputs is valid
+            self._start_signal = sticky_flag(self, kts.concat((*[self._cmrg_coord_in_valid_in[i] for i in range(2)])).r_or(),
+                                             name='start_indicator')
+            self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
+
+            # End when we see DONE on the output coord
+            self._done_signal = sticky_flag(self, (self._cmrg_coord_out[0] == MemoryController.DONE_PROXY) &
+                                                    self._cmrg_coord_out_valid_out[0],
+                                                    name='done_indicator')
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 
         ####
         self._cmrg_fifo_push = self.var("cmrg_fifo_push", 2)

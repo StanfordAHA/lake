@@ -234,6 +234,21 @@ class ScannerPipe(MemoryController):
         self._upstream_ready_out = self.output("us_pos_in_ready", 1)
         self._upstream_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
+        if self.perf_debug:
+
+            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
+
+            # Start when any of the coord inputs is valid
+            self._start_signal = sticky_flag(self, self._upstream_valid_in,
+                                             name='start_indicator')
+            self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
+
+            # End when we see DONE on the output ref signal
+            self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) &
+                                                    self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
+                                                    name='done_indicator')
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
+
         # For input streams, need coord_in, valid_in, eos_in
         self._infifo_pos_in = self.var("infifo_pos_in", self.data_width, packed=True)
         # self._infifo_coord_in = self.var("infifo_coord_in", self.data_width)
