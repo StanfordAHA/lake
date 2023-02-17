@@ -228,7 +228,8 @@ class Intersect(MemoryController):
             cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
 
             # Start when any of the coord inputs is valid
-            self._start_signal = sticky_flag(self, kts.concat((*[self._coord_in_fifo_valid_in[i] for i in range(self.num_streams)])).r_or(),
+            # self._start_signal = sticky_flag(self, kts.concat((*[self._coord_in_fifo_valid_in[i] for i in range(self.num_streams)])).r_or(),
+            self._start_signal = sticky_flag(self, self._coord_in_fifo_valid_in[0],
                                              name='start_indicator')
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
