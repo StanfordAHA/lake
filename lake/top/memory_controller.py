@@ -115,9 +115,8 @@ class MemoryController(kts.Generator):
 
     def add_performance_indicator(self, signal, edge='posedge', label='start', cycle_count=None):
 
-        # assert cycle_count is not None
-        self.add_stmt(kts.RawStringStmt('logic val;'))
-        # val = self.var('val', 1)
+        assert cycle_count is not None
+        self.add_stmt(kts.RawStringStmt('logic val;').stmt())
 
         # Create inital block...
         ib = self.initial()
