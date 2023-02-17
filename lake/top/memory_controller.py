@@ -121,7 +121,7 @@ class MemoryController(kts.Generator):
         ib = self.initial()
 
         if edge == 'posedge':
-            raw_text_posedge = f'// benign\nval = 0;\nwhile(val == 0) begin\nval = {signal.name};\nend\n$display(%m_{label}_%d, {cycle_count.name});\n'
+            raw_text_posedge = f'// benign\nval = 0;\nwhile(val == 0) begin\nval = {signal.name};\nend\n$display(\"%m_{label}_%d\", {cycle_count.name});\n'
         else:
             raw_text_posedge = ''
 
