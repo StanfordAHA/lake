@@ -128,8 +128,6 @@ class MemoryController(kts.Generator):
         raw_stmt = kts.RawStringStmt(raw_text_posedge)
         ib.add_stmt(raw_stmt)
 
-        self.add_code(ib)
-
     def get_port(self, name):
         int_gen = self.internal_generator
         ret_port = int_gen.get_port(name)
