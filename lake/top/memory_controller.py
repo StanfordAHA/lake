@@ -31,6 +31,7 @@ class MemoryController(kts.Generator):
                  exclusive: bool = False):
         super().__init__(name, debug, is_clone, internal_generator)
         self.exclusive = exclusive
+        self.num_perf_ctrs = 0
 
     def get_exclusive(self):
         return self.exclusive
@@ -116,18 +117,23 @@ class MemoryController(kts.Generator):
     def add_performance_indicator(self, signal, edge='posedge', label='start', cycle_count=None):
 
         assert cycle_count is not None
-        self.add_stmt(kts.RawStringStmt('logic val;').stmt())
+
+        val_ = f'val_{self.num_perf_ctrs}'
+
+        self.add_stmt(kts.RawStringStmt(f'logic {val_};').stmt())
 
         # Create inital block...
         ib = self.initial()
 
         if edge == 'posedge':
-            raw_text_posedge = f'// benign\n$display(\"%m\");\nval = 0;\nwhile(val == 0) begin\nval = {signal.name};\nend\n$display(\"%m_{label}_%d\", {cycle_count.name});\n'
+            raw_text_posedge = f'// benign\n{val_} = 0;\n@(posedge flush)\nwhile({val_} == 0) begin\n@(posedge clk);\n{val_} = {signal.name};\nend\n$display(\"%m_{label}_%d\", {cycle_count.name});\n'
         else:
             raw_text_posedge = ''
 
         raw_stmt = kts.RawStringStmt(raw_text_posedge)
         ib.add_stmt(raw_stmt)
+
+        self.num_perf_ctrs += 1
 
 
     def get_port(self, name):

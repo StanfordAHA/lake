@@ -20,7 +20,7 @@ class WriteScanner(MemoryController):
                  fifo_depth=8,
                  defer_fifos=True,
                  add_flush=False,
-                 perf_debug=False):
+                 perf_debug=True):
 
         super().__init__("write_scanner", debug=True)
 
@@ -156,21 +156,6 @@ class WriteScanner(MemoryController):
 
         # self._inner_dim_offset = self.input("inner_dim_offset", 16)
         # self._inner_dim_offset.add_attribute(ConfigRegAttr("Memory address of the inner level..."))
-
-        if self.perf_debug:
-
-            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
-
-            # Start when any of the coord inputs is valid
-            self._start_signal = sticky_flag(self, self._data_in_valid_in,
-                                             name='start_indicator')
-            self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
-
-            # End when we see DONE on the output ref signal
-            self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) &
-                                                    self._data_out[MemoryController.EOS_BIT] & self._data_out_valid_out,
-                                                    name='done_indicator')
-            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 
         self._block_mode = self.input("block_mode", 1)
         self._block_mode.add_attribute(ConfigRegAttr("Block Writes or Not"))
@@ -1166,6 +1151,21 @@ class WriteScanner(MemoryController):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
+        if self.perf_debug:
+
+            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
+
+            # Start when any of the coord inputs is valid
+            self._start_signal = sticky_flag(self, self._data_in_valid_in,
+                                             name='start_indicator')
+            self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
+
+            # End when we see DONE on the output ref signal
+            self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) &
+                                                    self._data_out[MemoryController.EOS_BIT] & self._data_out_valid_out,
+                                                    name='done_indicator')
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
+
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 
@@ -1207,7 +1207,8 @@ class WriteScanner(MemoryController):
 
 
 if __name__ == "__main__":
-    scanner_dut = WriteScanner(data_width=16, defer_fifos=False)
+    scanner_dut = WriteScanner(data_width=16, defer_fifos=False,
+                               perf_debug=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

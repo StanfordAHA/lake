@@ -20,7 +20,7 @@ class RepeatSignalGenerator(MemoryController):
                  fifo_depth=8,
                  defer_fifos=True,
                  add_flush=False,
-                 perf_debug=False):
+                 perf_debug=True):
 
         super().__init__("RepeatSignalGenerator", debug=True)
 
@@ -363,7 +363,7 @@ class RepeatSignalGenerator(MemoryController):
 
 if __name__ == "__main__":
 
-    rsg_dut = RepeatSignalGenerator(data_width=16, passthru=True)
+    rsg_dut = RepeatSignalGenerator(data_width=16, passthru=True, defer_fifos=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

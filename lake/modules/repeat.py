@@ -19,7 +19,7 @@ class Repeat(MemoryController):
                  fifo_depth=8,
                  defer_fifos=True,
                  add_flush=False,
-                 perf_debug=False):
+                 perf_debug=True):
 
         super().__init__("Repeat", debug=True)
 

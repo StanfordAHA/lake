@@ -25,7 +25,7 @@ class OnyxPE(MemoryController):
                  pe_ro=True,
                  do_config_lift=False,
                  add_flush=False,
-                 perf_debug=False):
+                 perf_debug=True):
 
         super().__init__("PE_onyx", debug=True)
 
