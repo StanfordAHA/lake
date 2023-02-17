@@ -135,7 +135,6 @@ class MemoryController(kts.Generator):
 
         self.num_perf_ctrs += 1
 
-
     def get_port(self, name):
         int_gen = self.internal_generator
         ret_port = int_gen.get_port(name)
