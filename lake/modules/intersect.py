@@ -33,7 +33,7 @@ class Intersect(MemoryController):
                  perf_debug=True):
 
         name_str = f"intersect_unit{'_w_crddrop' if use_merger else ''}"
-        super().__init__(name=name_str, debug=False)
+        super().__init__(name=name_str, debug=True)
 
         self.data_width = data_width
         self.add_clk_enable = add_clk_enable

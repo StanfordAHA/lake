@@ -37,7 +37,7 @@ class ScannerPipe(MemoryController):
         if self.add_flush:
             name_base = f"{name_base}_w_flush"
 
-        super().__init__(name_base, debug=False)
+        super().__init__(name_base, debug=True)
 
         self.total_sets = 0
 
