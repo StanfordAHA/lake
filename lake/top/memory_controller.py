@@ -116,17 +116,20 @@ class MemoryController(kts.Generator):
     def add_performance_indicator(self, signal, edge='posedge', label='start', cycle_count=None):
 
         # assert cycle_count is not None
+        self.add_stmt(kts.RawStringStmt('logic val;'))
+        # val = self.var('val', 1)
 
         # Create inital block...
         ib = self.initial()
 
         if edge == 'posedge':
-            raw_text_posedge = f'// benign\nval = 0;\nwhile(val == 0) begin\nval = {signal.name};\nend\n$display(\"%m_{label}_%d\", {cycle_count.name});\n'
+            raw_text_posedge = f'// benign\n$display(\"%m\");\nval = 0;\nwhile(val == 0) begin\nval = {signal.name};\nend\n$display(\"%m_{label}_%d\", {cycle_count.name});\n'
         else:
             raw_text_posedge = ''
 
         raw_stmt = kts.RawStringStmt(raw_text_posedge)
         ib.add_stmt(raw_stmt)
+
 
     def get_port(self, name):
         int_gen = self.internal_generator

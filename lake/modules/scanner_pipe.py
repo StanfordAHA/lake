@@ -1966,7 +1966,7 @@ if __name__ == "__main__":
                               lift_config=True,
                               add_flush=True,
                               add_clk_enable=True,
-                              perf_debug=True)
+                              perf_debug=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
