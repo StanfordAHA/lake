@@ -450,12 +450,12 @@ class StrgUBVec(MemoryController):
 
                     if os.path.isfile(in_path):
                         if "in2agg" in c:
-                            controller_objs[i] = map_controller(extract_controller(in_path), c, flatten=self.area_opt, linear_ag=linearize_data_stride)
+                            controller_objs[i] = map_controller(extract_controller(in_path), c, flatten=self.area_opt, range_bw=self.reduced_id_config_width, linear_ag=linearize_data_stride)
                         else:
                             controller_objs[i] = map_controller(extract_controller(in_path), c, flatten=False, linear_ag=linearize_data_stride)
                     elif os.path.isfile(out_path):
                         if "in2agg" in c:
-                            controller_objs[i] = map_controller(extract_controller(in_path), c, flatten=self.area_opt, linear_ag=linearize_data_stride)
+                            controller_objs[i] = map_controller(extract_controller(in_path), c, flatten=self.area_opt, range_bw=self.reduced_id_config_width, linear_ag=linearize_data_stride)
                         else:
                             controller_objs[i] = map_controller(extract_controller(out_path), c, flatten=False, linear_ag=linearize_data_stride)
                     else:
@@ -712,7 +712,7 @@ class StrgUBVec(MemoryController):
             config.append(("chain_chain_en", 1))
 
         if "in2agg_0" in config_json:
-            in2agg_0 = map_controller(extract_controller_json(config_json["in2agg_0"]), "in2agg_0", flatten=self.area_opt, linear_ag=linearize_data_stride)
+            in2agg_0 = map_controller(extract_controller_json(config_json["in2agg_0"]), "in2agg_0", flatten=self.area_opt, range_bw=self.reduced_id_config_width, linear_ag=linearize_data_stride)
             config.append(("agg_only_agg_write_addr_gen_0_starting_addr", in2agg_0.in_data_strt))
             config.append(("agg_only_agg_write_sched_gen_0_enable", 1))
             config.append(("agg_only_agg_write_sched_gen_0_sched_addr_gen_starting_addr", in2agg_0.cyc_strt))
@@ -727,7 +727,7 @@ class StrgUBVec(MemoryController):
                 config.append((f"agg_only_agg_write_sched_gen_0_sched_addr_gen_strides_{i}", in2agg_0.cyc_stride[i]))
 
         if "in2agg_1" in config_json:
-            in2agg_1 = map_controller(extract_controller_json(config_json["in2agg_1"]), "in2agg_1", flatten=self.area_opt, linear_ag=linearize_data_stride)
+            in2agg_1 = map_controller(extract_controller_json(config_json["in2agg_1"]), "in2agg_1", flatten=self.area_opt, range_bw=self.reduced_id_config_width, linear_ag=linearize_data_stride)
             config.append(("agg_only_agg_write_addr_gen_1_starting_addr", in2agg_1.in_data_strt))
             config.append(("agg_only_agg_write_sched_gen_1_enable", 1))
             config.append(("agg_only_agg_write_sched_gen_1_sched_addr_gen_starting_addr", in2agg_1.cyc_strt))
