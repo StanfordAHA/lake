@@ -427,17 +427,17 @@ class StrgUBVec(MemoryController):
                         return False
                 return True
 
-            if "agg2sram_0" in config_json:
-                if config_json["agg2sram_0"]["mode"][0] == 0:
-                    linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
-                    linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
-                    if not linear_agg_read or not linear_sram_read:
-                        linearize_data_stride = True
-                    if (linearize_data_stride):
-                        print("linearization is true")
-                        print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
-                        print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
-                        print("original extent", config_json["agg2sram_0"]["extent"])
+            # if "agg2sram_0" in config_json:
+            #     if config_json["agg2sram_0"]["mode"][0] == 0:
+            #         linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
+            #         linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
+            #         if not linear_agg_read or not linear_sram_read:
+            #             linearize_data_stride = True
+            #         if (linearize_data_stride):
+            #             print("linearization is true")
+            #             print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
+            #             print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
+            #             print("original extent", config_json["agg2sram_0"]["extent"])
 
             if linearize_data_stride:
                 for i in range(len(controllers)):
@@ -687,17 +687,17 @@ class StrgUBVec(MemoryController):
                         return False
                 return True
 
-            if "agg2sram_0" in config_json:
-                if config_json["agg2sram_0"]["mode"][0] == 0:
-                    linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
-                    linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
-                    if not linear_agg_read or not linear_sram_read:
-                        linearize_data_stride = True
-                    if (linearize_data_stride):
-                        print("linearization is true")
-                        print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
-                        print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
-                        print("original extent", config_json["agg2sram_0"]["extent"])
+            # if "agg2sram_0" in config_json:
+            #     if config_json["agg2sram_0"]["mode"][0] == 0:
+            #         linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
+            #         linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
+            #         if not linear_agg_read or not linear_sram_read:
+            #             linearize_data_stride = True
+            #         if (linearize_data_stride):
+            #             print("linearization is true")
+            #             print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
+            #             print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
+            #             print("original extent", config_json["agg2sram_0"]["extent"])
 
         # Store all configurations here
         config = []
