@@ -435,6 +435,8 @@ class WriteScanner(MemoryController):
 
         self._ID_curr = self.var("ID_curr", self.data_width)
 
+        self._in_done = self.var("IN_DONE", 1)
+
         # Create FSM
         self.scan_fsm = self.add_fsm("scan_seq", reset_high=False)
         START = self.scan_fsm.add_state("START")
@@ -651,6 +653,7 @@ class WriteScanner(MemoryController):
         self.scan_fsm.output(self._set_blank_done, default=kts.const(0, 1))
         self.scan_fsm.output(self._clr_blank_done, default=kts.const(0, 1))
         self.scan_fsm.output(self._pop_block_wr, default=kts.const(0, 1))
+        self.scan_fsm.output(self._in_done, default=kts.const(0, 1))
 
         #######
         # START - TODO - Generate general hardware...
@@ -1128,6 +1131,7 @@ class WriteScanner(MemoryController):
         # JK we should clear the blank done when we get the appropriate stop token in.
         # DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._data_done_in & self._spacc_mode)
         DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._stop_lvl_geq_p1_sticky & self._spacc_mode)
+        DONE.output(self._in_done, 1)
 
         self.scan_fsm.set_start_state(START)
 
@@ -1155,16 +1159,27 @@ class WriteScanner(MemoryController):
 
             cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
 
+            # Count up how many
+            mem_request_ctr = add_counter(self, 'mem_request_num', 64,
+                                          increment=self._clk_en & self._data_out_fifo_push & ~self._data_out_fifo_full)
+
             # Start when any of the coord inputs is valid
             self._start_signal = sticky_flag(self, self._data_in_valid_in,
                                              name='start_indicator')
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output ref signal
-            self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) &
-                                                    self._data_out[MemoryController.EOS_BIT] & self._data_out_valid_out,
-                                                    name='done_indicator')
-            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
+            self._done_signal = sticky_flag(self, self._in_done,
+                                            name='done_indicator')
+            # self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) &
+            #                                         self._data_out[MemoryController.EOS_BIT] & self._data_out_valid_out,
+            #                                         name='done_indicator')
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='done',
+                                           cycle_count=cyc_count)
+
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='ops',
+                                           cycle_count=mem_request_ctr)
+
 
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)

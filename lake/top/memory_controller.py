@@ -1,3 +1,4 @@
+from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.top.memory_interface import MemoryPort, MemoryPortExclusionAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
@@ -28,13 +29,21 @@ class MemoryController(kts.Generator):
                  debug: bool = False,
                  is_clone: bool = False,
                  internal_generator=None,
-                 exclusive: bool = False):
+                 exclusive: bool = False,
+                 add_flush=False):
         super().__init__(name, debug, is_clone, internal_generator)
         self.exclusive = exclusive
         self.num_perf_ctrs = 0
+        self.add_flush = add_flush
 
     def get_exclusive(self):
         return self.exclusive
+
+    def add_flush_pass(self):
+        self.add_attribute("sync-reset=flush")
+        kts.passes.auto_insert_sync_reset(self.internal_generator)
+        flush_port = self.internal_generator.get_port("flush")
+        flush_port.add_attribute(ControlSignalAttr(True))
 
     def set_bit(self, old_val, bit_to_set, new_bit):
         new_val = old_val | (new_bit << bit_to_set)

@@ -41,10 +41,11 @@ class StrgUBThin(MemoryController):
                  reduced_id_config_width=11,
                  name_suffix="",
                  delay_width=4,
-                 iterator_support2=2  # assumes that this port has smaller iter_support
+                 iterator_support2=2,  # assumes that this port has smaller iter_support
+                 add_flush=False
                  ):
 
-        super().__init__(f"strg_ub_thin{name_suffix}", debug=True)
+        super().__init__(f"strg_ub_thin{name_suffix}", debug=True, add_flush=add_flush)
 
         assert mem_width == data_width, f"This module should only be used when the fetch width is 1!"
 
@@ -554,6 +555,9 @@ class StrgUBThin(MemoryController):
             rw_port.annotate_port_signals()
             self.base_ports[0][0] = rw_port
 
+        if self.add_flush:
+            self.add_flush_pass()
+
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def delay_read(self):
         if ~self._rst_n:
@@ -663,7 +667,10 @@ class StrgUBThin(MemoryController):
 
 
 if __name__ == "__main__":
-    lake_dut = StrgUBThin()
+    lake_dut = StrgUBThin(read_delay=0, rw_same_cycle=True,
+                          area_opt=False,
+                          area_opt_dual_config=False,
+                          add_flush=True)
     verilog(lake_dut, filename="strg_ub_thin.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})

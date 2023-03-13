@@ -85,6 +85,11 @@ class Arbiter(Generator):
                     self._grant_line = 1
                 else:
                     self._grant_line = kts.concat(self._grant_line[self.ins - 2, 0], self._grant_line[self.ins - 1])
+        elif self.algo == "PRIO":
+            @always_comb
+            def grant_line_ff(self):
+                # self._grant_line = kts.ternary(self._request_in[0], kts.const(1, self.ins), kts.const(2, self.ins))
+                self._grant_line = kts.ternary(self._request_in[1], kts.const(2, self.ins), kts.const(1, self.ins))
         else:
             raise RuntimeError("No supported algorithm for arbiter...")
         self.add_code(grant_line_ff)
