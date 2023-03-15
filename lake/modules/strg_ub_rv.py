@@ -66,16 +66,12 @@ class StrgUBRV(MemoryController):
         self._ready_out = []
         self._data_in = []
         for i in range(self.interconnect_input_ports):
-            tmp_valid_in = self.input(f"valid_in_{i}", 1)
-            tmp_ready_out = self.output(f"ready_out_{i}", 1)
+            tmp_valid_in = self.input(f"data_in_{i}_valid", 1)
+            tmp_ready_out = self.output(f"data_in_{i}_ready", 1)
             tmp_data_in = self.input(f"data_in_{i}", self.data_width + 1)
-            # tmp_valid_in = self.input(f"data_in_{i}_valid", 1)
-            # tmp_ready_out = self.output(f"data_in_{i}_ready", 1)
-            # tmp_data_in = self.input(f"data_in_{i}", self.data_width + 1)
             tmp_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-            tmp_ready_out.add_attribute(ControlSignalAttr(is_control=True))
+            tmp_ready_out.add_attribute(ControlSignalAttr(is_control=False))
             tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-            # tmp_data_in.add_attribute(HybridPortAddr())
 
             self._valid_in.append(tmp_valid_in)
             self._ready_out.append(tmp_ready_out)
@@ -85,16 +81,12 @@ class StrgUBRV(MemoryController):
         self._ready_in = []
         self._data_out = []
         for i in range(self.interconnect_output_ports):
-            tmp_valid_out = self.output(f"valid_out_{i}", 1)
-            tmp_ready_in = self.input(f"ready_in_{i}", 1)
+            tmp_valid_out = self.output(f"data_out_{i}_valid", 1)
+            tmp_ready_in = self.input(f"data_out_{i}_ready", 1)
             tmp_data_out = self.output(f"data_out_{i}", self.data_width + 1)
-            # tmp_valid_out = self.output(f"data_out_{i}_valid", 1)
-            # tmp_ready_in = self.input(f"data_out_{i}_ready", 1)
-            # tmp_data_out = self.output(f"data_out_{i}", self.data_width + 1)
             tmp_valid_out.add_attribute(ControlSignalAttr(is_control=False))
-            tmp_ready_in.add_attribute(ControlSignalAttr(is_control=False))
+            tmp_ready_in.add_attribute(ControlSignalAttr(is_control=True))
             tmp_data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-            # tmp_data_out.add_attribute(HybridPortAddr())
 
             self._valid_out.append(tmp_valid_out)
             self._ready_in.append(tmp_ready_in)

@@ -264,6 +264,8 @@ class MemoryController(kts.Generator):
 
                 assigned_to = actual_sink.left
                 assigned_to_gen = assigned_to.generator
+                if assigned_to_gen.def_instance == None:
+                    break
                 if assigned_to_gen.instance_name != use_gen.instance_name:
                     atg = use_gen[assigned_to_gen.instance_name]
                 # Make sure we are connecting to a signal in a new generator
@@ -312,6 +314,8 @@ class MemoryController(kts.Generator):
 
                 assigned_to = actual_src.right
                 assigned_to_gen = assigned_to.generator
+                if assigned_to_gen.def_instance == None:
+                    break
                 if assigned_to_gen.instance_name != use_gen.instance_name:
                     atg = use_gen[assigned_to_gen.instance_name]
                 # Make sure we are connecting to a signal in a new generator
