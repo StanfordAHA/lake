@@ -31,13 +31,15 @@ def find_first(generator, signal):
 
 class Arbiter(Generator):
     def __init__(self,
+                 add_flush=True,
                  ins=1,
-                 algo="RR"):
+                 algo="RR",
+                 add_clk_enable=True):
 
         super().__init__(f"arbiter_{ins}_in_{algo}_algo", debug=True)
 
-        self.add_clk_enable = True
-        self.add_flush = True
+        self.add_clk_enable = add_clk_enable
+        self.add_flush = add_flush
 
         self.total_sets = 0
 
@@ -49,7 +51,6 @@ class Arbiter(Generator):
         self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
         self._rst_n = self.reset("rst_n")
         self._rst_n.add_attribute(FormalAttr(f"{self._rst_n.name}", FormalSignalConstraint.RSTN))
-        self._clk_en = self.clock_en("clk_en", 1)
 
         # # Enable/Disable tile
         # self._tile_en = self.input("tile_en", 1)
@@ -78,7 +79,7 @@ class Arbiter(Generator):
             return
 
         # Algorithmically set grant line...
-        if self.algo == "RR":
+        if self.algo == "RR" or self.algo == "Rotating":
             @always_ff((posedge, self._clk), (negedge, self._rst_n))
             def grant_line_ff(self):
                 if ~self._rst_n:
@@ -98,13 +99,17 @@ class Arbiter(Generator):
         # This gives the index of the first request that is high
         first_request = find_first(self, self._request_in)
         for i in range(self.ins):
-            # If the resource is ready, the first requestor gets consolation prize by default
-            self.wire(self._grant_out_consolation[i], self._resource_ready & self._request_in[i] & (first_request == i))
-            # The final grant is given to the prioritized one, else we give to consolation
-            self.wire(self._grant_out[i], kts.ternary(self._grant_out_priority.r_or(), self._grant_out_priority[i], self._grant_out_consolation[i]))
+            if self.algo == "Rotating":
+                self.wire(self._grant_out[i], self._grant_out_priority[i])
+            else:
+                # If the resource is ready, the first requestor gets consolation prize by default
+                self.wire(self._grant_out_consolation[i], self._resource_ready & self._request_in[i] & (first_request == i))
+                # The final grant is given to the prioritized one, else we give to consolation
+                self.wire(self._grant_out[i], kts.ternary(self._grant_out_priority.r_or(), self._grant_out_priority[i], self._grant_out_consolation[i]))
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")
+            self._clk_en = self.clock_en("clk_en", 1)
             kts.passes.auto_insert_clock_enable(self.internal_generator)
             clk_en_port = self.internal_generator.get_port("clk_en")
             clk_en_port.add_attribute(ControlSignalAttr(False))

@@ -1,10 +1,14 @@
 import collections
 from lake.utils.util import transform_strides_and_ranges
 
-verbose_controller_info = False
+verbose_controller_info = True
 ControllerInfo = collections.namedtuple('ControllerInfo',
                                         'dim extent cyc_stride in_data_stride cyc_strt delay mode agg_read_padding \
                                             in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt tb_share')
+
+RVControllerInfo = collections.namedtuple('ControllerInfo',
+                                          'dim extent in_data_stride mode threshold threshold2 token_gen token_gen2\
+                                            in_data_strt out_data_stride out_data_strt')
 
 
 def search_for_config(cfg_file, key):
@@ -146,7 +150,6 @@ def map_controller(controller, name, flatten=False, linear_ag=False):
         print(f"out data start: {ctrl_out_data_strt}")
         print(f"mux data start: {ctrl_mux_data_strt}")
         print(f"mux data stride: {ctrl_mux_data_strides}")
-        print()
 
     if flatten:
         # flatten iteration domains if possible
@@ -294,5 +297,136 @@ def configure_controller(prefix="", name="", suffix="", controller=None):
                 config.append((f"{expand_name}_addr_gen_strides{suffix}_{i}", addr_stride))
                 config.append((f"{expand_name}_for_loop_ranges{suffix}_{i}", mapped_ctrl.extent[i]))
                 config.append((f"{expand_name}_sched_gen_sched_addr_gen_strides{suffix}_{i}", mapped_ctrl.cyc_stride[i]))
+
+    return config
+
+
+def extract_rv_controller_json(control_node):
+    mode = get_property(control_node, "mode")
+    threshold = get_property(control_node, "threshold")
+    token_gen = get_property(control_node, "token_gen")
+    threshold2 = get_property(control_node, "threshold2")
+    token_gen2 = get_property(control_node, "token_gen2")
+    dim = get_property(control_node, 'dimensionality')
+    ranges = get_property(control_node, 'extent')
+    in_data_strt = get_property(control_node, 'write_data_starting_addr')
+    if in_data_strt:
+        in_data_strt = in_data_strt[0]
+    in_data_strides = get_property(control_node, 'write_data_stride')
+    out_data_strt = get_property(control_node, 'read_data_starting_addr')
+    if out_data_strt:
+        out_data_strt = out_data_strt[0]
+    out_data_strides = get_property(control_node, 'read_data_stride')
+
+    ctrl_info = RVControllerInfo(dim=dim,
+                                 in_data_strt=in_data_strt,
+                                 extent=ranges,
+                                 in_data_stride=in_data_strides,
+                                 out_data_strt=out_data_strt,
+                                 out_data_stride=out_data_strides,
+                                 mode=mode,
+                                 threshold=threshold,
+                                 token_gen=token_gen,
+                                 threshold2=threshold2,
+                                 token_gen2=token_gen2)
+    return ctrl_info
+
+
+def map_rv_controller(controller, name):
+    ctrl_dim = controller.dim
+    ctrl_ranges = controller.extent
+    ctrl_in_data_strides = controller.in_data_stride
+    ctrl_in_data_strt = controller.in_data_strt
+    ctrl_out_data_strides = controller.out_data_stride
+    ctrl_out_data_strt = controller.out_data_strt
+    ctrl_mode = controller.mode
+    ctrl_threshold = controller.threshold
+    ctrl_token_gen = controller.token_gen
+    ctrl_threshold2 = controller.threshold2
+    ctrl_token_gen2 = controller.token_gen2
+
+    if verbose_controller_info:
+        print(f"extracted controller for: {name}")
+        print(f"dim: {ctrl_dim}")
+        print(f"range: {ctrl_ranges}")
+        print(f"threshold: {ctrl_threshold}")
+        print(f"in data stride: {ctrl_in_data_strides}")
+        print(f"in data start: {ctrl_in_data_strt}")
+        print(f"out data stride: {ctrl_out_data_strides}")
+        print(f"out data start: {ctrl_out_data_strt}")
+
+    # Now transforms ranges and strides
+    tform_in_data_strides = None
+    if ctrl_in_data_strt is not None:
+        (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
+
+    tform_out_data_strides = None
+    if ctrl_out_data_strt is not None:
+        (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
+
+    tform_threshold = None
+    if ctrl_threshold is not None:
+        tform_threshold = ctrl_threshold - 1
+
+    tform_threshold2 = None
+    if ctrl_threshold2 is not None:
+        tform_threshold2 = ctrl_threshold2 - 1
+
+    mapped_ctrl = RVControllerInfo(dim=ctrl_dim,
+                                   extent=tform_extent,
+                                   in_data_strt=ctrl_in_data_strt,
+                                   in_data_stride=tform_in_data_strides,
+                                   out_data_strt=ctrl_out_data_strt,
+                                   out_data_stride=tform_out_data_strides,
+                                   mode=ctrl_mode,
+                                   threshold=tform_threshold,
+                                   token_gen=ctrl_token_gen,
+                                   threshold2=tform_threshold2,
+                                   token_gen2=ctrl_token_gen2)
+
+    return mapped_ctrl
+
+
+def configure_rv_controller(prefix="", name="", suffix="", controller=None):
+    """[summary]
+
+    Args:
+        prefix ([string]): [prefix string used for prepending hierarchy]
+        name ([string]): [name of the controller to map]
+        prefix ([string]): [suffix string used for postpending dual configurations (for Pond)]
+        controller ([string]): [controller to map]
+
+    Returns:
+        [list]: [list of tuples of the form (config_variable, value)]
+    """
+    config = []
+
+    if controller is not None:
+        mapped_ctrl, out_n_in = controller
+        if mapped_ctrl is not None:
+            expand_name = prefix + name
+            strt_addr = 0
+            if out_n_in == 1:
+                strt_addr = mapped_ctrl.out_data_strt
+            else:
+                strt_addr = mapped_ctrl.in_data_strt
+
+            if mapped_ctrl.threshold is not None:
+                config.append((f"{expand_name}_threshold{suffix}", mapped_ctrl.threshold))
+                config.append((f"{expand_name}_token_gen{suffix}", mapped_ctrl.token_gen))
+            if mapped_ctrl.threshold2 is not None:
+                config.append((f"{expand_name}_threshold2{suffix}", mapped_ctrl.threshold2))
+                config.append((f"{expand_name}_token_gen2{suffix}", mapped_ctrl.token_gen2))
+            config.append((f"{expand_name}_id_dimensionality{suffix}", mapped_ctrl.dim))
+            config.append((f"{expand_name}_ag_starting_addr{suffix}", strt_addr))
+            # should still map stride/extent[0] when dimensionality is 0
+            for i in range(max(1, mapped_ctrl.dim)):
+                addr_stride = 0
+                if out_n_in == 1:
+                    addr_stride = mapped_ctrl.out_data_stride[i]
+                else:
+                    addr_stride = mapped_ctrl.in_data_stride[i]
+                config.append((f"{expand_name}_ag_strides{suffix}_{i}", addr_stride))
+                config.append((f"{expand_name}_id_ranges{suffix}_{i}", mapped_ctrl.extent[i]))
 
     return config
