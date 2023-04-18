@@ -12,12 +12,24 @@ class AddrGen(Generator):
     def __init__(self,
                  iterator_support=6,
                  config_width=16,
+                 get_window_base=False,
+                 get_window_base_dep=False,
+                 window_restart=False,
+                 share_starting_addr=False,
                  dual_config=False,
                  delay_addr=False,
                  delay_width=10,
                  iterator_support2=2):
 
         module_name = f"addr_gen_{iterator_support}_{config_width}"
+        if get_window_base:
+            module_name += "_gwb"
+        if get_window_base_dep:
+            module_name += "_dep"
+        if share_starting_addr:
+            module_name += "_ssa"
+        if window_restart:
+            module_name += "_wr"
         if dual_config:
             module_name += f"_dual_config_{iterator_support2}"
         if delay_addr:
@@ -27,6 +39,10 @@ class AddrGen(Generator):
         # Store local...
         self.iterator_support = iterator_support
         self.config_width = config_width
+        self.get_window_base = get_window_base
+        self.get_window_base_dep = get_window_base_dep
+        self.share_starting_addr = share_starting_addr
+        self.window_restart = window_restart
         self.dual_config = dual_config
         self.delay_addr = delay_addr
         self.delay_width = delay_width
@@ -55,8 +71,9 @@ class AddrGen(Generator):
         self._strides.add_attribute(FormalAttr(f"{self._strides.name}", FormalSignalConstraint.SOLVE))
 
         self._starting_addr = self.input("starting_addr", self.config_width)
-        self._starting_addr.add_attribute(ConfigRegAttr("Starting address of address generator"))
-        self._starting_addr.add_attribute(FormalAttr(f"{self._starting_addr.name}", FormalSignalConstraint.SOLVE))
+        if not self.share_starting_addr:
+            self._starting_addr.add_attribute(ConfigRegAttr("Starting address of address generator"))
+            self._starting_addr.add_attribute(FormalAttr(f"{self._starting_addr.name}", FormalSignalConstraint.SOLVE))
 
         if self.delay_addr:
             # delay configuration register
@@ -98,6 +115,7 @@ class AddrGen(Generator):
         # PORT DEFS: end
 
         # LOCAL VARIABLES: begin
+        self._flush_addr = self.var("flush_addr", self.config_width)
         self._strt_addr = self.var("strt_addr", self.config_width)
 
         self._calc_addr = self.var("calc_addr", self.config_width)
@@ -115,15 +133,19 @@ class AddrGen(Generator):
         # LOCAL VARIABLES: end
         # GENERATION LOGIC: begin
         if self.dual_config:
-            self._flush_addr = self.var("flush_addr", self.config_width)
             self._restart_addr = self.var("restart_addr", self.config_width)
             self.wire(self._mux_sel_msb, self._mux_sel[self._mux_sel.width - 1])
             self.wire(self._flush_addr, ternary(self._mux_sel_msb_init, self._starting_addr2, self._starting_addr))
             self.wire(self._strt_addr, ternary(self._mux_sel_msb, self._starting_addr2, self._starting_addr))
             self.wire(self._restart_addr, ternary(~self._mux_sel_msb, self._starting_addr2, self._starting_addr))
             self.wire(self._cur_stride, ternary(self._mux_sel_msb, self._strides2[self._mux_sel_iter2], self._strides[self._mux_sel_iter1]))
+        elif self.window_restart:
+            self._window_addr_i = self.input("window_addr_i", self.config_width)
+            self.wire(self._strt_addr, self._window_addr_i)
+            self.wire(self._flush_addr, self._starting_addr)
         else:
             self.wire(self._strt_addr, self._starting_addr)
+            self.wire(self._flush_addr, self._starting_addr)
         self.wire(self._addr_out, self._calc_addr)
 
         self._current_addr = self.var("current_addr", self.config_width)
@@ -136,15 +158,32 @@ class AddrGen(Generator):
         self.add_code(self.calculate_address)
         # GENERATION LOGIC: end
 
+        if self.get_window_base:
+            self._window_done = self.input("window_done", 1)
+            self._window_addr_o = self.output("window_addr_o", self.config_width)
+            if self.get_window_base_dep:
+                self._dep_i = self.input("dep_i", 1)
+
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
+            def rv_window_addr_ctrl():
+                if ~self._rst_n:
+                    self._window_addr_o = 0
+                elif self._flush:
+                    self._window_addr_o = self._starting_addr
+                elif self._window_done & self._step & ~self._restart:
+                    self._window_addr_o = self._current_addr
+                # elif self.get_window_base_dep:
+                #     if self._dep_i & self._restart:
+                #         self._window_addr_o = self._window_addr_i
+
+            self.add_code(rv_window_addr_ctrl)
+
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def calculate_address(self):
         if ~self._rst_n:
             self._current_addr = 0
         elif self._flush:
-            if self.dual_config:
-                self._current_addr = self._flush_addr
-            else:
-                self._current_addr = self._strt_addr
+            self._current_addr = self._flush_addr
         elif self._step:
             # mux_sel as 0 but update means that the machine is resetting.
             if self._restart:

@@ -7,7 +7,9 @@ ControllerInfo = collections.namedtuple('ControllerInfo',
                                             in_data_strt out_data_stride out_data_strt mux_data_stride mux_data_strt tb_share')
 
 RVControllerInfo = collections.namedtuple('ControllerInfo',
-                                          'dim extent in_data_stride mode threshold threshold2 token_gen token_gen2\
+                                          'dim extent in_data_stride mode \
+                                            threshold threshold2 token_gen token_gen2\
+                                            dep dual_dep\
                                             in_data_strt out_data_stride out_data_strt')
 
 
@@ -303,6 +305,8 @@ def configure_controller(prefix="", name="", suffix="", controller=None):
 
 def extract_rv_controller_json(control_node):
     mode = get_property(control_node, "mode")
+    dep = get_property(control_node, "dep")
+    dual_dep = get_property(control_node, "dual_dep")
     threshold = get_property(control_node, "threshold")
     token_gen = get_property(control_node, "token_gen")
     threshold2 = get_property(control_node, "threshold2")
@@ -325,6 +329,8 @@ def extract_rv_controller_json(control_node):
                                  out_data_strt=out_data_strt,
                                  out_data_stride=out_data_strides,
                                  mode=mode,
+                                 dep=dep,
+                                 dual_dep=dual_dep,
                                  threshold=threshold,
                                  token_gen=token_gen,
                                  threshold2=threshold2,
@@ -340,6 +346,8 @@ def map_rv_controller(controller, name):
     ctrl_out_data_strides = controller.out_data_stride
     ctrl_out_data_strt = controller.out_data_strt
     ctrl_mode = controller.mode
+    ctrl_dep = controller.dep
+    ctrl_dual_dep = controller.dual_dep
     ctrl_threshold = controller.threshold
     ctrl_token_gen = controller.token_gen
     ctrl_threshold2 = controller.threshold2
@@ -357,11 +365,11 @@ def map_rv_controller(controller, name):
 
     # Now transforms ranges and strides
     tform_in_data_strides = None
-    if ctrl_in_data_strt is not None:
+    if ctrl_in_data_strides is not None:
         (tform_extent, tform_in_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_in_data_strides, ctrl_dim)
 
     tform_out_data_strides = None
-    if ctrl_out_data_strt is not None:
+    if ctrl_out_data_strides is not None:
         (tform_extent, tform_out_data_strides) = transform_strides_and_ranges(ctrl_ranges, ctrl_out_data_strides, ctrl_dim)
 
     tform_threshold = None
@@ -372,6 +380,14 @@ def map_rv_controller(controller, name):
     if ctrl_threshold2 is not None:
         tform_threshold2 = ctrl_threshold2 - 1
 
+    tform_token_gen = None
+    if ctrl_token_gen is not None:
+        tform_token_gen = ctrl_token_gen - 1
+
+    tform_token_gen2 = None
+    if ctrl_token_gen2 is not None:
+        tform_token_gen2 = ctrl_token_gen2 - 1
+
     mapped_ctrl = RVControllerInfo(dim=ctrl_dim,
                                    extent=tform_extent,
                                    in_data_strt=ctrl_in_data_strt,
@@ -379,10 +395,12 @@ def map_rv_controller(controller, name):
                                    out_data_strt=ctrl_out_data_strt,
                                    out_data_stride=tform_out_data_strides,
                                    mode=ctrl_mode,
+                                   dep=ctrl_dep,
+                                   dual_dep=ctrl_dual_dep,
                                    threshold=tform_threshold,
-                                   token_gen=ctrl_token_gen,
+                                   token_gen=tform_token_gen,
                                    threshold2=tform_threshold2,
-                                   token_gen2=ctrl_token_gen2)
+                                   token_gen2=tform_token_gen2)
 
     return mapped_ctrl
 
@@ -413,12 +431,20 @@ def configure_rv_controller(prefix="", name="", suffix="", controller=None):
 
             if mapped_ctrl.threshold is not None:
                 config.append((f"{expand_name}_threshold{suffix}", mapped_ctrl.threshold))
+            if mapped_ctrl.token_gen is not None:
                 config.append((f"{expand_name}_token_gen{suffix}", mapped_ctrl.token_gen))
             if mapped_ctrl.threshold2 is not None:
                 config.append((f"{expand_name}_threshold2{suffix}", mapped_ctrl.threshold2))
+            if mapped_ctrl.token_gen2 is not None:
                 config.append((f"{expand_name}_token_gen2{suffix}", mapped_ctrl.token_gen2))
+            if mapped_ctrl.dep is not None:
+                config.append((f"{expand_name}_dep{suffix}", mapped_ctrl.dep))
+            if mapped_ctrl.dual_dep is not None:
+                config.append((f"{expand_name}_dual_dep{suffix}", mapped_ctrl.dual_dep))
+
             config.append((f"{expand_name}_id_dimensionality{suffix}", mapped_ctrl.dim))
-            config.append((f"{expand_name}_ag_starting_addr{suffix}", strt_addr))
+            if strt_addr is not None:
+                config.append((f"{expand_name}_ag_starting_addr{suffix}", strt_addr))
             # should still map stride/extent[0] when dimensionality is 0
             for i in range(max(1, mapped_ctrl.dim)):
                 addr_stride = 0

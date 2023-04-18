@@ -10,7 +10,7 @@ from lake.passes.passes import lift_config_reg
 from lake.modules.rv_write_ctrl import RVWriteCtrl
 from lake.modules.rv_read_ctrl import RVReadCtrl
 from lake.modules.rv_arbiter import RVArbiter
-from lake.utils.util import add_counter, decode, trim_config_list
+from lake.utils.util import add_counter, decode, trim_config_list, observe_cfg
 from _kratos import create_wrapper_flatten
 from lake.attributes.control_signal_attr import ControlSignalAttr
 import os
@@ -118,10 +118,6 @@ class StrgUBRV(MemoryController):
         ##################################################################################
         # Internal Registers and Wires
         ##################################################################################
-        self._flush = self.reset("flush", 1)
-        self._flush.add_attribute(ConfigRegAttr("Done configuring"))
-        self._flush.add_attribute(FormalAttr(f"{self._flush.name}", FormalSignalConstraint.SOLVE))
-
         self._data_in_thin = self.var("data_in_thin", self.data_width,
                                       size=self.interconnect_input_ports,
                                       packed=True,
@@ -140,18 +136,52 @@ class StrgUBRV(MemoryController):
             self.wire(self._data_out[idx][self.data_width], const(0, 1))
 
         # write ctrl
-        self._wctrl_token_dec_i = self.var("wctrl_token_dec_i", 2,
-                                           size=self.interconnect_input_ports,
-                                           packed=True,
-                                           explicit_array=True)
+        # write -> read dependency
         self._wctrl_token_avail_o = self.var("wctrl_token_avail_o", 2,
                                              size=self.interconnect_input_ports,
                                              packed=True,
                                              explicit_array=True)
+        self._wctrl_reset_window_addr_o = self.var("wctrl_reset_window_addr_o", 2,
+                                                   size=self.interconnect_input_ports,
+                                                   packed=True,
+                                                   explicit_array=True)
+        self._wctrl_window_addr_o = self.var("wctrl_window_addr_o", self.mem_addr_width,
+                                             size=self.interconnect_input_ports,
+                                             packed=True,
+                                             explicit_array=True)
+        self._wctrl_token_dec_i = self.var("wctrl_token_dec_i", 2,
+                                           size=self.interconnect_input_ports,
+                                           packed=True,
+                                           explicit_array=True)
+        # read -> write dependency
+        self._wctrl_token_avail_i = self.var("wctrl_token_avail_i", self.interconnect_input_ports)
+        self._wctrl_reset_window_addr_i = self.var("wctrl_reset_window_addr_i",
+                                                   self.interconnect_input_ports)
+        self._wctrl_window_addr_i = self.var("wctrl_window_addr_i", self.mem_addr_width,
+                                             size=self.interconnect_input_ports,
+                                             packed=True,
+                                             explicit_array=True)
+        self._wctrl_token_dec_o = self.var("wctrl_token_dec_o", self.interconnect_input_ports)
 
         # read ctrl
-        self._rctrl_token_dec_o = self.var("rctrl_token_dec_i", self.interconnect_input_ports)
+        # write -> read dependency
         self._rctrl_token_avail_i = self.var("rctrl_token_avail_i", self.interconnect_input_ports)
+        self._rctrl_reset_window_addr_i = self.var("rctrl_reset_window_addr_i",
+                                                   self.interconnect_input_ports)
+        self._rctrl_window_addr_i = self.var("rctrl_window_addr_i", self.mem_addr_width,
+                                             size=self.interconnect_input_ports,
+                                             packed=True,
+                                             explicit_array=True)
+        self._rctrl_token_dec_o = self.var("rctrl_token_dec_o", self.interconnect_input_ports)
+        # read -> write dependency
+        self._rctrl_token_avail_o = self.var("rctrl_token_avail_o", self.interconnect_input_ports)
+        self._rctrl_reset_window_addr_o = self.var("rctrl_reset_window_addr_o",
+                                                   self.interconnect_input_ports)
+        self._rctrl_window_addr_o = self.var("rctrl_window_addr_o", self.mem_addr_width,
+                                             size=self.interconnect_input_ports,
+                                             packed=True,
+                                             explicit_array=True)
+        self._rctrl_token_dec_i = self.var("rctrl_token_dec_i", self.interconnect_input_ports)
 
         # write requests
         self._wctrl_wen = self.var("wctrl_wen", self.interconnect_input_ports)
@@ -182,113 +212,194 @@ class StrgUBRV(MemoryController):
         #                               explicit_array=True)
 
         ##################################################################################
+        # Config Registers
+        ##################################################################################
+        # dual_token == True
+        self._token_gen_0 = self.input(f"rv_write_ctrl_{0}_token_gen", self.config_width)
+        self._token_gen_0.add_attribute(ConfigRegAttr("The number of tokens to generate before switching"))
+        self._token_gen_0.add_attribute(FormalAttr(f"{self._token_gen_0.name}", FormalSignalConstraint.SOLVE))
+
+        self._token_gen_1 = self.input(f"rv_write_ctrl_{1}_token_gen", self.config_width)
+        self._token_gen_1.add_attribute(ConfigRegAttr("The number of tokens to generate before switching"))
+        self._token_gen_1.add_attribute(FormalAttr(f"{self._token_gen_1.name}", FormalSignalConstraint.SOLVE))
+
+        self._rctrl_0_dual_dep = self.input(f"rv_read_ctrl_{0}_dual_dep", 1)
+        self._rctrl_0_dual_dep.add_attribute(ConfigRegAttr("Makes rctrl_0 depend on both wctrl_0 and wctrl_1"))
+        self._rctrl_0_dual_dep.add_attribute(FormalAttr(f"{self._rctrl_0_dual_dep.name}", FormalSignalConstraint.SOLVE))
+        ##################################################################################
         # Controllers
         ##################################################################################
+        self.write_ctrls = []
         for i in range(self.interconnect_input_ports):
-            ##################################################################################
-            # Config Registers
-            ##################################################################################
-            self._token_gen = self.input(f"rv_write_ctrl_{i}_token_gen", self.config_width)
-            self._token_gen.add_attribute(ConfigRegAttr("The number of tokens to generate before switching"))
-            self._token_gen.add_attribute(FormalAttr(f"{self._token_gen.name}", FormalSignalConstraint.SOLVE))
-
-            self._token_gen2 = self.input(f"rv_write_ctrl_{i}_token_gen2", self.config_width)
-            self._token_gen2.add_attribute(ConfigRegAttr("The number of tokens to generate before switching"))
-            self._token_gen2.add_attribute(FormalAttr(f"{self._token_gen2.name}", FormalSignalConstraint.SOLVE))
-
+            # heterogeneous write ctrl
             write_ctrl = RVWriteCtrl(data_width=self.data_width,
                                      mem_width=self.mem_width,
                                      mem_depth=self.mem_depth,
                                      iterator_support=self.iterator_support,
                                      config_width=self.config_width,
-                                     id_config_width=self.id_config_width)
+                                     id_config_width=self.id_config_width,
+                                     dependent=(i == 1),
+                                     dual_token=(i == 1))
 
-            write_ctrl.add_attribute("sync-reset=flush")
-            kts.passes.auto_insert_sync_reset(write_ctrl.internal_generator)
+            self.write_ctrls.append(write_ctrl)
 
             self.add_child(f"{self.ctrl_in_name}_{i}", write_ctrl,
-                           flush=self._flush,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            valid_i=self._valid_in[i],
                            din_i=self._data_in_thin[i],
                            token_dec_i=self._wctrl_token_dec_i[i][0],
-                           token_dec2_i=self._wctrl_token_dec_i[i][1],
-                           token_avail_i=0,
                            is_granted_i=self._is_granted[i],
                            ready_o=self._ready_out[i],
                            token_avail_o=self._wctrl_token_avail_o[i][0],
-                           token_avail2_o=self._wctrl_token_avail_o[i][1],
+                           reset_window_addr_o=self._wctrl_reset_window_addr_o[i][0],
+                           window_addr_o=self._wctrl_window_addr_o[i],
                            wen_o=self._wctrl_wen[i],
                            waddr_o=self._wctrl_waddr[i],
                            wdata_o=self._wctrl_wdata[i]
                            )
 
-            self._token_gen_count = self.var(f"token_gen_count_{i}", self.config_width)
-            self._switch_token_gen = self.var(f"switch_token_gen_{i}", 1)
+            if i == 1:
+                # dependent == True
+                self.wire(write_ctrl.ports.token_avail_i, self._wctrl_token_avail_i[i])
+                self.wire(write_ctrl.ports.reset_window_addr_i, self._wctrl_reset_window_addr_i[i])
+                self.wire(write_ctrl.ports.window_addr_i, self._wctrl_window_addr_i[i])
+                self.wire(write_ctrl.ports.token_dec_o, self._wctrl_token_dec_o[i])
 
-            @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            def token_dependency_ctrl():
-                if ~self._rst_n:
-                    self._token_gen_count = 0
-                    self._switch_token_gen = 0
-                elif self._rctrl_token_dec_o[i]:
-                    if self._switch_token_gen:
-                        if self._token_gen_count == self._token_gen:
-                            self._switch_token_gen = 1
-                            self._token_gen_count = 0
-                        else:
-                            self._token_gen_count = self._token_gen_count + 1
+                # dual_token == True
+                self.wire(write_ctrl.ports.token_dec2_i, self._wctrl_token_dec_i[i][1])
+                self.wire(write_ctrl.ports.token_avail2_o, self._wctrl_token_avail_o[i][1])
+                self.wire(write_ctrl.ports.reset_window_addr2_o, self._wctrl_reset_window_addr_o[i][1])
+
+        # TODO pack the dependency network into a module
+        self._token_gen_count = self.var(f"token_gen_count", self.config_width)
+        self._token_gen_state = self.var(f"token_gen_state", 1)
+
+        self._wctrl_1_dep = self.var("wctrl_1_dep_observed", 1)
+        observe_cfg(self, f"wctrl_1_dep_observed", self.write_ctrls[1], "dep")
+
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def token_gen_state_ctrl():
+            if ~self._rst_n:
+                self._token_gen_count = 0
+                self._token_gen_state = 0
+            elif self._rctrl_token_dec_o[0]:
+                self._token_gen_count = self._token_gen_count + 1
+
+                if self._token_gen_state == 0:
+                    if self._token_gen_count == self._token_gen_0:
+                        self._token_gen_state = 1
+                        self._token_gen_count = 0
+                elif self._token_gen_state == 1:
+                    if self._token_gen_count == self._token_gen_1:
+                        self._token_gen_state = 0
+                        self._token_gen_count = 0
+
+        # dual_token == True
+        self.add_code(token_gen_state_ctrl)
+
+        # write -> read dependency
+        @always_comb
+        def write_to_read_dep():
+            # rctrl_0 is dependent on wctrl_0 and wctrl_1's token_1
+            if self._rctrl_0_dual_dep:
+                self._rctrl_token_avail_i[0] = ternary(self._token_gen_state,
+                                                       self._wctrl_token_avail_o[1][1],
+                                                       self._wctrl_token_avail_o[0][0])
+            else:
+                self._rctrl_token_avail_i[0] = self._wctrl_token_avail_o[0][0]
+
+            if self._rctrl_0_dual_dep:
+                if (self._token_gen_state == 1):
+                    if self._rctrl_token_dec_o[0] & (self._token_gen_count == self._token_gen_1):
+                        self._rctrl_window_addr_i[0] = self._wctrl_window_addr_o[0]
+                        self._rctrl_reset_window_addr_i[0] = self._wctrl_reset_window_addr_o[0][0]
                     else:
-                        if self._token_gen_count == self._token_gen2:
-                            self._switch_token_gen = 0
-                            self._token_gen_count = 0
-                        else:
-                            self._token_gen_count = self._token_gen_count + 1
-
-            self.add_code(token_dependency_ctrl)
-            self.wire(self._rctrl_token_avail_i[i], ternary(self._switch_token_gen,
-                                                            self._wctrl_token_avail_o[i][1],
-                                                            self._wctrl_token_avail_o[i][0]))
-
-            @always_comb
-            def write_ctrl_token_dec():
-                if self._switch_token_gen:
-                    self._wctrl_token_dec_i[i][0] = 0
-                    self._wctrl_token_dec_i[i][1] = self._rctrl_token_dec_o[i]
+                        self._rctrl_window_addr_i[0] = self._wctrl_window_addr_o[1]
+                        self._rctrl_reset_window_addr_i[0] = self._wctrl_reset_window_addr_o[1][1]
                 else:
-                    self._wctrl_token_dec_i[i][0] = self._rctrl_token_dec_o[i]
-                    self._wctrl_token_dec_i[i][1] = 0
+                    if self._rctrl_token_dec_o[0] & (self._token_gen_count == self._token_gen_0):
+                        self._rctrl_window_addr_i[0] = self._wctrl_window_addr_o[1]
+                        self._rctrl_reset_window_addr_i[0] = self._wctrl_reset_window_addr_o[1][1]
+                    else:
+                        self._rctrl_window_addr_i[0] = self._wctrl_window_addr_o[0]
+                        self._rctrl_reset_window_addr_i[0] = self._wctrl_reset_window_addr_o[0][0]
+            else:
+                self._rctrl_window_addr_i[0] = self._wctrl_window_addr_o[0]
+                self._rctrl_reset_window_addr_i[0] = self._wctrl_reset_window_addr_o[0][0]
 
-            self.add_code(write_ctrl_token_dec)
+            # rctrl_1 is only dependent on wctrl_1's token_0
+            self._rctrl_token_avail_i[1] = self._wctrl_token_avail_o[1][0]
+            self._rctrl_window_addr_i[1] = self._wctrl_window_addr_o[1]
+            self._rctrl_reset_window_addr_i[1] = self._wctrl_reset_window_addr_o[1][0]
+
+            self._wctrl_token_dec_i[0][0] = ~self._token_gen_state & self._rctrl_token_dec_o[0]
+            self._wctrl_token_dec_i[0][1] = 0
+            self._wctrl_token_dec_i[1][0] = self._rctrl_token_dec_o[1]
+            self._wctrl_token_dec_i[1][1] = self._token_gen_state & self._rctrl_token_dec_o[0]
+
+        self.add_code(write_to_read_dep)
+
+        # read -> write ctrl dependency
+        @always_comb
+        def read_to_write_dep():
+            # wctrl0 is not dependent on any rctrl
+            self._wctrl_window_addr_i[0] = 0
+            self._wctrl_reset_window_addr_i[0] = 0
+            self._rctrl_token_dec_i[1] = 0
+
+            self._wctrl_window_addr_i[1] = self._rctrl_window_addr_o[0]
+            self._wctrl_reset_window_addr_i[1] = self._rctrl_reset_window_addr_o[0]
+            self._rctrl_token_dec_i[0] = ternary(self._wctrl_1_dep, self._wctrl_token_dec_o[1], 0)
+
+            # TODO check if _wctrl_token_avail_i is needed; currently not used
+            self._wctrl_token_avail_i[0] = 1
+            self._wctrl_token_avail_i[1] = ternary(self._wctrl_1_dep, self._rctrl_token_avail_o[0], 1)
+
+        # dependent == True
+        self.add_code(read_to_write_dep)
 
         for i in range(self.interconnect_output_ports):
+            # heterogeneous read ctrl
             read_ctrl = RVReadCtrl(data_width=self.data_width,
                                    mem_width=self.mem_width,
                                    mem_depth=self.mem_depth,
                                    iterator_support=self.iterator_support,
                                    config_width=self.config_width,
-                                   id_config_width=self.id_config_width)
+                                   id_config_width=self.id_config_width,
+                                   gen_token=(i == 0))
 
-            read_ctrl.add_attribute("sync-reset=flush")
-            kts.passes.auto_insert_sync_reset(read_ctrl.internal_generator)
+            # temp wire to share the wctrl.ag.starting_addr cfg reg
+            wctrl_ag_gen = self.write_ctrls[i].child_generator()
+            self._wctrl_ag_starting_addr = self.var(f"wctrl_ag_starting_addr_{i}_observed", self.mem_addr_width)
+            observe_cfg(self, f"wctrl_ag_starting_addr_{i}_observed", wctrl_ag_gen["ag"], "starting_addr")
 
             self.add_child(f"{self.ctrl_out_name}_{i}", read_ctrl,
-                           flush=self._flush,
                            clk=self._clk,
                            rst_n=self._rst_n,
                            ready_i=self._ready_in[i],
-                           token_dec_i=0,
                            token_avail_i=self._rctrl_token_avail_i[i],
+                           ag_starting_addr=self._wctrl_ag_starting_addr,
+                           reset_window_addr_i=self._rctrl_reset_window_addr_i[i],
+                           window_addr_i=self._rctrl_window_addr_i[i],
                            is_granted_i=self._is_granted[2 + i],
                            rdata_i=self._data_from_sram,
                            valid_o=self._valid_out[i],
                            dout_o=self._data_out_thin[i],
                            token_dec_o=self._rctrl_token_dec_o[i],
-                           # token_avail_o=,
                            ren_o=self._rctrl_ren[i],
                            raddr_o=self._rctrl_raddr[i]
                            )
+
+            # dependent == True
+            if (i == 0):
+                self._wctrl_0_dep_observed = self.var(f"wctrl_{i}_dep_observed", 1)
+                observe_cfg(self, f"wctrl_{i}_dep_observed", self.write_ctrls[1], "dep")
+                self.wire(read_ctrl.ports.token_gen_en_i, self._wctrl_0_dep_observed)
+                self.wire(read_ctrl.ports.token_avail_o, self._rctrl_token_avail_o[i])
+                self.wire(read_ctrl.ports.reset_window_addr_o, self._rctrl_reset_window_addr_o[i])
+                self.wire(read_ctrl.ports.window_addr_o, self._rctrl_window_addr_o[i])
+                self.wire(read_ctrl.ports.token_dec_i, self._rctrl_token_dec_i[i])
 
         mem_arbiter = RVArbiter(data_width=self.data_width,
                                 mem_width=self.mem_width,
@@ -425,6 +536,7 @@ class StrgUBRV(MemoryController):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
+        print("strg_ub_rv raw parsed config")
         print(config)
         return trim_config_list(flattened, config)
 
@@ -433,7 +545,9 @@ class StrgUBRV(MemoryController):
 
 
 if __name__ == "__main__":
-    lake_dut = StrgUBRV()
-    verilog(lake_dut, filename="strg_ub_rv.sv",
+    dut = StrgUBRV()
+    dut.add_attribute("sync-reset=flush")
+    kts.passes.auto_insert_sync_reset(dut.internal_generator)
+    verilog(dut, filename="strg_ub_rv.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})

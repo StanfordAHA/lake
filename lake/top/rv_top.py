@@ -28,7 +28,7 @@ class RVTop():
                  config_addr_width=8,
                  num_tiles=1,
                  add_clk_enable=True,
-                 add_flush=False,
+                 add_flush=True,
                  name="mek",
                  gen_addr=True,
                  stencil_valid=False,
@@ -84,6 +84,9 @@ class RVTop():
         controllers = []
 
         if True:
+            # self._flush = self.var("flush", 1)
+            # self._flush.add_attribute(ConfigRegAttr("Done configuring"))
+            # self._flush.add_attribute(FormalAttr(f"{self._flush.name}", FormalSignalConstraint.SOLVE))
             controllers.append(StrgUBRV())
         else:
             if self.fw_int > 1:
