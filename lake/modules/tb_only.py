@@ -167,18 +167,22 @@ class StrgUBTBOnly(Generator):
             self._shared_tb_0.add_attribute(ConfigRegAttr("Treat the TB's as shared"))
             self._shared_tb_0.add_attribute(FormalAttr(self._shared_tb_0.name, FormalSignalConstraint.SOLVE))
 
-            self._tb_write_sel_0 = self.var("tb_write_sel_0", clog2(self.interconnect_output_ports))
-            self._tb_read_sel_0 = self.var("tb_read_sel_0", clog2(self.interconnect_output_ports))
-            self.wire(self._tb_write_sel_0,
-                      ternary(self._shared_tb_0,
-                              self._tb_write_addr[0][clog2(tb_height) + clog2(self.interconnect_output_ports) - 1,
-                                                     clog2(tb_height)],
-                              const(0, self._tb_write_sel_0.width)))
-            self.wire(self._tb_read_sel_0,
-                      ternary(self._shared_tb_0,
-                              self._tb_read_addr[0][clog2(tb_height) + clog2(self.fetch_width) + clog2(self.interconnect_output_ports) - 1,
-                                                    clog2(tb_height) + clog2(self.fetch_width)],
-                              const(0, self._tb_read_sel_0.width)))
+            self._tb_write_sel_0 = self.var("tb_write_sel_0", max(1, clog2(self.interconnect_output_ports)))
+            self._tb_read_sel_0 = self.var("tb_read_sel_0", max(1, clog2(self.interconnect_output_ports)))
+            if self.interconnect_output_ports == 2:
+                self.wire(self._tb_write_sel_0,
+                          ternary(self._shared_tb_0,
+                                  self._tb_write_addr[0][clog2(tb_height) + clog2(self.interconnect_output_ports) - 1,
+                                                         clog2(tb_height)],
+                                  const(0, self._tb_write_sel_0.width)))
+                self.wire(self._tb_read_sel_0,
+                          ternary(self._shared_tb_0,
+                                  self._tb_read_addr[0][clog2(tb_height) + clog2(self.fetch_width) + clog2(self.interconnect_output_ports) - 1,
+                                                        clog2(tb_height) + clog2(self.fetch_width)],
+                                  const(0, self._tb_read_sel_0.width)))
+            else:
+                self.wire(self._tb_write_sel_0, const(0, self._tb_write_sel_0.width))
+                self.wire(self._tb_read_sel_0, const(0, self._tb_read_sel_0.width))
 
         ##################################################################################
         # TB PATHS
@@ -280,11 +284,19 @@ class StrgUBTBOnly(Generator):
 
             @always_comb
             def tb_to_out():
-                if i == 0:
-                    self._data_out[i] = \
-                        self._tb[self._tb_read_sel_0] \
-                        [self._tb_read_addr[i][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]] \
-                        [self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
+                if self.area_opt:
+                    if i == 0:
+                        self._data_out[i] = \
+                            self._tb[self._tb_read_sel_0] \
+                            [self._tb_read_addr[i][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]] \
+                            [self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
+                    # its really a duplicated assignment due to a kratos bug
+                    # see kratos issue #177
+                    else:
+                        self._data_out[i] = \
+                            self._tb[i] \
+                            [self._tb_read_addr[i][clog2(self.tb_height) + clog2(self.fetch_width) - 1, clog2(self.fetch_width)]] \
+                            [self._tb_read_addr[i][clog2(self.fetch_width) - 1, 0]]
                 else:
                     self._data_out[i] = \
                         self._tb[i] \
@@ -296,9 +308,14 @@ class StrgUBTBOnly(Generator):
         def tb_ctrl():
             for i in range(self.interconnect_output_ports):
                 if self._t_read_d1[i]:
-                    if i == 0:
-                        # shared TB case for port 0 only
-                        self._tb[self._tb_write_sel_0][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = self._sram_read_data
+                    if self.area_opt:
+                        if i == 0:
+                            # shared TB case for port 0 only
+                            self._tb[self._tb_write_sel_0][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = self._sram_read_data
+                        # its really a duplicated assignment due to a kratos bug
+                        # see kratos issue #177
+                        else:
+                            self._tb[i][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = self._sram_read_data
                     else:
                         # regular TB access
                         self._tb[i][self._tb_write_addr[i][clog2(tb_height) - 1, 0]] = self._sram_read_data

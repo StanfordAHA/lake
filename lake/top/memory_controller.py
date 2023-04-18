@@ -1,7 +1,8 @@
+from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.top.memory_interface import MemoryPort, MemoryPortExclusionAttr
 from lake.attributes.config_reg_attr import ConfigRegAttr
 import kratos as kts
-from kratos.generator import PortDirection
+from kratos.generator import PortDirection, InitialCodeBlock
 import _kratos
 import math
 
@@ -28,12 +29,21 @@ class MemoryController(kts.Generator):
                  debug: bool = False,
                  is_clone: bool = False,
                  internal_generator=None,
-                 exclusive: bool = False):
+                 exclusive: bool = False,
+                 add_flush=False):
         super().__init__(name, debug, is_clone, internal_generator)
         self.exclusive = exclusive
+        self.num_perf_ctrs = 0
+        self.add_flush = add_flush
 
     def get_exclusive(self):
         return self.exclusive
+
+    def add_flush_pass(self):
+        self.add_attribute("sync-reset=flush")
+        kts.passes.auto_insert_sync_reset(self.internal_generator)
+        flush_port = self.internal_generator.get_port("flush")
+        flush_port.add_attribute(ControlSignalAttr(True))
 
     def set_bit(self, old_val, bit_to_set, new_bit):
         new_val = old_val | (new_bit << bit_to_set)
@@ -112,6 +122,27 @@ class MemoryController(kts.Generator):
                 if local_result is not None:
                     return local_result
             return None
+
+    def add_performance_indicator(self, signal, edge='posedge', label='start', cycle_count=None):
+
+        assert cycle_count is not None
+
+        val_ = f'val_{self.num_perf_ctrs}'
+
+        self.add_stmt(kts.RawStringStmt(f'logic {val_};').stmt())
+
+        # Create inital block...
+        ib = self.initial()
+
+        if edge == 'posedge':
+            raw_text_posedge = f'// benign\n{val_} = 0;\n@(posedge flush)\nwhile({val_} == 0) begin\n@(posedge clk);\n{val_} = {signal.name};\nend\n$display(\"%m_{label}_%d\", {cycle_count.name});\n'
+        else:
+            raw_text_posedge = ''
+
+        raw_stmt = kts.RawStringStmt(raw_text_posedge)
+        ib.add_stmt(raw_stmt)
+
+        self.num_perf_ctrs += 1
 
     def get_port(self, name):
         int_gen = self.internal_generator

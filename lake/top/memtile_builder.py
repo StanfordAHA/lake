@@ -1223,7 +1223,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             pass
         ctrl_config = {}
         # Check for stencil valid
+        stencil_valid_used = False
         if 'stencil_valid' in config_json and 'stencil_valid' in mode_map:
+            stencil_valid_used = True
             ctrl_config['stencil_valid'] = mode_map['stencil_valid'].get_bitstream(config_json)
             config.append(("mode_excl", 1))
 
@@ -1233,8 +1235,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 # Locate the controller in the list...
                 for idx, ctrl in enumerate(self.controllers):
                     if mode_used == ctrl.get_config_mode_str():
-                        print(f"Found ctrl: {mode_used}")
-                        config.append(("mode", idx))
+                        if not stencil_valid_used:
+                            print(f"Found ctrl: {mode_used}")
+                            config.append(("mode", idx))
                         break
 
             ctrl_to_conf = mode_map[mode_used]

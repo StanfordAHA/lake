@@ -39,11 +39,13 @@ class StrgUBThin(MemoryController):
                  area_opt_dual_config=True,
                  chaining=False,
                  reduced_id_config_width=11,
+                 name_suffix="",
                  delay_width=4,
-                 iterator_support2=2  # assumes that this port has smaller iter_support
+                 iterator_support2=2,  # assumes that this port has smaller iter_support
+                 add_flush=False
                  ):
 
-        super().__init__("strg_ub_thin", debug=True)
+        super().__init__(f"strg_ub_thin{name_suffix}", debug=True, add_flush=add_flush)
 
         assert mem_width == data_width, f"This module should only be used when the fetch width is 1!"
 
@@ -511,19 +513,19 @@ class StrgUBThin(MemoryController):
             rw_port = MemoryPort(MemoryPortType.READWRITE)
             rw_port_intf = rw_port.get_port_interface()
             rw_port_intf['data_in'] = self._data_to_sram
-            rw_port_intf['data_out'] = self._data_from_sram
+            rw_port_intf['data_out'] = None
             rw_port_intf['write_addr'] = self._wr_addr_to_sram
             rw_port_intf['write_enable'] = self._wen_to_sram
-            rw_port_intf['read_addr'] = self._rd_addr_to_sram
-            rw_port_intf['read_enable'] = self._ren_to_sram
+            rw_port_intf['read_addr'] = tmp0_rdaddr
+            rw_port_intf['read_enable'] = tmp0_rden
             rw_port.annotate_port_signals()
             self.base_ports[0][0] = rw_port
             # Populate second port as just R
             r_port = MemoryPort(MemoryPortType.READ)
             r_port_intf = r_port.get_port_interface()
-            r_port_intf['data_out'] = None
-            r_port_intf['read_addr'] = tmp0_rdaddr
-            r_port_intf['read_enable'] = tmp0_rden
+            r_port_intf['data_out'] = self._data_from_sram
+            r_port_intf['read_addr'] = self._rd_addr_to_sram
+            r_port_intf['read_enable'] = self._ren_to_sram
             r_port.annotate_port_signals()
             self.base_ports[0][1] = r_port
 
@@ -552,6 +554,9 @@ class StrgUBThin(MemoryController):
             rw_port_intf['read_enable'] = self._ren_to_sram
             rw_port.annotate_port_signals()
             self.base_ports[0][0] = rw_port
+
+        if self.add_flush:
+            self.add_flush_pass()
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def delay_read(self):
@@ -611,7 +616,7 @@ class StrgUBThin(MemoryController):
                         if i == 1:
                             ctrl_suffix = "2"
                     else:
-                        ctrl_name = out_ctrl
+                        ctrl_name = in_ctrl
                         ctrl_suffix = ""
                     config += configure_controller(prefix="", name=ctrl_name, suffix=ctrl_suffix, controller=controller_tmp)
 
@@ -662,7 +667,10 @@ class StrgUBThin(MemoryController):
 
 
 if __name__ == "__main__":
-    lake_dut = StrgUBThin()
+    lake_dut = StrgUBThin(read_delay=0, rw_same_cycle=True,
+                          area_opt=False,
+                          area_opt_dual_config=False,
+                          add_flush=True)
     verilog(lake_dut, filename="strg_ub_thin.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})

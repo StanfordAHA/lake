@@ -5,7 +5,7 @@ from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.top.memory_controller import MemoryController
-from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg, sticky_flag
+from lake.utils.util import add_counter, sticky_flag
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -18,7 +18,8 @@ class Repeat(MemoryController):
                  data_width=16,
                  fifo_depth=8,
                  defer_fifos=True,
-                 add_flush=False):
+                 add_flush=False,
+                 perf_debug=True):
 
         super().__init__("Repeat", debug=True)
 
@@ -27,6 +28,7 @@ class Repeat(MemoryController):
         self.add_flush = add_flush
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
+        self.perf_debug = perf_debug
 
         # For consistency with Core wrapper in garnet...
         self.total_sets = 0
@@ -100,6 +102,21 @@ class Repeat(MemoryController):
 
         self._spacc_mode = self.input("spacc_mode", 1)
         self._spacc_mode.add_attribute(ConfigRegAttr("Is this in spacc mode?"))
+
+        if self.perf_debug:
+
+            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
+
+            # Start when any of the coord inputs is valid
+            self._start_signal = sticky_flag(self, self._proc_valid_in,
+                                             name='start_indicator')
+            self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
+
+            # End when we see DONE on the output coord
+            self._done_signal = sticky_flag(self, (self._ref_data_out == MemoryController.DONE_PROXY) &
+                                                    self._ref_valid_out,
+                                                    name='done_indicator')
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 
 # ==============================
 # INPUT FIFO

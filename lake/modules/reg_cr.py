@@ -5,7 +5,7 @@ from lake.passes.passes import lift_config_reg
 from lake.modules.for_loop import ForLoop
 from lake.modules.addr_gen import AddrGen
 from lake.top.memory_controller import MemoryController
-from lake.utils.util import add_counter, safe_wire, register, intercept_cfg, observe_cfg, sticky_flag
+from lake.utils.util import add_counter, safe_wire, sticky_flag, add_counter
 from lake.attributes.formal_attr import FormalAttr, FormalSignalConstraint
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
@@ -20,7 +20,8 @@ class Reg(MemoryController):
                  dispatcher_size=2,
                  fifo_depth=8,
                  defer_fifos=True,
-                 add_flush=False):
+                 add_flush=False,
+                 perf_debug=True):
 
         super().__init__("reg_cr", debug=True)
 
@@ -29,6 +30,7 @@ class Reg(MemoryController):
         self.add_flush = add_flush
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
+        self.perf_debug = perf_debug
 
         self.add_dispatcher = add_dispatcher
         self.dispatcher_size = dispatcher_size
@@ -196,6 +198,10 @@ class Reg(MemoryController):
 # ACCUM FSM
 # =============================
 
+        # self._set_accum_happened = self.var("set_accum_happened", 1)
+        # self._clr_accum_happened = self.var("clr_accum_happened", 1)
+        # self._accum_happened = sticky_flag(self, self._set_accum_happened, clear=self._clr_accum_happened, name='accum_happened_reg')
+
         self._reg_clr = self.var("reg_clr", 1)
         self._reg_accum = self.var("reg_accum", 1)
 
@@ -226,6 +232,8 @@ class Reg(MemoryController):
         self.accum_fsm.output(self._outfifo_in_eos)
         self.accum_fsm.output(self._set_once_popped)
         self.accum_fsm.output(self._clr_once_popped)
+        # self.accum_fsm.output(self._set_accum_happened)
+        # self.accum_fsm.output(self._clr_accum_happened)
 
         # State Transitions
 
@@ -246,6 +254,7 @@ class Reg(MemoryController):
         ACCUM.next(ACCUM, None)
 
         OUTPUT.next(STOP_PASS, ~self._outfifo_full)
+        # OUTPUT.next(STOP_PASS, ~self._outfifo_full | ~self._accum_happened)
         OUTPUT.next(OUTPUT, None)
 
         # Basically pass through until we get a new valid data...otherwise we are technically done
@@ -275,6 +284,8 @@ class Reg(MemoryController):
         START.output(self._outfifo_in_eos, 0)
         START.output(self._set_once_popped, 0)
         START.output(self._clr_once_popped, 0)
+        # START.output(self._set_accum_happened, 0)
+        # START.output(self._clr_accum_happened, 0)
 
         #############
         # ACCUM
@@ -289,6 +300,8 @@ class Reg(MemoryController):
         ACCUM.output(self._outfifo_in_eos, 0)
         ACCUM.output(self._set_once_popped, 0)
         ACCUM.output(self._clr_once_popped, 0)
+        # ACCUM.output(self._set_accum_happened, self._infifo_out_valid & ~self._infifo_out_eos)
+        # ACCUM.output(self._clr_accum_happened, 0)
 
         #############
         # OUTPUT
@@ -299,6 +312,7 @@ class Reg(MemoryController):
         # OUTPUT.output(self._infifo_pop, ~self._stop_lvl_sticky)
         OUTPUT.output(self._infifo_pop, 0)
         OUTPUT.output(self._outfifo_push, ~self._outfifo_full)
+        # OUTPUT.output(self._outfifo_push, ~self._outfifo_full & self._accum_happened)
         OUTPUT.output(self._reg_clr, 0)
         OUTPUT.output(self._reg_accum, 0)
         OUTPUT.output(self._data_to_fifo, self._accum_reg)
@@ -306,6 +320,8 @@ class Reg(MemoryController):
         # OUTPUT.output(self._set_once_popped, ~self._stop_lvl_sticky)
         OUTPUT.output(self._set_once_popped, 0)
         OUTPUT.output(self._clr_once_popped, 0)
+        # OUTPUT.output(self._set_accum_happened, 0)
+        # OUTPUT.output(self._clr_accum_happened, 0)
 
         #############
         # STOP_PASS - Deal with full output...
@@ -326,6 +342,8 @@ class Reg(MemoryController):
         STOP_PASS.output(self._outfifo_in_eos, 1)
         STOP_PASS.output(self._set_once_popped, 0)
         STOP_PASS.output(self._clr_once_popped, 1)
+        # STOP_PASS.output(self._set_accum_happened, 0)
+        # STOP_PASS.output(self._clr_accum_happened, 1)
 
         #############
         # DONE
@@ -341,6 +359,8 @@ class Reg(MemoryController):
         DONE.output(self._outfifo_in_eos, self._infifo_out_eos)
         DONE.output(self._set_once_popped, 0)
         DONE.output(self._clr_once_popped, 1)
+        # DONE.output(self._set_accum_happened, 0)
+        # DONE.output(self._clr_accum_happened, 1)
 
         # self._data_written = self.var("data_written", 1)
         # self.wire(self._valid_out, self._data_written | self._write_en)
@@ -375,6 +395,21 @@ class Reg(MemoryController):
             kts.passes.auto_insert_sync_reset(self.internal_generator)
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
+
+        if self.perf_debug:
+
+            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
+
+            # Start when any of the coord inputs is valid
+            self._start_signal = sticky_flag(self, kts.concat((*[self._valid_in[i] for i in range(1)])).r_or(),
+                                             name='start_indicator')
+            self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
+
+            # End when we see DONE on the output coord
+            self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) &
+                                                    self._valid_out,
+                                                    name='done_indicator')
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
@@ -484,7 +519,7 @@ class Reg(MemoryController):
 
 if __name__ == "__main__":
 
-    reg_dut = Reg(data_width=16)
+    reg_dut = Reg(data_width=16, defer_fifos=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

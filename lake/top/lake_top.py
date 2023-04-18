@@ -46,7 +46,7 @@ class LakeTop(Generator):
                  stencil_valid=True,
                  formal_module=None,
                  do_config_lift=False,
-                 comply_with_17=False,
+                 comply_with_17=True,
                  area_opt=True,
                  pond_area_opt_share=False,
                  pond_area_opt_dual_config=True,
@@ -162,6 +162,7 @@ class LakeTop(Generator):
                                           comply_with_17=self.comply_with_17,
                                           area_opt=self.area_opt,
                                           area_opt_share=self.pond_area_opt_share,
+                                          name_suffix=f"_{self.name}",
                                           area_opt_dual_config=self.pond_area_opt_dual_config,
                                           reduced_id_config_width=self.reduced_id_config_width,
                                           iterator_support2=self.iterator_support2))

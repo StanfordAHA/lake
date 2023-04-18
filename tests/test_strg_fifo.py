@@ -39,9 +39,11 @@ def test_storage_fifo(mem_width,  # CGRA Params
                    'fifo_depth': depth,
                    'tile_en': 1}
 
+    # FIFO mode controller does not support pass through by default
     model_rf = RegFIFOModel(data_width=data_width,
                             width_mult=fw_int,
-                            depth=depth)
+                            depth=depth,
+                            passthrough=False)
 
     # DUT
     lt_dut = LakeTop(data_width=data_width,
@@ -62,6 +64,7 @@ def test_storage_fifo(mem_width,  # CGRA Params
                      config_addr_width=config_addr_width,
                      fifo_mode=fifo_mode)
 
+    dut_port_remap = lt_dut.get_port_remap()["FIFO"]
     # print(lt_dut)
 
     lt_dut = lt_dut.dut
@@ -99,13 +102,10 @@ def test_storage_fifo(mem_width,  # CGRA Params
         push = rand.randint(0, 1)
         pop = rand.randint(0, 1)
 
-        if in_out_ports > 1:
-            tester.circuit.input_width_16_num_0 = data_in
-        else:
-            tester.circuit.input_width_16_num_0 = data_in
+        setattr(tester.circuit, dut_port_remap["data_in_f__intercept"], data_in)
 
-        tester.circuit.input_width_1_num_0[0] = pop
-        tester.circuit.input_width_1_num_1[0] = push
+        setattr(tester.circuit, dut_port_remap["pop"], pop)
+        setattr(tester.circuit, dut_port_remap["push"], push)
 
         (model_out,
          model_val_x,
@@ -117,18 +117,14 @@ def test_storage_fifo(mem_width,  # CGRA Params
         pop_cnt = pop_cnt + pop
 
         tester.eval()
-
-        tester.circuit.output_width_1_num_0.expect(model_empty)
-        tester.circuit.output_width_1_num_1.expect(model_full)
-        # Now check the outputs
-        tester.circuit.output_width_1_num_2.expect(model_val)
-        if model_val:
-            if in_out_ports > 1:
-                tester.circuit.output_width_16_num_0.expect(model_out[0])
-            else:
-                tester.circuit.output_width_16_num_0.expect(model_out[0])
-
         tester.step(2)
+
+        getattr(tester.circuit, dut_port_remap["empty"]).expect(model_empty)
+        getattr(tester.circuit, dut_port_remap["full"]).expect(model_full)
+        # Now check the outputs
+        getattr(tester.circuit, dut_port_remap["valid_out"]).expect(model_val_x)
+        if model_val_x:
+            getattr(tester.circuit, dut_port_remap["data_out_f__intercept"]).expect(model_out[0])
 
     with tempfile.TemporaryDirectory() as tempdir:
         tester.compile_and_run(target="verilator",

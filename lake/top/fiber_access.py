@@ -19,7 +19,8 @@ class FiberAccess(MemoryController):
                  use_pipelined_scanner=False,
                  add_flush=False,
                  fifo_depth=2,
-                 buffet_optimize_wide=False):
+                 buffet_optimize_wide=False,
+                 perf_debug=False):
         super().__init__(f'fiber_access_{data_width}', debug=True)
 
         self.wr_scan_pre = "write_scanner"
@@ -100,12 +101,14 @@ class FiberAccess(MemoryController):
 
         self.wr_scan = WriteScanner(data_width=self.data_width,
                                     defer_fifos=self.defer_fifos,
-                                    fifo_depth=self.fifo_depth)
+                                    fifo_depth=self.fifo_depth,
+                                    perf_debug=perf_debug)
 
         if self.use_pipelined_scanner:
             self.rd_scan = ScannerPipe(data_width=self.data_width,
                                        defer_fifos=self.defer_fifos,
-                                       fifo_depth=self.fifo_depth)
+                                       fifo_depth=self.fifo_depth,
+                                       perf_debug=perf_debug)
         else:
             self.rd_scan = Scanner(data_width=self.data_width,
                                    defer_fifos=self.defer_fifos,

@@ -20,7 +20,8 @@ class ScannerPipe(MemoryController):
                  add_clk_enable=False,
                  add_flush=False,
                  lift_config=False,
-                 defer_fifos=True):
+                 defer_fifos=True,
+                 perf_debug=True):
 
         self.data_width = data_width
         self.add_clk_enable = add_clk_enable
@@ -28,6 +29,7 @@ class ScannerPipe(MemoryController):
         self.fifo_depth = fifo_depth
         self.lift_config = lift_config
         self.defer_fifos = defer_fifos
+        self.perf_debug = perf_debug
 
         name_base = "scanner_pipe"
         if self.add_clk_enable:
@@ -342,8 +344,10 @@ class ScannerPipe(MemoryController):
         self._seg_grant_push = self.var("seg_grant_push", 1)
         self._crd_grant_push = self.var("crd_grant_push", 1)
 
+        # algo = 'RR'
+        algo = 'PRIO'
         self.port_arbiter = Arbiter(ins=2,
-                                    algo="RR")
+                                    algo=algo)
 
         brr = self.var("base_rr", 2)
         # self.wire(brr[0], self._seg_req_push)
@@ -1879,6 +1883,32 @@ class ScannerPipe(MemoryController):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
+        if self.perf_debug:
+
+            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
+
+            # Count up how many memory operations
+            mem_request_ctr = add_counter(self, 'mem_request_num', 64,
+                                          increment=self._clk_en & self._rd_rsp_fifo_pop & self._rd_rsp_fifo_valid)
+
+            # Start when any of the coord inputs is valid
+            self._start_signal = sticky_flag(self, self._upstream_valid_in | self._root,
+                                             name='start_indicator')
+            self.add_performance_indicator(self._start_signal, edge='posedge', label='start',
+                                           cycle_count=cyc_count)
+
+            # End when we see DONE on the output ref signal
+            self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) &
+                                                    self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
+                                                    name='done_indicator')
+            # self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) &
+            #                                         self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
+            #                                         name='done_indicator')
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='done',
+                                           cycle_count=cyc_count)
+            self.add_performance_indicator(self._done_signal, edge='posedge', label='ops',
+                                           cycle_count=mem_request_ctr)
+
         if self.lift_config:
             # Finally, lift the config regs...
             lift_config_reg(self.internal_generator)
@@ -1948,7 +1978,8 @@ if __name__ == "__main__":
                               defer_fifos=False,
                               lift_config=True,
                               add_flush=True,
-                              add_clk_enable=True)
+                              add_clk_enable=True,
+                              perf_debug=True)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
