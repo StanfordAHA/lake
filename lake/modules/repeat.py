@@ -372,7 +372,7 @@ class Repeat(MemoryController):
         # PASS_REPEAT.output(self._proc_fifo_pop, (self._repsig_fifo_valid & self._repsig_fifo_out_eos) & ~self._ref_fifo_full)
         # Just rip the data off once the stop token on the repsig line is hit
         # PASS_REPEAT.output(self._proc_fifo_pop, (self._repsig_fifo_valid & self._repsig_fifo_out_eos) & ~self._proc_done)
-        PASS_REPEAT.output(self._proc_fifo_pop, ((self._repsig_fifo_valid & self._repsig_fifo_out_eos & ~self._spacc_mode) | (self._spacc_mode & self._repsig_done)) & ~self._proc_done)
+        PASS_REPEAT.output(self._proc_fifo_pop, ((self._repsig_fifo_valid & self._repsig_fifo_out_eos & ~self._spacc_mode & (kts.ternary(self._proc_fifo_valid, ~self._proc_fifo_out_eos, kts.const(0, 1)))) | (self._spacc_mode & self._repsig_done)) & ~self._proc_done)
         # Only pop the repsig fifo if there's room in the output fifo and join of input fifos (and not EOS)
         PASS_REPEAT.output(self._repsig_fifo_pop, ~self._ref_fifo_full & (self._repsig_fifo_valid & ~self._repsig_fifo_out_eos) & self._proc_fifo_valid & ~self._proc_done)
         PASS_REPEAT.output(self._proc_fifo_inject_push, 0)
