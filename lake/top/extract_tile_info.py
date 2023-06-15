@@ -7,8 +7,8 @@ from lake.utils.sram_macro import SRAMMacroInfo
 import collections
 
 
-CFG_info = collections.namedtuple('CFG_info', 'port_name port_size port_width expl_arr')
-IO_info = collections.namedtuple('IO_info', 'port_name port_size port_width is_ctrl port_dir expl_arr')
+CFG_info = collections.namedtuple('CFG_info', 'port_name port_size port_width expl_arr read_only')
+IO_info = collections.namedtuple('IO_info', 'port_name port_size port_width is_ctrl port_dir expl_arr full_bus')
 
 
 def extract_top_config(circuit_gen: kts.Generator, verbose=False):
@@ -22,13 +22,14 @@ def extract_top_config(circuit_gen: kts.Generator, verbose=False):
         if len(attrs) != 1:
             continue
         cr_attr = attrs[0]
-        if verbose is True:
+        if verbose:
             print(port_name)
             print(cr_attr.get_documentation())
         config_list.append(CFG_info(port_name=port_name,
                                     port_size=curr_port.size,
                                     port_width=curr_port.width,
-                                    expl_arr=curr_port.explicit_array))
+                                    expl_arr=curr_port.explicit_array,
+                                    read_only=cr_attr.get_read_only()))
     return config_list
 
 
@@ -48,7 +49,8 @@ def get_interface(circuit_gen: kts.Generator):
                                  port_width=curr_port.width,
                                  is_ctrl=cr_attr.get_control(),
                                  port_dir=str(curr_port.port_direction),
-                                 expl_arr=curr_port.explicit_array))
+                                 expl_arr=curr_port.explicit_array,
+                                 full_bus=cr_attr.get_full_bus()))
     return intf_sigs
 
 

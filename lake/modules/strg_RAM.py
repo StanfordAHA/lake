@@ -22,7 +22,7 @@ class StrgRAM(MemoryController):
                  read_delay=1,
                  addr_width=16,
                  prioritize_write=True,
-                 comply_with_17=False):
+                 comply_with_17=True):
         super().__init__(f"strg_ram_{memory_width}_{memory_depth}_delay{read_delay}", debug=True)
 
         # Generation parameters
@@ -41,6 +41,8 @@ class StrgRAM(MemoryController):
         self.mem_addr_width = clog2(self.num_tiles * self.memory_depth)
         self.b_a_off = clog2(self.fw_int) + clog2(self.num_tiles * self.memory_depth)
 
+        self.comply_with_17 = comply_with_17
+
         # assert banks > 1 or rw_same_cycle is True or self.fw_int > 1, \
         #     "Can't sustain throughput with this setup. Need potential bandwidth for " + \
         #     "1 write and 1 read in a cycle - try using more banks or a macro that supports 1R1W"
@@ -52,9 +54,12 @@ class StrgRAM(MemoryController):
         # Inputs + Outputs
         self._wen = self.input("wen", 1)
         self._ren = self.input("ren", 1)
-        self._data_in = self.input("data_in", self.data_width)
-        self._wr_addr_in = self.input("wr_addr_in", self.addr_width)
-        self._rd_addr_in = self.input("rd_addr_in", self.addr_width)
+        self.add_bits = 0
+        if self.comply_with_17:
+            self.add_bits = 1
+        self._data_in = self.input("data_in", self.data_width + self.add_bits, packed=True)
+        self._wr_addr_in = self.input("wr_addr_in", self.addr_width + self.add_bits, packed=True)
+        self._rd_addr_in = self.input("rd_addr_in", self.addr_width + self.add_bits, packed=True)
 
         self._wr_addr = self.var("wr_addr", self.addr_width)
         self._rd_addr = self.var("rd_addr", self.addr_width)
@@ -66,10 +71,11 @@ class StrgRAM(MemoryController):
             self.wire(self._rd_addr, self._rd_addr_in[self.bit_range])
         # Use the wr addr for both in this case...
         else:
-            self.wire(self._wr_addr, self._wr_addr_in)
-            self.wire(self._rd_addr, self._wr_addr_in)
+            self.wire(self._wr_addr, self._wr_addr_in[self.bit_range])
+            self.wire(self._rd_addr, self._wr_addr_in[self.bit_range])
 
-        self._data_out = self.output("data_out", self.data_width)
+        self._data_out = self.output("data_out", self.data_width + self.add_bits, packed=True)
+
         self._valid_out = self.output("valid_out", 1)
 
         # get relevant signals from the storage banks
@@ -105,9 +111,10 @@ class StrgRAM(MemoryController):
 
         self._rd_bank = self.var("rd_bank", max(1, clog2(self.banks)))
         self.set_read_bank()
-        self._rd_valid = self.var("rd_valid", 1)
-        self.set_read_valid()
         if self.fw_int == 1:
+            # Alternate creating of valid read
+            self._rd_valid = self.var("rd_valid", 1)
+            self.set_read_valid()
             self.wire(self._valid_out, self._rd_valid)
 
         # Fetch width of 1 is simpler...
@@ -116,21 +123,23 @@ class StrgRAM(MemoryController):
             if self.banks == 1:
                 self.wire(self._wen_to_strg, self._wen)
                 self.wire(self._ren_to_strg, self._ren)
-                self.wire(self._data_to_strg[0], self._data_in)
+                self.wire(self._data_to_strg[0], self._data_in[self.bit_range])
                 self.wire(self._addr_out[0],
                           kts.ternary(self._wen_to_strg[0],
                                       self._wr_addr[self.mem_addr_width - 1, 0],
                                       self._rd_addr[self.mem_addr_width - 1, 0]))
             else:
                 for i in range(self.banks):
-                    self.wire(self._data_to_strg[i], self._data_in)
+                    self.wire(self._data_to_strg[i], self._data_in[self.bit_range])
                     self.add_code(self.decode_wen, idx=i)
                     self.add_code(self.decode_ren, idx=i)
                     self.wire(self._addr_out[i],
                               kts.ternary(self._wen_to_strg[i],
                                           self._wr_addr[self.mem_addr_width - 1, 0],
                                           self._rd_addr[self.mem_addr_width - 1, 0]))
-            self.wire(self._data_out, self._data_from_strg[self._rd_bank])
+            self.wire(self._data_out[self.bit_range], self._data_from_strg[self._rd_bank])
+            for i_ in range(self.add_bits):
+                self.wire(self._data_out[self.data_width + i_], kts.const(0, 1))
         elif self.read_delay == 1:
 
             self._data_to_write = self.var("data_to_write", self.data_width)
@@ -159,7 +168,10 @@ class StrgRAM(MemoryController):
             DEFAULT = self.rmw_fsm.add_state("_DEFAULT")
             self.rmw_fsm.output(self._ready)
             self.rmw_fsm.output(self._valid_out)
-            self.rmw_fsm.output(self._data_out)
+            # self.rmw_fsm.output(self._data_out)
+            self.rmw_fsm.output(self._data_out[self.bit_range])
+            for i_ in range(self.add_bits):
+                self.rmw_fsm.output(self._data_out[self.data_width + i_])
             self.rmw_fsm.output(self._write_gate)
             self.rmw_fsm.output(self._read_gate)
 
@@ -171,7 +183,9 @@ class StrgRAM(MemoryController):
             # OUT
             IDLE.output(self._ready, 1)
             IDLE.output(self._valid_out, 0)
-            IDLE.output(self._data_out, 0)
+            IDLE.output(self._data_out[self.bit_range], 0)
+            for i_ in range(self.add_bits):
+                IDLE.output(self._data_out[self.data_width + i_], kts.const(0, 1))
             IDLE.output(self._write_gate, 0)
             IDLE.output(self._read_gate, 1)
 
@@ -182,8 +196,10 @@ class StrgRAM(MemoryController):
             # OUT
             READ.output(self._ready, 1)
             READ.output(self._valid_out, 1)
-            READ.output(self._data_out,
+            READ.output(self._data_out[self.bit_range],
                         self._data_from_strg[self._rd_bank][self._addr_to_write[self.word_width - 1, 0]])
+            for i_ in range(self.add_bits):
+                READ.output(self._data_out[self.data_width + i_], kts.const(0, 1))
             READ.output(self._write_gate, 0)
             READ.output(self._read_gate, 1)
 
@@ -191,7 +207,9 @@ class StrgRAM(MemoryController):
             MODIFY.next(IDLE, const(1, 1))
             MODIFY.output(self._ready, 0)
             MODIFY.output(self._valid_out, 0)
-            MODIFY.output(self._data_out, 0)
+            MODIFY.output(self._data_out[self.bit_range], 0)
+            for i_ in range(self.add_bits):
+                MODIFY.output(self._data_out[self.data_width + i_], kts.const(0, 1))
             MODIFY.output(self._write_gate, 1)
             MODIFY.output(self._read_gate, 0)
 
@@ -199,7 +217,9 @@ class StrgRAM(MemoryController):
             DEFAULT.next(DEFAULT, const(1, 1))
             DEFAULT.output(self._ready, 0)
             DEFAULT.output(self._valid_out, 0)
-            DEFAULT.output(self._data_out, 0)
+            DEFAULT.output(self._data_out[self.bit_range], 0)
+            for i_ in range(self.add_bits):
+                DEFAULT.output(self._data_out[self.data_width + i_], kts.const(0, 1))
             DEFAULT.output(self._write_gate, 0)
             DEFAULT.output(self._read_gate, 0)
 
@@ -287,7 +307,7 @@ class StrgRAM(MemoryController):
         if ~self._rst_n:
             self._data_to_write = 0
         else:
-            self._data_to_write = self._data_in
+            self._data_to_write = self._data_in[self.bit_range]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_addr_to_write(self):
@@ -351,5 +371,8 @@ class StrgRAM(MemoryController):
 
 if __name__ == "__main__":
     stg_dut = StrgRAM()
+    stg_dut.add_attribute("sync-reset=flush")
+    kts.passes.auto_insert_sync_reset(stg_dut.internal_generator)
+    # flush_port = stg_dut.internal_generator.get_port("flush")
     verilog(stg_dut, filename="strg_ram.sv",
             additional_passes={"lift config regs": lift_config_reg})

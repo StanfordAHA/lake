@@ -45,11 +45,11 @@ class LakeTop(Generator):
                  gen_addr=True,
                  stencil_valid=True,
                  formal_module=None,
-                 do_config_lift=True,
-                 comply_with_17=False,
+                 do_config_lift=False,
+                 comply_with_17=True,
                  area_opt=True,
                  pond_area_opt_share=False,
-                 pond_area_opt_dual_config=False,
+                 pond_area_opt_dual_config=True,
                  iterator_support2=2,
                  reduced_id_config_width=11,
                  enable_ram_mode=True,
@@ -99,7 +99,7 @@ class LakeTop(Generator):
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
         # Create a MemoryTileBuilder
-        MTB = MemoryTileBuilder(name, True)
+        MTB = MemoryTileBuilder(name, True, io_prefix=name + "_")
 
         # For our current implementation, we are just using 1 bank of SRAM
         MTB.set_banks(self.banks)
@@ -162,11 +162,12 @@ class LakeTop(Generator):
                                           comply_with_17=self.comply_with_17,
                                           area_opt=self.area_opt,
                                           area_opt_share=self.pond_area_opt_share,
+                                          name_suffix=f"_{self.name}",
                                           area_opt_dual_config=self.pond_area_opt_dual_config,
                                           reduced_id_config_width=self.reduced_id_config_width,
                                           iterator_support2=self.iterator_support2))
 
-        if self.fifo_mode and (self.fw_int > 1 or self.banks > 1):
+        if self.fifo_mode:
             controllers.append(StrgFIFO(data_width=self.data_width,
                                         banks=self.banks,
                                         memory_width=self.mem_width,
@@ -215,34 +216,51 @@ class LakeTop(Generator):
         # loaded_json["mode"] = "UB"
         return loaded_json
 
+    def get_port_remap(self):
+        return self.dut.get_port_remap()
+
     def make_wrapper(self, to_wrap, mode="UB", cfg_dict={}, wrapper_name="default_wrapper"):
 
         replace_ins = {}
         replace_outs = {}
 
-        if mode == "UB" and self.read_delay == 0:
+        if mode == "UB" and self.read_delay == 0 or mode == "pond":
             replace_ins = {
-                "input_width_16_num_0": "data_in_pond_0",
-                "input_width_16_num_1": "data_in_pond_1",
+                "PondTop_input_width_16_num_0": "data_in_pond_0",
+                "PondTop_input_width_16_num_1": "data_in_pond_1",
             }
 
             replace_outs = {
-                "output_width_16_num_0": "data_out_pond_0",
-                "output_width_16_num_1": "data_out_pond_1",
-                "output_width_1_num_4": "valid_out_pond",
+                "PondTop_output_width_16_num_0": "data_out_pond_0",
+                "PondTop_output_width_16_num_1": "data_out_pond_1",
+                "PondTop_output_width_1_num_4": "valid_out_pond",
             }
         elif mode == "UB" and self.read_delay >= 1 and self.fw_int > 1:
             replace_ins = {
-                "input_width_16_num_0": "chain_data_in_0",
-                "input_width_16_num_1": "chain_data_in_1",
-                "input_width_16_num_2": "data_in_0",
-                "input_width_16_num_3": "data_in_1",
+                "LakeTop_input_width_17_num_0": "chain_data_in_0",
+                "LakeTop_input_width_17_num_1": "chain_data_in_1",
+                "LakeTop_input_width_17_num_2": "data_in_0",
+                "LakeTop_input_width_17_num_3": "data_in_1",
             }
 
             replace_outs = {
-                "output_width_16_num_0": "data_out_0",
-                "output_width_16_num_1": "data_out_1",
-                "output_width_1_num_3": "stencil_valid",
+                "LakeTop_output_width_17_num_0": "data_out_0",
+                "LakeTop_output_width_17_num_1": "data_out_1",
+                "LakeTop_output_width_1_num_2": "stencil_valid",
+            }
+
+        elif mode == "stencil_valid":
+            replace_ins = {
+                "LakeTop_input_width_17_num_0": "chain_data_in_0",
+                "LakeTop_input_width_17_num_1": "chain_data_in_1",
+                "LakeTop_input_width_17_num_2": "data_in_0",
+                "LakeTop_input_width_17_num_3": "data_in_1",
+            }
+
+            replace_outs = {
+                "LakeTop_output_width_17_num_0": "data_out_0",
+                "LakeTop_output_width_17_num_1": "data_out_1",
+                "LakeTop_output_width_1_num_2": "stencil_valid",
             }
         elif mode == "UB" and self.fw_int == 1:
             replace_ins = {

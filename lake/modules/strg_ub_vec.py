@@ -35,7 +35,7 @@ class StrgUBVec(MemoryController):
                  agg_height=4,
                  tb_height=2,
                  area_opt=True,
-                 reduced_id_config_width=10,
+                 reduced_id_config_width=11,
                  in2agg_addr_fifo_depth=8,  # delay fifo for update operation
                  agg2sram_addr_fifo_depth=4,  # delay fifo for update operation
                  agg_data_top=False):
@@ -64,6 +64,8 @@ class StrgUBVec(MemoryController):
         self.reduced_id_config_width = reduced_id_config_width
         self.in2agg_addr_fifo_depth = in2agg_addr_fifo_depth
         self.agg2sram_addr_fifo_depth = agg2sram_addr_fifo_depth
+        if self.area_opt:
+            self.agg_height = 2
 
         self.input_iterator_support = 6
         self.output_iterator_support = 6
@@ -79,10 +81,18 @@ class StrgUBVec(MemoryController):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._data_in = self.input("data_in", self.data_width,
+        self._data_in = self.input("data_in", self.data_width + 1,
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
+
+        self._data_in_thin = self.var("data_in_thin", self.data_width,
+                                      size=self.interconnect_input_ports,
+                                      packed=True,
+                                      explicit_array=True)
+
+        for idx in range(self.interconnect_input_ports):
+            self.wire(self._data_in_thin[idx], self._data_in[idx][self.data_width - 1, 0])
 
         self._data_from_sram = self.input("data_from_strg", self.data_width,
                                           size=self.fetch_width,
@@ -104,7 +114,7 @@ class StrgUBVec(MemoryController):
 
         self._valid_out = self.output("accessor_output", self.interconnect_output_ports)
         self._valid_out_int = self.var("accessor_output_int", self.interconnect_output_ports)
-        self._data_out = self.output("data_out", self.data_width,
+        self._data_out = self.output("data_out", self.data_width + 1,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
@@ -113,6 +123,15 @@ class StrgUBVec(MemoryController):
                                       size=self.interconnect_output_ports,
                                       packed=True,
                                       explicit_array=True)
+
+        self._data_out_thin = self.var("data_out_int_thin", self.data_width,
+                                       size=self.interconnect_output_ports,
+                                       packed=True,
+                                       explicit_array=True)
+
+        for idx in range(self.interconnect_output_ports):
+            self.wire(self._data_out[idx][self.data_width - 1, 0], self._data_out_thin[idx])
+            self.wire(self._data_out[idx][self.data_width], kts.const(0, 1))
 
         ##################################################################################
         # CYCLE COUNTER
@@ -207,7 +226,7 @@ class StrgUBVec(MemoryController):
                        clk=self._clk,
                        rst_n=self._rst_n,
                        cycle_count=self._cycle_count,
-                       data_in=self._data_in)
+                       data_in=self._data_in_thin)
 
         if self.area_opt:
             self.add_child("agg_sram_shared",
@@ -247,8 +266,8 @@ class StrgUBVec(MemoryController):
 
         if self.area_opt:
             self.wire(agg_only.ports.update_mode_in, agg_sram_shared.ports.update_mode_out)
-            self.wire(agg_only.ports.tb_read_in, tb_only.ports.tb_read_out)
-            self.wire(agg_only.ports.tb_read_addr_in, tb_only.ports.tb_read_addr_out)
+            self.wire(agg_only.ports.tb_read_d_in, tb_only.ports.tb_read_d_out)
+            self.wire(agg_only.ports.tb_read_addr_d_in, tb_only.ports.tb_read_addr_d_out)
             self.wire(agg_only.ports.sram_read_addr_in, agg_sram_shared.ports.agg_sram_shared_addr_out)
             self.wire(sram_only.ports.sram_read_addr_in, agg_sram_shared.ports.agg_sram_shared_addr_out)
             self.wire(agg_only.ports.agg_write_restart_out, agg_sram_shared.ports.agg_write_restart_in)
@@ -256,6 +275,7 @@ class StrgUBVec(MemoryController):
             self.wire(agg_only.ports.agg_write_addr_l2b_out, agg_sram_shared.ports.agg_write_addr_l2b_in)
             self.wire(agg_only.ports.agg_write_mux_sel_out, agg_sram_shared.ports.agg_write_mux_sel_in)
             self.wire(sram_tb_shared.ports.t_read_out, agg_sram_shared.ports.sram_read_in)
+            self.wire(sram_tb_shared.ports.sram_read_d, agg_sram_shared.ports.sram_read_d_in)
             self.wire(sram_only.ports.sram_read_addr_out, agg_sram_shared.ports.sram_read_addr_in)
         else:
             self.wire(agg_only.ports.floop_mux_sel, agg_sram_shared.ports.floop_mux_sel)
@@ -337,19 +357,28 @@ class StrgUBVec(MemoryController):
 
         # Add chaining in here... since we only use in the UB case...
         self._chain_data_in = self.input("chain_data_in",
-                                         self.data_width,
+                                         self.data_width + 1,
                                          size=self.interconnect_output_ports,
                                          packed=True,
                                          explicit_array=True)
+
+        self._chain_data_in_thin = self.var("chain_data_in_thin",
+                                            self.data_width,
+                                            size=self.interconnect_output_ports,
+                                            packed=True,
+                                            explicit_array=True)
+
+        for idx in range(self.interconnect_input_ports):
+            self.wire(self._chain_data_in_thin[idx], self._chain_data_in[idx][self.data_width - 1, 0])
 
         chaining = ChainAccessor(data_width=self.data_width,
                                  interconnect_output_ports=self.interconnect_output_ports)
 
         self.add_child(f"chain", chaining,
                        curr_tile_data_out=self._data_out_int,
-                       chain_data_in=self._chain_data_in,
+                       chain_data_in=self._chain_data_in_thin,
                        accessor_output=self._valid_out_int,
-                       data_out_tile=self._data_out)
+                       data_out_tile=self._data_out_thin)
 
         self.wire(self._valid_out, self._valid_out_int)
 
@@ -398,17 +427,17 @@ class StrgUBVec(MemoryController):
                         return False
                 return True
 
-            if "agg2sram_0" in config_json:
-                if config_json["agg2sram_0"]["mode"][0] == 0:
-                    linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
-                    linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
-                    if not linear_agg_read or not linear_sram_read:
-                        linearize_data_stride = True
-                    if (linearize_data_stride):
-                        print("linearization is true")
-                        print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
-                        print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
-                        print("original extent", config_json["agg2sram_0"]["extent"])
+            # if "agg2sram_0" in config_json:
+            #     if config_json["agg2sram_0"]["mode"][0] == 0:
+            #         linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
+            #         linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
+            #         if not linear_agg_read or not linear_sram_read:
+            #             linearize_data_stride = True
+            #         if (linearize_data_stride):
+            #             print("linearization is true")
+            #             print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
+            #             print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
+            #             print("original extent", config_json["agg2sram_0"]["extent"])
 
             if linearize_data_stride:
                 for i in range(len(controllers)):
@@ -433,6 +462,8 @@ class StrgUBVec(MemoryController):
                     sram2tb_0, sram2tb_1, tb2out_0, tb2out_1 = \
                     controller_objs
 
+        sram2tb_0_delay = 0
+        sram2tb_1_delay = 0
         if in2agg_0 is not None:
             config.append(("strg_ub_agg_only_agg_write_addr_gen_0_starting_addr", in2agg_0.in_data_strt))
             config.append(("strg_ub_agg_only_agg_write_sched_gen_0_enable", 1))
@@ -463,10 +494,13 @@ class StrgUBVec(MemoryController):
 
         if agg2sram_0 is not None:
             if self.area_opt:
-                config.append(("strg_ub_agg_sram_shared_delay_0", agg2sram_0.delay[0]))
                 config.append(("strg_ub_agg_sram_shared_mode_0", agg2sram_0.mode[0]))
                 config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_agg_read_padding", agg2sram_0.agg_read_padding[0]))
-                config.append(("agg_sram_shared_agg_sram_shared_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
+                config.append(("strg_ub_agg_sram_shared_agg_sram_shared_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
+                if agg2sram_0.mode[0] == 2:
+                    sram2tb_0_delay = agg2sram_0.delay[0]
+                elif agg2sram_0.mode[0] == 3:
+                    sram2tb_1_delay = agg2sram_0.delay[0]
             else:
                 config.append(("strg_ub_agg_sram_shared_loops_in2buf_autovec_write_0_dimensionality", agg2sram_0.dim))
                 config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_0_enable", 1))
@@ -481,10 +515,13 @@ class StrgUBVec(MemoryController):
 
         if agg2sram_1 is not None:
             if self.area_opt:
-                config.append(("strg_ub_agg_sram_shared_delay_1", agg2sram_1.delay[0]))
                 config.append(("strg_ub_agg_sram_shared_mode_1", agg2sram_1.mode[0]))
                 config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_agg_read_padding", agg2sram_1.agg_read_padding[0]))
-                config.append(("agg_sram_shared_agg_sram_shared_addr_gen_1_starting_addr", agg2sram_1.in_data_strt))
+                config.append(("strg_ub_agg_sram_shared_agg_sram_shared_addr_gen_1_starting_addr", agg2sram_1.in_data_strt))
+                if agg2sram_1.mode[0] == 2:
+                    sram2tb_0_delay = agg2sram_1.delay[0]
+                elif agg2sram_1.mode[0] == 3:
+                    sram2tb_1_delay = agg2sram_1.delay[0]
             else:
                 config.append(("strg_ub_agg_sram_shared_loops_in2buf_autovec_write_1_dimensionality", agg2sram_1.dim))
                 config.append(("strg_ub_agg_sram_shared_agg_read_sched_gen_1_enable", 1))
@@ -498,6 +535,10 @@ class StrgUBVec(MemoryController):
                     config.append((f"strg_ub_agg_sram_shared_agg_read_sched_gen_1_sched_addr_gen_strides_{i}", agg2sram_1.cyc_stride[i]))
 
         if sram2tb_0 is not None:
+            if self.area_opt:
+                if sram2tb_0_delay != 0:
+                    sram2tb_0_delay += 1
+                config.append(("strg_ub_sram_tb_shared_output_sched_gen_0_sched_addr_gen_delay", sram2tb_0_delay))
             config.append(("strg_ub_sram_only_output_addr_gen_0_starting_addr", sram2tb_0.out_data_strt))
             config.append(("strg_ub_tb_only_tb_write_addr_gen_0_starting_addr", sram2tb_0.in_data_strt))
             config.append(("strg_ub_sram_tb_shared_output_sched_gen_0_enable", 1))
@@ -510,6 +551,10 @@ class StrgUBVec(MemoryController):
                 config.append((f"strg_ub_tb_only_tb_write_addr_gen_0_strides_{i}", sram2tb_0.in_data_stride[i]))
 
         if sram2tb_1 is not None:
+            if self.area_opt:
+                if sram2tb_1_delay != 0:
+                    sram2tb_1_delay += 1
+                config.append(("strg_ub_sram_tb_shared_output_sched_gen_1_sched_addr_gen_delay", sram2tb_1_delay))
             config.append(("strg_ub_sram_only_output_addr_gen_1_starting_addr", sram2tb_1.out_data_strt))
             config.append(("strg_ub_tb_only_tb_write_addr_gen_1_starting_addr", sram2tb_1.in_data_strt))
             config.append(("strg_ub_sram_tb_shared_output_sched_gen_1_enable", 1))
@@ -546,10 +591,13 @@ class StrgUBVec(MemoryController):
             if agg2sram_0 is not None:
                 if agg2sram_0.mode[0] == 0:
                     assert in2agg_0.dim <= self.agg_iter_support_small, f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_0.dim}"
+                else:
+                    config.append(("strg_ub_agg_only_agg_write_sched_gen_0_enable", 0))
 
+                in2agg_delay_0 = 0
                 if agg2sram_0.mode[0] == 2:
                     in2agg_delay_0 = in2agg_0.cyc_strt - tb2out_0.cyc_strt
-                    config.append(("agg_only_delay_0", in2agg_delay_0))
+                    config.append(("strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_delay", in2agg_delay_0))
 
                     # check in2agg addr delay fifo size
                     assert in2agg_delay_0 <= self.in2agg_addr_fifo_depth * tb2out_0.cyc_stride[0], \
@@ -560,7 +608,7 @@ class StrgUBVec(MemoryController):
                         f"The agg2sram_0 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {(agg2sram_0.delay[0] + 1) / sram2tb_0.cyc_stride[0]} number of data coming from sram2tb_0."
                 elif agg2sram_0.mode[0] == 3:
                     in2agg_delay_0 = in2agg_0.cyc_strt - tb2out_1.cyc_strt
-                    config.append(("agg_only_delay_0", in2agg_delay_0))
+                    config.append(("strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_delay", in2agg_delay_0))
 
                     # check in2agg addr delay fifo size
                     assert in2agg_delay_0 <= self.in2agg_addr_fifo_depth * tb2out_1.cyc_stride[0], \
@@ -573,10 +621,13 @@ class StrgUBVec(MemoryController):
             if agg2sram_1 is not None:
                 if agg2sram_1.mode[0] == 0:
                     assert in2agg_1.dim <= self.agg_iter_support_small, f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_1.dim}"
+                else:
+                    config.append(("strg_ub_agg_only_agg_write_sched_gen_1_enable", 0))
 
+                in2agg_delay_1 = 0
                 if agg2sram_1.mode[0] == 2:
                     in2agg_delay_1 = in2agg_1.cyc_strt - tb2out_0.cyc_strt
-                    config.append(("agg_only_delay_1", in2agg_delay_1))
+                    config.append(("strg_ub_tb_only_tb_read_sched_gen_0_sched_addr_gen_delay", in2agg_delay_1))
 
                     # check in2agg addr delay fifo size
                     assert in2agg_delay_1 <= self.in2agg_addr_fifo_depth * tb2out_0.cyc_stride[0], \
@@ -587,7 +638,7 @@ class StrgUBVec(MemoryController):
                         f"The agg2sram_1 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {agg2sram_1.delay[0] / sram2tb_0.cyc_stride[0]} number of data coming from sram2tb_0."
                 elif agg2sram_1.mode[0] == 3:
                     in2agg_delay_1 = in2agg_1.cyc_strt - tb2out_1.cyc_strt
-                    config.append(("agg_only_delay_1", in2agg_delay_1))
+                    config.append(("strg_ub_tb_only_tb_read_sched_gen_1_sched_addr_gen_delay", in2agg_delay_1))
 
                     # check in2agg addr delay fifo size
                     print(f"shared mode: 3, tb2out_1.cyc_strt: {tb2out_1.cyc_strt}, in2agg_1.cyc_strt: {in2agg_1.cyc_strt}, in2agg_delay_1: {in2agg_delay_1}")
@@ -636,20 +687,22 @@ class StrgUBVec(MemoryController):
                         return False
                 return True
 
-            if "agg2sram_0" in config_json:
-                if config_json["agg2sram_0"]["mode"][0] == 0:
-                    linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
-                    linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
-                    if not linear_agg_read or not linear_sram_read:
-                        linearize_data_stride = True
-                    if (linearize_data_stride):
-                        print("linearization is true")
-                        print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
-                        print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
-                        print("original extent", config_json["agg2sram_0"]["extent"])
+            # if "agg2sram_0" in config_json:
+            #     if config_json["agg2sram_0"]["mode"][0] == 0:
+            #         linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
+            #         linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
+            #         if not linear_agg_read or not linear_sram_read:
+            #             linearize_data_stride = True
+            #         if (linearize_data_stride):
+            #             print("linearization is true")
+            #             print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
+            #             print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
+            #             print("original extent", config_json["agg2sram_0"]["extent"])
 
         # Store all configurations here
         config = []
+        sram2tb_0_delay = 0
+        sram2tb_1_delay = 0
 
         # Compiler tells us to turn on the chain enable...
         if "chain_en" in config_json:
@@ -688,10 +741,13 @@ class StrgUBVec(MemoryController):
         if "agg2sram_0" in config_json:
             agg2sram_0 = map_controller(extract_controller_json(config_json["agg2sram_0"]), "agg2sram_0", flatten=False, linear_ag=linearize_data_stride)
             if self.area_opt:
-                config.append(("agg_sram_shared_delay_0", agg2sram_0.delay[0]))
                 config.append(("agg_sram_shared_mode_0", agg2sram_0.mode[0]))
                 config.append(("agg_sram_shared_agg_read_sched_gen_0_agg_read_padding", agg2sram_0.agg_read_padding[0]))
                 config.append(("agg_sram_shared_agg_sram_shared_addr_gen_0_starting_addr", agg2sram_0.in_data_strt))
+                if agg2sram_0.mode[0] == 2:
+                    sram2tb_0_delay = agg2sram_0.delay[0]
+                elif agg2sram_0.mode[0] == 3:
+                    sram2tb_1_delay = agg2sram_0.delay[0]
             else:
                 config.append(("agg_sram_shared_loops_in2buf_autovec_write_0_dimensionality", agg2sram_0.dim))
                 config.append(("agg_sram_shared_agg_read_sched_gen_0_enable", 1))
@@ -707,10 +763,13 @@ class StrgUBVec(MemoryController):
         if "agg2sram_1" in config_json:
             agg2sram_1 = map_controller(extract_controller_json(config_json["agg2sram_1"]), "agg2sram_1", flatten=False, linear_ag=linearize_data_stride)
             if self.area_opt:
-                config.append(("agg_sram_shared_delay_1", agg2sram_1.delay[0]))
                 config.append(("agg_sram_shared_mode_1", agg2sram_1.mode[0]))
                 config.append(("agg_sram_shared_agg_read_sched_gen_1_agg_read_padding", agg2sram_1.agg_read_padding[0]))
                 config.append(("agg_sram_shared_agg_sram_shared_addr_gen_1_starting_addr", agg2sram_1.in_data_strt))
+                if agg2sram_1.mode[0] == 2:
+                    sram2tb_0_delay = agg2sram_1.delay[0]
+                elif agg2sram_1.mode[0] == 3:
+                    sram2tb_1_delay = agg2sram_1.delay[0]
             else:
                 config.append(("agg_sram_shared_loops_in2buf_autovec_write_1_dimensionality", agg2sram_1.dim))
                 config.append(("agg_sram_shared_agg_read_sched_gen_1_enable", 1))
@@ -729,6 +788,8 @@ class StrgUBVec(MemoryController):
         if "tb2out_0" in config_json:
             num_tbs += 1
             tb2out_0 = map_controller(extract_controller_json(config_json["tb2out_0"]), "tb2out_0", flatten=False, linear_ag=linearize_data_stride)
+            if self.area_opt:
+                config.append(("tb_only_shared_tb_0", tb2out_0.tb_share[0]))
             config.append(("tb_only_tb_read_sched_gen_0_enable", 1))
             config.append(("tb_only_tb_read_sched_gen_0_sched_addr_gen_starting_addr", tb2out_0.cyc_strt))
             config.append(("tb_only_tb_read_addr_gen_0_starting_addr", tb2out_0.out_data_strt))
@@ -751,6 +812,10 @@ class StrgUBVec(MemoryController):
                 config.append((f"tb_only_tb_read_sched_gen_1_sched_addr_gen_strides_{i}", tb2out_1.cyc_stride[i]))
 
         if "sram2tb_0" in config_json:
+            if self.area_opt:
+                if sram2tb_0_delay != 0:
+                    sram2tb_0_delay += 1
+                config.append(("sram_tb_shared_output_sched_gen_0_sched_addr_gen_delay", sram2tb_0_delay))
             sram2tb_0 = map_controller(extract_controller_json(config_json["sram2tb_0"]), "sram2tb_0", flatten=False, linear_ag=linearize_data_stride)
             config.append(("sram_only_output_addr_gen_0_starting_addr", sram2tb_0.out_data_strt))
             config.append(("tb_only_tb_write_addr_gen_0_starting_addr", sram2tb_0.in_data_strt))
@@ -764,6 +829,10 @@ class StrgUBVec(MemoryController):
                 config.append((f"tb_only_tb_write_addr_gen_0_strides_{i}", sram2tb_0.in_data_stride[i]))
 
         if "sram2tb_1" in config_json:
+            if self.area_opt:
+                if sram2tb_1_delay != 0:
+                    sram2tb_1_delay += 1
+                config.append(("sram_tb_shared_output_sched_gen_1_sched_addr_gen_delay", sram2tb_1_delay))
             sram2tb_1 = map_controller(extract_controller_json(config_json["sram2tb_1"]), "sram2tb_1", flatten=False, linear_ag=linearize_data_stride)
             config.append(("sram_only_output_addr_gen_1_starting_addr", sram2tb_1.out_data_strt))
             config.append(("tb_only_tb_write_addr_gen_1_starting_addr", sram2tb_1.in_data_strt))
@@ -781,10 +850,12 @@ class StrgUBVec(MemoryController):
             if agg2sram_0 is not None:
                 if agg2sram_0.mode[0] == 0:
                     assert in2agg_0.dim <= self.agg_iter_support_small, f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_0.dim}"
+                else:
+                    config.append(("agg_only_agg_write_sched_gen_0_enable", 0))
 
                 if agg2sram_0.mode[0] == 2:
                     in2agg_delay_0 = in2agg_0.cyc_strt - tb2out_0.cyc_strt
-                    config.append(("agg_only_delay_0", in2agg_delay_0))
+                    config.append(("tb_only_tb_read_sched_gen_0_sched_addr_gen_delay", in2agg_delay_0))
 
                     # check in2agg addr delay fifo size
                     assert in2agg_delay_0 <= self.in2agg_addr_fifo_depth * tb2out_0.cyc_stride[0], \
@@ -795,7 +866,7 @@ class StrgUBVec(MemoryController):
                         f"The agg2sram_0 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {(agg2sram_0.delay[0] + 1) / sram2tb_0.cyc_stride[0]} number of data coming from sram2tb_0."
                 elif agg2sram_0.mode[0] == 3:
                     in2agg_delay_0 = in2agg_0.cyc_strt - tb2out_1.cyc_strt
-                    config.append(("agg_only_delay_0", in2agg_delay_0))
+                    config.append(("tb_only_tb_read_sched_gen_1_sched_addr_gen_delay", in2agg_delay_0))
 
                     # check in2agg addr delay fifo size
                     assert in2agg_delay_0 <= self.in2agg_addr_fifo_depth * tb2out_1.cyc_stride[0], \
@@ -809,10 +880,13 @@ class StrgUBVec(MemoryController):
                 if agg2sram_1.mode[0] == 0:
                     assert in2agg_1.dim <= self.agg_iter_support_small, \
                         f"Non-update operations require more than {self.agg_iter_support_small} levels of iterators, {in2agg_1.dim}"
+                else:
+                    config.append(("agg_only_agg_write_sched_gen_1_enable", 0))
 
+                in2agg_delay_1 = 0
                 if agg2sram_1.mode[0] == 2:
                     in2agg_delay_1 = in2agg_1.cyc_strt - tb2out_0.cyc_strt
-                    config.append(("agg_only_delay_1", in2agg_delay_1))
+                    config.append(("tb_only_tb_read_sched_gen_0_sched_addr_gen_delay", in2agg_delay_1))
 
                     # check in2agg addr delay fifo size
                     assert in2agg_delay_1 <= self.in2agg_addr_fifo_depth * tb2out_0.cyc_stride[0], \
@@ -823,7 +897,7 @@ class StrgUBVec(MemoryController):
                         f"The agg2sram_1 delay FIFO (size {self.agg2sram_addr_fifo_depth}) for the update operation is too small for {agg2sram_1.delay[0] / sram2tb_0.cyc_stride[0]} number of data coming from sram2tb_0."
                 elif agg2sram_1.mode[0] == 3:
                     in2agg_delay_1 = in2agg_1.cyc_strt - tb2out_1.cyc_strt
-                    config.append(("agg_only_delay_1", in2agg_delay_1))
+                    config.append(("tb_only_tb_read_sched_gen_1_sched_addr_gen_delay", in2agg_delay_1))
 
                     # check in2agg addr delay fifo size
                     assert in2agg_delay_1 <= self.in2agg_addr_fifo_depth * tb2out_1.cyc_stride[0], \

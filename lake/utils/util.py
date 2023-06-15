@@ -484,34 +484,49 @@ def trim_config_list(flat_gen, config_list):
     return config
 
 
-# Add a simple counter to a design and return the signal
-def add_counter(generator, name, bitwidth, increment=kts.const(1, 1)):
-    ctr = generator.var(name, bitwidth)
+def intercept_cfg(generator, port):
+    int_gen = generator.internal_generator
+    actual_port = int_gen.get_port(port)
+    # Remove the attribute
+    attrs = actual_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
+    if len(attrs) == 0:
+        print("Trying to intercept normal port, doing nothing...")
+    elif len(attrs) != 1:
+        print("No clue what you're trying to intercept...doing nothing...")
+    else:
+        cr_attr = attrs[0]
+        cr_attr.set_intercepted(True)
+    return generator.ports[port]
 
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def ctr_inc_code():
-        if ~generator._rst_n:
-            ctr = 0
-        elif increment:
-            ctr = ctr + 1
 
-    generator.add_code(ctr_inc_code)
-    return ctr
+def observe_cfg(generator, port, other_gen, cfg_reg_port):
+    int_gen = other_gen.internal_generator
+    actual_port = int_gen.get_port(cfg_reg_port)
+    # Remove the attribute
+    attrs = actual_port.find_attribute(lambda a: isinstance(a, ConfigRegAttr))
+    if len(attrs) == 0:
+        print("Trying to intercept normal port, doing nothing...")
+    elif len(attrs) != 1:
+        print("No clue what you're trying to intercept...doing nothing...")
+    else:
+        cr_attr = attrs[0]
+        cr_attr.add_observer(generator, port)
 
 
-def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1), name=None):
+def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1),
+             name=None, packed=False, reset_value=0):
     ''' Pass a generator and a signal to create a registered
         version of any signal easily.
     '''
     use_name = signal.name + "_d1"
     if name is not None:
         use_name = name
-    reg = generator.var(use_name, signal.width)
+    reg = generator.var(use_name, signal.width, size=signal.size, packed=packed)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_code():
         if ~generator._rst_n:
-            reg = 0
+            reg = reset_value
         elif clear:
             reg = 0
         elif enable:
@@ -521,10 +536,101 @@ def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1), n
     return reg
 
 
+def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=False, verbose=False):
+    ''' Create a signal that indicates whether a signal is high
+        or has been high in the past
+    '''
+    use_name = signal.name
+    if name is not None:
+        use_name = name
+    reg = generator.var(f"{use_name}_was_high", signal.width)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def reg_code():
+        if ~generator._rst_n:
+            reg = 0
+        elif clear:
+            reg = 0
+        elif signal:
+            reg = 1
+    generator.add_code(reg_code)
+
+    sticky = generator.var(f"{use_name}_sticky", 1)
+    if seq_only:
+        if verbose:
+            print(f"Using seq only...")
+        generator.wire(sticky, reg)
+    else:
+        generator.wire(sticky, signal | reg)
+    return sticky
+
+
+# Add a simple counter to a design and return the signal
+def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None, pos_reset=False):
+
+    ctr = generator.var(name, bitwidth, packed=True)
+    if pos_reset is True:
+        if clear is not None:
+            @always_ff((posedge, "clk"), (posedge, "rst_n"))
+            def ctr_inc_clr_code():
+                if generator._rst_n:
+                    ctr = 0
+                elif clear:
+                    ctr = 0
+                elif increment:
+                    ctr = ctr + 1
+            generator.add_code(ctr_inc_clr_code)
+        else:
+            @always_ff((posedge, "clk"), (posedge, "rst_n"))
+            def ctr_inc_code():
+                if generator._rst_n:
+                    ctr = 0
+                elif increment:
+                    ctr = ctr + 1
+            generator.add_code(ctr_inc_code)
+    else:
+        if clear is not None:
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
+            def ctr_inc_clr_code():
+                if ~generator._rst_n:
+                    ctr = 0
+                elif clear:
+                    ctr = 0
+                elif increment:
+                    ctr = ctr + 1
+            generator.add_code(ctr_inc_clr_code)
+        else:
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
+            def ctr_inc_code():
+                if ~generator._rst_n:
+                    ctr = 0
+                elif increment:
+                    ctr = ctr + 1
+            generator.add_code(ctr_inc_code)
+    return ctr
+
+
 def add_config_reg(generator, name, description, bitwidth, **kwargs):
     cfg_reg = generator.input(name, bitwidth, **kwargs)
     cfg_reg.add_attribute(ConfigRegAttr(description))
     return cfg_reg
+
+
+def sum_bits(generator, signal, name):
+
+    bits_size = kts.clog2(signal.width)
+    bits_sum = generator.var(f"{name}_sum", bits_size + 1)
+    # bits_sum_done = generator.var(f"{name}_sum_done", 1)
+
+    @always_comb
+    def sum_bits_comb():
+        bits_sum = 0
+        # bits_sum_done = 0
+        for i in range(signal.width):
+            bits_sum = bits_sum + signal[i]
+    generator.add_code(sum_bits_comb)
+
+    return bits_sum
 
 
 def process_line(item):

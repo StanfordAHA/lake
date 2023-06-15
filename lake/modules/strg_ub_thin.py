@@ -38,12 +38,14 @@ class StrgUBThin(MemoryController):
                  area_opt_share=False,
                  area_opt_dual_config=True,
                  chaining=False,
-                 reduced_id_config_width=10,
+                 reduced_id_config_width=11,
+                 name_suffix="",
                  delay_width=4,
-                 iterator_support2=2  # assumes that this port has smaller iter_support
+                 iterator_support2=2,  # assumes that this port has smaller iter_support
+                 add_flush=False
                  ):
 
-        super().__init__("strg_ub_thin", debug=True)
+        super().__init__(f"strg_ub_thin{name_suffix}", debug=True, add_flush=add_flush)
 
         assert mem_width == data_width, f"This module should only be used when the fetch width is 1!"
 
@@ -385,6 +387,7 @@ class StrgUBThin(MemoryController):
                 if self.area_opt and self.area_opt_dual_config:
                     self.wire(self._write_addr, ADDR_WRITE.ports.addr_out)
                     self.wire(SCHED_WRITE.ports.mux_sel_msb_init, FOR_LOOP_WRITE.ports.mux_sel_msb_init)
+                    self.wire(SCHED_WRITE.ports.mux_sel_msb_init, ADDR_WRITE.ports.mux_sel_msb_init)
                     self.wire(self._write_mux_sel_msb,
                               FOR_LOOP_WRITE.ports.mux_sel_out[FOR_LOOP_WRITE.ports.mux_sel_out.width - 1])
                 else:
@@ -456,6 +459,7 @@ class StrgUBThin(MemoryController):
             if self.area_opt and self.area_opt_dual_config:
                 self.wire(self._read_addr, ADDR_READ.ports.addr_out)
                 self.wire(SCHED_READ.ports.mux_sel_msb_init, FOR_LOOP_READ.ports.mux_sel_msb_init)
+                self.wire(SCHED_READ.ports.mux_sel_msb_init, ADDR_READ.ports.mux_sel_msb_init)
                 self.wire(self._read_mux_sel_msb,
                           FOR_LOOP_READ.ports.mux_sel_out[FOR_LOOP_READ.ports.mux_sel_out.width - 1])
             else:
@@ -509,19 +513,19 @@ class StrgUBThin(MemoryController):
             rw_port = MemoryPort(MemoryPortType.READWRITE)
             rw_port_intf = rw_port.get_port_interface()
             rw_port_intf['data_in'] = self._data_to_sram
-            rw_port_intf['data_out'] = self._data_from_sram
+            rw_port_intf['data_out'] = None
             rw_port_intf['write_addr'] = self._wr_addr_to_sram
             rw_port_intf['write_enable'] = self._wen_to_sram
-            rw_port_intf['read_addr'] = self._rd_addr_to_sram
-            rw_port_intf['read_enable'] = self._ren_to_sram
+            rw_port_intf['read_addr'] = tmp0_rdaddr
+            rw_port_intf['read_enable'] = tmp0_rden
             rw_port.annotate_port_signals()
             self.base_ports[0][0] = rw_port
             # Populate second port as just R
             r_port = MemoryPort(MemoryPortType.READ)
             r_port_intf = r_port.get_port_interface()
-            r_port_intf['data_out'] = None
-            r_port_intf['read_addr'] = tmp0_rdaddr
-            r_port_intf['read_enable'] = tmp0_rden
+            r_port_intf['data_out'] = self._data_from_sram
+            r_port_intf['read_addr'] = self._rd_addr_to_sram
+            r_port_intf['read_enable'] = self._ren_to_sram
             r_port.annotate_port_signals()
             self.base_ports[0][1] = r_port
 
@@ -550,6 +554,9 @@ class StrgUBThin(MemoryController):
             rw_port_intf['read_enable'] = self._ren_to_sram
             rw_port.annotate_port_signals()
             self.base_ports[0][0] = rw_port
+
+        if self.add_flush:
+            self.add_flush_pass()
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def delay_read(self):
@@ -597,37 +604,38 @@ class StrgUBThin(MemoryController):
     def get_bitstream(self, config_json, prefix=""):
         # return super().get_bitstream(config_json, prefix=prefix)
         config = []
-        in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
-        out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
 
         if self.area_opt:
-            controller_tmp_list = []
-            for in_ctrl in in_ctrls:
+            for i in range(self.interconnect_input_ports):
+                in_ctrl = f"{self.ctrl_in}_{i}"
                 if in_ctrl in config_json:
                     controller_tmp = (map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl), 0)
-                    controller_tmp_list.append(controller_tmp)
-            # smart mapping to select port based on the schedule loop dimension
-            controller_tmp_list.sort(key=lambda x: x[0].dim, reverse=True)  # sort from large dim to small
-            config += configure_controller(prefix="", name=f"{self.ctrl_in}_0", suffix="", controller=controller_tmp_list[0])
-            if len(controller_tmp_list) == 2:
-                if self.area_opt_dual_config:
-                    config += configure_controller(prefix="", name=f"{self.ctrl_in}_0", suffix="2", controller=controller_tmp_list[1])
-                else:
-                    config += configure_controller(prefix="", name=f"{self.ctrl_in}_1", suffix="", controller=controller_tmp_list[1])
+                    if self.area_opt_dual_config:
+                        ctrl_name = f"{self.ctrl_in}_0"
+                        ctrl_suffix = ""
+                        if i == 1:
+                            ctrl_suffix = "2"
+                    else:
+                        ctrl_name = in_ctrl
+                        ctrl_suffix = ""
+                    config += configure_controller(prefix="", name=ctrl_name, suffix=ctrl_suffix, controller=controller_tmp)
 
-            controller_tmp_list = []
-            for out_ctrl in out_ctrls:
+            for i in range(self.interconnect_output_ports):
+                out_ctrl = f"{self.ctrl_out}_{i}"
                 if out_ctrl in config_json:
                     controller_tmp = (map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl), 1)
-                    controller_tmp_list.append(controller_tmp)
-            controller_tmp_list.sort(key=lambda x: x[0].dim, reverse=True)
-            config += configure_controller(prefix="", name=f"{self.ctrl_out}_0", suffix="", controller=controller_tmp_list[0])
-            if len(controller_tmp_list) == 2:
-                if self.area_opt_dual_config:
-                    config += configure_controller(prefix="", name=f"{self.ctrl_out}_0", suffix="2", controller=controller_tmp_list[1])
-                else:
-                    config += configure_controller(prefix="", name=f"{self.ctrl_out}_1", suffix="", controller=controller_tmp_list[1])
+                    if self.area_opt_dual_config:
+                        ctrl_name = f"{self.ctrl_out}_0"
+                        ctrl_suffix = ""
+                        if i == 1:
+                            ctrl_suffix = "2"
+                    else:
+                        ctrl_name = out_ctrl
+                        ctrl_suffix = ""
+                    config += configure_controller(prefix="", name=ctrl_name, suffix=ctrl_suffix, controller=controller_tmp)
         else:
+            in_ctrls = [f"{self.ctrl_in}_{i}" for i in range(self.interconnect_input_ports)]
+            out_ctrls = [f"{self.ctrl_out}_{i}" for i in range(self.interconnect_output_ports)]
             for in_ctrl in in_ctrls:
                 if in_ctrl in config_json:
                     controller_tmp = (map_controller(extract_controller_json(config_json[in_ctrl]), in_ctrl), 0)
@@ -636,6 +644,7 @@ class StrgUBThin(MemoryController):
                 if out_ctrl in config_json:
                     controller_tmp = (map_controller(extract_controller_json(config_json[out_ctrl]), out_ctrl), 1)
                     config += configure_controller(prefix="", name=out_ctrl, controller=controller_tmp)
+        print("pond config")
         print(config)
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
                                            self.name + "_W")
@@ -658,7 +667,10 @@ class StrgUBThin(MemoryController):
 
 
 if __name__ == "__main__":
-    lake_dut = StrgUBThin()
+    lake_dut = StrgUBThin(read_delay=0, rw_same_cycle=True,
+                          area_opt=False,
+                          area_opt_dual_config=False,
+                          add_flush=True)
     verilog(lake_dut, filename="strg_ub_thin.sv",
             optimize_if=False,
             additional_passes={"lift config regs": lift_config_reg})
