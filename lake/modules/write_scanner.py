@@ -1180,7 +1180,6 @@ class WriteScanner(MemoryController):
             self.add_performance_indicator(self._done_signal, edge='posedge', label='ops',
                                            cycle_count=mem_request_ctr)
 
-
         # Finally, lift the config regs...
         lift_config_reg(self.internal_generator)
 

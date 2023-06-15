@@ -34,6 +34,7 @@ pairs = [('sram2tb_0', ['agg2sram_0', 'agg2sram_1', 'in2agg_0', 'in2agg_1']),
 
 VBOSE = False
 
+
 class SequenceIterator():
 
     def __init__(self,
@@ -99,9 +100,9 @@ def get_num_events(from_cfg=None, stop=0):
                           strides=from_cfg['cycle_stride'],
                           ranges=from_cfg['extent'],
                           start=from_cfg['cycle_starting_addr'][0])
-    
+
     si.initialize()
-    num_events = 0 
+    num_events = 0
 
     event_ = 0
     is_done = False
@@ -112,9 +113,8 @@ def get_num_events(from_cfg=None, stop=0):
         num_events += 1
         is_done = si.iterate()
         # if is_done:
-            # print('event')
-            # print(event_)
-
+        #     print('event')
+        #     print(event_)
 
     # offset = stop - event_
     # print(f'offset:, {stop}, {event_}')
@@ -142,7 +142,7 @@ def calculate_num_valids(cfg_dict, pair):
 
 
 def process_json(json_path, verbose=False):
-    
+
     with open(json_path, 'r') as j_file:
         json_data = json.load(j_file)
 
@@ -150,9 +150,9 @@ def process_json(json_path, verbose=False):
 
     all_data = {}
     # for key, value in json_data.items():
-        # print(f"{key}==>{value}")
-        # print(f"{key}")
-        # print(key)
+    #     print(f"{key}==>{value}")
+    #     print(f"{key}")
+    #     print(key)
 
     # print(json_data['top'])
     # print(json_data['namespaces']['global']['modules'])
@@ -171,7 +171,7 @@ def process_json(json_path, verbose=False):
     # print(modules['conv_stencil_ub'])
     # ubs = modules['conv_stencil_ub']['instances']
 
-    # ubs = modules['conv_stencil_ub']['instances'] 
+    # ubs = modules['conv_stencil_ub']['instances']
 
     # print('UB, CTRL, CYCLE_START, BITS')
 
@@ -241,7 +241,7 @@ def process_json(json_path, verbose=False):
 
                 # print(cfg_)
                 # print(local_cfg['cycle_starting_addr']
-                # 
+
             for pair_ in pairs:
 
                 to = pair_[0]
@@ -260,7 +260,7 @@ def process_json(json_path, verbose=False):
                     if to in cfg_dict and from_ in cfg_dict:
                         num_valids, cycle_offset = calculate_num_valids(cfg_dict, (to, from_))
                         # if 'sram2tb_1' in to and 'agg2sram_1' in from_:
-                            # print(f"on it: {num_valids}, {cycle_offset}")
+                        #     print(f"on it: {num_valids}, {cycle_offset}")
                     # to = cfg_dict[pair_[0]]
                     # from = cfg_dict[pair_[1]]
                     # print(f"{key}, {pair_}, {num_valids}, {cycle_offset}, {kratos.clog2(num_valids)}, {kratos.clog2(cycle_offset)}")
@@ -293,6 +293,7 @@ def process_json(json_path, verbose=False):
         print(valid_only)
 
         # print(u)
+
 
 if __name__ == "__main__":
 
