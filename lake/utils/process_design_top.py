@@ -26,7 +26,7 @@ allowable_configs = ['agg2sram_0',
 pairs = [('sram2tb_0', ['agg2sram_0', 'agg2sram_1', 'in2agg_0', 'in2agg_1']),
          ('sram2tb_1', ['agg2sram_0', 'agg2sram_1', 'in2agg_0', 'in2agg_1']),
          ('tb2out_0', ['sram2tb_0', 'sram2tb_1', 'agg2sram_0', 'agg2sram_1', 'in2agg_0', 'in2agg_1']),
-         ('tb2out_1', ['sram2tb_0', 'sram2tb_1', 'agg2sram_0', 'agg2sram_1', 'in2agg_0', 'in2agg_1']),]
+         ('tb2out_1', ['sram2tb_0', 'sram2tb_1', 'agg2sram_0', 'agg2sram_1', 'in2agg_0', 'in2agg_1']), ]
 # pairs = [('sram2tb_0', 'in2agg_0'),
 #          ('sram2tb_1', 'in2agg_0'),
 #          ('sram2tb_0', 'in2agg_1'),
