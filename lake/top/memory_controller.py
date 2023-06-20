@@ -24,6 +24,10 @@ class MemoryController(kts.Generator):
                             kts.const(0, EOS_BIT - (OPCODE_WIDTH + OPCODE_BASE)),
                             kts.const(DONE_CODE, OPCODE_WIDTH),
                             kts.const(0, OPCODE_BASE))
+    STOP0_PROXY = kts.concat(kts.const(1, 1),
+                             kts.const(0, EOS_BIT - (OPCODE_WIDTH + OPCODE_BASE)),
+                             kts.const(STOP_CODE, OPCODE_WIDTH),
+                             kts.const(0, OPCODE_BASE))
 
     def __init__(self, name: str,
                  debug: bool = False,
