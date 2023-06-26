@@ -261,6 +261,10 @@ class Intersect(MemoryController):
 
         all_eos = kts.concat(*self._coord_in_fifo_eos_in, *self._pos_in_fifo_eos_in) & kts.concat(*self._coord_in_fifo_valid_in, *self._pos_in_fifo_valid_in)
 
+        all_eos_alt = self.var("all_eos_alt", 2)
+        self.wire(all_eos_alt[0], self._coord_in_fifo_eos_in[0] & self._pos_in_fifo_eos_in[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0])
+        self.wire(all_eos_alt[1], self._coord_in_fifo_eos_in[1] & self._pos_in_fifo_eos_in[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1])
+
         self.wire(self._any_eos, all_eos.r_or())
 
         self._maybe = self.var("maybe", self.data_width)
@@ -339,7 +343,9 @@ class Intersect(MemoryController):
         ITER.next(ITER, None)
 
         # First we align the streams to both stop tokens
-        ALIGN.next(DRAIN, self._eos_in_sticky.r_and())
+        # ALIGN.next(DRAIN, self._eos_in_sticky.r_and())
+        # ALIGN.next(ITER, self._eos_in_sticky.r_and())
+        ALIGN.next(ITER, all_eos.r_and())
         ALIGN.next(ALIGN, None)
 
         # For Union, there is no real early stop, we just can go until both streams hit stop tokens
@@ -384,14 +390,18 @@ class Intersect(MemoryController):
         #######
         # ITER.output(self._inc_pos_cnt[0], (self._all_valid & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         # ITER.output(self._inc_pos_cnt[1], (self._all_valid & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        ITER.output(self._inc_pos_cnt[0], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        ITER.output(self._inc_pos_cnt[1], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        ITER.output(self._inc_pos_cnt[0], (((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or()) |
+                    (self._all_valid_join & ~all_eos.r_and() & all_eos_alt[1]))
+        ITER.output(self._inc_pos_cnt[1], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or() |
+                    (self._all_valid_join & ~all_eos.r_and() & all_eos_alt[0]))
+        # ITER.output(self._inc_pos_cnt[0], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        # ITER.output(self._inc_pos_cnt[1], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         ITER.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full.r_or())
         ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         ITER.output(self._fifo_push, self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or())
-        ITER.output(self._clr_eos_sticky[0], 0)
-        ITER.output(self._clr_eos_sticky[1], 0)
+        ITER.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
+        ITER.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ITER.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         # ITER.output(self._pos_to_fifo[0], self._pos_cnt[0] + self._payload_ptr[0])
         # ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
@@ -408,20 +418,20 @@ class Intersect(MemoryController):
         # ALIGN
         #######
         # Need to align the inputs as well
-        ALIGN.output(self._inc_pos_cnt[0], ~self._eos_in_sticky[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0])
-        ALIGN.output(self._inc_pos_cnt[1], ~self._eos_in_sticky[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1])
+        ALIGN.output(self._inc_pos_cnt[0], (~self._eos_in_sticky[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0]) | (all_eos.r_and() & ~self._fifo_full.r_or()))
+        ALIGN.output(self._inc_pos_cnt[1], (~self._eos_in_sticky[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1]) | (all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._rst_pos_cnt[0], 0)
         ALIGN.output(self._rst_pos_cnt[1], 0)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        ALIGN.output(self._fifo_push, 0)
-        ALIGN.output(self._clr_eos_sticky[0], 0)
-        ALIGN.output(self._clr_eos_sticky[1], 0)
-        ALIGN.output(self._coord_to_fifo, kts.const(0, 16))
-        ALIGN.output(self._pos_to_fifo[0], kts.const(0, 16))
-        ALIGN.output(self._pos_to_fifo[1], kts.const(0, 16))
-        ALIGN.output(self._coord_to_fifo_eos, 0)
-        ALIGN.output(self._pos_to_fifo_eos[0], 0)
-        ALIGN.output(self._pos_to_fifo_eos[1], 0)
+        ALIGN.output(self._fifo_push, (all_eos.r_and() & ~self._fifo_full.r_or()))
+        ALIGN.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
+        ALIGN.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
+        ALIGN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
+        ALIGN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
+        ALIGN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
+        ALIGN.output(self._coord_to_fifo_eos, 1)
+        ALIGN.output(self._pos_to_fifo_eos[0], 1)
+        ALIGN.output(self._pos_to_fifo_eos[1], 1)
 
         #######
         # UNION
