@@ -335,7 +335,7 @@ class Intersect(MemoryController):
         # complexity, or if we are looking at one of the eos since we can make the last
         # move for the intersection now...
         # If we have eos and can push it to the fifo, we are done with this stream
-        ITER.next(ALIGN, self._any_eos)
+        ITER.next(ALIGN, self._any_eos & ~all_eos.r_and())
         ITER.next(ITER, None)
 
         # First we align the streams to both stop tokens
@@ -382,12 +382,14 @@ class Intersect(MemoryController):
         #######
         # ITER
         #######
-        ITER.output(self._inc_pos_cnt[0], (self._all_valid & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        ITER.output(self._inc_pos_cnt[1], (self._all_valid & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        # ITER.output(self._inc_pos_cnt[0], (self._all_valid & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        # ITER.output(self._inc_pos_cnt[1], (self._all_valid & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        ITER.output(self._inc_pos_cnt[0], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        ITER.output(self._inc_pos_cnt[1], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         ITER.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full.r_or())
         ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        ITER.output(self._fifo_push, self._all_valid & (self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or() & ~self._any_eos)
+        ITER.output(self._fifo_push, self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or() )
         ITER.output(self._clr_eos_sticky[0], 0)
         ITER.output(self._clr_eos_sticky[1], 0)
         ITER.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
@@ -395,9 +397,12 @@ class Intersect(MemoryController):
         # ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
         ITER.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
         ITER.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
-        ITER.output(self._coord_to_fifo_eos, 0)
-        ITER.output(self._pos_to_fifo_eos[0], 0)
-        ITER.output(self._pos_to_fifo_eos[1], 0)
+        ITER.output(self._coord_to_fifo_eos, all_eos.r_and())
+        ITER.output(self._pos_to_fifo_eos[0], all_eos.r_and())
+        ITER.output(self._pos_to_fifo_eos[1], all_eos.r_and())
+        # ITER.output(self._coord_to_fifo_eos, 0)
+        # ITER.output(self._pos_to_fifo_eos[0], 0)
+        # ITER.output(self._pos_to_fifo_eos[1], 0)
 
         #######
         # ALIGN
