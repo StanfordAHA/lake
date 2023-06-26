@@ -389,7 +389,7 @@ class Intersect(MemoryController):
         ITER.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full.r_or())
         ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        ITER.output(self._fifo_push, self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or() )
+        ITER.output(self._fifo_push, self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or())
         ITER.output(self._clr_eos_sticky[0], 0)
         ITER.output(self._clr_eos_sticky[1], 0)
         ITER.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
