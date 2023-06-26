@@ -870,9 +870,9 @@ class ScannerPipe(MemoryController):
         self.wire(self._fiber_addr, self._fiber_addr_pre + self._seq_addr)
 
         # self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
-        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=16, defer_hrdwr_gen=True, min_depth=16)
+        self._coord_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
         self._coord_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
-        self._pos_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=16, defer_hrdwr_gen=True, min_depth=16)
+        self._pos_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
         self._pos_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
         self._block_rd_fifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
         self._block_rd_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
