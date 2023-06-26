@@ -168,54 +168,41 @@ class ScannerPipe(MemoryController):
 
         self._rd_rsp_data_in = [self.input(f"rd_rsp_data_in_{i}", self.data_width + 1, explicit_array=True, packed=True) for i in range(num_ports)]
         [self._rd_rsp_data_in[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=True)) for i in range(num_ports)]
-        self._rd_rsp_valid_in =  [self.input(f"rd_rsp_data_in_{i}_valid", 1) for i in range(num_ports)]
+        self._rd_rsp_valid_in = [self.input(f"rd_rsp_data_in_{i}_valid", 1) for i in range(num_ports)]
         [self._rd_rsp_valid_in[i].add_attribute(ControlSignalAttr(is_control=True)) for i in range(num_ports)]
         self._rd_rsp_ready_out = [self.output(f"rd_rsp_data_in_{i}_ready", 1) for i in range(num_ports)]
         [self._rd_rsp_ready_out[i].add_attribute(ControlSignalAttr(is_control=False))for i in range(num_ports)]
 
         if num_ports == 1:
-                # ID out r/v
-                self._ID_out = [self.output(f"ID_out_{i}", self.data_width + 1, explicit_array=True, packed=True) for i in range(num_ports)]
-                [self._ID_out[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=True)) for i in range(num_ports)]
+            # ID out r/v
+            self._ID_out = [self.output(f"ID_out_{i}", self.data_width + 1, explicit_array=True, packed=True) for i in range(num_ports)]
+            [self._ID_out[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=True)) for i in range(num_ports)]
 
-                self._ID_out_ready_in = [self.input(f"ID_out_{i}_ready", 1) for i in range(num_ports)]
-                [self._ID_out_ready_in[i].add_attribute(ControlSignalAttr(is_control=True, full_bus=False)) for i in range(num_ports)]
+            self._ID_out_ready_in = [self.input(f"ID_out_{i}_ready", 1) for i in range(num_ports)]
+            [self._ID_out_ready_in[i].add_attribute(ControlSignalAttr(is_control=True, full_bus=False)) for i in range(num_ports)]
 
-                self._ID_out_valid_out = [self.output(f"ID_out_{i}_valid", 1) for i in range(num_ports)]
-                [self._ID_out_valid_out[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=False)) for i in range(num_ports)]
+            self._ID_out_valid_out = [self.output(f"ID_out_{i}_valid", 1) for i in range(num_ports)]
+            [self._ID_out_valid_out[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=False)) for i in range(num_ports)]
 
         #     for i in range(num_ports):
         #         self._addr_out.append()
-                
 
         #         self._addr_out_ready_in.append()
-                
 
         #         self._addr_out_valid_out.append()
-                
 
         #         # OP out r/v
         #         self._op_out.append()
-                
 
         #         self._op_out_ready_in.append()
-                
 
         #         self._op_out_valid_out.append()
-                
-
-
 
         #         # Response channel from buffet
         #         self._rd_rsp_data_in.append()
-                
 
         #         self._rd_rsp_valid_in.append()
-                
-
         #         self._rd_rsp_ready_out.append()
-                
-
 
         # else:
         #     self._addr_out = self.output("addr_out", self.data_width + 1, explicit_array=True, packed=True)
@@ -400,7 +387,7 @@ class ScannerPipe(MemoryController):
         # Use all 17b - Last bit tells us destination prealloc fifo
         self._rd_rsp_fifo_in = [kts.concat(self._rd_rsp_data_in[i]) for i in range(num_ports)]
 
-        self._rd_rsp_infifo =  [RegFIFO(data_width=self._rd_rsp_fifo_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True) for i in range(num_ports)]
+        self._rd_rsp_infifo = [RegFIFO(data_width=self._rd_rsp_fifo_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True) for i in range(num_ports)]
         [self._rd_rsp_infifo[i].add_attribute(SharedFifoAttr(direction="IN")) for i in range(num_ports)]
 
         self._rd_rsp_fifo_out_data = [self.var(f"rd_rsp_fifo_{i}_out_data", self.data_width + 1, packed=True) for i in range(num_ports)]
@@ -431,7 +418,7 @@ class ScannerPipe(MemoryController):
         self._crd_ID_out_to_fifo = self.var("crd_ID_out_to_fifo", self.data_width, explicit_array=True, packed=True)
 
         self._addr_out_to_fifo = [self.var(f"addr_out_to_fifo_{i}", self.data_width, explicit_array=True, packed=True) for i in range(num_ports)]
-        self._op_out_to_fifo =  [self.var(f"op_out_to_fifo_{i}", self.data_width, explicit_array=True, packed=True) for i in range(num_ports)]
+        self._op_out_to_fifo = [self.var(f"op_out_to_fifo_{i}", self.data_width, explicit_array=True, packed=True) for i in range(num_ports)]
         self._ID_out_to_fifo = [self.var(f"ID_out_to_fifo_{i}", self.data_width, explicit_array=True, packed=True) for i in range(num_ports)]
 
         self._seg_req_push = self.var("seg_req_push", 1)
@@ -449,7 +436,7 @@ class ScannerPipe(MemoryController):
 
         # OP Outfifo
         self._op_out_fifo_push = [self.var(f"op_out_fifo_{i}_push", 1) for i in range(num_ports)]
-        
+
         self._op_out_fifo_full = [self.var(f"op_out_fifo_{i}_full", 1) for i in range(num_ports)]
         self._op_out_fifo_in = [kts.concat(kts.const(0, 1), self._op_out_to_fifo[i]) for i in range(num_ports)]
         self._op_out_fifo = [RegFIFO(data_width=self._op_out_fifo_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True) for i in range(num_ports)]
@@ -460,7 +447,7 @@ class ScannerPipe(MemoryController):
             self._ID_out_fifo_push = [self.var(f"ID_out_fifo_{i}_push", 1) for i in range(num_ports)]
             # self._seg_ID_out_fifo_push = self.var("seg_ID_out_fifo_push", 1)
             # self._crd_ID_out_fifo_push = self.var("crd_ID_out_fifo_push", 1)
-            
+
             self._ID_out_fifo_full = [self.var(f"ID_out_fifo_{i}_full", 1) for i in range(num_ports)]
             self._ID_out_fifo_in = [kts.concat(kts.const(0, 1), self._ID_out_to_fifo[i]) for i in range(num_ports)]
             self._ID_out_fifo = [RegFIFO(data_width=self._ID_out_fifo_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True) for i in range(num_ports)]
@@ -552,11 +539,11 @@ class ScannerPipe(MemoryController):
             self.wire(self._addr_out_fifo_push[0], self._seg_grant_push[0] | self._crd_grant_push[0])
             self.wire(self._op_out_fifo_push[0], self._seg_grant_push[0] | self._crd_grant_push[0])
             self.wire(self._ID_out_fifo_push[0], self._seg_grant_push[0] | self._crd_grant_push[0])
-            
+
         # ADDR Outfifo
         # self._seg_addr_out_fifo_push = self.var("seg_addr_out_fifo_push", 1)
         # self._crd_addr_out_fifo_push = self.var("crd_addr_out_fifo_push", 1)
-        
+
         self._addr_out_fifo_in = [kts.concat(kts.const(0, 1), self._addr_out_to_fifo[i])for i in range(num_ports)]
         self._addr_out_fifo = [RegFIFO(data_width=self._addr_out_fifo_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True) for i in range(num_ports)]
         [self._addr_out_fifo[i].add_attribute(SharedFifoAttr(direction="OUT")) for i in range(num_ports)]
@@ -1245,9 +1232,9 @@ class ScannerPipe(MemoryController):
         # Do a fill to the seg res fifo if there's a valid in (pre-empt the pass_stop)
         READ_ALT.output(self._seg_res_fifo_push_alloc, self._infifo_valid_in & (self._any_seg_grant_push & ~self._seg_res_fifo_full) & ~self._readout_loop)
         READ_ALT.output(self._seg_res_fifo_push_fill, self._infifo_valid_in & (self._any_seg_grant_push & ~self._seg_res_fifo_full) & ~self._readout_loop)
-        READ_ALT.output(self._seg_res_fifo_fill_data_in,  kts.ternary(self._eos_in,
-                                                                      kts.concat(kts.const(1, 1), (self._infifo_pos_in + 1)),
-                                                                      kts.concat(kts.const(1, 1), kts.const(0, self.data_width))))
+        READ_ALT.output(self._seg_res_fifo_fill_data_in, kts.ternary(self._eos_in,
+                                                                     kts.concat(kts.const(1, 1), (self._infifo_pos_in + 1)),
+                                                                     kts.concat(kts.const(1, 1), kts.const(0, self.data_width))))
 
         #######
         # LOOKUP

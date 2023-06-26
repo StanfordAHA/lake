@@ -413,7 +413,6 @@ class BuffetLike(MemoryController):
             [self.wire(rd_acq[i], rd_acqs[i]) for i in range(self.num_ID)]
             [self.wire(wr_acq[i], wr_acqs[i]) for i in range(self.num_ID)]
 
-
             # Create local memory interface...
             # self._addr_to_mem = self.var("addr_to_mem", self.data_width, packed=True, explicit_array=True)
             if self.local_memory:
@@ -599,7 +598,6 @@ class BuffetLike(MemoryController):
             self._chosen_read = [self.var(f"chosen_read_{idx}", self.data_width) for idx in range(self.num_ID)]
             # [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx] & self._read_wide_word_valid[idx] & ~self._valid_from_mem,
 
-
             if self.num_read_ports == 1:
 
                 [self.wire(self._use_cached_read[idx], self._read_wide_word_valid[idx] &
@@ -621,7 +619,7 @@ class BuffetLike(MemoryController):
                                                                         ~self._valid_from_mem &
                                                                         # ~self._ren_full_d1[idx] &
                                                                         self._read_joined[0])) for idx in range(self.num_ID)]
-                
+
                 [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx] & self._read_wide_word_valid[idx] & ~self._ren_full_d1[idx],
                                                            self._read_wide_word[idx][self._rd_addr_fifo_out_addr[0][self.mem_addr_bit_range_inner]],
                                                         #    self._data_from_mem[self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
@@ -645,7 +643,7 @@ class BuffetLike(MemoryController):
                                                                         # ~self._valid_from_mem &
                                                                         ~self._ren_full_d1[idx] &
                                                                         self._read_joined[idx])) for idx in range(self.num_ID)]
-                
+
                 [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx] & self._read_wide_word_valid[idx] & ~self._ren_full_d1[idx],
                                                            self._read_wide_word[idx][self._rd_addr_fifo_out_addr[idx][self.mem_addr_bit_range_inner]],
                                                         #    self._data_from_mem[self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
@@ -917,7 +915,6 @@ class BuffetLike(MemoryController):
 
             # self.wire(self._rd_rsp_fifo_in_data[self.data_width], self._read_rsp_ID_reg)
 
-
             # self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | (kts.concat(*self._use_cached_read).r_or()) | self._size_request_full.r_or())
 
             # self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | (kts.concat(*self._use_cached_read).r_or()) | self._size_request_full.r_or())
@@ -955,8 +952,6 @@ class BuffetLike(MemoryController):
         else:
             [self.wire(kts.concat(self._rd_op_fifo_pop[i], self._rd_addr_fifo_pop[i]), kts.concat(*[self._read_pop[i] for j in range(2)])) for i in range(self.num_read_ports)]
             [self.wire(self._read_pop[i], self._read_pop_full[i]) for i in range(self.num_read_ports)]
-
-        
 
 # # =============================
 # #  FSM
@@ -1244,8 +1239,6 @@ class BuffetLike(MemoryController):
                     rd_rsp_fifo_almost_full_use = self._rd_rsp_fifo_almost_full[0]
                     read_ID_d1_proxy = (self._read_ID_d1 == kts.const(ID_idx, 1))
                     rd_rsp_fifo_full_proxy = self._rd_rsp_fifo_full[0]
-
-
 
                 RD_START[ID_idx].output(self._pop_blk[ID_idx], (op_fifo_use == 0) &
                                                                read_joined_use &
@@ -1687,6 +1680,4 @@ if __name__ == "__main__":
 
     # new_name = '_'.join(str_split_no_last)
 
-    
     # print(new_name)
-
