@@ -20,7 +20,8 @@ class FiberAccess(MemoryController):
                  add_flush=False,
                  fifo_depth=2,
                  buffet_optimize_wide=False,
-                 perf_debug=False):
+                 perf_debug=False,
+                 split_memory_ports=True):
         super().__init__(f'fiber_access_{data_width}', debug=True)
 
         self.wr_scan_pre = "write_scanner"
@@ -36,6 +37,12 @@ class FiberAccess(MemoryController):
         self.use_pipelined_scanner = use_pipelined_scanner
         self.fifo_depth = fifo_depth
         self.buffet_optimize_wide = buffet_optimize_wide
+        self.split_memory_ports = split_memory_ports
+
+        if self.split_memory_ports:
+            num_ports = 2
+        else:
+            num_ports = 1
 
         # inputs
         self._clk = self.clock("clk")
@@ -97,7 +104,8 @@ class FiberAccess(MemoryController):
                                  tech_map=self.tech_map,
                                  defer_fifos=self.defer_fifos,
                                  fifo_depth=self.fifo_depth,
-                                 optimize_wide=self.buffet_optimize_wide)
+                                 optimize_wide=self.buffet_optimize_wide,
+                                 split_mem_requests=self.split_memory_ports)
 
         self.wr_scan = WriteScanner(data_width=self.data_width,
                                     defer_fifos=self.defer_fifos,
@@ -108,7 +116,8 @@ class FiberAccess(MemoryController):
             self.rd_scan = ScannerPipe(data_width=self.data_width,
                                        defer_fifos=self.defer_fifos,
                                        fifo_depth=self.fifo_depth,
-                                       perf_debug=perf_debug)
+                                       perf_debug=perf_debug,
+                                       split_mem_requests=self.split_memory_ports)
         else:
             self.rd_scan = Scanner(data_width=self.data_width,
                                    defer_fifos=self.defer_fifos,
@@ -158,21 +167,29 @@ class FiberAccess(MemoryController):
         self.wire(self.buffet.ports.wr_data_ready, self.wr_scan.ports.data_out_ready)
         self.wire(self.buffet.ports.wr_data_valid, self.wr_scan.ports.data_out_valid)
 
-        self.wire(self.buffet.ports.rd_op, self.rd_scan.ports.op_out)
-        self.wire(self.buffet.ports.rd_op_ready, self.rd_scan.ports.op_out_ready)
-        self.wire(self.buffet.ports.rd_op_valid, self.rd_scan.ports.op_out_valid)
+        [self.wire(self.buffet.ports[f"rd_op_{i}"], self.rd_scan.ports[f"op_out_{i}"]) for i in range(num_ports)]
+        [self.wire(self.buffet.ports[f"rd_op_{i}_ready"], self.rd_scan.ports[f"op_out_{i}_ready"]) for i in range(num_ports)]
+        [self.wire(self.buffet.ports[f"rd_op_{i}_valid"], self.rd_scan.ports[f"op_out_{i}_valid"]) for i in range(num_ports)]
 
-        self.wire(self.buffet.ports.rd_addr, self.rd_scan.ports.addr_out)
-        self.wire(self.buffet.ports.rd_addr_ready, self.rd_scan.ports.addr_out_ready)
-        self.wire(self.buffet.ports.rd_addr_valid, self.rd_scan.ports.addr_out_valid)
+        [self.wire(self.buffet.ports[f"rd_addr_{i}"], self.rd_scan.ports[f"addr_out_{i}"]) for i in range(num_ports)]
+        [self.wire(self.buffet.ports[f"rd_addr_{i}_ready"], self.rd_scan.ports[f"addr_out_{i}_ready"]) for i in range(num_ports)]
+        [self.wire(self.buffet.ports[f"rd_addr_{i}_valid"], self.rd_scan.ports[f"addr_out_{i}_valid"]) for i in range(num_ports)]
+        # [self.wire(self.buffet.ports[f"rd_op_{i}"], self.rd_scan.ports.op_out) for i in range(num_ports)]
+        # [self.wire(self.buffet.ports.rd_op_ready, self.rd_scan.ports.op_out_ready) for i in range(num_ports)]
+        # [self.wire(self.buffet.ports.rd_op_valid, self.rd_scan.ports.op_out_valid) for i in range(num_ports)]
 
-        self.wire(self.buffet.ports.rd_ID, self.rd_scan.ports.ID_out)
-        self.wire(self.buffet.ports.rd_ID_ready, self.rd_scan.ports.ID_out_ready)
-        self.wire(self.buffet.ports.rd_ID_valid, self.rd_scan.ports.ID_out_valid)
+        # [self.wire(self.buffet.ports.rd_addr, self.rd_scan.ports.addr_out) for i in range(num_ports)]
+        # [self.wire(self.buffet.ports.rd_addr_ready, self.rd_scan.ports.addr_out_ready) for i in range(num_ports)]
+        # [self.wire(self.buffet.ports.rd_addr_valid, self.rd_scan.ports.addr_out_valid) for i in range(num_ports)]
 
-        self.wire(self.buffet.ports.rd_rsp_data, self.rd_scan.ports.rd_rsp_data_in)
-        self.wire(self.buffet.ports.rd_rsp_data_ready, self.rd_scan.ports.rd_rsp_data_in_ready)
-        self.wire(self.buffet.ports.rd_rsp_data_valid, self.rd_scan.ports.rd_rsp_data_in_valid)
+        if num_ports == 1:
+            self.wire(self.buffet.ports.rd_ID_0, self.rd_scan.ports.ID_out_0)
+            self.wire(self.buffet.ports.rd_ID_0_ready, self.rd_scan.ports.ID_out_0_ready)
+            self.wire(self.buffet.ports.rd_ID_0_valid, self.rd_scan.ports.ID_out_0_valid)
+
+        [self.wire(self.buffet.ports[f"rd_rsp_data_{i}"], self.rd_scan.ports[f"rd_rsp_data_in_{i}"]) for i in range(num_ports)]
+        [self.wire(self.buffet.ports[f"rd_rsp_data_{i}_ready"], self.rd_scan.ports[f"rd_rsp_data_in_{i}_ready"]) for i in range(num_ports)]
+        [self.wire(self.buffet.ports[f"rd_rsp_data_{i}_valid"], self.rd_scan.ports[f"rd_rsp_data_in_{i}_valid"]) for i in range(num_ports)]
 
         self.wire(self._wr_scan_data_in, self.wr_scan.ports.data_in)
         self.wire(self._wr_scan_data_in_ready, self.wr_scan.ports.data_in_ready)
