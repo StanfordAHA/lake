@@ -20,12 +20,15 @@ class ControlCodeOnyx(enum.Enum):
     DONE = 1
     MAYBE = 2
 
+
 def set_bit(old_val, bit_to_set, new_bit):
     new_val = old_val | (new_bit << bit_to_set)
     return new_val
 
+
 def get_bit(val, n):
     return val >> n & 1
+
 
 def convert_stream_to_onyx_interp(stream):
 
@@ -61,6 +64,7 @@ def convert_stream_to_onyx_interp(stream):
         f"Input length {len(stream)} didn't match output length {len(converted_stream)}"
     return converted_stream
 
+
 def test_iter_basic():
     dut = Intersect(data_width=16,
                     use_merger=False,
@@ -88,10 +92,10 @@ def test_iter_basic():
     gr1 = convert_stream_to_onyx_interp(gold_ref1)
     gr2 = convert_stream_to_onyx_interp(gold_ref2)
 
-    assert(len(ic1) == len(ir1))
-    assert(len(ic2) == len(ir2))
-    assert(len(gc) == len(gr1))
-    assert(len(gc) == len(gr2))
+    assert (len(ic1) == len(ir1))
+    assert (len(ic2) == len(ir2))
+    assert (len(gc) == len(gr1))
+    assert (len(gc) == len(gr2))
 
     # initial reset
     tester.circuit.clk = 0
@@ -182,4 +186,3 @@ def test_intersect_direct_2d():
     assert (out_crd == gold_crd)
     assert (out_ref1 == gold_ref1)
     assert (out_ref2 == gold_ref2)
-    
