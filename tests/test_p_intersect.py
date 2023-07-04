@@ -1,0 +1,135 @@
+from lake.modules.intersect import *
+
+import magma as m
+from magma import *
+import fault
+import tempfile
+import kratos as k
+import random as rand
+import pytest
+
+import enum
+
+class ControlCodeOnyx(enum.Enum):
+    STOP = 0
+    DONE = 1
+    MAYBE = 2
+
+def set_bit(old_val, bit_to_set, new_bit):
+    new_val = old_val | (new_bit << bit_to_set)
+    return new_val
+
+def get_bit(val, n):
+    return val >> n & 1
+
+def convert_stream_to_onyx_interp(stream):
+
+    ctrl_op_offset = 8
+    num_ctrl_bits = 2
+    top_bit = 17 - 1
+
+    converted_stream = []
+    for s_ in stream:
+        if type(s_) is int:
+            converted_stream.append(s_)
+        elif type(s_) is str:
+            control_code = 0
+            if 'S' in s_:
+                control_code = int(s_.lstrip('S'))
+            elif 'D' in s_:
+                set_ctrl = ControlCodeOnyx.DONE.value
+                for offset_ in range(num_ctrl_bits):
+                    bts = get_bit(set_ctrl, offset_)
+                    control_code = set_bit(control_code, ctrl_op_offset + offset_, bts)
+            elif 'N' in s_:
+                set_ctrl = ControlCodeOnyx.MAYBE.value
+                for offset_ in range(num_ctrl_bits):
+                    bts = get_bit(set_ctrl, offset_)
+                    control_code = set_bit(control_code, ctrl_op_offset + offset_, bts)
+            else:
+                raise NotImplementedError
+            control_code = set_bit(control_code, top_bit, 1)
+            converted_stream.append(control_code)
+        else:
+            raise NotImplementedError
+    assert len(converted_stream) == len(stream), \
+        f"Input length {len(stream)} didn't match output length {len(converted_stream)}"
+    return converted_stream
+
+def test_iter_basic():
+    dut = Intersect(data_width=16,
+                    use_merger=False,
+                    defer_fifos=False,
+                    add_flush=True)
+    magma_dut = k.util.to_magma(dut, flatten_array = False, check_flip_flop_always_ff = True)
+    tester = fault.Tester(magma_dut, magma_dut.clk)
+
+    # setup the streams
+    in_crd1 = [0, 'S0', 0, 1, 2, 'S1', 'D']
+    in_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
+    in_crd2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
+    in_ref2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
+
+    gold_crd = [0, 'S0', 0, 1, 2, 'S1', 'D']
+    gold_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
+    gold_ref2 = [0, 'S0', 0, 1, 2, 'S1', 'D']
+
+    ic1 = convert_stream_to_onyx_interp(in_crd1)
+    ic2 = convert_stream_to_onyx_interp(in_crd2)
+    ir1 = convert_stream_to_onyx_interp(in_ref1)
+    ir2 = convert_stream_to_onyx_interp(in_ref2)
+
+    gc = convert_stream_to_onyx_interp(gold_crd)
+    gr1 = convert_stream_to_onyx_interp(gold_ref1)
+    gr2 = convert_stream_to_onyx_interp(gold_ref2)
+
+    assert(len(ic1) == len(ir1))
+    assert(len(ic2) == len(ir2))
+    assert(len(gc) == len(gr1))
+    assert(len(gc) == len(gr2))
+
+    print(gc)
+
+    # initial reset
+    tester.circuit.clk = 0
+    tester.circuit.clk_en = 1
+    tester.circuit.tile_en = 1
+    tester.circuit.joiner_op = 0
+    tester.circuit.flush = 0
+    tester.circuit.rst_n = 0
+    tester.step(2)
+    tester.circuit.rst_n = 1
+    tester.step(2)
+
+    tester.circuit.flush = 1
+    tester.step(1)
+    tester.circuit.flush = 0
+    tester.step(1)
+
+    tester.circuit.coord_in_0 = 0
+    # tester.circuit.coord_in_0_ready = 0
+    tester.circuit.coord_in_0_valid = 0
+
+    tester.circuit.coord_in_1 = 0
+    # tester.circuit.coord_in_1_ready = 0
+    tester.circuit.coord_in_1_valid = 0
+
+    # tester.circuit.coord_out = 0
+    tester.circuit.coord_out_ready = 1
+    # tester.circuit.coord_out_valid = 0
+
+    tester.circuit.pos_in_0 = 0
+    # tester.circuit.pos_in_0_ready = 0
+    tester.circuit.pos_in_0_valid = 0
+
+    tester.circuit.pos_in_1 = 0
+    # tester.circuit.pos_in_1_ready = 0
+    tester.circuit.pos_in_1_valid = 0
+
+    # tester.circuit.pos_out_0 = 0
+    tester.circuit.pos_out_0_ready = 1
+    # tester.circuit.pos_out_0_valid = 0
+
+    # tester.circuit.pos_out_1 = 0
+    tester.circuit.pos_out_1_ready = 1
+    # tester.circuit.pos_out_1_valid = 0
