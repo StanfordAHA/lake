@@ -1313,11 +1313,13 @@ class BuffetLike(MemoryController):
                     RD_START[ID_idx].output(self._read_pop_full[ID_idx], kts.ternary(op_fifo_use == 2,
                                                                                 #  ~self._valid_from_mem & self._blk_valid[ID_idx],
                                                                                     # ~rd_rsp_fifo_full_proxy,
-                                                                                    ~rd_rsp_fifo_full_proxy & self._blk_valid[ID_idx],
+                                                                                    # ~rd_rsp_fifo_full_proxy & self._blk_valid[ID_idx],
+                                                                                    ~rd_rsp_fifo_almost_full_use & self._blk_valid[ID_idx],
                                                                                  kts.ternary(op_fifo_use == 1,
                                                                                             #  (self._mem_acq[2 * ID_idx + 1] | self._use_cached_read[ID_idx]) & ~self._rd_rsp_fifo_full,
                                                                                             #  (self._mem_acq[2 * ID_idx + 1] | (self._use_cached_read[ID_idx] & ~self._valid_from_mem)) & ~rd_rsp_fifo_full_proxy,
-                                                                                             kts.ternary(self._ren_full[ID_idx], self._mem_acq[2 * ID_idx + 1], self._blk_valid[ID_idx]) & ~rd_rsp_fifo_full_proxy,
+                                                                                            #  kts.ternary(self._ren_full[ID_idx], self._mem_acq[2 * ID_idx + 1], self._blk_valid[ID_idx]) & ~rd_rsp_fifo_full_proxy,
+                                                                                             kts.ternary(self._ren_full[ID_idx], self._mem_acq[2 * ID_idx + 1], self._blk_valid[ID_idx]) & ~rd_rsp_fifo_almost_full_use,
                                                                                              kts.const(1, 1))) &
                                                                                  read_joined_use)
 
