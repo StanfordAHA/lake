@@ -32,6 +32,7 @@ class BuffetLike(MemoryController):
                  add_flush=False,
                  split_mem_requests=True,
                  prefetch=True):
+                #  prefetch=False):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
@@ -645,10 +646,15 @@ class BuffetLike(MemoryController):
 
                 if self.prefetch:
                     addr_fifo_use = self._read_request_addr_d1
-                    read_joined_proxy = kts.const(1, 1)
+                    read_joined_proxy = self.var('read_proxy_ones', self.num_ID)
+                    [self.wire(read_joined_proxy[i], kts.const(1, 1)) for i in range(self.num_ID)]
+                    op_proxy = self._read_request_op_d1
+                    read_addr_proxy = self._read_request_addr_d1
                 else:
                     addr_fifo_use = self._rd_addr_fifo_out_addr
-                    read_joined_proxy = read_joined_proxy
+                    read_joined_proxy = self._read_joined
+                    op_proxy = self._rd_op_fifo_out_op
+                    read_addr_proxy = self._rd_addr_fifo_out_addr
 
                 [self.wire(self._use_cached_read[idx], self._read_wide_word_valid[idx] &
                                                     #    (self._read_word_addr[idx][self.mem_addr_bit_range_outer] == self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer]) &
@@ -665,15 +671,19 @@ class BuffetLike(MemoryController):
                                                                 ((((addr_fifo_use[idx][self.mem_addr_bit_range_outer] + self._blk_base[idx]) & self._buffet_capacity_mask[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
                                                                         # (self._addr_to_mem == self._read_word_addr[idx]) &
                                                                         # (self._rd_op_fifo_out_op[idx] == kts.const(1, 2)) &
-                                                                        (self._read_request_op_d1[idx] == kts.const(1, 2)) &
+                                                                        # (self._read_request_op_d1[idx] == kts.const(1, 2)) &
+                                                                        (op_proxy[idx] == kts.const(1, 2)) &
                                                                         # ~self._valid_from_mem &
                                                                         # Don't need read joined
+                                                                        read_joined_proxy[idx] &
                                                                         # self._read_joined[idx])) for idx in range(self.num_ID)]
+                                                                        # ~self._ren_full_d1[idx])) for idx in range(self.num_ID)]
                                                                         ~self._ren_full_d1[idx])) for idx in range(self.num_ID)]
 
                 [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx] & self._read_wide_word_valid[idx] & ~self._ren_full_d1[idx],
                                                         #    self._read_wide_word[idx][self._rd_addr_fifo_out_addr[idx][self.mem_addr_bit_range_inner]],
-                                                           self._read_wide_word[idx][self._read_request_addr_d1[idx][self.mem_addr_bit_range_inner]],
+                                                        #    self._read_wide_word[idx][self._read_request_addr_d1[idx][self.mem_addr_bit_range_inner]],
+                                                           self._read_wide_word[idx][read_addr_proxy[idx][self.mem_addr_bit_range_inner]],
                                                         #    self._data_from_mem[self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
                                                            self._data_from_mem[self._last_read_addr[idx][self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
             #  (self._rd_ID_fifo_out_data == kts.const(idx, 1)) &
