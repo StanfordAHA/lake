@@ -1,0 +1,6 @@
+define XMSIMRC	( /cad/cadence/XCELIUMMAIN_20.09.007_lnx86/tools/xcelium/files/xmsimrc, ~/.xmsimrc )
+define AMSRC	( /cad/cadence/XCELIUMMAIN_20.09.007_lnx86/tools/xcelium/files/amsrc, ~/.amsrc )
+include ./hdlrun.var
+define SNAPSHOT worklib.glb_read:sv
+DEFINE RUNMODEDEFAULT 1
+DEFINE LIB_MAP ( + => worklib )

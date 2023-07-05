@@ -1,0 +1,6 @@
+//
+// File created by:  xrun
+// Do not modify this file
+
+s1::(05Jul2023:15:49:19):( xrun -64bit -sv -timescale 100ps/1ps -debug -sysv -top top -elaborate -l xrun.log -covoverwrite -initmem0 -initreg0 +maxdelays +define+CLK_PERIOD=1ns sparse_tb.sv glb_read.sv glb_write.sv )
+s2::(05Jul2023:15:52:45):( xrun -64bit -sv -timescale 1ns/1ps -debug -sysv -top top -elaborate -l xrun.log -covoverwrite +maxdelays +define+CLK_PERIOD=1ns glb_read.sv glb_write.sv )

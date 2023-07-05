@@ -1,0 +1,45 @@
+
+Warning-[LINX_KRNL] Unsupported Linux kernel
+  Linux kernel '5.4.0-152-generic' is not supported.
+  Supported versions are 2.4* or 2.6*.
+
+Command: vcs -sverilog -full64 -ldflags -Wl,--no-as-needed -CFLAGS -m64 -top top \
++vcs+lic+wait +vcs+initreg+random +overlap +v2k -l vcs.log +define+CLK_PERIOD=1ns \
+sparse_tb.sv glb_read.sv glb_write.sv
+*** Using c compiler gcc instead of cc ...
+                         Chronologic VCS (TM)
+       Version S-2021.09-SP1_Full64 -- Wed Jul  5 15:46:10 2023
+
+                    Copyright (c) 1991 - 2021 Synopsys, Inc.
+   This software and the associated documentation are proprietary to Synopsys,
+ Inc. This software may only be used in accordance with the terms and conditions
+ of a written license agreement with Synopsys, Inc. All other use, reproduction,
+   or distribution of this software is strictly prohibited.  Licensed Products
+     communicate with Synopsys servers for the purpose of providing software
+    updates, detecting software piracy and verifying that customers are using
+    Licensed Products in conformity with the applicable License Key for such
+  Licensed Products. Synopsys will use information gathered in connection with
+    this process to deliver software updates and pursue software pirates and
+                                   infringers.
+
+ Inclusivity & Diversity - Visit SolvNetPlus to read the "Synopsys Statement on
+            Inclusivity and Diversity" (Refer to article 000036315 at
+                        https://solvnetplus.synopsys.com)
+
+Parsing design file 'sparse_tb.sv'
+Parsing design file 'glb_read.sv'
+Parsing design file 'glb_write.sv'
+
+Error-[TMENF-ILL] Top Module/Entity not found
+  Top module/entity/config "top" is not found in the following library list.
+  Liblist: work
+
+
+Error-[IRMINTM] Illegal module instantiations
+  Illegal to have recursive module instantiations.
+  No Top Modules Defined
+  There should be at least one top module that is not instantiated by any 
+  other module.
+
+2 errors
+CPU time: .160 seconds to compile

@@ -1,0 +1,20 @@
+//
+// File created by:  xrun
+// Do not modify this file
+//
+-64bit
+-sv
+-timescale
+1ns/1ps
+-debug
+-sysv
+-top
+top
+-elaborate
+-l
+xrun.log
+-covoverwrite
++maxdelays
++define+CLK_PERIOD=1ns
+glb_read.sv
+glb_write.sv

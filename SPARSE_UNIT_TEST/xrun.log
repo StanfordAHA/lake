@@ -1,0 +1,46 @@
+xrun(64): 20.09-s007: (c) Copyright 1995-2020 Cadence Design Systems, Inc.
+TOOL:	xrun(64)	20.09-s007: Started on Jul 05, 2023 at 15:52:45 PDT
+xrun
+	-64bit
+	-sv
+	-timescale 1ns/1ps
+	-debug
+	-sysv
+	-top top
+	-elaborate
+	-l xrun.log
+	-covoverwrite
+	+maxdelays
+	+define+CLK_PERIOD=1ns
+	glb_read.sv
+	glb_write.sv
+file: glb_read.sv
+    $value$plusargs(ENABLED_PARGS, ENABLED);
+                  |
+xmvlog: *W,NOSYST (glb_read.sv,38|18): System function '$value$plusargs' invoked as a task. Return value will be ignored.
+        $value$plusargs(F1_PARGS, F1_USE);
+                      |
+xmvlog: *W,NOSYST (glb_read.sv,57|22): System function '$value$plusargs' invoked as a task. Return value will be ignored.
+        $value$plusargs(F2_PARGS, F2_USE);
+                      |
+xmvlog: *W,NOSYST (glb_read.sv,61|22): System function '$value$plusargs' invoked as a task. Return value will be ignored.
+        $value$plusargs(NUM_BLOCKS_PARGS, NUM_BLOCKS_USE);
+                      |
+xmvlog: *W,NOSYST (glb_read.sv,64|22): System function '$value$plusargs' invoked as a task. Return value will be ignored.
+	module worklib.glb_read:sv
+		errors: 0, warnings: 4
+file: glb_write.sv
+    $value$plusargs(ENABLED_PARGS, ENABLED);
+                  |
+xmvlog: *W,NOSYST (glb_write.sv,37|18): System function '$value$plusargs' invoked as a task. Return value will be ignored.
+        $value$plusargs(FILE_NAME_PARGS, FILE_NAME_USE);
+                      |
+xmvlog: *W,NOSYST (glb_write.sv,45|22): System function '$value$plusargs' invoked as a task. Return value will be ignored.
+        $value$plusargs(TX_SIZE_PARGS, TX_SIZE_USE);
+                      |
+xmvlog: *W,NOSYST (glb_write.sv,52|22): System function '$value$plusargs' invoked as a task. Return value will be ignored.
+	module worklib.glb_write:sv
+		errors: 0, warnings: 3
+xmelab: *E,NOUNIT: Unable to find a unit named 'top' in the libraries.
+xrun: *E,ELBERR: Error during elaboration (status 1), exiting.
+TOOL:	xrun(64)	20.09-s007: Exiting on Jul 05, 2023 at 15:52:45 PDT  (total: 00:00:00)
