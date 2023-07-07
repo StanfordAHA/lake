@@ -9,6 +9,7 @@ import tempfile
 import kratos as k
 import random as rand
 import pytest
+import sam
 
 
 def test_agg_formal():
