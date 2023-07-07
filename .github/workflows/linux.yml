@@ -26,7 +26,7 @@ jobs:
         docker exec -i lake bash -c 'apt update && apt install -y libgmp-dev libmpfr-dev libmpc-dev python3-dev'
         docker exec -i lake bash -c 'python3 -m pip install setuptools wheel'
         docker exec -i lake bash -c 'python3 -m pip install pytest fault pytest-codestyle pycodestyle'
-        docker exec -i lake bash -c 'git clone https://github.com/weiya711/sam.git && cd sam && pip install -e .'
+        docker exec -i lake bash -c 'git clone https://github.com/weiya711/sam.git && cd sam && python3 -m pip install -e .'
         docker exec -i lake bash -c 'cd lake && python3 -m pip install -e .'
     - name: Run tests ⚙️
       shell: bash
