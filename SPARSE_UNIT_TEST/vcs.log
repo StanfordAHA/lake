@@ -9,7 +9,7 @@ Command: vcs -sverilog -full64 -ldflags -Wl,--no-as-needed -CFLAGS -m64 -top int
 
 *** Using c compiler gcc instead of cc ...
                          Chronologic VCS (TM)
-       Version S-2021.09-SP1_Full64 -- Fri Jul  7 15:21:28 2023
+       Version S-2021.09-SP1_Full64 -- Sat Jul  8 14:58:56 2023
 
                     Copyright (c) 1991 - 2021 Synopsys, Inc.
    This software and the associated documentation are proprietary to Synopsys,
@@ -111,7 +111,7 @@ rm -f _cuarc*.so _csrc*.so pre_vcsobj_*.so share_vcsobj_*.so
 if [ -x ../simv ]; then chmod a-x ../simv; fi
 g++  -o ../simv   -no-pie    -Wl,--no-as-needed -rdynamic  -Wl,-rpath='$ORIGIN'/simv.daidir \
 -Wl,-rpath=./simv.daidir -Wl,-rpath=/cad/synopsys/vcs/S-2021.09-SP1/linux64/lib -L/cad/synopsys/vcs/S-2021.09-SP1/linux64/lib \
--Wl,-rpath-link=./ -Wl,--no-as-needed   objs/amcQw_d.o   _2283106_archive_1.so  SIM_l.o \
+-Wl,-rpath-link=./ -Wl,--no-as-needed   objs/amcQw_d.o   _2508164_archive_1.so  SIM_l.o \
 rmapats_mop.o rmapats.o rmar.o rmar_nd.o  rmar_llvm_0_1.o rmar_llvm_0_0.o        \
 -lvirsim -lerrorinf -lsnpsmalloc -lvfs    -lvcsnew -lsimprofile -luclinative /cad/synopsys/vcs/S-2021.09-SP1/linux64/lib/vcs_tls.o \
 -Wl,-whole-archive  -lvcsucli    -Wl,-no-whole-archive        _vcs_pli_stub_.o   \
@@ -119,5 +119,5 @@ rmapats_mop.o rmapats.o rmar.o rmar_nd.o  rmar_llvm_0_1.o rmar_llvm_0_0.o       
 -ldl  -lc -lm -lpthread -ldl 
 ../simv up to date
 make[1]: Leaving directory '/aha/lake/SPARSE_UNIT_TEST/csrc'
-CPU time: .416 seconds to compile + .292 seconds to elab + .218 seconds to link
+CPU time: .412 seconds to compile + .303 seconds to elab + .222 seconds to link
 Verdi KDB elaboration done and the database successfully generated: 0 error(s), 1 warning(s)
