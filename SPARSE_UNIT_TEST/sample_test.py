@@ -60,7 +60,45 @@ def convert_stream_to_onyx_interp(stream):
     return converted_stream
 
 
-def test_iter_basic():
+def load_test_module(test_name):
+    if test_name == "direct_2d":
+        in_crd1 = [0, 'S0', 0, 1, 2, 'S1', 'D']
+        in_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
+        in_crd2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
+        in_ref2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
+
+        gold_crd = [0, 'S0', 0, 1, 2, 'S1', 'D']
+        gold_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
+        gold_ref2 = [0, 'S0', 0, 1, 2, 'S1', 'D']
+
+        assert (len(gold_crd) == len(gold_ref1) and len(gold_crd) == len(gold_ref2))
+        assert (len(in_crd1) == len(in_ref1))
+        assert (len(in_crd2) == len(in_ref2))        
+
+        return [in_crd1, in_crd2, in_ref1, in_ref2, gold_crd, gold_ref1, gold_ref2]
+    
+    elif test_name == "direct_1d":
+        in1 = 16
+        in_crd1 = [x for x in range(in1)] + ['S0', 'D']
+        in_ref1 = [x for x in range(in1)] + ['S0', 'D']
+        in_crd2 = [0, 2, 4, 15, 17, 25, 31, 32, 50, 63, 'S0', 'D']
+        in_ref2 = [x for x in range(10)] + ['S0', 'D']
+        assert (len(in_crd1) == len(in_ref1))
+        assert (len(in_crd2) == len(in_ref2))
+
+        gold_crd = [x for x in in_crd2[:-2] if x < in1] + ['S0', 'D']
+        gold_ref1 = gold_crd
+        gold_ref2 = [x for x in range(len(gold_crd[:-2]))] + ['S0', 'D']
+        assert (len(gold_crd) == len(gold_ref1) and len(gold_crd) == len(gold_ref2))        
+    
+        return [in_crd1, in_crd2, in_ref1, in_ref2, gold_crd, gold_ref1, gold_ref2]
+
+    else:
+        return [[0, 'S0', 'D'], [0, 'S0', 'D'], [0, 'S0', 'D'], [0, 'S0', 'D'], [0, 'S0', 'D'],\
+            [0, 'S0', 'D'], [0, 'S0', 'D']]
+
+
+def module_iter_basic(test_name):
     dut = Intersect(data_width=16,
                     use_merger=False,
                     defer_fifos=False,
@@ -74,14 +112,7 @@ def test_iter_basic():
                     # perf_debug=perf_debug
     magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
 
-    in_crd1 = [0, 'S0', 0, 1, 2, 'S1', 'D']
-    in_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
-    in_crd2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
-    in_ref2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
-
-    gold_crd = [0, 'S0', 0, 1, 2, 'S1', 'D']
-    gold_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
-    gold_ref2 = [0, 'S0', 0, 1, 2, 'S1', 'D']
+    [in_crd1, in_crd2, in_ref1, in_ref2, gold_crd, gold_ref1, gold_ref2] = load_test_module(test_name)
 
     ic1 = convert_stream_to_onyx_interp(in_crd1)
     ic2 = convert_stream_to_onyx_interp(in_crd2)
@@ -95,25 +126,26 @@ def test_iter_basic():
     #convert each element of ic1 to hex and write to file coord_in_0.txt
     with open("coord_in_0.txt", "w") as f:
         for element in ic1:
-            f.write("%s\n" % hex(element))
+            # f.write("%s\n" % hex(element))
+            f.write(f'{element:x}' + '\n')
         f.close()
 
     #convert each element of ic2 to hex and write to file coord_in_1.txt
     with open("coord_in_1.txt", "w") as f:
         for element in ic2:
-            f.write("%s\n" % hex(element))
+            f.write(f'{element:x}' + '\n')
         f.close()
     
     #convert each element of ir1 to hex and write to file ref_in_0.txt
-    with open("ref_in_0.txt", "w") as f:
+    with open("pos_in_0.txt", "w") as f:
         for element in ir1:
-            f.write("%s\n" % hex(element))
+            f.write(f'{element:x}' + '\n')
         f.close()
     
     #convert each element of ir2 to hex and write to file ref_in_1.txt
-    with open("ref_in_1.txt", "w") as f:
+    with open("pos_in_1.txt", "w") as f:
         for element in ir2:
-            f.write("%s\n" % hex(element))
+            f.write(f'{element:x}' + '\n')
         f.close()
     
     #run command "make sim" to run the simulation
@@ -166,5 +198,23 @@ def test_iter_basic():
     for i in range(len(pos_out_1)):
         assert pos_out_1[i] == gr2[i], \
             f"Output {pos_out_1[i]} didn't match gold {gr2[i]} at index {i}"
+    
+    print(test_name, " passed")
 
-    print("test passed")
+# THIS APPROACH HAS UNKOWN BUG
+# def test_iter_basic():
+#     test_list = ["direct_1d", "direct_2d"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+def test1():
+    module_iter_basic("direct_1d")
+
+
+def test2():
+    module_iter_basic("direct_2d")
+
+
+def test3():
+    module_iter_basic("xxx")
