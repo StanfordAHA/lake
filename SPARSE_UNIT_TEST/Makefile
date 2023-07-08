@@ -5,13 +5,14 @@
 # -------------------------------------------------------------------
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 mkfile_dir := $(dir $(mkfile_path))
+module_dir := $(mkfile_dir)/.magma
 # garnet_dir := $(mkfile_dir)/../..
 # gemstone_dir := $(realpath $(garnet_dir))/../gemstone
 # netlist_dir := $(mkfile_dir)/netlist
 # glc_dir := $(garnet_dir)/global_controller
 # APP_ARGS ?= +APP0=app0
 
-TOOL ?= XCELIUM
+TOOL ?= VCS
 export WAVEFORM ?= 0
 # export WAVEFORM_GLB_ONLY ?= 0
 # export SAIF ?= 0
@@ -21,9 +22,11 @@ export WAVEFORM ?= 0
 # -------------------------------------------------------------------
 CLK_PERIOD ?= 1ns
 
-DESIGN_FILES += glb_read.sv \
-				glb_write.sv
+DESIGN_FILES += sparse_tb.sv \
+				glb_read.sv \
+				glb_write.sv\
 
+DESIGN_FILES += $(module_dir)/intersect_unit-kratos.sv
 # TB_FILES += -F tb/tb_cgra.f
 
 # IP_FILES += -y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \
@@ -52,9 +55,9 @@ DESIGN_FILES += glb_read.sv \
 # Command
 # -------------------------------------------------------------------
 
-ifeq ($(WAVEFORM), 1)
+
 WAVEFORM_ARGS = -debug_access+all -kdb +vpi +memcbk +vcsd
-endif
+
 
 # Picked XRUN by a "coin"
 VCS = vcs \
@@ -63,7 +66,7 @@ VCS = vcs \
 	  -full64 \
 	  -ldflags "-Wl,--no-as-needed" \
 	  -CFLAGS "-m64" \
-	  -top top \
+	  -top intersect_tb \
 	  +vcs+lic+wait \
 	  +vcs+initreg+random \
 	  +overlap \
@@ -79,7 +82,7 @@ XRUN = xrun \
 	   -timescale 1ns/1ps \
 	   -debug \
 	   -sysv \
-	   -top top \
+	   -top intersect_tb \
 	   -elaborate \
 	   -l xrun.log \
 	   -covoverwrite \
@@ -105,19 +108,19 @@ ifeq ($(TOOL), XCELIUM)
     # COMPILE_RTL_ARGS += -xminitialize 0 -xminit_log init.log -nospecify
     # COMPILE_GLS_ARGS += -xminitialize 0 -xminit_log init.log
     # COMPILE_GLS_ARGS += -ALLOWREDEFINITION
-    # RUN = xrun -R -l $(RUN_LOG) -sv_lib libcgra.so
+    RUN = xrun -R -l $(RUN_LOG) -sv_lib libcgra.so
 else ifeq ($(TOOL), VCS)
     COMPILE = $(VCS)
     # COMPILE_RTL_ARGS += +nospecify
-    # RUN = ./simv -lca -l $(RUN_LOG) +vcs+initmem+0 +vcs+initreg+0 -sv_lib libcgra -exitstatus
+    RUN = ./simv -lca -l $(RUN_LOG) +vcs+initmem+0 +vcs+initreg+0 -exitstatus
 else
     @echo "TOOL must be either XCELIUM or VCS"
 endif
 
 ifeq ($(TOOL), XCELIUM)
-	DUMP_ARGS = -input dump_shm.tcl
+	DUMP_ARGS = -input unit_test_shm.tcl
 else ifeq ($(TOOL), VCS)
-	DUMP_ARGS = -ucli -i dump_fsdb.tcl
+	DUMP_ARGS = -ucli -i unit_test_fsdb.tcl
 endif
 
 TEST_DIR ?= $(mkfile_dir)/TEST_DIR
@@ -133,11 +136,6 @@ run:
 	rm -f $(TEST_DIR)/OUTPUT_DIR/*
 	$(RUN) $(DUMP_ARGS)
 # $(RUN) $(DUMP_ARGS) $(RUN_ARGS) $(APP_ARGS)
-
-
-.PHONY: sim
-# sim: libcgra.so compile run
-sim: compile run
 
 # -------------------------------------------------------------------
 # GLS Compile
@@ -163,3 +161,7 @@ compile-gls:
 .PHONY: clean
 clean:
 	rm -rf xrun.log xrun.history xcelium.d simv simv.daidir csrc vcs.log cgra.shm cgra.fsdb sdf_stats.txt sdf_logs
+
+.PHONY: sim
+# sim: libcgra.so compile run
+sim: clean compile run

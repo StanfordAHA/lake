@@ -90,55 +90,17 @@ def test_iter_basic():
     gr1 = convert_stream_to_onyx_interp(gold_ref1)
     gr2 = convert_stream_to_onyx_interp(gold_ref2)
 
+    t = [ic1, ic2, ir1, ir2]
+
+    for st in t:
+        print("=================")
+        for j in st:
+            print(hex(j))
+
     assert (len(ic1) == len(ir1))
     assert (len(ic2) == len(ir2))
     assert (len(gc) == len(gr1))
     assert (len(gc) == len(gr2))
-
-    # initial reset
-    tester.circuit.clk = 0
-    tester.circuit.clk_en = 1
-    tester.circuit.tile_en = 1
-    tester.circuit.joiner_op = 0
-    tester.circuit.flush = 0
-    tester.circuit.rst_n = 0
-    tester.step(2)
-    tester.circuit.rst_n = 1
-    tester.step(2)
-
-    tester.circuit.flush = 1
-    tester.step(1)
-    tester.circuit.flush = 0
-    tester.step(1)
-
-    tester.circuit.coord_in_0 = 0
-    # tester.circuit.coord_in_0_ready = 0
-    tester.circuit.coord_in_0_valid = 0
-
-    tester.circuit.coord_in_1 = 0
-    # tester.circuit.coord_in_1_ready = 0
-    tester.circuit.coord_in_1_valid = 0
-
-    # tester.circuit.coord_out = 0
-    tester.circuit.coord_out_ready = 1
-    # tester.circuit.coord_out_valid = 0
-
-    tester.circuit.pos_in_0 = 0
-    # tester.circuit.pos_in_0_ready = 0
-    tester.circuit.pos_in_0_valid = 0
-
-    tester.circuit.pos_in_1 = 0
-    # tester.circuit.pos_in_1_ready = 0
-    tester.circuit.pos_in_1_valid = 0
-
-    # tester.circuit.pos_out_0 = 0
-    tester.circuit.pos_out_0_ready = 1
-    # tester.circuit.pos_out_0_valid = 0
-
-    # tester.circuit.pos_out_1 = 0
-    tester.circuit.pos_out_1_ready = 1
-    # tester.circuit.pos_out_1_valid = 0
-
 
 # def test_intersect_direct_2d():
 #     gold_crd = [0, 'S0', 0, 1, 2, 'S1', 'D']
