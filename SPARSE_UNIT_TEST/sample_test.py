@@ -5,100 +5,19 @@ import tempfile
 import kratos as k
 
 
-import enum
+from sam_helper import convert_stream_to_onyx_interp
+from sam.sim.src.base import remove_emptystr
+from sam.sim.src.joiner import Intersect2
+from sam.sim.test.test import TIMEOUT
+
+
 import subprocess
 import os
+import random
+import string
 
 
-class ControlCodeOnyx(enum.Enum):
-    STOP = 0
-    DONE = 1
-    MAYBE = 2
-
-
-def set_bit(old_val, bit_to_set, new_bit):
-    new_val = old_val | (new_bit << bit_to_set)
-    return new_val
-
-
-def get_bit(val, n):
-    return val >> n & 1
-
-
-def convert_stream_to_onyx_interp(stream):
-
-    ctrl_op_offset = 8
-    num_ctrl_bits = 2
-    top_bit = 17 - 1
-
-    converted_stream = []
-    for s_ in stream:
-        if type(s_) is int:
-            converted_stream.append(s_)
-        elif type(s_) is str:
-            control_code = 0
-            if 'S' in s_:
-                control_code = int(s_.lstrip('S'))
-            elif 'D' in s_:
-                set_ctrl = ControlCodeOnyx.DONE.value
-                for offset_ in range(num_ctrl_bits):
-                    bts = get_bit(set_ctrl, offset_)
-                    control_code = set_bit(control_code, ctrl_op_offset + offset_, bts)
-            elif 'N' in s_:
-                set_ctrl = ControlCodeOnyx.MAYBE.value
-                for offset_ in range(num_ctrl_bits):
-                    bts = get_bit(set_ctrl, offset_)
-                    control_code = set_bit(control_code, ctrl_op_offset + offset_, bts)
-            else:
-                raise NotImplementedError
-            control_code = set_bit(control_code, top_bit, 1)
-            converted_stream.append(control_code)
-        else:
-            raise NotImplementedError
-    assert len(converted_stream) == len(stream), \
-        f"Input length {len(stream)} didn't match output length {len(converted_stream)}"
-    return converted_stream
-
-
-def load_test_module(test_name):
-    if test_name == "direct_2d":
-        in_crd1 = [0, 'S0', 0, 1, 2, 'S1', 'D']
-        in_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
-        in_crd2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
-        in_ref2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
-
-        gold_crd = [0, 'S0', 0, 1, 2, 'S1', 'D']
-        gold_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
-        gold_ref2 = [0, 'S0', 0, 1, 2, 'S1', 'D']
-
-        assert (len(gold_crd) == len(gold_ref1) and len(gold_crd) == len(gold_ref2))
-        assert (len(in_crd1) == len(in_ref1))
-        assert (len(in_crd2) == len(in_ref2))        
-
-        return [in_crd1, in_crd2, in_ref1, in_ref2, gold_crd, gold_ref1, gold_ref2]
-    
-    elif test_name == "direct_1d":
-        in1 = 16
-        in_crd1 = [x for x in range(in1)] + ['S0', 'D']
-        in_ref1 = [x for x in range(in1)] + ['S0', 'D']
-        in_crd2 = [0, 2, 4, 15, 17, 25, 31, 32, 50, 63, 'S0', 'D']
-        in_ref2 = [x for x in range(10)] + ['S0', 'D']
-        assert (len(in_crd1) == len(in_ref1))
-        assert (len(in_crd2) == len(in_ref2))
-
-        gold_crd = [x for x in in_crd2[:-2] if x < in1] + ['S0', 'D']
-        gold_ref1 = gold_crd
-        gold_ref2 = [x for x in range(len(gold_crd[:-2]))] + ['S0', 'D']
-        assert (len(gold_crd) == len(gold_ref1) and len(gold_crd) == len(gold_ref2))        
-    
-        return [in_crd1, in_crd2, in_ref1, in_ref2, gold_crd, gold_ref1, gold_ref2]
-
-    else:
-        return [[0, 'S0', 'D'], [0, 'S0', 'D'], [0, 'S0', 'D'], [0, 'S0', 'D'], [0, 'S0', 'D'],\
-            [0, 'S0', 'D'], [0, 'S0', 'D']]
-
-
-def module_iter_basic(test_name):
+def init_module():
     dut = Intersect(data_width=16,
                     use_merger=False,
                     defer_fifos=False,
@@ -112,21 +31,95 @@ def module_iter_basic(test_name):
                     # perf_debug=perf_debug
     magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
 
-    [in_crd1, in_crd2, in_ref1, in_ref2, gold_crd, gold_ref1, gold_ref2] = load_test_module(test_name)
 
-    ic1 = convert_stream_to_onyx_interp(in_crd1)
-    ic2 = convert_stream_to_onyx_interp(in_crd2)
-    ir1 = convert_stream_to_onyx_interp(in_ref1)
-    ir2 = convert_stream_to_onyx_interp(in_ref2)
+def create_gold(in_crd1, in_crd2, in_ref1, in_ref2):
+    assert (len(in_crd1) == len(in_ref1))
+    assert (len(in_crd2) == len(in_ref2))
+    
+    i_c1_cpy = in_crd1[:]
+    i_c2_cpy = in_crd2[:]
+    i_r1_cpy = in_ref1[:]
+    i_r2_cpy = in_ref2[:]
 
-    gc = convert_stream_to_onyx_interp(gold_crd)
-    gr1 = convert_stream_to_onyx_interp(gold_ref1)
-    gr2 = convert_stream_to_onyx_interp(gold_ref2)
+    done = False
+    time = 0
+
+    inter = Intersect2()
+    out_crd = []
+    out_ref1 = []
+    out_ref2 = []
+
+    while not done and time < TIMEOUT:
+        if len(in_crd1) > 0:
+            inter.set_in1(in_ref1.pop(0), in_crd1.pop(0))
+        if len(in_crd2) > 0:
+            inter.set_in2(in_ref2.pop(0), in_crd2.pop(0))
+
+        inter.update()
+
+        out_crd.append(inter.out_crd())
+        out_ref1.append(inter.out_ref1())
+        out_ref2.append(inter.out_ref2())
+
+        # print("Timestep", time, "\t Crd:", inter.out_crd(), "\t Ref1:", inter.out_ref1(), "\t Ref2:", inter.out_ref2())
+
+        done = inter.done
+        time += 1
+
+    print("sam cycle count: ", time)
+    out_crd = remove_emptystr(out_crd)
+    out_ref1 = remove_emptystr(out_ref1)
+    out_ref2 = remove_emptystr(out_ref2)
+
+    assert len(out_crd) == len(out_ref1) and len(out_crd) == len(out_ref2)
+    st = [i_c1_cpy, i_c2_cpy, i_r1_cpy, i_r2_cpy, out_crd, out_ref1, out_ref2]
+    tr_st = []
+    for s in st:
+        tr_st.append(convert_stream_to_onyx_interp(s))
+
+    return tr_st
+
+
+def load_test_module(test_name):
+    if test_name == "direct_2d":
+        in_crd1 = [0, 'S0', 0, 1, 2, 'S1', 'D']
+        in_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
+        in_crd2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
+        in_ref2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
+
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+    
+    elif test_name == "direct_1d":
+        in1 = 16
+        in_crd1 = [x for x in range(in1)] + ['S0', 'D']
+        in_ref1 = [x for x in range(in1)] + ['S0', 'D']
+        in_crd2 = [0, 2, 4, 15, 17, 25, 31, 32, 50, 63, 'S0', 'D']
+        in_ref2 = [x for x in range(10)] + ['S0', 'D']
+
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+
+    elif test_name == "empty_2d":
+        in_crd1 = ['S0', 'S0', 'S0', 'S1', 'D']
+        in_ref1 = ['S0', 'S0', 'S0', 'S1', 'D']
+        in_crd2 = ['S0', 'S0', 'S0', 'S1', 'D']
+        in_ref2 = ['S0', 'S0', 'S0', 'S1', 'D']
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+
+    else:
+        in_crd1 = [0, 'S0', 'D']
+        in_ref1 = [0, 'S0', 'D']
+        in_crd2 = [0, 'S0', 'D']
+        in_ref2 = [0, 'S0', 'D']
+
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+
+
+def module_iter_basic(test_name):
+    [ic1, ic2, ir1, ir2, gc, gr1, gr2] = load_test_module(test_name)
 
     #convert each element of ic1 to hex and write to file coord_in_0.txt
     with open("coord_in_0.txt", "w") as f:
         for element in ic1:
-            # f.write("%s\n" % hex(element))
             f.write(f'{element:x}' + '\n')
         f.close()
 
@@ -148,8 +141,15 @@ def module_iter_basic(test_name):
             f.write(f'{element:x}' + '\n')
         f.close()
     
+    open("coord_out.txt", "w").close() 
+    open("pos_out_0.txt", "w").close() 
+    open("pos_out_1.txt", "w").close()    
+    
     #run command "make sim" to run the simulation
-    subprocess.run(["make", "sim"])
+    sim_result = subprocess.run(["make", "sim"], capture_output=True, text=True)
+    output = sim_result.stdout
+    cycle_count_line = output[output.find("cycle count:"):]
+    print(cycle_count_line.splitlines()[0])
 
     coord_out = []
     pos_out_0 = []
@@ -199,22 +199,11 @@ def module_iter_basic(test_name):
         assert pos_out_1[i] == gr2[i], \
             f"Output {pos_out_1[i]} didn't match gold {gr2[i]} at index {i}"
     
-    print(test_name, " passed")
+    print(test_name, " passed\n")
 
 # THIS APPROACH HAS UNKOWN BUG
-# def test_iter_basic():
-#     test_list = ["direct_1d", "direct_2d"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-
-def test1():
-    module_iter_basic("direct_1d")
-
-
-def test2():
-    module_iter_basic("direct_2d")
-
-
-def test3():
-    module_iter_basic("xxx")
+def test_iter_basic():
+    init_module()
+    test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d"]
+    for test in test_list:
+        module_iter_basic(test)
