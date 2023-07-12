@@ -33,6 +33,27 @@ def init_module():
     magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
 
 
+def create_random(n, rate, size):
+    if n == 1:
+        #pick rate*size non repeating intger random numbers from 0 to size
+        cr1_s = int(size*random.uniform(0.8, 1.2))
+        in_crd1 = random.sample(range(cr1_s), int(rate*cr1_s))
+        in_crd1.sort()
+        in_crd1 = in_crd1 + ['S0', 'D']
+        in_ref1 = random.sample(range(1, cr1_s + 1), int(rate*cr1_s))
+        in_ref1.sort()
+        in_ref1 = in_ref1 + ['S0', 'D']
+
+        cr2_s = int(size*random.uniform(0.8, 1.2))
+        in_crd2 = random.sample(range(cr2_s), int(rate*cr2_s))
+        in_crd2.sort()
+        in_crd2 = in_crd2 + ['S0', 'D']
+        in_ref2 = random.sample(range(1, cr2_s + 1), int(rate*cr2_s))
+        in_ref2.sort()
+        in_ref2 = in_ref2 + ['S0', 'D']
+        return in_crd1, in_crd2, in_ref1, in_ref2
+
+
 def create_gold(in_crd1, in_crd2, in_ref1, in_ref2):
     assert (len(in_crd1) == len(in_ref1))
     assert (len(in_crd2) == len(in_ref2))
@@ -105,6 +126,14 @@ def load_test_module(test_name):
         in_crd2 = ['S0', 'S0', 'S0', 'S1', 'D']
         in_ref2 = ['S0', 'S0', 'S0', 'S1', 'D']
         return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+    
+    elif test_name[0:4] == "rd_1":
+        t_arg = test_name.split("_")
+        n = int(t_arg[1][0])
+        rate = float(t_arg[2])
+        size = int(t_arg[3])
+        [in_crd1, in_ref1, in_crd2, in_ref2] = create_random(n, rate, size)
+        return create_gold(in_crd1, in_ref1, in_crd2, in_ref2)
 
     else:
         in_crd1 = [0, 'S0', 'D']
@@ -212,9 +241,13 @@ def test_iter_basic():
 
 
 def test_random_1d():
+    init_module()
+    test_list = ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-def test_random_2d():
+# def test_random_2d():
 
 
-def test_random_3d():
+# def test_random_3d():
