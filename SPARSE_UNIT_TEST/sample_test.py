@@ -148,6 +148,7 @@ def module_iter_basic(test_name):
     #run command "make sim" to run the simulation
     sim_result = subprocess.run(["make", "sim"], capture_output=True, text=True)
     output = sim_result.stdout
+    # print(output)
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
 
