@@ -14,6 +14,7 @@ from sam.sim.test.test import TIMEOUT
 import subprocess
 import os
 import random
+random.seed(15)
 import string
 
 
@@ -202,9 +203,18 @@ def module_iter_basic(test_name):
     
     print(test_name, " passed\n")
 
-# THIS APPROACH HAS UNKOWN BUG
+
 def test_iter_basic():
     init_module()
     test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d"]
     for test in test_list:
         module_iter_basic(test)
+
+
+def test_random_1d():
+
+
+def test_random_2d():
+
+
+def test_random_3d():
