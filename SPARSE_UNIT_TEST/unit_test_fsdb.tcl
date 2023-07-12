@@ -1,6 +1,6 @@
 dump -file cgra.fsdb -type FSDB
-dump -add intersect_tb -fsdb_opt +mda+packedmda+struct
-power intersect_tb.dut
+dump -add unioner_tb.sv -fsdb_opt +mda+packedmda+struct
+power unioner_tb.sv.dut
 power -enable
 run
 power -disable

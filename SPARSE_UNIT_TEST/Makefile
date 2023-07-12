@@ -13,6 +13,8 @@ module_dir := $(mkfile_dir)/.magma
 # APP_ARGS ?= +APP0=app0
 
 TOOL ?= VCS
+TEST_TAR ?= 0
+TOP ?= 0
 export WAVEFORM ?= 0
 # export WAVEFORM_GLB_ONLY ?= 0
 # export SAIF ?= 0
@@ -22,7 +24,7 @@ export WAVEFORM ?= 0
 # -------------------------------------------------------------------
 CLK_PERIOD ?= 1ns
 
-DESIGN_FILES += sparse_tb.sv \
+DESIGN_FILES += $(TEST_TAR) \
 				glb_read.sv \
 				glb_write.sv\
 
@@ -66,7 +68,7 @@ VCS = vcs \
 	  -full64 \
 	  -ldflags "-Wl,--no-as-needed" \
 	  -CFLAGS "-m64" \
-	  -top intersect_tb \
+	  -top $(TOP) \
 	  +vcs+lic+wait \
 	  +vcs+initreg+random \
 	  +overlap \
@@ -82,7 +84,7 @@ XRUN = xrun \
 	   -timescale 1ns/1ps \
 	   -debug \
 	   -sysv \
-	   -top intersect_tb \
+	   -top $(TOP) \
 	   -elaborate \
 	   -l xrun.log \
 	   -covoverwrite \

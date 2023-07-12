@@ -74,3 +74,19 @@ def write_txt(file_name, data):
 def clear_txt(file_name):
     open(file_name, "w").close()
     return
+
+
+def update_tcl(tb):
+    template = "unit_test_template.tcl"
+    new_tcl = "unit_test_fsdb.tcl"
+    with open(template, "r") as f:
+        lines = f.readlines()
+        f.close()
+    #replace xxx with tb
+    with open(new_tcl, "w") as f:
+        for line in lines:
+            if "xxx" in line:
+                line = line.replace("xxx", tb)
+            f.write(line)
+        f.close()
+    return 

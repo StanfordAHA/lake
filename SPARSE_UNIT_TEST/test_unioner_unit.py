@@ -8,7 +8,7 @@ import kratos as k
 import sparse_helper
 from sparse_helper import convert_stream_to_onyx_interp
 from sam.sim.src.base import remove_emptystr
-from sam.sim.src.joiner import Intersect2
+from sam.sim.src.joiner import Union2
 from sam.sim.test.test import TIMEOUT
 
 
@@ -32,7 +32,7 @@ def init_module():
                     # add_flush=False,
                     # perf_debug=perf_debug
     magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
-    sparse_helper.update_tcl("intersect_tb")
+    sparse_helper.update_tcl("unioner_tb.sv")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
     # size = int(size*random.uniform(1.0, 1.0+d))
@@ -116,26 +116,26 @@ def create_gold(in_crd1, in_crd2, in_ref1, in_ref2):
     done = False
     time = 0
 
-    inter = Intersect2()
+    union = Union2()
     out_crd = []
     out_ref1 = []
     out_ref2 = []
 
     while not done and time < TIMEOUT:
         if len(in_crd1) > 0:
-            inter.set_in1(in_ref1.pop(0), in_crd1.pop(0))
+            union.set_in1(in_ref1.pop(0), in_crd1.pop(0))
         if len(in_crd2) > 0:
-            inter.set_in2(in_ref2.pop(0), in_crd2.pop(0))
+            union.set_in2(in_ref2.pop(0), in_crd2.pop(0))
 
-        inter.update()
+        union.update()
 
-        out_crd.append(inter.out_crd())
-        out_ref1.append(inter.out_ref1())
-        out_ref2.append(inter.out_ref2())
+        out_crd.append(union.out_crd())
+        out_ref1.append(union.out_ref1())
+        out_ref2.append(union.out_ref2())
 
-        # print("Timestep", time, "\t Crd:", inter.out_crd(), "\t Ref1:", inter.out_ref1(), "\t Ref2:", inter.out_ref2())
+        # print("Timestep", time, "\t Crd:", union.out_crd(), "\t Ref1:", union.out_ref1(), "\t Ref2:", union.out_ref2())
 
-        done = inter.done
+        done = union.done
         time += 1
 
     print("sam cycle count: ", time)
@@ -184,6 +184,20 @@ def load_test_module(test_name):
         in_ref2 = [9, 'S0', 'S1', 8, 7, 'S0', 6, 'S1', 'S0', 4, 3, 'S2', 'D']
         return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
 
+    elif test_name == "array_1d":
+        in_crd1 = [0, 1, 3, 5, 'S0', 'D']
+        in_ref1 = [0, 1, 2, 3, 'S0', 'D']
+        in_crd2 = [0, 2, 3, 4, 'S0', 'D']
+        in_ref2 = [0, 1, 2, 3, 'S0', 'D']
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+
+    elif test_name == "array_2d":
+        in_crd1 = [0, 1, 'S0', 2, 3, 'S0', 'S0', 4, 5, 'S1', 'D']
+        in_ref1 = [0, 1, 'S0', 2, 3, 'S0', 'S0', 4, 5, 'S1', 'D']
+        in_crd2 = [1, 2, 3, 'S0', 'S0', 0, 1, 2, 'S0', 'S1', 'D']
+        in_ref2 = [0, 1, 2, 'S0', 'S0', 2, 3, 4, 'S0', 'S1', 'D']
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
         n = int(t_arg[1][0])
@@ -222,7 +236,7 @@ def module_iter_basic(test_name):
     sparse_helper.clear_txt("pos_out_1.txt") 
     
     #run command "make sim" to run the simulation
-    sim_result = subprocess.run(["make", "sim", "TEST_TAR=intersect_tb.sv", "TOP=intersect_tb"], capture_output=True, text=True)
+    sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_tb.sv", "TOP=unioner_tb"], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
     cycle_count_line = output[output.find("cycle count:"):]
@@ -258,7 +272,7 @@ def module_iter_basic(test_name):
 
 def test_iter_basic():
     init_module()
-    test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d"]
+    test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d", "array_1d", "array_2d"]
     for test in test_list:
         module_iter_basic(test)
 
