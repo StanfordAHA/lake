@@ -16,6 +16,7 @@ import os
 import random
 random.seed(15)
 import string
+import math
 
 
 def init_module():
@@ -32,26 +33,49 @@ def init_module():
                     # perf_debug=perf_debug
     magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
 
+def create_random_fiber(rate, size, d, f_type = "coord"):
+    # size = int(size*random.uniform(1.0, 1.0+d))
+    s = int(rate*size)
+    if f_type == "coord":
+        crd = random.sample(range(size), s)
+        crd.sort()
+        return crd
+    elif f_type == "pos":
+        pos = random.sample(range(1, size + 1), s)
+        pos.sort()
+        return pos
+    else:
+        val = [random.uniform(0, 2**15-1) for i in range(s)]
+        return val
 
 def create_random(n, rate, size):
     if n == 1:
-        #pick rate*size non repeating intger random numbers from 0 to size
-        cr1_s = int(size*random.uniform(0.8, 1.2))
-        in_crd1 = random.sample(range(cr1_s), int(rate*cr1_s))
-        in_crd1.sort()
-        in_crd1 = in_crd1 + ['S0', 'D']
-        in_ref1 = random.sample(range(1, cr1_s + 1), int(rate*cr1_s))
-        in_ref1.sort()
-        in_ref1 = in_ref1 + ['S0', 'D']
-
-        cr2_s = int(size*random.uniform(0.8, 1.2))
-        in_crd2 = random.sample(range(cr2_s), int(rate*cr2_s))
-        in_crd2.sort()
-        in_crd2 = in_crd2 + ['S0', 'D']
-        in_ref2 = random.sample(range(1, cr2_s + 1), int(rate*cr2_s))
-        in_ref2.sort()
-        in_ref2 = in_ref2 + ['S0', 'D']
+        in_crd1 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
+        in_ref1 = create_random_fiber(1, len(in_crd1) - 2, 0, "pos") + ['S0', 'D']
+        in_crd2 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
+        in_ref2 = create_random_fiber(1, len(in_crd2) - 2, 0, "pos") + ['S0', 'D']
         return in_crd1, in_crd2, in_ref1, in_ref2
+    
+    elif n == 2:
+        d1 = int(random.uniform(2, int(math.sqrt(size))))
+        d2 = size // d1
+        rate = math.sqrt(rate)
+        ret = [[] for i in range(4)]
+        for i in range(d1):
+            ret_t = [[] for j in range(4)]
+            if random.random() < rate:
+                ret_t[0] = create_random_fiber(rate, d2, 0.2, "coord")
+                ret_t[1] = create_random_fiber(1, len(ret_t[0]), 0, "pos")
+                ret_t[2] = create_random_fiber(rate, d2, 0.2, "coord")
+                ret_t[3] = create_random_fiber(1, len(ret_t[2]), 0, "pos")
+
+            if i == d1 - 1:
+                for j in range(4):
+                    ret[j] = ret[j] + ret_t[j] + ['S1', 'D']
+            else:
+                for j in range(4):
+                    ret[j] = ret[j] + ret_t[j] + ['S0']
+        return ret[0], ret[1], ret[2], ret[3]
 
 
 def create_gold(in_crd1, in_crd2, in_ref1, in_ref2):
@@ -133,7 +157,15 @@ def load_test_module(test_name):
         rate = float(t_arg[2])
         size = int(t_arg[3])
         [in_crd1, in_ref1, in_crd2, in_ref2] = create_random(n, rate, size)
-        return create_gold(in_crd1, in_ref1, in_crd2, in_ref2)
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+
+    elif test_name[0:4] == "rd_2":
+        t_arg = test_name.split("_")
+        n = int(t_arg[1][0])
+        rate = float(t_arg[2])
+        size = int(t_arg[3])
+        [in_crd1, in_ref1, in_crd2, in_ref2] = create_random(n, rate, size)
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
 
     else:
         in_crd1 = [0, 'S0', 'D']
@@ -247,7 +279,11 @@ def test_random_1d():
         module_iter_basic(test)
 
 
-# def test_random_2d():
+def test_random_2d():
+    init_module()
+    test_list = ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_2d_1.0_400"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
 # def test_random_3d():
