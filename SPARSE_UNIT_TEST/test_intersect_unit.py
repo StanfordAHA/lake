@@ -5,6 +5,7 @@ import tempfile
 import kratos as k
 
 
+import sam_helper
 from sam_helper import convert_stream_to_onyx_interp
 from sam.sim.src.base import remove_emptystr
 from sam.sim.src.joiner import Intersect2
@@ -179,33 +180,14 @@ def load_test_module(test_name):
 def module_iter_basic(test_name):
     [ic1, ic2, ir1, ir2, gc, gr1, gr2] = load_test_module(test_name)
 
-    #convert each element of ic1 to hex and write to file coord_in_0.txt
-    with open("coord_in_0.txt", "w") as f:
-        for element in ic1:
-            f.write(f'{element:x}' + '\n')
-        f.close()
+    sam_helper.write_txt("coord_in_0.txt", ic1)
+    sam_helper.write_txt("coord_in_1.txt", ic2)
+    sam_helper.write_txt("pos_in_0.txt", ir1)
+    sam_helper.write_txt("pos_in_1.txt", ir2)
 
-    #convert each element of ic2 to hex and write to file coord_in_1.txt
-    with open("coord_in_1.txt", "w") as f:
-        for element in ic2:
-            f.write(f'{element:x}' + '\n')
-        f.close()
-    
-    #convert each element of ir1 to hex and write to file ref_in_0.txt
-    with open("pos_in_0.txt", "w") as f:
-        for element in ir1:
-            f.write(f'{element:x}' + '\n')
-        f.close()
-    
-    #convert each element of ir2 to hex and write to file ref_in_1.txt
-    with open("pos_in_1.txt", "w") as f:
-        for element in ir2:
-            f.write(f'{element:x}' + '\n')
-        f.close()
-    
-    open("coord_out.txt", "w").close() 
-    open("pos_out_0.txt", "w").close() 
-    open("pos_out_1.txt", "w").close()    
+    sam_helper.clear_txt("coord_out.txt")
+    sam_helper.clear_txt("pos_out_0.txt")
+    sam_helper.clear_txt("pos_out_1.txt") 
     
     #run command "make sim" to run the simulation
     sim_result = subprocess.run(["make", "sim"], capture_output=True, text=True)
@@ -214,32 +196,9 @@ def module_iter_basic(test_name):
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
 
-    coord_out = []
-    pos_out_0 = []
-    pos_out_1 = []
-    #read the output from coord_out.txt and convert each element from hex to int
-    with open("coord_out.txt", "r") as f:
-        for line in f:
-            coord_out.append(int(line, 16))
-            if int(line, 16) == 0x10100:
-                break
-        f.close()
-    
-    #read the output from pos_out_0.txt and convert each element from hex to int
-    with open("pos_out_0.txt", "r") as f:
-        for line in f:
-            pos_out_0.append(int(line, 16))
-            if int(line, 16) == 0x10100:
-                break
-        f.close()
-
-    #read the output from pos_out_1.txt and convert each element from hex to int
-    with open("pos_out_1.txt", "r") as f:
-        for line in f:
-            pos_out_1.append(int(line, 16))
-            if int(line, 16) == 0x10100:
-                break
-        f.close()
+    coord_out = sam_helper.read_txt("coord_out.txt")
+    pos_out_0 = sam_helper.read_txt("pos_out_0.txt")
+    pos_out_1 = sam_helper.read_txt("pos_out_1.txt")
 
     #compare each element in the output from coord_out.txt with the gold output
     assert len(coord_out) == len(gc), \

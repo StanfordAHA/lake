@@ -1,4 +1,5 @@
 import enum
+import os
 
 
 class ControlCodeOnyx(enum.Enum):
@@ -49,3 +50,27 @@ def convert_stream_to_onyx_interp(stream):
     assert len(converted_stream) == len(stream), \
         f"Input length {len(stream)} didn't match output length {len(converted_stream)}"
     return converted_stream
+
+
+def read_txt(file_name):
+    r = []
+    with open(file_name, "r") as f:
+        for line in f:
+            r.append(int(line, 16))
+            if int(line, 16) == 0x10100:
+                break
+        f.close()
+    return r
+
+
+def write_txt(file_name, data):
+    with open(file_name, "w") as f:
+        for element in data:
+            f.write(f'{element:x}' + '\n')
+        f.close()
+    return
+
+
+def clear_txt(file_name):
+    open(file_name, "w").close()
+    return
