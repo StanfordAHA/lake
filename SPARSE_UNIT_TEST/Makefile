@@ -23,6 +23,7 @@ export WAVEFORM ?= 0
 # Compile Parameters
 # -------------------------------------------------------------------
 CLK_PERIOD ?= 1ns
+TX_NUM_GLB ?= 1
 
 DESIGN_FILES += $(TEST_TAR) \
 				glb_read.sv \
@@ -103,8 +104,11 @@ XRUN = xrun \
 # -------------------------------------------------------------------
 # Compile & Run
 # -------------------------------------------------------------------
-COMPILE_RTL_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD)
-COMPILE_GLS_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD)
+COMPILE_RTL_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD) \
+					+define+TX_NUM_GLB=$(TX_NUM_GLB)
+
+COMPILE_GLS_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD) \
+					+define+TX_NUM_GLB=$(TX_NUM_GLB)
 ifeq ($(TOOL), XCELIUM)
     COMPILE = $(XRUN)
     # COMPILE_RTL_ARGS += -xminitialize 0 -xminit_log init.log -nospecify

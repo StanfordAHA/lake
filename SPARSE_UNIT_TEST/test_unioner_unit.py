@@ -92,7 +92,7 @@ def create_random(n, rate, size, d1=0):
                 ret_t[0], ret_t[1], ret_t[2], ret_t[3] = create_random(2, rate*rate, d2, d1_)
             else:
                 for j in range(4):
-                    ret[j] = ret[j] + ['S1', 'D']
+                    ret_t[j] = ret_t[j] + ['S1', 'D']
             
             for j in range(4):
                 if i == d1 - 1:
@@ -215,8 +215,18 @@ def load_test_module(test_name):
         return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
 
 
-def module_iter_basic(test_name):
+def module_iter_basic(test_name, add_test=""):
     [ic1, ic2, ir1, ir2, gc, gr1, gr2] = load_test_module(test_name)
+
+    if add_test != "":
+        additional_t = load_test_module(add_test)
+        ic1 = ic1 + additional_t[0]
+        ic2 = ic2 + additional_t[1]
+        ir1 = ir1 + additional_t[2]
+        ir2 = ir2 + additional_t[3]
+        gc = gc + additional_t[4]
+        gr1 = gr1 + additional_t[5]
+        gr2 = gr2 + additional_t[6]
 
     # print("ic1", ic1)
     # print("ic2", ic2)
@@ -236,15 +246,19 @@ def module_iter_basic(test_name):
     sparse_helper.clear_txt("pos_out_1.txt") 
     
     #run command "make sim" to run the simulation
-    sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_tb.sv", "TOP=unioner_tb"], capture_output=True, text=True)
+    if add_test == "":
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_tb.sv", "TOP=unioner_tb"], capture_output=True, text=True)
+    else:
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_tb.sv",\
+                             "TOP=unioner_tb", "TX_NUM_GLB=2"], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
 
-    coord_out = sparse_helper.read_txt("coord_out.txt")
-    pos_out_0 = sparse_helper.read_txt("pos_out_0.txt")
-    pos_out_1 = sparse_helper.read_txt("pos_out_1.txt")
+    coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
+    pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
+    pos_out_1 = sparse_helper.read_txt("pos_out_1.txt", addit=add_test != "")
 
     #compare each element in the output from coord_out.txt with the gold output
     assert len(coord_out) == len(gc), \
@@ -296,3 +310,12 @@ def test_random_3d():
     test_list = ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_3d_1.0_400"]
     for test in test_list:
         module_iter_basic(test) 
+
+def test_seq():
+    init_module()
+    test_list =  ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"] +\
+                 ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_1d_1.0_400"] +\
+                 ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_1d_1.0_400"]
+    for i in range(10):
+        rand = random.sample(test_list, 2)
+        module_iter_basic(rand[0], rand[1])

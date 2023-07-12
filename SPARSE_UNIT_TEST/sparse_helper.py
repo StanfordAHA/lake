@@ -52,12 +52,17 @@ def convert_stream_to_onyx_interp(stream):
     return converted_stream
 
 
-def read_txt(file_name):
+def read_txt(file_name, addit=False):
     r = []
+    count = 1
+    if addit:
+        count = 2
     with open(file_name, "r") as f:
         for line in f:
             r.append(int(line, 16))
             if int(line, 16) == 0x10100:
+                count -= 1
+            if count == 0:
                 break
         f.close()
     return r
