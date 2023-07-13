@@ -27,10 +27,13 @@ def convert_stream_to_onyx_interp(stream):
     for s_ in stream:
         if type(s_) is int:
             converted_stream.append(s_)
+        elif type(s_) is str and s_ == 'R':
+            converted_stream.append(1)
         elif type(s_) is str:
             control_code = 0
             if 'S' in s_:
-                control_code = int(s_.lstrip('S'))
+                if s_ != 'S':
+                    control_code = int(s_.lstrip('S'))
             elif 'D' in s_:
                 set_ctrl = ControlCodeOnyx.DONE.value
                 for offset_ in range(num_ctrl_bits):
