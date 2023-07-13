@@ -8,7 +8,7 @@ import kratos as k
 import sparse_helper
 from sparse_helper import convert_stream_to_onyx_interp
 from sam.sim.src.base import remove_emptystr
-from sam.sim.src.joiner import Repeat as Repeat_GLD
+from sam.sim.src.repeater import Repeat as Repeat_GLD
 from sam.sim.test.test import TIMEOUT
 
 
