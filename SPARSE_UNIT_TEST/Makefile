@@ -15,6 +15,7 @@ module_dir := $(mkfile_dir)/.magma
 TOOL ?= VCS
 TEST_TAR ?= 0
 TOP ?= 0
+TEST_UNIT ?= 0
 export WAVEFORM ?= 0
 # export WAVEFORM_GLB_ONLY ?= 0
 # export SAIF ?= 0
@@ -29,7 +30,7 @@ DESIGN_FILES += $(TEST_TAR) \
 				glb_read.sv \
 				glb_write.sv\
 
-DESIGN_FILES += $(module_dir)/intersect_unit-kratos.sv
+DESIGN_FILES += $(module_dir)/$(TEST_UNIT)
 # TB_FILES += -F tb/tb_cgra.f
 
 # IP_FILES += -y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \

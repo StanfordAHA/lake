@@ -17,6 +17,14 @@ def get_bit(val, n):
     return val >> n & 1
 
 
+def is_DONE(s_):
+    return s_ == 0x10100
+
+
+def is_STOP(s_):
+    return (s_ >> 16) == 1 and (not is_DONE(s_))
+
+
 def convert_stream_to_onyx_interp(stream):
 
     ctrl_op_offset = 8

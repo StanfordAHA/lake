@@ -1,4 +1,4 @@
-from lake.modules.intersect import *
+from lake.modules.repeat_signal_generator import *
 import magma as m
 from magma import *
 import tempfile
@@ -21,16 +21,10 @@ import string
 
 def init_module():
     dut = RepeatSignalGenerator(data_width=16,
-                    use_merger=False,
+                    passthru=False,
                     defer_fifos=False,
                     add_flush=True,
                     fifo_depth=2)
-                    # data_width=16,
-                    # use_merger=False,
-                    # fifo_depth=2,
-                    # defer_fifos=True,
-                    # add_flush=False,
-                    # perf_debug=perf_debug
     magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
     sparse_helper.update_tcl("repeatsig_tb.sv")
 
@@ -63,7 +57,7 @@ def create_random(n, rate, size, d1=0):
         for i in range(d1):
             ret_t = []
             if random.random() < rate:
-                ret_t[0] = create_random_fiber(rate, d2, 0.2, "coord")
+                ret_t = ret_t + create_random_fiber(rate, d2, 0.2, "coord")
             if i == d1 - 1:
                 ret = ret + ret_t + ['S1', 'D']
             else:
@@ -173,7 +167,7 @@ def load_test_module(test_name):
 
 def module_iter_basic(test_name, add_test=""):
     [ic1, gc] = load_test_module(test_name)
-    return
+
     if add_test != "":
         additional_t = load_test_module(add_test)
         ic1 = ic1 + additional_t[0]
@@ -188,10 +182,12 @@ def module_iter_basic(test_name, add_test=""):
     
     #run command "make sim" to run the simulation
     if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=repeatsig_tb.sv", "TOP=repeatsig_tb"], capture_output=True, text=True)
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=repeatsig_tb.sv", "TOP=repeatsig_tb",\
+                             "TEST_UNIT=RepeatSignalGenerator-kratos.sv"], capture_output=True, text=True)
     else:
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=repeatsig_tb.sv",\
-                             "TOP=repeatsig_tb", "TX_NUM_GLB=2"], capture_output=True, text=True)
+                             "TOP=repeatsig_tb", "TX_NUM_GLB=2", "TEST_UNIT=RepeatSignalGenerator-kratos.sv"\
+                             ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
     cycle_count_line = output[output.find("cycle count:"):]
@@ -199,54 +195,49 @@ def module_iter_basic(test_name, add_test=""):
 
     coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
 
+    # print(coord_out)
+
     #compare each element in the output from coord_out.txt with the gold output
     assert len(coord_out) == len(gc), \
         f"Output length {len(coord_out)} didn't match gold length {len(gc)}"
     for i in range(len(coord_out)):
-        assert coord_out[i] == gc[i], \
-            f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
-    
+        if sparse_helper.is_DONE(gc[i]):
+            assert sparse_helper.is_DONE(coord_out[i]), \
+                f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
+        elif sparse_helper.is_STOP(gc[i]):
+            assert sparse_helper.is_STOP(coord_out[i]), \
+                f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
+        else:
+            assert coord_out[i] == gc[i], \
+                f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"    
     print(test_name, " passed\n")
 
 
 def test_iter_basic():
-    init_module
-    test_list = ["arr_1", "arr_2", "arr_3"]
+    init_module()
+    test_list = ["arr_1", "arr_2", "arr_3", "direct_1d", "direct_2d", "xxx", "empty_2d"]
     for test in test_list:
         module_iter_basic(test)
 
-# def test_iter_basic():
-#     init_module()
-#     test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d", "array_1d", "array_2d"]
-#     for test in test_list:
-#         module_iter_basic(test)
+
+def test_random_1d():
+    init_module()
+    test_list = ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_1d():
-#     init_module()
-#     test_list = ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_2d():
+    init_module()
+    test_list = ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_2d_1.0_400"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_2d():
-#     init_module()
-#     test_list = ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_2d_1.0_400"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-
-# def test_random_3d():
-#     init_module()
-#     test_list = ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_3d_1.0_400"]
-#     for test in test_list:
-#         module_iter_basic(test) 
-
-# def test_seq():
-#     init_module()
-#     test_list =  ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"] +\
-#                  ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_1d_1.0_400"] +\
-#                  ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_1d_1.0_400"]
-#     for i in range(10):
-#         rand = random.sample(test_list, 2)
-#         module_iter_basic(rand[0], rand[1])
+def test_seq():
+    init_module()
+    test_list =  ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"] +\
+                 ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_1d_1.0_400"] 
+    for i in range(10):
+        rand = random.sample(test_list, 2)
+        module_iter_basic(rand[0], rand[1])

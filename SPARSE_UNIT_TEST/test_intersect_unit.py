@@ -236,10 +236,12 @@ def module_iter_basic(test_name, add_test=""):
     
     #run command "make sim" to run the simulation
     if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=intersect_tb.sv", "TOP=intersect_tb"], capture_output=True, text=True)
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=intersect_tb.sv", "TOP=intersect_tb",\
+                             "TEST_UNIT=intersect_unit-kratos.sv"], capture_output=True, text=True)
     else:
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=intersect_tb.sv",\
-                             "TOP=intersect_tb", "TX_NUM_GLB=2"], capture_output=True, text=True)
+                             "TOP=intersect_tb", "TX_NUM_GLB=2", "TEST_UNIT=intersect_unit-kratos.sv"\
+                             ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
     cycle_count_line = output[output.find("cycle count:"):]
