@@ -26,7 +26,7 @@ def init_module():
                     add_flush=True,
                     fifo_depth=2)
     magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
-    sparse_helper.update_tcl("repeatsig_tb.sv")
+    sparse_helper.update_tcl("repeatsig_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
     # size = int(size*random.uniform(1.0, 1.0+d))
