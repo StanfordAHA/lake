@@ -205,7 +205,7 @@ def module_iter_basic(test_name, add_test=""):
             assert sparse_helper.is_DONE(coord_out[i]), \
                 f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
         elif sparse_helper.is_STOP(gc[i]):
-            assert sparse_helper.is_STOP(coord_out[i]), \
+            assert coord_out[i] == ic1[i], \
                 f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
         else:
             assert coord_out[i] == gc[i], \
