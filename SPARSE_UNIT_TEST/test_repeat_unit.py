@@ -97,7 +97,8 @@ def create_random(n, rate, size, d1=0):
                 
 
 def create_gold(in_ref1, repsig):
-    assert (len([x for x in in_ref1 if type(x) is int]) == len([x for x in repsig if x == 'S']))
+    assert (len([x for x in in_ref1 if (type(x) is int or x == 'N')])) == \
+        len([repsig[i] for i in range(len(repsig)) if (repsig[i] == 'S' and (i == 0 or repsig[i - 1] == 'R'))])
     assert (in_ref1[-1] == 'D' and repsig[-1] == 'D')
     
     i_r1_cpy = in_ref1[:]
@@ -160,6 +161,26 @@ def load_test_module(test_name):
         repeat = ['R', 'R', 'S', 'D']
         return create_gold(ref, repeat)
 
+    elif test_name == "arr_5":
+        ref = [0, 1, 'S0', 'D']
+        repeat = ['R', 'R', 'R', 'S'] * 2 + ['D']
+        return create_gold(ref, repeat)
+    
+    elif test_name == "arr_6":
+        ref = [0, 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S1', 'D']
+        repeat = ['R', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'S', 'D']
+        return create_gold(ref, repeat)
+    
+    elif test_name == "arr_7":
+        ref = [0, 'S0', 1, 'S1', 'D']
+        repeat = ['S', 'R', 'S', 'D']
+        return create_gold(ref, repeat)
+    
+    elif test_name == "arr_8":
+        ref = ['N', 0, 1, 'S0', 'D']
+        repeat = ['R', 'S', 'R', 'S', 'R', 'S', 'D']
+        return create_gold(ref, repeat)
+
     else:
         ref = [0, 'S0', 'D']
         repeat = ['S','D']
@@ -216,6 +237,7 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_iter_basic():
     init_module()
-    test_list = ["arr_1", "arr_2", "arr_3", "arr_4", "empty"]
+    test_list = ["arr_1", "arr_2", "arr_3", "arr_4", \
+                "arr_5", "arr_6", "arr_7", "arr_8", "empty"]
     for test in test_list:
         module_iter_basic(test)
