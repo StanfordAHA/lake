@@ -32,7 +32,6 @@ class BuffetLike(MemoryController):
                  add_flush=False,
                  split_mem_requests=True,
                  prefetch=True):
-                #  prefetch=False):
 
         super().__init__(f"buffet_like_{data_width}", debug=True)
 
