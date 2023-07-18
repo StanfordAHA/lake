@@ -241,3 +241,12 @@ def test_iter_basic():
                 "arr_5", "arr_6", "arr_7", "arr_8", "empty"]
     for test in test_list:
         module_iter_basic(test)
+
+
+def test_seq():
+    init_module()
+    test_list =  ["arr_1", "arr_2", "arr_3", "arr_4", \
+                "arr_5", "arr_6", "arr_7", "arr_8", "empty"] 
+    for i in range(10):
+        rand = random.sample(test_list, 2)
+        module_iter_basic(rand[0], rand[1])
