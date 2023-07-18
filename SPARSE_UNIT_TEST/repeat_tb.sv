@@ -28,7 +28,7 @@ module repeat_tb;
     wire ref_data_out_ready;
 
     wire [2:0] done;
-    parameter NUM_CYCLES = 1000;
+    parameter NUM_CYCLES = 4000;
 
     Repeat #(
         

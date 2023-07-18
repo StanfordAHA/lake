@@ -22,7 +22,28 @@ def is_DONE(s_):
 
 
 def is_STOP(s_):
-    return (s_ >> 16) == 1 and (not is_DONE(s_))
+    return (s_ >> 16) == 1 and (not is_DONE(s_)) and (s_ != 0x10200)
+
+
+def is_DONE_sam(s_):
+    if type(s_) is int:
+        return False
+    if s_ == 'D':
+        return True
+    else:
+        return False
+
+
+def is_STOP_sam(s_, level = -1):
+    if type(s_) is int:
+        return False 
+    if s_[0] == 'S':
+        if level == -1:
+            return True
+        else:
+            return level == int(s_[1:])
+    else:
+        return False
 
 
 def convert_stream_to_onyx_interp(stream):

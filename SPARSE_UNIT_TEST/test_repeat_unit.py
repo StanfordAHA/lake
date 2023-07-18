@@ -28,8 +28,10 @@ def init_module():
     magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
     sparse_helper.update_tcl("repeat_tb")
 
-def create_random_fiber(rate, size, d, f_type = "coord"):
+
+def create_random_fiber(rate, size, d, f_type = "coord", maybe = 0.0):
     # size = int(size*random.uniform(1.0, 1.0+d))
+
     s = int(rate*size)
     if f_type == "coord":
         crd = random.sample(range(size), s)
@@ -38,67 +40,82 @@ def create_random_fiber(rate, size, d, f_type = "coord"):
     elif f_type == "pos":
         pos = random.sample(range(1, size + 1), s)
         pos.sort()
+        if maybe != 0.0:
+            replace = random.sample(range(0, len(pos)), int(len(pos)*maybe))
+            for i in replace:
+                pos[i] = 'N'
         return pos
     else:
         val = [random.uniform(0, 2**15-1) for i in range(s)]
         return val
 
+
 def create_random(n, rate, size, d1=0):
     if n == 1:
-        in_crd1 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
-        in_ref1 = create_random_fiber(1, len(in_crd1) - 2, 0, "pos") + ['S0', 'D']
-        in_crd2 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
-        in_ref2 = create_random_fiber(1, len(in_crd2) - 2, 0, "pos") + ['S0', 'D']
-        return in_crd1, in_crd2, in_ref1, in_ref2
+        in_crd1 = create_random_fiber(rate, size, 0.2, "pos", 0.2) + ['S0', 'D']
+        return in_crd1
     
     elif n == 2:
         if d1 == 0:
             d1 = int(random.uniform(2, int(size**(1/2))))
         d2 = size // d1
         rate = rate**(1/2)
-        ret = [[] for i in range(4)]
+        ret = []
         for i in range(d1):
-            ret_t = [[] for j in range(4)]
+            ret_t = []
             if random.random() < rate:
-                ret_t[0] = create_random_fiber(rate, d2, 0.2, "coord")
-                ret_t[1] = create_random_fiber(1, len(ret_t[0]), 0, "pos")
-            if random.random() < rate:
-                ret_t[2] = create_random_fiber(rate, d2, 0.2, "coord")
-                ret_t[3] = create_random_fiber(1, len(ret_t[2]), 0, "pos")
-
-            for j in range(4):
-                if i == d1 - 1:
-                    ret[j] = ret[j] + ret_t[j] + ['S1', 'D']
-                else:
-                    ret[j] = ret[j] + ret_t[j] + ['S0']
-        return ret[0], ret[1], ret[2], ret[3]
+                ret_t = ret_t + create_random_fiber(rate, d2, 0.2, "pos", 0.2)
+            if i == d1 - 1:
+                ret = ret + ret_t + ['S1', 'D']
+            else:
+                ret = ret + ret_t + ['S0']
+        return ret
     elif n == 3:
         if d1 == 0:
             d1 = int(random.uniform(2, int(size**(1/3))))
         d2 = size // d1
         d1_ = int(random.uniform(2, int(d2**(1/2))))
         rate = rate**(1/3)
-        ret = [[] for i in range(4)]
+        ret = []
         # print(d1, d2, rate)
         for i in range(d1):
-            ret_t = [[] for j in range(4)]
+            ret_t = []
             if random.random() < rate:
-                ret_t[0], ret_t[1], ret_t[2], ret_t[3] = create_random(2, rate*rate, d2, d1_)
+                ret_t = create_random(2, rate*rate, d2, d1_)
             else:
-                for j in range(4):
-                    ret_t[j] = ret_t[j] + ['S1', 'D']
-            
-            for j in range(4):
-                if i == d1 - 1:
-                    ret[j] = ret[j] + ret_t[j][:-2] + ['S2', 'D']
-                else:
-                    ret[j] = ret[j] + ret_t[j][:-1]
-        return ret[0], ret[1], ret[2], ret[3]
+                ret_t = ret_t + ['S1', 'D']
+
+            if i == d1 - 1:
+                ret = ret + ret_t[:-2] + ['S2', 'D']
+            else:
+                ret = ret + ret_t[:-1]
+        return ret
                 
 
+def create_repeat_sig(ref, rep_times):
+    total_stop = (len([ref[i] for i in range(len(ref)) if (type(ref[i]) is int or ref[i] == 'N') \
+        and not sparse_helper.is_STOP_sam(ref[i+1])])) \
+        + len([x for x in ref if sparse_helper.is_STOP_sam(x)])
+    values = len([ref[i] for i in range(len(ref)) if (type(ref[i]) is int or ref[i] == 'N')])
+
+    assert(values <= total_stop)
+    sig = []
+
+    for i in range(total_stop):
+        if i < values:
+            t = int(random.uniform(0, rep_times))
+            sig = sig + ['R' for i in range(t)]
+        sig = sig + ['S']
+    
+    sig = sig + ['D']
+    return sig
+
+
 def create_gold(in_ref1, repsig):
-    assert (len([x for x in in_ref1 if (type(x) is int or x == 'N')])) == \
-        len([repsig[i] for i in range(len(repsig)) if (repsig[i] == 'S' and (i == 0 or repsig[i - 1] == 'R'))])
+    assert (len([in_ref1[i] for i in range(len(in_ref1)) if (type(in_ref1[i]) is int or in_ref1[i] == 'N') \
+        and not sparse_helper.is_STOP_sam(in_ref1[i+1])])) \
+        + len([x for x in in_ref1 if sparse_helper.is_STOP_sam(x)]) == \
+        len([x for x in repsig if sparse_helper.is_STOP_sam(x)])
     assert (in_ref1[-1] == 'D' and repsig[-1] == 'D')
     
     i_r1_cpy = in_ref1[:]
@@ -127,6 +144,11 @@ def create_gold(in_ref1, repsig):
 
     print("sam cycle count: ", time)
     out = remove_emptystr(out)
+
+    print(i_r1_cpy)
+    print(sig_cpy)
+    print(out)
+    print("=============")
 
     assert len(out) == len(sig_cpy)
     st = [i_r1_cpy, sig_cpy, out]
@@ -181,6 +203,31 @@ def load_test_module(test_name):
         repeat = ['R', 'S', 'R', 'S', 'R', 'S', 'D']
         return create_gold(ref, repeat)
 
+    elif test_name == "arr_9":
+        ref = [0, 1, 'S0', 0, 1, 'S1', 'D']
+        repeat = ['S', 'R', 'S', 'S', 'R', 'S', 'D']
+        return create_gold(ref, repeat)
+
+    # elif test_name == "arr_9":
+    #     ref = [0, 1, 'S0', 0, 1, 'S1', 'D']
+    #     repeat = ['R', 'S', 'R', 'S', 'S', 'R', 'S', 'D']
+    #     return create_gold(ref, repeat)
+
+    # elif test_name == "arr_9":
+    #     ref = [0, 1, 2, 3, 'S0', 'D']
+    #     repeat = ['S', 'R', 'S', 'S', 'R', 'S', 'D']
+    #     return create_gold(ref, repeat)    
+
+    elif test_name[0:3] == "rd_":
+        t_arg = test_name.split("_")
+        n = int(t_arg[1][0])
+        rate = float(t_arg[2])
+        size = int(t_arg[3])
+        rep_times = int(t_arg[4])
+        ref = create_random(n, rate, size)
+        repeat = create_repeat_sig(ref, rep_times)
+        return create_gold(ref, repeat)
+
     else:
         ref = [0, 'S0', 'D']
         repeat = ['S','D']
@@ -225,7 +272,7 @@ def module_iter_basic(test_name, add_test=""):
     pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
     
     #compare each element in the output from pos_out_0.txt with the gold output
-    print(pos_out_0)
+    # print(pos_out_0)
     assert len(pos_out_0) == len(gc), \
         f"Output length {len(pos_out_0)} didn't match gold length {len(gc)}"
     for i in range(len(pos_out_0)):
@@ -235,18 +282,64 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-def test_iter_basic():
+# def test_iter_basic():
+#     init_module()
+#     test_list = ["arr_1", "arr_2", "arr_3", "arr_4", \
+#                 "arr_5", "arr_6", "arr_7", "arr_8", "empty"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+# def test_random_1d():
+#     init_module()
+#     test_list = ["rd_1d_0.1_200_5", "rd_1d_0.3_200_5", "rd_1d_0.5_200_5", "rd_1d_0.8_200_5", "rd_1d_1.0_200_5"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+# def test_random_2d():
+#     init_module()
+#     test_list = ["rd_2d_0.1_200_5", "rd_2d_0.3_200_5", "rd_2d_0.5_200_5", "rd_2d_0.8_200_5", "rd_2d_1.0_200_5"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+# def test_random_2d():
+#     init_module()
+#     test_list = ["rd_2d_0.8_50_5"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+# def test_random_2d():
+#     init_module()
+#     test_list = ["rd_2d_0.8_45_5"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+# def test_random_2d():
+#     init_module()
+#     test_list = ["rd_2d_0.6_40_2"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+# def test_random_1d():
+#     init_module()
+#     test_list = ["rd_1d_1.0_10_2"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+def test_random_2d():
     init_module()
-    test_list = ["arr_1", "arr_2", "arr_3", "arr_4", \
-                "arr_5", "arr_6", "arr_7", "arr_8", "empty"]
+    test_list = ["arr_9"]
     for test in test_list:
         module_iter_basic(test)
 
 
-def test_seq():
-    init_module()
-    test_list =  ["arr_1", "arr_2", "arr_3", "arr_4", \
-                "arr_5", "arr_6", "arr_7", "arr_8", "empty"] 
-    for i in range(10):
-        rand = random.sample(test_list, 2)
-        module_iter_basic(rand[0], rand[1])
+# def test_seq():
+#     init_module()
+#     test_list =  ["arr_1", "arr_2", "arr_3", "arr_4", \
+#                 "arr_5", "arr_6", "arr_7", "arr_8", "empty"] 
+#     for i in range(10):
+#         rand = random.sample(test_list, 2)
+#         module_iter_basic(rand[0], rand[1])
