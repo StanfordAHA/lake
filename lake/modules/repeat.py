@@ -272,7 +272,7 @@ class Repeat(MemoryController):
         # We go to pass stop when we have a stop token on the repsig line - either to pass through or coalesce with proc stop
         # PASS_REPEAT.next(PASS_STOP, self._proc_fifo_out_eos & self._proc_fifo_valid)
         PASS_REPEAT.next(DONE, self._proc_done)
-        PASS_REPEAT.next(PASS_STOP, self._repsig_fifo_out_eos & self._repsig_fifo_valid & (self._repsig_fifo_out_data[9, 8] == kts.const(0, 2)))
+        PASS_REPEAT.next(PASS_STOP, self._proc_fifo_valid & self._repsig_fifo_out_eos & self._repsig_fifo_valid & (self._repsig_fifo_out_data[9, 8] == kts.const(0, 2)))
         PASS_REPEAT.next(PASS_REPEAT, None)
 
         #####################
@@ -289,7 +289,7 @@ class Repeat(MemoryController):
         # If we aren't done, we should just wait for the next valid data as one must come eventually - we have to push either way, so make sure it's
         # not full
         # PASS_STOP.next(PASS_REPEAT, self._proc_fifo_valid & ~self._proc_fifo_out_eos & ~self._ref_fifo_full)
-        PASS_STOP.next(PASS_REPEAT, self._proc_fifo_valid & ~self._proc_stop & ~self._ref_fifo_full)
+        PASS_STOP.next(PASS_REPEAT, self._proc_fifo_valid & ~self._ref_fifo_full)
         PASS_STOP.next(PASS_STOP, None)
 
         #####################
