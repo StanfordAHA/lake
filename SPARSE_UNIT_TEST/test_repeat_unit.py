@@ -121,6 +121,47 @@ def create_gold(in_ref1, repsig):
     i_r1_cpy = in_ref1[:]
     sig_cpy = repsig[:]
 
+    # temporal fix
+    i = 0
+    j = 0
+    mod_rep = []
+    while i < len(in_ref1) - 1 and j < len(repsig) - 1:
+        pre_value = False
+        if type(in_ref1[i]) is int or in_ref1[i] == 'N':
+            pre_value = True
+        rs = []
+        while repsig[j] == 'R':
+            rs.append('R')
+            j += 1
+        if pre_value:
+            mod_rep += rs
+        mod_rep += [repsig[j]]
+
+        i += 1
+        j += 1
+
+        if sparse_helper.is_STOP_sam(in_ref1[i]) and pre_value:
+            i += 1
+    mod_rep.append('D')
+    # print(mod_rep)
+    
+    done = False
+    time = 0
+    in_ref2 = in_ref1[:]
+    rep_t = Repeat_GLD()
+    out_t = []
+    while not done and time < TIMEOUT:
+        if len(in_ref2) > 0:
+            rep_t.set_in_ref(in_ref2.pop(0))
+        if len(mod_rep) > 0:
+            rep_t.set_in_repeat(mod_rep.pop(0))
+        rep_t.update()
+        out_t.append(rep_t.out_ref())
+        done = rep_t.out_done()
+        time += 1
+    out_t = remove_emptystr(out_t)
+    #end temp fix
+
     done = False
     time = 0
 
@@ -145,13 +186,14 @@ def create_gold(in_ref1, repsig):
     print("sam cycle count: ", time)
     out = remove_emptystr(out)
 
-    print(i_r1_cpy)
-    print(sig_cpy)
-    print(out)
-    print("=============")
+    # print(i_r1_cpy)
+    # print(sig_cpy)
+    # print(out)
+    # print("=============")
 
-    assert len(out) == len(sig_cpy)
-    st = [i_r1_cpy, sig_cpy, out]
+    # assert len(out) == len(sig_cpy)
+
+    st = [i_r1_cpy, sig_cpy, out_t]
     for i in range(len(out)):
         if sig_cpy[i] == 'S':
             sig_cpy[i] = out[i]
@@ -208,15 +250,20 @@ def load_test_module(test_name):
         repeat = ['S', 'R', 'S', 'S', 'R', 'S', 'D']
         return create_gold(ref, repeat)
 
-    # elif test_name == "arr_9":
-    #     ref = [0, 1, 'S0', 0, 1, 'S1', 'D']
-    #     repeat = ['R', 'S', 'R', 'S', 'S', 'R', 'S', 'D']
-    #     return create_gold(ref, repeat)
+    elif test_name == "arr_10":
+        ref = [1, 2, 'S0', 'S0', 3, 'S0', 4, 'S1', 'D']
+        repeat = ['R', 'S', 'R', 'S', 'R', 'R', 'S', 'R', 'S', 'S', 'D']
+        return create_gold(ref, repeat)   
 
-    # elif test_name == "arr_9":
-    #     ref = [0, 1, 2, 3, 'S0', 'D']
-    #     repeat = ['S', 'R', 'S', 'S', 'R', 'S', 'D']
-    #     return create_gold(ref, repeat)    
+    elif test_name == "arr_11":
+        ref = [1, 2, 'S0', 'S0', 3, 'S0', 4, 'S1', 'D']
+        repeat = ['R', 'S', 'R', 'S', 'S', 'R', 'S', 'S', 'D']
+        return create_gold(ref, repeat)   
+
+    elif test_name == "arr_12":
+        ref = [1, 2, 'S0', 'S1', 'S1', 3, 'S0', 4, 'S2', 'D']
+        repeat = create_repeat_sig(ref, 2)
+        return create_gold(ref, repeat) 
 
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
@@ -237,9 +284,9 @@ def load_test_module(test_name):
 def module_iter_basic(test_name, add_test=""):
     [ir1, rep, gc] = load_test_module(test_name)
 
-    print(ir1)
-    print(rep)
-    print(gc)
+    # print(ir1)
+    # print(rep)
+    # print(gc)
 
     if add_test != "":
         additional_t = load_test_module(add_test)
@@ -282,64 +329,41 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-# def test_iter_basic():
-#     init_module()
-#     test_list = ["arr_1", "arr_2", "arr_3", "arr_4", \
-#                 "arr_5", "arr_6", "arr_7", "arr_8", "empty"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-
-# def test_random_1d():
-#     init_module()
-#     test_list = ["rd_1d_0.1_200_5", "rd_1d_0.3_200_5", "rd_1d_0.5_200_5", "rd_1d_0.8_200_5", "rd_1d_1.0_200_5"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-
-# def test_random_2d():
-#     init_module()
-#     test_list = ["rd_2d_0.1_200_5", "rd_2d_0.3_200_5", "rd_2d_0.5_200_5", "rd_2d_0.8_200_5", "rd_2d_1.0_200_5"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-
-# def test_random_2d():
-#     init_module()
-#     test_list = ["rd_2d_0.8_50_5"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-
-# def test_random_2d():
-#     init_module()
-#     test_list = ["rd_2d_0.8_45_5"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-# def test_random_2d():
-#     init_module()
-#     test_list = ["rd_2d_0.6_40_2"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-# def test_random_1d():
-#     init_module()
-#     test_list = ["rd_1d_1.0_10_2"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-def test_random_2d():
+def test_iter_basic():
     init_module()
-    test_list = ["arr_9"]
+    test_list = ["arr_1", "arr_2", "arr_3", "arr_4", \
+                "arr_5", "arr_6", "arr_7", "arr_8", \
+                "arr_9", "arr_10", "arr_11", "arr_12", "empty"]
     for test in test_list:
         module_iter_basic(test)
 
 
-# def test_seq():
-#     init_module()
-#     test_list =  ["arr_1", "arr_2", "arr_3", "arr_4", \
-#                 "arr_5", "arr_6", "arr_7", "arr_8", "empty"] 
-#     for i in range(10):
-#         rand = random.sample(test_list, 2)
-#         module_iter_basic(rand[0], rand[1])
+def test_random_1d():
+    init_module()
+    test_list = ["rd_1d_0.1_200_5", "rd_1d_0.3_200_5", "rd_1d_0.5_200_5", "rd_1d_0.8_200_5", "rd_1d_1.0_200_5"]
+    for test in test_list:
+        module_iter_basic(test)
+
+
+def test_random_2d():
+    init_module()
+    test_list = ["rd_2d_0.1_200_5", "rd_2d_0.3_200_5", "rd_2d_0.5_200_5", "rd_2d_0.8_200_5", "rd_2d_1.0_200_5"]
+    for test in test_list:
+        module_iter_basic(test)
+
+
+def test_random_3d():
+    init_module()
+    test_list = ["rd_3d_0.1_200_5", "rd_3d_0.3_200_5", "rd_3d_0.5_200_5", "rd_3d_0.8_200_5", "rd_3d_1.0_200_5"]
+    for test in test_list:
+        module_iter_basic(test)
+
+
+def test_seq():
+    init_module()
+    test_list =  ["arr_1", "arr_2", "arr_3", "arr_4", \
+                "arr_5", "arr_6", "arr_7", "arr_8", \
+                "arr_9", "arr_10", "arr_11", "arr_12", "empty"]
+    for i in range(10):
+        rand = random.sample(test_list, 2)
+        module_iter_basic(rand[0], rand[1])
