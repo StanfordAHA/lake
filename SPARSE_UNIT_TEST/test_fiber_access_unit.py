@@ -1,15 +1,21 @@
-from lake.modules.intersect import *
+from lake.top.fiber_access import FiberAccess
+from lake.top.core_combiner import CoreCombiner
+from lake.modules.strg_RAM import StrgRAM
+from lake.modules.strg_ub_thin import StrgUBThin
+from lake.modules.stencil_valid import StencilValid
+from lake.top.tech_maps import GF_Tech_Map
 import magma as m
 from magma import *
 import tempfile
-import kratos as k
+from kratos import *
 
 
 import sparse_helper
 from sparse_helper import convert_stream_to_onyx_interp
 from sam.sim.src.base import remove_emptystr
-from sam.sim.src.joiner import Intersect2
 from sam.sim.test.test import TIMEOUT
+from sam.sim.src.rd_scanner import CompressedCrdRdScan
+from sam.sim.src.wr_scanner import ValsWrScan
 
 
 import subprocess
@@ -20,21 +26,62 @@ import string
 
 
 def init_module():
-    dut = Intersect(data_width=16,
-                    use_merger=False,
-                    defer_fifos=False,
-                    add_flush=True,
-                    fifo_depth=2)
-                    # data_width=16,
-                    # use_merger=False,
-                    # fifo_depth=2,
-                    # defer_fifos=True,
-                    # add_flush=False,
-                    # perf_debug=perf_debug
-    # magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
-    verilog(dut, filename=f"./modules/Intersect.sv",
+    data_width = 16
+    mem_depth = 512
+    mem_width = 64
+    macro_width = 32
+    dual_port = False
+    pipeline_scanner = True
+    fiber_access = FiberAccess(data_width=16,
+                        local_memory=False,
+                        tech_map=GF_Tech_Map(depth=mem_depth, width=macro_width, dual_port=dual_port),
+                        defer_fifos=True,
+                        add_flush=False,
+                        use_pipelined_scanner=pipeline_scanner,
+                        fifo_depth=2,
+                        buffet_optimize_wide=True,
+                        perf_debug=False)
+
+    strg_ram = StrgRAM(data_width=16,
+                        banks=1,
+                        memory_width=mem_width,
+                        memory_depth=mem_depth,
+                        rw_same_cycle=False,
+                        read_delay=1,
+                        addr_width=16,
+                        prioritize_write=True,
+                        comply_with_17=True)
+    stencil_valid = StencilValid()
+
+    controllers = []
+
+    # controllers.append(strg_ub)
+    controllers.append(fiber_access)
+    controllers.append(strg_ram)
+    controllers.append(stencil_valid)
+
+    core_comb = CoreCombiner(data_width=16,
+                             mem_width=mem_width,
+                             mem_depth=mem_depth,
+                             banks=1,
+                             add_clk_enable=True,
+                             add_flush=True,
+                             rw_same_cycle=False,
+                             read_delay=1,
+                             use_sim_sram=True,
+                             controllers=controllers,
+                             name=f"CoreCombiner_width_4_Smp",
+                             do_config_lift=False,
+                             io_prefix="MEM_",
+                             fifo_depth=16)
+    print(core_comb)
+    core_comb_mapping = core_comb.dut.get_port_remap()
+    print(core_comb_mapping)
+    print(core_comb.get_modes_supported())
+
+    # generate verilog
+    verilog(core_comb.dut, filename=f"./modules/CoreCombiner.sv",
             optimize_if=False)
-    sparse_helper.update_tcl("intersect_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
     # size = int(size*random.uniform(1.0, 1.0+d))
@@ -239,10 +286,10 @@ def module_iter_basic(test_name, add_test=""):
     #run command "make sim" to run the simulation
     if add_test == "":
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=intersect_tb.sv", "TOP=intersect_tb",\
-                             "TEST_UNIT=Intersect.sv"], capture_output=True, text=True)
+                             "TEST_UNIT=intersect_unit-kratos.sv"], capture_output=True, text=True)
     else:
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=intersect_tb.sv",\
-                             "TOP=intersect_tb", "TX_NUM_GLB=2", "TEST_UNIT=Intersect.sv"\
+                             "TOP=intersect_tb", "TX_NUM_GLB=2", "TEST_UNIT=intersect_unit-kratos.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
@@ -279,36 +326,6 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_iter_basic():
     init_module()
-    test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d"]
-    for test in test_list:
-        module_iter_basic(test)
-
-
-def test_random_1d():
-    init_module()
-    test_list = ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"]
-    for test in test_list:
-        module_iter_basic(test)
-
-
-def test_random_2d():
-    init_module()
-    test_list = ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_2d_1.0_400"]
-    for test in test_list:
-        module_iter_basic(test)
-
-
-def test_random_3d():
-    init_module()
-    test_list = ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_3d_1.0_400"]
-    for test in test_list:
-        module_iter_basic(test) 
-
-def test_seq():
-    init_module()
-    test_list =  ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"] +\
-                 ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_1d_1.0_400"] +\
-                 ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_1d_1.0_400"]
-    for i in range(10):
-        rand = random.sample(test_list, 2)
-        module_iter_basic(rand[0], rand[1])
+#     test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d"]
+#     for test in test_list:
+#         module_iter_basic(test)

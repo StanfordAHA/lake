@@ -25,7 +25,9 @@ def init_module():
                     add_flush=True,
                     fifo_depth=2)
 
-    magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
+    # magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
+    verilog(dut, filename=f"./modules/Repeat.sv",
+            optimize_if=False)
     sparse_helper.update_tcl("repeat_tb")
 
 
@@ -306,10 +308,10 @@ def module_iter_basic(test_name, add_test=""):
     #run command "make sim" to run the simulation
     if add_test == "":
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=repeat_tb.sv", "TOP=repeat_tb",\
-                             "TEST_UNIT=Repeat-kratos.sv"], capture_output=True, text=True)
+                             "TEST_UNIT=Repeat.sv"], capture_output=True, text=True)
     else:
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=repeat_tb.sv",\
-                             "TOP=repeat_tb", "TX_NUM_GLB=2", "TEST_UNIT=Repeat-kratos.sv"\
+                             "TOP=repeat_tb", "TX_NUM_GLB=2", "TEST_UNIT=Repeat.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)

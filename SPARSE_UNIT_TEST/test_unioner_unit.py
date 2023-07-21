@@ -15,8 +15,8 @@ from sam.sim.test.test import TIMEOUT
 import subprocess
 import os
 import random
-random.seed(15)
 import string
+random.seed(15)
 
 
 def init_module():
@@ -31,7 +31,9 @@ def init_module():
                     # defer_fifos=True,
                     # add_flush=False,
                     # perf_debug=perf_debug
-    magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
+    # magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
+    verilog(dut, filename=f"./modules/Intersect.sv",
+            optimize_if=False)
     sparse_helper.update_tcl("unioner_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
@@ -248,10 +250,10 @@ def module_iter_basic(test_name, add_test=""):
     #run command "make sim" to run the simulation
     if add_test == "":
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_tb.sv", "TOP=unioner_tb",\
-                             "TEST_UNIT=intersect_unit-kratos.sv"], capture_output=True, text=True)
+                             "TEST_UNIT=Intersect.sv"], capture_output=True, text=True)
     else:
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_tb.sv",\
-                             "TOP=unioner_tb", "TX_NUM_GLB=2", "TEST_UNIT=intersect_unit-kratos.sv"\
+                             "TOP=unioner_tb", "TX_NUM_GLB=2", "TEST_UNIT=Intersect.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)

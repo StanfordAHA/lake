@@ -5,7 +5,7 @@
 # -------------------------------------------------------------------
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 mkfile_dir := $(dir $(mkfile_path))
-module_dir := $(mkfile_dir)/.magma
+module_dir := $(mkfile_dir)/modules
 # garnet_dir := $(mkfile_dir)/../..
 # gemstone_dir := $(realpath $(garnet_dir))/../gemstone
 # netlist_dir := $(mkfile_dir)/netlist

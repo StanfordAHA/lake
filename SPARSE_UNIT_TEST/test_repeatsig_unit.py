@@ -25,7 +25,9 @@ def init_module():
                     defer_fifos=False,
                     add_flush=True,
                     fifo_depth=2)
-    magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
+    # magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
+    verilog(dut, filename=f"./modules/RepeatSig.sv",
+            optimize_if=False)
     sparse_helper.update_tcl("repeatsig_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
@@ -183,10 +185,10 @@ def module_iter_basic(test_name, add_test=""):
     #run command "make sim" to run the simulation
     if add_test == "":
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=repeatsig_tb.sv", "TOP=repeatsig_tb",\
-                             "TEST_UNIT=RepeatSignalGenerator-kratos.sv"], capture_output=True, text=True)
+                             "TEST_UNIT=RepeatSig.sv"], capture_output=True, text=True)
     else:
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=repeatsig_tb.sv",\
-                             "TOP=repeatsig_tb", "TX_NUM_GLB=2", "TEST_UNIT=RepeatSignalGenerator-kratos.sv"\
+                             "TOP=repeatsig_tb", "TX_NUM_GLB=2", "TEST_UNIT=RepeatSig.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
