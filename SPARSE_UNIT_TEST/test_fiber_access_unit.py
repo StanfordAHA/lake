@@ -42,23 +42,23 @@ def init_module():
                         buffet_optimize_wide=True,
                         perf_debug=False)
 
-    strg_ram = StrgRAM(data_width=16,
-                        banks=1,
-                        memory_width=mem_width,
-                        memory_depth=mem_depth,
-                        rw_same_cycle=False,
-                        read_delay=1,
-                        addr_width=16,
-                        prioritize_write=True,
-                        comply_with_17=True)
-    stencil_valid = StencilValid()
+    # strg_ram = StrgRAM(data_width=16,
+    #                     banks=1,
+    #                     memory_width=mem_width,
+    #                     memory_depth=mem_depth,
+    #                     rw_same_cycle=False,
+    #                     read_delay=1,
+    #                     addr_width=16,
+    #                     prioritize_write=True,
+    #                     comply_with_17=True)
+    # stencil_valid = StencilValid()
 
     controllers = []
 
     # controllers.append(strg_ub)
     controllers.append(fiber_access)
-    controllers.append(strg_ram)
-    controllers.append(stencil_valid)
+    # controllers.append(strg_ram)
+    # controllers.append(stencil_valid)
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,
