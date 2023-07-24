@@ -7,7 +7,8 @@ from lake.top.tech_maps import GF_Tech_Map
 import magma as m
 from magma import *
 import tempfile
-from kratos import *
+# from kratos import *
+import kratos as k
 
 
 import sparse_helper
@@ -42,23 +43,8 @@ def init_module():
                         buffet_optimize_wide=True,
                         perf_debug=False)
 
-    # strg_ram = StrgRAM(data_width=16,
-    #                     banks=1,
-    #                     memory_width=mem_width,
-    #                     memory_depth=mem_depth,
-    #                     rw_same_cycle=False,
-    #                     read_delay=1,
-    #                     addr_width=16,
-    #                     prioritize_write=True,
-    #                     comply_with_17=True)
-    # stencil_valid = StencilValid()
-
     controllers = []
-
-    # controllers.append(strg_ub)
     controllers.append(fiber_access)
-    # controllers.append(strg_ram)
-    # controllers.append(stencil_valid)
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,
@@ -80,8 +66,10 @@ def init_module():
     # print(core_comb.get_modes_supported())
 
     # generate verilog
-    verilog(core_comb.dut, filename=f"./modules/CoreCombiner.sv",
+    k.verilog(core_comb.dut, filename=f"./modules/CoreCombiner.sv",
             optimize_if=False)
+    k.verilog(fiber_access, filename=f"./modules/fiber_access.sv", optimize_if=False)
+
     sparse_helper.update_tcl("fiber_access_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
@@ -272,22 +260,22 @@ def module_iter_basic(test_name, add_test=""):
     print(lines[0])
     print(lines[1])
 
-    # coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
-    # pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
+    coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
+    pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
 
-    # #compare each element in the output from coord_out.txt with the gold output
-    # assert len(coord_out) == len(gc), \
-    #     f"Output length {len(coord_out)} didn't match gold length {len(gc)}"
-    # for i in range(len(coord_out)):
-    #     assert coord_out[i] == gc[i], \
-    #         f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
+    #compare each element in the output from coord_out.txt with the gold output
+    assert len(coord_out) == len(gc), \
+        f"Output length {len(coord_out)} didn't match gold length {len(gc)}"
+    for i in range(len(coord_out)):
+        assert coord_out[i] == gc[i], \
+            f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
     
-    # #compare each element in the output from pos_out_0.txt with the gold output
-    # assert len(pos_out_0) == len(gr), \
-    #     f"Output length {len(pos_out_0)} didn't match gold length {len(gr)}"
-    # for i in range(len(pos_out_0)):
-    #     assert pos_out_0[i] == gr[i], \
-    #         f"Output {pos_out_0[i]} didn't match gold {gr[i]} at index {i}"
+    #compare each element in the output from pos_out_0.txt with the gold output
+    assert len(pos_out_0) == len(gr), \
+        f"Output length {len(pos_out_0)} didn't match gold length {len(gr)}"
+    for i in range(len(pos_out_0)):
+        assert pos_out_0[i] == gr[i], \
+            f"Output {pos_out_0[i]} didn't match gold {gr[i]} at index {i}"
     
     print(test_name, " passed\n")
 
@@ -297,9 +285,3 @@ def module_iter_basic(test_name, add_test=""):
 #     test_list = ["direct_2d", "direct_1d"]
 #     for test in test_list:
 #         module_iter_basic(test)
-
-def test_iter_basic():
-    init_module()
-    test_list = ["direct_2d"]
-    for test in test_list:
-        module_iter_basic(test)

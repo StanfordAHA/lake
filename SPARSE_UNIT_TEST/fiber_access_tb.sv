@@ -40,6 +40,9 @@ module fiber_access_tb;
     wire rs_blk_valid;
     wire rs_blk_ready;
 
+    assign {ws_addr, ws_addr_valid, ws_blk, ws_blk_valid} = 35'b0;
+    assign {rs_blk, rs_blk_valid} = 17'b0;
+
     logic [1:0] [31:0] config_out;
 
     wire [3:0] done;
@@ -50,7 +53,32 @@ module fiber_access_tb;
     wire [31:0] conf_1;
     wire [31:0] conf_2;
     wire [7:0] conf_3; 
-    assign {conf_3, conf_2, conf_1, conf_0} = {4'b0, 4'b0, 1'b1, 1'b0, 1'b0, 16'b0, 1'b0, 16'b0, 1'b0, 16'b0, 1'b0, 1'b0, 1'b0, 16'b0, 1'b1, 1'b1, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 16'b0, 1'b1};
+    assign {conf_3, conf_2, conf_1, conf_0} = {4'b1000, 4'b1000, 1'b1, 1'b0, 1'b0, 16'b0, 1'b0, 16'b0, 1'b0, 16'b0, 1'b0, 1'b0, 1'b0, 16'b0, 1'b1, 1'b1, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 16'b0, 1'b1};
+    /*
+    buffet_capacity_log_0 = 4'b1000;
+    buffet_capacity_log_1 = 4'b1000;
+    buffet_tile_en = 1'b1;
+    read_scanner_block_mode = 1'b0;
+    read_scanner_block_dense = 1'b0;
+    read_scanner_dim_size = 16'b0;
+    read_scanner_do_repeat = 1'b0;
+    read_scanner_innder_dim_offset = 16'b0;
+    read_scanner_lookup = 1'b0;
+    read_scanner_repeat_factor = 16'b0;
+    read_scanner_repeat_outer_inner_n = 1'b0;
+    read_scanner_root = 1'b0;
+    read_scanner_spacc_mode = 1'b0;
+    read_scanner_stop_lvl = 16'b0;
+    read_scanner_tile_en = 1'b1;
+    tile_en = 1'b1;
+    write_scanner_block_mode = 1'b0;
+    write_scanner_compressed = 1'b1;
+    write_scanner_init_blank = 1'b0;
+    write_scanner_lowest_level = 1'b0;
+    write_scanner_spacc_mode = 1'b0;
+    write_scanner_stop_lvl = 16'b0;
+    write_scanner_tile_en = 1'b1;
+    */
 
     wire [7:0] conf_addr_in;
     wire [31:0] conf_data_in;
@@ -74,7 +102,7 @@ module fiber_access_tb;
     .CONFIG_SPACE_2(conf_2),
     .CONFIG_SPACE_3(conf_3),
     .MEM_input_width_17_num_0(pos_in_0),
-    .MEM_input_width_17_num_0_valid(pos_in_0_valid),
+    .MEM_input_width_17_num_0_valid(pos_in_0_valid & start_read == 1),
     .MEM_input_width_17_num_1(ws_addr),
     .MEM_input_width_17_num_1_valid(ws_addr_valid),
     .MEM_input_width_17_num_2(ws_blk),
