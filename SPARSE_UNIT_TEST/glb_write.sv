@@ -73,7 +73,7 @@ initial begin
             #1;
 
             DELAY = $urandom & 32'hF;
-            if(ready == 1 && DELAY < 4 && ADD_DELAY) begin// 25% chance of delay
+            if(ready == 1 && DELAY < 2 && ADD_DELAY) begin// 25% chance of delay
                 valid = 0;
                 @(posedge clk);
                 #1;

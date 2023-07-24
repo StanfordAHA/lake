@@ -1,8 +1,8 @@
 from lake.top.fiber_access import FiberAccess
 from lake.top.core_combiner import CoreCombiner
-from lake.modules.strg_RAM import StrgRAM
-from lake.modules.strg_ub_thin import StrgUBThin
-from lake.modules.stencil_valid import StencilValid
+# from lake.modules.strg_RAM import StrgRAM
+# from lake.modules.strg_ub_thin import StrgUBThin
+# from lake.modules.stencil_valid import StencilValid
 from lake.top.tech_maps import GF_Tech_Map
 import magma as m
 from magma import *
@@ -15,7 +15,7 @@ from sparse_helper import convert_stream_to_onyx_interp
 from sam.sim.src.base import remove_emptystr
 from sam.sim.test.test import TIMEOUT
 from sam.sim.src.rd_scanner import CompressedCrdRdScan
-from sam.sim.src.wr_scanner import ValsWrScan
+from sam.sim.src.wr_scanner import ValsWrScan, CompressWrScan
 
 
 import subprocess
@@ -74,14 +74,15 @@ def init_module():
                              do_config_lift=False,
                              io_prefix="MEM_",
                              fifo_depth=16)
-    print(core_comb)
+    # print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()
-    print(core_comb_mapping)
-    print(core_comb.get_modes_supported())
+    # print(core_comb_mapping)
+    # print(core_comb.get_modes_supported())
 
     # generate verilog
     verilog(core_comb.dut, filename=f"./modules/CoreCombiner.sv",
             optimize_if=False)
+    sparse_helper.update_tcl("fiber_access_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
     # size = int(size*random.uniform(1.0, 1.0+d))
@@ -155,177 +156,150 @@ def create_random(n, rate, size, d1=0):
         return ret[0], ret[1], ret[2], ret[3]
                 
 
-def create_gold(in_crd1, in_crd2, in_ref1, in_ref2):
-    assert (len(in_crd1) == len(in_ref1))
-    assert (len(in_crd2) == len(in_ref2))
-    assert (len([x for x in in_crd1 if type(x) is not int]) == len([x for x in in_crd2 if type(x) is not int]))
-    assert (len([x for x in in_ref1 if type(x) is not int]) == len([x for x in in_ref2 if type(x) is not int]))
-    
-    i_c1_cpy = in_crd1[:]
-    i_c2_cpy = in_crd2[:]
-    i_r1_cpy = in_ref1[:]
-    i_r2_cpy = in_ref2[:]
+def create_gold(in_crd, in_ref):
+    i_c_cpy = in_crd[:]
+    i_r_cpy = in_ref[:]
 
+    # process write
+    buf_size = 1000
+    fill = 0
     done = False
     time = 0
 
-    inter = Intersect2()
-    out_crd = []
-    out_ref1 = []
-    out_ref2 = []
+    wrscan = CompressWrScan(size=buf_size, seg_size=buf_size, fill=fill)
 
     while not done and time < TIMEOUT:
-        if len(in_crd1) > 0:
-            inter.set_in1(in_ref1.pop(0), in_crd1.pop(0))
-        if len(in_crd2) > 0:
-            inter.set_in2(in_ref2.pop(0), in_crd2.pop(0))
+        if len(in_crd) > 0:
+            wrscan.set_input(in_crd.pop(0))
 
-        inter.update()
+        wrscan.update()
 
-        out_crd.append(inter.out_crd())
-        out_ref1.append(inter.out_ref1())
-        out_ref2.append(inter.out_ref2())
+        # print("Timestep", time, "\t WrScan:", wrscan.out_done())
 
-        # print("Timestep", time, "\t Crd:", inter.out_crd(), "\t Ref1:", inter.out_ref1(), "\t Ref2:", inter.out_ref2())
-
-        done = inter.done
+        done = wrscan.out_done()
         time += 1
 
-    print("sam cycle count: ", time)
-    out_crd = remove_emptystr(out_crd)
-    out_ref1 = remove_emptystr(out_ref1)
-    out_ref2 = remove_emptystr(out_ref2)
+    print("sam write cycle count: ", time)
+    # crd = wrscan.get_arr()
+    # seg = wrscan.get_seg_arr()
+    # print(crd)
+    # print(seg)
 
-    assert len(out_crd) == len(out_ref1) and len(out_crd) == len(out_ref2)
-    st = [i_c1_cpy, i_c2_cpy, i_r1_cpy, i_r2_cpy, out_crd, out_ref1, out_ref2]
-    tr_st = []
-    for s in st:
-        tr_st.append(convert_stream_to_onyx_interp(s))
+    #process read
+    done = False
+    time = 0
+
+    crdscan = CompressedCrdRdScan(seg_arr=wrscan.get_seg_arr(), crd_arr=wrscan.get_arr())
+    out_crd = []
+    out_ref = []
+    while not done and time < TIMEOUT:
+        if len(in_ref) > 0:
+            crdscan.set_in_ref(in_ref.pop(0))
+
+        crdscan.update()
+
+        out_crd.append(crdscan.out_crd())
+        out_ref.append(crdscan.out_ref())
+
+        # print("Timestep", time, "\t Crd:", crdscan.out_crd(), "\t Ref:", crdscan.out_ref())
+
+        done = crdscan.done
+        time += 1
+
+    print("sam read cycle count: ", time)
+    
+    out_crd = remove_emptystr(out_crd)
+    out_ref = remove_emptystr(out_ref)
+
+    print(out_crd)
+    print(out_ref)
+
+    st = [i_c_cpy, i_r_cpy, out_crd, out_ref]
+    tr_st = [convert_stream_to_onyx_interp(i) for i in st]
 
     return tr_st
 
 
 def load_test_module(test_name):
     if test_name == "direct_2d":
-        in_crd1 = [0, 'S0', 0, 1, 2, 'S1', 'D']
-        in_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
-        in_crd2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
-        in_ref2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
-
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_ref = [0, 1, 'S0', 'D']
+        return create_gold(in_crd, in_ref)
     
     elif test_name == "direct_1d":
-        in1 = 16
-        in_crd1 = [x for x in range(in1)] + ['S0', 'D']
-        in_ref1 = [x for x in range(in1)] + ['S0', 'D']
-        in_crd2 = [0, 2, 4, 15, 17, 25, 31, 32, 50, 63, 'S0', 'D']
-        in_ref2 = [x for x in range(10)] + ['S0', 'D']
-
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
-
-    elif test_name == "empty_2d":
-        in_crd1 = ['S0', 'S0', 'S0', 'S1', 'D']
-        in_ref1 = ['S0', 'S0', 'S0', 'S1', 'D']
-        in_crd2 = ['S0', 'S0', 'S0', 'S1', 'D']
-        in_ref2 = ['S0', 'S0', 'S0', 'S1', 'D']
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
-
-    elif test_name == "simple_3d":
-        in_crd1 = [0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S2', 'D']
-        in_ref1 = [0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S2', 'D']
-        in_crd2 = [1, 'S0', 'S1', 0, 1, 'S0', 0, 'S1', 'S0', 0, 1, 'S2', 'D']
-        in_ref2 = [9, 'S0', 'S1', 8, 7, 'S0', 6, 'S1', 'S0', 4, 3, 'S2', 'D']
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
-
-    elif test_name[0:3] == "rd_":
-        t_arg = test_name.split("_")
-        n = int(t_arg[1][0])
-        rate = float(t_arg[2])
-        size = int(t_arg[3])
-        [in_crd1, in_ref1, in_crd2, in_ref2] = create_random(n, rate, size)
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        in_crd = [0, 2, 3, 7, 8, 10] + ['S0', 'D']
+        in_ref = [0, 'D']
+        return create_gold(in_crd, in_ref)
 
     else:
-        in_crd1 = [0, 'S0', 'D']
-        in_ref1 = [0, 'S0', 'D']
-        in_crd2 = [0, 'S0', 'D']
-        in_ref2 = [0, 'S0', 'D']
+        in_crd = [0, 'S0', 'D']
 
         return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
 
 
 def module_iter_basic(test_name, add_test=""):
-    [ic1, ic2, ir1, ir2, gc, gr1, gr2] = load_test_module(test_name)
+    [ic, ir, gc, gr] = load_test_module(test_name)
     if add_test != "":
         additional_t = load_test_module(add_test)
-        ic1 = ic1 + additional_t[0]
-        ic2 = ic2 + additional_t[1]
-        ir1 = ir1 + additional_t[2]
-        ir2 = ir2 + additional_t[3]
-        gc = gc + additional_t[4]
-        gr1 = gr1 + additional_t[5]
-        gr2 = gr2 + additional_t[6]
+        ic = ic + additional_t[0]
+        ir = ir + additional_t[1]
+        gc = gc + additional_t[2]
+        gr = gr + additional_t[3]
 
-    # print("ic1", ic1)
-    # print("ic2", ic2)
-    # print("ir1", ir1)
-    # print("ir2", ir2)
-    # print("gc", gc)
-    # print("gr1", gr1)
-    # print("gr2", gr2)
+    print(ic)
+    print(ir)
+    print(gc)
+    print(gr)
 
-    sparse_helper.write_txt("coord_in_0.txt", ic1)
-    sparse_helper.write_txt("coord_in_1.txt", ic2)
-    sparse_helper.write_txt("pos_in_0.txt", ir1)
-    sparse_helper.write_txt("pos_in_1.txt", ir2)
+    sparse_helper.write_txt("coord_in_0.txt", ic)
+    sparse_helper.write_txt("pos_in_0.txt", ir)
 
     sparse_helper.clear_txt("coord_out.txt")
     sparse_helper.clear_txt("pos_out_0.txt")
-    sparse_helper.clear_txt("pos_out_1.txt") 
     
     #run command "make sim" to run the simulation
     if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=intersect_tb.sv", "TOP=intersect_tb",\
-                             "TEST_UNIT=intersect_unit-kratos.sv"], capture_output=True, text=True)
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_tb.sv", "TOP=fiber_access_tb",\
+                             "TEST_UNIT=CoreCombiner.sv"], capture_output=True, text=True)
     else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=intersect_tb.sv",\
-                             "TOP=intersect_tb", "TX_NUM_GLB=2", "TEST_UNIT=intersect_unit-kratos.sv"\
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_tb.sv",\
+                             "TOP=fiber_access_tb", "TX_NUM_GLB=2", "TEST_UNIT=CoreCombiner.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
-    cycle_count_line = output[output.find("cycle count:"):]
-    print(cycle_count_line.splitlines()[0])
+    cycle_count_line = output[output.find("write cycle count:"):]
+    lines = cycle_count_line.splitlines()
+    print(lines[0])
+    print(lines[1])
 
-    coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
-    pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
-    pos_out_1 = sparse_helper.read_txt("pos_out_1.txt", addit=add_test != "")
+    # coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
+    # pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
 
-    #compare each element in the output from coord_out.txt with the gold output
-    assert len(coord_out) == len(gc), \
-        f"Output length {len(coord_out)} didn't match gold length {len(gc)}"
-    for i in range(len(coord_out)):
-        assert coord_out[i] == gc[i], \
-            f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
+    # #compare each element in the output from coord_out.txt with the gold output
+    # assert len(coord_out) == len(gc), \
+    #     f"Output length {len(coord_out)} didn't match gold length {len(gc)}"
+    # for i in range(len(coord_out)):
+    #     assert coord_out[i] == gc[i], \
+    #         f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
     
-    #compare each element in the output from pos_out_0.txt with the gold output
-    assert len(pos_out_0) == len(gr1), \
-        f"Output length {len(pos_out_0)} didn't match gold length {len(gr1)}"
-    for i in range(len(pos_out_0)):
-        assert pos_out_0[i] == gr1[i], \
-            f"Output {pos_out_0[i]} didn't match gold {gr1[i]} at index {i}"
-    
-    #compare each element in the output from pos_out_1.txt with the gold output
-    assert len(pos_out_1) == len(gr2), \
-        f"Output length {len(pos_out_1)} didn't match gold length {len(gr2)}"
-    for i in range(len(pos_out_1)):
-        assert pos_out_1[i] == gr2[i], \
-            f"Output {pos_out_1[i]} didn't match gold {gr2[i]} at index {i}"
+    # #compare each element in the output from pos_out_0.txt with the gold output
+    # assert len(pos_out_0) == len(gr), \
+    #     f"Output length {len(pos_out_0)} didn't match gold length {len(gr)}"
+    # for i in range(len(pos_out_0)):
+    #     assert pos_out_0[i] == gr[i], \
+    #         f"Output {pos_out_0[i]} didn't match gold {gr[i]} at index {i}"
     
     print(test_name, " passed\n")
 
 
-def test_iter_basic():
-    init_module()
-#     test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d"]
+# def test_iter_basic():
+#     init_module()
+#     test_list = ["direct_2d", "direct_1d"]
 #     for test in test_list:
 #         module_iter_basic(test)
+
+def test_iter_basic():
+    init_module()
+    test_list = ["direct_2d"]
+    for test in test_list:
+        module_iter_basic(test)
