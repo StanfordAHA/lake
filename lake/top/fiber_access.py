@@ -291,7 +291,7 @@ class FiberAccess(MemoryController):
 if __name__ == "__main__":
 
     fiber_access_dut = FiberAccess(data_width=16,
-                        local_memory=False,
+                        local_memory=True,
                         tech_map=GF_Tech_Map(depth=512, width=64, dual_port=False),
                         defer_fifos=False,
                         add_flush=True,
@@ -300,7 +300,7 @@ if __name__ == "__main__":
                         buffet_optimize_wide=True,
                         perf_debug=False,
                         mem_width=64,
-                        tb_harness=True)
+                        tb_harness=False)
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
     # extract_formal_annotation(pond_dut, "pond.txt")

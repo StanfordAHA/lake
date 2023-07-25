@@ -421,7 +421,8 @@ class BuffetLike(MemoryController):
                 self._data_to_mem = self.var("data_to_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
                 self._data_from_mem = self.var("data_from_mem", self.data_width, size=self.fw_int, packed=True, explicit_array=True)
                 self._wen_to_mem = self.var("wen_to_mem", 1)
-                self._ren_to_mem = [self.var("ren_to_mem", 1)]
+                self._ren_to_mem = self.var("ren_to_mem", 1)
+                # self._ren_to_mem = [self.var("ren_to_mem", 1)]
                 # self._ren_to_mem_individ = [self.var(f"ren_to_mem_individ_{i}", 1) for i in range(self.num_read_ports)]
                 # self.wire(self._ren_to_mem, kts.concat(*self._ren_to_mem_individ).r_or())
 
