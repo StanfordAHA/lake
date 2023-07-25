@@ -29,6 +29,7 @@ TX_NUM_GLB ?= 1
 DESIGN_FILES += $(TEST_TAR) \
 				glb_read.sv \
 				glb_write.sv\
+				sram_sp.sv\
 
 DESIGN_FILES += $(module_dir)/$(TEST_UNIT)
 # TB_FILES += -F tb/tb_cgra.f

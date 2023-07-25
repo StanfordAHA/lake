@@ -1,5 +1,5 @@
 from lake.top.fiber_access import FiberAccess
-from lake.top.core_combiner import CoreCombiner
+# from lake.top.core_combiner import CoreCombiner
 # from lake.modules.strg_RAM import StrgRAM
 # from lake.modules.strg_ub_thin import StrgUBThin
 # from lake.modules.stencil_valid import StencilValid
@@ -34,41 +34,18 @@ def init_module():
     dual_port = False
     pipeline_scanner = True
     fiber_access = FiberAccess(data_width=16,
+                        mem_width=64,
+                        tb_harness=True,
                         local_memory=False,
                         tech_map=GF_Tech_Map(depth=mem_depth, width=macro_width, dual_port=dual_port),
-                        defer_fifos=True,
-                        add_flush=False,
+                        defer_fifos=False,
+                        add_flush=True,
                         use_pipelined_scanner=pipeline_scanner,
                         fifo_depth=2,
                         buffet_optimize_wide=True,
                         perf_debug=False)
 
-    controllers = []
-    controllers.append(fiber_access)
-
-    core_comb = CoreCombiner(data_width=16,
-                             mem_width=mem_width,
-                             mem_depth=mem_depth,
-                             banks=1,
-                             add_clk_enable=True,
-                             add_flush=True,
-                             rw_same_cycle=False,
-                             read_delay=1,
-                             use_sim_sram=True,
-                             controllers=controllers,
-                             name=f"CoreCombiner_width_4_Smp",
-                             do_config_lift=False,
-                             io_prefix="MEM_",
-                             fifo_depth=16)
-    # print(core_comb)
-    core_comb_mapping = core_comb.dut.get_port_remap()
-    # print(core_comb_mapping)
-    # print(core_comb.get_modes_supported())
-
-    # generate verilog
-    k.verilog(core_comb.dut, filename=f"./modules/CoreCombiner.sv",
-            optimize_if=False)
-    k.verilog(fiber_access, filename=f"./modules/fiber_access.sv", optimize_if=False)
+    k.verilog(fiber_access, filename=f"./modules/Fiber_access.sv", optimize_if=False)
 
     sparse_helper.update_tcl("fiber_access_tb")
 
@@ -248,10 +225,10 @@ def module_iter_basic(test_name, add_test=""):
     #run command "make sim" to run the simulation
     if add_test == "":
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_tb.sv", "TOP=fiber_access_tb",\
-                             "TEST_UNIT=CoreCombiner.sv"], capture_output=True, text=True)
+                             "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
     else:
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_tb.sv",\
-                             "TOP=fiber_access_tb", "TX_NUM_GLB=2", "TEST_UNIT=CoreCombiner.sv"\
+                             "TOP=fiber_access_tb", "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
@@ -280,8 +257,8 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-# def test_iter_basic():
-#     init_module()
-#     test_list = ["direct_2d", "direct_1d"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_iter_basic():
+    init_module()
+    test_list = ["direct_1d", "direct_2d"]
+    for test in test_list:
+        module_iter_basic(test)
