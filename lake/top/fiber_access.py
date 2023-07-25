@@ -21,7 +21,9 @@ class FiberAccess(MemoryController):
                  fifo_depth=2,
                  buffet_optimize_wide=False,
                  perf_debug=False,
-                 split_memory_ports=True):
+                 split_memory_ports=True,
+                 mem_width=32,
+                 tb_harness=False):
         super().__init__(f'fiber_access_{data_width}', debug=True)
 
         self.wr_scan_pre = "write_scanner"
@@ -38,6 +40,8 @@ class FiberAccess(MemoryController):
         self.fifo_depth = fifo_depth
         self.buffet_optimize_wide = buffet_optimize_wide
         self.split_memory_ports = split_memory_ports
+        self.mem_width = mem_width
+        self.tb_harness = tb_harness
 
         if self.split_memory_ports:
             num_ports = 2
@@ -152,6 +156,12 @@ class FiberAccess(MemoryController):
             self.wire(self._rd_scan_block_rd_out, self.rd_scan.ports.block_rd_out)
             self.wire(self._rd_scan_block_rd_out_ready, self.rd_scan.ports.block_rd_out_ready)
             self.wire(self._rd_scan_block_rd_out_valid, self.rd_scan.ports.block_rd_out_valid)
+
+        if not self.local_memory and self.tb_harness:
+            # Create data from mem port and wire it in if the memory is remote
+            self._data_from_mem = self.input(f"buffet_data_from_mem", self.mem_width, packed=True)
+            self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self.wire(self._data_from_mem, self.buffet.ports.data_from_mem)
 
         # Now wire everything
         # buffet to wr_scan
@@ -279,11 +289,18 @@ class FiberAccess(MemoryController):
 
 
 if __name__ == "__main__":
-    fiber_access_dut = FiberAccess(data_width=16,
-                                   defer_fifos=False,
-                                   use_pipelined_scanner=True,
-                                   add_flush=True)
 
+    fiber_access_dut = FiberAccess(data_width=16,
+                        local_memory=False,
+                        tech_map=GF_Tech_Map(depth=512, width=64, dual_port=False),
+                        defer_fifos=False,
+                        add_flush=True,
+                        use_pipelined_scanner=True,
+                        fifo_depth=2,
+                        buffet_optimize_wide=True,
+                        perf_debug=False,
+                        mem_width=64,
+                        tb_harness=True)
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
     # extract_formal_annotation(pond_dut, "pond.txt")
