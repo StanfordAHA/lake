@@ -366,7 +366,8 @@ class BuffetLike(MemoryController):
         #                                               0), enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
         self._curr_base = [register(self, self._curr_base_pre[i], enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
 
-        [self.wire(self._curr_base_pre[i], kts.ternary(self._first_base_set[i],
+        [self.wire(self._curr_base_pre[i], kts.ternary(kts.const(1, 1),
+        #[self.wire(self._curr_base_pre[i], kts.ternary(self._first_base_set[i],
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i],
                                                        0)) for i in range(self.num_ID)]
 
@@ -1149,6 +1150,8 @@ class BuffetLike(MemoryController):
                                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 WRITING[ID_idx].output(self._set_wide_word_addr[ID_idx], ((self._tmp_wr_addr[ID_idx] != self._write_word_addr[ID_idx]) | ~self._write_word_addr_valid[ID_idx]) &
                                                                           self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
+                                                                          # Only overwrite the wide word addr if the current full 
+                                                                          (kts.ternary(self._write_wide_word_mask_reg_out[ID_idx].r_or(), self._mem_acq[2 * ID_idx + 0], kts.const(1, 1))) &
                                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
 
                 WRITING[ID_idx].output(self._sram_lock[ID_idx], 0)
