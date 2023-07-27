@@ -21,7 +21,10 @@ class FiberAccess(MemoryController):
                  fifo_depth=2,
                  buffet_optimize_wide=False,
                  perf_debug=False,
-                 split_memory_ports=True):
+                 split_memory_ports=True,
+                 mem_width=32,
+                 mem_depth=512,
+                 tb_harness=False):
         super().__init__(f'fiber_access_{data_width}', debug=True)
 
         self.wr_scan_pre = "write_scanner"
@@ -38,6 +41,10 @@ class FiberAccess(MemoryController):
         self.fifo_depth = fifo_depth
         self.buffet_optimize_wide = buffet_optimize_wide
         self.split_memory_ports = split_memory_ports
+        self.mem_width = mem_width
+        self.tb_harness = tb_harness
+        self.mem_depth = mem_depth
+        self.mem_addr_width = kts.clog2(self.mem_depth)
 
         if self.split_memory_ports:
             num_ports = 2
@@ -152,6 +159,24 @@ class FiberAccess(MemoryController):
             self.wire(self._rd_scan_block_rd_out, self.rd_scan.ports.block_rd_out)
             self.wire(self._rd_scan_block_rd_out_ready, self.rd_scan.ports.block_rd_out_ready)
             self.wire(self._rd_scan_block_rd_out_valid, self.rd_scan.ports.block_rd_out_valid)
+
+        if not self.local_memory and self.tb_harness:
+            # Create data from mem port and wire it in if the memory is remote
+            self._data_from_mem = self.input(f"data_from_mem", self.mem_width, packed=True)
+            self._data_from_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self.wire(self._data_from_mem, self.buffet.ports.data_from_mem)
+            self._data_to_mem = self.output(f"data_to_mem", self.mem_width, packed=True)
+            self._data_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self.wire(self._data_to_mem, self.buffet.ports.data_to_mem)
+            self._addr_to_mem = self.output(f"addr_to_mem", self.mem_addr_width, packed=True)
+            self._addr_to_mem.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            self.wire(self._addr_to_mem, self.buffet.ports.addr_to_mem)
+            self._wen_to_mem = self.output(f"wen_to_mem", 1, packed=True)
+            self._wen_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+            self.wire(self._wen_to_mem, self.buffet.ports.wen_to_mem)
+            self._ren_to_mem = self.output(f"ren_to_mem", 1, packed=True)
+            self._ren_to_mem.add_attribute(ControlSignalAttr(is_control=False))
+            self.wire(self._ren_to_mem, self.buffet.ports.ren_to_mem)
 
         # Now wire everything
         # buffet to wr_scan
@@ -279,14 +304,34 @@ class FiberAccess(MemoryController):
 
 
 if __name__ == "__main__":
+
+    # Test local memory
     fiber_access_dut = FiberAccess(data_width=16,
+                                   local_memory=True,
+                                   tech_map=GF_Tech_Map(depth=512, width=64, dual_port=False),
                                    defer_fifos=False,
+                                   add_flush=True,
                                    use_pipelined_scanner=True,
-                                   add_flush=True)
+                                   fifo_depth=2,
+                                   buffet_optimize_wide=True,
+                                   perf_debug=False,
+                                   mem_width=64,
+                                   mem_depth=512,
+                                   tb_harness=True)
+    kts.verilog(fiber_access_dut, filename="fiber_access_standalone_local_memory.sv",
+                optimize_if=False)
 
-    # Lift config regs and generate annotation
-    # lift_config_reg(pond_dut.internal_generator)
-    # extract_formal_annotation(pond_dut, "pond.txt")
-
-    kts.verilog(fiber_access_dut, filename="fiber_access.sv",
+    fiber_access_dut = FiberAccess(data_width=16,
+                                   local_memory=False,
+                                   tech_map=GF_Tech_Map(depth=512, width=64, dual_port=False),
+                                   defer_fifos=False,
+                                   add_flush=True,
+                                   use_pipelined_scanner=True,
+                                   fifo_depth=2,
+                                   buffet_optimize_wide=True,
+                                   perf_debug=False,
+                                   mem_width=64,
+                                   mem_depth=512,
+                                   tb_harness=True)
+    kts.verilog(fiber_access_dut, filename="fiber_access_standalone_remote_memory.sv",
                 optimize_if=False)
