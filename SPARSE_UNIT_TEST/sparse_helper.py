@@ -127,3 +127,17 @@ def update_tcl(tb):
             f.write(line)
         f.close()
     return 
+
+
+def coord_drop(coord):
+    cleaned = []
+    pre_s = True
+    for i in coord:
+        if is_STOP_sam(i):
+            if not pre_s:
+                cleaned.append(i)
+                pre_s = True
+        else:
+            pre_s = False
+            cleaned.append(i)
+    return cleaned

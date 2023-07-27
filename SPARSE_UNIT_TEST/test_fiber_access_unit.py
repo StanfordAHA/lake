@@ -1,8 +1,4 @@
 from lake.top.fiber_access import FiberAccess
-# from lake.top.core_combiner import CoreCombiner
-# from lake.modules.strg_RAM import StrgRAM
-# from lake.modules.strg_ub_thin import StrgUBThin
-# from lake.modules.stencil_valid import StencilValid
 from lake.top.tech_maps import GF_Tech_Map
 import magma as m
 from magma import *
@@ -49,8 +45,9 @@ def init_module():
 
     sparse_helper.update_tcl("fiber_access_tb")
 
-def create_random_fiber(rate, size, d, f_type = "coord"):
+def create_random_fiber(rate, size, d, f_type = "coord", maybe = 0.0):
     # size = int(size*random.uniform(1.0, 1.0+d))
+
     s = int(rate*size)
     if f_type == "coord":
         crd = random.sample(range(size), s)
@@ -59,67 +56,72 @@ def create_random_fiber(rate, size, d, f_type = "coord"):
     elif f_type == "pos":
         pos = random.sample(range(1, size + 1), s)
         pos.sort()
+        if maybe != 0.0:
+            replace = random.sample(range(0, len(pos)), int(len(pos)*maybe))
+            for i in replace:
+                pos[i] = 'N'
         return pos
     else:
         val = [random.uniform(0, 2**15-1) for i in range(s)]
         return val
 
-def create_random(n, rate, size, d1=0):
+def create_random(n, rate, size, d1=0, maybe = 0.0): #d1 is the num of the outer level
     if n == 1:
-        in_crd1 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
-        in_ref1 = create_random_fiber(1, len(in_crd1) - 2, 0, "pos") + ['S0', 'D']
-        in_crd2 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
-        in_ref2 = create_random_fiber(1, len(in_crd2) - 2, 0, "pos") + ['S0', 'D']
-        return in_crd1, in_crd2, in_ref1, in_ref2
+        in_crd1 = create_random_fiber(rate, size, 0.2, "coord", maybe) + ['S0', 'D']
+        return in_crd1
     
     elif n == 2:
         if d1 == 0:
             d1 = int(random.uniform(2, int(size**(1/2))))
         d2 = size // d1
         rate = rate**(1/2)
-        ret = [[] for i in range(4)]
+        ret = []
         for i in range(d1):
-            ret_t = [[] for j in range(4)]
+            ret_t = []
             if random.random() < rate:
-                ret_t[0] = create_random_fiber(rate, d2, 0.2, "coord")
-                ret_t[1] = create_random_fiber(1, len(ret_t[0]), 0, "pos")
-            if random.random() < rate:
-                ret_t[2] = create_random_fiber(rate, d2, 0.2, "coord")
-                ret_t[3] = create_random_fiber(1, len(ret_t[2]), 0, "pos")
-
-            for j in range(4):
-                if i == d1 - 1:
-                    ret[j] = ret[j] + ret_t[j] + ['S1', 'D']
-                else:
-                    ret[j] = ret[j] + ret_t[j] + ['S0']
-        return ret[0], ret[1], ret[2], ret[3]
+                ret_t = ret_t + create_random_fiber(rate, d2, 0.2, "coord", maybe)
+            if i == d1 - 1:
+                ret = ret + ret_t + ['S1', 'D']
+            else:
+                ret = ret + ret_t + ['S0']
+        return ret
     elif n == 3:
         if d1 == 0:
             d1 = int(random.uniform(2, int(size**(1/3))))
         d2 = size // d1
         d1_ = int(random.uniform(2, int(d2**(1/2))))
         rate = rate**(1/3)
-        ret = [[] for i in range(4)]
+        ret = []
         # print(d1, d2, rate)
         for i in range(d1):
-            # print("i---------: ", i)
-            ret_t = [[] for j in range(4)]
+            ret_t = []
             if random.random() < rate:
-                ret_t[0], ret_t[1], ret_t[2], ret_t[3] = create_random(2, rate*rate, d2, d1_)
+                ret_t = create_random(2, rate*rate, d2, d1_)
             else:
-                for j in range(4):
-                    ret_t[j] = ret_t[j] + ['S1', 'D']
-            
-            for j in range(4):
-                if i == d1 - 1:
-                    ret[j] = ret[j] + ret_t[j][:-2] + ['S2', 'D']
-                else:
-                    ret[j] = ret[j] + ret_t[j][:-1]
-                # print(j)
-                # print(ret_t[j][:-1])
-                # print(ret[j])
-        return ret[0], ret[1], ret[2], ret[3]
-                
+                ret_t = ret_t + ['S1', 'D']
+
+            if i == d1 - 1:
+                ret = ret + ret_t[:-2] + ['S2', 'D']
+            else:
+                ret = ret + ret_t[:-1]
+        return ret
+
+
+def create_ref(coord, dim, rate, size, maybe = False):
+    ran = []
+    k = 0
+    for i in coord:
+        if sparse_helper.is_STOP_sam(i):
+            ran.append(k)
+            k += 1
+    if maybe:
+        ran.append('N')
+    t = create_random(dim, rate, size)
+    for j in range(len(t)):
+        if type(t[j]) is int:
+            t[j] = ran[int(random.uniform(0, len(ran) - 1))]
+    return t
+
 
 def create_gold(in_crd, in_ref):
     i_c_cpy = in_crd[:]
@@ -145,18 +147,15 @@ def create_gold(in_crd, in_ref):
         time += 1
 
     print("sam write cycle count: ", time)
-    # crd = wrscan.get_arr()
-    # seg = wrscan.get_seg_arr()
-    # print(crd)
-    # print(seg)
+    # print(wrscan.get_seg_arr())
+    # print(wrscan.get_arr())
+    crdscan = CompressedCrdRdScan(seg_arr=wrscan.get_seg_arr(), crd_arr=wrscan.get_arr())
 
-    #process read
     done = False
     time = 0
-
-    crdscan = CompressedCrdRdScan(seg_arr=wrscan.get_seg_arr(), crd_arr=wrscan.get_arr())
     out_crd = []
     out_ref = []
+
     while not done and time < TIMEOUT:
         if len(in_ref) > 0:
             crdscan.set_in_ref(in_ref.pop(0))
@@ -179,7 +178,13 @@ def create_gold(in_crd, in_ref):
     print(out_crd)
     print(out_ref)
 
-    st = [i_c_cpy, i_r_cpy, out_crd, out_ref]
+    out_c = []
+    out_r = []
+    for i in range(len(out_crd)):
+        if out_crd[i] != 'N':
+            out_c.append(out_crd[i])
+            out_r.append(out_ref[i])
+    st = [i_c_cpy, i_r_cpy, out_c, out_r]
     tr_st = [convert_stream_to_onyx_interp(i) for i in st]
 
     return tr_st
@@ -196,14 +201,69 @@ def load_test_module(test_name):
         in_ref = [0, 'D']
         return create_gold(in_crd, in_ref)
 
+    elif test_name == "in_ref_2d_1":
+        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_ref = [0, 'S0', 1, 'S1', 'D']
+        return create_gold(in_crd, in_ref)
+    
+    elif test_name == "in_ref_2d_2":
+        in_crd = [0, 2, 3, 7, 8, 10] + ['S0', 'D']
+        in_ref = [0, 0, 'S0', 0, 'S1', 'D']
+        return create_gold(in_crd, in_ref)
+
+    elif test_name == "in_ref_empty_fiber":
+        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_ref = ['S0', 'S0', 1, 0, 'S0', 'S0', 1, 'S1', 'D']
+        return create_gold(in_crd, in_ref)
+
+    elif test_name == "maybe_token":
+        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_ref = [0, 'N', 'S0', 'D']
+        return create_gold(in_crd, in_ref)
+
+    elif test_name == "seq_1":
+        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_ref = [0, 'S0', 'D'], [0, 'S0', 1, 'S1', 'D']
+        return create_gold(in_crd, in_ref)
+
+    elif test_name == "arr_1":
+        in_crd = [0, 1, 'S0', 2, 'S0', 3, 'S1', 'D']
+        in_ref = [0, 1, 'N', 2, 'N', 'S0', 'D']
+        return create_gold(in_crd, in_ref)
+
+    elif test_name == "arr_2":
+        in_crd = [0, 2, 3, 'S0', 0, 'S0', 2, 3, 'S1', 'D']
+        in_ref = [0, 'N', 1, 'N', 2, 'S0', 'D']
+        return create_gold(in_crd, in_ref)
+
+    elif test_name == "arr_3":
+        in_crd = [0, 1, 2, 3, 'S0', 4, 'S0', 5, 6, 'S0', 7, 8, 9, 'S0', 10, 'S1', 'D'] 
+        in_ref = [0, 1, 'N', 'N', 'S0', 2, 3, 'S0', 'N', 'N', 'S0', 4, 'S0', 'N', 'N', 'S1', 'D']
+        return create_gold(in_crd, in_ref)
+
+    elif test_name[0:3] == "rd_":
+        t_arg = test_name.split("_")
+        dim1 = int(t_arg[1][0])
+        rate1 = float(t_arg[2])
+        size1 = int(t_arg[3]) # unlike other tests, the size here is the final size
+        t_size = int(size1 / rate1)
+        dim2 = int(t_arg[4][0])
+        rate2 = float(t_arg[5])
+        size2 = int(t_arg[6])
+        coord = sparse_helper.coord_drop(create_random(dim1, rate1, t_size))
+        ref = create_ref(coord, dim2, rate2, size2)
+        return create_gold(coord, ref)
+
     else:
         in_crd = [0, 'S0', 'D']
-
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        in_ref = [0, 0, 0, 'D']
+        return create_gold(in_crd, in_ref)
 
 
 def module_iter_basic(test_name, add_test=""):
+    print("here")
     [ic, ir, gc, gr] = load_test_module(test_name)
+
     if add_test != "":
         additional_t = load_test_module(add_test)
         ic = ic + additional_t[0]
@@ -211,8 +271,6 @@ def module_iter_basic(test_name, add_test=""):
         gc = gc + additional_t[2]
         gr = gr + additional_t[3]
 
-    print(ic)
-    print(ir)
     print(gc)
     print(gr)
 
@@ -221,7 +279,7 @@ def module_iter_basic(test_name, add_test=""):
 
     sparse_helper.clear_txt("coord_out.txt")
     sparse_helper.clear_txt("pos_out_0.txt")
-    
+
     #run command "make sim" to run the simulation
     if add_test == "":
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_tb.sv", "TOP=fiber_access_tb",\
@@ -239,6 +297,8 @@ def module_iter_basic(test_name, add_test=""):
 
     coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
     pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
+    # print(coord_out)
+    # print(pos_out_0)
 
     #compare each element in the output from coord_out.txt with the gold output
     assert len(coord_out) == len(gc), \
@@ -257,8 +317,31 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
+# def test_iter_basic():
+#     init_module()
+#     test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber",\
+#                 "maybe_token", "arr_1", "arr_2", "arr_3", "xxx"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+# def test_random_1d():
+#     init_module()
+#     test_list = ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+# def test_random_2d():
+#     init_module()
+#     test_list = ["rd_2d_0.1_200", "rd_2d_0.3_200", "rd_2d_0.5_200", "rd_2d_0.8_200", "rd_2d_1.0_200"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
 def test_iter_basic():
+    # not yet supported
     init_module()
-    test_list = ["direct_1d", "direct_2d"]
+    test_list = [("direct_1d", "direct_2d")]
     for test in test_list:
-        module_iter_basic(test)
+        module_iter_basic(test[0], test[1])

@@ -53,7 +53,7 @@ module fiber_access_tb;
     logic [1:0] [31:0] config_out;
 
     wire [3:0] done;
-    parameter NUM_CYCLES = 1000;
+    parameter NUM_CYCLES = 4000;
 
     integer clk_count;
     integer start_write;
@@ -61,7 +61,7 @@ module fiber_access_tb;
     integer write_count;
     logic start_read;
     integer read_count;
-    integer wait_gap = 10;
+    integer wait_gap = 0; // should pass with arb gap
     integer DONE_TOKEN = 17'h10100;
 
     fiber_access_16 dut 
@@ -231,7 +231,7 @@ module fiber_access_tb;
                 start_read = 1;
             end
 
-            if (clk && start_read == 1 && ~done[2] && ~done[3]) begin
+            if (clk && start_read == 1 && ~(done[2] & done[3])) begin
                 read_count += 1;
             end
 
