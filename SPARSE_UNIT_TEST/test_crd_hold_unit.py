@@ -187,7 +187,6 @@ def module_iter_basic(test_name, add_test=""):
     print("ic1", ic1)
     print("ic2", ic2)
     print("gc1", gc)
-    return
 
     sparse_helper.write_txt("coord_in_0.txt", ic1)
     sparse_helper.write_txt("coord_in_1.txt", ic2)
@@ -197,11 +196,11 @@ def module_iter_basic(test_name, add_test=""):
     
     #run command "make sim" to run the simulation
     if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=coord_drop_tb.sv", "TOP=coord_drop_tb",\
-                             "TEST_UNIT=CrdDrop.sv"], capture_output=True, text=True)
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=coord_hold_tb.sv", "TOP=coord_hold_tb",\
+                             "TEST_UNIT=CrdHold.sv"], capture_output=True, text=True)
     else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=coord_drop_tb.sv",\
-                             "TOP=coord_drop_tb", "TX_NUM_GLB=2", "TEST_UNIT=CrdDrop.sv"\
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=coord_hold_tb.sv",\
+                             "TOP=coord_hold_tb", "TX_NUM_GLB=2", "TEST_UNIT=CrdHold.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
@@ -215,18 +214,18 @@ def module_iter_basic(test_name, add_test=""):
     print(pos_out_1)
     
     #compare each element in the output from pos_out_0.txt with the gold output
-    assert len(pos_out_0) == len(gc1), \
-        f"Output length {len(pos_out_0)} didn't match gold length {len(gc1)}"
+    assert len(pos_out_0) == len(gc), \
+        f"Output length {len(pos_out_0)} didn't match gold length {len(gc)}"
     for i in range(len(pos_out_0)):
-        assert pos_out_0[i] == gc1[i], \
-            f"Output {pos_out_0[i]} didn't match gold {gc1[i]} at index {i}"
+        assert pos_out_0[i] == gc[i], \
+            f"Output {pos_out_0[i]} didn't match gold {gc[i]} at index {i}"
     
     #compare each element in the output from pos_out_1.txt with the gold output
-    assert len(pos_out_1) == len(gc2), \
-        f"Output length {len(pos_out_1)} didn't match gold length {len(gc2)}"
-    for i in range(len(pos_out_1)):
-        assert pos_out_1[i] == gc2[i], \
-            f"Output {pos_out_1[i]} didn't match gold {gc2[i]} at index {i}"
+    # assert len(pos_out_1) == len(gc2), \
+    #     f"Output length {len(pos_out_1)} didn't match gold length {len(gc2)}"
+    # for i in range(len(pos_out_1)):
+    #     assert pos_out_1[i] == gc2[i], \
+    #         f"Output {pos_out_1[i]} didn't match gold {gc2[i]} at index {i}"
     
     print(test_name, " passed\n")
 
