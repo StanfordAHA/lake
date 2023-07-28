@@ -1150,7 +1150,7 @@ class BuffetLike(MemoryController):
                                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
                 WRITING[ID_idx].output(self._set_wide_word_addr[ID_idx], ((self._tmp_wr_addr[ID_idx] != self._write_word_addr[ID_idx]) | ~self._write_word_addr_valid[ID_idx]) &
                                                                           self._joined_in_fifo & (self._wr_data_fifo_out_op == 1) &
-                                                                          # Only overwrite the wide word addr if the current full 
+                                                                          # Only overwrite the wide word addr if the current full
                                                                           (kts.ternary(self._write_wide_word_mask_reg_out[ID_idx].r_or(), self._mem_acq[2 * ID_idx + 0], kts.const(1, 1))) &
                                                                           (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
 
