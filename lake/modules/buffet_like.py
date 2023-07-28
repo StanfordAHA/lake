@@ -367,7 +367,7 @@ class BuffetLike(MemoryController):
         self._curr_base = [register(self, self._curr_base_pre[i], enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
 
         [self.wire(self._curr_base_pre[i], kts.ternary(kts.const(1, 1),
-        #[self.wire(self._curr_base_pre[i], kts.ternary(self._first_base_set[i],
+        # [self.wire(self._curr_base_pre[i], kts.ternary(self._first_base_set[i],
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i],
                                                        0)) for i in range(self.num_ID)]
 
@@ -1672,15 +1672,3 @@ if __name__ == "__main__":
 
     verilog(buffet_dut, filename="buffet_like.sv",
             optimize_if=False)
-
-    # str_name = 'tensor_X_mode_0_1'
-
-    # str_split = str_name.split('_')
-
-    # factor = int(str_split[-1])
-
-    # str_split_no_last = str_split[0:len(str_split) - 1]
-
-    # new_name = '_'.join(str_split_no_last)
-
-    # print(new_name)
