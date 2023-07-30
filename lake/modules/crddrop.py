@@ -356,7 +356,7 @@ class CrdDrop(MemoryController):
                                                           self._proc_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_valid_delay,
                                                         #   kts.ternary(self._base_infifo_in_valid & ~self._base_infifo_in_eos,
                                                           kts.ternary(self._base_infifo_in_valid & ~self._eos_seen,
-                                                                        #~base_outfifo.ports.full,
+                                                                        # ~base_outfifo.ports.full,
                                                                         ~base_outfifo.ports.full & ~self._base_valid_delay,
                                                                         # kts.ternary(self._base_infifo_in_valid & self._base_infifo_in_eos,
                                                                         #             # self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
@@ -420,8 +420,8 @@ class CrdDrop(MemoryController):
         PROCESS.output(self._set_pushed_data_lower, self._base_infifo_in_valid & ~self._base_infifo_in_eos & ~self._base_valid_delay & ~base_outfifo.ports.full)
         # Clear that data has been pushed when you are pushing the stop token of the base line
         # PROCESS.output(self._clr_pushed_data_lower, self._base_done | (self._base_infifo_in_valid & self._base_infifo_in_eos &
-                                                        #   self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full))
-        PROCESS.output(self._clr_pushed_data_lower, self._base_done | (self._base_infifo_in_valid & self._base_valid_delay & 
+        # self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~base_outfifo.ports.full & ~proc_outfifo.ports.full))
+        PROCESS.output(self._clr_pushed_data_lower, self._base_done | (self._base_infifo_in_valid & self._base_valid_delay &
                                                                     ~self._eos_seen & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos &
                                                                     ~base_outfifo.ports.full & ~proc_outfifo.ports.full))
 
