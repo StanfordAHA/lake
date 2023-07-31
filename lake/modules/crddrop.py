@@ -477,7 +477,7 @@ class CrdDrop(MemoryController):
             self._base_delay = 0
             self._base_valid_delay = 0
         elif (self._cmrg_fifo_pop[0] & self._base_infifo_in_valid & self._eos_seen & self._pushed_data_lower):
-            self._base_delay = kts.ternary(self._base_infifo_out_packed < self._base_delay, # Only keeps the maximum
+            self._base_delay = kts.ternary(self._base_infifo_out_packed < self._base_delay,  # Only keeps the maximum
                                           self._base_delay,
                                           self._base_infifo_out_packed)
             self._base_valid_delay = self._base_infifo_in_valid
