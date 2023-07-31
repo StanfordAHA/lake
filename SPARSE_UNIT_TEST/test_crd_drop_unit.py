@@ -241,10 +241,10 @@ def module_iter_basic(test_name, add_test=""):
         gc1 = gc1 + additional_t[2]
         gc2 = gc2 + additional_t[3]
 
-    print("ic1", ic1)
-    print("ic2", ic2)
-    print("gc1", gc1)
-    print("gc2", gc2)
+    # print("ic1", ic1)
+    # print("ic2", ic2)
+    # print("gc1", gc1)
+    # print("gc2", gc2)
 
     sparse_helper.write_txt("coord_in_0.txt", ic1)
     sparse_helper.write_txt("coord_in_1.txt", ic2)
@@ -268,8 +268,8 @@ def module_iter_basic(test_name, add_test=""):
     pos_out_1 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
     pos_out_0 = sparse_helper.read_txt("pos_out_1.txt", addit=add_test != "")
 
-    print(pos_out_0)
-    print(pos_out_1)
+    # print(pos_out_0)
+    # print(pos_out_1)
     
     #compare each element in the output from pos_out_0.txt with the gold output
     assert len(pos_out_0) == len(gc1), \
