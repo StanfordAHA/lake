@@ -50,7 +50,7 @@ class PrefetcherModel(Model):
             self.fifo.interact(valid_read, tba_rdy, data_in, mem_valid_data)
         stp = self.get_step()
         self.update_cnt(valid_read, tba_rdy)
-        if type(d_out) == list:
+        if type(d_out) is list:
             return (d_out.copy(), v_out, stp, mem_valid_data_out)
         else:
             return (d_out, v_out, stp, mem_valid_data_out)
