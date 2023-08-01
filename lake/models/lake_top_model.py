@@ -618,7 +618,7 @@ class LakeTopModel(Model):
                                              sync_valid[i],
                                              tba_rdys[i],
                                              sync_mem_valid_data[i])
-            if type(pd) == list:
+            if type(pd) is list:
                 pref_data.append(pd.copy())
             else:
                 pref_data.append(pd)

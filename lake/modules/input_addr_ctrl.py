@@ -193,7 +193,7 @@ class InputAddrCtrl(Generator):
         # Then, obey the input schedule to send the proper Aggregator to the output
         # The wen to sram should be that the valid for the selected port is high
         # Do the same thing for the output address
-        assert self.multiwrite <= self.banks and self.multiwrite > 0,\
+        assert self.multiwrite <= self.banks and self.multiwrite > 0, \
             "Multiwrite should be between 1 and banks"
         if self.multiwrite > 1:
             size = (self.interconnect_input_ports, self.multiwrite - 1)
