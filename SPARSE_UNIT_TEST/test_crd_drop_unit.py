@@ -57,13 +57,14 @@ def create_random(n, rate, size, d1=0): # d1 is the total fiber number
     elif n == 2:
         if d1 == 0:
             d1 = int(random.uniform(2, int(size**(1/2))))
-        d2 = size // d1
+        d2 = max(size // d1, 1)
         rate = rate**(1/2)
+        # print("h: ", size, d1, d2, rate)
         ret = []
         for i in range(d1):
             ret_t = []
             r = rate
-            if random.random() < rate:
+            if random.random() > rate:
                 r = 0
             ret_t = ret_t + create_random_fiber(r, d2, 0.2, "coord", 0.2)
             if i == d1 - 1:
@@ -78,11 +79,12 @@ def create_random(n, rate, size, d1=0): # d1 is the total fiber number
         d2 = size // d1
         rate = rate**(1/3)
         ret = []
-        # print(d1, d2, rate)
+        # print(d1, d2, rate, int(size**(1/3)), int(d1**(1/2)))
         while total_d > 0:
             ret_t = []
-            dd = int(random.uniform(2, int(d1 ** (1/2))))
+            dd = int(random.uniform(1, int(d1 ** (1/2))))
             dd = min(total_d, dd)
+            # print(dd)
             ret_t = create_random(2, rate*rate, d2, dd)
             total_d -= dd
             ret = ret + ret_t[:-1]
@@ -201,12 +203,6 @@ def load_test_module(test_name):
 
         return create_gold(in_crd_o, in_crd_i)
 
-    elif test_name == "stream_8":
-        in_crd_o = [1, 2, 3, 'S0', "S0", 4, 'S1', 'D']
-        in_crd_i = [1, 2, 'S1', 'S0', 'S1', 'S2', 'D']
-
-        return create_gold(in_crd_o, in_crd_i)
-
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
         dim1 = int(t_arg[1][0])
@@ -241,10 +237,10 @@ def module_iter_basic(test_name, add_test=""):
         gc1 = gc1 + additional_t[2]
         gc2 = gc2 + additional_t[3]
 
-    # print("ic1", ic1)
-    # print("ic2", ic2)
-    # print("gc1", gc1)
-    # print("gc2", gc2)
+    print("ic1", ic1)
+    print("ic2", ic2)
+    print("gc1", gc1)
+    print("gc2", gc2)
 
     sparse_helper.write_txt("coord_in_0.txt", ic1)
     sparse_helper.write_txt("coord_in_1.txt", ic2)
@@ -291,7 +287,6 @@ def module_iter_basic(test_name, add_test=""):
 def test_iter_basic():
     init_module()
     test_list = ["stream_1", "stream_2", "stream_3", "stream_4", "stream_5", "stream_6", "stream_7", "xxx"]
-    # test_list = ["stream_8"]
     for test in test_list:
         module_iter_basic(test)
 
@@ -334,3 +329,10 @@ def test_seq():
     for i in range(10):
         rand = random.sample(test_list, 2)
         module_iter_basic(rand[0], rand[1])
+
+
+def test_eff():
+    init_module()
+    test_list = ["rd_2d_0.8_80_3d_0.1_200", "rd_2d_0.8_80_3d_0.3_200", "rd_2d_0.8_80_3d_0.5_200", "rd_2d_0.8_80_3d_0.8_200", "rd_2d_0.8_80_3d_1.0_200"]
+    for test in test_list:
+        module_iter_basic(test)
