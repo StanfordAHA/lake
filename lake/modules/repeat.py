@@ -124,7 +124,7 @@ class Repeat(MemoryController):
 
         self._set_last_pushed_data = self.var("set_last_pushed_data", 1)
         self._clr_last_pushed_data = self.var("clr_last_pushed_data", 1)
-        self._last_pushed_data = sticky_flag(self, self._set_last_pushed_data, clear=self._clr_last_pushed_data, seq_only=True)
+        self._last_pushed_data = sticky_flag(self, self._set_last_pushed_data, clear=self._clr_last_pushed_data, name="pushed_data_sticky", seq_only=True)
 
         # Repsig fifo
         self._repsig_fifo_pop = self.var("repsig_fifo_pop", 1)
@@ -219,12 +219,18 @@ class Repeat(MemoryController):
 # =============================
         self._seen_root_eos = sticky_flag(self, (self._proc_fifo_out_data == 0) & self._proc_fifo_out_eos & self._proc_fifo_valid, name="seen_root_eos")
 
+        self._ref_maybe = self.var("ref_maybe", 1)
+        self.wire(self._ref_maybe, self._proc_fifo_valid & self._proc_fifo_out_eos & (self._proc_fifo_out_data[9, 8] == kts.const(2, 2)))
+        self._proc_data_seen = self.var("proc_data", 1)
+        self.wire(self._proc_data_seen, (~self._proc_fifo_out_eos | self._ref_maybe) & self._proc_fifo_valid)
         self._proc_stop = self.var("proc_stop", 1)
         self.wire(self._proc_stop, (self._proc_fifo_out_data[9, 8] == kts.const(0, 2)) & self._proc_fifo_out_eos & self._proc_fifo_valid)
         self._proc_done = self.var("proc_done", 1)
         self.wire(self._proc_done, (self._proc_fifo_out_data[9, 8] == kts.const(1, 2)) & self._proc_fifo_out_eos & self._proc_fifo_valid)
         self._repsig_stop = self.var("repsig_stop", 1)
         self.wire(self._repsig_stop, (self._repsig_fifo_out_data[9, 8] == kts.const(0, 2)) & self._repsig_fifo_out_eos & self._repsig_fifo_valid)
+        self._repsig_sig = self.var("repsig_sig", 1)
+        self.wire(self._repsig_sig, ~self._repsig_fifo_out_eos & self._repsig_fifo_valid)
         self._repsig_done = self.var("repsig_done", 1)
         self.wire(self._repsig_done, (self._repsig_fifo_out_data[9, 8] == kts.const(1, 2)) & self._repsig_fifo_out_eos & self._repsig_fifo_valid)
 
@@ -234,7 +240,7 @@ class Repeat(MemoryController):
         self.wire(self._blank_repeat, self._proc_stop & ~self._repsig_stop & self._repsig_fifo_valid)
 
         self._blank_repeat_stop = self.var("blank_repeat_stop", 1)
-        self.wire(self._blank_repeat_stop, self._proc_stop & self._repsig_stop)
+        self.wire(self._blank_repeat_stop, self._proc_stop & self._repsig_stop & self._last_pushed_data)
 # =============================
 # Instantiate FSM
 # =============================
@@ -245,8 +251,6 @@ class Repeat(MemoryController):
         INJECT0 = self.repeat_fsm.add_state("INJECT0")
         INJECT1 = self.repeat_fsm.add_state("INJECT1")
         PASS_REPEAT = self.repeat_fsm.add_state("PASS_REPEAT")
-        PASS_STOP = self.repeat_fsm.add_state("PASS_STOP")
-        DONE = self.repeat_fsm.add_state("DONE")
 
 # =============================
 # FSM Transitions
@@ -277,27 +281,10 @@ class Repeat(MemoryController):
         # We can go to the PASS_STOP state when the stream being repeated has an actual stop token
 
         # We go to pass stop when we have a stop token on the repsig line - either to pass through or coalesce with proc stop
-        PASS_REPEAT.next(DONE, self._proc_done)
-        PASS_REPEAT.next(PASS_STOP, self._proc_fifo_valid & self._repsig_fifo_out_eos & self._repsig_fifo_valid &
-                                    (self._repsig_fifo_out_data[9, 8] == kts.const(0, 2)) & ~self._blank_repeat & ~self._blank_repeat_stop)
+        PASS_REPEAT.next(START, self._proc_done & self._repsig_done & ~self._ref_fifo_full)
+        # PASS_REPEAT.next(PASS_STOP, self._proc_fifo_valid & self._repsig_fifo_out_eos & self._repsig_fifo_valid &
+        #                             (self._repsig_fifo_out_data[9, 8] == kts.const(0, 2)) & ~self._blank_repeat & ~self._blank_repeat_stop)
         PASS_REPEAT.next(PASS_REPEAT, None)
-
-        #####################
-        # PASS_STOP
-        #####################
-        # We are done if we see the root EOS on the proc stream
-        # Go to DONE on the done signal
-        # Go to done if we have done on the proc bus and we have room to emit whatever stop signal
-        # If we aren't done, we should just wait for the next valid data as one must come eventually - we have to push either way, so make sure it's
-        # not full
-        PASS_STOP.next(PASS_REPEAT, self._proc_fifo_valid & ~self._ref_fifo_full)
-        PASS_STOP.next(PASS_STOP, None)
-
-        #####################
-        # DONE
-        #####################
-        # Enforce DONE to align
-        DONE.next(START, ~self._ref_fifo_full & self._proc_done & self._repsig_done)
 
 # =============================
 # FSM Output Declaration
@@ -311,6 +298,8 @@ class Repeat(MemoryController):
         self.repeat_fsm.output(self._proc_fifo_inject_push)
         self.repeat_fsm.output(self._proc_fifo_inject_data)
         self.repeat_fsm.output(self._proc_fifo_inject_eos)
+        self.repeat_fsm.output(self._set_last_pushed_data)
+        self.repeat_fsm.output(self._clr_last_pushed_data)
 
 # =============================
 # FSM Output Implementation
@@ -327,6 +316,8 @@ class Repeat(MemoryController):
         START.output(self._proc_fifo_inject_push, 0)
         START.output(self._proc_fifo_inject_data, 0)
         START.output(self._proc_fifo_inject_eos, 0)
+        START.output(self._set_last_pushed_data, 0)
+        START.output(self._clr_last_pushed_data, 0)
 
         #####################
         # INJECT0
@@ -339,6 +330,8 @@ class Repeat(MemoryController):
         INJECT0.output(self._proc_fifo_inject_push, 1)
         INJECT0.output(self._proc_fifo_inject_data, 0)
         INJECT0.output(self._proc_fifo_inject_eos, 0)
+        INJECT0.output(self._set_last_pushed_data, 0)
+        INJECT0.output(self._clr_last_pushed_data, 0)
 
         #####################
         # INJECT1
@@ -349,67 +342,48 @@ class Repeat(MemoryController):
         INJECT1.output(self._proc_fifo_pop, 0)
         INJECT1.output(self._repsig_fifo_pop, 0)
         INJECT1.output(self._proc_fifo_inject_push, 1)
-        # INJECT1.output(self._proc_fifo_inject_data, 0)
         INJECT1.output(self._proc_fifo_inject_data, kts.const(2**8, 16))
         INJECT1.output(self._proc_fifo_inject_eos, 1)
-
-        self._ref_maybe = self.var("ref_maybe", 1)
-        self.wire(self._ref_maybe, self._proc_fifo_valid & self._proc_fifo_out_eos & (self._proc_fifo_out_data[9, 8] == kts.const(2, 2)))
+        INJECT1.output(self._set_last_pushed_data, 0)
+        INJECT1.output(self._clr_last_pushed_data, 0)
 
         #####################
         # PASS_REPEAT
         #####################
         # Either injecting the original data or the stop token if the repsig is giving an eos
-        PASS_REPEAT.output(self._ref_fifo_in_data, kts.ternary(self._blank_repeat_stop, self._proc_fifo_out_data + 1, self._proc_fifo_out_data))
+        # PASS_REPEAT.output(self._ref_fifo_in_data, kts.ternary(self._blank_repeat_stop, self._proc_fifo_out_data + 1, self._proc_fifo_out_data))
+        PASS_REPEAT.output(self._ref_fifo_in_data, kts.ternary(self._repsig_stop, self._repsig_fifo_out_data, self._proc_fifo_out_data))
         # Pass eos as 1 if there is a maybe
-        PASS_REPEAT.output(self._ref_fifo_in_eos, self._ref_maybe | self._blank_repeat_stop)
+        # PASS_REPEAT.output(self._ref_fifo_in_eos, self._ref_maybe | self._blank_repeat_stop)
+        PASS_REPEAT.output(self._ref_fifo_in_eos, self._ref_maybe | self._repsig_done | self._repsig_stop)
         # We need both inputs to be valid to push out
-        PASS_REPEAT.output(self._ref_fifo_push, (((self._repsig_fifo_valid & self._proc_fifo_valid) & ~self._repsig_fifo_out_eos) | self._blank_repeat_stop) & ~self._proc_done & ~self._ref_fifo_full & ~self._blank_repeat)
+        # PASS_REPEAT.output(self._ref_fifo_push, (((self._repsig_fifo_valid & self._proc_fifo_valid) & ~self._repsig_fifo_out_eos) | self._blank_repeat_stop) & ~self._proc_done & ~self._ref_fifo_full & ~self._blank_repeat)
+        PASS_REPEAT.output(self._ref_fifo_push, ~self._ref_fifo_full & ((self._proc_done & self._repsig_done) |
+                                                (self._proc_data_seen & self._repsig_fifo_valid) | (self._proc_stop & ~self._last_pushed_data & self._repsig_stop)))
         # If we are injecting the repsig stop token, then we should simultaneously pop the proc fifo as we are moving to the next data
         # I believe it is guaranteed by construction that the proc fifo HAS to have data on its line, it could never be a stop token on the proc fifo at this point
         # Just rip the data off once the stop token on the repsig line is hit
-        PASS_REPEAT.output(self._proc_fifo_pop, ((self._repsig_fifo_valid & self._repsig_fifo_out_eos & ~self._spacc_mode &
-                                                  (kts.ternary(self._proc_fifo_valid,
-                                                                ~self._proc_fifo_out_eos | self._ref_maybe, kts.const(0, 1)))) | (self._spacc_mode & self._repsig_done) | (self._blank_repeat_stop & ~self._ref_fifo_full)) & ~self._proc_done)
+        # PASS_REPEAT.output(self._proc_fifo_pop, ((self._repsig_fifo_valid & self._repsig_fifo_out_eos & ~self._spacc_mode &
+        #                                           (kts.ternary(self._proc_fifo_valid,
+        #                                                         ~self._proc_fifo_out_eos | self._ref_maybe, kts.const(0, 1)))) | (self._spacc_mode & self._repsig_done) | (self._blank_repeat_stop & ~self._ref_fifo_full)) & ~self._proc_done)
+        PASS_REPEAT.output(self._proc_fifo_pop, kts.ternary(self._proc_done,
+                                                           self._repsig_done & ~self._ref_fifo_full,
+                                                           kts.ternary(self._proc_stop,
+                                                                      self._last_pushed_data | (self._repsig_stop & ~self._ref_fifo_full & ~self._last_pushed_data),
+                                                                      self._repsig_stop & ~self._ref_fifo_full)))
         # Only pop the repsig fifo if there's room in the output fifo and join of input fifos (and not EOS)
-        PASS_REPEAT.output(self._repsig_fifo_pop, ~self._ref_fifo_full & (((self._repsig_fifo_valid & ~self._repsig_fifo_out_eos) & self._proc_fifo_valid & ~self._proc_done) | self._blank_repeat_stop))
+        # PASS_REPEAT.output(self._repsig_fifo_pop, ~self._ref_fifo_full & (((self._repsig_fifo_valid & ~self._repsig_fifo_out_eos) & self._proc_fifo_valid & ~self._proc_done) | self._blank_repeat_stop))
+        PASS_REPEAT.output(self._repsig_fifo_pop, kts.ternary(self._repsig_done,
+                                                             self._proc_done & ~self._ref_fifo_full,
+                                                             kts.ternary(self._repsig_stop,
+                                                                        (self._proc_data_seen | (self._proc_stop & ~self._last_pushed_data)) & ~self._ref_fifo_full,
+                                                                        (self._proc_data_seen & ~self._ref_fifo_full) | (self._proc_stop & ~self._last_pushed_data))))
+
         PASS_REPEAT.output(self._proc_fifo_inject_push, 0)
         PASS_REPEAT.output(self._proc_fifo_inject_data, 0)
         PASS_REPEAT.output(self._proc_fifo_inject_eos, 0)
-
-        #####################
-        # PASS_STOP
-        #####################
-        # Here we have a stop on the repsig line - need to either pass it (if data next on proc line) or increment the stop token on the proc line
-        # The data going to this thing is either
-        # Pass through repsig stop?
-        PASS_STOP.output(self._ref_fifo_in_data, self._repsig_fifo_out_data)
-        # Since it's only stop tokens here, this can be 1
-        PASS_STOP.output(self._ref_fifo_in_eos, 1)
-        # Push once there is valid data on the proc line and there is room - unless it's a DONE token
-        # Push if both inputs are valid and there's room
-        # This will work by virtue of stream construction
-        PASS_STOP.output(self._ref_fifo_push, self._repsig_stop & self._proc_fifo_valid & ~self._ref_fifo_full)
-        # Pop the proc stream only if we get an eos on it
-        # Only pop the proc if there's room and it's a stop token on the proc bus
-        PASS_STOP.output(self._proc_fifo_pop, self._repsig_fifo_valid & self._proc_stop & ~self._ref_fifo_full)
-        # Pop the repsig stream once we have the valid on the proc stream
-        PASS_STOP.output(self._repsig_fifo_pop, self._repsig_stop & self._proc_fifo_valid & ~self._ref_fifo_full)
-        PASS_STOP.output(self._proc_fifo_inject_push, 0)
-        PASS_STOP.output(self._proc_fifo_inject_data, 0)
-        PASS_STOP.output(self._proc_fifo_inject_eos, 0)
-
-        #####################
-        # DONE
-        #####################
-        DONE.output(self._ref_fifo_in_data, self._proc_fifo_out_data)
-        DONE.output(self._ref_fifo_in_eos, 1)
-        DONE.output(self._ref_fifo_push, ~self._ref_fifo_full & self._proc_done & self._repsig_done)
-        DONE.output(self._proc_fifo_pop, ~self._ref_fifo_full & self._proc_done & self._repsig_done)
-        DONE.output(self._repsig_fifo_pop, ~self._ref_fifo_full & self._proc_done & self._repsig_done)
-        DONE.output(self._proc_fifo_inject_push, 0)
-        DONE.output(self._proc_fifo_inject_data, 0)
-        DONE.output(self._proc_fifo_inject_eos, 0)
+        PASS_REPEAT.output(self._set_last_pushed_data, self._proc_data_seen)
+        PASS_REPEAT.output(self._clr_last_pushed_data, self._proc_stop | (self._proc_done & self._repsig_done & ~self._ref_fifo_full))
 
         self.repeat_fsm.set_start_state(START)
 
