@@ -253,7 +253,7 @@ def load_test_module(test_name):
         return create_gold(ref, repeat)
 
     elif test_name == "arr_10":
-        ref = [1, 2, 'S0', 'S0', 3, 'S0', 4, 'S1', 'D']
+        ref = [1, 2, 'S0', 'S1', 3, 'S0', 4, 'S2', 'D']
         repeat = ['R', 'S', 'R', 'S', 'R', 'R', 'S', 'R', 'S', 'S', 'D']
         return create_gold(ref, repeat)   
 
@@ -266,6 +266,16 @@ def load_test_module(test_name):
         ref = [1, 2, 'S0', 'S1', 'S1', 3, 'S0', 4, 'S2', 'D']
         repeat = create_repeat_sig(ref, 2)
         return create_gold(ref, repeat) 
+
+    elif test_name == "arr_13":
+        ref = ['S1', 1, 2, 'S0', 'S0', 3, 'S0', 4, 'S1', 'D']
+        repeat = ['R', 'R', 'S', 'R', 'S', 'R', 'S', 'S', 'R', 'S', 'S', 'D']
+        return create_gold(ref, repeat)
+
+    elif test_name == "arr_14":
+        ref = ['S1', 1, 2, 'S0', 'S0', 3, 'S0', 4, 'S0','S1', 'D']
+        repeat = ['R', 'R', 'S', 'R', 'S', 'R', 'S', 'S', 'R', 'S', 'S', 'R', 'R', 'S', 'D']
+        return create_gold(ref, repeat)
 
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
@@ -286,19 +296,15 @@ def load_test_module(test_name):
 def module_iter_basic(test_name, add_test=""):
     [ir1, rep, gc] = load_test_module(test_name)
 
-    # print(ir1)
-    # print(rep)
-    # print(gc)
-
     if add_test != "":
         additional_t = load_test_module(add_test)
         ir1 = ir1 + additional_t[0]
         rep = rep + additional_t[1]
         gc = gc + additional_t[2]
 
-    # print("ir1", ir1)
-    # print("rep", rep)
-    # print("gc", gc)
+    print("ir1", ir1)
+    print("rep", rep)
+    print("gc", gc)
 
     sparse_helper.write_txt("pos_in_0.txt", ir1)
     sparse_helper.write_txt("pos_in_1.txt", rep)
@@ -321,7 +327,7 @@ def module_iter_basic(test_name, add_test=""):
     pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
     
     #compare each element in the output from pos_out_0.txt with the gold output
-    # print(pos_out_0)
+    print(pos_out_0)
     assert len(pos_out_0) == len(gc), \
         f"Output length {len(pos_out_0)} didn't match gold length {len(gc)}"
     for i in range(len(pos_out_0)):
@@ -335,7 +341,7 @@ def test_iter_basic():
     init_module()
     test_list = ["arr_1", "arr_2", "arr_3", "arr_4", \
                 "arr_5", "arr_6", "arr_7", "arr_8", \
-                "arr_9", "arr_10", "arr_11", "arr_12", "empty"]
+                "arr_9", "arr_10", "arr_11", "arr_12", "arr_13", "arr_14", "empty"]
     for test in test_list:
         module_iter_basic(test)
 
@@ -363,9 +369,9 @@ def test_random_3d():
 
 def test_seq():
     init_module()
-    test_list =  ["arr_1", "arr_2", "arr_3", "arr_4", \
+    test_list = ["arr_1", "arr_2", "arr_3", "arr_4", \
                 "arr_5", "arr_6", "arr_7", "arr_8", \
-                "arr_9", "arr_10", "arr_11", "arr_12", "empty"]
+                "arr_9", "arr_10", "arr_11", "arr_12", "arr_13", "arr_14", "empty"]
     for i in range(10):
         rand = random.sample(test_list, 2)
         module_iter_basic(rand[0], rand[1])
