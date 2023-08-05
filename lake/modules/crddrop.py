@@ -170,6 +170,15 @@ class CrdDrop(MemoryController):
         self._base_delay = self.var("base_delay", self.data_width + 1)
         self._base_valid_delay = self.var("base_valid_delay", 1)
 
+        self._delay_eos = self.var("delay_eos", 1)
+        self.wire(self._delay_eos, self._base_valid_delay & self._base_delay[self.data_width])
+        self._delay_data = self.var("delay_data", 1)
+        self.wire(self._delay_data, self._base_valid_delay & ~self._delay_eos)
+        self._delay_done = self.var("delay_done", 1)
+        self.wire(self._delay_done, self._delay_eos & (self._base_delay[9, 8] == kts.const(1, 2)))
+        self._delay_stop = self.var("delay_stop", 1)
+        self.wire(self._delay_stop, self._delay_eos & (self._base_delay[9, 8] == kts.const(0, 2)))
+
         self._cmrg_fifo_push = self.var("cmrg_fifo_push", 2)
         self._cmrg_fifo_pop = self.var("cmrg_fifo_pop", 2)
 
@@ -197,6 +206,8 @@ class CrdDrop(MemoryController):
         self._base_infifo_in_data = self.var("base_infifo_in_data", 16)
         self._base_infifo_in_eos = self.var("base_infifo_in_eos", 1)
         self._base_infifo_in_valid = self.var("base_infifo_in_valid", 1)
+        # Create a fake pop to deal with the state after done token
+        self._base_infifo_true_pop = self.var("base_infifo_true_pop", 1)
         # Stupid convert -
         self._base_infifo_in_packed = self.var(f"base_infifo_in_packed", self.data_width + 1, packed=True)
         self.wire(self._base_infifo_in_packed[self.data_width], self._cmrg_coord_in_eos_in[0])
@@ -212,7 +223,7 @@ class CrdDrop(MemoryController):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        push=self._cmrg_coord_in_valid_in[0],
-                       pop=self._cmrg_fifo_pop[0],
+                       pop=self._base_infifo_true_pop,
                        data_in=self._base_infifo_in_packed,
                        data_out=self._base_infifo_out_packed)
 
@@ -289,6 +300,9 @@ class CrdDrop(MemoryController):
         self.wire(self._pushing_s0, self._base_infifo_in_valid & self._base_infifo_in_eos & self._proc_infifo_in_valid & self._proc_infifo_in_eos &
                   (self._base_infifo_in_data[9, 8] == kts.const(1, 2)) & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)) & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
 
+        # Fake Pop
+        self.wire(self._base_infifo_true_pop, self._cmrg_fifo_pop[0] & ~(self._delay_stop & self._done_seen))
+
         ####################
         # STATE MACHINE TO PROCESS PROC STREAM
         ####################
@@ -351,19 +365,21 @@ class CrdDrop(MemoryController):
         ################
         # To pop the lower one, we want to make sure there is data on it - free to push
         # if stop on it, need to make sure the upper has valid data on it (or done)
-        PROCESS.output(self._cmrg_fifo_pop[0], kts.ternary(self._base_done,
-                                                          self._proc_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_valid_delay,
-                                                          kts.ternary(self._base_infifo_in_valid & ~self._eos_seen,
-                                                                        ~base_outfifo.ports.full & ~self._base_valid_delay,
-                                                                        kts.ternary(self._base_infifo_in_valid & self._eos_seen,
-                                                                                    self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ((~self._base_valid_delay & ~proc_outfifo.ports.full) | self._base_valid_delay),
+        PROCESS.output(self._cmrg_fifo_pop[0], ~self._base_valid_delay | kts.ternary(self._delay_done,
+                                                          self._proc_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                          kts.ternary(self._delay_data,
+                                                                        ~base_outfifo.ports.full & self._base_infifo_in_valid &
+                                                                        (self._base_data_seen | (self._eos_seen & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~proc_outfifo.ports.full)),
+                                                                        kts.ternary(self._delay_eos,
+                                                                                    self._base_infifo_in_valid & ((self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) | self._proc_done) &
+                                                                                    (((self._base_data_seen | self._base_done) & ((self._pushed_data_lower & ~base_outfifo.ports.full) | ~self._pushed_data_lower)) | self._eos_seen),
                                                                                     0))))
 
         # Only pop the proc fifo if the base level has a stop token and upper has valid, or the upper has a stop token by itself
         PROCESS.output(self._cmrg_fifo_pop[1], kts.ternary(self._proc_done,
-                                                            self._base_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_valid_delay,
-                                                            kts.ternary(self._base_infifo_in_valid & self._eos_seen & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos,
-                                                                        (~proc_outfifo.ports.full & ~self._base_valid_delay) | self._base_valid_delay,
+                                                            self._delay_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                            kts.ternary(self._proc_infifo_in_valid & ~self._proc_infifo_in_eos,
+                                                                        self._eos_seen & ((~proc_outfifo.ports.full & self._delay_data) | self._delay_eos | ~self._base_valid_delay),
                                                                         kts.ternary(self._proc_infifo_in_valid & self._proc_infifo_in_eos,
                                                                                     ~proc_outfifo.ports.full,
                                                                                     0))))
@@ -371,20 +387,21 @@ class CrdDrop(MemoryController):
         # The push is basically the same as the pop
         # But we only want to push the STOP token if we have previously pushed data on the line, otherwise we are dropping the fiber from both
         # levels of the hierarchy
-        PROCESS.output(self._cmrg_fifo_push[0], kts.ternary(self._base_done & ~self._base_valid_delay,
-                                                            self._proc_done,
-                                                            kts.ternary(self._base_infifo_in_valid & ~self._eos_seen & ~self._base_valid_delay,
-                                                                        ~base_outfifo.ports.full,
-                                                                        kts.ternary(self._base_infifo_in_valid & ~self._eos_seen & self._base_valid_delay,
-                                                                                    (self._proc_done | (self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & self._pushed_data_lower)) &
-                                                                                        ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+        PROCESS.output(self._cmrg_fifo_push[0], kts.ternary(self._delay_done,
+                                                            self._proc_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                            kts.ternary(self._delay_data,
+                                                                        ~base_outfifo.ports.full & self._base_infifo_in_valid &
+                                                                        (self._base_data_seen | (self._eos_seen & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~proc_outfifo.ports.full)),
+                                                                        kts.ternary(self._delay_eos,
+                                                                                    self._base_infifo_in_valid & ((self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) | self._proc_done) &
+                                                                                    (self._base_data_seen | self._base_done) & self._pushed_data_lower & ~base_outfifo.ports.full,
                                                                                     0))))
 
         # Push is similar to pop, but in the case of a real data on proc, we only push it if we pushed a data on the base level along with the stop token
         PROCESS.output(self._cmrg_fifo_push[1], kts.ternary(self._proc_done,
-                                                            self._base_done & ~self._base_valid_delay,
-                                                            kts.ternary(self._base_infifo_in_valid & self._eos_seen & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos,
-                                                                        ~proc_outfifo.ports.full & ~self._base_valid_delay & self._pushed_data_lower,
+                                                            self._delay_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
+                                                            kts.ternary(self._proc_infifo_in_valid & ~self._proc_infifo_in_eos,
+                                                                        self._eos_seen & ~proc_outfifo.ports.full & self._delay_data,
                                                                         kts.ternary(self._proc_infifo_in_valid & self._proc_infifo_in_eos,
                                                                                     ~proc_outfifo.ports.full,
                                                                                     0))))
@@ -393,11 +410,11 @@ class CrdDrop(MemoryController):
         PROCESS.output(self._clr_pushed_proc, 0)
         PROCESS.output(self._clr_pushed_stop_lvl, 0)
         # Set that data is pushed when you're pushing data...
-        PROCESS.output(self._set_pushed_data_lower, self._base_infifo_in_valid & ~self._base_infifo_in_eos & ~self._base_valid_delay & ~base_outfifo.ports.full)
+        PROCESS.output(self._set_pushed_data_lower, self._delay_data & ~base_outfifo.ports.full & self._base_infifo_in_valid &
+                                                    (self._base_data_seen | (self._eos_seen & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos & ~proc_outfifo.ports.full)))
         # Clear that data has been pushed when you are pushing the stop token of the base line
-        PROCESS.output(self._clr_pushed_data_lower, self._base_done | (self._base_infifo_in_valid & self._base_valid_delay &
-                                                                    ~self._eos_seen & self._proc_infifo_in_valid & ~self._proc_infifo_in_eos &
-                                                                    ~base_outfifo.ports.full & ~proc_outfifo.ports.full))
+        PROCESS.output(self._clr_pushed_data_lower, self._delay_done | (self._delay_eos & self._base_infifo_in_valid & ((self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) | self._proc_done) &
+                                                                        (self._base_data_seen | self._base_done) & self._pushed_data_lower & ~base_outfifo.ports.full))
 
         self.proc_fsm.set_start_state(START)
 
@@ -416,9 +433,7 @@ class CrdDrop(MemoryController):
         # Stupid convert -
         self._base_outfifo_in_packed = self.var(f"base_outfifo_in_packed", self.data_width + 1, packed=True)
         # Select input from the dalay is delay is valid
-        self.wire(self._base_outfifo_in_packed, kts.ternary(self._base_valid_delay,
-                                                            self._base_delay,
-                                                            self._base_infifo_out_packed))
+        self.wire(self._base_outfifo_in_packed, self._base_delay)
 
         self._base_outfifo_out_packed = self.var(f"base_outfifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._cmrg_coord_out[0][self.data_width], self._base_outfifo_out_packed[self.data_width])
@@ -476,12 +491,14 @@ class CrdDrop(MemoryController):
         if ~self._rst_n:
             self._base_delay = 0
             self._base_valid_delay = 0
-        elif (self._cmrg_fifo_pop[0] & self._base_infifo_in_valid & self._eos_seen & self._pushed_data_lower):
-            self._base_delay = kts.ternary(self._base_infifo_out_packed < self._base_delay,  # Only keeps the maximum
-                                          self._base_delay,
-                                          self._base_infifo_out_packed)
+        elif (self._cmrg_fifo_pop[0] & ~(self._delay_done & self._done_seen)):
+            self._base_delay = kts.ternary(~self._base_valid_delay | self._base_data_seen | self._done_seen | self._delay_data,
+                                            self._base_infifo_out_packed,
+                                            kts.ternary(self._base_infifo_out_packed < self._base_delay,  # Only keeps the maximum
+                                                    self._base_delay,
+                                                    self._base_infifo_out_packed))
             self._base_valid_delay = self._base_infifo_in_valid
-        elif self._cmrg_fifo_push[0]:
+        elif (self._cmrg_fifo_pop[0] & self._delay_done & self._done_seen):
             self._base_delay = 0
             self._base_valid_delay = 0
         else:
