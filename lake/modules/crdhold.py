@@ -407,7 +407,7 @@ class CrdHold(MemoryController):
         # Pop the base if there's room in the output and the proc isn't eos
         # DATA_SEEN.output(self._cmrg_fifo_pop[0], ~self._proc_eos_seen & ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_done_seen)
         DATA_SEEN.output(self._cmrg_fifo_pop[0], kts.ternary(self._base_eos_seen,
-                                                             kts.const(1, 1),
+                                                             kts.const(1, 1) & (self._proc_data_seen | self._proc_done_seen),
                                                              self._base_infifo_in_valid & ~self._base_infifo_in_eos &
                                                                 self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) &
                                                                     ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_done_seen)
@@ -417,13 +417,13 @@ class CrdHold(MemoryController):
                                                              self._base_eos_seen & ~base_outfifo.ports.full & ~proc_outfifo.ports.full) & ~self._proc_done_seen)
         # Push the bottom if there is room and the bottom is valid
         DATA_SEEN.output(self._cmrg_fifo_push[0], kts.ternary(self._base_eos_seen,
-                                                              kts.const(1, 1),
+                                                              kts.const(1, 1) & (self._proc_data_seen | self._proc_done_seen),
                                                               self._base_infifo_in_valid & ~self._base_infifo_in_eos &
                                                                 self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) &
                                                                     ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_done_seen)
         # If the bottom is eos, push, if the bottom is not eos, push if the top also not eos
         DATA_SEEN.output(self._cmrg_fifo_push[1], kts.ternary(self._base_eos_seen,
-                                                              kts.const(1, 1),
+                                                              kts.const(1, 1) & (self._proc_data_seen | self._proc_done_seen),
                                                               self._base_infifo_in_valid & ~self._base_infifo_in_eos &
                                                                 self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) &
                                                                     ~base_outfifo.ports.full & ~proc_outfifo.ports.full & ~self._base_done_seen)
