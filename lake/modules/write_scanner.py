@@ -426,10 +426,6 @@ class WriteScanner(MemoryController):
         # self._full_stop = self.var("full_stop", 1)
         # self.wire(self._full_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
 
-        self._matching_stop = self.var("matching_stop", 1)
-        # self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == self._stop_lvl))
-        self.wire(self._matching_stop, self._data_infifo_valid_in & self._data_infifo_eos_in)
-
         self._clr_wen_made = self.var("clr_wen_made", 1)
         self._wen_made = sticky_flag(self, self._push_to_outs, clear=self._clr_wen_made, name="wen_made", seq_only=True)
 
@@ -572,7 +568,10 @@ class WriteScanner(MemoryController):
         # In the upper level, we will emit new coordinates linearly as we see new ones, reset tracking at stop_lvl
         UL.next(UL_EMIT_COORD, self._new_coord)
         # Only can be in emit seg upon creation of blank fiber or stop token...
-        UL.next(UL_EMIT_SEG, self._matching_stop | (self._init_blank & ~self._blank_done))
+        UL.next(UL_EMIT_SEG, self._stop_in | (self._init_blank & ~self._blank_done))
+        # UL.next(FINALIZE1, kts.ternary(self._spacc_mode,
+        #                                         (self._data_done_in) | (self._init_blank & ~self._blank_done) | self._stop_lvl_geq,
+        #                                         self._data_done_in))
         UL.next(UL, None)
 
         ####################
@@ -580,7 +579,8 @@ class WriteScanner(MemoryController):
         ####################
         # From the emit coord, we will send a write out as long the memory is ready for a write
         # Then go back to UL once we see new data or a stop in
-        UL_EMIT_COORD.next(UL, self._new_coord | self._stop_in)
+        # UL_EMIT_COORD.next(UL, self._new_coord | self._stop_in)
+        UL_EMIT_COORD.next(UL_EMIT_SEG, self._stop_in & self._wen_made)
         UL_EMIT_COORD.next(UL_EMIT_COORD, None)
 
         ####################
@@ -589,17 +589,11 @@ class WriteScanner(MemoryController):
         # From the emit seg, we will send out the writes to the segment array, will clear all the state
         # Should go to done if we see a stop 0
         # Should only move on once we have drained the subsequent stops and see valid data coming in
-        # UL_EMIT_SEG.next(UL, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
-        UL_EMIT_SEG.next(UL, kts.ternary(self._init_blank,
-                                         self._data_infifo_valid_in & ~self._data_infifo_eos_in & self._blank_done,
-                                         self._data_infifo_valid_in & ~self._data_infifo_eos_in))
-        # UL_EMIT_SEG.next(DONE, self._full_stop)
-        # UL_EMIT_SEG.next(FINALIZE1, self._full_stop)
-        # UL_EMIT_SEG.next(FINALIZE1, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
-        # UL_EMIT_SEG.next(FINALIZE1, kts.ternary(self._init_blank,
-        #                                         (self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2))) | (~self._blank_done),
-        #                                         self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2))))
-
+        # UL_EMIT_SEG.next(UL, kts.ternary(self._init_blank,
+        #                                  self._data_infifo_valid_in & ~self._data_infifo_eos_in & self._blank_done,
+        #                                  self._data_infifo_valid_in & ~self._data_infifo_eos_in))
+        UL_EMIT_SEG.next(UL, self._init_blank & self._data_infifo_valid_in & ~self._data_infifo_eos_in & self._blank_done)
+        UL_EMIT_SEG.next(UL_EMIT_COORD, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
         # In sparse accum mode, we go to finalize when we have the geq stop
         UL_EMIT_SEG.next(FINALIZE1, kts.ternary(self._spacc_mode,
                                                 (self._data_done_in) | (self._init_blank & ~self._blank_done) | self._stop_lvl_geq,
@@ -957,7 +951,7 @@ class WriteScanner(MemoryController):
         # UL
         #######
         UL.output(self._data_to_fifo, kts.const(0, self._data_to_fifo.width))
-        UL.output(self._op_to_fifo, 0)
+        UL.output(self._op_to_fifo, 1)
         UL.output(self._addr_to_fifo, kts.const(0, self._addr_to_fifo.width))
         UL.output(self._ID_to_fifo, kts.const(0, 16))
         UL.output(self._push_to_outs, 0)
@@ -1003,12 +997,14 @@ class WriteScanner(MemoryController):
         UL_EMIT_COORD.output(self._clr_coord_addr, 0)
         UL_EMIT_COORD.output(self._inc_seg_ctr, ~self._wen_made & self._join_out_ready)
         UL_EMIT_COORD.output(self._clr_seg_ctr, 0)
-        UL_EMIT_COORD.output(self._set_curr_coord, 0)
+        # UL_EMIT_COORD.output(self._set_curr_coord, 0)
+        UL_EMIT_COORD.output(self._set_curr_coord, self._wen_made & self._new_coord)
         UL_EMIT_COORD.output(self._clr_curr_coord, 0)
         # Pop until stop in or new coordinate
         UL_EMIT_COORD.output(self._infifo_pop[0], ~self._new_coord & ~self._stop_in)
         UL_EMIT_COORD.output(self._infifo_pop[1], 0)
-        UL_EMIT_COORD.output(self._clr_wen_made, 0)
+        # UL_EMIT_COORD.output(self._clr_wen_made, 0)
+        UL_EMIT_COORD.output(self._clr_wen_made, self._wen_made & (self._new_coord | self._stop_in))
         UL_EMIT_COORD.output(self._set_block_size, 0)
         UL_EMIT_COORD.output(self._inc_block_write, 0)
         UL_EMIT_COORD.output(self._clr_block_write, 0)
@@ -1031,14 +1027,16 @@ class WriteScanner(MemoryController):
         UL_EMIT_SEG.output(self._clr_coord_addr, 0)
         UL_EMIT_SEG.output(self._inc_seg_ctr, 0)
         UL_EMIT_SEG.output(self._clr_seg_ctr, 0)
-        UL_EMIT_SEG.output(self._set_curr_coord, 0)
+        # UL_EMIT_SEG.output(self._set_curr_coord, 0)
+        UL_EMIT_SEG.output(self._set_curr_coord, self._new_coord)
         # Make sure to clear the coord on segment emissions so it doesn't get reused
-        UL_EMIT_SEG.output(self._clr_curr_coord, 1)
+        UL_EMIT_SEG.output(self._clr_curr_coord, ~self._wen_made)
         # Assumption is that valid sets of coordinates are always passed here so I should be able to hit new data
         # Pop until we have data in thats not a stop (or we fall through to DONE)
         UL_EMIT_SEG.output(self._infifo_pop[0], self._data_infifo_valid_in & self._data_infifo_eos_in & ~(self._init_blank & ~self._blank_done) & ~self._data_done_in)
         UL_EMIT_SEG.output(self._infifo_pop[1], 0)
-        UL_EMIT_SEG.output(self._clr_wen_made, 0)
+        # UL_EMIT_SEG.output(self._clr_wen_made, 0)
+        UL_EMIT_SEG.output(self._clr_wen_made, self._wen_made & self._data_infifo_valid_in & ~self._data_infifo_eos_in)
         UL_EMIT_SEG.output(self._set_block_size, 0)
         UL_EMIT_SEG.output(self._inc_block_write, 0)
         UL_EMIT_SEG.output(self._clr_block_write, 0)
