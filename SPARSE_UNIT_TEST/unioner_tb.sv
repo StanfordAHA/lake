@@ -42,7 +42,7 @@ module unioner_tb;
     wire pos_out_1_ready;
 
     wire [6:0] done;
-    parameter NUM_CYCLES = 2048;
+    parameter NUM_CYCLES = 8000;
 
     intersect_unit #(
         
@@ -78,7 +78,8 @@ module unioner_tb;
     );
 
     glb_write #(
-        .FILE_NAME("coord_in_0.txt")
+        .FILE_NAME("coord_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -90,7 +91,8 @@ module unioner_tb;
     );
 
     glb_write #(
-        .FILE_NAME("coord_in_1.txt")
+        .FILE_NAME("coord_in_1.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) coord_in_1_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -102,7 +104,8 @@ module unioner_tb;
     );
 
     glb_write #(
-        .FILE_NAME("pos_in_0.txt")
+        .FILE_NAME("pos_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) pos_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -114,7 +117,8 @@ module unioner_tb;
     );
 
     glb_write #(
-        .FILE_NAME("pos_in_1.txt")
+        .FILE_NAME("pos_in_1.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) pos_in_1_inst (
         .clk(clk),
         .rst_n(rst_n),

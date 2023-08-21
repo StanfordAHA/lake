@@ -1,7 +1,8 @@
 module glb_write #(
     parameter TX_SIZE = 2048,
     parameter FILE_NAME = "src.txt",
-    parameter LOCATION = "X00_Y00"
+    parameter LOCATION = "X00_Y00",
+    parameter TX_NUM = 1
 )
 (
     input logic clk,
@@ -24,6 +25,8 @@ string ENABLED_PARGS;
 integer ENABLED;
 integer DELAY;
 integer ADD_DELAY;
+integer done_count;
+integer DONE_TOKEN;
 
 initial begin
 
@@ -32,10 +35,10 @@ initial begin
     done = 0;
     data = 0;
     valid = 0;
-
     ENABLED = 1;
-    
     ADD_DELAY = 1;
+    done_count = TX_NUM;
+    DONE_TOKEN = 17'h10100;
 
     // ENABLED_PARGS = $sformatf("%s_ENABLED=%%d", LOCATION);
     // $value$plusargs(ENABLED_PARGS, ENABLED);
@@ -68,7 +71,7 @@ initial begin
         @(posedge clk);
 
         // Make as many transfers from the memory as needed.
-        while(num_tx < TX_SIZE_USE) begin
+        while(num_tx < TX_SIZE_USE && done_count > 0) begin
             @(posedge clk);
             #1;
 
@@ -82,10 +85,13 @@ initial begin
             data = local_mem[num_tx];
             valid = 1;
             if(ready == 1 && valid == 1) begin
+                if (data == DONE_TOKEN) begin
+                    done_count--;
+                    // valid = 0;
+                end
                 num_tx = num_tx + 1;
             end
         end
-
     end
 
     @(posedge clk);

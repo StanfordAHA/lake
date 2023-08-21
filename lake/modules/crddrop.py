@@ -379,7 +379,7 @@ class CrdDrop(MemoryController):
         PROCESS.output(self._cmrg_fifo_pop[1], kts.ternary(self._proc_done,
                                                             self._delay_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
                                                             kts.ternary(self._proc_infifo_in_valid & ~self._proc_infifo_in_eos,
-                                                                        self._eos_seen & ((~proc_outfifo.ports.full & self._delay_data) | self._delay_eos | ~self._base_valid_delay),
+                                                                        self._eos_seen & ((~proc_outfifo.ports.full & self._delay_data & ~base_outfifo.ports.full) | self._delay_eos | ~self._base_valid_delay),
                                                                         kts.ternary(self._proc_infifo_in_valid & self._proc_infifo_in_eos,
                                                                                     ~proc_outfifo.ports.full,
                                                                                     0))))
@@ -401,7 +401,7 @@ class CrdDrop(MemoryController):
         PROCESS.output(self._cmrg_fifo_push[1], kts.ternary(self._proc_done,
                                                             self._delay_done & ~base_outfifo.ports.full & ~proc_outfifo.ports.full,
                                                             kts.ternary(self._proc_infifo_in_valid & ~self._proc_infifo_in_eos,
-                                                                        self._eos_seen & ~proc_outfifo.ports.full & self._delay_data,
+                                                                        self._eos_seen & ~proc_outfifo.ports.full & self._delay_data & ~base_outfifo.ports.full,
                                                                         kts.ternary(self._proc_infifo_in_valid & self._proc_infifo_in_eos,
                                                                                     ~proc_outfifo.ports.full,
                                                                                     0))))

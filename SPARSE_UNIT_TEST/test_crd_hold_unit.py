@@ -224,6 +224,7 @@ def module_iter_basic(test_name, add_test=""):
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
+    assert output.find("Valid signal fails to end") == -1, "Valid signal fails to end"
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
 

@@ -62,8 +62,15 @@ initial begin
 
         while(done_count > 0) begin
             @(posedge clk);
-            #1
+            #1;
             // ready = $urandom();
+
+            ready = 0;
+            @(posedge clk);
+            #1;
+            @(posedge clk);
+            #1;
+
             ready = 1;
             if(ready == 1 && valid == 1) begin
                 local_mem_0[num_rx] = data;
@@ -73,8 +80,9 @@ initial begin
                 num_rx = num_rx + 1;
             end
         end
-
         @(posedge clk);
+        #1;
+        assert(valid == 0) else $error("Valid signal fails to end");
         ready = 0;
         $writememh(F1_USE, local_mem_0);
 

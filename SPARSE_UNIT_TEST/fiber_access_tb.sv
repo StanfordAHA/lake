@@ -53,7 +53,7 @@ module fiber_access_tb;
     logic [1:0] [31:0] config_out;
 
     wire [3:0] done;
-    parameter NUM_CYCLES = 4000;
+    parameter NUM_CYCLES = 10000;
 
     integer clk_count;
     integer start_write;
@@ -121,7 +121,8 @@ module fiber_access_tb;
     );
 
     glb_write #(
-        .FILE_NAME("coord_in_0.txt")
+        .FILE_NAME("coord_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -133,7 +134,8 @@ module fiber_access_tb;
     );
 
     glb_write #(
-        .FILE_NAME("pos_in_0.txt")
+        .FILE_NAME("pos_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) pos_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),

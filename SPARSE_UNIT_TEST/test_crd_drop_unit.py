@@ -257,7 +257,7 @@ def module_iter_basic(test_name, add_test=""):
                              "TOP=coord_drop_tb", "TX_NUM_GLB=2", "TEST_UNIT=CrdDrop.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
-    # print(output)
+    assert output.find("Valid signal fails to end") == -1, "Valid signal fails to end"
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
 

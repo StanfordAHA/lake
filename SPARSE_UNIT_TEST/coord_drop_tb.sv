@@ -61,7 +61,8 @@ module coord_drop_tb;
     );
 
     glb_write #(
-        .FILE_NAME("coord_in_0.txt")
+        .FILE_NAME("coord_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -73,7 +74,8 @@ module coord_drop_tb;
     );
 
     glb_write #(
-        .FILE_NAME("coord_in_1.txt")
+        .FILE_NAME("coord_in_1.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) coord_in_1_inst (
         .clk(clk),
         .rst_n(rst_n),

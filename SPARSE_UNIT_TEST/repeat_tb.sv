@@ -55,7 +55,8 @@ module repeat_tb;
 
 
     glb_write #(
-        .FILE_NAME("pos_in_0.txt")
+        .FILE_NAME("pos_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) proc_data_in_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -67,7 +68,8 @@ module repeat_tb;
     );
 
     glb_write #(
-        .FILE_NAME("pos_in_1.txt")
+        .FILE_NAME("pos_in_1.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) repsig_data_in_inst (
         .clk(clk),
         .rst_n(rst_n),

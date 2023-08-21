@@ -24,7 +24,7 @@ module reduce_tb;
     wire val_out_ready;
 
     wire [1:0] done;
-    parameter NUM_CYCLES = 1000;
+    parameter NUM_CYCLES = 4000;
 
     reg_cr #(
         
@@ -45,7 +45,8 @@ module reduce_tb;
     );
 
     glb_write #(
-        .FILE_NAME("coord_in_0.txt")
+        .FILE_NAME("coord_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB)
     ) val_in_inst (
         .clk(clk),
         .rst_n(rst_n),
