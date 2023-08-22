@@ -122,7 +122,8 @@ module fiber_access_tb;
 
     glb_write #(
         .FILE_NAME("coord_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(0)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -135,7 +136,8 @@ module fiber_access_tb;
 
     glb_write #(
         .FILE_NAME("pos_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(1)
     ) pos_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -148,7 +150,8 @@ module fiber_access_tb;
 
     glb_read #(
         .FILE_NAME("coord_out.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(2)
     ) coord_out_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -161,7 +164,8 @@ module fiber_access_tb;
 
     glb_read #(
         .FILE_NAME("pos_out_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(3)
     ) pos_out_0_inst (
         .clk(clk),
         .rst_n(rst_n),

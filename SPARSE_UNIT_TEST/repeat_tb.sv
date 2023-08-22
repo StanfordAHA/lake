@@ -28,7 +28,7 @@ module repeat_tb;
     wire ref_data_out_ready;
 
     wire [2:0] done;
-    parameter NUM_CYCLES = 4000;
+    parameter NUM_CYCLES = 8000;
 
     Repeat #(
         
@@ -56,7 +56,8 @@ module repeat_tb;
 
     glb_write #(
         .FILE_NAME("pos_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(0)
     ) proc_data_in_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -69,7 +70,8 @@ module repeat_tb;
 
     glb_write #(
         .FILE_NAME("pos_in_1.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(1)
     ) repsig_data_in_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -83,7 +85,8 @@ module repeat_tb;
 
     glb_read #(
         .FILE_NAME("pos_out_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(2)
     ) ref_data_out_inst (
         .clk(clk),
         .rst_n(rst_n),

@@ -34,7 +34,7 @@ module coord_drop_tb;
     wire pos_out_1_ready;
 
     wire [3:0] done;
-    parameter NUM_CYCLES = 1000;
+    parameter NUM_CYCLES = 4000;
 
     crddrop #(
         
@@ -62,7 +62,8 @@ module coord_drop_tb;
 
     glb_write #(
         .FILE_NAME("coord_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(0)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -75,7 +76,8 @@ module coord_drop_tb;
 
     glb_write #(
         .FILE_NAME("coord_in_1.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(1)
     ) coord_in_1_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -88,7 +90,8 @@ module coord_drop_tb;
 
     glb_read #(
         .FILE_NAME("pos_out_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(2)
     ) pos_out_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -101,7 +104,8 @@ module coord_drop_tb;
 
     glb_read #(
         .FILE_NAME("pos_out_1.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(3)
     ) pos_out_1_inst (
         .clk(clk),
         .rst_n(rst_n),

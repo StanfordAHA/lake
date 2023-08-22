@@ -2,7 +2,8 @@ module glb_write #(
     parameter TX_SIZE = 2048,
     parameter FILE_NAME = "src.txt",
     parameter LOCATION = "X00_Y00",
-    parameter TX_NUM = 1
+    parameter TX_NUM = 1,
+    parameter RAN_SHITF = 0
 )
 (
     input logic clk,
@@ -27,6 +28,7 @@ integer DELAY;
 integer ADD_DELAY;
 integer done_count;
 integer DONE_TOKEN;
+integer mask;
 
 initial begin
 
@@ -39,6 +41,7 @@ initial begin
     ADD_DELAY = 1;
     done_count = TX_NUM;
     DONE_TOKEN = 17'h10100;
+    mask = 32'hF  << RAN_SHITF;
 
     // ENABLED_PARGS = $sformatf("%s_ENABLED=%%d", LOCATION);
     // $value$plusargs(ENABLED_PARGS, ENABLED);
@@ -75,7 +78,7 @@ initial begin
             @(posedge clk);
             #1;
 
-            DELAY = $urandom & 32'hF;
+            DELAY = $urandom & mask;
             if(ready == 1 && DELAY < 4 && ADD_DELAY) begin// 25% chance of delay
                 valid = 0;
                 @(posedge clk);

@@ -42,7 +42,7 @@ module unioner_tb;
     wire pos_out_1_ready;
 
     wire [6:0] done;
-    parameter NUM_CYCLES = 8000;
+    parameter NUM_CYCLES = 100000;
 
     intersect_unit #(
         
@@ -79,7 +79,8 @@ module unioner_tb;
 
     glb_write #(
         .FILE_NAME("coord_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(0)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -92,7 +93,8 @@ module unioner_tb;
 
     glb_write #(
         .FILE_NAME("coord_in_1.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(1)
     ) coord_in_1_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -105,7 +107,8 @@ module unioner_tb;
 
     glb_write #(
         .FILE_NAME("pos_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(2)
     ) pos_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -118,7 +121,8 @@ module unioner_tb;
 
     glb_write #(
         .FILE_NAME("pos_in_1.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(3)
     ) pos_in_1_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -131,7 +135,8 @@ module unioner_tb;
 
     glb_read #(
         .FILE_NAME("coord_out.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(4)
     ) coord_out_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -144,7 +149,8 @@ module unioner_tb;
 
     glb_read #(
         .FILE_NAME("pos_out_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(5)
     ) pos_out_0_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -157,7 +163,8 @@ module unioner_tb;
 
     glb_read #(
         .FILE_NAME("pos_out_1.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(6)
     ) pos_out_1_inst (
         .clk(clk),
         .rst_n(rst_n),

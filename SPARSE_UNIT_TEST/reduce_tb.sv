@@ -46,7 +46,8 @@ module reduce_tb;
 
     glb_write #(
         .FILE_NAME("coord_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(0)
     ) val_in_inst (
         .clk(clk),
         .rst_n(rst_n),
@@ -59,7 +60,8 @@ module reduce_tb;
 
     glb_read #(
         .FILE_NAME("coord_out.txt"),
-        .TX_NUM(`TX_NUM_GLB)
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(1)
     ) val_out_inst (
         .clk(clk),
         .rst_n(rst_n),

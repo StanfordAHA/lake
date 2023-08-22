@@ -2,7 +2,8 @@ module glb_read #(
     parameter NUM_BLOCKS = 1,
     parameter FILE_NAME = "dst.txt",
     parameter LOCATION = "X00_Y00",
-    parameter TX_NUM = 1
+    parameter TX_NUM = 1,
+    parameter RAN_SHITF = 0
 )
 (
     input logic clk,
@@ -26,6 +27,9 @@ string ENABLED_PARGS;
 integer ENABLED;
 integer DONE_TOKEN;
 integer done_count;
+integer delay_count;
+integer ADD_DELAY;
+integer mask;
 
 initial begin
 
@@ -39,6 +43,8 @@ initial begin
     done = 0;
     DONE_TOKEN = 17'h10100;
     done_count = TX_NUM;
+    ADD_DELAY = 1;
+    mask = 32'd3  << RAN_SHITF;
 
     if (ENABLED == 1) begin
 
@@ -66,10 +72,12 @@ initial begin
             // ready = $urandom();
 
             ready = 0;
-            @(posedge clk);
-            #1;
-            @(posedge clk);
-            #1;
+            delay_count = $urandom & mask;
+            while (delay_count > 0 & ADD_DELAY) begin
+                @(posedge clk);
+                #1;
+                delay_count--;
+            end
 
             ready = 1;
             if(ready == 1 && valid == 1) begin
