@@ -43,7 +43,7 @@ initial begin
     done = 0;
     DONE_TOKEN = 17'h10100;
     done_count = TX_NUM;
-    ADD_DELAY = 1;
+    ADD_DELAY = 0;
     mask = 32'd3  << RAN_SHITF;
 
     if (ENABLED == 1) begin

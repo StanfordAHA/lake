@@ -43,7 +43,7 @@ def init_module():
 
     k.verilog(fiber_access, filename=f"./modules/Fiber_access.sv", optimize_if=False)
 
-    sparse_helper.update_tcl("fiber_access_tb")
+    sparse_helper.update_tcl("value_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord", maybe = 0.0):
     # size = int(size*random.uniform(1.0, 1.0+d))
@@ -123,70 +123,24 @@ def create_ref(coord, dim, rate, size, maybe = True):
     return t
 
 
-def create_gold(in_crd, in_ref):
-    i_c_cpy = in_crd[:]
+def create_gold(in_val, in_ref):
+    i_c_cpy = in_val[:]
     i_r_cpy = in_ref[:]
 
-    print(in_crd)
-    print(in_ref)
-    print("============")
-    # process write
-    buf_size = 1000
-    fill = 0
-    done = False
-    time = 0
+    mem = [i for v in in_val if (not sparse_helper.is_STOP_sam(v) and not sparse_helper.is_DONE_sam(v))]
+    max_addr = len(mem) - 1
 
-    wrscan = CompressWrScan(size=buf_size, seg_size=buf_size, fill=fill)
+    print("Sam assumes 0-delay memory access")
 
-    while not done and time < TIMEOUT:
-        if len(in_crd) > 0:
-            wrscan.set_input(in_crd.pop(0))
+    out_v = []
+    for addr in in_ref:
+        if (not sparse_helper.is_STOP_sam(addr) and not sparse_helper.is_DONE_sam(addr)):
+            assert addr <= max_addr
+            out_v.append(mem[addr])
+        else:
+            out_v.append(addr)
 
-        wrscan.update()
-
-        # print("Timestep", time, "\t WrScan:", wrscan.out_done())
-
-        done = wrscan.out_done()
-        time += 1
-
-    print("sam write cycle count: ", time)
-    print(wrscan.get_seg_arr())
-    print(wrscan.get_arr())
-    crdscan = CompressedCrdRdScan(seg_arr=wrscan.get_seg_arr(), crd_arr=wrscan.get_arr())
-    done = False
-    time = 0
-    out_crd = []
-    out_ref = []
-
-    while not done and time < TIMEOUT:
-        if len(in_ref) > 0:
-            crdscan.set_in_ref(in_ref.pop(0))
-
-        crdscan.update()
-
-        out_crd.append(crdscan.out_crd())
-        out_ref.append(crdscan.out_ref())
-
-        # print("Timestep", time, "\t Crd:", crdscan.out_crd(), "\t Ref:", crdscan.out_ref())
-
-        done = crdscan.done
-        time += 1
-
-    print("sam read cycle count: ", time)
-    
-    out_crd = remove_emptystr(out_crd)
-    out_ref = remove_emptystr(out_ref)
-
-    # print(out_crd)
-    # print(out_ref)
-
-    out_c = []
-    out_r = []
-    for i in range(len(out_crd)):
-        if out_crd[i] != 'N':
-            out_c.append(out_crd[i])
-            out_r.append(out_ref[i])
-    st = [i_c_cpy, i_r_cpy, out_c, out_r]
+    st = [i_c_cpy, i_r_cpy, out_v]
     tr_st = [convert_stream_to_onyx_interp(i) for i in st]
 
     return tr_st
@@ -194,84 +148,84 @@ def create_gold(in_crd, in_ref):
 
 def load_test_module(test_name):
     if test_name == "direct_2d":
-        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_val = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
         in_ref = [0, 1, 'S0', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
     
     elif test_name == "direct_1d":
-        in_crd = [0, 2, 3, 7, 8, 10] + ['S0', 'D']
+        in_val = [0, 2, 3, 7, 8, 10] + ['S0', 'D']
         in_ref = [0, 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "in_ref_2d_1":
-        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_val = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
         in_ref = [0, 'S0', 1, 'S1', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
     
     elif test_name == "in_ref_2d_2":
-        in_crd = [0, 2, 3, 7, 8, 10] + ['S0', 'D']
+        in_val = [0, 2, 3, 7, 8, 10] + ['S0', 'D']
         in_ref = [0, 0, 'S0', 0, 'S1', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "in_ref_empty_fiber":
-        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_val = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
         in_ref = ['S0', 'S0', 1, 0, 'S0', 'S0', 1, 'S1', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "maybe_token":
-        in_crd = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
+        in_val = [0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']
         in_ref = [0, 'N', 'S0', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "empty_root_seq_1":
-        in_crd = [1,2,3,4,5, 'S0', 'D']
-        # print(len(in_crd))
+        in_val = [1,2,3,4,5, 'S0', 'D']
+        # print(len(in_val))
         in_ref = [0, 0, 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "empty_root_seq_2":
-        in_crd = [6,'S0', 'D']
-        # print(len(in_crd))
+        in_val = [6,'S0', 'D']
+        # print(len(in_val))
         in_ref = [0, 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "empty_root_seq_3":
-        in_crd = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 'S0', 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 'S1', 'D']
-        # print(len(in_crd))
+        in_val = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 'S0', 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 'S1', 'D']
+        # print(len(in_val))
         in_ref = ['S0', 5, 5, 0, 'S0', 3, 1, 'S1', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "empty_root_seq_4":
-        in_crd = [20, 21, 22, 23, 24, 25, 26, 27, 29, 210, 211, 212, 214, 'S0', 20, 22, 23, 24, 25, 26, 27, 28, 29, 210, 212, 213, 214, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 'S0', 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 'S1', 'D']
-        #in_crd = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 'S0', 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 'S1', 'D']
-        # print(len(in_crd))
+        in_val = [20, 21, 22, 23, 24, 25, 26, 27, 29, 210, 211, 212, 214, 'S0', 20, 22, 23, 24, 25, 26, 27, 28, 29, 210, 212, 213, 214, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 'S0', 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 'S1', 'D']
+        #in_val = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 'S0', 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 'S1', 'D']
+        # print(len(in_val))
         in_ref = [ 0, 'S1', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "arr_1":
-        in_crd = [0, 1, 'S0', 2, 'S0', 3, 'S1', 'D']
+        in_val = [0, 1, 'S0', 2, 'S0', 3, 'S1', 'D']
         in_ref = [0, 1, 'N', 2, 'N', 'S0', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "arr_2":
-        in_crd = [0, 2, 3, 'S0', 0, 'S0', 2, 3, 'S1', 'D']
+        in_val = [0, 2, 3, 'S0', 0, 'S0', 2, 3, 'S1', 'D']
         in_ref = [0, 'N', 1, 'N', 2, 'S0', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "arr_3":
-        in_crd = [0, 1, 2, 3, 'S0', 4, 'S0', 5, 6, 'S0', 7, 8, 9, 'S0', 10, 'S1', 'D'] 
+        in_val = [0, 1, 2, 3, 'S0', 4, 'S0', 5, 6, 'S0', 7, 8, 9, 'S0', 10, 'S1', 'D'] 
         in_ref = [0, 1, 'N', 'N', 'S0', 2, 3, 'S0', 'N', 'N', 'S0', 4, 'S0', 'N', 'N', 'S1', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name == "seq_1_1":
-        in_crd = [0, 1, 2, 3, 'S1', 'D']
+        in_val = [0, 1, 2, 3, 'S1', 'D']
         in_ref = ['N', 'N', 'S0', 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
     
     elif test_name == "seq_1_2":
-        in_crd = [3, 4, 5, 'S0', 'D']
+        in_val = [3, 4, 5, 'S0', 'D']
         in_ref = [0, 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
     elif test_name[0:2] == "rd":
         t_arg = test_name.split("_")
@@ -314,9 +268,9 @@ def load_test_module(test_name):
         return [ic, ir, gc, gr]
 
     else:
-        in_crd = [0, 'S0', 'D']
+        in_val = [0, 'S0', 'D']
         in_ref = [0, 0, 0, 'D']
-        return create_gold(in_crd, in_ref)
+        return create_gold(in_val, in_ref)
 
 
 def module_iter_basic(test_name, add_test=""):
@@ -342,11 +296,11 @@ def module_iter_basic(test_name, add_test=""):
 
     #run command "make sim" to run the simulation
     if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_tb.sv", "TOP=fiber_access_tb",\
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=value_tb.sv", "TOP=value_tb",\
                              "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
     else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_tb.sv",\
-                             "TOP=fiber_access_tb", "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"\
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=value_tb.sv",\
+                             "TOP=value_tb", "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
@@ -377,11 +331,12 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-# def test_iter_basic():
-#     init_module()
-#     test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "maybe_token", "arr_1", "arr_2", "arr_3", "xxx"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_iter_basic():
+    init_module()
+    # test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "maybe_token", "arr_1", "arr_2", "arr_3", "xxx"]
+    test_list = ["direct_1d", "direct_2d"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
 # def test_random_1d_1d():
@@ -415,9 +370,6 @@ def module_iter_basic(test_name, add_test=""):
 # def test_seq1():
 #     init_module()
 #     module_iter_basic("empty_root_seq_3", "empty_root_seq_4")
-def test_seq1():
-    init_module()
-    module_iter_basic("seq_1_1", "seq_1_2")
 
 
 # def test_seq2():

@@ -38,7 +38,7 @@ initial begin
     data = 0;
     valid = 0;
     ENABLED = 1;
-    ADD_DELAY = 1;
+    ADD_DELAY = 0;
     done_count = TX_NUM;
     DONE_TOKEN = 17'h10100;
     mask = 32'hF  << RAN_SHITF;
