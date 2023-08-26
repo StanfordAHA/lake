@@ -220,16 +220,10 @@ def load_test_module(test_name):
         rate1 = float(t_arg[2])
         size1 = int(t_arg[3]) # unlike other tests, the size here is the final size
         t_size = int(size1 / rate1)
-
-        use_root = False
-        dim2 = 0
-        if t_arg[4] == 'root':
-            use_root = True
-        
-        if not use_root:
-            dim2 = int(t_arg[4][0])
+        dim2 = int(t_arg[4][0])
         rate2 = float(t_arg[5])
         size2 = int(t_arg[6])
+        
         coord = sparse_helper.coord_drop(create_random(dim1, rate1, t_size))
 
         coord_t = coord[:] #only used for seq

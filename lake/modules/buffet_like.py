@@ -972,7 +972,7 @@ class BuffetLike(MemoryController):
         self._blk_valid = self.var("blk_valid", self.num_ID)
         self._blk_full = self.var("blk_full", self.num_ID)
 
-        self._blk_count = [self.var(f"blk_count_{i}", 8) for i in range(self.num_ID)] # Log 512, approximately the maximum num of blk storage
+        self._blk_count = [self.var(f"blk_count_{i}", 8) for i in range(self.num_ID)]  # Log 512, approximately the maximum num of blk storage
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def blk_lock(self, idx):
@@ -1246,8 +1246,8 @@ class BuffetLike(MemoryController):
                 # RD_START
                 ####################
                 # Get the first block size...
-                RD_START[ID_idx].next(RD_PAUSE[ID_idx], (self._blk_count[ID_idx] == 0) & (op_fifo_use == 0)
-                                                        & read_joined_use & self._rd_ID_fifo_check)
+                RD_START[ID_idx].next(RD_PAUSE[ID_idx], (self._blk_count[ID_idx] == 0) & (op_fifo_use == 0) &
+                                                        read_joined_use & self._rd_ID_fifo_check)
                 RD_START[ID_idx].next(RD_START[ID_idx], None)
 
                 RD_PAUSE[ID_idx].next(RD_PAUSE_T[ID_idx], self._push_blk[ID_idx])
@@ -1275,7 +1275,7 @@ class BuffetLike(MemoryController):
                 RD_PAUSE[ID_idx].output(self._size_request_full[ID_idx], 0)
                 RD_PAUSE[ID_idx].output(self._set_cached_read[ID_idx], 0)
                 RD_PAUSE[ID_idx].output(self._clr_cached_read[ID_idx], 0)
-                RD_PAUSE[ID_idx].output(self._set_read_word_addr[ID_idx], 0)                
+                RD_PAUSE[ID_idx].output(self._set_read_word_addr[ID_idx], 0)
 
                 ####################
                 # RD_PAUSE_T
