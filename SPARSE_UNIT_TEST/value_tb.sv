@@ -3,7 +3,7 @@
 `define TX_NUM_GLB 1
 `endif
 
-module fiber_access_tb;
+module value_tb;
 
     reg clk;
     reg clk_en;
@@ -52,7 +52,7 @@ module fiber_access_tb;
 
     logic [1:0] [31:0] config_out;
 
-    wire [3:0] done;
+    wire [2:0] done;
     parameter NUM_CYCLES = 40000;
 
     integer clk_count;
@@ -164,19 +164,19 @@ module fiber_access_tb;
         .flush(flush)
     );
 
-    glb_read #(
-        .FILE_NAME("pos_out_0.txt"),
-        .TX_NUM(`TX_NUM_GLB),
-        .RAN_SHITF(3)
-    ) pos_out_0_inst (
-        .clk(clk),
-        .rst_n(rst_n),
-        .data(pos_out_0),
-        .ready(pos_out_0_ready),
-        .valid(pos_out_0_valid),
-        .done(done[3]),
-        .flush(flush)
-    );
+    // glb_read #(
+    //     .FILE_NAME("pos_out_0.txt"),
+    //     .TX_NUM(`TX_NUM_GLB),
+    //     .RAN_SHITF(3)
+    // ) pos_out_0_inst (
+    //     .clk(clk),
+    //     .rst_n(rst_n),
+    //     .data(pos_out_0),
+    //     .ready(pos_out_0_ready),
+    //     .valid(pos_out_0_valid),
+    //     .done(done[3]),
+    //     .flush(flush)
+    // );
 
     sram_sp memory_0 (
         .clk(clk),
@@ -239,7 +239,7 @@ module fiber_access_tb;
                 start_read = 1;
             end
 
-            if (clk && start_read == 1 && ~(done[2] & done[3])) begin
+            if (clk && start_read == 1 && ~(done[2])) begin
                 read_count += 1;
             end
 

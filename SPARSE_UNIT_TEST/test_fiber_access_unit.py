@@ -127,9 +127,9 @@ def create_gold(in_crd, in_ref):
     i_c_cpy = in_crd[:]
     i_r_cpy = in_ref[:]
 
-    print(in_crd)
-    print(in_ref)
-    print("============")
+    # print(in_crd)
+    # print(in_ref)
+    # print("============")
     # process write
     buf_size = 1000
     fill = 0
@@ -150,8 +150,8 @@ def create_gold(in_crd, in_ref):
         time += 1
 
     print("sam write cycle count: ", time)
-    print(wrscan.get_seg_arr())
-    print(wrscan.get_arr())
+    # print(wrscan.get_seg_arr())
+    # print(wrscan.get_arr())
     crdscan = CompressedCrdRdScan(seg_arr=wrscan.get_seg_arr(), crd_arr=wrscan.get_arr())
     done = False
     time = 0
@@ -264,11 +264,14 @@ def load_test_module(test_name):
         return create_gold(in_crd, in_ref)
 
     elif test_name == "seq_1_1":
-        in_crd = [0, 1, 2, 3, 'S1', 'D']
+        # in_crd = [0, 1, 2, 3, 'S1', 'D']
+        in_crd = [0, 1, 2, 3, 4, 5, 6, 'S1', 'D']
         in_ref = ['N', 'N', 'S0', 'D']
+        # in_ref = ['N', 0, 'S0', 'D']
         return create_gold(in_crd, in_ref)
     
     elif test_name == "seq_1_2":
+        # in_crd = [3, 4, 5, 'S0', 'D']
         in_crd = [3, 4, 5, 'S0', 'D']
         in_ref = [0, 'D']
         return create_gold(in_crd, in_ref)
@@ -331,8 +334,8 @@ def module_iter_basic(test_name, add_test=""):
 
     # print(ic)
     # print(ir)
-    print(gc)
-    print(gr)
+    # print(gc)
+    # print(gr)
 
     sparse_helper.write_txt("coord_in_0.txt", ic)
     sparse_helper.write_txt("pos_in_0.txt", ir)
@@ -352,13 +355,13 @@ def module_iter_basic(test_name, add_test=""):
     # print(output)
     cycle_count_line = output[output.find("write cycle count:"):]
     lines = cycle_count_line.splitlines()
-    print(lines[0])
-    print(lines[1])
+    # print(lines[0])
+    # print(lines[1])
 
     coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
     pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
-    print(coord_out)
-    print(pos_out_0)
+    # print(coord_out)
+    # print(pos_out_0)
 
     #compare each element in the output from coord_out.txt with the gold output
     assert len(coord_out) == len(gc), \
@@ -377,66 +380,64 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-# def test_iter_basic():
-#     init_module()
-#     test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "maybe_token", "arr_1", "arr_2", "arr_3", "xxx"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_iter_basic():
+    init_module()
+    test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "maybe_token", "arr_1", "arr_2", "arr_3", "xxx"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_1d_1d():
-#     init_module()
-#     test_list = ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_1d_1d():
+    init_module()
+    test_list = ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_1d_root():
-#     init_module()
-#     test_list = ["rd_1d_0.1_200_root_1.0_3", "rd_1d_0.3_200_root_1.0_3", "rd_1d_0.5_200_root_1.0_3", "rd_1d_0.8_200_root_1.0_3", "rd_1d_1.0_200_root_1.0_3"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_1d_root():
+    init_module()
+    test_list = ["rd_1d_0.1_200_root_1.0_3", "rd_1d_0.3_200_root_1.0_3", "rd_1d_0.5_200_root_1.0_3", "rd_1d_0.8_200_root_1.0_3", "rd_1d_1.0_200_root_1.0_3"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_2d_1d():
-#     init_module()
-#     test_list = ["rd_2d_0.1_100_1d_1.0_3", "rd_2d_0.3_100_1d_1.0_3", "rd_2d_0.5_100_1d_1.0_3", "rd_2d_0.8_100_1d_1.0_3", "rd_2d_1.0_100_1d_1.0_3"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_2d_1d():
+    init_module()
+    test_list = ["rd_2d_0.1_100_1d_1.0_3", "rd_2d_0.3_100_1d_1.0_3", "rd_2d_0.5_100_1d_1.0_3", "rd_2d_0.8_100_1d_1.0_3", "rd_2d_1.0_100_1d_1.0_3"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_2d_2d():
-#     init_module()
-#     test_list = ["rd_2d_0.1_100_2d_0.3_30", "rd_2d_0.3_100_2d_0.3_30", "rd_2d_0.5_100_2d_0.3_30", "rd_2d_0.8_100_2d_0.3_30", "rd_2d_1.0_100_2d_0.3_30"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_2d_2d():
+    init_module()
+    test_list = ["rd_2d_0.1_100_2d_0.3_30", "rd_2d_0.3_100_2d_0.3_30", "rd_2d_0.5_100_2d_0.3_30", "rd_2d_0.8_100_2d_0.3_30", "rd_2d_1.0_100_2d_0.3_30"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_seq1():
-#     init_module()
-#     module_iter_basic("empty_root_seq_3", "empty_root_seq_4")
 def test_seq1():
     init_module()
+    module_iter_basic("empty_root_seq_3", "empty_root_seq_4")
     module_iter_basic("seq_1_1", "seq_1_2")
 
 
-# def test_seq2():
-#     init_module()
-#     test_list = ["rdS_1d_0.1_50_1d_1.0_3", "rdS_1d_0.3_50_1d_1.0_3", "rdS_1d_0.5_50_1d_1.0_3", "rdS_1d_0.8_50_1d_1.0_3", "rdS_1d_1.0_50_1d_1.0_3"] +\
-#                 ["rdS_1d_0.1_50_root_1.0_3", "rdS_1d_0.3_50_root_1.0_3", "rdS_1d_0.5_50_root_1.0_3", "rdS_1d_0.8_50_root_1.0_3", "rdS_1d_1.0_50_root_1.0_3"] +\
-#                 ["rdS_2d_0.1_100_1d_1.0_3", "rdS_2d_0.3_100_1d_1.0_3", "rdS_2d_0.5_100_1d_1.0_3", "rdS_2d_0.8_100_1d_1.0_3", "rdS_2d_1.0_100_1d_1.0_3"] +\
-#                 ["rdS_2d_0.1_100_2d_0.3_30", "rdS_2d_0.3_100_2d_0.3_30", "rdS_2d_0.5_100_2d_0.3_30", "rdS_2d_0.8_100_2d_0.3_30", "rdS_2d_1.0_100_2d_0.3_30"]
-#     for test in test_list:
-#         module_iter_basic(test, add_test="void")
+def test_seq2():
+    init_module()
+    test_list = ["rdS_1d_0.1_50_1d_1.0_3", "rdS_1d_0.3_50_1d_1.0_3", "rdS_1d_0.5_50_1d_1.0_3", "rdS_1d_0.8_50_1d_1.0_3", "rdS_1d_1.0_50_1d_1.0_3"] +\
+                ["rdS_1d_0.1_50_root_1.0_3", "rdS_1d_0.3_50_root_1.0_3", "rdS_1d_0.5_50_root_1.0_3", "rdS_1d_0.8_50_root_1.0_3", "rdS_1d_1.0_50_root_1.0_3"] +\
+                ["rdS_2d_0.1_100_1d_1.0_3", "rdS_2d_0.3_100_1d_1.0_3", "rdS_2d_0.5_100_1d_1.0_3", "rdS_2d_0.8_100_1d_1.0_3", "rdS_2d_1.0_100_1d_1.0_3"] +\
+                ["rdS_2d_0.1_100_2d_0.3_30", "rdS_2d_0.3_100_2d_0.3_30", "rdS_2d_0.5_100_2d_0.3_30", "rdS_2d_0.8_100_2d_0.3_30", "rdS_2d_1.0_100_2d_0.3_30"]
+    for test in test_list:
+        module_iter_basic(test, add_test="void")
 
 
-# def test_seq3():
-#     init_module()
-#     test_list =  ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"] +\
-#                  ["rd_1d_0.1_200_root_1.0_3", "rd_1d_0.3_200_root_1.0_3", "rd_1d_0.5_200_root_1.0_3", "rd_1d_0.8_200_root_1.0_3", "rd_1d_1.0_200_root_1.0_3"] +\
-#                  ["rd_2d_0.1_100_1d_1.0_3", "rd_2d_0.3_100_1d_1.0_3", "rd_2d_0.5_100_1d_1.0_3", "rd_2d_0.8_100_1d_1.0_3", "rd_2d_1.0_100_1d_1.0_3"] +\
-#                  ["rd_2d_0.1_100_2d_0.3_30", "rd_2d_0.3_100_2d_0.3_30", "rd_2d_0.5_100_2d_0.3_30", "rd_2d_0.8_100_2d_0.3_30", "rd_2d_1.0_100_2d_0.3_30"] +\
-#                  ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "maybe_token", "arr_1", "arr_2", "arr_3", "xxx"]
-#     for i in range(30):
-#         rand = random.sample(test_list, 2)
-#         module_iter_basic(rand[0], rand[1])
+def test_seq3():
+    init_module()
+    test_list =  ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"] +\
+                 ["rd_1d_0.1_200_root_1.0_3", "rd_1d_0.3_200_root_1.0_3", "rd_1d_0.5_200_root_1.0_3", "rd_1d_0.8_200_root_1.0_3", "rd_1d_1.0_200_root_1.0_3"] +\
+                 ["rd_2d_0.1_100_1d_1.0_3", "rd_2d_0.3_100_1d_1.0_3", "rd_2d_0.5_100_1d_1.0_3", "rd_2d_0.8_100_1d_1.0_3", "rd_2d_1.0_100_1d_1.0_3"] +\
+                 ["rd_2d_0.1_100_2d_0.3_30", "rd_2d_0.3_100_2d_0.3_30", "rd_2d_0.5_100_2d_0.3_30", "rd_2d_0.8_100_2d_0.3_30", "rd_2d_1.0_100_2d_0.3_30"] +\
+                 ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "maybe_token", "arr_1", "arr_2", "arr_3", "xxx"]
+    for i in range(30):
+        rand = random.sample(test_list, 2)
+        module_iter_basic(rand[0], rand[1])

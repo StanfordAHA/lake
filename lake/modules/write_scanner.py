@@ -566,7 +566,8 @@ class WriteScanner(MemoryController):
         ####################
         # ASSUMED TO BE COMPRESSED - OTHERWISE DFG LOOKS DIFFERENT - PERFORMS MATH ON COORDINATES
         # In the upper level, we will emit new coordinates linearly as we see new ones, reset tracking at stop_lvl
-        UL.next(UL_EMIT_COORD, self._new_coord)
+        # UL.next(UL_EMIT_COORD, self._new_coord)
+        UL.next(UL_EMIT_COORD, self._data_infifo_valid_in & ~self._data_infifo_eos_in)
         # Only can be in emit seg upon creation of blank fiber or stop token...
         UL.next(UL_EMIT_SEG, self._stop_in | (self._init_blank & ~self._blank_done))
         # UL.next(FINALIZE1, kts.ternary(self._spacc_mode,
@@ -580,7 +581,8 @@ class WriteScanner(MemoryController):
         # From the emit coord, we will send a write out as long the memory is ready for a write
         # Then go back to UL once we see new data or a stop in
         # UL_EMIT_COORD.next(UL, self._new_coord | self._stop_in)
-        UL_EMIT_COORD.next(UL_EMIT_SEG, self._stop_in & self._wen_made)
+        # UL_EMIT_COORD.next(UL_EMIT_SEG, self._stop_in & self._wen_made)
+        UL_EMIT_COORD.next(UL_EMIT_SEG, self._stop_in)
         UL_EMIT_COORD.next(UL_EMIT_COORD, None)
 
         ####################
@@ -982,29 +984,35 @@ class WriteScanner(MemoryController):
         #######
         # UL_EMIT_COORD
         #######
-        UL_EMIT_COORD.output(self._data_to_fifo, self._curr_coord)
+        # UL_EMIT_COORD.output(self._data_to_fifo, self._curr_coord)
+        UL_EMIT_COORD.output(self._data_to_fifo, self._data_infifo_data_in)
         UL_EMIT_COORD.output(self._op_to_fifo, 1)
         UL_EMIT_COORD.output(self._addr_to_fifo, self._coord_addr)
         UL_EMIT_COORD.output(self._ID_to_fifo, kts.const(1, 16))
-        UL_EMIT_COORD.output(self._push_to_outs, ~self._wen_made & self._join_out_ready)
+        # UL_EMIT_COORD.output(self._push_to_outs, ~self._wen_made & self._join_out_ready)
+        UL_EMIT_COORD.output(self._push_to_outs, ~self._data_infifo_eos_in & self._data_infifo_valid_in & self._join_out_ready)
 
         # UL_EMIT_COORD.output(self._addr_out, self._coord_addr + self._inner_dim_offset)
         # UL_EMIT_COORD.output(self._wen, ~self._wen_made & self._ready_in)
         # UL_EMIT_COORD.output(self._data_out, self._curr_coord)
         UL_EMIT_COORD.output(self._inc_seg_addr, 0)
         UL_EMIT_COORD.output(self._clr_seg_addr, 0)
-        UL_EMIT_COORD.output(self._inc_coord_addr, ~self._wen_made & self._join_out_ready)
+        # UL_EMIT_COORD.output(self._inc_coord_addr, ~self._wen_made & self._join_out_ready)
+        UL_EMIT_COORD.output(self._inc_coord_addr, ~self._data_infifo_eos_in & self._data_infifo_valid_in & self._join_out_ready)
         UL_EMIT_COORD.output(self._clr_coord_addr, 0)
-        UL_EMIT_COORD.output(self._inc_seg_ctr, ~self._wen_made & self._join_out_ready)
+        # UL_EMIT_COORD.output(self._inc_seg_ctr, ~self._wen_made & self._join_out_ready)
+        UL_EMIT_COORD.output(self._inc_seg_ctr, ~self._data_infifo_eos_in & self._data_infifo_valid_in & self._join_out_ready)
         UL_EMIT_COORD.output(self._clr_seg_ctr, 0)
         # UL_EMIT_COORD.output(self._set_curr_coord, 0)
         UL_EMIT_COORD.output(self._set_curr_coord, self._wen_made & self._new_coord)
         UL_EMIT_COORD.output(self._clr_curr_coord, 0)
         # Pop until stop in or new coordinate
-        UL_EMIT_COORD.output(self._infifo_pop[0], ~self._new_coord & ~self._stop_in)
+        # UL_EMIT_COORD.output(self._infifo_pop[0], ~self._new_coord & ~self._stop_in)
+        UL_EMIT_COORD.output(self._infifo_pop[0], ~self._data_infifo_valid_in | (~self._data_infifo_eos_in & self._data_infifo_valid_in & self._join_out_ready))
         UL_EMIT_COORD.output(self._infifo_pop[1], 0)
         # UL_EMIT_COORD.output(self._clr_wen_made, 0)
-        UL_EMIT_COORD.output(self._clr_wen_made, self._wen_made & (self._new_coord | self._stop_in))
+        # UL_EMIT_COORD.output(self._clr_wen_made, self._wen_made & (self._new_coord | self._stop_in))
+        UL_EMIT_COORD.output(self._clr_wen_made, self._wen_made & self._stop_in)
         UL_EMIT_COORD.output(self._set_block_size, 0)
         UL_EMIT_COORD.output(self._inc_block_write, 0)
         UL_EMIT_COORD.output(self._clr_block_write, 0)
