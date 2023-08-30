@@ -28,7 +28,7 @@ def init_module():
     # magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
     verilog(dut, filename=f"./modules/Intersect.sv",
             optimize_if=False)
-    sparse_helper.update_tcl("unioner_tb")
+    sparse_helper.update_tcl("unioner_vmode_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
     # size = int(size*random.uniform(1.0, 1.0+d))
@@ -42,15 +42,15 @@ def create_random_fiber(rate, size, d, f_type = "coord"):
         pos.sort()
         return pos
     else:
-        val = [random.uniform(0, 2**15-1) for i in range(s)]
+        val = [random.randint(0, 2**15-1) for i in range(s)]
         return val
 
 def create_random(n, rate, size, d1=0):
     if n == 1:
         in_crd1 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
-        in_ref1 = create_random_fiber(1, len(in_crd1) - 2, 0, "pos") + ['S0', 'D']
+        in_ref1 = create_random_fiber(1, len(in_crd1) - 2, 0, "value") + ['S0', 'D']
         in_crd2 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
-        in_ref2 = create_random_fiber(1, len(in_crd2) - 2, 0, "pos") + ['S0', 'D']
+        in_ref2 = create_random_fiber(1, len(in_crd2) - 2, 0, "value") + ['S0', 'D']
         return in_crd1, in_crd2, in_ref1, in_ref2
     
     elif n == 2:
@@ -63,10 +63,10 @@ def create_random(n, rate, size, d1=0):
             ret_t = [[] for j in range(4)]
             if random.random() < rate:
                 ret_t[0] = create_random_fiber(rate, d2, 0.2, "coord")
-                ret_t[1] = create_random_fiber(1, len(ret_t[0]), 0, "pos")
+                ret_t[1] = create_random_fiber(1, len(ret_t[0]), 0, "value")
             if random.random() < rate:
                 ret_t[2] = create_random_fiber(rate, d2, 0.2, "coord")
-                ret_t[3] = create_random_fiber(1, len(ret_t[2]), 0, "pos")
+                ret_t[3] = create_random_fiber(1, len(ret_t[2]), 0, "value")
 
             for j in range(4):
                 if i == d1 - 1:
@@ -98,49 +98,62 @@ def create_random(n, rate, size, d1=0):
         return ret[0], ret[1], ret[2], ret[3]
                 
 
-def create_gold(in_crd1, in_crd2, in_ref1, in_ref2):
-    assert (len(in_crd1) == len(in_ref1))
-    assert (len(in_crd2) == len(in_ref2))
+def create_gold(in_crd1, in_crd2, in_val1, in_val2):
+    assert (len(in_crd1) == len(in_val1))
+    assert (len(in_crd2) == len(in_val2))
     assert (len([x for x in in_crd1 if type(x) is not int]) == len([x for x in in_crd2 if type(x) is not int]))
-    assert (len([x for x in in_ref1 if type(x) is not int]) == len([x for x in in_ref2 if type(x) is not int]))
+    assert (len([x for x in in_val1 if type(x) is not int]) == len([x for x in in_val2 if type(x) is not int]))
     
-    i_c1_cpy = in_crd1[:]
-    i_c2_cpy = in_crd2[:]
-    i_r1_cpy = in_ref1[:]
-    i_r2_cpy = in_ref2[:]
-
-    done = False
-    time = 0
-
-    union = Union2()
     out_crd = []
-    out_ref1 = []
-    out_ref2 = []
+    out_val1 = []
 
-    while not done and time < TIMEOUT:
-        if len(in_crd1) > 0:
-            union.set_in1(in_ref1.pop(0), in_crd1.pop(0))
-        if len(in_crd2) > 0:
-            union.set_in2(in_ref2.pop(0), in_crd2.pop(0))
-
-        union.update()
-
-        out_crd.append(union.out_crd())
-        out_ref1.append(union.out_ref1())
-        out_ref2.append(union.out_ref2())
-
-        # print("Timestep", time, "\t Crd:", union.out_crd(), "\t Ref1:", union.out_ref1(), "\t Ref2:", union.out_ref2())
-
-        done = union.done
+    p1 = 0
+    p2 = 0
+    time = 0
+    while p1 < len(in_crd1) or p2 < len(in_crd2):
         time += 1
+        if sparse_helper.is_STOP_sam(in_crd1[p1]):
+            if sparse_helper.is_STOP_sam(in_crd2[p2]):
+                out_crd.append(in_crd1[p1])
+                out_val1.append(in_crd1[p1])
+                p1 += 1
+                p2 += 1
+            else:
+                out_crd.append(in_crd2[p2])
+                out_val1.append(in_val2[p2])
+                p2 += 1
+        elif sparse_helper.is_STOP_sam(in_crd2[p2]):
+            out_crd.append(in_crd1[p1])
+            out_val1.append(in_val1[p1])
+            p1 += 1
+        elif sparse_helper.is_DONE_sam(in_crd1[p1]) and sparse_helper.is_DONE_sam(in_crd2[p2]):
+            out_crd.append(in_crd1[p1])
+            out_val1.append(in_crd1[p1])
+            p1 += 1
+            p2 += 1
+        elif in_crd1[p1] < in_crd2[p2]:
+            out_crd.append(in_crd1[p1])
+            out_val1.append(in_val1[p1])
+            p1 += 1
+        elif in_crd1[p1] > in_crd2[p2]:
+            out_crd.append(in_crd2[p2])
+            out_val1.append(in_val2[p2])
+            p2 += 1
+        elif in_crd1[p1] == in_crd2[p2]:
+            out_crd.append(in_crd2[p2])
+            out_val1.append(in_val1[p1] + in_val2[p2])
+            p1 += 1
+            p2 += 1
+        else:
+            print("got some issue!!!!")
+            print(in_crd1[p1])
+            print(in_crd2[p2])
+    
+    print("No equivalent SAM primitive, approximation time:", time)
 
-    print("sam cycle count: ", time)
-    out_crd = remove_emptystr(out_crd)
-    out_ref1 = remove_emptystr(out_ref1)
-    out_ref2 = remove_emptystr(out_ref2)
-
-    assert len(out_crd) == len(out_ref1) and len(out_crd) == len(out_ref2)
-    st = [i_c1_cpy, i_c2_cpy, i_r1_cpy, i_r2_cpy, out_crd, out_ref1, out_ref2]
+    out_val2 = out_val1[:]
+    assert len(out_crd) == len(out_val1)
+    st = [in_crd1, in_crd2, in_val1, in_val2, out_crd, out_val1, out_val2]
     tr_st = []
     for s in st:
         tr_st.append(convert_stream_to_onyx_interp(s))
@@ -151,91 +164,91 @@ def create_gold(in_crd1, in_crd2, in_ref1, in_ref2):
 def load_test_module(test_name):
     if test_name == "direct_2d":
         in_crd1 = [0, 'S0', 0, 1, 2, 'S1', 'D']
-        in_ref1 = [0, 'S0', 1, 2, 3, 'S1', 'D']
+        in_val1 = [10, 'S0', 1, 2, 3, 'S1', 'D']
         in_crd2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
-        in_ref2 = [0, 1, 2, 'S0', 0, 1, 2, 'S1', 'D']
+        in_val2 = [777, 10, 92, 'S0', 101, 1, 2, 'S1', 'D']
 
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
     
     elif test_name == "direct_1d":
         in1 = 16
         in_crd1 = [x for x in range(in1)] + ['S0', 'D']
-        in_ref1 = [x for x in range(in1)] + ['S0', 'D']
+        in_val1 = [random.randint(0, 1024) for x in range(in1)] + ['S0', 'D']
         in_crd2 = [0, 2, 4, 15, 17, 25, 31, 32, 50, 63, 'S0', 'D']
-        in_ref2 = [x for x in range(10)] + ['S0', 'D']
+        in_val2 = [random.randint(0, 1024) for x in range(10)] + ['S0', 'D']
 
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
 
     elif test_name == "empty_2d":
         in_crd1 = ['S0', 'S0', 'S0', 'S1', 'D']
-        in_ref1 = ['S0', 'S0', 'S0', 'S1', 'D']
+        in_val1 = ['S0', 'S0', 'S0', 'S1', 'D']
         in_crd2 = ['S0', 'S0', 'S0', 'S1', 'D']
-        in_ref2 = ['S0', 'S0', 'S0', 'S1', 'D']
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        in_val2 = ['S0', 'S0', 'S0', 'S1', 'D']
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
 
     elif test_name == "simple_3d":
         in_crd1 = [0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S2', 'D']
-        in_ref1 = [0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S2', 'D']
+        in_val1 = [0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S1', 0, 1, 'S0', 0, 1, 'S2', 'D']
         in_crd2 = [1, 'S0', 'S1', 0, 1, 'S0', 0, 'S1', 'S0', 0, 1, 'S2', 'D']
-        in_ref2 = [9, 'S0', 'S1', 8, 7, 'S0', 6, 'S1', 'S0', 4, 3, 'S2', 'D']
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        in_val2 = [9, 'S0', 'S1', 8, 7, 'S0', 6, 'S1', 'S0', 4, 3, 'S2', 'D']
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
 
     elif test_name == "array_1d":
         in_crd1 = [0, 1, 3, 5, 'S0', 'D']
-        in_ref1 = [0, 1, 2, 3, 'S0', 'D']
+        in_val1 = [0, 1, 2, 3, 'S0', 'D']
         in_crd2 = [0, 2, 3, 4, 'S0', 'D']
-        in_ref2 = [0, 1, 2, 3, 'S0', 'D']
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        in_val2 = [0, 1, 2, 3, 'S0', 'D']
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
 
     elif test_name == "array_2d":
         in_crd1 = [0, 1, 'S0', 2, 3, 'S0', 'S0', 4, 5, 'S1', 'D']
-        in_ref1 = [0, 1, 'S0', 2, 3, 'S0', 'S0', 4, 5, 'S1', 'D']
+        in_val1 = [0, 1, 'S0', 2, 3, 'S0', 'S0', 4, 5, 'S1', 'D']
         in_crd2 = [1, 2, 3, 'S0', 'S0', 0, 1, 2, 'S0', 'S1', 'D']
-        in_ref2 = [0, 1, 2, 'S0', 'S0', 2, 3, 4, 'S0', 'S1', 'D']
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        in_val2 = [0, 1, 2, 'S0', 'S0', 2, 3, 4, 'S0', 'S1', 'D']
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
 
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
         n = int(t_arg[1][0])
         rate = float(t_arg[2])
         size = int(t_arg[3])
-        [in_crd1, in_ref1, in_crd2, in_ref2] = create_random(n, rate, size)
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        [in_crd1, in_val1, in_crd2, in_val2] = create_random(n, rate, size)
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
 
     else:
         in_crd1 = [0, 'S0', 'D']
-        in_ref1 = [0, 'S0', 'D']
+        in_val1 = [0, 'S0', 'D']
         in_crd2 = [0, 'S0', 'D']
-        in_ref2 = [0, 'S0', 'D']
+        in_val2 = [0, 'S0', 'D']
 
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
 
 
 def module_iter_basic(test_name, add_test=""):
-    [ic1, ic2, ir1, ir2, gc, gr1, gr2] = load_test_module(test_name)
+    [ic1, ic2, iv1, iv2, gc, gv1, gv2] = load_test_module(test_name)
 
     if add_test != "":
         additional_t = load_test_module(add_test)
         ic1 = ic1 + additional_t[0]
         ic2 = ic2 + additional_t[1]
-        ir1 = ir1 + additional_t[2]
-        ir2 = ir2 + additional_t[3]
+        iv1 = iv1 + additional_t[2]
+        iv2 = iv2 + additional_t[3]
         gc = gc + additional_t[4]
-        gr1 = gr1 + additional_t[5]
-        gr2 = gr2 + additional_t[6]
+        gv1 = gv1 + additional_t[5]
+        gv2 = gv2 + additional_t[6]
 
     # print("ic1", ic1)
     # print("ic2", ic2)
-    # print("ir1", ir1)
-    # print("ir2", ir2)
+    # print("iv1", iv1)
+    # print("iv2", iv2)
     # print("gc", gc)
-    # print("gr1", gr1)
-    # print("gr2", gr2)
+    # print("gv1", gv1)
+    # print("gv2", gv2)
 
     sparse_helper.write_txt("coord_in_0.txt", ic1)
     sparse_helper.write_txt("coord_in_1.txt", ic2)
-    sparse_helper.write_txt("pos_in_0.txt", ir1)
-    sparse_helper.write_txt("pos_in_1.txt", ir2)
+    sparse_helper.write_txt("pos_in_0.txt", iv1)
+    sparse_helper.write_txt("pos_in_1.txt", iv2)
 
     sparse_helper.clear_txt("coord_out.txt")
     sparse_helper.clear_txt("pos_out_0.txt")
@@ -243,11 +256,11 @@ def module_iter_basic(test_name, add_test=""):
     
     #run command "make sim" to run the simulation
     if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_tb.sv", "TOP=unioner_tb",\
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_vmode_tb.sv", "TOP=unioner_vmode_tb",\
                              "TEST_UNIT=Intersect.sv"], capture_output=True, text=True)
     else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_tb.sv",\
-                             "TOP=unioner_tb", "TX_NUM_GLB=2", "TEST_UNIT=Intersect.sv"\
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=unioner_vmode_tb.sv",\
+                             "TOP=unioner_vmode_tb", "TX_NUM_GLB=2", "TEST_UNIT=Intersect.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
@@ -257,6 +270,10 @@ def module_iter_basic(test_name, add_test=""):
     coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
     pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
     pos_out_1 = sparse_helper.read_txt("pos_out_1.txt", addit=add_test != "")
+    
+    # print(coord_out)
+    # print(pos_out_0)
+    # print(pos_out_1)
 
     #compare each element in the output from coord_out.txt with the gold output
     assert len(coord_out) == len(gc), \
@@ -266,18 +283,18 @@ def module_iter_basic(test_name, add_test=""):
             f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
     
     #compare each element in the output from pos_out_0.txt with the gold output
-    assert len(pos_out_0) == len(gr1), \
-        f"Output length {len(pos_out_0)} didn't match gold length {len(gr1)}"
+    assert len(pos_out_0) == len(gv1), \
+        f"Output length {len(pos_out_0)} didn't match gold length {len(gv1)}"
     for i in range(len(pos_out_0)):
-        assert pos_out_0[i] == gr1[i], \
-            f"Output {pos_out_0[i]} didn't match gold {gr1[i]} at index {i}"
+        assert pos_out_0[i] == gv1[i], \
+            f"Output {pos_out_0[i]} didn't match gold {gv1[i]} at index {i}"
     
     #compare each element in the output from pos_out_1.txt with the gold output
-    assert len(pos_out_1) == len(gr2), \
-        f"Output length {len(pos_out_1)} didn't match gold length {len(gr2)}"
+    assert len(pos_out_1) == len(gv2), \
+        f"Output length {len(pos_out_1)} didn't match gold length {len(gv2)}"
     for i in range(len(pos_out_1)):
-        assert pos_out_1[i] == gr2[i], \
-            f"Output {pos_out_1[i]} didn't match gold {gr2[i]} at index {i}"
+        assert pos_out_1[i] == gv2[i], \
+            f"Output {pos_out_1[i]} didn't match gold {gv2[i]} at index {i}"
     
     print(test_name, " passed\n")
 
@@ -309,11 +326,13 @@ def test_random_3d():
     for test in test_list:
         module_iter_basic(test) 
 
+
 def test_seq():
     init_module()
     test_list =  ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"] +\
                  ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_1d_1.0_400"] +\
-                 ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_1d_1.0_400"]
+                 ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_1d_1.0_400"] +\
+                 ["direct_1d", "direct_2d", "xxx", "empty_2d", "array_1d", "array_2d"]
     for i in range(10):
         rand = random.sample(test_list, 2)
         module_iter_basic(rand[0], rand[1])

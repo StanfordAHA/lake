@@ -3,7 +3,7 @@
 `define TX_NUM_GLB 1
 `endif
 
-module unioner_tb;
+module unioner_vmode_tb;
 
     reg clk;
     reg clk_en;
@@ -62,7 +62,7 @@ module unioner_tb;
         .pos_in_1_valid(pos_in_1_valid),
         .pos_in_1_ready(pos_in_1_ready),
         .joiner_op(joiner_op),
-        .value_mode(0),
+        .value_mode(1),
         .tile_en(tile_en),
         .coord_out(coord_out),
         .coord_out_valid(coord_out_valid),
