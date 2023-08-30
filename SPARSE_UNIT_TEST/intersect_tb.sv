@@ -62,6 +62,7 @@ module intersect_tb;
         .pos_in_1_valid(pos_in_1_valid),
         .pos_in_1_ready(pos_in_1_ready),
         .joiner_op(joiner_op),
+        .value_mode(0),
         .tile_en(tile_en),
         .coord_out(coord_out),
         .coord_out_valid(coord_out_valid),
