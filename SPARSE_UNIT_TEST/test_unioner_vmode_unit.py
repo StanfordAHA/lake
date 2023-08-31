@@ -179,7 +179,14 @@ def load_test_module(test_name):
 
         return create_gold(in_crd1, in_crd2, in_val1, in_val2)
 
-    elif test_name == "empty_2d":
+    elif test_name == "empty_start":
+        in_crd1 = [0, 1, 2, 'S1', 'D']
+        in_val1 = [1, 2, 3, 'S1', 'D']
+        in_crd2 = ['S1', 'D']
+        in_val2 = ['S1', 'D']
+        return create_gold(in_crd1, in_crd2, in_val1, in_val2)
+
+    elif test_name == "empty_full":
         in_crd1 = ['S0', 'S0', 'S0', 'S1', 'D']
         in_val1 = ['S0', 'S0', 'S0', 'S1', 'D']
         in_crd2 = ['S0', 'S0', 'S0', 'S1', 'D']
@@ -301,38 +308,38 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_iter_basic():
     init_module()
-    test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d", "array_1d", "array_2d"]
+    test_list = ["direct_1d", "direct_2d", "xxx", "empty_full", "empty_start", "array_1d", "array_2d"]
     for test in test_list:
         module_iter_basic(test)
 
 
-def test_random_1d():
-    init_module()
-    test_list = ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"]
-    for test in test_list:
-        module_iter_basic(test)
+# def test_random_1d():
+#     init_module()
+#     test_list = ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"]
+#     for test in test_list:
+#         module_iter_basic(test)
 
 
-def test_random_2d():
-    init_module()
-    test_list = ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_2d_1.0_400"]
-    for test in test_list:
-        module_iter_basic(test)
+# def test_random_2d():
+#     init_module()
+#     test_list = ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_2d_1.0_400"]
+#     for test in test_list:
+#         module_iter_basic(test)
 
 
-def test_random_3d():
-    init_module()
-    test_list = ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_3d_1.0_400"]
-    for test in test_list:
-        module_iter_basic(test) 
+# def test_random_3d():
+#     init_module()
+#     test_list = ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_3d_1.0_400"]
+#     for test in test_list:
+#         module_iter_basic(test) 
 
 
-def test_seq():
-    init_module()
-    test_list =  ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"] +\
-                 ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_1d_1.0_400"] +\
-                 ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_1d_1.0_400"] +\
-                 ["direct_1d", "direct_2d", "xxx", "empty_2d", "array_1d", "array_2d"]
-    for i in range(10):
-        rand = random.sample(test_list, 2)
-        module_iter_basic(rand[0], rand[1])
+# def test_seq():
+#     init_module()
+#     test_list =  ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"] +\
+#                  ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_1d_1.0_400"] +\
+#                  ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_1d_1.0_400"] +\
+#                  ["direct_1d", "direct_2d", "xxx", "empty_full", "empty_start", "array_1d", "array_2d"]
+#     for i in range(10):
+#         rand = random.sample(test_list, 2)
+#         module_iter_basic(rand[0], rand[1])

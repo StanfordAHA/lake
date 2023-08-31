@@ -30,7 +30,7 @@ class SpAcc_1(MemoryController):
         self.data_width = data_width
         self.add_clk_enable = add_clk_enable
         self.add_flush = add_flush
-        self.lift_config = lift_config # what is this for?
+        self.lift_config = lift_config #  what is this for?
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
         self.perf_debug = perf_debug
@@ -130,7 +130,7 @@ class SpAcc_1(MemoryController):
                         push=self._outer_crd_valid,
                         pop=self._outer_crd_fifo_pop,
                         data_in=self._outer_crd_fifo_in,
-                        data_out=kts.concat(self._outer_crd_fifo_out_eos,self._outer_crd_fifo_out_data))
+                        data_out=kts.concat(self._outer_crd_fifo_out_eos, self._outer_crd_fifo_out_data))
         self.wire(self._outer_crd_ready, ~self._outer_crd_in_fifo.full)
         self.wire(self._outer_crd_fifo_valid, ~self._outer_crd_in_fifo.empty)
 
@@ -150,10 +150,10 @@ class SpAcc_1(MemoryController):
                         push=self._inner_crd_valid,
                         pop=self._inner_crd_fifo_pop,
                         data_in=self._inner_crd_fifo_in,
-                        data_out=kts.concat(self._inner_crd_fifo_out_eos,self._inner_crd_fifo_out_data))
+                        data_out=kts.concat(self._inner_crd_fifo_out_eos, self._inner_crd_fifo_out_data))
         self.wire(self._inner_crd_ready, ~self._inner_crd_in_fifo.full)
         self.wire(self._inner_crd_fifo_valid, ~self._inner_crd_in_fifo.empty)
-        
+
         self._inner_val_fifo_pop = self.var("inner_val_fifo_pop", 1)
         self._inner_val_fifo_valid = self.var("inner_val_fifo_valid", 1)
         self._inner_val_fifo_in = kts.concat(self._inner_val_in)
@@ -170,68 +170,9 @@ class SpAcc_1(MemoryController):
                         push=self._inner_val_valid,
                         pop=self._inner_val_fifo_pop,
                         data_in=self._inner_val_fifo_in,
-                        data_out=kts.concat(self._inner_val_fifo_out_eos,self._inner_val_fifo_out_data))
+                        data_out=kts.concat(self._inner_val_fifo_out_eos, self._inner_val_fifo_out_data))
         self.wire(self._inner_val_ready, ~self._inner_val_in_fifo.full)
         self.wire(self._inner_val_fifo_valid, ~self._inner_val_in_fifo.empty)
-
-        for i in range(self.num_streams):
-
-            # COORD IN FIFOS
-            # COORD IN FIFOS
-            tmp_coord_fifo = RegFIFO(data_width=self._coord_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
-            tmp_coord_fifo.add_attribute(SharedFifoAttr(direction="IN"))
-
-            tmp_coord_in_valid_in = self.var(f"coord_in_{i}_fifo_valid_in", 1)
-
-            tmp_coord_in = self.var(f"coord_in_{i}_fifo_in", self.data_width + 1, packed=True)
-            tmp_coord_in_eos_in = self.var(f"coord_in_{i}_fifo_eos_in", 1, packed=True)
-
-            self.wire(tmp_coord_in_eos_in, tmp_coord_in[self.data_width])
-
-            self.add_child(f"coord_in_fifo_{i}",
-                           tmp_coord_fifo,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           clk_en=self._clk_en,
-                           push=self._coord_valid_in[i],
-                           pop=self._inc_pos_cnt[i],
-                           data_in=self._coord_in[i],
-                           data_out=tmp_coord_in)
-
-            self.wire(self._coord_ready_out[i], ~tmp_coord_fifo.ports.full)
-            self.wire(tmp_coord_in_valid_in, ~tmp_coord_fifo.ports.empty)
-
-            self._coord_in_fifo_in.append(tmp_coord_in)
-            self._coord_in_fifo_valid_in.append(tmp_coord_in_valid_in)
-            self._coord_in_fifo_eos_in.append(tmp_coord_in_eos_in)
-
-            # POS IN FIFOS
-            tmp_pos_fifo = RegFIFO(data_width=self._pos_in[i].width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
-            tmp_pos_fifo.add_attribute(SharedFifoAttr(direction="IN"))
-
-            tmp_pos_in_valid_in = self.var(f"pos_in_{i}_fifo_valid_in", 1)
-
-            tmp_pos_in = self.var(f"pos_in_{i}_fifo_in", self.data_width + 1, packed=True)
-            tmp_pos_in_eos_in = self.var(f"pos_in_{i}_fifo_eos_in", 1, packed=True)
-
-            self.wire(tmp_pos_in_eos_in, tmp_pos_in[self.data_width])
-
-            self.add_child(f"pos_in_fifo_{i}",
-                           tmp_pos_fifo,
-                           clk=self._gclk,
-                           rst_n=self._rst_n,
-                           clk_en=self._clk_en,
-                           push=self._pos_valid_in[i],
-                           pop=self._inc_pos_cnt[i],
-                           data_in=self._pos_in[i],
-                           data_out=tmp_pos_in)
-
-            self.wire(self._pos_ready_out[i], ~tmp_pos_fifo.ports.full)
-            self.wire(tmp_pos_in_valid_in, ~tmp_pos_fifo.ports.empty)
-
-            self._pos_in_fifo_in.append(tmp_pos_in)
-            self._pos_in_fifo_valid_in.append(tmp_pos_in_valid_in)
-            self._pos_in_fifo_eos_in.append(tmp_pos_in_eos_in)
 
         # Create sticky bits for seeing EOS on either side...
         self._eos_in_sticky = self.var("eos_in_sticky", self.num_streams)

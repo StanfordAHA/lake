@@ -165,6 +165,15 @@ def load_test_module(test_name):
 
         return create_gold(ocrd_in, icrd_in, val_in)
 
+    if test_name == "direct_4d":
+        ocrd_in = [0, 2, 'S0', 2, 'S2', 'D']
+        icrd_in = [0, 2, 3, 'S0', 0, 2, 3, 'S1', 0, 2, 3, 'S3', 'D']
+        val_in = [50, 5, 10, 'S0', 40, 4, 8, 'S1', -40, 33, 36, 'S3', 'D']
+        # icrd_gold = [0, 2, 3, 'S0', 0, 2, 3, 'S1', 'D']
+        # val_gold = [90, 9, 18, 'S0', -40, 33, 36, 'S1', 'D']
+
+        return create_gold(ocrd_in, icrd_in, val_in)
+
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
         n = int(t_arg[1][0])
@@ -251,6 +260,6 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_iter_basic():
     init_module()
-    test_list = ["direct_3d", "direct_2d"]
+    test_list = ["direct_4d", "direct_3d", "direct_2d"]
     for test in test_list:
         module_iter_basic(test)
