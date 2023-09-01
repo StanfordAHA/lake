@@ -30,7 +30,7 @@ class SpAcc_1(MemoryController):
         self.data_width = data_width
         self.add_clk_enable = add_clk_enable
         self.add_flush = add_flush
-        self.lift_config = lift_config #  what is this for?
+        self.lift_config = lift_config  # what is this for?
         self.fifo_depth = fifo_depth
         self.defer_fifos = defer_fifos
         self.perf_debug = perf_debug
