@@ -82,12 +82,14 @@ class CrdDrop(MemoryController):
 
         cmrg_enable = config_kwargs['cmrg_enable']
         cmrg_stop_lvl = config_kwargs['cmrg_stop_lvl']
+        cmrg_mode = config_kwargs['cmrg_mode']
 
         # Store all configurations here
         config = [("tile_en", 1)]
 
         config += [("cmrg_enable", cmrg_enable)]
         config += [("cmrg_stop_lvl", cmrg_stop_lvl)]
+        config += [("cmrg_mode", cmrg_mode)]
 
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
@@ -106,6 +108,11 @@ class CrdDrop(MemoryController):
 
         self._cmrg_enable = self.input("cmrg_enable", 1)
         self._cmrg_enable.add_attribute(ConfigRegAttr("Enable cmrger"))
+
+        # mode 0: dropping crd stream according to the value stream
+        # mode 1: dropping crd streams according to the inner level crd stream
+        self._cmrg_mode = self.input("cmrg_mode", 1)
+        self._cmrg_mode.add_attribute(ConfigRegAttr("Merge mode"))
 
         # Interface to downstream
         self._cmrg_coord_out = []
@@ -311,6 +318,7 @@ class CrdDrop(MemoryController):
         self.proc_fsm = self.add_fsm("proc_seq", reset_high=False)
         START = self.proc_fsm.add_state("START")
         PROCESS = self.proc_fsm.add_state("PROCESS")
+        DROPZERO = self.proc_fsm.add_state("DROPZERO")
 
         ####################
         # Next State Logic
@@ -323,7 +331,8 @@ class CrdDrop(MemoryController):
         # to know to pass on the processed stream
         # If we hit the EOS without seeing data, we should strip it
         # START.next(DATA_SEEN, self._base_data_seen & self._tile_en)
-        START.next(PROCESS, self._tile_en)
+        START.next(PROCESS, self._tile_en & self._cmrg_mode)
+        START.next(DROPZERO, self._tile_en & ~self._cmrg_mode)
         START.next(START, None)
 
         ####################
@@ -332,7 +341,19 @@ class CrdDrop(MemoryController):
         # In DATA SEEN, we want to pass thru any data including the
         # stop token at the correct level, then go to the pass_stop logic. Make sure we also pushed the proc stream once
         # PROCESS.next(PROCESS, self._pushed_proc & self._pushed_stop_lvl)
+        # TODO: when all the tokens are processed, should we go back to START state?
         PROCESS.next(PROCESS, None)
+
+         ####################
+        # DROPZERO #
+        ####################
+        # In DROPZERO, one input stream is the value stream, and the other
+        # is its corresponding coordinate stream. The goal is to drop all
+        # coordinates where its corresponding value entries are zero
+        # value stream will be pushed through through input fifo[0]
+        # crd stream will be pushed through via input fifo[1]
+        # TODO: when all the tokens are processed, should we go back to START state?
+        DROPZERO.next(DROPZERO, None)
 
         ####################
         # FSM Output Logic
@@ -415,10 +436,29 @@ class CrdDrop(MemoryController):
         # Clear that data has been pushed when you are pushing the stop token of the base line
         PROCESS.output(self._clr_pushed_data_lower, self._delay_done | (self._delay_eos & self._base_infifo_in_valid & ((self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) | self._proc_done) &
                                                                         (self._base_data_seen | self._base_done) & self._pushed_data_lower & ~base_outfifo.ports.full))
+        
+        ################
+        # DROPZERO
+        ################
+        self._cmrg_base_fifo_pop = self.var("cmrg_base_fifo_pop", 1)
+        self._cmrg_proc_fifo_pop = self.var("cmrg_proc_fifo_pop", 1)
+        self._cmrg_base_fifo_push = self.var("cmrg_base_fifo_push", 1)
+        self._cmrg_proc_fifo_push = self.var("cmrg_proc_fifo_push", 1)
+        DROPZERO.output(self._cmrg_fifo_pop[0], self._cmrg_base_fifo_pop)
+        DROPZERO.output(self._cmrg_fifo_pop[1], self._cmrg_proc_fifo_pop)
+        DROPZERO.output(self._cmrg_fifo_push[0], self._cmrg_base_fifo_push)
+        DROPZERO.output(self._cmrg_fifo_push[1], self._cmrg_proc_fifo_push)
+
+        #TODO: check whether we can simply force these signals to zero 
+        DROPZERO.output(self._clr_pushed_proc, 1)
+        DROPZERO.output(self._clr_pushed_stop_lvl, 1)
+        DROPZERO.output(self._set_pushed_data_lower, 0)
+        DROPZERO.output(self._clr_pushed_data_lower, 1)
 
         self.proc_fsm.set_start_state(START)
 
         self.add_code(self.base_delay)
+        self.add_code(self.cmrg_in_out_fifo_control_logic_dropzero)
 
         ################
         # OUTPUT FIFOS #
@@ -504,7 +544,35 @@ class CrdDrop(MemoryController):
         else:
             self._base_delay = self._base_delay
             self._base_valid_delay = self._base_valid_delay
-
+    
+    @always_comb
+    def cmrg_in_out_fifo_control_logic_dropzero(self):
+        if (self._base_infifo_in_valid & self._proc_infifo_in_valid):
+            # only pop from fifo when data are present in both fifos to keep them aligned 
+            if (self.self._proc_infifo_in_data == kts.const(0, self.data_width ) & ~self._eos_seen & ~self._base_done):
+                # the value data is zero and is not a eos or done token, get rid both value and crd data by popping them and make outfifo ignore them
+                self._cmrg_base_fifo_pop = 1
+                self._cmrg_proc_fifo_pop = 1
+                self._cmrg_base_fifo_push = 0
+                self._cmrg_proc_fifo_push = 0
+            else:
+                # if the data value on the value stream is not zero, a eso, or a done token, we need to push keep the value and crd by pushing them into the out fifos
+                if (~self.base_outfifo.ports.full & ~self.proc_outfifo.ports.full):
+                    # check for available space in both output fifos
+                    self._cmrg_base_fifo_pop = 1
+                    self._cmrg_proc_fifo_pop = 1
+                    self._cmrg_base_fifo_push = 1
+                    self._cmrg_proc_fifo_push = 1
+                else:  
+                    self._cmrg_base_fifo_pop = 0
+                    self._cmrg_proc_fifo_pop = 0
+                    self._cmrg_base_fifo_push = 0
+                    self._cmrg_proc_fifo_push = 0
+        else:
+            self._cmrg_base_fifo_pop = 0
+            self._cmrg_proc_fifo_pop = 0
+            self._cmrg_base_fifo_push = 0
+            self._cmrg_proc_fifo_push = 0
 
 if __name__ == "__main__":
     crddrop_dut = CrdDrop(data_width=16, defer_fifos=False)
@@ -513,5 +581,5 @@ if __name__ == "__main__":
     # lift_config_reg(pond_dut.internal_generator)
     # extract_formal_annotation(pond_dut, "pond.txt")
 
-    verilog(crddrop_dut, filename="crd_drop.sv",
+    kts.verilog(crddrop_dut, filename="crd_drop.sv",
             optimize_if=False)
