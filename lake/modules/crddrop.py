@@ -308,7 +308,8 @@ class CrdDrop(MemoryController):
                   (self._base_infifo_in_data[9, 8] == kts.const(1, 2)) & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)) & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
 
         # Fake Pop
-        self.wire(self._base_infifo_true_pop, self._cmrg_fifo_pop[0] & ~(self._delay_stop & self._done_seen))
+        # Useful if we want to process consecutive streams, only used for crddrop and not zerodrop 
+        self.wire(self._base_infifo_true_pop, kts.ternary(self._cmrg_mode, self._cmrg_fifo_pop[0] & ~(self._delay_stop & self._done_seen), self._cmrg_fifo_pop[0]))
 
         ####################
         # STATE MACHINE TO PROCESS PROC STREAM
@@ -449,7 +450,7 @@ class CrdDrop(MemoryController):
         DROPZERO.output(self._cmrg_fifo_push[0], self._cmrg_base_fifo_push)
         DROPZERO.output(self._cmrg_fifo_push[1], self._cmrg_proc_fifo_push)
 
-        #TODO: check whether we can simply force these signals to zero 
+        #TODO: check whether we can simply force these signals to fixed values
         DROPZERO.output(self._clr_pushed_proc, 1)
         DROPZERO.output(self._clr_pushed_stop_lvl, 1)
         DROPZERO.output(self._set_pushed_data_lower, 0)
@@ -458,7 +459,7 @@ class CrdDrop(MemoryController):
         self.proc_fsm.set_start_state(START)
 
         self.add_code(self.base_delay)
-        self.add_code(self.cmrg_in_out_fifo_control_logic_dropzero)
+        self.add_code(self.cmrg_fifo_control_logic_dropzero)
 
         ################
         # OUTPUT FIFOS #
@@ -472,8 +473,10 @@ class CrdDrop(MemoryController):
         # self._base_outfifo_in_eos = self.var("base_outfifo_in_eos", 1)
         # Stupid convert -
         self._base_outfifo_in_packed = self.var(f"base_outfifo_in_packed", self.data_width + 1, packed=True)
-        # Select input from the dalay is delay is valid
-        self.wire(self._base_outfifo_in_packed, self._base_delay)
+        # Select input from the dalay is delay is valid for crddrop mode
+        # For dropzero mode, simply grab value from infifo
+        self.wire(self._base_outfifo_in_packed[self.data_width], kts.ternary(self._cmrg_mode, self._base_delay[self.data_width], self._base_infifo_in_eos))
+        self.wire(self._base_outfifo_in_packed[self.data_width - 1, 0], kts.ternary(self._cmrg_mode, self._base_delay[self.data_width - 1, 0], self._base_infifo_in_data))
 
         self._base_outfifo_out_packed = self.var(f"base_outfifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._cmrg_coord_out[0][self.data_width], self._base_outfifo_out_packed[self.data_width])
@@ -546,18 +549,18 @@ class CrdDrop(MemoryController):
             self._base_valid_delay = self._base_valid_delay
     
     @always_comb
-    def cmrg_in_out_fifo_control_logic_dropzero(self):
+    def cmrg_fifo_control_logic_dropzero(self):
         if (self._base_infifo_in_valid & self._proc_infifo_in_valid):
             # only pop from fifo when data are present in both fifos to keep them aligned 
-            if (self.self._proc_infifo_in_data == kts.const(0, self.data_width ) & ~self._eos_seen & ~self._base_done):
+            if ((self._base_infifo_in_data == kts.const(0, self.data_width)) & ~self._eos_seen & ~self._base_done):
                 # the value data is zero and is not a eos or done token, get rid both value and crd data by popping them and make outfifo ignore them
                 self._cmrg_base_fifo_pop = 1
                 self._cmrg_proc_fifo_pop = 1
                 self._cmrg_base_fifo_push = 0
                 self._cmrg_proc_fifo_push = 0
             else:
-                # if the data value on the value stream is not zero, a eso, or a done token, we need to push keep the value and crd by pushing them into the out fifos
-                if (~self.base_outfifo.ports.full & ~self.proc_outfifo.ports.full):
+                # if the data value on the value stream is not zero, a eos, or a done token, we need to push keep the value and crd by pushing them into the out fifos
+                if (self._cmrg_coord_in_ready_out[0] & self._cmrg_coord_in_ready_out[1]):
                     # check for available space in both output fifos
                     self._cmrg_base_fifo_pop = 1
                     self._cmrg_proc_fifo_pop = 1
