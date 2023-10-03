@@ -53,6 +53,9 @@ class OnyxPE(MemoryController):
         # Dense mode for bypassing FIFOs
         self._dense_mode = self.input("dense_mode", 1)
         self._dense_mode.add_attribute(ConfigRegAttr("Dense mode to skip the registers"))
+        # Sparse num inputs for rv/eos logic
+        self._sparse_num_inputs = self.input("sparse_num_inputs", 1)
+        self._sparse_num_inputs.add_attribute(ConfigRegAttr("Sparse num inputs for rv/eos logic"))
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -313,7 +316,7 @@ class OnyxPE(MemoryController):
             self._infifo_pop[0] = 0
             self._infifo_pop[1] = 0
             # If both inputs are valid, then we either can perform the op, otherwise we push through EOS
-            if self._infifo_out_valid.r_and() & ~self._outfifo_full & ~self._dense_mode:
+            if self._infifo_out_valid.r_and() & ~self._outfifo_full & ~self._dense_mode & ~self._sparse_num_inputs:
                 # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
                 if ~self._infifo_out_eos.r_and():
                     self._outfifo_push = 1
@@ -327,6 +330,24 @@ class OnyxPE(MemoryController):
                     self._data_to_fifo = self._infifo_out_data[0]
                     self._infifo_pop[0] = 1
                     self._infifo_pop[1] = 1
+            elif self._infifo_out_valid.r_or() & ~self._outfifo_full & ~self._dense_mode & self._sparse_num_inputs:
+                if ~self._infifo_out_eos.r_or():
+                    self._outfifo_push = 1
+                    self._outfifo_in_eos = 0
+                    self._data_to_fifo = self._pe_output
+                    if self._infifo_out_valid[0] == 1:
+                        self._infifo_pop[0] = 1
+                    else: 
+                        self._infifo_pop[1] = 1
+                else:
+                    self._outfifo_push = 1
+                    self._outfifo_in_eos = 1
+                    self._data_to_fifo = self._infifo_out_data[0]
+                    if self._infifo_out_valid[0] == 1:
+                        self._infifo_pop[0] = 1
+                    else: 
+                        self._infifo_pop[1] = 1
+
         self.add_code(fifo_push)
 
         if self.add_clk_enable:
@@ -362,11 +383,20 @@ class OnyxPE(MemoryController):
 
         op = config_kwargs['op']
 
+        # opcode mapping 0-2 is 2 input
+
+
         override_dense = False
 
         if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
             override_dense = True
             config += [("dense_mode", 1)]
+        if op < 3:
+            config += [("sparse_num_inputs", 0)]
+        else:
+            config += [("sparse_num_inputs", 1)]
+
+        
         sub_config = self.my_alu.get_bitstream(op, override_dense=override_dense)
         for config_tuple in sub_config:
             config_name, config_value = config_tuple

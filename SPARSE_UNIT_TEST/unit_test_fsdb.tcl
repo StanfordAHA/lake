@@ -1,6 +1,6 @@
 dump -file cgra.fsdb -type FSDB
-dump -add unioner_tb -fsdb_opt +mda+packedmda+struct
-power unioner_tb.dut
+dump -add pe_tb -fsdb_opt +mda+packedmda+struct
+power pe_tb.dut
 power -enable
 run
 power -disable
