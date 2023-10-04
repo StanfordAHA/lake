@@ -1183,7 +1183,9 @@ class ScannerPipe(MemoryController):
         # Can pop the infifo if we have done or are in dense mode
         # READ.output(self._seg_pop_infifo, (((self._done_in | (self._dense & self._infifo_valid_in & ~self._eos_in)) & ~self._seg_res_fifo_full) | self._maybe_in) & ~self._readout_loop)
         # READ.output(self._seg_pop_infifo, (((self._done_in | (self._infifo_valid_in & ~self._eos_in)) & ~self._seg_res_fifo_full) | self._maybe_in) & ~self._readout_loop)
-        READ.output(self._seg_pop_infifo, (((self._done_in | (self._infifo_valid_in & ~self._eos_in & self._any_seg_grant_push)) & ~self._seg_res_fifo_full) |
+        # READ.output(self._seg_pop_infifo, (((self._done_in | (self._infifo_valid_in & ~self._eos_in & self._any_seg_grant_push)) & ~self._seg_res_fifo_full) |
+        #                                    self._maybe_in) & ~self._readout_loop)
+        READ.output(self._seg_pop_infifo, (((self._done_in | (self._infifo_valid_in & ~self._eos_in & (self._dense | self._any_seg_grant_push))) & ~self._seg_res_fifo_full) |
                                            self._maybe_in) & ~self._readout_loop)
         READ.output(self._inc_req_made_seg, 0)
         READ.output(self._clr_req_made_seg, 0)
