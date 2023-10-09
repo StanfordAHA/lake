@@ -150,7 +150,7 @@ def create_gold(in_crd, in_val):
     for s in st:
         tr_st.append(convert_stream_to_onyx_interp(s))
 
-    return tr_st
+    return tr_st, time
 
 
 def load_test_module(test_name):
@@ -214,7 +214,7 @@ def load_test_module(test_name):
 
 
 def module_iter_basic(test_name, add_test=""):
-    [ic, iv, gc, gv] = load_test_module(test_name)
+    [ic, iv, gc, gv], sam_cycs = load_test_module(test_name)
     if add_test != "":
         additional_t = load_test_module(add_test)
         ic = ic + additional_t[0]
@@ -245,7 +245,9 @@ def module_iter_basic(test_name, add_test=""):
     assert output.find("Valid signal fails to end") == -1, "Valid signal fails to end"
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
-
+    hw_cycs = int(cycle_count_line.splitlines()[0].split(':')[1])
+    # hw_cycs = 0
+    
     val_out = sparse_helper.read_txt("val_out.txt", addit=add_test != "")
     crd_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
 
@@ -267,6 +269,7 @@ def module_iter_basic(test_name, add_test=""):
             f"Output {crd_out[i]} didn't match gold {gc[i]} at index {i}"
     
     print(test_name, " passed\n")
+    sparse_helper.write_csv('compression', test_name, hw_cycs, sam_cycs)
 
 
 def test_iter_basic():
@@ -310,16 +313,24 @@ def test_random_3d():
     for test in test_list:
         module_iter_basic(test)
 
-# def test_seq():
-#     init_module()
-#     test_list =  ["stream_1", "stream_2", "stream_3", "stream_4", "stream_5", "stream_6", "stream_7", "xxx"] +\
-#                  ["rd_1d_0.3_30_2d_0.1_80", "rd_1d_0.3_30_2d_0.3_80", "rd_1d_0.3_30_2d_0.5_80", "rd_1d_0.3_30_2d_0.8_80", "rd_1d_0.3_30_2d_1.0_80"] +\
-#                  ["rd_1d_0.3_30_3d_0.1_80", "rd_1d_0.3_30_3d_0.3_80", "rd_1d_0.3_30_3d_0.5_80", "rd_1d_0.3_30_3d_0.8_80", "rd_1d_0.3_30_3d_1.0_80"] +\
-#                  ["rd_2d_0.3_30_2d_0.1_80", "rd_2d_0.3_30_2d_0.3_80", "rd_2d_0.3_30_2d_0.5_80", "rd_2d_0.3_30_2d_0.8_80", "rd_2d_0.3_30_2d_1.0_80"] +\
-#                  ["rd_2d_0.3_30_3d_0.1_80", "rd_2d_0.3_30_3d_0.3_80", "rd_2d_0.3_30_3d_0.5_80", "rd_2d_0.3_30_3d_0.8_80", "rd_2d_0.3_30_3d_1.0_80"]
-#     for i in range(20):
-#         rand = random.sample(test_list, 2)
-#         module_iter_basic(rand[0], rand[1])
+def test_seq():
+    init_module()
+    test_list =  ["stream_1", "stream_2", "stream_3", "stream_4", "stream_5", "stream_6", "stream_7", "xxx"]
+    for i in range(1, 11):
+        test_name = "rd_3d_" + str(float(i) / 10.0)
+        for j in range(0, 11):
+            test_list.append(test_name + "_30_" + str(float(j) / 10.0))
+    for i in range(1, 11):
+        test_name = "rd_2d_" + str(float(i) / 10.0)
+        for j in range(0, 11):
+            test_list.append(test_name + "_30_" + str(float(j) / 10.0))
+    for i in range(1, 11):
+        test_name = "rd_1d_" + str(float(i) / 10.0)
+        for j in range(0, 11):
+            test_list.append(test_name  + "_30_" + str(float(j) / 10.0))
+    for i in range(20):
+        rand = random.sample(test_list, 2)
+        module_iter_basic(rand[0], rand[1])
 
 
 # def test_eff():
