@@ -224,24 +224,22 @@ class OnyxPE(MemoryController):
 # OUTPUT FIFO
 # ==============================
 
-        self._data_to_fifo = self.var("data_to_fifo", self.data_width+1)
+        self._data_to_fifo = self.var("data_to_fifo", self.data_width)
         self._pe_output = self.var("pe_output", self.data_width)
-        self._pe_output_p = self.var("pe_output_p", 1)
         self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
 
-        self._outfifo = RegFIFO(data_width=self.data_width + 1 + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
         self._outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         # Convert to packed
-        self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1 + 1, packed=True)
-        self._outfifo_out_packed = self.var("outfifo_out_packed", self.data_width + 1 + 1, packed=True)
+        self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1, packed=True)
+        self._outfifo_out_packed = self.var("outfifo_out_packed", self.data_width + 1, packed=True)
 
-        self.wire(self._outfifo_in_packed[self.data_width+1], self._outfifo_in_eos)
-        self.wire(self._outfifo_in_packed[self.data_width, 0], self._data_to_fifo)
+        self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_eos)
+        self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
         # self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
-        self.wire(self._data_out, kts.ternary(self._dense_mode, self._pe_output, kts.concat(self._outfifo_out_packed[self.data_width+1], self._outfifo_out_packed[self.data_width-1, 0])))
-        self.wire(self._data_out_p, kts.ternary(self._dense_mode, self._pe_output_p, self._outfifo_out_packed[self.data_width]))
+        self.wire(self._data_out, kts.ternary(self._dense_mode, self._pe_output, self._outfifo_out_packed))
 
         # Push when there's incoming transaction and room to accept it
         self._outfifo_push = self.var("outfifo_push", 1)
@@ -308,7 +306,7 @@ class OnyxPE(MemoryController):
                        bit1=self._bit_in[1],
                        bit2=self._bit_in[2],
                        O0=self._pe_output,
-                       O1=self._pe_output_p)
+                       O1=self._data_out_p)
 
         @always_comb
         def fifo_push():
@@ -323,21 +321,20 @@ class OnyxPE(MemoryController):
                 if ~self._infifo_out_eos.r_and():
                     self._outfifo_push = 1
                     self._outfifo_in_eos = 0
-                    self._data_to_fifo = kts.concat(self._pe_output_p, self._pe_output)
+                    self._data_to_fifo = self._pe_output
                     self._infifo_pop[0] = 1
                     self._infifo_pop[1] = 1
                 else:
                     self._outfifo_push = 1
                     self._outfifo_in_eos = 1
-                    # TODO should be 0 instead of self._pe_output_p
-                    self._data_to_fifo = kts.concat(self._pe_output_p, self._infifo_out_data[0])
+                    self._data_to_fifo = self._infifo_out_data[0]
                     self._infifo_pop[0] = 1
                     self._infifo_pop[1] = 1
             elif self._infifo_out_valid.r_or() & ~self._outfifo_full & ~self._dense_mode & self._sparse_num_inputs:
                 if ~self._infifo_out_eos.r_or():
                     self._outfifo_push = 1
                     self._outfifo_in_eos = 0
-                    self._data_to_fifo = kts.concat(self._pe_output_p, self._pe_output)
+                    self._data_to_fifo = self._pe_output
                     if self._infifo_out_valid[0] == 1:
                         self._infifo_pop[0] = 1
                     else: 
@@ -345,8 +342,7 @@ class OnyxPE(MemoryController):
                 else:
                     self._outfifo_push = 1
                     self._outfifo_in_eos = 1
-                    # TODO should be 0 instead of self._pe_output_p
-                    self._data_to_fifo = kts.concat(self._pe_output_p, self._infifo_out_data[0])
+                    self._data_to_fifo = self._infifo_out_data[0]
                     if self._infifo_out_valid[0] == 1:
                         self._infifo_pop[0] = 1
                     else: 
