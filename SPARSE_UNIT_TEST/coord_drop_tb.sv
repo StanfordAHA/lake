@@ -57,7 +57,8 @@ module coord_drop_tb;
         .cmrg_coord_out_0(pos_out_0),
         .cmrg_coord_out_0_valid(pos_out_0_valid),
         .cmrg_coord_out_1(pos_out_1),
-        .cmrg_coord_out_1_valid(pos_out_1_valid)
+        .cmrg_coord_out_1_valid(pos_out_1_valid),
+        .cmrg_mode(1'b1)
     );
 
     glb_write #(
