@@ -216,11 +216,12 @@ def load_test_module(test_name):
 def module_iter_basic(test_name, add_test=""):
     [ic, iv, gc, gv], sam_cycs = load_test_module(test_name)
     if add_test != "":
-        additional_t = load_test_module(add_test)
-        ic = ic + additional_t[0]
-        iv = iv + additional_t[1]
-        gc = gc + additional_t[2]
-        gv = gv + additional_t[3]
+        [add_ic, add_iv, add_gc, add_gv], add_sam_cycs = load_test_module(add_test)
+        ic = ic + add_ic
+        iv = iv + add_iv
+        gc = gc + add_gc
+        gv = gv + add_gv
+        sam_cycs = sam_cycs + add_sam_cycs
 
     print("input crd", ic)
     print("input val", iv)
@@ -316,6 +317,7 @@ def test_random_3d():
 def test_seq():
     init_module()
     test_list =  ["stream_1", "stream_2", "stream_3", "stream_4", "stream_5", "stream_6", "stream_7", "xxx"]
+    test_list.append("rd_3d_0.0_30_0.0")
     for i in range(1, 11):
         test_name = "rd_3d_" + str(float(i) / 10.0)
         for j in range(0, 11):
@@ -324,6 +326,7 @@ def test_seq():
         test_name = "rd_2d_" + str(float(i) / 10.0)
         for j in range(0, 11):
             test_list.append(test_name + "_30_" + str(float(j) / 10.0))
+    test_list.append("rd_1d_0.0_30_0.0")
     for i in range(1, 11):
         test_name = "rd_1d_" + str(float(i) / 10.0)
         for j in range(0, 11):
@@ -331,10 +334,5 @@ def test_seq():
     for i in range(20):
         rand = random.sample(test_list, 2)
         module_iter_basic(rand[0], rand[1])
+    
 
-
-# def test_eff():
-#     init_module()
-#     test_list = ["rd_2d_0.8_80_3d_0.1_200", "rd_2d_0.8_80_3d_0.3_200", "rd_2d_0.8_80_3d_0.5_200", "rd_2d_0.8_80_3d_0.8_200", "rd_2d_0.8_80_3d_1.0_200"]
-#     for test in test_list:
-#         module_iter_basic(test)
