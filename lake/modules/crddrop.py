@@ -459,7 +459,6 @@ class CrdDrop(MemoryController):
         self.proc_fsm.set_start_state(START)
 
         self.add_code(self.base_delay)
-        self.add_code(self.cmrg_fifo_control_logic_dropzero)
 
         ################
         # OUTPUT FIFOS #
@@ -481,6 +480,7 @@ class CrdDrop(MemoryController):
         self._base_outfifo_out_packed = self.var(f"base_outfifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._cmrg_coord_out[0][self.data_width], self._base_outfifo_out_packed[self.data_width])
         self.wire(self._cmrg_coord_out[0][self.data_width - 1, 0], self._base_outfifo_out_packed[self.data_width - 1, 0])
+        self._base_outfifo_in_ready = self.var(f"base_outfifo_in_ready", 1)
 
         self.add_child(f"base_outfifo",
                        base_outfifo,
@@ -493,6 +493,7 @@ class CrdDrop(MemoryController):
                        data_out=self._base_outfifo_out_packed)
 
         self.wire(self._cmrg_coord_out_valid_out[0], ~base_outfifo.ports.empty)
+        self.wire(self._base_outfifo_in_ready, ~base_outfifo.ports.full)
 
         ##############
         # PROC outfifo
@@ -508,6 +509,8 @@ class CrdDrop(MemoryController):
         self.wire(self._cmrg_coord_out[1][self.data_width], self._proc_outfifo_out_packed[self.data_width])
         self.wire(self._cmrg_coord_out[1][self.data_width - 1, 0], self._proc_outfifo_out_packed[self.data_width - 1, 0])
 
+        self._proc_outfifo_in_ready = self.var(f"proc_outfifo_in_ready", 1)
+
         self.add_child(f"proc_outfifo",
                        proc_outfifo,
                        clk=self._gclk,
@@ -519,6 +522,9 @@ class CrdDrop(MemoryController):
                        data_out=self._proc_outfifo_out_packed)
 
         self.wire(self._cmrg_coord_out_valid_out[1], ~proc_outfifo.ports.empty)
+        self.wire(self._proc_outfifo_in_ready, ~proc_outfifo.ports.full)
+
+        self.add_code(self.cmrg_fifo_control_logic_dropzero)
 
     def get_memory_ports(self):
         '''
@@ -560,7 +566,7 @@ class CrdDrop(MemoryController):
                 self._cmrg_proc_fifo_push = 0
             else:
                 # if the data value on the value stream is not zero, a eos, or a done token, we need to push keep the value and crd by pushing them into the out fifos
-                if (self._cmrg_coord_in_ready_out[0] & self._cmrg_coord_in_ready_out[1]):
+                if (self._base_outfifo_in_ready & self._proc_outfifo_in_ready):
                     # check for available space in both output fifos
                     self._cmrg_base_fifo_pop = 1
                     self._cmrg_proc_fifo_pop = 1
