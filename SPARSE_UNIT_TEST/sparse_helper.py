@@ -1,5 +1,6 @@
 import enum
 import os
+import csv
 
 
 class ControlCodeOnyx(enum.Enum):
@@ -141,3 +142,22 @@ def coord_drop(coord):
             pre_s = False
             cleaned.append(i)
     return cleaned
+
+def write_csv(module_name, test_name, hw_cycs, sam_cycs):
+    
+    if not os.path.isfile('./tables/' + module_name + "_perf.csv"):
+        # csv file doesn't exists, clear it and write content
+        with open('./tables/' + module_name + '_perf.csv', 'w') as file:
+            writer = csv.writer(file)
+            writer.writerow(["test name", "hw cycs", "sam_cycs"])
+            writer.writerow([test_name, hw_cycs, sam_cycs])
+    else:
+        # csv file already exists, append content
+        with open('./tables/' + module_name + "_perf.csv", 'a') as file:
+            writer = csv.writer(file)
+            writer.writerow([test_name, hw_cycs, sam_cycs])
+    
+            
+
+
+
