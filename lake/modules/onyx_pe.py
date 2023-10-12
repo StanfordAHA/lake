@@ -54,7 +54,7 @@ class OnyxPE(MemoryController):
         self._dense_mode = self.input("dense_mode", 1)
         self._dense_mode.add_attribute(ConfigRegAttr("Dense mode to skip the registers"))
         # Sparse num inputs for rv/eos logic
-        self._sparse_num_inputs = self.input("sparse_num_inputs", 1)
+        self._sparse_num_inputs = self.input("sparse_num_inputs", 2)
         self._sparse_num_inputs.add_attribute(ConfigRegAttr("Sparse num inputs for rv/eos logic"))
 
         gclk = self.var("gclk", 1)
@@ -69,7 +69,7 @@ class OnyxPE(MemoryController):
         self._data_in_ready_out = []
         self._data_in_eos_in = []
 
-        for i in range(2):
+        for i in range(3):
 
             tmp_data_in = self.input(f"data{i}", self.data_width + 1, packed=True)
             tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -97,8 +97,8 @@ class OnyxPE(MemoryController):
 
         # for i in range(3):
 
-        tmp_data_in = self.input(f"data2", self.data_width + 1, packed=True)
-        tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        #tmp_data_in = self.input(f"data2", self.data_width + 1, packed=True)
+        #tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         # self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
 
         # tmp_data_in_valid_in = self.input(f"data2_valid", 1)
@@ -170,20 +170,23 @@ class OnyxPE(MemoryController):
         self._infifo = []
         self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos))
         self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos))
+        self._infifo.append(RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos))
         self._infifo[0].add_attribute(SharedFifoAttr(direction="IN"))
         self._infifo[1].add_attribute(SharedFifoAttr(direction="IN"))
+        self._infifo[2].add_attribute(SharedFifoAttr(direction="IN"))
 
         # Ready is just a function of having room in the FIFO
         self.wire(self._data_in_ready_out[0], kts.ternary(self._dense_mode, kts.const(1, 1), ~self._infifo[0].ports.full))
         self.wire(self._data_in_ready_out[1], kts.ternary(self._dense_mode, kts.const(1, 1), ~self._infifo[1].ports.full))
+        self.wire(self._data_in_ready_out[2], kts.ternary(self._dense_mode, kts.const(1, 1), ~self._infifo[2].ports.full))
 
         # Convert to packed
-        self._infifo_in_packed = self.var("infifo_in_packed", self.data_width + 1, size=2, explicit_array=True, packed=True)
-        self._infifo_out_packed = self.var("infifo_out_packed", self.data_width + 1, size=2, explicit_array=True, packed=True)
+        self._infifo_in_packed = self.var("infifo_in_packed", self.data_width + 1, size=3, explicit_array=True, packed=True)
+        self._infifo_out_packed = self.var("infifo_out_packed", self.data_width + 1, size=3, explicit_array=True, packed=True)
 
-        self._infifo_out_eos = self.var("infifo_out_eos", 2)
-        self._infifo_out_valid = self.var("infifo_out_valid", 2)
-        self._infifo_out_data = self.var("infifo_out_data", self.data_width, size=2, explicit_array=True, packed=True)
+        self._infifo_out_eos = self.var("infifo_out_eos", 3)
+        self._infifo_out_valid = self.var("infifo_out_valid", 3)
+        self._infifo_out_data = self.var("infifo_out_data", self.data_width, size=3, explicit_array=True, packed=True)
 
         # indicate valid data as well
         # self.wire(self._infifo_in_packed[0][self.data_width], self._data_in_eos_in[0])
@@ -196,17 +199,22 @@ class OnyxPE(MemoryController):
         self.wire(self._infifo_out_eos[1], self._infifo_out_packed[1][self.data_width])
         self.wire(self._infifo_out_data[1], self._infifo_out_packed[1][self.data_width - 1, 0])
 
+        self.wire(self._infifo_in_packed[2], self._data_in[2])
+        self.wire(self._infifo_out_eos[2], self._infifo_out_packed[2][self.data_width])
+        self.wire(self._infifo_out_data[2], self._infifo_out_packed[2][self.data_width - 1, 0])
+
         # Push when there's incoming transaction and room to accept it
         # Do this separate naming scheme so that the get_fifos function in the MemoryController
         # base class will pick them up properly
-        self._infifo_push = [self.var(f"infifo_push_{i}", 1) for i in range(2)]
+        self._infifo_push = [self.var(f"infifo_push_{i}", 1) for i in range(3)]
         self.wire(self._infifo_push[0], self._data_in_valid_in[0])
         self.wire(self._infifo_push[1], self._data_in_valid_in[1])
+        self.wire(self._infifo_push[2], self._data_in_valid_in[2])
 
         # Pop when ready to accum more streams
-        self._infifo_pop = self.var("infifo_pop", 2)
+        self._infifo_pop = self.var("infifo_pop", 3)
 
-        for i in range(2):
+        for i in range(3):
             self.add_child(f"input_fifo_{i}",
                            self._infifo[i],
                            clk=self._gclk,
@@ -219,6 +227,7 @@ class OnyxPE(MemoryController):
 
         self.wire(self._infifo_out_valid[0], ~self._infifo[0].ports.empty)
         self.wire(self._infifo_out_valid[1], ~self._infifo[1].ports.empty)
+        self.wire(self._infifo_out_valid[2], ~self._infifo[2].ports.empty)
 
 # ==============================
 # OUTPUT FIFO
@@ -279,9 +288,9 @@ class OnyxPE(MemoryController):
                                       name_prefix=self.ext_pe_prefix,
                                       include_RO_cfg=self.pe_ro)
 
-        self._infifo_out_maybe = [self.var(f"infifo_out_maybe_{idx}", 1) for idx in range(2)]
+        self._infifo_out_maybe = [self.var(f"infifo_out_maybe_{idx}", 1) for idx in range(3)]
         [self.wire(self._infifo_out_maybe[idx], self._infifo_out_eos[idx] & self._infifo_out_valid[idx] &
-            (self._infifo_out_data[idx][self.OPCODE_BT] == self.MAYBE_CODE)) for idx in range(2)]
+            (self._infifo_out_data[idx][self.OPCODE_BT] == self.MAYBE_CODE)) for idx in range(3)]
 
         # Need active high reset for PE
         self._active_high_reset = kts.util.async_reset(~self._rst_n)
@@ -301,7 +310,11 @@ class OnyxPE(MemoryController):
                                          kts.ternary(self._infifo_out_maybe[1],
                                                      0,
                                                      self._infifo_out_data[1])),
-                       data2=self._data_in[2][self.data_width - 1, 0],
+                       data2=kts.ternary(self._dense_mode,
+                                         self._data_in[2][self.data_width - 1, 0],
+                                         kts.ternary(self._infifo_out_maybe[2],
+                                                     0,
+                                                     self._infifo_out_data[2])),
                        bit0=self._bit_in[0],
                        bit1=self._bit_in[1],
                        bit2=self._bit_in[2],
@@ -315,8 +328,9 @@ class OnyxPE(MemoryController):
             self._data_to_fifo = 0
             self._infifo_pop[0] = 0
             self._infifo_pop[1] = 0
+            self._infifo_pop[2] = 0
             # If both inputs are valid, then we either can perform the op, otherwise we push through EOS
-            if self._infifo_out_valid.r_and() & ~self._outfifo_full & ~self._dense_mode & ~self._sparse_num_inputs:
+            if self._infifo_out_valid.r_and() & ~self._outfifo_full & ~self._dense_mode & (self._sparse_num_inputs == 2):
                 # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
                 if ~self._infifo_out_eos.r_and():
                     self._outfifo_push = 1
@@ -324,29 +338,49 @@ class OnyxPE(MemoryController):
                     self._data_to_fifo = self._pe_output
                     self._infifo_pop[0] = 1
                     self._infifo_pop[1] = 1
+                    self._infifo_pop[2] = 1
                 else:
                     self._outfifo_push = 1
                     self._outfifo_in_eos = 1
+                    # TODO should be 0 instead of self._pe_output_p
                     self._data_to_fifo = self._infifo_out_data[0]
                     self._infifo_pop[0] = 1
                     self._infifo_pop[1] = 1
-            elif self._infifo_out_valid.r_or() & ~self._outfifo_full & ~self._dense_mode & self._sparse_num_inputs:
-                if ~self._infifo_out_eos.r_or():
+                    self._infifo_pop[2] = 1
+            # If two inputs are valid, then we either can perform the op, otherwise we push through EOS
+            elif self._infifo_out_valid[0] & self._infifo_out_valid[1] & ~self._outfifo_full & ~self._dense_mode & (self._sparse_num_inputs == 1):
+                if ~(self._infifo_out_eos[0] & self._infifo_out_eos[1]):
                     self._outfifo_push = 1
                     self._outfifo_in_eos = 0
                     self._data_to_fifo = self._pe_output
-                    if self._infifo_out_valid[0] == 1:
-                        self._infifo_pop[0] = 1
-                    else: 
-                        self._infifo_pop[1] = 1
+                    self._infifo_pop[0] = self._infifo_out_valid[0]
+                    self._infifo_pop[1] = self._infifo_out_valid[1]
+                    self._infifo_pop[2] = self._infifo_out_valid[2]
                 else:
                     self._outfifo_push = 1
                     self._outfifo_in_eos = 1
+                    # TODO should be 0 instead of self._pe_output_p
                     self._data_to_fifo = self._infifo_out_data[0]
-                    if self._infifo_out_valid[0] == 1:
-                        self._infifo_pop[0] = 1
-                    else: 
-                        self._infifo_pop[1] = 1
+                    self._infifo_pop[0] = self._infifo_out_valid[0]
+                    self._infifo_pop[1] = self._infifo_out_valid[1]
+                    self._infifo_pop[2] = self._infifo_out_valid[2]
+            # If first input is valid only and not EOS, then we push through EOS
+            elif self._infifo_out_valid[0] & ~self._outfifo_full & ~self._dense_mode & (self._sparse_num_inputs == 0):
+                if self._infifo_out_eos[0]:
+                    self._outfifo_push = 1
+                    self._outfifo_in_eos = 0
+                    self._data_to_fifo = self._pe_output
+                    self._infifo_pop[0] = self._infifo_out_valid[0]
+                    self._infifo_pop[1] = self._infifo_out_valid[1]
+                    self._infifo_pop[2] = self._infifo_out_valid[2]
+                else:
+                    self._outfifo_push = 1
+                    self._outfifo_in_eos = 1
+                    # TODO should be 0 instead of self._pe_output_p
+                    self._data_to_fifo = self._infifo_out_data[0]
+                    self._infifo_pop[0] = self._infifo_out_valid[0]
+                    self._infifo_pop[1] = self._infifo_out_valid[1]
+                    self._infifo_pop[2] = self._infifo_out_valid[2]
 
         self.add_code(fifo_push)
 
@@ -392,9 +426,9 @@ class OnyxPE(MemoryController):
             override_dense = True
             config += [("dense_mode", 1)]
         if op < 3:
-            config += [("sparse_num_inputs", 0)]
-        else:
             config += [("sparse_num_inputs", 1)]
+        else:
+            config += [("sparse_num_inputs", 0)]
 
         
         sub_config = self.my_alu.get_bitstream(op, override_dense=override_dense)
