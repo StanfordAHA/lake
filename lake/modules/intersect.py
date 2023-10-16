@@ -72,6 +72,10 @@ class Intersect(MemoryController):
         self._joiner_op = self.input("joiner_op", op_bits)
         self._joiner_op.add_attribute(ConfigRegAttr("Operation to perform"))
 
+        # Vector Reduce Mode
+        self._vector_reduce_mode = self.input("vector_reduce_mode", 1)
+        self._vector_reduce_mode.add_attribute(ConfigRegAttr("Operating in vector reduce mode?"))
+
 
         # Scanner interface will need
         # input data, input valid
@@ -273,7 +277,9 @@ class Intersect(MemoryController):
         self.wire(self._all_have_eos, eos_concat.r_and())
 
         self._maybe = self.var("maybe", self.data_width)
-        self.wire(self._maybe, kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8)))
+        self._maybeconstant = kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))
+        self.wire(self._maybe, kts.ternary(self._vector_reduce_mode, kts.const(0, self.data_width), self._maybeconstant))
+        #self.wire(self._maybe, kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8)))
 
         # MO: This isn't used! 
         # for i in range(self.num_streams):
@@ -504,12 +510,12 @@ class Intersect(MemoryController):
         #                                                    kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[1],
         #                                                                                 kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
         #                                                                                                              kts.const(0, 1), kts.const(1, 1)))))
-        UNION.output(self._pos_to_fifo_eos[0], self._pos_to_fifo[0] == self._maybe) # MO: Will maybe token having EOS cause issues? 
+        UNION.output(self._pos_to_fifo_eos[0], ~self._vector_reduce_mode & ~self._pop_fifo[0]) # MO: Will maybe token having EOS cause issues? 
         #UNION.output(self._pos_to_fifo_eos[1], (self._pos_in_fifo_eos_in[1] & ~self._coord_in_fifo_eos_in[1]) | kts.ternary(self._coord_in_fifo_eos_in[1],
         #                                                    kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[0],
         #                                                                                 kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
         #                                                                                                              kts.const(0, 1), kts.const(1, 1)))))
-        UNION.output(self._pos_to_fifo_eos[1], self._pos_to_fifo[1] == self._maybe) # MO: Will maybe token having EOS cause issues??? 
+        UNION.output(self._pos_to_fifo_eos[1], ~self._vector_reduce_mode & ~self._pop_fifo[1]) # MO: Will maybe token having EOS cause issues??? 
         # UNION.output(self._pos_to_fifo_eos[0], (self._coord_in_fifo_in[0][15, 0] != self._coord_to_fifo[15, 0]))
         # UNION.output(self._pos_to_fifo_eos[1], (self._coord_in_fifo_in[1][15, 0] != self._coord_to_fifo[15, 0]))
 
