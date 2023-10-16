@@ -534,9 +534,9 @@ class Intersect(MemoryController):
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
         # TODO
-        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
-        DRAIN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
-        DRAIN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][15, 0])
+        DRAIN.output(self._coord_to_fifo, kts.ternary((~self._vector_reduce_mode | (self._coord_in_fifo_in[0][15, 0] < self._coord_in_fifo_in[1][15, 0])), self._coord_in_fifo_in[0][15, 0], self._coord_in_fifo_in[1][15, 0]))
+        DRAIN.output(self._pos_to_fifo[0], self._coord_to_fifo) # MO: This is ok because we are passing stop/done tokens. Everything should be S/D.
+        DRAIN.output(self._pos_to_fifo[1], self._coord_to_fifo) # MO: This is ok because we are passing stop/done tokens. Everything should be S/D.
         DRAIN.output(self._coord_to_fifo_eos, self._any_has_eos)
         DRAIN.output(self._pos_to_fifo_eos[0], self._any_has_eos)
         DRAIN.output(self._pos_to_fifo_eos[1], self._any_has_eos)
