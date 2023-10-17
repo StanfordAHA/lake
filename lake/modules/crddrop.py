@@ -308,7 +308,7 @@ class CrdDrop(MemoryController):
                   (self._base_infifo_in_data[9, 8] == kts.const(1, 2)) & (self._proc_infifo_in_data[9, 8] == kts.const(1, 2)) & ~base_outfifo.ports.full & ~proc_outfifo.ports.full)
 
         # Fake Pop
-        # Useful if we want to process consecutive streams, only used for crddrop and not zerodrop 
+        # Useful if we want to process consecutive streams, only used for crddrop and not zerodrop
         self.wire(self._base_infifo_true_pop, kts.ternary(self._cmrg_mode, self._cmrg_fifo_pop[0] & ~(self._delay_stop & self._done_seen), self._cmrg_fifo_pop[0]))
 
         ####################
@@ -345,7 +345,7 @@ class CrdDrop(MemoryController):
         # TODO: when all the tokens are processed, should we go back to START state?
         PROCESS.next(PROCESS, None)
 
-         ####################
+        ####################
         # DROPZERO #
         ####################
         # In DROPZERO, one input stream is the value stream, and the other
@@ -437,7 +437,7 @@ class CrdDrop(MemoryController):
         # Clear that data has been pushed when you are pushing the stop token of the base line
         PROCESS.output(self._clr_pushed_data_lower, self._delay_done | (self._delay_eos & self._base_infifo_in_valid & ((self._proc_infifo_in_valid & ~self._proc_infifo_in_eos) | self._proc_done) &
                                                                         (self._base_data_seen | self._base_done) & self._pushed_data_lower & ~base_outfifo.ports.full))
-        
+
         ################
         # DROPZERO
         ################
@@ -450,7 +450,7 @@ class CrdDrop(MemoryController):
         DROPZERO.output(self._cmrg_fifo_push[0], self._cmrg_base_fifo_push)
         DROPZERO.output(self._cmrg_fifo_push[1], self._cmrg_proc_fifo_push)
 
-        #TODO: check whether we can simply force these signals to fixed values
+        # TODO: check whether we can simply force these signals to fixed values
         DROPZERO.output(self._clr_pushed_proc, 1)
         DROPZERO.output(self._clr_pushed_stop_lvl, 1)
         DROPZERO.output(self._set_pushed_data_lower, 0)
@@ -553,11 +553,11 @@ class CrdDrop(MemoryController):
         else:
             self._base_delay = self._base_delay
             self._base_valid_delay = self._base_valid_delay
-    
+
     @always_comb
     def cmrg_fifo_control_logic_dropzero(self):
         if (self._base_infifo_in_valid & self._proc_infifo_in_valid):
-            # only pop from fifo when data are present in both fifos to keep them aligned 
+            # only pop from fifo when data are present in both fifos to keep them aligned
             if ((self._base_infifo_in_data == kts.const(0, self.data_width)) & ~self._eos_seen & ~self._base_done):
                 # the value data is zero and is not a eos or done token, get rid both value and crd data by popping them and make outfifo ignore them
                 self._cmrg_base_fifo_pop = 1
@@ -572,7 +572,7 @@ class CrdDrop(MemoryController):
                     self._cmrg_proc_fifo_pop = 1
                     self._cmrg_base_fifo_push = 1
                     self._cmrg_proc_fifo_push = 1
-                else:  
+                else:
                     self._cmrg_base_fifo_pop = 0
                     self._cmrg_proc_fifo_pop = 0
                     self._cmrg_base_fifo_push = 0
@@ -582,7 +582,7 @@ class CrdDrop(MemoryController):
             self._cmrg_proc_fifo_pop = 0
             self._cmrg_base_fifo_push = 0
             self._cmrg_proc_fifo_push = 0
-            
+
 
 if __name__ == "__main__":
     crddrop_dut = CrdDrop(data_width=16, defer_fifos=False)
