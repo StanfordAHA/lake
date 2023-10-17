@@ -165,3 +165,41 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
     }
 
     return tech_map
+
+
+def Intel_Tech_Map(depth, width) -> dict:
+    '''
+    Currently returns the tech map for the single port SRAM, but we can
+    procedurally generate different tech maps
+    '''
+    ports = []
+
+    single_port = {
+        'data_in': 'din',
+        'addr': 'adr',
+        'write_enable': 'wen',
+        'read_enable': 'ren',
+        # 'cen': 'CEB',
+        'clk': 'clk',
+        'data_out': 'q',
+        'alt_sigs': {
+            # value, width
+            'fwen': (0, 1),
+            'mcen': (0, 1),
+            'mc': (0, 3),
+            'wpulseen': (0, 1),
+            'wpulse': (0, 2),
+            'wa': (0, 2),
+        }
+    }
+
+    ports.append(single_port)
+
+    tech_map = {
+        'name': f"ip224uhdlp1p11rf_{depth}x{width}m4b2c1s0_t0r0p0d0a1m1h",
+        'ports': ports,
+        'depth': depth,
+        'width': width
+    }
+
+    return tech_map

@@ -10,7 +10,7 @@ from lake.top.extract_tile_info import extract_top_config
 from lake.utils.sram_macro import SRAMMacroInfo
 import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
-from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map
+from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map, Intel_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.modules.stencil_valid import StencilValid
 from _kratos import create_wrapper_flatten
@@ -419,8 +419,9 @@ if __name__ == "__main__":
                        add_flush=True,
                        rw_same_cycle=False,
                        read_delay=1,
-                       use_sim_sram=True,
-                       name=f"LakeTop_width_{args.fetch_width}_{mem_name}")
+                       use_sim_sram=False,
+                       name=f"LakeTop_width_{args.fetch_width}_{mem_name}",
+                       tech_map=Intel_Tech_Map(depth=512, width=64))
 
     print(lake_top)
 

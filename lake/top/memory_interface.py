@@ -130,7 +130,12 @@ class PhysicalMemoryPort(MemoryPort):
             self.port_interface['data_out'] = self.port_map['data_out']
             self.port_interface['write_enable'] = self.port_map['write_enable']
             self.port_interface['addr'] = self.port_map['addr']
-            self.port_interface['cen'] = self.port_map['cen']
+
+            # Check for read_enable as well
+            if 'read_enable' in self.port_map:
+                self.port_interface['read_enable'] = self.port_map['read_enable']
+            else:
+                self.port_interface['cen'] = self.port_map['cen']
             self.port_interface['clk'] = self.port_map['clk']
             self.port_interface_set = True
         else:
@@ -204,8 +209,17 @@ class PhysicalMemoryStub(kts.Generator):
                 port_intf['data_in'] = self.input(port_intf['data_in'], self.mem_width, packed=True)
                 port_intf['data_out'] = self.output(port_intf['data_out'], self.mem_width, packed=True)
                 port_intf['write_enable'] = self.input(port_intf['write_enable'], 1)
-                port_intf['addr'] = self.input(port_intf['addr'], kts.clog2(self.mem_depth), packed=True)
-                port_intf['cen'] = self.input(port_intf['cen'], 1)
+                print("MEK")
+                mek = self.input(port_intf['addr'], kts.clog2(self.mem_depth), packed=True)
+                print(port_intf)
+                print(mek)
+                port_intf['addr'] = mek
+                print(port_intf)
+                print(kts.clog2(self.mem_depth))
+                if 'read_enable' in port_intf:
+                    port_intf['read_enable'] = self.input(port_intf['read_enable'], 1)
+                else:
+                    port_intf['cen'] = self.input(port_intf['cen'], 1)
                 port_intf['clk'] = self.clock(port_intf['clk'])
             # For now, assume the alt sigs are all inputs
             for (alt_sig, (value, width)) in port.get_alt_signals().items():
@@ -580,17 +594,27 @@ class MemoryInterface(kts.Generator):
         self.wire(self._clk, p_pint['clk'])
         self.wire(l_pint['data_out'], p_pint['data_out'])
         self.wire(l_pint['data_in'], p_pint['data_in'])
+        print(p_pint)
         self.wire(kts.ternary(l_pint['write_enable'],
                               l_pint['write_addr'],
                               l_pint['read_addr']), p_pint['addr'])
+        
+        cen_on = 'cen' in p_pint
         # Handle wen and cen
         if physical.get_active_low():
             self.wire(~l_pint['write_enable'], p_pint['write_enable'])
-            self.wire(~(l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
+            if cen_on:
+                self.wire(~(l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
+            else:
+                self.wire(~l_pint['read_enable'], p_pint['read_enable'])
+
 
         else:
             self.wire(l_pint['write_enable'], p_pint['write_enable'])
-            self.wire((l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
+            if cen_on:
+                self.wire((l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
+            else:
+                self.wire(l_pint['read_enable'], p_pint['read_enable'])
 
     def realize_write_port_phys(self, logical: MemoryPort, physical: PhysicalMemoryPort):
         l_pint = logical.get_port_interface()
