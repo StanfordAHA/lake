@@ -582,6 +582,7 @@ class CrdDrop(MemoryController):
             self._cmrg_proc_fifo_pop = 0
             self._cmrg_base_fifo_push = 0
             self._cmrg_proc_fifo_push = 0
+            
 
 if __name__ == "__main__":
     crddrop_dut = CrdDrop(data_width=16, defer_fifos=False)
