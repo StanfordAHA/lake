@@ -472,7 +472,7 @@ class CrdDrop(MemoryController):
         # self._base_outfifo_in_eos = self.var("base_outfifo_in_eos", 1)
         # Stupid convert -
         self._base_outfifo_in_packed = self.var(f"base_outfifo_in_packed", self.data_width + 1, packed=True)
-        # Select input from the dalay is delay is valid for crddrop mode
+        # Select input from the dalay if delay is valid for crddrop mode
         # For dropzero mode, simply grab value from infifo
         self.wire(self._base_outfifo_in_packed[self.data_width], kts.ternary(self._cmrg_mode, self._base_delay[self.data_width], self._base_infifo_in_eos))
         self.wire(self._base_outfifo_in_packed[self.data_width - 1, 0], kts.ternary(self._cmrg_mode, self._base_delay[self.data_width - 1, 0], self._base_infifo_in_data))
