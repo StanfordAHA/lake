@@ -60,6 +60,9 @@ class Intersect(MemoryController):
         self._tile_en = self.input("tile_en", 1)
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
+        self._drop_empty_fiber = self.input("drop_empty_fiber", 1)
+        self._drop_empty_fiber.add_attribute(ConfigRegAttr("Drop empty fiber indicator"))
+
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
@@ -215,13 +218,23 @@ class Intersect(MemoryController):
         # Create sticky bits for seeing EOS on either side...
         self._eos_in_sticky = self.var("eos_in_sticky", self.num_streams)
         self._clr_eos_sticky = self.var("clr_eos_sticky", self.num_streams)
+        self._non_empty_fiber_sitcky = self.var("empty_fiber_sticky", 1)
+        self._clr_non_empty_fiber_sticky = self.var("clr_empty_fiber_sticky", 1)
         for i in range(self.num_streams):
             # tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             # tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             # Need to join the coord and pos
-            tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i] & self._pos_in_fifo_eos_in[i] & self._pos_in_fifo_valid_in[i],
+            tmp_eos_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i] & self._pos_in_fifo_eos_in[i] & self._pos_in_fifo_valid_in[i],
                                     clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
-            self.wire(self._eos_in_sticky[i], tmp_sticky)
+            self.wire(self._eos_in_sticky[i], tmp_eos_sticky)
+
+
+        # sticky flag that indicate whether the current output fiber is empty or not.
+        # set the sticky flag when we are pushing valid data (not eos or done tokens) into the oupput fifo
+        tmp_non_empty_fiber_sticky = sticky_flag(self, 
+                                                 self._fifo_push & ~self._pos_to_fifo_eos & ~self._pos_to_fifo_eos & ~self._coord_to_fifo_eos,
+                                                 clear=self._clr_non_empty_fiber_sticky, name=f"non_empty_fiber_sticky")
+        self.wire(self._non_empty_fiber_sitcky, tmp_non_empty_fiber_sticky)
 
         if self.perf_debug:
 
@@ -314,6 +327,7 @@ class Intersect(MemoryController):
         # self.intersect_fsm.output(self._eos_seen_clr[1])
         self.intersect_fsm.output(self._clr_eos_sticky[0])
         self.intersect_fsm.output(self._clr_eos_sticky[1])
+        self.intersect_fsm.output(self._clr_non_empty_fiber_sticky)
         self.intersect_fsm.output(self._coord_to_fifo)
         self.intersect_fsm.output(self._coord_to_fifo_eos)
         self.intersect_fsm.output(self._pos_to_fifo[0])
@@ -378,6 +392,7 @@ class Intersect(MemoryController):
         IDLE.output(self._fifo_push, 0)
         IDLE.output(self._clr_eos_sticky[0], 0)
         IDLE.output(self._clr_eos_sticky[1], 0)
+        IDLE.output(self._clr_non_empty_fiber_sticky, 0)
         IDLE.output(self._coord_to_fifo, kts.const(0, 16))
         IDLE.output(self._pos_to_fifo[0], kts.const(0, 16))
         IDLE.output(self._pos_to_fifo[1], kts.const(0, 16))
@@ -399,9 +414,13 @@ class Intersect(MemoryController):
         ITER.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full.r_or())
         ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        ITER.output(self._fifo_push, self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or())
+        # In the drop empty fiber mode, only push the eos token if the current output fiber is not empty
+        ITER.output(self._fifo_push, kts.ternary(self._drop_empty_fiber,
+                        self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and() & self._non_empty_fiber_sitcky)) & ~self._fifo_full.r_or(),
+                        self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or()))
         ITER.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ITER.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
+        ITER.output(self._clr_non_empty_fiber_sticky, (all_eos.r_and() & ~self._fifo_full.r_or()))
         ITER.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         # ITER.output(self._pos_to_fifo[0], self._pos_cnt[0] + self._payload_ptr[0])
         # ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
@@ -423,9 +442,13 @@ class Intersect(MemoryController):
         ALIGN.output(self._rst_pos_cnt[0], 0)
         ALIGN.output(self._rst_pos_cnt[1], 0)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        ALIGN.output(self._fifo_push, (all_eos.r_and() & ~self._fifo_full.r_or()))
+        # In the drop empty fiber mode, only push the eos token if the current output fiber is not empty
+        ALIGN.output(self._fifo_push, kts.ternary(self._drop_empty_fiber,
+                        all_eos.r_and() & ~self._fifo_full.r_or() & self._non_empty_fiber_sitcky,
+                        all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
+        ALIGN.output(self._clr_non_empty_fiber_sticky, all_eos.r_and() & ~self._fifo_full.r_or())
         ALIGN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         ALIGN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
         ALIGN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
@@ -446,6 +469,8 @@ class Intersect(MemoryController):
         UNION.output(self._fifo_push, self._all_valid_join & ~self._fifo_full.r_or() & ~all_eos.r_and())
         UNION.output(self._clr_eos_sticky[0], 0)
         UNION.output(self._clr_eos_sticky[1], 0)
+        # Unused in union
+        UNION.output(self._clr_non_empty_fiber_sticky, 0)
         # Need to pick which FIFO to pass through
         # UNION.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         UNION.output(self._coord_to_fifo, kts.ternary(self._coord_in_fifo_eos_in[0],
@@ -495,6 +520,8 @@ class Intersect(MemoryController):
         DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & all_eos.r_and() & all_in_valids.r_and())
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
+        # Unused in union
+        UNION.output(self._clr_non_empty_fiber_sticky, 0)
         # TODO
         DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         DRAIN.output(self._pos_to_fifo[0], self._coord_in_fifo_in[0][15, 0])
@@ -513,6 +540,7 @@ class Intersect(MemoryController):
         DONE.output(self._fifo_push, 0)
         DONE.output(self._clr_eos_sticky[0], 1)
         DONE.output(self._clr_eos_sticky[1], 1)
+        DONE.output(self._clr_non_empty_fiber_sticky, 1)
         DONE.output(self._coord_to_fifo, kts.const(0, 16))
         DONE.output(self._pos_to_fifo[0], kts.const(0, 16))
         DONE.output(self._pos_to_fifo[1], kts.const(0, 16))
@@ -623,10 +651,12 @@ class Intersect(MemoryController):
     def get_bitstream(self, config_kwargs):
 
         op = config_kwargs['op']
+        drop_empty_fiber = config_kwargs['drop_empty_fiber']
 
         # Store all configurations here
         config = [("tile_en", 1),
-                  ("joiner_op", op)]
+                  ("joiner_op", op),
+                  ("drop_empty_fiber", drop_empty_fiber)]
 
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
