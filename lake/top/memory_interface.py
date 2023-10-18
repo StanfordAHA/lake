@@ -373,9 +373,15 @@ class PhysicalMemoryStub(kts.Generator):
                         # Now decode and cen through here...
                         if num_deep == 1:
                             self.wire(child_ports_wide_intf[ix]['write_enable'], port_intf['write_enable'])
-                            self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'])
+                            if 'read_enable' in port_intf:
+                                self.wire(child_ports_wide_intf[ix]['read_enable'], port_intf['read_enable'])
+                            else:
+                                self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'])
                         else:
-                            self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'] & (port_intf['addr'][addr_top, addr_bottom] == y))
+                            if 'read_enable' in port_intf:
+                                self.wire(child_ports_wide_intf[ix]['read_enable'], port_intf['read_enable'] & (port_intf['addr'][addr_top, addr_bottom] == y))
+                            else:
+                                self.wire(child_ports_wide_intf[ix]['cen'], port_intf['cen'] & (port_intf['addr'][addr_top, addr_bottom] == y))
                             self.wire(child_ports_wide_intf[ix]['write_enable'], port_intf['write_enable'] & (port_intf['addr'][addr_top, addr_bottom] == y))
 
                 # If only 1 deep, just wire it up and leave, otherwise create a combinational block

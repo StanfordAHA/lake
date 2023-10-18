@@ -449,13 +449,13 @@ if __name__ == "__main__":
                              add_flush=True,
                              rw_same_cycle=rw_same_cycle,
                              read_delay=read_delay,
-                             use_sim_sram=True,
+                             use_sim_sram=False,
                              controllers=controllers,
                              name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}",
                              do_config_lift=False,
                              io_prefix="MEM_",
                              fifo_depth=16,
-                             tech_map=Intel_Tech_Map(depth=mem_depth, width=mem_width))
+                             tech_map=Intel_Tech_Map(depth=mem_depth, width=int(mem_width/2)))
 
     print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()
