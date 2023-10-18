@@ -221,10 +221,7 @@ def Intel_Tech_Map(depth, width,
     ports.append(single_port)
 
     tech_map = {
-        'name': f"{compiler_name}_{depth}x{width}m{column_mux}\
-            b{bank_count}c{center_decode}s{bit_write_enabled}_t{dfx_setting}\
-                r{redundancy_setting}p{power_management}d{dual_supply}\
-                    a{assist_setting}m{arr_prog_timing}{vt_setting}",
+        'name': f"{compiler_name}_{depth}x{width}m{column_mux}b{bank_count}c{center_decode}s{bit_write_enabled}_t{dfx_setting}r{redundancy_setting}p{power_management}d{dual_supply}a{assist_setting}m{arr_prog_timing}{vt_setting}",
         'ports': ports,
         'depth': depth,
         'width': width
