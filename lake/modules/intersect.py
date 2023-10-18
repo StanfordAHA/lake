@@ -228,10 +228,9 @@ class Intersect(MemoryController):
                                     clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             self.wire(self._eos_in_sticky[i], tmp_eos_sticky)
 
-
         # sticky flag that indicate whether the current output fiber is empty or not.
         # set the sticky flag when we are pushing valid data (not eos or done tokens) into the oupput fifo
-        tmp_non_empty_fiber_sticky = sticky_flag(self, 
+        tmp_non_empty_fiber_sticky = sticky_flag(self,
                                                  self._fifo_push & ~self._pos_to_fifo_eos & ~self._pos_to_fifo_eos & ~self._coord_to_fifo_eos,
                                                  clear=self._clr_non_empty_fiber_sticky, name=f"non_empty_fiber_sticky")
         self.wire(self._non_empty_fiber_sitcky, tmp_non_empty_fiber_sticky)
@@ -416,8 +415,8 @@ class Intersect(MemoryController):
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         # In the drop empty fiber mode, only push the eos token if the current output fiber is not empty
         ITER.output(self._fifo_push, kts.ternary(self._drop_empty_fiber,
-                        self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and() & self._non_empty_fiber_sitcky)) & ~self._fifo_full.r_or(),
-                        self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or()))
+                    self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and() & self._non_empty_fiber_sitcky)) & ~self._fifo_full.r_or(),
+                    self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or()))
         ITER.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ITER.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ITER.output(self._clr_non_empty_fiber_sticky, (all_eos.r_and() & ~self._fifo_full.r_or()))
@@ -444,8 +443,8 @@ class Intersect(MemoryController):
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         # In the drop empty fiber mode, only push the eos token if the current output fiber is not empty
         ALIGN.output(self._fifo_push, kts.ternary(self._drop_empty_fiber,
-                        all_eos.r_and() & ~self._fifo_full.r_or() & self._non_empty_fiber_sitcky,
-                        all_eos.r_and() & ~self._fifo_full.r_or()))
+                    all_eos.r_and() & ~self._fifo_full.r_or() & self._non_empty_fiber_sitcky,
+                    all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_non_empty_fiber_sticky, all_eos.r_and() & ~self._fifo_full.r_or())
