@@ -443,8 +443,8 @@ class Intersect(MemoryController):
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         # In the drop empty fiber mode, only push the eos token if the current output fiber is not empty
         ALIGN.output(self._fifo_push, kts.ternary(self._drop_empty_fiber,
-                    all_eos.r_and() & ~self._fifo_full.r_or() & self._non_empty_fiber_sitcky,
-                    all_eos.r_and() & ~self._fifo_full.r_or()))
+                     all_eos.r_and() & ~self._fifo_full.r_or() & self._non_empty_fiber_sitcky,
+                     all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_non_empty_fiber_sticky, all_eos.r_and() & ~self._fifo_full.r_or())
