@@ -3,7 +3,7 @@
 `define TX_NUM_GLB 1
 `endif
 
-module coord_drop_tb;
+module compression_tb;
 
     reg clk;
     reg clk_en;
@@ -19,19 +19,19 @@ module coord_drop_tb;
     wire [63:0] cycle_count ;
 
     // wire for dut input & output
-    wire [16:0] coord_in_0;
-    wire coord_in_0_valid;
-    wire coord_in_0_ready;
-    wire [16:0] coord_in_1;
-    wire coord_in_1_valid;
-    wire coord_in_1_ready;
+    wire [16:0] val_in;
+    wire val_in_valid;
+    wire val_in_ready;
+    wire [16:0] coord_in;
+    wire coord_in_valid;
+    wire coord_in_ready;
 
-    wire [16:0] pos_out_0;
-    wire pos_out_0_valid;
-    wire pos_out_0_ready;
-    wire [16:0] pos_out_1;
-    wire pos_out_1_valid;
-    wire pos_out_1_ready;
+    wire [16:0] val_out;
+    wire val_out_valid;
+    wire val_out_ready;
+    wire [16:0] coord_out;
+    wire coord_out_valid;
+    wire coord_out_ready;
 
     wire [3:0] done;
     parameter NUM_CYCLES = 4000;
@@ -41,78 +41,78 @@ module coord_drop_tb;
     ) dut (
         .clk(clk),
         .clk_en(clk_en),
-        .cmrg_coord_in_0(coord_in_1),
-        .cmrg_coord_in_0_valid(coord_in_1_valid),
-        .cmrg_coord_in_1(coord_in_0),
-        .cmrg_coord_in_1_valid(coord_in_0_valid),
-        .cmrg_coord_out_0_ready(pos_out_0_ready),
-        .cmrg_coord_out_1_ready(pos_out_1_ready),
+        .cmrg_coord_in_0(val_in),
+        .cmrg_coord_in_0_valid(val_in_valid),
+        .cmrg_coord_in_1(coord_in),
+        .cmrg_coord_in_1_valid(coord_in_valid),
+        .cmrg_coord_out_0_ready(val_out_ready),
+        .cmrg_coord_out_1_ready(coord_out_ready),
         .cmrg_enable(1'b1), //not used
         .cmrg_stop_lvl(16'b0),
         .flush(flush),
         .rst_n(rst_n),
         .tile_en(tile_en),
-        .cmrg_coord_in_0_ready(coord_in_1_ready),
-        .cmrg_coord_in_1_ready(coord_in_0_ready),
-        .cmrg_coord_out_0(pos_out_0),
-        .cmrg_coord_out_0_valid(pos_out_0_valid),
-        .cmrg_coord_out_1(pos_out_1),
-        .cmrg_coord_out_1_valid(pos_out_1_valid),
-        .cmrg_mode(1'b1)
+        .cmrg_coord_in_0_ready(val_in_ready),
+        .cmrg_coord_in_1_ready(coord_in_ready),
+        .cmrg_coord_out_0(val_out),
+        .cmrg_coord_out_0_valid(val_out_valid),
+        .cmrg_coord_out_1(coord_out),
+        .cmrg_coord_out_1_valid(coord_out_valid),
+        .cmrg_mode(1'b0) // force the mode to perform compression
     );
 
     glb_write #(
-        .FILE_NAME("coord_in_0.txt"),
+        .FILE_NAME("val_in.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .data(coord_in_0),
-        .ready(coord_in_0_ready),
-        .valid(coord_in_0_valid),
+        .data(val_in),
+        .ready(val_in_ready),
+        .valid(val_in_valid),
         .done(done[0]),
         .flush(flush)
     );
 
     glb_write #(
-        .FILE_NAME("coord_in_1.txt"),
+        .FILE_NAME("coord_in.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
     ) coord_in_1_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .data(coord_in_1),
-        .ready(coord_in_1_ready),
-        .valid(coord_in_1_valid),
+        .data(coord_in),
+        .ready(coord_in_ready),
+        .valid(coord_in_valid),
         .done(done[1]),
         .flush(flush)
     );
 
     glb_read #(
-        .FILE_NAME("pos_out_0.txt"),
+        .FILE_NAME("val_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(2)
     ) pos_out_0_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .data(pos_out_0),
-        .ready(pos_out_0_ready),
-        .valid(pos_out_0_valid),
+        .data(val_out),
+        .ready(val_out_ready),
+        .valid(val_out_valid),
         .done(done[2]),
         .flush(flush)
     );
 
     glb_read #(
-        .FILE_NAME("pos_out_1.txt"),
+        .FILE_NAME("coord_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(3)
     ) pos_out_1_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .data(pos_out_1),
-        .ready(pos_out_1_ready),
-        .valid(pos_out_1_valid),
+        .data(coord_out),
+        .ready(coord_out_ready),
+        .valid(coord_out_valid),
         .done(done[3]),
         .flush(flush)
     );
@@ -141,7 +141,7 @@ module coord_drop_tb;
 
         for(integer i = 0; i < NUM_CYCLES * 2; i = i + 1) begin
             #5 clk = ~clk;
-            if (~start_record && clk && (coord_in_0_valid | coord_in_1_valid)) begin
+            if (~start_record && clk && (val_in_valid | coord_in_valid)) begin
                 start_record = 1;
             end
             if (clk && start_record && ~(done[2] & done[3])) begin
