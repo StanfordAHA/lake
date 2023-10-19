@@ -275,9 +275,6 @@ class Intersect(MemoryController):
         self.wire(self._any_has_eos, eos_concat.r_or())
         self.wire(self._all_have_eos, eos_concat.r_and())
 
-        self._coord_to_fifo_is_done = self.var("coord_to_fifo_is_done", 1)
-        self.wire(self._coord_to_fifo_is_done, self._fifo_push & self._coord_to_fifo_eos & (self._coord_to_fifo[9, 8] == kts.const(1, 2)))
-
         self._maybe = self.var("maybe", self.data_width)
         self.wire(self._maybe, kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8)))
 
@@ -296,7 +293,6 @@ class Intersect(MemoryController):
         # self._ready_out - already declared but lets us pop
         self._fifo_push = self.var("fifo_push", 1)
         self._fifo_full = self.var("fifo_full", 3)
-        self._fifo_push_buffer = self.var("fifo_push_buffer", 1)
 
         # Swap ins for FIFO
         self._coord_to_fifo = self.var("coord_to_fifo", 16)
@@ -309,13 +305,17 @@ class Intersect(MemoryController):
         self._pos_to_fifo_eos = self.var("pos_to_fifo_eos", self.num_streams)
         self._pos_to_fifo_eos_buffer = self.var("pos_to_fifo_eos_buffer", self.num_streams)
         
+        self._coord_to_fifo_is_done = self.var("coord_to_fifo_is_done", 1)
+        self.wire(self._coord_to_fifo_is_done, self._coord_to_fifo_eos & (self._coord_to_fifo[9, 8] == kts.const(1, 2)))
+
         self._coord_to_fifo_buffer_is_done = self.var("coord_to_fifo_buffer_is_done", 1)
         self.wire(self._coord_to_fifo_buffer_is_done, self._coord_to_fifo_eos_buffer & (self._coord_to_fifo_buffer[9, 8] == kts.const(1, 2)))
-
-        self.add_code(self.intersect_drop_empty_fiber_buffer_logic)
+        
         # flag that indicates whether the current input is a can be a leading eos or not
         self._leading_out_eos = self.var("leading_out_eos", 1)
 
+        self.add_code(self.intersect_drop_empty_fiber_buffer_logic)
+       
         # Create FSM
         self.intersect_fsm = self.add_fsm("intersect_seq", reset_high=False)
         IDLE = self.intersect_fsm.add_state("IDLE")
@@ -625,11 +625,17 @@ class Intersect(MemoryController):
                         # the current coordinate buffered is a eos
                         # push the eos to fifo if the fsm is found matching actual data
                         # and the buffered eos is not leading
-                        self._fifo_push_final = ~self._coord_to_fifo_eos & self._fifo_push & ~self._leading_out_eos
+                        if self._coord_to_fifo_is_done:
+                            # fsm matches done token, push the buffered eos if it is not leading
+                            self._fifo_push_final = self._fifo_push & ~self._leading_out_eos
+                        else:
+                            # if fsm matches eos or actual data, only push buffered eos if actual data is matched
+                            # and the buffered eos is not a leading one
+                            self._fifo_push_final = ~self._coord_to_fifo_eos & self._fifo_push & ~self._leading_out_eos
                     else:
                         # if we are buffering actual data, push the buffered data to outfifo
                         # when the fsm found another matching eos or data
-                        self._fifo_push_final = self._fifo_push
+                        self._fifo_push_final = self._fifo_push & ~self._leading_out_eos
             else:
                 # business as usual
                 self._fifo_push_final = self._fifo_push
@@ -640,7 +646,7 @@ class Intersect(MemoryController):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._fifo_push,
+                       push=self._fifo_push_final,
                        pop=self._coord_out_ready_in,
                        data_in=self._coord_data_in_packed,
                        data_out=self._coord_data_out_packed,
@@ -651,7 +657,7 @@ class Intersect(MemoryController):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._fifo_push,
+                       push=self._fifo_push_final,
                        pop=self._pos_out_ready_in[0],
                        data_in=self._pos0_data_in_packed,
                        data_out=self._pos0_data_out_packed,
@@ -662,7 +668,7 @@ class Intersect(MemoryController):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._fifo_push,
+                       push=self._fifo_push_final,
                        pop=self._pos_out_ready_in[1],
                        data_in=self._pos1_data_in_packed,
                        data_out=self._pos1_data_out_packed,
@@ -703,7 +709,6 @@ class Intersect(MemoryController):
             # reset all buffered signals 
             self._coord_to_fifo_buffer = 0
             self._coord_to_fifo_eos_buffer = 0
-            self._fifo_push_buffer = 0
             self._pos_to_fifo_buffer[0] = 0
             self._pos_to_fifo_buffer[1] = 0
             self._pos_to_fifo_eos_buffer[0] = 0
@@ -711,16 +716,10 @@ class Intersect(MemoryController):
             self._leading_out_eos = 1
         else:
             if self._fifo_push:
-                if self._coord_to_fifo_eos & ~self._coord_to_fifo_buffer_is_done:
+                if self._coord_to_fifo_eos & ~self._coord_to_fifo_is_done:
                     # the input FSM want to push is a stop token 
-                    # withhold the push to the output fifo until we are certain the output fiber is not empty
-                    self._fifo_push_buffer = kts.ternary(self._leading_out_eos, 0, 1)
                     # whether a eos is leading or non-leading doesn't change when we see a eos
-                    self._non_leading_out_eos = self._non_leading_out_eos
-                    # buffer the eos indicators
-                    self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos_buffer
-                    self._pos_to_fifo_eos_buffer[0] = self._pos_to_fifo_eos[0]
-                    self._pos_to_fifo_eos_buffer[1] = self._pos_to_fifo_eos[1]
+                    self._leading_out_eos = self._leading_out_eos
                     if self._coord_to_fifo_eos_buffer:
                         # current buffered data is also a stop token
                         # store the maximum eos id
@@ -737,12 +736,16 @@ class Intersect(MemoryController):
                     else:
                         # otherwise, just buffer the eos id
                         self._coord_to_fifo_buffer = self._coord_to_fifo
-                        self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos_buffer
+                        self._pos_to_fifo_buffer[0] = self._pos_to_fifo[0]
+                        self._pos_to_fifo_buffer[1] = self._pos_to_fifo[1]
+                    # buffer the eos indicators
+                    self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos
+                    self._pos_to_fifo_eos_buffer[0] = self._pos_to_fifo_eos[0]
+                    self._pos_to_fifo_eos_buffer[1] = self._pos_to_fifo_eos[1]
                 else:
                     # if the FSM want to push a piece of actual data
                     # it is no longer possible for us to see a leading eos
                     self._leading_out_eos = 0
-                    self._fifo_push_buffer = 1
                     # buffer the current input data
                     self._coord_to_fifo_buffer = self._coord_to_fifo
                     self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos
@@ -756,7 +759,6 @@ class Intersect(MemoryController):
                     # clear everything as it will be pushed to the out fifo 
                     self._coord_to_fifo_buffer = 0
                     self._coord_to_fifo_eos_buffer = 0
-                    self._fifo_push_buffer = 0
                     self._pos_to_fifo_buffer[0] = 0
                     self._pos_to_fifo_buffer[1] = 0
                     self._pos_to_fifo_eos_buffer[0] = 0
@@ -765,7 +767,6 @@ class Intersect(MemoryController):
                 else:
                     # do nothing
                     self._leading_out_eos = self._leading_out_eos
-                    self._fifo_push_buffer = self._fifo_push_buffer
                     self._coord_to_fifo_buffer = self._coord_to_fifo_buffer
                     self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos_buffer
                     self._pos_to_fifo_buffer[0] = self._pos_to_fifo_buffer[0]
