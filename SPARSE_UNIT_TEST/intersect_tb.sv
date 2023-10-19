@@ -74,7 +74,8 @@ module intersect_tb;
         .pos_out_1_ready(pos_out_1_ready),
         .rst_n(rst_n),
         .flush(flush),
-        .tile_en(tile_en)
+        .tile_en(tile_en),
+        .drop_empty_fiber(1'b0)
     );
 
     glb_write #(
