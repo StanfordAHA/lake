@@ -402,12 +402,12 @@ class Intersect(MemoryController):
         #######
         # ITER.output(self._pop_fifo[0], (self._all_are_valid_but_no_eos & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         # ITER.output(self._pop_fifo[1], (self._all_are_valid_but_no_eos & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        ITER.output(self._pop_fifo[0], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
-                    (~self._all_have_eos & all_have_eos_and_all_valid[1]))
-        ITER.output(self._pop_fifo[1], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
-                    (~self._all_have_eos & all_have_eos_and_all_valid[0]))            
-        # ITER.output(self._pop_fifo[0], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        # ITER.output(self._pop_fifo[1], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        #ITER.output(self._pop_fifo[0], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
+        #            (~self._all_have_eos & all_have_eos_and_all_valid[1]))
+        #ITER.output(self._pop_fifo[1], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
+        #            (~self._all_have_eos & all_have_eos_and_all_valid[0]))            
+        ITER.output(self._pop_fifo[0], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        ITER.output(self._pop_fifo[1], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         #ITER.output(self._rst_pos_cnt[0], self._any_has_eos & ~self._fifo_full.r_or())
         #ITER.output(self._rst_pos_cnt[1], self._any_has_eos & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
@@ -534,9 +534,9 @@ class Intersect(MemoryController):
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
         # TODO
-        DRAIN.output(self._coord_to_fifo, kts.ternary((~self._vector_reduce_mode | (self._coord_in_fifo_in[0][15, 0] < self._coord_in_fifo_in[1][15, 0])), self._coord_in_fifo_in[0][15, 0], self._coord_in_fifo_in[1][15, 0]))
-        DRAIN.output(self._pos_to_fifo[0], self._coord_to_fifo) # MO: This is ok because we are passing stop/done tokens. Everything should be S/D.
-        DRAIN.output(self._pos_to_fifo[1], self._coord_to_fifo) # MO: This is ok because we are passing stop/done tokens. Everything should be S/D.
+        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
+        DRAIN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
+        DRAIN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][15, 0])
         DRAIN.output(self._coord_to_fifo_eos, self._any_has_eos)
         DRAIN.output(self._pos_to_fifo_eos[0], self._any_has_eos)
         DRAIN.output(self._pos_to_fifo_eos[1], self._any_has_eos)
@@ -661,11 +661,14 @@ class Intersect(MemoryController):
     def get_bitstream(self, config_kwargs):
 
         op = config_kwargs['op']
+        vr_mode = config_kwargs['vr_mode']
+    
+
 
         # Store all configurations here
         # TODO: add value mode config later
         config = [("tile_en", 1),
-                  ("joiner_op", op)]
+                  ("joiner_op", op), ("vector_reduce_mode", vr_mode)]
 
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
