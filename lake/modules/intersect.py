@@ -720,32 +720,48 @@ class Intersect(MemoryController):
                     # the input FSM want to push is a stop token 
                     # whether a eos is leading or non-leading doesn't change when we see a eos
                     self._leading_out_eos = self._leading_out_eos
-                    if self._coord_to_fifo_eos_buffer:
-                        # current buffered data is also a stop token
-                        # store the maximum eos id
-                        self._coord_to_fifo_buffer = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
+                    if self._leading_out_eos:
+                        # leading eos, clear everything 
+                        self._coord_to_fifo_buffer = 0
+                        self._coord_to_fifo_eos_buffer = 0
+                        self._pos_to_fifo_buffer[0] = 0
+                        self._pos_to_fifo_buffer[1] = 0
+                        self._pos_to_fifo_eos_buffer[0] = 0
+                        self._pos_to_fifo_eos_buffer[1] = 0
+                    else:
+                        # non-leading eos, buffer it 
+                        if self._coord_to_fifo_eos_buffer:
+                            # current buffered data is also a stop token
+                            # store the maximum eos id
+                            self._coord_to_fifo_buffer = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
+                                                                            self._coord_to_fifo_buffer,
+                                                                            self._coord_to_fifo)
+                            # this is safe since the stop token for coordinate and reference is the same
+                            self._pos_to_fifo_buffer[0] = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
                                                                         self._coord_to_fifo_buffer,
                                                                         self._coord_to_fifo)
-                        # this is safe since the stop token for coordinate and reference is the same
-                        self._pos_to_fifo_buffer[0] = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
-                                                                    self._coord_to_fifo_buffer,
-                                                                    self._coord_to_fifo)
-                        self._pos_to_fifo_buffer[1] = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
-                                                                    self._coord_to_fifo_buffer,
-                                                                    self._coord_to_fifo)
-                    else:
-                        # otherwise, just buffer the eos id
-                        self._coord_to_fifo_buffer = self._coord_to_fifo
-                        self._pos_to_fifo_buffer[0] = self._pos_to_fifo[0]
-                        self._pos_to_fifo_buffer[1] = self._pos_to_fifo[1]
-                    # buffer the eos indicators
-                    self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos
-                    self._pos_to_fifo_eos_buffer[0] = self._pos_to_fifo_eos[0]
-                    self._pos_to_fifo_eos_buffer[1] = self._pos_to_fifo_eos[1]
+                            self._pos_to_fifo_buffer[1] = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
+                                                                        self._coord_to_fifo_buffer,
+                                                                        self._coord_to_fifo)
+                        else:
+                            # otherwise, just buffer the eos id
+                            self._coord_to_fifo_buffer = self._coord_to_fifo
+                            self._pos_to_fifo_buffer[0] = self._pos_to_fifo[0]
+                            self._pos_to_fifo_buffer[1] = self._pos_to_fifo[1]
+                        # buffer the eos indicators
+                        self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos
+                        self._pos_to_fifo_eos_buffer[0] = self._pos_to_fifo_eos[0]
+                        self._pos_to_fifo_eos_buffer[1] = self._pos_to_fifo_eos[1]
                 else:
-                    # if the FSM want to push a piece of actual data
-                    # it is no longer possible for us to see a leading eos
-                    self._leading_out_eos = 0
+                    # if the FSM want to push a piece of actual data or done token
+                    if self._coord_to_fifo_is_done:
+                        # we are pushing a done token, this fiber tree ends
+                        # reset the leading eos to 1 to get ready for the next fiber
+                        self._leading_out_eos = 1
+                    else:
+                        # we are pushing actual data, it is impossible for us to see another 
+                        # leading eos
+                        self._leading_out_eos = 0
                     # buffer the current input data
                     self._coord_to_fifo_buffer = self._coord_to_fifo
                     self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos
@@ -756,7 +772,7 @@ class Intersect(MemoryController):
             else:
                 if self._coord_to_fifo_buffer_is_done:
                     # the current buffered data is a done token 
-                    # clear everything as it will be pushed to the out fifo 
+                    # clear everything and prepare for the next stream
                     self._coord_to_fifo_buffer = 0
                     self._coord_to_fifo_eos_buffer = 0
                     self._pos_to_fifo_buffer[0] = 0
