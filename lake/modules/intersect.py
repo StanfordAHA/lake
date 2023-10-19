@@ -60,8 +60,9 @@ class Intersect(MemoryController):
         self._tile_en = self.input("tile_en", 1)
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
+        # Mode indicator, whether intersect drops empty fiber or not
         self._drop_empty_fiber = self.input("drop_empty_fiber", 1)
-        self._drop_empty_fiber.add_attribute(ConfigRegAttr("Drop empty fiber indicator"))
+        self._drop_empty_fiber.add_attribute(ConfigRegAttr("Drop empty fiber mode indicator"))
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -74,6 +75,7 @@ class Intersect(MemoryController):
 
         self._joiner_op = self.input("joiner_op", op_bits)
         self._joiner_op.add_attribute(ConfigRegAttr("Operation to perform"))
+
 
         # Scanner interface will need
         # input data, input valid
@@ -153,8 +155,8 @@ class Intersect(MemoryController):
         self._pos_in_fifo_eos_in = []
 
         # Control Vars from FSM
-        self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
-        self._inc_pos_cnt = self.var("inc_pos_cnt", self.num_streams)
+        #self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
+        self._pop_fifo = self.var("pop_fifo", self.num_streams)
 
         for i in range(self.num_streams):
 
@@ -176,7 +178,7 @@ class Intersect(MemoryController):
                            rst_n=self._rst_n,
                            clk_en=self._clk_en,
                            push=self._coord_valid_in[i],
-                           pop=self._inc_pos_cnt[i],
+                           pop=self._pop_fifo[i],
                            data_in=self._coord_in[i],
                            data_out=tmp_coord_in)
 
@@ -204,7 +206,7 @@ class Intersect(MemoryController):
                            rst_n=self._rst_n,
                            clk_en=self._clk_en,
                            push=self._pos_valid_in[i],
-                           pop=self._inc_pos_cnt[i],
+                           pop=self._pop_fifo[i],
                            data_in=self._pos_in[i],
                            data_out=tmp_pos_in)
 
@@ -218,22 +220,13 @@ class Intersect(MemoryController):
         # Create sticky bits for seeing EOS on either side...
         self._eos_in_sticky = self.var("eos_in_sticky", self.num_streams)
         self._clr_eos_sticky = self.var("clr_eos_sticky", self.num_streams)
-        self._non_empty_fiber_sitcky = self.var("empty_fiber_sticky", 1)
-        self._clr_non_empty_fiber_sticky = self.var("clr_empty_fiber_sticky", 1)
         for i in range(self.num_streams):
             # tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             # tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             # Need to join the coord and pos
-            tmp_eos_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i] & self._pos_in_fifo_eos_in[i] & self._pos_in_fifo_valid_in[i],
+            tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i] & self._pos_in_fifo_eos_in[i] & self._pos_in_fifo_valid_in[i],
                                     clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
-            self.wire(self._eos_in_sticky[i], tmp_eos_sticky)
-
-        # sticky flag that indicate whether the current output fiber is empty or not.
-        # set the sticky flag when we are pushing valid data (not eos or done tokens) into the oupput fifo
-        tmp_non_empty_fiber_sticky = sticky_flag(self,
-                                                 self._fifo_push & ~self._pos_to_fifo_eos & ~self._pos_to_fifo_eos & ~self._coord_to_fifo_eos,
-                                                 clear=self._clr_non_empty_fiber_sticky, name=f"non_empty_fiber_sticky")
-        self.wire(self._non_empty_fiber_sitcky, tmp_non_empty_fiber_sticky)
+            self.wire(self._eos_in_sticky[i], tmp_sticky)
 
         if self.perf_debug:
 
@@ -252,57 +245,76 @@ class Intersect(MemoryController):
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 
         # Intermediates
-        self._pos_cnt = self.var("pos_cnt", self.data_width,
-                                 size=self.num_streams,
-                                 explicit_array=True,
-                                 packed=True)
+        # MO: This isn't used!
+        #self._pos_cnt = self.var("pos_cnt", self.data_width,
+                                #  size=self.num_streams,
+                                #  explicit_array=True,
+                                #  packed=True)
 
 # ==========================================
 # Generate FSM for Intersecting these streams...
 # ==========================================
 
-        self._all_valid = self.var("all_valid", 1)
-        self._all_valid_join = self.var("all_valid_join", 1)
+        self._all_are_valid_but_no_eos = self.var("all_are_valid_but_no_eos", 1)
+        self._all_are_valid = self.var("all_are_valid", 1)
 
-        self._any_eos = self.var("any_eos", 1)
+        self._all_have_eos = self.var("all_have_eos", 1)
+        self._any_has_eos = self.var("any_has_eos", 1)
 
-        # Join valids
-        all_in_valids = kts.concat(*self._coord_in_fifo_valid_in, *self._pos_in_fifo_valid_in)
-        self.wire(self._all_valid, all_in_valids.r_and() & ~self._any_eos)
-        self.wire(self._all_valid_join, all_in_valids.r_and())
+        # Concat valids
+        valid_concat = kts.concat(*self._coord_in_fifo_valid_in, *self._pos_in_fifo_valid_in)
+        self.wire(self._all_are_valid_but_no_eos, valid_concat.r_and() & ~self._any_has_eos)
+        self.wire(self._all_are_valid, valid_concat.r_and())
 
-        all_eos = kts.concat(*self._coord_in_fifo_eos_in, *self._pos_in_fifo_eos_in) & kts.concat(*self._coord_in_fifo_valid_in, *self._pos_in_fifo_valid_in)
+        eos_concat = kts.concat(*self._coord_in_fifo_eos_in, *self._pos_in_fifo_eos_in) & valid_concat
 
-        all_eos_alt = self.var("all_eos_alt", 2)
-        self.wire(all_eos_alt[0], self._coord_in_fifo_eos_in[0] & self._pos_in_fifo_eos_in[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0])
-        self.wire(all_eos_alt[1], self._coord_in_fifo_eos_in[1] & self._pos_in_fifo_eos_in[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1])
+        all_have_eos_and_all_valid = self.var("all_have_eos_and_all_valid", 2)
+        self.wire(all_have_eos_and_all_valid[0], self._coord_in_fifo_eos_in[0] & self._pos_in_fifo_eos_in[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0])
+        self.wire(all_have_eos_and_all_valid[1], self._coord_in_fifo_eos_in[1] & self._pos_in_fifo_eos_in[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1])
 
-        self.wire(self._any_eos, all_eos.r_or())
+        self.wire(self._any_has_eos, eos_concat.r_or())
+        self.wire(self._all_have_eos, eos_concat.r_and())
+
+        self._coord_to_fifo_is_done = self.var("coord_to_fifo_is_done", 1)
+        self.wire(self._coord_to_fifo_is_done, self._fifo_push & self._coord_to_fifo_eos & (self._coord_to_fifo[9, 8] == kts.const(1, 2)))
 
         self._maybe = self.var("maybe", self.data_width)
         self.wire(self._maybe, kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8)))
 
-        for i in range(self.num_streams):
-            @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            def pos_cnt_ff():
-                if ~self._rst_n:
-                    self._pos_cnt[i] = 0
-                elif self._rst_pos_cnt[i]:
-                    self._pos_cnt[i] = 0
-                elif self._inc_pos_cnt[i]:
-                    self._pos_cnt[i] = self._pos_cnt[i] + 1
-            self.add_code(pos_cnt_ff)
+        # MO: This isn't used! 
+        # for i in range(self.num_streams):
+        #     @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        #     def pos_cnt_ff():
+        #         if ~self._rst_n:
+        #             self._pos_cnt[i] = 0
+        #         elif self._rst_pos_cnt[i]:
+        #             self._pos_cnt[i] = 0
+        #         elif self._pop_fifo[i]:
+        #             self._pos_cnt[i] = self._pos_cnt[i] + 1
+        #     self.add_code(pos_cnt_ff)
 
         # self._ready_out - already declared but lets us pop
         self._fifo_push = self.var("fifo_push", 1)
         self._fifo_full = self.var("fifo_full", 3)
+        self._fifo_push_buffer = self.var("fifo_push_buffer", 1)
 
         # Swap ins for FIFO
         self._coord_to_fifo = self.var("coord_to_fifo", 16)
+        self._coord_to_fifo_buffer = self.var("coord_to_fifo_buffer", 16)
         self._pos_to_fifo = self.var("pos_to_fifo", 16, size=self.num_streams, explicit_array=True, packed=True)
+        self._pos_to_fifo_buffer = self.var("pos_to_fifo_buffer", 16, size=self.num_streams, explicit_array=True, packed=True)
 
         self._coord_to_fifo_eos = self.var("coord_to_fifo_eos", 1)
+        self._coord_to_fifo_eos_buffer = self.var("coord_to_fifo_eos_buffer", 1)
         self._pos_to_fifo_eos = self.var("pos_to_fifo_eos", self.num_streams)
+        self._pos_to_fifo_eos_buffer = self.var("pos_to_fifo_eos_buffer", self.num_streams)
+        
+        self._coord_to_fifo_buffer_is_done = self.var("coord_to_fifo_buffer_is_done", 1)
+        self.wire(self._coord_to_fifo_buffer_is_done, self._coord_to_fifo_eos_buffer & (self._coord_to_fifo_buffer[9, 8] == kts.const(1, 2)))
+
+        self.add_code(self.intersect_drop_empty_fiber_buffer_logic)
+        # flag that indicates whether the current input is a can be a leading eos or not
+        self._leading_out_eos = self.var("leading_out_eos", 1)
 
         # Create FSM
         self.intersect_fsm = self.add_fsm("intersect_seq", reset_high=False)
@@ -314,10 +326,10 @@ class Intersect(MemoryController):
         # ALIGN_UNION = self.intersect_fsm.add_state("ALIGN_UNION")
         DONE = self.intersect_fsm.add_state("DONE")
 
-        self.intersect_fsm.output(self._inc_pos_cnt[0])
-        self.intersect_fsm.output(self._inc_pos_cnt[1])
-        self.intersect_fsm.output(self._rst_pos_cnt[0])
-        self.intersect_fsm.output(self._rst_pos_cnt[1])
+        self.intersect_fsm.output(self._pop_fifo[0])
+        self.intersect_fsm.output(self._pop_fifo[1])
+        #self.intersect_fsm.output(self._rst_pos_cnt[0])
+        #self.intersect_fsm.output(self._rst_pos_cnt[1])
         # self.intersect_fsm.output(self._ready_out)
         self.intersect_fsm.output(self._fifo_push)
         # self.intersect_fsm.output(self._eos_seen_set[0])
@@ -326,7 +338,6 @@ class Intersect(MemoryController):
         # self.intersect_fsm.output(self._eos_seen_clr[1])
         self.intersect_fsm.output(self._clr_eos_sticky[0])
         self.intersect_fsm.output(self._clr_eos_sticky[1])
-        self.intersect_fsm.output(self._clr_non_empty_fiber_sticky)
         self.intersect_fsm.output(self._coord_to_fifo)
         self.intersect_fsm.output(self._coord_to_fifo_eos)
         self.intersect_fsm.output(self._pos_to_fifo[0])
@@ -340,25 +351,25 @@ class Intersect(MemoryController):
 
         # In IDLE we stay if the fifo is full, otherwise wait
         # until we have two valids...
-        IDLE.next(UNION, self._all_valid_join & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)) & self._tile_en)
+        IDLE.next(UNION, self._all_are_valid & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)) & self._tile_en)
         # If either stream is empty, we can skip to drain right away
-        IDLE.next(ALIGN, self._any_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
-        IDLE.next(ITER, self._all_valid & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
+        IDLE.next(ALIGN, self._any_has_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
+        IDLE.next(ITER, self._all_are_valid_but_no_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
         IDLE.next(IDLE, None)
-        # IDLE.next(UNION, self._all_valid & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)))
-        # IDLE.next(IDLE, self._fifo_full.r_or() | (~self._all_valid))
+        # IDLE.next(UNION, self._all_are_valid_but_no_eos & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)))
+        # IDLE.next(IDLE, self._fifo_full.r_or() | (~self._all_are_valid_but_no_eos))
 
         # In ITER, we go back to idle when the fifo is full to avoid
         # complexity, or if we are looking at one of the eos since we can make the last
         # move for the intersection now...
         # If we have eos and can push it to the fifo, we are done with this stream
-        ITER.next(ALIGN, self._any_eos & ~all_eos.r_and())
+        ITER.next(ALIGN, self._any_has_eos & ~self._all_have_eos)
         ITER.next(ITER, None)
 
         # First we align the streams to both stop tokens
         # ALIGN.next(DRAIN, self._eos_in_sticky.r_and())
         # ALIGN.next(ITER, self._eos_in_sticky.r_and())
-        ALIGN.next(ITER, all_eos.r_and())
+        ALIGN.next(ITER, self._all_have_eos)
         ALIGN.next(ALIGN, None)
 
         # For Union, there is no real early stop, we just can go until both streams hit stop tokens
@@ -368,8 +379,8 @@ class Intersect(MemoryController):
         # Then in DRAIN, we pass thru the stop tokens
         # The only way to leave DRAIN is to get new data
         # where both streams are valid but not both streams are eos
-        # DRAIN.next(DONE, ~self._any_eos & self._all_valid)
-        DRAIN.next(DONE, ~all_eos.r_and() & all_in_valids.r_and())
+        # DRAIN.next(DONE, ~self._any_has_eos & self._all_are_valid_but_no_eos)
+        DRAIN.next(DONE, ~self._all_have_eos & valid_concat.r_and())
         DRAIN.next(DRAIN, None)
 
         # Once done, we need another flush
@@ -384,14 +395,13 @@ class Intersect(MemoryController):
         # IDLE - TODO - Generate general hardware...
         #######
         # Can detect empty here
-        IDLE.output(self._inc_pos_cnt[0], 0)
-        IDLE.output(self._inc_pos_cnt[1], 0)
-        IDLE.output(self._rst_pos_cnt[0], 0)
-        IDLE.output(self._rst_pos_cnt[1], 0)
+        IDLE.output(self._pop_fifo[0], 0)
+        IDLE.output(self._pop_fifo[1], 0)
+        #IDLE.output(self._rst_pos_cnt[0], 0)
+        #IDLE.output(self._rst_pos_cnt[1], 0)
         IDLE.output(self._fifo_push, 0)
         IDLE.output(self._clr_eos_sticky[0], 0)
         IDLE.output(self._clr_eos_sticky[1], 0)
-        IDLE.output(self._clr_non_empty_fiber_sticky, 0)
         IDLE.output(self._coord_to_fifo, kts.const(0, 16))
         IDLE.output(self._pos_to_fifo[0], kts.const(0, 16))
         IDLE.output(self._pos_to_fifo[1], kts.const(0, 16))
@@ -402,32 +412,28 @@ class Intersect(MemoryController):
         #######
         # ITER
         #######
-        # ITER.output(self._inc_pos_cnt[0], (self._all_valid & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        # ITER.output(self._inc_pos_cnt[1], (self._all_valid & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        ITER.output(self._inc_pos_cnt[0], (((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or()) |
-                    (self._all_valid_join & ~all_eos.r_and() & all_eos_alt[1]))
-        ITER.output(self._inc_pos_cnt[1], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or() |
-                    (self._all_valid_join & ~all_eos.r_and() & all_eos_alt[0]))
-        # ITER.output(self._inc_pos_cnt[0], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        # ITER.output(self._inc_pos_cnt[1], ((self._all_valid | (self._all_valid_join & all_eos.r_and())) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        ITER.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full.r_or())
-        ITER.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full.r_or())
+        # ITER.output(self._pop_fifo[0], (self._all_are_valid_but_no_eos & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        # ITER.output(self._pop_fifo[1], (self._all_are_valid_but_no_eos & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        # ITER.output(self._pop_fifo[0], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
+        #             (~self._all_have_eos & all_have_eos_and_all_valid[1]))
+        # ITER.output(self._pop_fifo[1], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
+        #             (~self._all_have_eos & all_have_eos_and_all_valid[0]))            
+        ITER.output(self._pop_fifo[0], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        ITER.output(self._pop_fifo[1], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        #ITER.output(self._rst_pos_cnt[0], self._any_has_eos & ~self._fifo_full.r_or())
+        #ITER.output(self._rst_pos_cnt[1], self._any_has_eos & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        # In the drop empty fiber mode, only push the eos token if the current output fiber is not empty
-        ITER.output(self._fifo_push, kts.ternary(self._drop_empty_fiber,
-                    self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and() & self._non_empty_fiber_sitcky)) & ~self._fifo_full.r_or(),
-                    self._all_valid_join & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_eos) | (all_eos.r_and())) & ~self._fifo_full.r_or()))
-        ITER.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
-        ITER.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
-        ITER.output(self._clr_non_empty_fiber_sticky, (all_eos.r_and() & ~self._fifo_full.r_or()))
+        ITER.output(self._fifo_push, self._all_are_valid & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_has_eos) | (self._all_have_eos)) & ~self._fifo_full.r_or())
+        ITER.output(self._clr_eos_sticky[0], (self._all_have_eos & ~self._fifo_full.r_or()))
+        ITER.output(self._clr_eos_sticky[1], (self._all_have_eos & ~self._fifo_full.r_or()))
         ITER.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         # ITER.output(self._pos_to_fifo[0], self._pos_cnt[0] + self._payload_ptr[0])
         # ITER.output(self._pos_to_fifo[1], self._pos_cnt[1] + self._payload_ptr[1])
         ITER.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
         ITER.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
-        ITER.output(self._coord_to_fifo_eos, all_eos.r_and())
-        ITER.output(self._pos_to_fifo_eos[0], all_eos.r_and())
-        ITER.output(self._pos_to_fifo_eos[1], all_eos.r_and())
+        ITER.output(self._coord_to_fifo_eos, self._all_have_eos)
+        ITER.output(self._pos_to_fifo_eos[0], self._all_have_eos)
+        ITER.output(self._pos_to_fifo_eos[1], self._all_have_eos)
         # ITER.output(self._coord_to_fifo_eos, 0)
         # ITER.output(self._pos_to_fifo_eos[0], 0)
         # ITER.output(self._pos_to_fifo_eos[1], 0)
@@ -436,18 +442,14 @@ class Intersect(MemoryController):
         # ALIGN
         #######
         # Need to align the inputs as well
-        ALIGN.output(self._inc_pos_cnt[0], (~self._eos_in_sticky[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0]) | (all_eos.r_and() & ~self._fifo_full.r_or()))
-        ALIGN.output(self._inc_pos_cnt[1], (~self._eos_in_sticky[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1]) | (all_eos.r_and() & ~self._fifo_full.r_or()))
-        ALIGN.output(self._rst_pos_cnt[0], 0)
-        ALIGN.output(self._rst_pos_cnt[1], 0)
+        ALIGN.output(self._pop_fifo[0], (~self._eos_in_sticky[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0]) | (self._all_have_eos & ~self._fifo_full.r_or()))
+        ALIGN.output(self._pop_fifo[1], (~self._eos_in_sticky[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1]) | (self._all_have_eos & ~self._fifo_full.r_or()))
+        #ALIGN.output(self._rst_pos_cnt[0], 0)
+        #ALIGN.output(self._rst_pos_cnt[1], 0)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
-        # In the drop empty fiber mode, only push the eos token if the current output fiber is not empty
-        ALIGN.output(self._fifo_push, kts.ternary(self._drop_empty_fiber,
-                     all_eos.r_and() & ~self._fifo_full.r_or() & self._non_empty_fiber_sitcky,
-                     all_eos.r_and() & ~self._fifo_full.r_or()))
-        ALIGN.output(self._clr_eos_sticky[0], (all_eos.r_and() & ~self._fifo_full.r_or()))
-        ALIGN.output(self._clr_eos_sticky[1], (all_eos.r_and() & ~self._fifo_full.r_or()))
-        ALIGN.output(self._clr_non_empty_fiber_sticky, all_eos.r_and() & ~self._fifo_full.r_or())
+        ALIGN.output(self._fifo_push, (self._all_have_eos & ~self._fifo_full.r_or()))
+        ALIGN.output(self._clr_eos_sticky[0], (self._all_have_eos & ~self._fifo_full.r_or()))
+        ALIGN.output(self._clr_eos_sticky[1], (self._all_have_eos & ~self._fifo_full.r_or()))
         ALIGN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         ALIGN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
         ALIGN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
@@ -459,17 +461,15 @@ class Intersect(MemoryController):
         # UNION
         #######
         # Pop if the lesser coord or the other stream is at eos
-        UNION.output(self._inc_pos_cnt[0], self._all_valid_join & ((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[1]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[0])
-        UNION.output(self._inc_pos_cnt[1], self._all_valid_join & ((self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[0]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[1])
-        UNION.output(self._rst_pos_cnt[0], self._any_eos & ~self._fifo_full.r_or())
-        UNION.output(self._rst_pos_cnt[1], self._any_eos & ~self._fifo_full.r_or())
+        UNION.output(self._pop_fifo[0], self._all_are_valid & ((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[1]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[0])
+        UNION.output(self._pop_fifo[1], self._all_are_valid & ((self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[0]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[1])
+        #UNION.output(self._rst_pos_cnt[0], self._any_has_eos & ~self._fifo_full.r_or())
+        #UNION.output(self._rst_pos_cnt[1], self._any_has_eos & ~self._fifo_full.r_or())
         # We need to push any coordinate period as long as there is room and they are not all eos
-        # UNION.output(self._fifo_push, self._all_valid & ~self._fifo_full.r_or() & ~all_eos.r_and())
-        UNION.output(self._fifo_push, self._all_valid_join & ~self._fifo_full.r_or() & ~all_eos.r_and())
+        # UNION.output(self._fifo_push, self._all_are_valid_but_no_eos & ~self._fifo_full.r_or() & ~self._all_have_eos)
+        UNION.output(self._fifo_push, self._all_are_valid & ~self._fifo_full.r_or() & ~self._all_have_eos)
         UNION.output(self._clr_eos_sticky[0], 0)
         UNION.output(self._clr_eos_sticky[1], 0)
-        # Unused in union
-        UNION.output(self._clr_non_empty_fiber_sticky, 0)
         # Need to pick which FIFO to pass through
         # UNION.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         UNION.output(self._coord_to_fifo, kts.ternary(self._coord_in_fifo_eos_in[0],
@@ -482,64 +482,77 @@ class Intersect(MemoryController):
         # Difference in union is we are capable of passing the MAYBE token - only pass the reference if the out coordinate matches the first coordinate
         # UNION.output(self._pos_to_fifo[0], kts.ternary(self._coord_in_fifo_in[0] == self._coord_to_fifo,
         #                                                self._pos_in_fifo_in[0][15, 0], kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))))
+        # UNION.output(self._pos_to_fifo[0], kts.ternary(self._coord_in_fifo_eos_in[0],
+        #                                                self._maybe, kts.ternary(self._coord_in_fifo_eos_in[1],
+        #                                                                         self._pos_in_fifo_in[0][15, 0], kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
+        #                                                                                                                     self._pos_in_fifo_in[0][15, 0], self._maybe))))
         UNION.output(self._pos_to_fifo[0], kts.ternary(self._coord_in_fifo_eos_in[0],
-                                                       self._maybe, kts.ternary(self._coord_in_fifo_eos_in[1],
-                                                                                self._pos_in_fifo_in[0][15, 0], kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
-                                                                                                                            self._pos_in_fifo_in[0][15, 0], self._maybe))))
+                                                            self._maybe, kts.ternary(self._coord_in_fifo_eos_in[1],
+                                                                                    self._pos_in_fifo_in[0][15, 0], kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
+                                                                                                                                self._pos_in_fifo_in[0][15, 0], self._maybe))))
         # UNION.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
         # UNION.output(self._pos_to_fifo[1], kts.ternary(self._coord_in_fifo_in[1] == self._coord_to_fifo,
         #                                                self._pos_in_fifo_in[1][15, 0], kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))))
+        # UNION.output(self._pos_to_fifo[1], kts.ternary(self._coord_in_fifo_eos_in[1],
+        #                                                self._maybe, kts.ternary(self._coord_in_fifo_eos_in[0],
+        #                                                                         self._pos_in_fifo_in[1][15, 0], kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
+        #                                                                                                                     self._pos_in_fifo_in[1][15, 0], self._maybe))))
         UNION.output(self._pos_to_fifo[1], kts.ternary(self._coord_in_fifo_eos_in[1],
-                                                       self._maybe, kts.ternary(self._coord_in_fifo_eos_in[0],
-                                                                                self._pos_in_fifo_in[1][15, 0], kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
-                                                                                                                            self._pos_in_fifo_in[1][15, 0], self._maybe))))
+                                                        self._maybe, kts.ternary(self._coord_in_fifo_eos_in[0],
+                                                                                 self._pos_in_fifo_in[1][15, 0], kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
+                                                                                                                             self._pos_in_fifo_in[1][15, 0], self._maybe))))
         UNION.output(self._coord_to_fifo_eos, 0)
+        # UNION.output(self._pos_to_fifo_eos[0], (self._pos_in_fifo_eos_in[0] & ~self._coord_in_fifo_eos_in[0]) | kts.ternary(self._coord_in_fifo_eos_in[0],
+        #                                                    kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[1],
+        #                                                                                 kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
+        #                                                                                                              kts.const(0, 1), kts.const(1, 1)))))
+        # UNION.output(self._pos_to_fifo_eos[1], (self._pos_in_fifo_eos_in[1] & ~self._coord_in_fifo_eos_in[1]) | kts.ternary(self._coord_in_fifo_eos_in[1],
+        #                                                    kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[0],
+        #                                                                                 kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
+        #                                                                                                              kts.const(0, 1), kts.const(1, 1)))))
         UNION.output(self._pos_to_fifo_eos[0], (self._pos_in_fifo_eos_in[0] & ~self._coord_in_fifo_eos_in[0]) | kts.ternary(self._coord_in_fifo_eos_in[0],
-                                                           kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[1],
-                                                                                        kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
-                                                                                                                     kts.const(0, 1), kts.const(1, 1)))))
+                                                            kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[1],
+                                                                                         kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
+                                                                                                                      kts.const(0, 1), kts.const(1, 1)))))
         UNION.output(self._pos_to_fifo_eos[1], (self._pos_in_fifo_eos_in[1] & ~self._coord_in_fifo_eos_in[1]) | kts.ternary(self._coord_in_fifo_eos_in[1],
-                                                           kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[0],
-                                                                                        kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
-                                                                                                                     kts.const(0, 1), kts.const(1, 1)))))
+                                                            kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[0],
+                                                                                         kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
+                                                                                                                      kts.const(0, 1), kts.const(1, 1)))))
         # UNION.output(self._pos_to_fifo_eos[0], (self._coord_in_fifo_in[0][15, 0] != self._coord_to_fifo[15, 0]))
         # UNION.output(self._pos_to_fifo_eos[1], (self._coord_in_fifo_in[1][15, 0] != self._coord_to_fifo[15, 0]))
 
         #######
         # DRAIN
         #######
-        DRAIN.output(self._inc_pos_cnt[0], ~self._fifo_full.r_or() & all_eos.r_and() & all_in_valids.r_and())
-        DRAIN.output(self._inc_pos_cnt[1], ~self._fifo_full.r_or() & all_eos.r_and() & all_in_valids.r_and())
-        # DRAIN.output(self._inc_pos_cnt[0], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & all_in_valids.r_and())
-        # DRAIN.output(self._inc_pos_cnt[1], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & all_in_valids.r_and())
-        DRAIN.output(self._rst_pos_cnt[0], 0)
-        DRAIN.output(self._rst_pos_cnt[1], 0)
+        DRAIN.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        DRAIN.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        # DRAIN.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
+        # DRAIN.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
+        #DRAIN.output(self._rst_pos_cnt[0], 0)
+        #DRAIN.output(self._rst_pos_cnt[1], 0)
         # Keep draining while we have eos in...should be aligned
-        # DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & all_in_valids.r_and())
-        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & all_eos.r_and() & all_in_valids.r_and())
+        # DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
+        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
-        # Unused in union
-        UNION.output(self._clr_non_empty_fiber_sticky, 0)
         # TODO
         DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         DRAIN.output(self._pos_to_fifo[0], self._coord_in_fifo_in[0][15, 0])
         DRAIN.output(self._pos_to_fifo[1], self._coord_in_fifo_in[0][15, 0])
-        DRAIN.output(self._coord_to_fifo_eos, self._any_eos)
-        DRAIN.output(self._pos_to_fifo_eos[0], self._any_eos)
-        DRAIN.output(self._pos_to_fifo_eos[1], self._any_eos)
+        DRAIN.output(self._coord_to_fifo_eos, self._any_has_eos)
+        DRAIN.output(self._pos_to_fifo_eos[0], self._any_has_eos)
+        DRAIN.output(self._pos_to_fifo_eos[1], self._any_has_eos)
 
         #######
         # DONE
         #######
-        DONE.output(self._inc_pos_cnt[0], 0)
-        DONE.output(self._inc_pos_cnt[1], 0)
-        DONE.output(self._rst_pos_cnt[0], 1)
-        DONE.output(self._rst_pos_cnt[1], 1)
+        DONE.output(self._pop_fifo[0], 0)
+        DONE.output(self._pop_fifo[1], 0)
+        #DONE.output(self._rst_pos_cnt[0], 1)
+        #DONE.output(self._rst_pos_cnt[1], 1)
         DONE.output(self._fifo_push, 0)
         DONE.output(self._clr_eos_sticky[0], 1)
         DONE.output(self._clr_eos_sticky[1], 1)
-        DONE.output(self._clr_non_empty_fiber_sticky, 1)
         DONE.output(self._coord_to_fifo, kts.const(0, 16))
         DONE.output(self._pos_to_fifo[0], kts.const(0, 16))
         DONE.output(self._pos_to_fifo[1], kts.const(0, 16))
@@ -560,29 +573,67 @@ class Intersect(MemoryController):
         self._pos1_fifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         # Stupid convert -
+        # pack the data according to the current mode
         self._coord_data_in_packed = self.var("coord_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._coord_data_in_packed[self.data_width], self._coord_to_fifo_eos)
-        self.wire(self._coord_data_in_packed[self.data_width - 1, 0 * self.data_width], self._coord_to_fifo)
+        self.wire(self._coord_data_in_packed[self.data_width], kts.ternary(self._drop_empty_fiber,
+                                                                           self._coord_to_fifo_eos_buffer,
+                                                                           self._coord_to_fifo_eos))
+        self.wire(self._coord_data_in_packed[self.data_width - 1, 0 * self.data_width], kts.ternary(self._drop_empty_fiber,
+                                                                                                    self._coord_to_fifo_buffer,
+                                                                                                    self._coord_to_fifo))
 
         self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
         self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0 * self.data_width])
 
         self._pos0_data_in_packed = self.var("pos0_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._pos0_data_in_packed[self.data_width], self._pos_to_fifo_eos[0])
-        self.wire(self._pos0_data_in_packed[self.data_width - 1, 0 * self.data_width], self._pos_to_fifo[0])
+        self.wire(self._pos0_data_in_packed[self.data_width], kts.ternary(self._drop_empty_fiber,
+                                                                          self._pos_to_fifo_eos_buffer[0],
+                                                                          self._pos_to_fifo_eos[0]))
+        self.wire(self._pos0_data_in_packed[self.data_width - 1, 0 * self.data_width], kts.ternary(self._drop_empty_fiber,
+                                                                                                   self._pos_to_fifo_buffer[0],
+                                                                                                   self._pos_to_fifo[0]))
 
         self._pos0_data_out_packed = self.var("pos0_fifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._pos_out[0][self.data_width], self._pos0_data_out_packed[self.data_width])
         self.wire(self._pos_out[0][self.data_width - 1, 0], self._pos0_data_out_packed[self.data_width - 1, 0 * self.data_width])
 
         self._pos1_data_in_packed = self.var("pos1_fifo_in_packed", self.data_width + 1, packed=True)
-        self.wire(self._pos1_data_in_packed[self.data_width], self._pos_to_fifo_eos[1])
-        self.wire(self._pos1_data_in_packed[self.data_width - 1, 0 * self.data_width], self._pos_to_fifo[1])
+        self.wire(self._pos1_data_in_packed[self.data_width], kts.ternary(self._drop_empty_fiber,
+                                                                          self._pos_to_fifo_eos_buffer[1],
+                                                                          self._pos_to_fifo_eos[1]))
+        self.wire(self._pos1_data_in_packed[self.data_width - 1, 0 * self.data_width], kts.ternary(self._drop_empty_fiber,
+                                                                                                   self._pos_to_fifo_buffer[1],
+                                                                                                   self._pos_to_fifo[1]))
 
         self._pos1_data_out_packed = self.var("pos1_fifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._pos_out[1][self.data_width], self._pos1_data_out_packed[self.data_width])
         self.wire(self._pos_out[1][self.data_width - 1, 0], self._pos1_data_out_packed[self.data_width - 1, 0 * self.data_width])
+
+        # the actual fifo control signal connected to the output fifo
+        # we will set the value of these ignal according to the current drop empty fiber mode
+        self._fifo_push_final = self.var("fifo_push_final", 1)
+        
+        @always_comb
+        def fifo_push_final_logic():
+            if self._drop_empty_fiber:
+                if self._coord_to_fifo_buffer_is_done:
+                    # done token, push it
+                    self._fifo_push_final = 1
+                else:
+                    if self._coord_to_fifo_eos_buffer:
+                        # the current coordinate buffered is a eos
+                        # push the eos to fifo if the fsm is found matching actual data
+                        # and the buffered eos is not leading
+                        self._fifo_push_final = ~self._coord_to_fifo_eos & self._fifo_push & ~self._leading_out_eos
+                    else:
+                        # if we are buffering actual data, push the buffered data to outfifo
+                        # when the fsm found another matching eos or data
+                        self._fifo_push_final = self._fifo_push
+            else:
+                # business as usual
+                self._fifo_push_final = self._fifo_push
+        self.add_code(fifo_push_final_logic)
 
         self.add_child(f"coordinate_fifo",
                        self._coord_fifo,
@@ -645,6 +696,82 @@ class Intersect(MemoryController):
         if self.lift_config:
             # Finally, lift the config regs...
             lift_config_reg(self.internal_generator)
+
+    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+    def intersect_drop_empty_fiber_buffer_logic(self):
+        if ~self._rst_n:
+            # reset all buffered signals 
+            self._coord_to_fifo_buffer = 0
+            self._coord_to_fifo_eos_buffer = 0
+            self._fifo_push_buffer = 0
+            self._pos_to_fifo_buffer[0] = 0
+            self._pos_to_fifo_buffer[1] = 0
+            self._pos_to_fifo_eos_buffer[0] = 0
+            self._pos_to_fifo_eos_buffer[1] = 0
+            self._leading_out_eos = 1
+        else:
+            if self._fifo_push:
+                if self._coord_to_fifo_eos & ~self._coord_to_fifo_buffer_is_done:
+                    # the input FSM want to push is a stop token 
+                    # withhold the push to the output fifo until we are certain the output fiber is not empty
+                    self._fifo_push_buffer = kts.ternary(self._leading_out_eos, 0, 1)
+                    # whether a eos is leading or non-leading doesn't change when we see a eos
+                    self._non_leading_out_eos = self._non_leading_out_eos
+                    # buffer the eos indicators
+                    self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos_buffer
+                    self._pos_to_fifo_eos_buffer[0] = self._pos_to_fifo_eos[0]
+                    self._pos_to_fifo_eos_buffer[1] = self._pos_to_fifo_eos[1]
+                    if self._coord_to_fifo_eos_buffer:
+                        # current buffered data is also a stop token
+                        # store the maximum eos id
+                        self._coord_to_fifo_buffer = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
+                                                                        self._coord_to_fifo_buffer,
+                                                                        self._coord_to_fifo)
+                        # this is safe since the stop token for coordinate and reference is the same
+                        self._pos_to_fifo_buffer[0] = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
+                                                                    self._coord_to_fifo_buffer,
+                                                                    self._coord_to_fifo)
+                        self._pos_to_fifo_buffer[1] = kts.ternary(self._coord_to_fifo_buffer > self._coord_to_fifo,
+                                                                    self._coord_to_fifo_buffer,
+                                                                    self._coord_to_fifo)
+                    else:
+                        # otherwise, just buffer the eos id
+                        self._coord_to_fifo_buffer = self._coord_to_fifo
+                        self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos_buffer
+                else:
+                    # if the FSM want to push a piece of actual data
+                    # it is no longer possible for us to see a leading eos
+                    self._leading_out_eos = 0
+                    self._fifo_push_buffer = 1
+                    # buffer the current input data
+                    self._coord_to_fifo_buffer = self._coord_to_fifo
+                    self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos
+                    self._pos_to_fifo_buffer[0] = self._pos_to_fifo[0]
+                    self._pos_to_fifo_buffer[1] = self._pos_to_fifo[1]
+                    self._pos_to_fifo_eos_buffer[0] = self._pos_to_fifo_eos[0]
+                    self._pos_to_fifo_eos_buffer[1] = self._pos_to_fifo_eos[1]
+            else:
+                if self._coord_to_fifo_buffer_is_done:
+                    # the current buffered data is a done token 
+                    # clear everything as it will be pushed to the out fifo 
+                    self._coord_to_fifo_buffer = 0
+                    self._coord_to_fifo_eos_buffer = 0
+                    self._fifo_push_buffer = 0
+                    self._pos_to_fifo_buffer[0] = 0
+                    self._pos_to_fifo_buffer[1] = 0
+                    self._pos_to_fifo_eos_buffer[0] = 0
+                    self._pos_to_fifo_eos_buffer[1] = 0
+                    self._leading_out_eos = 1
+                else:
+                    # do nothing
+                    self._leading_out_eos = self._leading_out_eos
+                    self._fifo_push_buffer = self._fifo_push_buffer
+                    self._coord_to_fifo_buffer = self._coord_to_fifo_buffer
+                    self._coord_to_fifo_eos_buffer = self._coord_to_fifo_eos_buffer
+                    self._pos_to_fifo_buffer[0] = self._pos_to_fifo_buffer[0]
+                    self._pos_to_fifo_buffer[1] = self._pos_to_fifo_buffer[1]
+                    self._pos_to_fifo_eos_buffer[0] = self._pos_to_fifo_eos_buffer[0]
+                    self._pos_to_fifo_eos_buffer[1] = self._pos_to_fifo_eos_buffer[1]
 
     # def get_bitstream(self, cmrg_enable=0, cmrg_stop_lvl=0, op=JoinerOp.INTERSECT.value):
     def get_bitstream(self, config_kwargs):
