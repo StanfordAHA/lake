@@ -72,11 +72,6 @@ class Intersect(MemoryController):
         self._joiner_op = self.input("joiner_op", op_bits)
         self._joiner_op.add_attribute(ConfigRegAttr("Operation to perform"))
 
-        # Value mode
-        # In value mode, the pos stream is used as the value stream
-        self._value_mode = self.input("value_mode", 1)
-        self._value_mode.add_attribute(ConfigRegAttr("Is this in value mode?"))
-
         # Scanner interface will need
         # input data, input valid
         # output address, output valid
@@ -463,58 +458,26 @@ class Intersect(MemoryController):
         # Difference in union is we are capable of passing the MAYBE token - only pass the reference if the out coordinate matches the first coordinate
         # UNION.output(self._pos_to_fifo[0], kts.ternary(self._coord_in_fifo_in[0] == self._coord_to_fifo,
         #                                                self._pos_in_fifo_in[0][15, 0], kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))))
-        # UNION.output(self._pos_to_fifo[0], kts.ternary(self._coord_in_fifo_eos_in[0],
-        #                                                self._maybe, kts.ternary(self._coord_in_fifo_eos_in[1],
-        #                                                                         self._pos_in_fifo_in[0][15, 0], kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
-        #                                                                                                                     self._pos_in_fifo_in[0][15, 0], self._maybe))))
-        UNION.output(self._pos_to_fifo[0], kts.ternary(self._value_mode,
-                                                kts.ternary(self._coord_in_fifo_eos_in[0] | (~self._any_eos & (self._coord_in_fifo_in[0] > self._coord_in_fifo_in[1])),
-                                                    self._pos_in_fifo_in[1][15, 0],
-                                                    kts.ternary(self._coord_in_fifo_eos_in[1] | (~self._any_eos & (self._coord_in_fifo_in[0] < self._coord_in_fifo_in[1])),
-                                                        self._pos_in_fifo_in[0][15, 0],
-                                                        self._pos_in_fifo_in[0][15, 0] + self._pos_in_fifo_in[1][15, 0])),
-                                                kts.ternary(self._coord_in_fifo_eos_in[0],
+        UNION.output(self._pos_to_fifo[0], kts.ternary(self._coord_in_fifo_eos_in[0],
                                                        self._maybe, kts.ternary(self._coord_in_fifo_eos_in[1],
                                                                                 self._pos_in_fifo_in[0][15, 0], kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
-                                                                                                                            self._pos_in_fifo_in[0][15, 0], self._maybe)))))
+                                                                                                                            self._pos_in_fifo_in[0][15, 0], self._maybe))))
         # UNION.output(self._pos_to_fifo[1], self._pos_in_fifo_in[1][15, 0])
         # UNION.output(self._pos_to_fifo[1], kts.ternary(self._coord_in_fifo_in[1] == self._coord_to_fifo,
         #                                                self._pos_in_fifo_in[1][15, 0], kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))))
-        # UNION.output(self._pos_to_fifo[1], kts.ternary(self._coord_in_fifo_eos_in[1],
-        #                                                self._maybe, kts.ternary(self._coord_in_fifo_eos_in[0],
-        #                                                                         self._pos_in_fifo_in[1][15, 0], kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
-        #                                                                                                                     self._pos_in_fifo_in[1][15, 0], self._maybe))))
-        UNION.output(self._pos_to_fifo[1], kts.ternary(self._value_mode,
-                                                kts.ternary(self._coord_in_fifo_eos_in[0] | (~self._any_eos & (self._coord_in_fifo_in[0] > self._coord_in_fifo_in[1])),
-                                                    self._pos_in_fifo_in[1][15, 0],
-                                                    kts.ternary(self._coord_in_fifo_eos_in[1] | (~self._any_eos & (self._coord_in_fifo_in[0] < self._coord_in_fifo_in[1])),
-                                                        self._pos_in_fifo_in[0][15, 0],
-                                                        self._pos_in_fifo_in[0][15, 0] + self._pos_in_fifo_in[1][15, 0])),
-                                                kts.ternary(self._coord_in_fifo_eos_in[1],
+        UNION.output(self._pos_to_fifo[1], kts.ternary(self._coord_in_fifo_eos_in[1],
                                                        self._maybe, kts.ternary(self._coord_in_fifo_eos_in[0],
                                                                                 self._pos_in_fifo_in[1][15, 0], kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
-                                                                                                                            self._pos_in_fifo_in[1][15, 0], self._maybe)))))
+                                                                                                                            self._pos_in_fifo_in[1][15, 0], self._maybe))))
         UNION.output(self._coord_to_fifo_eos, 0)
-        # UNION.output(self._pos_to_fifo_eos[0], (self._pos_in_fifo_eos_in[0] & ~self._coord_in_fifo_eos_in[0]) | kts.ternary(self._coord_in_fifo_eos_in[0],
-        #                                                    kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[1],
-        #                                                                                 kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
-        #                                                                                                              kts.const(0, 1), kts.const(1, 1)))))
-        # UNION.output(self._pos_to_fifo_eos[1], (self._pos_in_fifo_eos_in[1] & ~self._coord_in_fifo_eos_in[1]) | kts.ternary(self._coord_in_fifo_eos_in[1],
-        #                                                    kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[0],
-        #                                                                                 kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
-        #                                                                                                              kts.const(0, 1), kts.const(1, 1)))))
-        UNION.output(self._pos_to_fifo_eos[0], kts.ternary(self._value_mode,
-                                                0,
-                                                (self._pos_in_fifo_eos_in[0] & ~self._coord_in_fifo_eos_in[0]) | kts.ternary(self._coord_in_fifo_eos_in[0],
+        UNION.output(self._pos_to_fifo_eos[0], (self._pos_in_fifo_eos_in[0] & ~self._coord_in_fifo_eos_in[0]) | kts.ternary(self._coord_in_fifo_eos_in[0],
                                                            kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[1],
                                                                                         kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]),
-                                                                                                                     kts.const(0, 1), kts.const(1, 1))))))
-        UNION.output(self._pos_to_fifo_eos[1], kts.ternary(self._value_mode,
-                                                0,
-                                                (self._pos_in_fifo_eos_in[1] & ~self._coord_in_fifo_eos_in[1]) | kts.ternary(self._coord_in_fifo_eos_in[1],
+                                                                                                                     kts.const(0, 1), kts.const(1, 1)))))
+        UNION.output(self._pos_to_fifo_eos[1], (self._pos_in_fifo_eos_in[1] & ~self._coord_in_fifo_eos_in[1]) | kts.ternary(self._coord_in_fifo_eos_in[1],
                                                            kts.const(1, 1), kts.ternary(self._coord_in_fifo_eos_in[0],
                                                                                         kts.const(0, 1), kts.ternary((self._coord_in_fifo_in[1] <= self._coord_in_fifo_in[0]),
-                                                                                                                     kts.const(0, 1), kts.const(1, 1))))))
+                                                                                                                     kts.const(0, 1), kts.const(1, 1)))))
         # UNION.output(self._pos_to_fifo_eos[0], (self._coord_in_fifo_in[0][15, 0] != self._coord_to_fifo[15, 0]))
         # UNION.output(self._pos_to_fifo_eos[1], (self._coord_in_fifo_in[1][15, 0] != self._coord_to_fifo[15, 0]))
 
@@ -662,7 +625,6 @@ class Intersect(MemoryController):
         op = config_kwargs['op']
 
         # Store all configurations here
-        # TODO: add value mode config later
         config = [("tile_en", 1),
                   ("joiner_op", op)]
 

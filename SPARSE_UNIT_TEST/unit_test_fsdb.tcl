@@ -1,6 +1,8 @@
 dump -file cgra.fsdb -type FSDB
-dump -add sam_dense_tb -fsdb_opt +mda+packedmda+struct
-power sam_dense_tb.dut
+dump -add fiber_access_tb -fsdb_opt +mda+packedmda+struct
+power fiber_access_tb.dut
+power -enable
+run
 power -disable
 run
 exit
