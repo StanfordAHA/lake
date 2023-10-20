@@ -30,11 +30,11 @@ CLK_PERIOD ?= 1ns
 TX_NUM_GLB ?= 1
 
 DESIGN_FILES += $(TEST_TAR) \
-				CW_fp_add.v \
-				CW_fp_mult.v \
 				glb_read.sv \
 				glb_write.sv\
 				sram_sp.sv\
+	                        -y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \
+				+libext+.v+.sv 
 
 DESIGN_FILES += $(module_dir)/$(TEST_UNIT)
 # TB_FILES += -F tb/tb_cgra.f
