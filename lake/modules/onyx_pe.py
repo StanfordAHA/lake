@@ -97,8 +97,8 @@ class OnyxPE(MemoryController):
 
         # for i in range(3):
 
-        #tmp_data_in = self.input(f"data2", self.data_width + 1, packed=True)
-        #tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        # tmp_data_in = self.input(f"data2", self.data_width + 1, packed=True)
+        # tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         # self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
 
         # tmp_data_in_valid_in = self.input(f"data2_valid", 1)
@@ -330,7 +330,7 @@ class OnyxPE(MemoryController):
             self._infifo_pop[1] = 0
             self._infifo_pop[2] = 0
             # TODO Fix comment If both inputs are valid, then we either can perform the op, otherwise we push through EOS
-            if ((self._infifo_out_valid & self._sparse_num_inputs) == self._sparse_num_inputs) & ~self._outfifo_full & ~self._dense_mode :
+            if ((self._infifo_out_valid & self._sparse_num_inputs) == self._sparse_num_inputs) & ~self._outfifo_full & ~self._dense_mode:
                 # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
                 if ~((self._infifo_out_eos & self._sparse_num_inputs) == self._sparse_num_inputs):
                     self._outfifo_push = 1
@@ -385,7 +385,6 @@ class OnyxPE(MemoryController):
 
         # opcode mapping 0-2 is 2 input
 
-
         override_dense = False
 
         if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
@@ -395,7 +394,6 @@ class OnyxPE(MemoryController):
             config += [("sparse_num_inputs", 0b011)]
         else:
             config += [("sparse_num_inputs", 0b001)]
-
         
         sub_config = self.my_alu.get_bitstream(op, override_dense=override_dense)
         for config_tuple in sub_config:
