@@ -100,10 +100,19 @@ def read_txt(file_name, addit=False):
     return r
 
 
+def tohex(val, nbits):
+  return hex((val + (1 << nbits)) % (1 << nbits))
+
 def write_txt(file_name, data):
     with open(file_name, "w") as f:
         for element in data:
-            f.write(f'{element:x}' + '\n')
+            # handle negative data values
+            if element < 0: 
+                hex_element = tohex(element, 16)
+                f.write(f'{hex_element[2:]}' + '\n')
+            else:
+                f.write(f'{element:x}' + '\n')
+            
         f.close()
     return
 

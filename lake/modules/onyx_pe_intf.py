@@ -82,7 +82,8 @@ class OnyxPEInterface(MemoryController):
         opcode_mapping = {
             0: asm.add(),  # ADD
             1: asm.umult0(),  # MUL
-            2: asm.sub()   # SUB
+            2: asm.sub(),   # SUB
+            3: asm.abs()   # abs
         }
 
         if override_dense:
