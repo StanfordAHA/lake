@@ -455,7 +455,7 @@ if __name__ == "__main__":
                              do_config_lift=False,
                              io_prefix="MEM_",
                              fifo_depth=16,
-                             tech_map=Intel_Tech_Map(depth=mem_depth, width=int(mem_width/2)))
+                             tech_map=Intel_Tech_Map(depth=mem_depth, width=int(mem_width / 2)))
 
     print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()

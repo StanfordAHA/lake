@@ -604,7 +604,6 @@ class MemoryInterface(kts.Generator):
         self.wire(kts.ternary(l_pint['write_enable'],
                               l_pint['write_addr'],
                               l_pint['read_addr']), p_pint['addr'])
-        
         cen_on = 'cen' in p_pint
         # Handle wen and cen
         if physical.get_active_low():
@@ -613,8 +612,6 @@ class MemoryInterface(kts.Generator):
                 self.wire(~(l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
             else:
                 self.wire(~l_pint['read_enable'], p_pint['read_enable'])
-
-
         else:
             self.wire(l_pint['write_enable'], p_pint['write_enable'])
             if cen_on:
