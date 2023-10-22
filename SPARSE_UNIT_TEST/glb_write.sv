@@ -41,7 +41,7 @@ initial begin
     ADD_DELAY = 0;
     done_count = TX_NUM;
     DONE_TOKEN = 17'h10100;
-    mask = 32'hF  << RAN_SHITF;
+    mask = 32'd3  << RAN_SHITF;
 
     // ENABLED_PARGS = $sformatf("%s_ENABLED=%%d", LOCATION);
     // $value$plusargs(ENABLED_PARGS, ENABLED);
@@ -78,11 +78,12 @@ initial begin
             @(posedge clk);
             #1;
 
+            valid = 0;
             DELAY = $urandom & mask;
-            if(ready == 1 && DELAY < 4 && ADD_DELAY) begin// 25% chance of delay
-                valid = 0;
+            while (DELAY > 0 & ADD_DELAY) begin
                 @(posedge clk);
                 #1;
+                DELAY--;
             end
 
             data = local_mem[num_tx];
