@@ -1,6 +1,6 @@
 dump -file cgra.fsdb -type FSDB
-dump -add sam_dense_tb -fsdb_opt +mda+packedmda+struct
-power sam_dense_tb.dut
+dump -add value_tb -fsdb_opt +mda+packedmda+struct
+power value_tb.dut
 power -enable
 run
 power -disable
