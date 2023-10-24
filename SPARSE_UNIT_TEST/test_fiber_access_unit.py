@@ -427,14 +427,6 @@ def test_iter_basic():
         module_iter_basic(test)
 
 
-def test_struct_perf():
-    init_module()
-    # test_list = ["cluster_small", "cluster_large", "diag_small", "diag_large"]
-    test_list = ["diag_large_random"]
-    for test in test_list:
-        module_iter_basic(test)
-
-
 def test_random_1d_1d():
     init_module()
     test_list = ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"]

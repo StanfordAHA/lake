@@ -8,6 +8,7 @@ from sparse_helper import convert_stream_to_onyx_interp
 from sam.sim.src.base import remove_emptystr
 from sam.sim.src.crd_manager import CrdDrop as CrdDrop_sim
 from sam.sim.test.test import TIMEOUT
+from sam.sim.src.token import EmptyFiberStknDrop
 
 
 import subprocess
@@ -127,6 +128,7 @@ def create_gold(in_crd1, in_crd2): # 1 is outer, 0 is inner
     time = 0
 
     cd = CrdDrop_sim()
+    stkndrp = EmptyFiberStknDrop()
     out_outer = []
     out_inner = []
     while not done and time < TIMEOUT:
@@ -135,20 +137,20 @@ def create_gold(in_crd1, in_crd2): # 1 is outer, 0 is inner
         if len(in_crd1) > 0:
             cd.set_outer_crd(in_crd1.pop(0))
 
-        cd.update()
+        stkndrp.set_in_stream(cd.out_crd_inner())
 
         out_outer.append(cd.out_crd_outer())
-        out_inner.append(cd.out_crd_inner())
+        out_inner.append(stkndrp.out_val())
 
         # print("Timestep", time, "\t Done:", cd.out_done(), "\t Out:", cd.out_crd_outer())
 
-        done = cd.out_done()
+        done = cd.out_done() and stkndrp.out_done()
+        cd.update()
+        stkndrp.update()
         time += 1
 
     out_outer = remove_emptystr(out_outer)
     out_inner = remove_emptystr(out_inner)
-
-    out_inner = remove_emptyfiber(out_inner) # in another sam module, but cannot find it
 
     print("sam cycle count: ", time)
 
