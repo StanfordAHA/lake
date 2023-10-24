@@ -279,6 +279,11 @@ class Intersect(MemoryController):
         self._maybe = self.var("maybe", self.data_width)
         self._maybeconstant = kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))
         self.wire(self._maybe, kts.ternary(self._vector_reduce_mode, kts.const(0, self.data_width), self._maybeconstant))
+
+
+        self._done_token = self.var("done_token", self.data_width + 1)
+        self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
+
         #self.wire(self._maybe, kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8)))
 
         # MO: This isn't used! 
@@ -309,7 +314,9 @@ class Intersect(MemoryController):
         IDLE = self.intersect_fsm.add_state("IDLE")
         ITER = self.intersect_fsm.add_state("ITER")
         UNION = self.intersect_fsm.add_state("UNION")
-        DRAIN = self.intersect_fsm.add_state("DRAIN")
+        DRAIN0 = self.intersect_fsm.add_state("DRAIN0")
+        PASS_DONE = self.intersect_fsm.add_state("PASS_DONE")
+        WAIT_FOR_VALID = self.intersect_fsm.add_state("WAIT_FOR_VALID")
         ALIGN = self.intersect_fsm.add_state("ALIGN")
         # ALIGN_UNION = self.intersect_fsm.add_state("ALIGN_UNION")
         DONE = self.intersect_fsm.add_state("DONE")
@@ -340,7 +347,7 @@ class Intersect(MemoryController):
         # In IDLE we stay if the fifo is full, otherwise wait
         # until we have two valids...
         IDLE.next(UNION, self._all_are_valid & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)) & self._tile_en)
-        # If either stream is empty, we can skip to drain right away
+        # If either stream is empty, we can skip to DRAIN0 right away
         IDLE.next(ALIGN, self._any_has_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
         IDLE.next(ITER, self._all_are_valid_but_no_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
         IDLE.next(IDLE, None)
@@ -355,21 +362,30 @@ class Intersect(MemoryController):
         ITER.next(ITER, None)
 
         # First we align the streams to both stop tokens
-        # ALIGN.next(DRAIN, self._eos_in_sticky.r_and())
-        # ALIGN.next(ITER, self._eos_in_sticky.r_and())
         ALIGN.next(ITER, self._all_have_eos)
         ALIGN.next(ALIGN, None)
 
         # For Union, there is no real early stop, we just can go until both streams hit stop tokens
-        UNION.next(DRAIN, self._eos_in_sticky.r_and())
+        UNION.next(DRAIN0, self._eos_in_sticky.r_and())
         UNION.next(UNION, None)
 
-        # Then in DRAIN, we pass thru the stop tokens (MO: and the DONE token)
-        # The only way to leave DRAIN is to get new data
+        # Then in DRAIN0, we pass thru the stop tokens (MO: and the DONE token in non-VR mode)
+        # The only way to leave DRAIN0 is to get new data
         # where both streams are valid but not both streams are eos
-        # DRAIN.next(DONE, ~self._any_has_eos & self._all_are_valid_but_no_eos)
-        DRAIN.next(DONE, ~self._all_have_eos & valid_concat.r_and())
-        DRAIN.next(DRAIN, None)
+        # In VR_mode, DRAIN0 transitions unconditionally to PASS_DONE
+        # TODO: This shouldn't be unconditional! Only go if the FIFO isn't full...
+        DRAIN0.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or())
+        DRAIN0.next(DONE, ~self._vector_reduce_mode & ~self._all_have_eos & valid_concat.r_and())
+        DRAIN0.next(DRAIN0, None)
+
+        # PASS_DONE is only used in VR mode to insert a DONE token into the outgoing stream: think carefully. Can we stay in PASS_DONE indefinitely while waiting for a new stream???
+        PASS_DONE.next(WAIT_FOR_VALID, ~self._fifo_full.r_or())
+        PASS_DONE.next(PASS_DONE, None)
+
+        # WAIT_FOR_VALID can only be accessed while in VR_mode. We stay in this state while waiting for a new stream. The transition condition is the same 
+        # as that of leaving DRAIN in non-VR mode
+        WAIT_FOR_VALID.next(DONE, ~self._all_have_eos & valid_concat.r_and())
+        WAIT_FOR_VALID.next(WAIT_FOR_VALID, None)
 
         # Once done, we need another flush
         # Just go back to beginning
@@ -520,26 +536,59 @@ class Intersect(MemoryController):
         # UNION.output(self._pos_to_fifo_eos[1], (self._coord_in_fifo_in[1][15, 0] != self._coord_to_fifo[15, 0]))
 
         #######
-        # DRAIN
+        # DRAIN0
         #######
-        DRAIN.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
-        DRAIN.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
-        # DRAIN.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
-        # DRAIN.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
-        #DRAIN.output(self._rst_pos_cnt[0], 0)
-        #DRAIN.output(self._rst_pos_cnt[1], 0)
-        # Keep draining while we have eos in...should be aligned
-        # DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
-        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
-        DRAIN.output(self._clr_eos_sticky[0], 0)
-        DRAIN.output(self._clr_eos_sticky[1], 0)
+        DRAIN0.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        DRAIN0.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        # DRAIN0.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
+        # DRAIN0.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
+        #DRAIN0.output(self._rst_pos_cnt[0], 0)
+        #DRAIN0.output(self._rst_pos_cnt[1], 0)
+        # Keep DRAIN0ing while we have eos in...should be aligned
+        # DRAIN0.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
+        DRAIN0.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        DRAIN0.output(self._clr_eos_sticky[0], 0)
+        DRAIN0.output(self._clr_eos_sticky[1], 0)
         # TODO
-        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
-        DRAIN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
-        DRAIN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][15, 0])
-        DRAIN.output(self._coord_to_fifo_eos, self._any_has_eos)
-        DRAIN.output(self._pos_to_fifo_eos[0], self._any_has_eos)
-        DRAIN.output(self._pos_to_fifo_eos[1], self._any_has_eos)
+        DRAIN0.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0]) # TODO: Check if this works
+        DRAIN0.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
+        DRAIN0.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][15, 0])
+        DRAIN0.output(self._coord_to_fifo_eos, self._any_has_eos)
+        DRAIN0.output(self._pos_to_fifo_eos[0], self._any_has_eos)
+        DRAIN0.output(self._pos_to_fifo_eos[1], self._any_has_eos)
+
+
+        ###########
+        # PASS_DONE
+        ###########
+        # What happens if the incoming stream has a done token? On the last lap, it needs to be popped
+        PASS_DONE.output(self._pop_fifo[0], (self._coord_in_fifo_valid_in[0] & (self._coord_in_fifo_in[0] == self._done_token))) 
+        PASS_DONE.output(self._pop_fifo[1], (self._coord_in_fifo_valid_in[1] & (self._coord_in_fifo_in[1] == self._done_token)))
+        PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or())
+        PASS_DONE.output(self._clr_eos_sticky[0], 0)
+        PASS_DONE.output(self._clr_eos_sticky[1], 0)
+        PASS_DONE.output(self._coord_to_fifo, self._done_token[15,0])
+        PASS_DONE.output(self._pos_to_fifo[0], self._done_token[15,0])
+        PASS_DONE.output(self._pos_to_fifo[1], self._done_token[15,0])
+        PASS_DONE.output(self._coord_to_fifo_eos, kts.const(1,1))
+        PASS_DONE.output(self._pos_to_fifo_eos[0], kts.const(1,1))
+        PASS_DONE.output(self._pos_to_fifo_eos[1], kts.const(1,1))
+
+        #################
+        # WAIT_FOR_VALID
+        #################
+        WAIT_FOR_VALID.output(self._pop_fifo[0], 0) 
+        WAIT_FOR_VALID.output(self._pop_fifo[1], 0)
+        WAIT_FOR_VALID.output(self._fifo_push, 0)
+        WAIT_FOR_VALID.output(self._clr_eos_sticky[0], 0)
+        WAIT_FOR_VALID.output(self._clr_eos_sticky[1], 0)
+        WAIT_FOR_VALID.output(self._coord_to_fifo, 0)
+        WAIT_FOR_VALID.output(self._pos_to_fifo[0], 0)
+        WAIT_FOR_VALID.output(self._pos_to_fifo[1], 0)
+        WAIT_FOR_VALID.output(self._coord_to_fifo_eos, 0)
+        WAIT_FOR_VALID.output(self._pos_to_fifo_eos[0], 0)
+        WAIT_FOR_VALID.output(self._pos_to_fifo_eos[1], 0)
+
 
         #######
         # DONE

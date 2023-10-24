@@ -90,6 +90,7 @@ class WriteScanner(MemoryController):
         self._block_wr_in_ready_out = self.output("block_wr_in_ready", 1)
         self._block_wr_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
+
         # self._eos_in = self.input("eos_in", 2)
         # self._eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
@@ -1154,6 +1155,13 @@ class WriteScanner(MemoryController):
             kts.passes.auto_insert_clock_enable(self.internal_generator)
             clk_en_port = self.internal_generator.get_port("clk_en")
             clk_en_port.add_attribute(ControlSignalAttr(False))
+
+
+        # MO: Custom flush for VR FSM
+        #self._wr_scan_flush = self.input("wr_scan_flush", 1)
+        #self.add_attribute("sync-reset=wr_scan_flush")
+        #kts.passes.auto_insert_sync_reset(self.internal_generator)
+        # MO: Custom flush for VR FSM    
 
         if self.add_flush:
             self.add_attribute("sync-reset=flush")
