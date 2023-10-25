@@ -168,6 +168,7 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
 
 
 def Intel_Tech_Map(depth, width,
+                   async_reset=None,
                    compiler_name='ip224uhdlp1p11rf',
                    column_mux=4,
                    bank_count=2,
@@ -198,6 +199,7 @@ def Intel_Tech_Map(depth, width,
     assert assist_setting == 1
     assert arr_prog_timing == 1
     assert vt_setting == 'h'
+    assert async_reset is not None
 
     single_port = {
         'data_in': 'din',
@@ -209,7 +211,7 @@ def Intel_Tech_Map(depth, width,
         'data_out': 'q',
         'alt_sigs': {
             # value, width
-            'fwen': (0, 1),
+            'fwen': (async_reset, 1),
             'mcen': (0, 1),
             'mc': (0, 3),
             'wpulseen': (0, 1),
