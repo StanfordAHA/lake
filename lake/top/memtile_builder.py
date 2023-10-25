@@ -131,7 +131,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.memory_banks = banks
 
     def set_memory_interface(self, name_prefix, mem_params, ports, sim_macro_n, tech_map):
-        self.tech_map = tech_map
+
+        if not sim_macro_n:
+            self.tech_map = tech_map
+
         self.memory_interface = MemoryInterface(name=f"base_memory_interface",
                                                 mem_params=mem_params,
                                                 ports=ports,
@@ -1130,8 +1133,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         local_intf = local_port.get_port_interface()
         mux_size = len(ctrl_ports)
 
-        ignore_sigs = self.tech_map['ports'][port_num]['alt_sigs'].keys()
-        alt_sigs_ = self.tech_map['ports'][port_num]['alt_sigs']
+        ignore_sigs = []
+        alt_sigs_ = []
+
+        if self.tech_map is not None:
+        # Should only use this if there is a tech map
+            ignore_sigs = self.tech_map['ports'][port_num]['alt_sigs'].keys()
+            alt_sigs_ = self.tech_map['ports'][port_num]['alt_sigs']
 
         # Add a comb/seq block out here...
         # Now we procedurally produce an always_comb block to choose between controllers
