@@ -693,8 +693,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Just add in the outputs
         for bc_sign in bc_list:
             bc_comb.add_stmt(over_intf[bc_sign].assign(local_intf[bc_sign]))
+
+        ignore_sigs = []
+        if self.tech_map is not None:
+        # Should only use this if there is a tech map
+            ignore_sigs = self.tech_map['ports'][port_num]['alt_sigs'].keys()
+
         # Now hijack the original muxes and add priority override...
-        ass_stmt = [local_intf[name].assign(over_intf[name]) for name in mux_list if name not in self.tech_map['ports'][port_num]['alt_sigs'].keys()]
+        ass_stmt = [local_intf[name].assign(over_intf[name]) for name in mux_list if name not in ignore_sigs]
         # Remove the first if, then chain in the override if
         mux_comb.remove_stmt(first_if)
         override_if = IfStmt(self._config_en.r_or())
