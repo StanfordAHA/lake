@@ -91,11 +91,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         if memory_interface is not None:
             self.allocate_mem_conn()
 
+        self.tech_map = None
+
         # CLK and RST
         self._clk = self.clock("clk")
         self._clk.add_attribute(FormalAttr(self._clk.name, FormalSignalConstraint.CLK))
         self._rst_n = self.reset("rst_n")
         self._rst_n.add_attribute(FormalAttr(self._rst_n.name, FormalSignalConstraint.RSTN))
+
+    def get_async_reset(self):
+        return self._rst_n
 
     def add_clock_gate(self):
         # Check if clk_en has already been defined...
@@ -126,6 +131,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         self.memory_banks = banks
 
     def set_memory_interface(self, name_prefix, mem_params, ports, sim_macro_n, tech_map):
+        self.tech_map = tech_map
         self.memory_interface = MemoryInterface(name=f"base_memory_interface",
                                                 mem_params=mem_params,
                                                 ports=ports,
@@ -671,7 +677,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if override is not None:
                     self.inject_config_override(bank, port, override)
 
-    def inject_config_override(self, bank, port, override_port):
+    def inject_config_override(self, bank, port, override_port, port_num=0):
         # Get local information about the code structure
         local_port = self.memories[bank].get_ports()[port]
         over_intf = override_port.get_port_interface()
@@ -685,7 +691,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         for bc_sign in bc_list:
             bc_comb.add_stmt(over_intf[bc_sign].assign(local_intf[bc_sign]))
         # Now hijack the original muxes and add priority override...
-        ass_stmt = [local_intf[name].assign(over_intf[name]) for name in mux_list]
+        ass_stmt = [local_intf[name].assign(over_intf[name]) for name in mux_list if name not in self.tech_map['ports'][port_num]['alt_sigs'].keys()]
         # Remove the first if, then chain in the override if
         mux_comb.remove_stmt(first_if)
         override_if = IfStmt(self._config_en.r_or())
@@ -1116,13 +1122,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                             unflat_name = f"{unflat_base}_{unflat_num}"
                     self.port_remap_dict[ctrl_mode_mapping_name][unflat_name] = f'{self.io_prefix}output_width_{output_width}_num_{i}'
 
-    def add_mem_port_connection(self, local_port, ctrl_ports):
+    def add_mem_port_connection(self, local_port, ctrl_ports, port_num=0):
         '''
         This function handles building the mux to the memory port given the local
         port in the interface and a dict of all controller ports attempting to connect
         '''
         local_intf = local_port.get_port_interface()
         mux_size = len(ctrl_ports)
+
+        ignore_sigs = self.tech_map['ports'][port_num]['alt_sigs'].keys()
+        alt_sigs_ = self.tech_map['ports'][port_num]['alt_sigs']
 
         # Add a comb/seq block out here...
         # Now we procedurally produce an always_comb block to choose between controllers
@@ -1138,8 +1147,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         # Default assign to 0 to prevent latches/handle no connections
         for (name, port) in local_intf.items():
-            if 'out' not in name:
+            if 'out' not in name and name not in ignore_sigs:
                 mux_comb.add_stmt(port.assign(0))
+            if name in ignore_sigs:
+                # Check here if it's an alt signal that should be used
+                v_, w_ = alt_sigs_[name]
+                if type(v_) is not int:
+                    self.wire(port, v_)
 
         print("Printing mode map...")
         print(self.ctrl_to_mode)
@@ -1150,19 +1164,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
             # Go through each signal in the memory port
             for (idx, (ctrl_name, ctrl_port)) in enumerate(ctrl_ports.items()):
-                print(ctrl_name)
-                # exit()
+
                 ctrl_intf = ctrl_port.get_port_interface()
                 # Broadcast the outputs
                 for bc_sign in bc_list:
                     if ctrl_intf[bc_sign] is not None:
                         bc_comb.add_stmt(ctrl_intf[bc_sign].assign(local_intf[bc_sign]))
-                ass_stmt = [local_intf[name].assign(ctrl_intf[name]) for name in mux_list]
+                ass_stmt = [local_intf[name].assign(ctrl_intf[name]) for name in mux_list if name not in ignore_sigs]
                 # Mux in the inputs
                 if idx == 0:
-                    # first_if = IfStmt(self._mode == kts.const(idx, width=self._mode.width))
-                    # first_if = mux_comb.if_(self._mode == kts.const(idx, width=self._mode.width))
-                    # first_if = mux_comb.if_(self._mode == kts.const(self.ctrl_to_mode[ctrl_name], width=self._mode.width))
                     mode_num, b_ex = self.ctrl_to_mode[ctrl_name]
                     first_if = mux_comb.if_(self._mode == kts.const(mode_num, width=self._mode.width))
                     first_if.then_(*ass_stmt)
@@ -1186,7 +1196,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 # self.wire(self._gclk, self.memories[bank].get_clock())
                 if self.memories[bank].has_reset():
                     self.wire(self._rst_n, self.memories[bank].get_reset())
-                self.add_mem_port_connection(self.memories[bank].get_ports()[port], self.mem_conn[bank][port])
+                self.add_mem_port_connection(self.memories[bank].get_ports()[port],
+                                             self.mem_conn[bank][port], port_num=port)
 
     def get_modes_supported(self):
         self.get_mode_map()
