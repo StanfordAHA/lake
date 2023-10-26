@@ -92,13 +92,13 @@ class MemoryPort():
 
 
 class PhysicalMemoryPort(MemoryPort):
-    def __init__(self, mpt: MemoryPortType, delay, active_read, active_low=True, port_map=None):
+    def __init__(self, mpt: MemoryPortType, delay, active_read, active='low', port_map=None):
         super().__init__(mpt, delay=delay, active_read=active_read)
         # Capture alternate inputs for testing commonly used in these memories.
         self.alt_sigs = None
         if 'alt_sigs' in port_map:
             self.alt_sigs = port_map['alt_sigs']
-        self.active_low = active_low
+        self.active_low = active == 'low'
         self.port_map = port_map
 
     def get_active_low(self):
@@ -258,7 +258,7 @@ class PhysicalMemoryStub(kts.Generator):
                     pd = port.get_port_delay()
                     pal = port.get_active_low()
                     pm = port.get_port_map()
-                    port_copies.append(PhysicalMemoryPort(pt, pd, True, pal, pm))
+                    port_copies.append(PhysicalMemoryPort(pt, pd, self.tech_map['active'], pal, pm))
                 self.composed_children[(x, y)] = PhysicalMemoryStub(name=self.tech_map['name'],
                                                                     mem_params=child_mem_params,
                                                                     ports=port_copies,
@@ -599,7 +599,7 @@ class MemoryInterface(kts.Generator):
         else:
             self.wire(l_pint['read_enable'], p_pint['cen'])
 
-    def realize_readwrite_port_phys(self, logical: MemoryPort, physical: PhysicalMemoryPort):
+    def realize_readwrite_port_phys(self, logical: MemoryPort, physical: PhysicalMemoryPort, write_prio=True):
         # In reality, a read/write port has to have a read delay,
         # otherwise it would be a separate port - so we only handle this case...
         l_pint = logical.get_port_interface()
@@ -619,13 +619,19 @@ class MemoryInterface(kts.Generator):
             if cen_on:
                 self.wire(~(l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
             else:
-                self.wire(~l_pint['read_enable'], p_pint['read_enable'])
+                if write_prio:
+                    self.wire(~(l_pint['read_enable'] & ~l_pint['write_enable']), p_pint['read_enable'])
+                else:
+                    self.wire(~l_pint['read_enable'], p_pint['read_enable'])
         else:
             self.wire(l_pint['write_enable'], p_pint['write_enable'])
             if cen_on:
                 self.wire((l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
             else:
-                self.wire(l_pint['read_enable'], p_pint['read_enable'])
+                if write_prio:
+                    self.wire(l_pint['read_enable'] & ~l_pint['write_enable'], p_pint['read_enable'])
+                else:
+                    self.wire(l_pint['read_enable'], p_pint['read_enable'])
 
     def realize_write_port_phys(self, logical: MemoryPort, physical: PhysicalMemoryPort):
         l_pint = logical.get_port_interface()
@@ -664,7 +670,7 @@ class MemoryInterface(kts.Generator):
         # Create physical ports to map the logical ports into
         for (idx, port) in enumerate(self.get_ports()):
             new_phys_port = PhysicalMemoryPort(port.get_port_type(), delay=1, active_read=True,
-                                               active_low=True, port_map=port_maps[idx])
+                                               active=self.tech_map['active'], port_map=port_maps[idx])
             self.physical_ports.append(new_phys_port)
 
         # Create the stub generator

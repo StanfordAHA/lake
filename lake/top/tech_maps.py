@@ -25,7 +25,8 @@ def TSMC_Tech_Map(depth, width) -> dict:
         'name': f"TS1N16FFCLLSBLVTC{depth}X{width}M4S",
         'ports': ports,
         'depth': depth,
-        'width': width
+        'width': width,
+        'active': 'low'
     }
 
     return tech_map
@@ -70,7 +71,8 @@ def SKY_Tech_Map() -> dict:
         'name': "sky130_sram_1kbyte_1rw1r_32x256_8",
         'ports': ports,
         'depth': 256,
-        'width': 32
+        'width': 32,
+        'active': 'low'
     }
 
     return tech_map
@@ -161,7 +163,8 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
         'name': name,
         'ports': ports,
         'depth': depth,
-        'width': width
+        'width': width,
+        'active': 'low'
     }
 
     return tech_map
@@ -226,7 +229,8 @@ def Intel_Tech_Map(depth, width,
         'name': f"{compiler_name}_{depth}x{width}m{column_mux}b{bank_count}c{center_decode}s{bit_write_enabled}_t{dfx_setting}r{redundancy_setting}p{power_management}d{dual_supply}a{assist_setting}m{arr_prog_timing}{vt_setting}",
         'ports': ports,
         'depth': depth,
-        'width': width
+        'width': width,
+        'active': 'high'
     }
 
     return tech_map
