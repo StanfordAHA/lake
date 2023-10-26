@@ -160,8 +160,8 @@ class WriteScanner(MemoryController):
         self._block_mode = self.input("block_mode", 1)
         self._block_mode.add_attribute(ConfigRegAttr("Block Writes or Not"))
 
-        self._spacc_mode = self.input("spacc_mode", 1)
-        self._spacc_mode.add_attribute(ConfigRegAttr("Sparse Accum Mode or Not"))
+        # self._spacc_mode = self.input("spacc_mode", 1)
+        # self._spacc_mode.add_attribute(ConfigRegAttr("Sparse Accum Mode or Not"))
 
         self._init_blank = self.input("init_blank", 1)
         self._init_blank.add_attribute(ConfigRegAttr("Init blank fiber (for sparse accum)"))
@@ -375,16 +375,16 @@ class WriteScanner(MemoryController):
 # =============================
 
         # Indicate if the incoming stop token is geq than the programmed stop lvl
-        self._stop_lvl_geq = self.var("stop_lvl_geq", 1)
-        self.wire(self._stop_lvl_geq, self._data_infifo_eos_in & self._data_infifo_valid_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.STOP_CODE) &
-                                      (self._data_infifo_data_in[self.STOP_BT] >= self._stop_lvl[self.STOP_BT]))
+        # self._stop_lvl_geq = self.var("stop_lvl_geq", 1)
+        # self.wire(self._stop_lvl_geq, self._data_infifo_eos_in & self._data_infifo_valid_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.STOP_CODE) &
+        #                               (self._data_infifo_data_in[self.STOP_BT] >= self._stop_lvl[self.STOP_BT]))
 
-        self._stop_lvl_geq_p1 = self.var("stop_lvl_geq_p1", 1)
-        self.wire(self._stop_lvl_geq_p1, self._data_infifo_eos_in & self._data_infifo_valid_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.STOP_CODE) &
-                                      (self._data_infifo_data_in[self.STOP_BT] >= (self._stop_lvl[self.STOP_BT] + 1)))
+        # self._stop_lvl_geq_p1 = self.var("stop_lvl_geq_p1", 1)
+        # self.wire(self._stop_lvl_geq_p1, self._data_infifo_eos_in & self._data_infifo_valid_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.STOP_CODE) &
+        #                               (self._data_infifo_data_in[self.STOP_BT] >= (self._stop_lvl[self.STOP_BT] + 1)))
 
-        self._stop_lvl_geq_p1_sticky = sticky_flag(self, self._stop_lvl_geq_p1, clear=self._clr_blank_done,
-                                                   name="stop_lvl_new_blank_sticky", seq_only=True)
+        # self._stop_lvl_geq_p1_sticky = sticky_flag(self, self._stop_lvl_geq_p1, clear=self._clr_blank_done,
+        #                                            name="stop_lvl_new_blank_sticky", seq_only=True)
 
         self._data_done_in = self.var("data_done_in", 1)
         self.wire(self._data_done_in, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[self.OPCODE_BT] == self.DONE_CODE))
@@ -539,7 +539,8 @@ class WriteScanner(MemoryController):
         # ComLL.next(DONE, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in == 0))
         # ComLL.next(FINALIZE2, self._data_infifo_valid_in & self._data_infifo_eos_in & (self._data_infifo_data_in[9, 8] == kts.const(1, 2)))
         # ComLL.next(FINALIZE2, self._data_done_in)
-        ComLL.next(FINALIZE2, self._data_done_in | (self._spacc_mode & self._stop_lvl_geq))
+        # ComLL.next(FINALIZE2, self._data_done_in | (self._spacc_mode & self._stop_lvl_geq))
+        ComLL.next(FINALIZE2, self._data_done_in)
         # ComLL.next(FINALIZE2, (self._data_done_in & ~self._spacc_mode) | (self._spacc_mode & self._stop_lvl_geq))
         ComLL.next(ComLL, None)
 
@@ -551,7 +552,8 @@ class WriteScanner(MemoryController):
         # UnLL.next(DONE, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
         # UnLL.next(FINALIZE2, self._data_infifo_valid_in & self._addr_infifo_valid_in & self._data_infifo_eos_in & self._addr_infifo_eos_in &
         #           (self._data_infifo_data_in[9, 8] == kts.const(1, 2)) & (self._addr_infifo_data_in[9, 8] == kts.const(1, 2)))
-        UnLL.next(FINALIZE2, (self._data_done_in & self._addr_done_in) | (self._spacc_mode & self._stop_lvl_geq))
+        # UnLL.next(FINALIZE2, (self._data_done_in & self._addr_done_in) | (self._spacc_mode & self._stop_lvl_geq))
+        UnLL.next(FINALIZE2, (self._data_done_in & self._addr_done_in))
         # UnLL.next(FINALIZE2, (self._data_done_in & self._addr_done_in & ~self._spacc_mode) | (self._spacc_mode & self._stop_lvl_geq))
         UnLL.next(UnLL, None)
 
@@ -1071,11 +1073,13 @@ class WriteScanner(MemoryController):
         DONE.output(self._clr_block_write, 0)
         # If doing the blank is not done and should be, we set it here then
         # let the write scanner do its thing
-        DONE.output(self._set_blank_done, self._init_blank & ~self._blank_done & self._spacc_mode)
+        # DONE.output(self._set_blank_done, self._init_blank & ~self._blank_done & self._spacc_mode)
+        DONE.output(self._set_blank_done, 0)
         # We should only clear this for next tile - meaning we get the real done in
         # JK we should clear the blank done when we get the appropriate stop token in.
         # DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._data_done_in & self._spacc_mode)
-        DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._stop_lvl_geq_p1_sticky & self._spacc_mode)
+        # DONE.output(self._clr_blank_done, self._init_blank & self._blank_done & self._stop_lvl_geq_p1_sticky & self._spacc_mode)
+        DONE.output(self._clr_blank_done, 0)
         DONE.output(self._in_done, 1)
 
         self.scan_fsm.set_start_state(START)
@@ -1146,9 +1150,9 @@ class WriteScanner(MemoryController):
 
         compressed = config_kwargs['compressed']
         lowest_level = config_kwargs['lowest_level']
-        stop_lvl = config_kwargs['stop_lvl']
+        # stop_lvl = config_kwargs['stop_lvl']
         block_mode = config_kwargs['block_mode']
-        spacc_mode = config_kwargs['spacc_mode']
+        # spacc_mode = config_kwargs['spacc_mode']
         init_blank = config_kwargs['init_blank']
 
         # Store all configurations here
@@ -1156,9 +1160,9 @@ class WriteScanner(MemoryController):
             # ("inner_dim_offset", inner_offset),
             ("compressed", compressed),
             ("lowest_level", lowest_level),
-            ("stop_lvl", stop_lvl),
+            # ("stop_lvl", stop_lvl),
             ("block_mode", block_mode),
-            ("spacc_mode", spacc_mode),
+            # ("spacc_mode", spacc_mode),
             ("init_blank", init_blank),
             ("tile_en", 1)]
 
