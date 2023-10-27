@@ -696,7 +696,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         ignore_sigs = []
         if self.tech_map is not None:
-        # Should only use this if there is a tech map
+            # Should only use this if there is a tech map
             ignore_sigs = self.tech_map['ports'][port_num]['alt_sigs'].keys()
 
         # Now hijack the original muxes and add priority override...
@@ -1143,7 +1143,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         alt_sigs_ = []
 
         if self.tech_map is not None:
-        # Should only use this if there is a tech map
+            # Should only use this if there is a tech map
             ignore_sigs = self.tech_map['ports'][port_num]['alt_sigs'].keys()
             alt_sigs_ = self.tech_map['ports'][port_num]['alt_sigs']
 
