@@ -143,6 +143,7 @@ class LakeTop(Generator):
                                          interconnect_output_ports=self.interconnect_output_ports,
                                          read_delay=self.read_delay,
                                          rw_same_cycle=self.rw_same_cycle,
+                                         comply_with_17=self.comply_with_17,
                                          agg_height=self.agg_height,
                                          tb_height=self.tb_height,
                                          config_width=self.config_width,
