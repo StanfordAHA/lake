@@ -218,6 +218,7 @@ def Intel_Tech_Map(depth, width,
             'mcen': (0, 1),
             'mc': (0, 3),
             'wpulseen': (0, 1),
+            'clkbyp': (0, 1),
             'wpulse': (0, 2),
             'wa': (0, 2),
         }
