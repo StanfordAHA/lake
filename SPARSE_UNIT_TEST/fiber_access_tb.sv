@@ -60,6 +60,7 @@ module fiber_access_tb;
     integer write_eos;
     integer write_count;
     logic start_read;
+    logic read_input_in;
     integer read_count;
     integer wait_gap = 0; // should pass with arb gap
     integer DONE_TOKEN = 17'h10100;
@@ -84,8 +85,8 @@ module fiber_access_tb;
     .read_scanner_repeat_factor(16'b0),
     .read_scanner_repeat_outer_inner_n(1'b0),
     .read_scanner_root(1'b0),
-    .read_scanner_spacc_mode(1'b0),
-    .read_scanner_stop_lvl(16'b0),
+    // .read_scanner_spacc_mode(1'b0),
+    // .read_scanner_stop_lvl(16'b0),
     .read_scanner_tile_en(tile_en),
     .read_scanner_us_pos_in(pos_in_0),
     // .read_scanner_us_pos_in_valid(pos_in_0_valid & start_read == 1),
@@ -102,8 +103,8 @@ module fiber_access_tb;
     .write_scanner_data_in_valid(coord_in_0_valid),
     .write_scanner_init_blank(1'b0),
     .write_scanner_lowest_level(1'b0),
-    .write_scanner_spacc_mode(1'b0),
-    .write_scanner_stop_lvl(16'b0),
+    // .write_scanner_spacc_mode(1'b0),
+    // .write_scanner_stop_lvl(16'b0),
     .write_scanner_tile_en(tile_en),
     .addr_to_mem(memory_addr_to_mem_p0),
     .data_to_mem(memory_0_data_in_p0),
@@ -197,6 +198,7 @@ module fiber_access_tb;
         write_eos = 0;
         write_count = 0;
         start_read = 0;
+        read_input_in = 0;
         read_count = 0;
 
         clk = 0;
@@ -213,6 +215,10 @@ module fiber_access_tb;
 
         for(integer i = 0; i < NUM_CYCLES * 2; i = i + 1) begin
             #5 clk = ~clk;
+            
+            if (clk && pos_in_0_valid) begin
+                read_input_in = 1;
+            end
 
             // FSM
             if (clk && coord_in_0_valid && start_write == 0) begin
@@ -235,7 +241,7 @@ module fiber_access_tb;
                 wait_gap -= 1;
             end
 
-            if (clk && start_write == 2 && wait_gap == 0 && start_read == 0 && pos_in_0_valid) begin
+            if (clk && start_write == 2 && wait_gap == 0 && start_read == 0 && read_input_in) begin
                 start_read = 1;
             end
 
