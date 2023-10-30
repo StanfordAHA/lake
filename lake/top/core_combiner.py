@@ -51,9 +51,11 @@ class CoreCombiner(Generator):
                  name="CoreCombiner",
                  do_config_lift=True,
                  controllers=None,
-                 tech_map=TSMC_Tech_Map(depth=512, width=32),
+                #  tech_map=,
+                 tech_map_name='TSMC',
                  io_prefix="",
-                 fifo_depth=2):
+                 fifo_depth=2,
+                 sram_columns=2):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -70,10 +72,11 @@ class CoreCombiner(Generator):
         self.config_addr_width = config_addr_width
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
-        self.tech_map = tech_map
+        self.tech_map_name = tech_map_name
         self.io_prefix = io_prefix
         self.fifo_depth = fifo_depth
         self.rf = rf
+        self.sram_columns = sram_columns
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -105,6 +108,12 @@ class CoreCombiner(Generator):
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
+
+        if self.tech_map_name == 'TSMC':
+            self.tech_map = TSMC_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns))
+        elif self.tech_map_name == 'Intel':
+            self.tech_map = Intel_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns),
+                                           async_reset=~MTB.get_async_reset())
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
@@ -308,6 +317,7 @@ if __name__ == "__main__":
     parser.add_argument("--fifo_mode", action="store_true")
     parser.add_argument("--stencil_valid", action="store_true")
     parser.add_argument("--rf", action="store_true")
+    parser.add_argument("--tech", type=str, default="Intel")
 
     args = parser.parse_args()
 
@@ -319,6 +329,7 @@ if __name__ == "__main__":
     fifo_mode = args.fifo_mode
     stencil_valid = args.stencil_valid
     rf = args.rf
+    tech = args.tech
 
     mem_name = "single"
     rw_same_cycle = False
@@ -455,7 +466,7 @@ if __name__ == "__main__":
                              do_config_lift=False,
                              io_prefix="MEM_",
                              fifo_depth=16,
-                             tech_map=Intel_Tech_Map(depth=mem_depth, width=int(mem_width / 2)))
+                             tech_map_name=tech)
 
     print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()
