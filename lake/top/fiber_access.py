@@ -1,4 +1,5 @@
 import kratos as kts
+from kratos import *
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.top.memory_controller import MemoryController
@@ -8,6 +9,7 @@ from lake.modules.scanner_pipe import ScannerPipe
 from lake.modules.write_scanner import WriteScanner
 from lake.passes.passes import lift_config_reg
 from lake.top.tech_maps import GF_Tech_Map
+from lake.utils.util import sticky_flag
 
 
 class FiberAccess(MemoryController):
@@ -88,8 +90,12 @@ class FiberAccess(MemoryController):
                 clk_en=self._clk_en)
             
         self._wr_scan_data_in = self.input(f"{self.wr_scan_pre}_data_in", self.data_width + 1, packed=True)
+        self._wr_scan_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        self._wr_scan_data_in_ready = self.output(f"{self.wr_scan_pre}_data_in_ready", 1)
+        self._wr_scan_data_in_ready.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
         self._wr_scan_data_in_valid = self.input(f"{self.wr_scan_pre}_data_in_valid", 1)
-
+        self._wr_scan_data_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+        
         self._rd_scan_coord_out_ready = self.input(f"{self.rd_scan_pre}_coord_out_ready", 1)
         self._rd_scan_coord_out_ready.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
         self.wire(self._rd_scan_coord_out_ready, self.rd_scan.ports.coord_out_ready)
@@ -97,6 +103,13 @@ class FiberAccess(MemoryController):
         self._rd_scan_us_pos_in_ready = self.output(f"{self.rd_scan_pre}_us_pos_in_ready", 1)
         self._rd_scan_us_pos_in_ready.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
         self.wire(self._rd_scan_us_pos_in_ready, self.rd_scan.ports.us_pos_in_ready)
+
+        self._rd_scan_pos_out = self.output(f"{self.rd_scan_pre}_pos_out", self.data_width + 1, packed=True)
+        self._rd_scan_pos_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        self._rd_scan_pos_out_ready = self.input(f"{self.rd_scan_pre}_pos_out_ready", 1)
+        self._rd_scan_pos_out_ready.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+        self._rd_scan_pos_out_valid = self.output(f"{self.rd_scan_pre}_pos_out_valid", 1)
+        self._rd_scan_pos_out_valid.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
         # MO: Moved the above stuff up here b/c it is needed by VR FSM
 
 
@@ -108,27 +121,42 @@ class FiberAccess(MemoryController):
         # Define useful constants
         self._S_level_0 = self.var("S_level_0", self.data_width + 1)
         self._S_level_1 = self.var("S_level_1", self.data_width + 1)
+        self._S_level_2 = self.var("S_level_2", self.data_width + 1)
         self._done_token = self.var("done_token", self.data_width + 1)
+        self._semi_done_token = self.var("semi_done_token", self.data_width + 1)
         self.wire(self._S_level_0, kts.concat(kts.const(1, 1), kts.const(0, 16)))
         self.wire(self._S_level_1, kts.concat(kts.const(1, 1), kts.const(0, 15), kts.const(1, 1)))
+        self.wire(self._S_level_2, kts.concat(kts.const(1, 1), kts.const(0, 14), kts.const(1, 1), kts.const(0, 1)))
         self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
+        self.wire(self._semi_done_token, kts.concat(kts.const(1, 1), kts.const(0, 11), kts.const(1, 1), kts.const(0, 4)))
+
+        # Sticky flags for FSM logic  
+        self._input_row_fully_processed = self.var("input_row_fully_processed", 1)
+        self._output_row_fully_accumulated = self.var("output_row_fully_accumulated", 1)
+        self._output_matrix_fully_accumulated = self.var("output_matrix_fully_accumulated", 1)
+
 
         # State definition
         self.vr_fsm = self.add_fsm("vr_seq", reset_high=False)
+        
         START = self.vr_fsm.add_state("START")
-        FLUSH_ALL = self.vr_fsm.add_state("FLUSH_ALL")
+        #FLUSH_ALL = self.vr_fsm.add_state("FLUSH_ALL")
         INIT_BLANK = self.vr_fsm.add_state("INIT_BLANK")
         #INIT_BLANK_STEP1 = self.vr_fsm.add_state("INIT_BLANK_STEP1")
-        ISSUE_READ_STEP0 = self.vr_fsm.add_state("ISSUE_READ_STEP0")
-        ISSUE_READ_STEP1 = self.vr_fsm.add_state("ISSUE_READ_STEP1")
+        ISSUE_READ_SEND_REF_CNT = self.vr_fsm.add_state("ISSUE_READ_SEND_REF_CNT")
+        ISSUE_READ_SEND_S0 = self.vr_fsm.add_state("ISSUE_READ_SEND_S0")
+        ISSUE_READ_SEND_DONE = self.vr_fsm.add_state("ISSUE_READ_SEND_DONE")
         PROCESS_ROW = self.vr_fsm.add_state("PROCESS_ROW")
+        DS_READ_ROW = self.vr_fsm.add_state("DS_READ_ROW")
+
+        self.vr_fsm.set_start_state(START)
 
         # Create FSM output wires
         self._vr_fsm_pos_to_read_scanner = self.var("vr_fsm_pos_to_read_scanner", self.data_width + 1)
         self._vr_fsm_pos_valid_to_read_scanner = self.var("vr_fsm_pos_valid_to_read_scanner", 1)
         #self._vr_fsm_fiber_access_coord_out = self.var("vr_fsm_fiber_access_coord_out", self.data_width + 1)
         #self._vr_fsm_fiber_access_coord_out_valid = self.var("vr_fsm_fiber_access_coord_out_valid", 1)
-        self._vr_fsm_flush = self.var("vr_fsm_flush", 1)
+        #self._vr_fsm_flush = self.var("vr_fsm_flush", 1)
         self._vr_fsm_init_blank = self.var("vr_fsm_init_blank", 1)
 
         # Bind FSM Outputs
@@ -136,47 +164,76 @@ class FiberAccess(MemoryController):
         self.vr_fsm.output(self._vr_fsm_pos_valid_to_read_scanner)
         #self.vr_fsm.output(self._vr_fsm_fiber_access_coord_out)
         #self.vr_fsm.output(self._vr_fsm_fiber_access_coord_out_valid)
-        self.vr_fsm.output(self._vr_fsm_flush)
+        #self.vr_fsm.output(self._vr_fsm_flush)
         self.vr_fsm.output(self._vr_fsm_init_blank)
 
+        # Keep track of highest stop token seen (useful for FSM logic)
+        self._highest_seen_stoken = self.var("highest_seen_stoken", self.data_width + 1)
+        
+        self._is_stop_token = self.var("is_stop_token", 1)
+        self.wire(self._is_stop_token, (self._wr_scan_data_in[self.data_width] == 1) & ~(self._wr_scan_data_in == self._done_token) & ~(self._wr_scan_data_in == self._semi_done_token))
+
+        self._new_highest_stoken_seen = self.var("new_highest_stoken_seen", 1)
+        self.wire(self._new_highest_stoken_seen, self._is_stop_token & (self._wr_scan_data_in > self._highest_seen_stoken) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready) 
+
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def highest_seen_stoken_block(self):
+            if ~self._rst_n:
+                self._highest_seen_stoken = self._S_level_0
+            elif self._vr_fsm_init_blank:
+                self._highest_seen_stoken = self._S_level_0
+            elif self._new_highest_stoken_seen:
+                self._highest_seen_stoken = self._wr_scan_data_in
+
+        self.add_always(highest_seen_stoken_block)
+
         # Next State Logic
-        START.next(FLUSH_ALL, self._vector_reduce_mode)
+        START.next(INIT_BLANK, self._vector_reduce_mode)
         START.next(START, None)
 
-        FLUSH_ALL.next(INIT_BLANK, None)
+        #FLUSH_ALL.next(INIT_BLANK, None)
         INIT_BLANK.next(PROCESS_ROW, self._rd_scan_coord_out_ready)
         INIT_BLANK.next(INIT_BLANK, None)
         #INIT_BLANK_STEP1.next(PROCESS_ROW, None)
 
-        PROCESS_ROW.next(ISSUE_READ_STEP0, (self._wr_scan_data_in == self._S_level_0) & self._wr_scan_data_in_valid)
-        PROCESS_ROW.next(START, (self._wr_scan_data_in == self._S_level_1) & self._wr_scan_data_in_valid)
+        PROCESS_ROW.next(ISSUE_READ_SEND_REF_CNT, self._input_row_fully_processed)
+        #PROCESS_ROW.next(START, (self._wr_scan_data_in == self._S_level_1) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready)
         PROCESS_ROW.next(PROCESS_ROW, None)
 
-        ISSUE_READ_STEP0.next(ISSUE_READ_STEP1, self._rd_scan_us_pos_in_ready)
-        ISSUE_READ_STEP0.next(ISSUE_READ_STEP0, None)
-        ISSUE_READ_STEP1.next(PROCESS_ROW, self._rd_scan_us_pos_in_ready)
-        ISSUE_READ_STEP1.next(ISSUE_READ_STEP1, None)
+        ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_DONE, self._rd_scan_us_pos_in_ready & (~self._output_matrix_fully_accumulated | (self._output_matrix_fully_accumulated & ~(self._highest_seen_stoken > self._S_level_1))))
+        ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_S0, self._rd_scan_us_pos_in_ready & self._output_matrix_fully_accumulated & (self._highest_seen_stoken > self._S_level_1))
+        ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_REF_CNT, None)
+
+        ISSUE_READ_SEND_S0.next(ISSUE_READ_SEND_DONE, self._rd_scan_us_pos_in_ready)
+        ISSUE_READ_SEND_S0.next(ISSUE_READ_SEND_S0, None)
+
+        ISSUE_READ_SEND_DONE.next(PROCESS_ROW, self._rd_scan_us_pos_in_ready & ~self._output_row_fully_accumulated)
+        ISSUE_READ_SEND_DONE.next(DS_READ_ROW, self._rd_scan_us_pos_in_ready & self._output_row_fully_accumulated)
+        ISSUE_READ_SEND_DONE.next(ISSUE_READ_SEND_DONE, None)
+
+        DS_READ_ROW.next(INIT_BLANK, self.rd_scan.ports.rs_has_prepped_ds_row) 
+        DS_READ_ROW.next(DS_READ_ROW, None)
 
         # FSM Output logic 
         START.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
         START.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
         #START.output(self._vr_fsm_fiber_access_coord_out, kts.const(0, self.data_width + 1))
         #START.output(self._vr_fsm_fiber_access_coord_out_valid, 0)
-        START.output(self._vr_fsm_flush, 0)
+        #START.output(self._vr_fsm_flush, 0)
         START.output(self._vr_fsm_init_blank, 0)
 
-        FLUSH_ALL.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
-        FLUSH_ALL.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
+        #FLUSH_ALL.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
+        #FLUSH_ALL.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
         #FLUSH_ALL.output(self._vr_fsm_fiber_access_coord_out, kts.const(0, self.data_width + 1))
         #FLUSH_ALL.output(self._vr_fsm_fiber_access_coord_out_valid, 0)
-        FLUSH_ALL.output(self._vr_fsm_flush, 1)
-        FLUSH_ALL.output(self._vr_fsm_init_blank, 0)
+        #FLUSH_ALL.output(self._vr_fsm_flush, 1)
+        #FLUSH_ALL.output(self._vr_fsm_init_blank, 0)
 
         INIT_BLANK.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
         INIT_BLANK.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
         #INIT_BLANK.output(self._vr_fsm_fiber_access_coord_out, self._S_level_0)
         #INIT_BLANK.output(self._vr_fsm_fiber_access_coord_out_valid, 1)
-        INIT_BLANK.output(self._vr_fsm_flush, 0)
+        #INIT_BLANK.output(self._vr_fsm_flush, 0)
         INIT_BLANK.output(self._vr_fsm_init_blank, 1)
 
         # INIT_BLANK_STEP1.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
@@ -186,45 +243,95 @@ class FiberAccess(MemoryController):
         # INIT_BLANK_STEP1.output(self._vr_fsm_flush, 0)
         # INIT_BLANK_STEP1.output(self._vr_fsm_init_blank, 1)
 
-        ISSUE_READ_STEP0.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
-        ISSUE_READ_STEP0.output(self._vr_fsm_pos_valid_to_read_scanner, 1)
-        #ISSUE_READ_STEP0.output(self._vr_fsm_fiber_access_coord_out, kts.const(0, self.data_width + 1))
-        #ISSUE_READ_STEP0.output(self._vr_fsm_fiber_access_coord_out_valid, 0)
-        ISSUE_READ_STEP0.output(self._vr_fsm_flush, 0)
-        ISSUE_READ_STEP0.output(self._vr_fsm_init_blank, 0)
+        ISSUE_READ_SEND_REF_CNT.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
+        ISSUE_READ_SEND_REF_CNT.output(self._vr_fsm_pos_valid_to_read_scanner, 1)
+        #ISSUE_READ_SEND_REF_CNT.output(self._vr_fsm_fiber_access_coord_out, kts.const(0, self.data_width + 1))
+        #ISSUE_READ_SEND_REF_CNT.output(self._vr_fsm_fiber_access_coord_out_valid, 0)
+        #ISSUE_READ_SEND_REF_CNT.output(self._vr_fsm_flush, 0)
+        ISSUE_READ_SEND_REF_CNT.output(self._vr_fsm_init_blank, 0)
 
-        ISSUE_READ_STEP1.output(self._vr_fsm_pos_to_read_scanner, self._done_token)
-        ISSUE_READ_STEP1.output(self._vr_fsm_pos_valid_to_read_scanner, 1)
-        #ISSUE_READ_STEP1.output(self._vr_fsm_fiber_access_coord_out, kts.const(0, self.data_width + 1))
-        #ISSUE_READ_STEP1.output(self._vr_fsm_fiber_access_coord_out_valid, 0)
-        ISSUE_READ_STEP1.output(self._vr_fsm_flush, 0)
-        ISSUE_READ_STEP1.output(self._vr_fsm_init_blank, 0)
+        ISSUE_READ_SEND_S0.output(self._vr_fsm_pos_to_read_scanner, self._S_level_0)
+        ISSUE_READ_SEND_S0.output(self._vr_fsm_pos_valid_to_read_scanner, 1)
+        ISSUE_READ_SEND_S0.output(self._vr_fsm_init_blank, 0)
+
+        ISSUE_READ_SEND_DONE.output(self._vr_fsm_pos_to_read_scanner, self._done_token)
+        ISSUE_READ_SEND_DONE.output(self._vr_fsm_pos_valid_to_read_scanner, 1)
+        #ISSUE_READ_SEND_DONE.output(self._vr_fsm_fiber_access_coord_out, kts.const(0, self.data_width + 1))
+        #ISSUE_READ_SEND_DONE.output(self._vr_fsm_fiber_access_coord_out_valid, 0)
+        #ISSUE_READ_SEND_DONE.output(self._vr_fsm_flush, 0)
+        ISSUE_READ_SEND_DONE.output(self._vr_fsm_init_blank, 0)
 
         PROCESS_ROW.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
         PROCESS_ROW.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
         #PROCESS_ROW.output(self._vr_fsm_fiber_access_coord_out, kts.const(0, self.data_width + 1))
         #PROCESS_ROW.output(self._vr_fsm_fiber_access_coord_out_valid, 0)
-        PROCESS_ROW.output(self._vr_fsm_flush, 0)
+        #PROCESS_ROW.output(self._vr_fsm_flush, 0)
         PROCESS_ROW.output(self._vr_fsm_init_blank, 0)
 
-        self.vr_fsm.set_start_state(START)
+        DS_READ_ROW.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
+        DS_READ_ROW.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
+        DS_READ_ROW.output(self._vr_fsm_init_blank, 0)
+
 
         # Logic to drop highest order stop-token (remember, we are doing a reduction operation)
         #self._vr_fsm_data_in_valid = self.var("vr_fsm_data_in_valid", 1)
         #self.wire(self._vr_fsm_data_in_valid, self._wr_scan_data_in != self._S_level_1)
 
+        # Realize FSM 
+        self.vr_fsm.realize()
+
+        vr_fsm_current_state = self.vr_fsm.current_state
+        vr_fsm_state_enum = vr_fsm_current_state.enum_type()
+
+        #self._data_is_S0_or_S1 = self.var("data_is_S0_or_S1", 1)
+        #self.wire(self._data_is_S0_or_S1, (self._wr_scan_data_in == self._S_level_0 | self._wr_scan_data_in == self._S_level_1))
+
+        # Sticky flags used for FSM logic 
+        input_row_fully_processed_sticky = sticky_flag(self, ((self._wr_scan_data_in == self._S_level_0) | (self._wr_scan_data_in == self._S_level_1) | (self._wr_scan_data_in == self._S_level_2)) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
+                                    clear = (vr_fsm_current_state == vr_fsm_state_enum.ISSUE_READ_SEND_DONE), name="input_row_fully_processed_sticky")
+        self.wire(self._input_row_fully_processed, input_row_fully_processed_sticky)
+
+        output_row_fully_accumulated_sticky = sticky_flag(self, ((self._wr_scan_data_in == self._S_level_1) | (self._wr_scan_data_in == self._S_level_2)) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
+                                    clear = (vr_fsm_current_state == vr_fsm_state_enum.INIT_BLANK), name="output_row_fully_accumulated_sticky")
+        self.wire(self._output_row_fully_accumulated, output_row_fully_accumulated_sticky)
+
+        self._done_sent_to_ds = self.var("done_sent_to_ds", 1)
+        self.wire(self._done_sent_to_ds, (self.rd_scan.ports.pos_out == self._done_token) & self.rd_scan.ports.pos_out_valid & self._rd_scan_pos_out_ready)
+        self._done_sent_to_ds_d1 = self.var("done_sent_to_ds_d1", 1)
+
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def delay_one_cycle_block(self):
+            if ~self._rst_n:
+                self._done_sent_to_ds_d1 = 0
+            else:
+                self._done_sent_to_ds_d1 = self._done_sent_to_ds
+
+        self.add_always(delay_one_cycle_block)
+
+        output_matrix_fully_accumulated_sticky = sticky_flag(self, (self._wr_scan_data_in == self._done_token) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
+                                    clear = self._done_sent_to_ds_d1, name="output_matrix_fully_accumulated_sticky")
+        self.wire(self._output_matrix_fully_accumulated, output_matrix_fully_accumulated_sticky)
+
+
+        
+        #PROCESS_ROW.next(ISSUE_READ_SEND_REF_CNT,(self._wr_scan_data_in == self._S_level_0) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready)
+        #PROCESS_ROW.next(START, (self._wr_scan_data_in == self._S_level_1) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready)
+        #PROCESS_ROW.next(PROCESS_ROW, None)
+
+        # Realize FSM once more 
+        self.vr_fsm.realize()
+    
         ##################
         # MO: End VR FSM
         ##################
 
         # MO: Moved up
         #self._wr_scan_data_in = self.input(f"{self.wr_scan_pre}_data_in", self.data_width + 1, packed=True)
-        self._wr_scan_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-        self._wr_scan_data_in_ready = self.output(f"{self.wr_scan_pre}_data_in_ready", 1)
-        self._wr_scan_data_in_ready.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-         # MO: Moved up
+        #self._wr_scan_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        #self._wr_scan_data_in_ready = self.output(f"{self.wr_scan_pre}_data_in_ready", 1)
+        #self._wr_scan_data_in_ready.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
         #self._wr_scan_data_in_valid = self.input(f"{self.wr_scan_pre}_data_in_valid", 1)
-        self._wr_scan_data_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+        #self._wr_scan_data_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
         self._wr_scan_addr_in = self.input(f"{self.wr_scan_pre}_addr_in", self.data_width + 1, packed=True)
         self._wr_scan_addr_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -248,12 +355,13 @@ class FiberAccess(MemoryController):
         self._rd_scan_coord_out_valid = self.output(f"{self.rd_scan_pre}_coord_out_valid", 1)
         self._rd_scan_coord_out_valid.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
-        self._rd_scan_pos_out = self.output(f"{self.rd_scan_pre}_pos_out", self.data_width + 1, packed=True)
-        self._rd_scan_pos_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-        self._rd_scan_pos_out_ready = self.input(f"{self.rd_scan_pre}_pos_out_ready", 1)
-        self._rd_scan_pos_out_ready.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-        self._rd_scan_pos_out_valid = self.output(f"{self.rd_scan_pre}_pos_out_valid", 1)
-        self._rd_scan_pos_out_valid.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
+        # MO: Moved up 
+        # self._rd_scan_pos_out = self.output(f"{self.rd_scan_pre}_pos_out", self.data_width + 1, packed=True)
+        # self._rd_scan_pos_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        # self._rd_scan_pos_out_ready = self.input(f"{self.rd_scan_pre}_pos_out_ready", 1)
+        # self._rd_scan_pos_out_ready.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+        # self._rd_scan_pos_out_valid = self.output(f"{self.rd_scan_pre}_pos_out_valid", 1)
+        # self._rd_scan_pos_out_valid.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         self._rd_scan_us_pos_in = self.input(f"{self.rd_scan_pre}_us_pos_in", self.data_width + 1, packed=True)
         self._rd_scan_us_pos_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -370,7 +478,21 @@ class FiberAccess(MemoryController):
 
         # MO: Logic to drop highest order stop-token (remember, we are doing a reduction operation)
         #self.wire(self._wr_scan_data_in, self.wr_scan.ports.data_in)
-        self.wire(self.wr_scan.ports.data_in, kts.ternary((self._vector_reduce_mode & (self._wr_scan_data_in == self._S_level_1)), self._S_level_0, self._wr_scan_data_in))
+        #self._vr_fsm_wr_scan_data_in_tmp = self.var("vr_fsm_wr_scan_data_in_tmp", self.data_width + 1)
+
+        #self._wr_scan_data_in_mux1_sel = kts.concat(self._wr_scan_data_in == self._S_level_2, self._wr_scan_data_in == self._S_level_1)
+        #wr_scan_data_in_comb_block = self.combinational()
+        #wr_scan_data_mux1 = wr_scan_data_in_comb_block.switch_(self._wr_scan_data_in_mux1_sel)
+        #wr_scan_data_mux1.case_(kts.const(0, 2), self._vr_fsm_wr_scan_data_in_tmp(self._wr_scan_data_in))
+        #wr_scan_data_mux1.case_(kts.const(1, 2), self._vr_fsm_wr_scan_data_in_tmp(self._S_level_0))
+        #wr_scan_data_mux1.case_(kts.const(2, 2), self._vr_fsm_wr_scan_data_in_tmp(self._S_level_1))
+        #wr_scan_data_mux1.case_(None, self._vr_fsm_wr_scan_data_in_tmp(self._wr_scan_data_in))
+
+        self._vr_fsm_wr_scan_data_in = self.var("vr_fsm_wr_scan_data_in", self.data_width + 1)
+        #self.wire(self._vr_fsm_wr_scan_data_in, kts.ternary((self._wr_scan_data_in == self._semi_done_token), self._done_token, self._vr_fsm_wr_scan_data_in_tmp))
+        self.wire(self._vr_fsm_wr_scan_data_in, kts.ternary((self._wr_scan_data_in == self._semi_done_token), self._done_token, self._wr_scan_data_in))
+
+        self.wire(self.wr_scan.ports.data_in, kts.ternary(self._vector_reduce_mode, self._vr_fsm_wr_scan_data_in, self._wr_scan_data_in))
         self.wire(self._wr_scan_data_in_ready, self.wr_scan.ports.data_in_ready)
         self.wire(self._wr_scan_data_in_valid, self.wr_scan.ports.data_in_valid)
         #self.wire(self.wr_scan.ports.data_in_valid, kts.ternary(self._vector_reduce_mode, (self._vr_fsm_data_in_valid & self._wr_scan_data_in_valid), self._wr_scan_data_in_valid))
@@ -391,13 +513,16 @@ class FiberAccess(MemoryController):
 
         self.wire(self._rd_scan_pos_out, self.rd_scan.ports.pos_out)
         self.wire(self._rd_scan_pos_out_ready, self.rd_scan.ports.pos_out_ready)
-        self.wire(self._rd_scan_pos_out_valid, self.rd_scan.ports.pos_out_valid)
+        self.wire(self._rd_scan_pos_out_valid, kts.ternary((self._vector_reduce_mode & (self.rd_scan.ports.pos_out == self._done_token)), (self._output_matrix_fully_accumulated & self.rd_scan.ports.pos_out_valid), self.rd_scan.ports.pos_out_valid))
 
         # MO: VR FSM datapath and control changes
         self.wire(self.rd_scan.ports.us_pos_in, kts.ternary(self._vector_reduce_mode, self._vr_fsm_pos_to_read_scanner, self._rd_scan_us_pos_in))
         # MO: Moved up
         #self.wire(self._rd_scan_us_pos_in_ready, self.rd_scan.ports.us_pos_in_ready)
         self.wire(self.rd_scan.ports.us_pos_in_valid, kts.ternary(self._vector_reduce_mode, self._vr_fsm_pos_valid_to_read_scanner, self._rd_scan_us_pos_in_valid))
+        self.wire(self._vr_fsm_init_blank, self.rd_scan.ports.vr_fsm_state_init_blank)
+        self.wire(self._vector_reduce_mode, self.rd_scan.ports.vector_reduce_mode)
+        self.wire(self._output_row_fully_accumulated, self.rd_scan.ports.output_row_fully_accumulated)
 
         if self.add_clk_enable:
             # self.clock_en("clk_en")

@@ -280,9 +280,12 @@ class Intersect(MemoryController):
         self._maybeconstant = kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8))
         self.wire(self._maybe, kts.ternary(self._vector_reduce_mode, kts.const(0, self.data_width), self._maybeconstant))
 
-
+        self._semi_done_token = self.var("semi_done_token", self.data_width + 1)
+        self.wire(self._semi_done_token, kts.concat(kts.const(1, 1), kts.const(0, 11), kts.const(1, 1), kts.const(0, 4)))
+        
         self._done_token = self.var("done_token", self.data_width + 1)
         self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
+        
 
         #self.wire(self._maybe, kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8)))
 
@@ -372,7 +375,7 @@ class Intersect(MemoryController):
         # Then in DRAIN0, we pass thru the stop tokens (MO: and the DONE token in non-VR mode)
         # The only way to leave DRAIN0 is to get new data
         # where both streams are valid but not both streams are eos
-        # In VR_mode, DRAIN0 transitions unconditionally to PASS_DONE
+        # In VR_mode, DRAIN0 transitions "unconditionally" to PASS_DONE
         # TODO: This shouldn't be unconditional! Only go if the FIFO isn't full...
         DRAIN0.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or())
         DRAIN0.next(DONE, ~self._vector_reduce_mode & ~self._all_have_eos & valid_concat.r_and())
@@ -561,15 +564,15 @@ class Intersect(MemoryController):
         ###########
         # PASS_DONE
         ###########
-        # What happens if the incoming stream has a done token? On the last lap, it needs to be popped
         PASS_DONE.output(self._pop_fifo[0], (self._coord_in_fifo_valid_in[0] & (self._coord_in_fifo_in[0] == self._done_token))) 
         PASS_DONE.output(self._pop_fifo[1], (self._coord_in_fifo_valid_in[1] & (self._coord_in_fifo_in[1] == self._done_token)))
         PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or())
         PASS_DONE.output(self._clr_eos_sticky[0], 0)
         PASS_DONE.output(self._clr_eos_sticky[1], 0)
-        PASS_DONE.output(self._coord_to_fifo, self._done_token[15,0])
-        PASS_DONE.output(self._pos_to_fifo[0], self._done_token[15,0])
-        PASS_DONE.output(self._pos_to_fifo[1], self._done_token[15,0])
+        # If incoming stream has done token (meaning we're REALLY done), send done, else send semi-done. 
+        PASS_DONE.output(self._coord_to_fifo, kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15,0], self._semi_done_token[15,0]))
+        PASS_DONE.output(self._pos_to_fifo[0], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15,0], self._semi_done_token[15,0]))
+        PASS_DONE.output(self._pos_to_fifo[1], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15,0], self._semi_done_token[15,0]))
         PASS_DONE.output(self._coord_to_fifo_eos, kts.const(1,1))
         PASS_DONE.output(self._pos_to_fifo_eos[0], kts.const(1,1))
         PASS_DONE.output(self._pos_to_fifo_eos[1], kts.const(1,1))
