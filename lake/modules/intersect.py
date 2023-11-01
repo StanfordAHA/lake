@@ -154,7 +154,6 @@ class Intersect(MemoryController):
         self._pos_in_fifo_eos_in = []
 
         # Control Vars from FSM
-
         #self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
         self._pop_fifo = self.var("pop_fifo", self.num_streams)
 
@@ -285,9 +284,7 @@ class Intersect(MemoryController):
         self._done_token = self.var("done_token", self.data_width + 1)
         self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
         
-        """
-        self.wire(self._maybe, kts.concat(kts.const(0, 6), kts.const(2, 2), kts.const(0, 8)))
-
+        """ 
         # MO: This isn't used! 
         # for i in range(self.num_streams):
         #     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -317,7 +314,7 @@ class Intersect(MemoryController):
         IDLE = self.intersect_fsm.add_state("IDLE")
         ITER = self.intersect_fsm.add_state("ITER")
         UNION = self.intersect_fsm.add_state("UNION")
-        DRAIN0 = self.intersect_fsm.add_state("DRAIN0")
+        DRAIN = self.intersect_fsm.add_state("DRAIN")
         PASS_DONE = self.intersect_fsm.add_state("PASS_DONE")
         WAIT_FOR_VALID = self.intersect_fsm.add_state("WAIT_FOR_VALID")
         ALIGN = self.intersect_fsm.add_state("ALIGN")
@@ -350,17 +347,11 @@ class Intersect(MemoryController):
         # In IDLE we stay if the fifo is full, otherwise wait
         # until we have two valids...
         IDLE.next(UNION, self._all_are_valid & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)) & self._tile_en)
-        # If either stream is empty, we can skip to DRAIN0 right away
+        # If either stream is empty, we can skip to DRAIN right away
         IDLE.next(ALIGN, self._any_has_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
         IDLE.next(ITER, self._all_are_valid_but_no_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
         IDLE.next(IDLE, None)
-        # IDLE.next(UNION, self._all_are_valid_but_no_eos & (self._joiner_op == kts.const(JoinerOp.UNION.value, op_bits)))
-        # IDLE.next(IDLE, self._fifo_full.r_or() | (~self._all_are_valid_but_no_eos))
-
-        # In ITER, we go back to idle when the fifo is full to avoid
-        # complexity, or if we are looking at one of the eos since we can make the last
-        # move for the intersection now...
-        # If we have eos and can push it to the fifo, we are done with this stream
+        
         ITER.next(ALIGN, self._any_has_eos & ~self._all_have_eos)
         ITER.next(ITER, None)
 
@@ -369,18 +360,17 @@ class Intersect(MemoryController):
         ALIGN.next(ALIGN, None)
 
         # For Union, there is no real early stop, we just can go until both streams hit stop tokens
-        UNION.next(DRAIN0, self._eos_in_sticky.r_and())
+        UNION.next(DRAIN, self._eos_in_sticky.r_and())
         UNION.next(UNION, None)
 
-        # Then in DRAIN0, we pass thru the stop tokens (MO: and the DONE token in non-VR mode)
-        # The only way to leave DRAIN0 is to get new data
-        # where both streams are valid but not both streams are eos
-        # In VR_mode, DRAIN0 transitions "unconditionally" to PASS_DONE
-        DRAIN0.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or())
-        DRAIN0.next(DONE, ~self._vector_reduce_mode & ~self._all_have_eos & valid_concat.r_and())
-        DRAIN0.next(DRAIN0, None)
+        # Then in DRAIN, we pass thru the stop tokens (MO: and the DONE token in non-VR mode)
+        # The only way to leave DRAIN is to get new data where both streams are valid but not both streams are eos
+        # In VR_mode, DRAIN transitions "unconditionally" to PASS_DONE
+        DRAIN.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or())
+        DRAIN.next(DONE, ~self._vector_reduce_mode & ~self._all_have_eos & valid_concat.r_and())
+        DRAIN.next(DRAIN, None)
 
-        # PASS_DONE is only used in VR mode to insert a semi-DONE token into the outgoing stream.
+        # PASS_DONE can only be accessed in VR mode to insert a semi-DONE token into the outgoing stream.
         PASS_DONE.next(WAIT_FOR_VALID, ~self._fifo_full.r_or())
         PASS_DONE.next(PASS_DONE, None)
 
@@ -403,8 +393,6 @@ class Intersect(MemoryController):
         # Can detect empty here
         IDLE.output(self._pop_fifo[0], 0)
         IDLE.output(self._pop_fifo[1], 0)
-        #IDLE.output(self._rst_pos_cnt[0], 0)
-        #IDLE.output(self._rst_pos_cnt[1], 0)
         IDLE.output(self._fifo_push, 0)
         IDLE.output(self._clr_eos_sticky[0], 0)
         IDLE.output(self._clr_eos_sticky[1], 0)
@@ -426,8 +414,6 @@ class Intersect(MemoryController):
         #            (~self._all_have_eos & all_have_eos_and_all_valid[0]))            
         ITER.output(self._pop_fifo[0], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         ITER.output(self._pop_fifo[1], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        #ITER.output(self._rst_pos_cnt[0], self._any_has_eos & ~self._fifo_full.r_or())
-        #ITER.output(self._rst_pos_cnt[1], self._any_has_eos & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         ITER.output(self._fifo_push, self._all_are_valid & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_has_eos) | (self._all_have_eos)) & ~self._fifo_full.r_or())
         ITER.output(self._clr_eos_sticky[0], (self._all_have_eos & ~self._fifo_full.r_or()))
@@ -445,8 +431,6 @@ class Intersect(MemoryController):
         # Need to align the inputs as well
         ALIGN.output(self._pop_fifo[0], (~self._eos_in_sticky[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0]) | (self._all_have_eos & ~self._fifo_full.r_or()))
         ALIGN.output(self._pop_fifo[1], (~self._eos_in_sticky[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1]) | (self._all_have_eos & ~self._fifo_full.r_or()))
-        #ALIGN.output(self._rst_pos_cnt[0], 0)
-        #ALIGN.output(self._rst_pos_cnt[1], 0)
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         ALIGN.output(self._fifo_push, (self._all_have_eos & ~self._fifo_full.r_or()))
         ALIGN.output(self._clr_eos_sticky[0], (self._all_have_eos & ~self._fifo_full.r_or()))
@@ -464,8 +448,6 @@ class Intersect(MemoryController):
         # Pop if the lesser coord or the other stream is at eos
         UNION.output(self._pop_fifo[0], self._all_are_valid & ((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[1]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[0])
         UNION.output(self._pop_fifo[1], self._all_are_valid & ((self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[0]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[1])
-        #UNION.output(self._rst_pos_cnt[0], self._any_has_eos & ~self._fifo_full.r_or())
-        #UNION.output(self._rst_pos_cnt[1], self._any_has_eos & ~self._fifo_full.r_or())
         # We need to push any coordinate period as long as there is room and they are not all eos
         # UNION.output(self._fifo_push, self._all_are_valid_but_no_eos & ~self._fifo_full.r_or() & ~self._all_have_eos)
         UNION.output(self._fifo_push, self._all_are_valid & ~self._fifo_full.r_or() & ~self._all_have_eos)
@@ -480,21 +462,21 @@ class Intersect(MemoryController):
         UNION.output(self._pos_to_fifo_eos[1], ~self._vector_reduce_mode & ~self._pop_fifo[1]) # MO: Will maybe token having EOS cause issues?
 
         #######
-        # DRAIN0
+        # DRAIN
         #######
-        DRAIN0.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
-        DRAIN0.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
-        # Keep DRAIN0ing while we have eos in...should be aligned
-        # DRAIN0.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
-        DRAIN0.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
-        DRAIN0.output(self._clr_eos_sticky[0], 0)
-        DRAIN0.output(self._clr_eos_sticky[1], 0)
-        DRAIN0.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0]) 
-        DRAIN0.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
-        DRAIN0.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][15, 0])
-        DRAIN0.output(self._coord_to_fifo_eos, self._any_has_eos)
-        DRAIN0.output(self._pos_to_fifo_eos[0], self._any_has_eos)
-        DRAIN0.output(self._pos_to_fifo_eos[1], self._any_has_eos)
+        DRAIN.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        DRAIN.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        # Keep DRAINing while we have eos in...should be aligned
+        # DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
+        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        DRAIN.output(self._clr_eos_sticky[0], 0)
+        DRAIN.output(self._clr_eos_sticky[1], 0)
+        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0]) 
+        DRAIN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
+        DRAIN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][15, 0])
+        DRAIN.output(self._coord_to_fifo_eos, self._any_has_eos)
+        DRAIN.output(self._pos_to_fifo_eos[0], self._any_has_eos)
+        DRAIN.output(self._pos_to_fifo_eos[1], self._any_has_eos)
 
 
         ###########
@@ -534,8 +516,6 @@ class Intersect(MemoryController):
         #######
         DONE.output(self._pop_fifo[0], 0)
         DONE.output(self._pop_fifo[1], 0)
-        #DONE.output(self._rst_pos_cnt[0], 1)
-        #DONE.output(self._rst_pos_cnt[1], 1)
         DONE.output(self._fifo_push, 0)
         DONE.output(self._clr_eos_sticky[0], 1)
         DONE.output(self._clr_eos_sticky[1], 1)
@@ -651,10 +631,7 @@ class Intersect(MemoryController):
         op = config_kwargs['op']
         vr_mode = config_kwargs['vr_mode']
     
-
-
         # Store all configurations here
-        # TODO: add value mode config later
         config = [("tile_en", 1),
                   ("joiner_op", op), ("vector_reduce_mode", vr_mode)]
 
