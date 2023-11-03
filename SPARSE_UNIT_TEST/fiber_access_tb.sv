@@ -11,6 +11,7 @@ module fiber_access_tb;
     reg stall;
     reg flush;
     reg tile_en;
+    reg vector_reduce_mode; 
     wire [63:0] cycle_count ;
 
     // wire for dut input & output
@@ -26,7 +27,6 @@ module fiber_access_tb;
     wire [16:0] pos_out_0;
     wire pos_out_0_valid;
     wire pos_out_0_ready;
-    wire vector_reduce_mode; 
 
     // wire for mem
     wire [63:0] memory_0_data_in_p0;
