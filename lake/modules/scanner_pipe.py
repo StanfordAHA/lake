@@ -103,6 +103,7 @@ class ScannerPipe(MemoryController):
         # MO: Used in VR mode
         self._vr_fsm_state_init_blank = self.input("vr_fsm_state_init_blank", 1)
 
+
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
@@ -2046,6 +2047,7 @@ class ScannerPipe(MemoryController):
                     #    push=self._crd_res_fifo_valid & ~self._block_mode & ~(self._spacc_mode & self._final_pushed_done) & ~crd_res_routing_token,
                     #   push=self._crd_res_fifo_valid & ~self._block_mode & ~crd_res_routing_token,
                         push=self._coord_fifo_push,
+
                     #    push=self._crd_res_fifo_valid & ~self._block_mode & (self._readout_dst_out == 0),
                        pop=self._coord_out_ready_in,
                        data_in=self._coord_data_in_packed,

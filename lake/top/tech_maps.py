@@ -25,7 +25,8 @@ def TSMC_Tech_Map(depth, width) -> dict:
         'name': f"TS1N16FFCLLSBLVTC{depth}X{width}M4S",
         'ports': ports,
         'depth': depth,
-        'width': width
+        'width': width,
+        'active': 'low'
     }
 
     return tech_map
@@ -70,7 +71,8 @@ def SKY_Tech_Map() -> dict:
         'name': "sky130_sram_1kbyte_1rw1r_32x256_8",
         'ports': ports,
         'depth': 256,
-        'width': 32
+        'width': 32,
+        'active': 'low'
     }
 
     return tech_map
@@ -161,7 +163,75 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
         'name': name,
         'ports': ports,
         'depth': depth,
-        'width': width
+        'width': width,
+        'active': 'low'
+    }
+
+    return tech_map
+
+
+def Intel_Tech_Map(depth, width,
+                   async_reset=None,
+                   compiler_name='ip224uhdlp1p11rf',
+                   column_mux=4,
+                   bank_count=2,
+                   center_decode=1,
+                   bit_write_enabled=0,
+                   dfx_setting=0,
+                   redundancy_setting=0,
+                   power_management=0,
+                   dual_supply=0,
+                   assist_setting=1,
+                   arr_prog_timing=1,
+                   vt_setting='h') -> dict:
+    '''
+    Currently returns the tech map for the single port SRAM, but we can
+    procedurally generate different tech maps
+    '''
+    ports = []
+
+    # From slide
+    assert column_mux in [4, 8, 16]
+    assert bank_count in [2, 4, 8]
+    assert center_decode == 1
+    assert bit_write_enabled in [0, 1]
+    assert dfx_setting == 0
+    assert redundancy_setting in [0, 1]
+    assert power_management in [0, 1]
+    assert dual_supply == 0
+    assert assist_setting == 1
+    assert arr_prog_timing == 1
+    assert vt_setting == 'h'
+    assert async_reset is not None
+
+    single_port = {
+        'data_in': 'din',
+        'addr': 'adr',
+        'write_enable': 'wen',
+        'read_enable': 'ren',
+        # 'cen': 'CEB',
+        'clk': 'clk',
+        'data_out': 'q',
+        'alt_sigs': {
+            # value, width
+            'fwen': (async_reset, 1),
+            'mcen': (0, 1),
+            'mc': (0, 3),
+            'wpulseen': (0, 1),
+            'clkbyp': (0, 1),
+            'wpulse': (0, 2),
+            'wa': (0, 2),
+        }
+    }
+
+    ports.append(single_port)
+
+    tech_map = {
+        'name': f"{compiler_name}_{depth}x{width}m{column_mux}b{bank_count}c{center_decode}s{bit_write_enabled}_t{dfx_setting}r{redundancy_setting}p{power_management}d{dual_supply}a{assist_setting}m{arr_prog_timing}{vt_setting}",
+        'ports': ports,
+        'depth': depth,
+        'width': width,
+        'active': 'high'
     }
 
     return tech_map

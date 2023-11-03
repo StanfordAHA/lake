@@ -4,7 +4,7 @@ import json
 from kratos import *
 from lake.modules.buffet_like import BuffetLike
 from lake.modules.crddrop import CrdDrop
-from lake.modules.onyx_pe import OnyxPE
+# from lake.modules.onyx_pe import OnyxPE
 from lake.modules.passthru import *
 from lake.modules.strg_ub_vec import StrgUBVec
 from lake.modules.strg_ub_thin import StrgUBThin
@@ -18,7 +18,7 @@ from lake.top.extract_tile_info import extract_top_config
 from lake.utils.sram_macro import SRAMMacroInfo
 import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
-from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map
+from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map, Intel_Tech_Map
 from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
 from lake.modules.stencil_valid import StencilValid
 from _kratos import create_wrapper_flatten
@@ -51,9 +51,11 @@ class CoreCombiner(Generator):
                  name="CoreCombiner",
                  do_config_lift=True,
                  controllers=None,
-                 tech_map=TSMC_Tech_Map(depth=512, width=32),
+                #  tech_map=,
+                 tech_map_name='TSMC',
                  io_prefix="",
-                 fifo_depth=2):
+                 fifo_depth=2,
+                 sram_columns=2):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -70,10 +72,11 @@ class CoreCombiner(Generator):
         self.config_addr_width = config_addr_width
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
-        self.tech_map = tech_map
+        self.tech_map_name = tech_map_name
         self.io_prefix = io_prefix
         self.fifo_depth = fifo_depth
         self.rf = rf
+        self.sram_columns = sram_columns
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -105,6 +108,12 @@ class CoreCombiner(Generator):
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
+
+        if self.tech_map_name == 'TSMC':
+            self.tech_map = TSMC_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns))
+        elif self.tech_map_name == 'Intel':
+            self.tech_map = Intel_Tech_Map(depth=self.mem_depth, width=int(self.mem_width / self.sram_columns),
+                                           async_reset=~MTB.get_async_reset())
 
         name_prefix = "sram_sp_" if len(tsmc_mem) == 1 else "sram_dp_"
 
@@ -308,6 +317,7 @@ if __name__ == "__main__":
     parser.add_argument("--fifo_mode", action="store_true")
     parser.add_argument("--stencil_valid", action="store_true")
     parser.add_argument("--rf", action="store_true")
+    parser.add_argument("--tech", type=str, default="Intel")
 
     args = parser.parse_args()
 
@@ -319,6 +329,7 @@ if __name__ == "__main__":
     fifo_mode = args.fifo_mode
     stencil_valid = args.stencil_valid
     rf = args.rf
+    tech = args.tech
 
     mem_name = "single"
     rw_same_cycle = False
@@ -335,49 +346,49 @@ if __name__ == "__main__":
     pipeline_scanner = False
     fifo_depth = 8
 
-    if pipeline_scanner:
-        scan = ScannerPipe(data_width=data_width,
-                            fifo_depth=fifo_depth,
-                            add_clk_enable=True,
-                            defer_fifos=True,
-                            add_flush=False)
-    else:
-        scan = Scanner(data_width=data_width,
-                        fifo_depth=fifo_depth,
-                        defer_fifos=True,
-                        add_flush=False)
+    # if pipeline_scanner:
+    #     scan = ScannerPipe(data_width=data_width,
+    #                         fifo_depth=fifo_depth,
+    #                         add_clk_enable=True,
+    #                         defer_fifos=True,
+    #                         add_flush=False)
+    # else:
+    #     scan = Scanner(data_width=data_width,
+    #                     fifo_depth=fifo_depth,
+    #                     defer_fifos=True,
+    #                     add_flush=False)
 
-    wscan = WriteScanner(data_width=data_width,
-                            fifo_depth=fifo_depth,
-                            defer_fifos=True,
-                            add_flush=False)
-    strg_ub = StrgUBThin(
-        config_mode_str="pond",
-        data_width=data_width,  # CGRA Params
-        mem_width=mem_width,
-        mem_depth=mem_depth,
-        input_addr_iterator_support=6,
-        input_sched_iterator_support=6,
-        output_addr_iterator_support=6,
-        output_sched_iterator_support=6,
-        interconnect_input_ports=1,  # Connection to int
-        interconnect_output_ports=1,
-        config_width=16,
-        read_delay=read_delay,  # Cycle delay in read (SRAM vs Register File)
-        rw_same_cycle=rw_same_cycle,
-        gen_addr=True,
-        comply_with_17=True,
-        area_opt=False,
-        area_opt_share=False,
-        area_opt_dual_config=False,
-        chaining=True,
-        reduced_id_config_width=16,
-        delay_width=4,
-        iterator_support2=2  # assumes that this port has smaller iter_support
-    )
-    # strg_ub = StrgUBVec(data_width=16,
-    #                     mem_width=64,
-    #                     mem_depth=512)
+    # wscan = WriteScanner(data_width=data_width,
+    #                         fifo_depth=fifo_depth,
+    #                         defer_fifos=True,
+    #                         add_flush=False)
+    # strg_ub = StrgUBThin(
+    #     config_mode_str="pond",
+    #     data_width=data_width,  # CGRA Params
+    #     mem_width=mem_width,
+    #     mem_depth=mem_depth,
+    #     input_addr_iterator_support=6,
+    #     input_sched_iterator_support=6,
+    #     output_addr_iterator_support=6,
+    #     output_sched_iterator_support=6,
+    #     interconnect_input_ports=1,  # Connection to int
+    #     interconnect_output_ports=1,
+    #     config_width=16,
+    #     read_delay=read_delay,  # Cycle delay in read (SRAM vs Register File)
+    #     rw_same_cycle=rw_same_cycle,
+    #     gen_addr=True,
+    #     comply_with_17=True,
+    #     area_opt=False,
+    #     area_opt_share=False,
+    #     area_opt_dual_config=False,
+    #     chaining=True,
+    #     reduced_id_config_width=16,
+    #     delay_width=4,
+    #     iterator_support2=2  # assumes that this port has smaller iter_support
+    # )
+    strg_ub = StrgUBVec(data_width=16,
+                        mem_width=64,
+                        mem_depth=512)
     # fiber_access = FiberAccess(data_width=16,
     #                             local_memory=False,
     #                             tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
@@ -400,46 +411,46 @@ if __name__ == "__main__":
 
     stencil_valid = StencilValid()
 
-    controllers.append(scan)
-    controllers.append(wscan)
-    # controllers.append(buffet)
+    # controllers.append(scan)
+    # controllers.append(wscan)
+    # # controllers.append(buffet)
     controllers.append(strg_ub)
-    # controllers.append(fiber_access)
-    controllers.append(strg_ram)
-    controllers.append(stencil_valid)
+    # # controllers.append(fiber_access)
+    # controllers.append(strg_ram)
+    # controllers.append(stencil_valid)
 
-    isect = Intersect(data_width=16,
-                      use_merger=False,
-                      fifo_depth=8,
-                      defer_fifos=True)
-    crd_drop = CrdDrop(data_width=16, fifo_depth=8,
-                       lift_config=True,
-                       defer_fifos=True)
-    crd_hold = CrdHold(data_width=16, fifo_depth=8,
-                               lift_config=True,
-                               defer_fifos=True,
-                               add_flush=False)
-    onyxpe = OnyxPE(data_width=16, fifo_depth=8, defer_fifos=True, ext_pe_prefix="pe_prefix")
-    repeat = Repeat(data_width=16,
-                    fifo_depth=8,
-                    defer_fifos=True)
-    rsg = RepeatSignalGenerator(data_width=16,
-                                passthru=False,
-                                fifo_depth=8,
-                                defer_fifos=True)
-    regcr = Reg(data_width=16,
-                fifo_depth=8,
-                defer_fifos=True)
+    # isect = Intersect(data_width=16,
+    #                   use_merger=False,
+    #                   fifo_depth=8,
+    #                   defer_fifos=True)
+    # crd_drop = CrdDrop(data_width=16, fifo_depth=8,
+    #                    lift_config=True,
+    #                    defer_fifos=True)
+    # crd_hold = CrdHold(data_width=16, fifo_depth=8,
+    #                            lift_config=True,
+    #                            defer_fifos=True,
+    #                            add_flush=False)
+    # onyxpe = OnyxPE(data_width=16, fifo_depth=8, defer_fifos=True, ext_pe_prefix="pe_prefix")
+    # repeat = Repeat(data_width=16,
+    #                 fifo_depth=8,
+    #                 defer_fifos=True)
+    # rsg = RepeatSignalGenerator(data_width=16,
+    #                             passthru=False,
+    #                             fifo_depth=8,
+    #                             defer_fifos=True)
+    # regcr = Reg(data_width=16,
+    #             fifo_depth=8,
+    #             defer_fifos=True)
 
-    controllers_2 = []
+    # controllers_2 = []
 
-    controllers_2.append(isect)
-    controllers_2.append(crd_drop)
-    controllers_2.append(crd_hold)
-    controllers_2.append(onyxpe)
-    controllers_2.append(repeat)
-    controllers_2.append(rsg)
-    controllers_2.append(regcr)
+    # controllers_2.append(isect)
+    # controllers_2.append(crd_drop)
+    # controllers_2.append(crd_hold)
+    # controllers_2.append(onyxpe)
+    # controllers_2.append(repeat)
+    # controllers_2.append(rsg)
+    # controllers_2.append(regcr)
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,
@@ -449,12 +460,13 @@ if __name__ == "__main__":
                              add_flush=True,
                              rw_same_cycle=rw_same_cycle,
                              read_delay=read_delay,
-                             use_sim_sram=True,
+                             use_sim_sram=False,
                              controllers=controllers,
                              name=f"CoreCombiner_width_{args.fetch_width}_{mem_name}",
                              do_config_lift=False,
                              io_prefix="MEM_",
-                             fifo_depth=16)
+                             fifo_depth=16,
+                             tech_map_name=tech)
 
     print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()

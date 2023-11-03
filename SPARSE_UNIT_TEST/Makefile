@@ -16,6 +16,9 @@ TOOL ?= VCS
 TEST_TAR ?= 0
 TOP ?= 0
 TEST_UNIT ?= 0
+INST ?= 0
+NUM_INPUTS ?= 0
+
 export WAVEFORM ?= 0
 # export WAVEFORM_GLB_ONLY ?= 0
 # export SAIF ?= 0
@@ -30,6 +33,8 @@ DESIGN_FILES += $(TEST_TAR) \
 				glb_read.sv \
 				glb_write.sv\
 				sram_sp.sv\
+				-y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \
+				+libext+.v+.sv 
 
 DESIGN_FILES += $(module_dir)/$(TEST_UNIT)
 # TB_FILES += -F tb/tb_cgra.f
@@ -120,7 +125,8 @@ ifeq ($(TOOL), XCELIUM)
 else ifeq ($(TOOL), VCS)
     COMPILE = $(VCS)
     # COMPILE_RTL_ARGS += +nospecify
-    RUN = ./simv -lca -l $(RUN_LOG) +vcs+initmem+0 +vcs+initreg+0 -exitstatus
+    #RUN = ./simv +inst="'h4_8000_0400_0100_0040_0000" -lca -l $(RUN_LOG) +vcs+initmem+0 +vcs+initreg+0 -exitstatus
+    RUN = ./simv $(INST) $(NUM_INPUTS) -lca -l $(RUN_LOG) +vcs+initmem+0 +vcs+initreg+0 -exitstatus
 else
     @echo "TOOL must be either XCELIUM or VCS"
 endif
