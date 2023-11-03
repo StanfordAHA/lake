@@ -103,7 +103,6 @@ class ScannerPipe(MemoryController):
         # MO: Used in VR mode
         self._vr_fsm_state_init_blank = self.input("vr_fsm_state_init_blank", 1)
 
-
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
