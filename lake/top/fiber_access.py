@@ -81,20 +81,20 @@ class FiberAccess(MemoryController):
             self.rd_scan = Scanner(data_width=self.data_width,
                                    defer_fifos=self.defer_fifos,
                                    fifo_depth=self.fifo_depth)
-            
+
         self.add_child(self.rd_scan_pre,
                 self.rd_scan,
                 clk=self._gclk,
                 rst_n=self._rst_n,
                 clk_en=self._clk_en)
-            
+
         self._wr_scan_data_in = self.input(f"{self.wr_scan_pre}_data_in", self.data_width + 1, packed=True)
         self._wr_scan_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         self._wr_scan_data_in_ready = self.output(f"{self.wr_scan_pre}_data_in_ready", 1)
         self._wr_scan_data_in_ready.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
         self._wr_scan_data_in_valid = self.input(f"{self.wr_scan_pre}_data_in_valid", 1)
         self._wr_scan_data_in_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-        
+
         self._rd_scan_coord_out_ready = self.input(f"{self.rd_scan_pre}_coord_out_ready", 1)
         self._rd_scan_coord_out_ready.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
         self.wire(self._rd_scan_coord_out_ready, self.rd_scan.ports.coord_out_ready)
@@ -127,7 +127,7 @@ class FiberAccess(MemoryController):
         self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
         self.wire(self._semi_done_token, kts.concat(kts.const(1, 1), kts.const(0, 11), kts.const(1, 1), kts.const(0, 4)))
 
-        # Sticky flags for FSM logic  
+        # Sticky flags for FSM logic
         self._input_row_fully_processed = self.var("input_row_fully_processed", 1)
         self._output_row_fully_accumulated = self.var("output_row_fully_accumulated", 1)
         self._output_matrix_fully_accumulated = self.var("output_matrix_fully_accumulated", 1)
@@ -154,7 +154,7 @@ class FiberAccess(MemoryController):
         self.vr_fsm.output(self._vr_fsm_pos_valid_to_read_scanner)
         self.vr_fsm.output(self._vr_fsm_init_blank)
 
-        # To know when the DS has read all the results 
+        # To know when the DS has read all the results
         self._done_sent_to_ds = self.var("done_sent_to_ds", 1)
         self.wire(self._done_sent_to_ds, (self.rd_scan.ports.pos_out == self._done_token) & self.rd_scan.ports.pos_out_valid & self._rd_scan_pos_out_ready)
         self._done_sent_to_ds_d1 = self.var("done_sent_to_ds_d1", 1)
@@ -170,12 +170,12 @@ class FiberAccess(MemoryController):
 
         # Keep track of highest stop token seen (useful for FSM logic)
         self._highest_seen_stoken = self.var("highest_seen_stoken", self.data_width + 1)
-        
+
         self._is_stop_token = self.var("is_stop_token", 1)
         self.wire(self._is_stop_token, (self._wr_scan_data_in[self.data_width] == 1) & ~(self._wr_scan_data_in == self._done_token) & ~(self._wr_scan_data_in == self._semi_done_token))
 
         self._new_highest_stoken_seen = self.var("new_highest_stoken_seen", 1)
-        self.wire(self._new_highest_stoken_seen, self._is_stop_token & (self._wr_scan_data_in > self._highest_seen_stoken) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready) 
+        self.wire(self._new_highest_stoken_seen, self._is_stop_token & (self._wr_scan_data_in > self._highest_seen_stoken) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready)
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def highest_seen_stoken_block(self):
@@ -209,10 +209,10 @@ class FiberAccess(MemoryController):
         ISSUE_READ_SEND_DONE.next(DS_READ_ROW, self._rd_scan_us_pos_in_ready & self._output_row_fully_accumulated)
         ISSUE_READ_SEND_DONE.next(ISSUE_READ_SEND_DONE, None)
 
-        DS_READ_ROW.next(INIT_BLANK, self.rd_scan.ports.rs_has_prepped_ds_row) 
+        DS_READ_ROW.next(INIT_BLANK, self.rd_scan.ports.rs_has_prepped_ds_row)
         DS_READ_ROW.next(DS_READ_ROW, None)
 
-        # FSM Output logic 
+        # FSM Output logic
         START.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
         START.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
         START.output(self._vr_fsm_init_blank, 0)
@@ -241,28 +241,28 @@ class FiberAccess(MemoryController):
         DS_READ_ROW.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
         DS_READ_ROW.output(self._vr_fsm_init_blank, 0)
 
-        # Realize FSM 
+        # Realize FSM
         self.vr_fsm.realize()
 
         vr_fsm_current_state = self.vr_fsm.current_state
         vr_fsm_state_enum = vr_fsm_current_state.enum_type()
 
-        # Sticky flags used for FSM logic 
+        # Sticky flags used for FSM logic
         input_row_fully_processed_sticky = sticky_flag(self, ((self._wr_scan_data_in == self._S_level_0) | (self._wr_scan_data_in == self._S_level_1) | (self._wr_scan_data_in == self._S_level_2)) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
-                                    clear = (vr_fsm_current_state == vr_fsm_state_enum.ISSUE_READ_SEND_DONE), name="input_row_fully_processed_sticky")
+                                    clear=(vr_fsm_current_state == vr_fsm_state_enum.ISSUE_READ_SEND_DONE), name="input_row_fully_processed_sticky")
         self.wire(self._input_row_fully_processed, input_row_fully_processed_sticky)
 
         output_row_fully_accumulated_sticky = sticky_flag(self, ((self._wr_scan_data_in == self._S_level_1) | (self._wr_scan_data_in == self._S_level_2)) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
-                                    clear = (vr_fsm_current_state == vr_fsm_state_enum.INIT_BLANK), name="output_row_fully_accumulated_sticky")
+                                    clear=(vr_fsm_current_state == vr_fsm_state_enum.INIT_BLANK), name="output_row_fully_accumulated_sticky")
         self.wire(self._output_row_fully_accumulated, output_row_fully_accumulated_sticky)
 
         output_matrix_fully_accumulated_sticky = sticky_flag(self, (self._wr_scan_data_in == self._done_token) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
-                                    clear = self._done_sent_to_ds_d1, name="output_matrix_fully_accumulated_sticky")
+                                    clear=self._done_sent_to_ds_d1, name="output_matrix_fully_accumulated_sticky")
         self.wire(self._output_matrix_fully_accumulated, output_matrix_fully_accumulated_sticky)
 
-        # Realize FSM once more 
+        # Realize FSM once more
         self.vr_fsm.realize()
-    
+
         ##################
         # MO: End VR FSM
         ##################
@@ -303,7 +303,7 @@ class FiberAccess(MemoryController):
                                     defer_fifos=self.defer_fifos,
                                     fifo_depth=self.fifo_depth,
                                     perf_debug=perf_debug)
-        
+
         self.add_child(self.buffet_pre,
                        self.buffet,
                        clk=self._gclk,
@@ -469,6 +469,7 @@ class FiberAccess(MemoryController):
         config += [("vector_reduce_mode", vr_mode)]
 
         return config
+
 
 if __name__ == "__main__":
 

@@ -97,10 +97,10 @@ class ScannerPipe(MemoryController):
         # Vector Reduce Mode
         self._vector_reduce_mode = self.input("vector_reduce_mode", 1)
 
-        # MO: Used in VR mode 
+        # MO: Used in VR mode
         self._output_row_fully_accumulated = self.input("output_row_fully_accumulated", 1)
 
-        # MO: Used in VR mode 
+        # MO: Used in VR mode
         self._vr_fsm_state_init_blank = self.input("vr_fsm_state_init_blank", 1)
 
         gclk = self.var("gclk", 1)
@@ -2104,17 +2104,14 @@ class ScannerPipe(MemoryController):
         self.wire(self._pos_out_valid_out, ~self._pos_fifo.ports.empty)
         self.wire(self._fifo_full_pre[1], self._pos_fifo.ports.full)
 
-
-     
         self._done_token = self.var("done_token", self.data_width + 1)
         self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
 
         # MO: For VR mode
         self._rs_has_prepped_ds_row = self.output("rs_has_prepped_ds_row", 1)
         rs_has_prepped_ds_row_sticky = sticky_flag(self, (self._pos_data_in_packed == self._done_token) & self._pos_out_fifo_push & ~self._fifo_full_pre[1],
-                                    clear = self._vr_fsm_state_init_blank, name="rs_has_prepped_ds_row_sticky")
+                                    clear=self._vr_fsm_state_init_blank, name="rs_has_prepped_ds_row_sticky")
         self.wire(self._rs_has_prepped_ds_row, rs_has_prepped_ds_row_sticky)
-
 
         ### Block Read FIFO
         self.add_child(f"block_rd_fifo",
@@ -2232,7 +2229,6 @@ class ScannerPipe(MemoryController):
             ('dim_size', dim_size),
             # ('spacc_mode', spacc_mode),
             ('tile_en', 1)]
-        
 
         if root:
             dim = len(ranges)

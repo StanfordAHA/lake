@@ -154,7 +154,7 @@ class Intersect(MemoryController):
         self._pos_in_fifo_eos_in = []
 
         # Control Vars from FSM
-        #self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
+        # self._rst_pos_cnt = self.var("rst_pos_cnt", self.num_streams)
         self._pop_fifo = self.var("pop_fifo", self.num_streams)
 
         for i in range(self.num_streams):
@@ -270,7 +270,6 @@ class Intersect(MemoryController):
         self.wire(all_have_eos_and_all_valid[0], self._coord_in_fifo_eos_in[0] & self._pos_in_fifo_eos_in[0] & self._coord_in_fifo_valid_in[0] & self._pos_in_fifo_valid_in[0])
         self.wire(all_have_eos_and_all_valid[1], self._coord_in_fifo_eos_in[1] & self._pos_in_fifo_eos_in[1] & self._coord_in_fifo_valid_in[1] & self._pos_in_fifo_valid_in[1])
 
-
         self.wire(self._any_has_eos, eos_concat.r_or())
         self.wire(self._all_have_eos, eos_concat.r_and())
 
@@ -280,12 +279,12 @@ class Intersect(MemoryController):
 
         self._semi_done_token = self.var("semi_done_token", self.data_width + 1)
         self.wire(self._semi_done_token, kts.concat(kts.const(1, 1), kts.const(0, 11), kts.const(1, 1), kts.const(0, 4)))
-        
+
         self._done_token = self.var("done_token", self.data_width + 1)
         self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
-        
-        """ 
-        # MO: This isn't used! 
+
+        """
+        # MO: This isn't used!
         # for i in range(self.num_streams):
         #     @always_ff((posedge, "clk"), (negedge, "rst_n"))
         #     def pos_cnt_ff():
@@ -323,8 +322,8 @@ class Intersect(MemoryController):
 
         self.intersect_fsm.output(self._pop_fifo[0])
         self.intersect_fsm.output(self._pop_fifo[1])
-        #self.intersect_fsm.output(self._rst_pos_cnt[0])
-        #self.intersect_fsm.output(self._rst_pos_cnt[1])
+        # self.intersect_fsm.output(self._rst_pos_cnt[0])
+        # self.intersect_fsm.output(self._rst_pos_cnt[1])
         # self.intersect_fsm.output(self._ready_out)
         self.intersect_fsm.output(self._fifo_push)
         # self.intersect_fsm.output(self._eos_seen_set[0])
@@ -351,7 +350,7 @@ class Intersect(MemoryController):
         IDLE.next(ALIGN, self._any_has_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
         IDLE.next(ITER, self._all_are_valid_but_no_eos & (self._joiner_op == kts.const(JoinerOp.INTERSECT.value, op_bits)) & self._tile_en)
         IDLE.next(IDLE, None)
-        
+
         ITER.next(ALIGN, self._any_has_eos & ~self._all_have_eos)
         ITER.next(ITER, None)
 
@@ -374,7 +373,7 @@ class Intersect(MemoryController):
         PASS_DONE.next(WAIT_FOR_VALID, ~self._fifo_full.r_or())
         PASS_DONE.next(PASS_DONE, None)
 
-        # WAIT_FOR_VALID can only be accessed while in VR_mode. We stay in this state while waiting for a new stream. The transition condition is the same 
+        # WAIT_FOR_VALID can only be accessed while in VR_mode. We stay in this state while waiting for a new stream. The transition condition is the same
         # as that of leaving DRAIN in non-VR mode
         WAIT_FOR_VALID.next(DONE, ~self._all_have_eos & valid_concat.r_and())
         WAIT_FOR_VALID.next(WAIT_FOR_VALID, None)
@@ -408,10 +407,10 @@ class Intersect(MemoryController):
         #######
         # ITER.output(self._pop_fifo[0], (self._all_are_valid_but_no_eos & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         # ITER.output(self._pop_fifo[1], (self._all_are_valid_but_no_eos & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        #ITER.output(self._pop_fifo[0], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
+        # ITER.output(self._pop_fifo[0], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
         #            (~self._all_have_eos & all_have_eos_and_all_valid[1]))
-        #ITER.output(self._pop_fifo[1], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
-        #            (~self._all_have_eos & all_have_eos_and_all_valid[0]))            
+        # ITER.output(self._pop_fifo[1], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
+        #            (~self._all_have_eos & all_have_eos_and_all_valid[0]))
         ITER.output(self._pop_fifo[0], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         ITER.output(self._pop_fifo[1], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
@@ -458,8 +457,8 @@ class Intersect(MemoryController):
         UNION.output(self._pos_to_fifo[0], kts.ternary(self._pop_fifo[0], self._pos_in_fifo_in[0][15, 0], self._maybe))
         UNION.output(self._pos_to_fifo[1], kts.ternary(self._pop_fifo[1], self._pos_in_fifo_in[1][15, 0], self._maybe))
         UNION.output(self._coord_to_fifo_eos, 0)
-        UNION.output(self._pos_to_fifo_eos[0], ~self._vector_reduce_mode & ~self._pop_fifo[0]) # MO: Will maybe token having EOS cause issues? 
-        UNION.output(self._pos_to_fifo_eos[1], ~self._vector_reduce_mode & ~self._pop_fifo[1]) # MO: Will maybe token having EOS cause issues?
+        UNION.output(self._pos_to_fifo_eos[0], ~self._vector_reduce_mode & ~self._pop_fifo[0])  # MO: Will maybe token having EOS cause issues?
+        UNION.output(self._pos_to_fifo_eos[1], ~self._vector_reduce_mode & ~self._pop_fifo[1])  # MO: Will maybe token having EOS cause issues?
 
         #######
         # DRAIN
@@ -471,34 +470,33 @@ class Intersect(MemoryController):
         DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
-        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0]) 
+        DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
         DRAIN.output(self._pos_to_fifo[0], self._pos_in_fifo_in[0][15, 0])
         DRAIN.output(self._pos_to_fifo[1], self._pos_in_fifo_in[0][15, 0])
         DRAIN.output(self._coord_to_fifo_eos, self._any_has_eos)
         DRAIN.output(self._pos_to_fifo_eos[0], self._any_has_eos)
         DRAIN.output(self._pos_to_fifo_eos[1], self._any_has_eos)
 
-
         ###########
         # PASS_DONE
         ###########
-        PASS_DONE.output(self._pop_fifo[0], (self._coord_in_fifo_valid_in[0] & (self._coord_in_fifo_in[0] == self._done_token))) 
+        PASS_DONE.output(self._pop_fifo[0], (self._coord_in_fifo_valid_in[0] & (self._coord_in_fifo_in[0] == self._done_token)))
         PASS_DONE.output(self._pop_fifo[1], (self._coord_in_fifo_valid_in[1] & (self._coord_in_fifo_in[1] == self._done_token)))
         PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or())
         PASS_DONE.output(self._clr_eos_sticky[0], 0)
         PASS_DONE.output(self._clr_eos_sticky[1], 0)
-        # If incoming stream has done token (meaning we're REALLY done), send done, else send semi-done. 
-        PASS_DONE.output(self._coord_to_fifo, kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15,0], self._semi_done_token[15,0]))
-        PASS_DONE.output(self._pos_to_fifo[0], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15,0], self._semi_done_token[15,0]))
-        PASS_DONE.output(self._pos_to_fifo[1], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15,0], self._semi_done_token[15,0]))
-        PASS_DONE.output(self._coord_to_fifo_eos, kts.const(1,1))
-        PASS_DONE.output(self._pos_to_fifo_eos[0], kts.const(1,1))
-        PASS_DONE.output(self._pos_to_fifo_eos[1], kts.const(1,1))
+        # If incoming stream has done token (meaning we're REALLY done), send done, else send semi-done.
+        PASS_DONE.output(self._coord_to_fifo, kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15, 0], self._semi_done_token[15, 0]))
+        PASS_DONE.output(self._pos_to_fifo[0], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15, 0], self._semi_done_token[15, 0]))
+        PASS_DONE.output(self._pos_to_fifo[1], kts.ternary((self._coord_in_fifo_in[0] == self._done_token), self._done_token[15, 0], self._semi_done_token[15, 0]))
+        PASS_DONE.output(self._coord_to_fifo_eos, kts.const(1, 1))
+        PASS_DONE.output(self._pos_to_fifo_eos[0], kts.const(1, 1))
+        PASS_DONE.output(self._pos_to_fifo_eos[1], kts.const(1, 1))
 
         #################
         # WAIT_FOR_VALID
         #################
-        WAIT_FOR_VALID.output(self._pop_fifo[0], 0) 
+        WAIT_FOR_VALID.output(self._pop_fifo[0], 0)
         WAIT_FOR_VALID.output(self._pop_fifo[1], 0)
         WAIT_FOR_VALID.output(self._fifo_push, 0)
         WAIT_FOR_VALID.output(self._clr_eos_sticky[0], 0)
@@ -509,7 +507,6 @@ class Intersect(MemoryController):
         WAIT_FOR_VALID.output(self._coord_to_fifo_eos, 0)
         WAIT_FOR_VALID.output(self._pos_to_fifo_eos[0], 0)
         WAIT_FOR_VALID.output(self._pos_to_fifo_eos[1], 0)
-
 
         #######
         # DONE
@@ -630,7 +627,7 @@ class Intersect(MemoryController):
 
         op = config_kwargs['op']
         vr_mode = config_kwargs['vr_mode']
-    
+
         # Store all configurations here
         config = [("tile_en", 1),
                   ("joiner_op", op), ("vector_reduce_mode", vr_mode)]
