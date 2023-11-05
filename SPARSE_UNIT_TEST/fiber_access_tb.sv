@@ -93,6 +93,8 @@ module fiber_access_tb;
     .read_scanner_us_pos_in_valid(pos_in_0_valid),
     .rst_n(rst_n),
     .tile_en(tile_en),
+    //added for spacc1
+    .vector_reduce_mode(1'b0),
     .write_scanner_addr_in(ws_addr),
     .write_scanner_addr_in_valid(ws_addr_valid),
     .write_scanner_block_mode(1'b0),
