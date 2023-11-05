@@ -861,7 +861,7 @@ class BuffetLike(MemoryController):
         self._rd_rsp_fifo_in_data = [self.var(f"rd_rsp_fifo_{i}_in_data", self.data_width + 1, packed=True) for i in range(self.num_read_ports)]
         self._rd_rsp_out_fifo = [RegFIFO(data_width=self._rd_rsp_fifo_in_data[i].width, width_mult=1,
                                         depth=self.fifo_depth, min_depth=2, defer_hrdwr_gen=self.defer_fifos,
-                                        almost_full_diff=1) for i in range(self.num_read_ports)]
+                                        almost_full_diff=0) for i in range(self.num_read_ports)]
         [self._rd_rsp_out_fifo[i].add_attribute(SharedFifoAttr(direction="OUT")) for i in range(self.num_read_ports)]
 
         [self.add_child(f"rd_rsp_fifo_{i}",
