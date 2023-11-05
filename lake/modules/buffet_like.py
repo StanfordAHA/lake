@@ -656,7 +656,7 @@ class BuffetLike(MemoryController):
                                                                 (self._rd_op_fifo_out_op[idx] == kts.const(1, 2)) &
                                                                 # ~self._ren_full_d1[idx] &
                                                                 self._read_joined[idx]) for idx in range(self.num_ID)]
-                
+
                 [self.wire(self._from_cached_read[idx], self._read_wide_word_valid[idx] &
                                                                 ((((self._read_addr_delayed[idx][self.mem_addr_bit_range_outer] + self._blk_base[idx]) & self._buffet_capacity_mask[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
                                                                 self._read_joined_d1[idx]) for idx in range(self.num_ID)]
