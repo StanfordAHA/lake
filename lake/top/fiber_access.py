@@ -131,6 +131,8 @@ class FiberAccess(MemoryController):
         self._input_row_fully_processed = self.var("input_row_fully_processed", 1)
         self._output_row_fully_accumulated = self.var("output_row_fully_accumulated", 1)
         self._output_matrix_fully_accumulated = self.var("output_matrix_fully_accumulated", 1)
+        self._rs_has_prepped_ds_row = self.var("rs_has_prepped_ds_row", 1)
+        self.wire(self._rs_has_prepped_ds_row, self.rd_scan.ports.rs_has_prepped_ds_row)
 
         # State definition
         self.vr_fsm = self.add_fsm("vr_seq", reset_high=False)
@@ -209,7 +211,7 @@ class FiberAccess(MemoryController):
         ISSUE_READ_SEND_DONE.next(DS_READ_ROW, self._rd_scan_us_pos_in_ready & self._output_row_fully_accumulated)
         ISSUE_READ_SEND_DONE.next(ISSUE_READ_SEND_DONE, None)
 
-        DS_READ_ROW.next(INIT_BLANK, self.rd_scan.ports.rs_has_prepped_ds_row)
+        DS_READ_ROW.next(INIT_BLANK, self._rs_has_prepped_ds_row)
         DS_READ_ROW.next(DS_READ_ROW, None)
 
         # FSM Output logic
