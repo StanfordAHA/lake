@@ -390,9 +390,9 @@ class OnyxPE(MemoryController):
         if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
             override_dense = True
             config += [("dense_mode", 1)]
-        if op < 3:
+        if op < 3 or op > 4:
             config += [("sparse_num_inputs", 0b011)]
-        else:
+        elif op == 3 or op == 4:
             config += [("sparse_num_inputs", 0b010)]
 
         sub_config = self.my_alu.get_bitstream(op, override_dense=override_dense)

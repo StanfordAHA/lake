@@ -84,7 +84,8 @@ class OnyxPEInterface(MemoryController):
             1: asm.smult0(),  # MUL
             2: asm.sub(),   # SUB
             3: asm.abs(),   # abs
-            4: asm.smax()   # smax
+            4: asm.smax(),   # smax
+            5: asm.fp_mul(),
         }
 
         if override_dense:
