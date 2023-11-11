@@ -97,10 +97,8 @@ class ScannerPipe(MemoryController):
         # Vector Reduce Mode
         self._vector_reduce_mode = self.input("vector_reduce_mode", 1)
 
-        # MO: Used in VR mode
+        # MO: The signals below are for VR mode 
         self._output_row_fully_accumulated = self.input("output_row_fully_accumulated", 1)
-
-        # MO: Used in VR mode
         self._vr_fsm_state_init_blank = self.input("vr_fsm_state_init_blank", 1)
 
         gclk = self.var("gclk", 1)
@@ -306,6 +304,13 @@ class ScannerPipe(MemoryController):
         self._upstream_valid_in = self.input("us_pos_in_valid", 1)
         self._upstream_valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
+        # MO: the below 4 are for VR mode 
+        self._pos_to_read_scanner_from_vr_fsm = self.input("pos_to_read_scanner_from_vr_fsm", self.data_width + 1, packed=True)
+        self._pos_to_read_scanner_from_vr_fsm.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        #self._pos_valid_to_read_scanner_from_vr_fsm = self.input("pos_valid_to_read_scanner_from_vr_fsm", 1)
+        #self._pos_valid_to_read_scanner_from_vr_fsm.add_attribute(ControlSignalAttr(is_control=True))
+
         # self._upstream_eos_in = self.input("us_eos_in", 1)
         # self._upstream_eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
@@ -327,14 +332,27 @@ class ScannerPipe(MemoryController):
         self._us_fifo_inject_eos = self.var("us_fifo_inject_eos", 1)
 
         self._us_fifo_push = self.var("us_fifo_push", 1)
-        self.wire(self._us_fifo_push, kts.ternary(self._root, self._us_fifo_inject_push, self._upstream_valid_in))
+        
+
+        self._non_vr_mode_us_pos_fifo_eos_in = self.var("non_vr_mode_us_pos_fifo_eos_in", 1)
+        self._non_vr_mode_us_pos_fifo_data_in = self.var("non_vr_mode_us_pos_fifo_data_in", 16)
+        self._non_vr_mode_us_pos_fifo_push = self.var("non_vr_mode_us_pos_fifo_push", 1)
+
+        self.wire(self._non_vr_mode_us_pos_fifo_eos_in, kts.ternary(self._root, self._us_fifo_inject_eos, self._upstream_pos_in[self.data_width]))
+        self.wire(self._non_vr_mode_us_pos_fifo_data_in, kts.ternary(self._root, self._us_fifo_inject_data, self._upstream_pos_in[self.data_width - 1, 0]))
+        self.wire(self._non_vr_mode_us_pos_fifo_push, kts.ternary(self._root, self._us_fifo_inject_push, self._upstream_valid_in))
 
         # indicate valid data as well
         # self.wire(self._pos_in_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2], self._upstream_coord_in)
         # self.wire(self._pos_in_us_packed[self.data_width + 1], self._upstream_valid_in)
+
         # The EOS tags on the last valid in the stream
-        self.wire(self._pos_in_us_packed[self.data_width], kts.ternary(self._root, self._us_fifo_inject_eos, self._upstream_pos_in[self.data_width]))
-        self.wire(self._pos_in_us_packed[self.data_width - 1, 0], kts.ternary(self._root, self._us_fifo_inject_data, self._upstream_pos_in[self.data_width - 1, 0]))
+        self.wire(self._pos_in_us_packed[self.data_width], kts.ternary(self._vector_reduce_mode, self._pos_to_read_scanner_from_vr_fsm[self.data_width], self._non_vr_mode_us_pos_fifo_eos_in))
+        #self.wire(self._pos_in_us_packed[self.data_width], kts.ternary(self._root, self._us_fifo_inject_eos, self._upstream_pos_in[self.data_width]))
+        self.wire(self._pos_in_us_packed[self.data_width - 1, 0], kts.ternary(self._vector_reduce_mode, self._pos_to_read_scanner_from_vr_fsm[self.data_width - 1, 0], self._non_vr_mode_us_pos_fifo_data_in))
+        #self.wire(self._pos_in_us_packed[self.data_width - 1, 0], kts.ternary(self._root, self._us_fifo_inject_data, self._upstream_pos_in[self.data_width - 1, 0]))
+        #self.wire(self._us_fifo_push, kts.ternary(self._vector_reduce_mode, self._pos_valid_to_read_scanner_from_vr_fsm, self._non_vr_mode_us_pos_fifo_push))
+        self.wire(self._us_fifo_push, kts.ternary(self._root, self._us_fifo_inject_push, self._upstream_valid_in))
 
         self._data_out_us_packed = self.var("fifo_out_us_packed", 1 * self.data_width + 1, packed=True)
         # self.wire(self._infifo_coord_in, self._data_out_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2])
