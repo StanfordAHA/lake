@@ -40,7 +40,7 @@ class AggSramSharedSchedGen(Generator):
 
         self._agg_write_restart = self.input("agg_write_restart", 1)
         self._agg_write = self.input("agg_write", 1)
-        self._agg_write_addr_l2b = self.input("agg_write_addr_l2b", 2)
+        self._agg_write_addr_lxb = self.input("agg_write_addr_lxb", clog2(self.fetch_width))  # least X bits
         self._agg_write_mux_sel = self.input("agg_write_mux_sel", max(clog2(self.iterator_support), 1))
         self._sram_read_d = self.input("sram_read_d", self.interconnect_input_ports)
 
@@ -59,11 +59,11 @@ class AggSramSharedSchedGen(Generator):
         # VARS
 
         # new
-        self._agg_write_4_r = self.var("agg_write_4_r", 1)
+        self._agg_full_row_r = self.var("agg_full_row_r", 1)
         self._pad_cnt = self.var("pad_cnt", self.agg_read_padding_width)
         self._pad_cnt_en = self.var("pad_cnt_en", 1)
 
-        self.add_code(self.update_agg_write_4_r)
+        self.add_code(self.update_agg_full_row_r)
         self.add_code(self.update_pad_delay)
         self.add_code(self.set_valid_output)
 
@@ -84,19 +84,19 @@ class AggSramSharedSchedGen(Generator):
                 self._pad_cnt = self._pad_cnt + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def update_agg_write_4_r(self):
+    def update_agg_full_row_r(self):
         if ~self._rst_n:
-            self._agg_write_4_r = 0
+            self._agg_full_row_r = 0
         elif self._mode[1] == 0:
-            self._agg_write_4_r = self._agg_write & self._agg_write_addr_l2b.r_and()
+            self._agg_full_row_r = self._agg_write & self._agg_write_addr_lxb.r_and()
 
     @always_comb
     def set_valid_output(self):
         if self._mode[1] == 0:
             if self._agg_read_padding != 0:
-                self._valid_output = (self._pad_cnt == self._agg_read_padding) | self._agg_write_4_r
+                self._valid_output = (self._pad_cnt == self._agg_read_padding) | self._agg_full_row_r
             else:
-                self._valid_output = self._agg_write_4_r
+                self._valid_output = self._agg_full_row_r
         else:
             self._valid_output = ternary(self._mode[0],
                                          self._sram_read_d[self.interconnect_input_ports - 1],

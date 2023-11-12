@@ -116,7 +116,7 @@ class Pond(Generator):
         self._data_out.add_attribute(FormalAttr(f"{self._data_out.name}", FormalSignalConstraint.SEQUENCE))
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
-        self._valid_out = self.output("valid_out_pond", self.interconnect_output_ports)
+        self._valid_out = self.output("stencil_valid", self.interconnect_output_ports)
         self._valid_out.add_attribute(FormalAttr(f"{self._valid_out.name}", FormalSignalConstraint.SEQUENCE))
         self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
 

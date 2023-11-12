@@ -118,7 +118,7 @@ def extract_controller(file_path):
     return ctrl_info
 
 
-def map_controller(controller, name, flatten=False, linear_ag=False):
+def map_controller(controller, name, flatten=False, range_bw=16, linear_ag=False):
     ctrl_dim = controller.dim
     ctrl_ranges = controller.extent
     ctrl_cyc_strides = controller.cyc_stride
@@ -161,6 +161,9 @@ def map_controller(controller, name, flatten=False, linear_ag=False):
             if ctrl_out_data_strt is not None:
                 if ctrl_out_data_strides[i] * ctrl_ranges[i] != ctrl_out_data_strides[i + 1]:
                     continue
+            # the new range must be smaller than the bit width
+            if (ctrl_ranges[i] * ctrl_ranges[i + 1]) >= (2 ** range_bw):
+                continue
             flatten_iter.append(i)
 
         print("start flattening")

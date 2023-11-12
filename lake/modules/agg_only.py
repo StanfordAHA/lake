@@ -61,7 +61,7 @@ class StrgUBAggOnly(Generator):
         self.agg_iter_support_small = agg_iter_support_small
         self.agg_addr_width = agg_addr_width
         self.agg_range_width = 16
-        self.agg_wr_addr_width = 2 + clog2(self.agg_height)
+        self.agg_wr_addr_width = clog2(self.fetch_width) + clog2(self.agg_height)
         self.agg_rd_addr_width = max(1, clog2(self.agg_height))
 
         ##################################################################################
@@ -85,7 +85,7 @@ class StrgUBAggOnly(Generator):
                                                  packed=True,
                                                  explicit_array=True)
             self._tb_read_d_in = self.input("tb_read_d_in", self.interconnect_input_ports)
-            self._tb_read_addr_d_in = self.input("tb_read_addr_d_in", 2 + clog2(self.agg_height),
+            self._tb_read_addr_d_in = self.input("tb_read_addr_d_in", clog2(self.fetch_width) + clog2(self.agg_height),
                                                  size=self.interconnect_input_ports,
                                                  packed=True,
                                                  explicit_array=True)
@@ -96,7 +96,7 @@ class StrgUBAggOnly(Generator):
 
             self._agg_write_restart_out = self.output("agg_write_restart_out", self.interconnect_input_ports)
             self._agg_write_out = self.output("agg_write_out", self.interconnect_input_ports)
-            self._agg_write_addr_l2b_out = self.output("agg_write_addr_l2b_out", 2,
+            self._agg_write_addr_lxb_out = self.output("agg_write_addr_lxb_out", clog2(self.fetch_width),
                                                        size=self.interconnect_input_ports,
                                                        packed=True,
                                                        explicit_array=True)
@@ -140,7 +140,7 @@ class StrgUBAggOnly(Generator):
         self._agg_write = self.var("agg_write", self.interconnect_input_ports)
         # Make this based on the size
         if self.area_opt:
-            self._agg_write_addr = self.var("agg_write_addr", 2 + clog2(self.agg_height),
+            self._agg_write_addr = self.var("agg_write_addr", clog2(self.fetch_width) + clog2(self.agg_height),
                                             size=self.interconnect_input_ports,
                                             packed=True,
                                             explicit_array=True)
@@ -177,7 +177,7 @@ class StrgUBAggOnly(Generator):
                 self._mode = self.var(f"mode_{i}", 2)
                 self.wire(self._mode, self._update_mode_in[i])
 
-                self.wire(self._agg_write_addr_l2b_out[i], self._agg_write_addr[i][1, 0])
+                self.wire(self._agg_write_addr_lxb_out[i], self._agg_write_addr[i][clog2(self.fetch_width) - 1, 0])
 
                 self._tb_read = self.var(f"tb_read_{i}", 1)
                 self._tb_addr = self.var(f"tb_addr_{i}", self._agg_write_addr.width)
