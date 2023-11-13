@@ -145,8 +145,10 @@ class FiberAccess(MemoryController):
         self.vr_fsm.set_start_state(START)
 
         # Create FSM output wires
-        self._vr_fsm_pos_to_read_scanner = self.var("vr_fsm_pos_to_read_scanner", self.data_width + 1)
+        self._vr_fsm_pos_to_read_scanner = self.var("vr_fsm_pos_to_read_scanner", self.data_width + 1, packed=True)
+        self._vr_fsm_pos_to_read_scanner.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         self._vr_fsm_pos_valid_to_read_scanner = self.var("vr_fsm_pos_valid_to_read_scanner", 1)
+        self._vr_fsm_pos_valid_to_read_scanner.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
         self._vr_fsm_init_blank = self.var("vr_fsm_init_blank", 1)
 
         # Bind FSM Outputs
@@ -416,9 +418,11 @@ class FiberAccess(MemoryController):
         self.wire(self._rd_scan_pos_out_ready, self.rd_scan.ports.pos_out_ready)
         #self.wire(self._rd_scan_pos_out_valid, kts.ternary((self._vector_reduce_mode & (self.rd_scan.ports.pos_out == self._done_token)), (self._output_matrix_fully_accumulated & self.rd_scan.ports.pos_out_valid), self.rd_scan.ports.pos_out_valid))
         self.wire(self._rd_scan_pos_out_valid, self.rd_scan.ports.pos_out_valid)
-
         self.wire(self.rd_scan.ports.us_pos_in, kts.ternary(self._vector_reduce_mode, self._vr_fsm_pos_to_read_scanner, self._rd_scan_us_pos_in))
         self.wire(self.rd_scan.ports.us_pos_in_valid, kts.ternary(self._vector_reduce_mode, self._vr_fsm_pos_valid_to_read_scanner, self._rd_scan_us_pos_in_valid))
+
+        self.wire(self._vr_fsm_pos_to_read_scanner, self.rd_scan.ports.pos_to_read_scanner_from_vr_fsm)
+        #self.wire(self._vr_fsm_pos_valid_to_read_scanner, self.rd_scan.ports.pos_valid_to_read_scanner_from_vr_fsm)
         self.wire(self._vr_fsm_init_blank, self.rd_scan.ports.vr_fsm_state_init_blank)
         self.wire(self._vector_reduce_mode, self.rd_scan.ports.vector_reduce_mode)
         self.wire(self._output_row_fully_accumulated, self.rd_scan.ports.output_row_fully_accumulated)
