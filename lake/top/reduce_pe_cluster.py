@@ -20,11 +20,11 @@ class ReducePECluster(MemoryController):
                  defer_fifo=True,
                  add_flush=False,
                  perf_debug=True,
-                 pe_prefix="PG_"):
+                 pe_prefix="PG_",
+                 do_lift_config=False):
         super().__init__("reduce_pe_cluster", debug=True)
 
         self.data_width = data_width
-        self.add_clk_enable = True
         self.add_flush = add_flush
         self.defer_fifo = defer_fifo
         self.perf_debug = perf_debug
@@ -33,6 +33,7 @@ class ReducePECluster(MemoryController):
         self.add_dispatcher = add_dispatcher
         self.dispatcher_size = dispatcher_size
         self.pe_prefix=pe_prefix
+        self.do_lift_config = do_lift_config
 
 
         # inputs
@@ -70,21 +71,13 @@ class ReducePECluster(MemoryController):
         self._reduce_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         # Data interface signals between the reduce and the PE
+        # PE finishes within a single cycle, no need for valid ready interface between reduce and pe
         self.reduce_data_to_pe = []
-        self.reduce_data_to_pe_valid = []
-        self.reduce_data_to_pe_ready = []
         for i in range(2):
             tmp_reduce_data_to_pe = self.var(f"reduce_data_to_pe{i}", self.data_width + 1, packed=True)
-            tmp_reduce_data_to_pe_valid = self.var(f"reduce_data_to_pe_valid{i}", 1)
-            tmp_reduce_data_to_pe_ready = self.var(f"reduce_data_to_pe_ready{i}", 1)
-            
             self.reduce_data_to_pe.append(tmp_reduce_data_to_pe)
-            self.reduce_data_to_pe_valid.append(tmp_reduce_data_to_pe_valid)
-            self.reduce_data_to_pe_ready.append(tmp_reduce_data_to_pe_ready)
 
         self._pe_data_to_reduce = self.var("pe_data_to_reduce", self.data_width + 1, packed=True)
-        self._pe_data_to_reduce_valid = self.var("pe_data_to_reduce_valid", 1)
-        self._pe_data_to_reduce_ready = self.var("pe_data_to_reduce_ready", 1)
 
         # Instantiate the reduce module here
         self.reduce = Reg(data_width=16,
@@ -104,14 +97,8 @@ class ReducePECluster(MemoryController):
                        data_out_ready=self._reduce_ready_in,
                        data_out_valid=self._reduce_valid_out,
                        data_to_pe0=self.reduce_data_to_pe[0],
-                       data_to_pe_valid0=self.reduce_data_to_pe_valid[0],
-                       data_to_pe_ready0=self.reduce_data_to_pe_ready[0],
                        data_to_pe1=self.reduce_data_to_pe[1],
-                       data_to_pe_valid1=self.reduce_data_to_pe_valid[1],
-                       data_to_pe_ready1=self.reduce_data_to_pe_ready[1],
-                       data_from_pe=self._pe_data_to_reduce,
-                       data_from_pe_valid=self._pe_data_to_reduce_valid,
-                       data_from_pe_ready=self._pe_data_to_reduce_ready)
+                       data_from_pe=self._pe_data_to_reduce)
 
         # The I/O interface for the onyx PE
         self.pe_data_in = []
@@ -119,13 +106,13 @@ class ReducePECluster(MemoryController):
         self.pe_data_in_ready_out = []
         # Data and ready valid IO for the PE from outside the cluster
         self.ext_pe_data_in = []
-        self.ext_pe_data_in_valid_in = []
-        self.ext_pe_data_in_ready_out = []
         self.pe_bit_in = []
         for i in range(3):
             tmp_pe_data_in = self.var(f"pe_data{i}", self.data_width + 1, packed=True)
-            tmp_pe_data_in_valid_in = self.var(f"pe_data{i}_valid", 1)
-            tmp_pe_data_in_ready_out = self.var(f"pe_data{i}_ready", 1)
+            tmp_pe_data_in_valid_in = self.input(f"pe_data{i}_valid", 1)
+            tmp_pe_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+            tmp_pe_data_in_ready_out = self.output(f"pe_data{i}_ready", 1)
+            tmp_pe_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
             self.pe_data_in.append(tmp_pe_data_in)
             self.pe_data_in_valid_in.append(tmp_pe_data_in_valid_in)
@@ -136,15 +123,7 @@ class ReducePECluster(MemoryController):
             # Mark as hybrid port to allow bypassing at the core combiner level
             tmp_ext_pe_data_in.add_attribute(HybridPortAddr())
 
-            tmp_ext_pe_data_in_valid_in = self.input(f"ext_pe_data{i}_valid", 1)
-            tmp_ext_pe_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-
-            tmp_ext_ep_data_in_ready_out = self.output(f"ext_pe_data{i}_ready", 1)
-            tmp_ext_ep_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
-
             self.ext_pe_data_in.append(tmp_ext_pe_data_in)
-            self.ext_pe_data_in_valid_in.append(tmp_ext_pe_data_in_valid_in)
-            self.ext_pe_data_in_ready_out.append(tmp_ext_ep_data_in_ready_out)
 
         # The 1-bit data I/O
         for i in range(3):
@@ -160,13 +139,11 @@ class ReducePECluster(MemoryController):
         self._pe_valid_out = self.output("pe_res_valid", 1)
         self._pe_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._ext_pe_ready_in = self.input("ext_pe_res_ready", 1)
-        self._ext_pe_ready_in.add_attribute(ControlSignalAttr(is_control=True))
+        self._pe_ready_in = self.input("ext_pe_res_ready", 1)
+        self._pe_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
         self._pe_data_out_p = self.output("pe_res_p", 1)
         self._pe_data_out_p.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-
-        self._pe_ready_in = self.var("pe_ready_in", 1)
 
         # Instantiate the PE here
         self.onyxpe = OnyxPE(data_width=16,
@@ -203,35 +180,19 @@ class ReducePECluster(MemoryController):
         self.wire(self.pe_data_in[0], kts.ternary(self._pe_in_sel,
                                                    self.ext_pe_data_in[0],
                                                    self.reduce_data_to_pe[0]))
-        self.wire(self.pe_data_in_valid_in[0], kts.ternary(self._pe_in_sel,
-                                                            self.ext_pe_data_in_valid_in[0],
-                                                            self.reduce_data_to_pe_valid[0]))
-        self.wire(self.ext_pe_data_in_ready_out[0], self.pe_data_in_ready_out[0])
-        self.wire(self.reduce_data_to_pe_ready[0], self.pe_data_in_ready_out[0])
         self.wire(self.pe_data_in[1], kts.ternary(self._pe_in_sel,
                                                    self.ext_pe_data_in[1],
                                                    self.reduce_data_to_pe[1]))
-        self.wire(self.pe_data_in_valid_in[1], kts.ternary(self._pe_in_sel,
-                                                   self.ext_pe_data_in_valid_in[1],
-                                                   self.reduce_data_to_pe_valid[1]))
-        self.wire(self.ext_pe_data_in_ready_out[1], self.pe_data_in_ready_out[1])
-        self.wire(self.reduce_data_to_pe_ready[1], self.pe_data_in_ready_out[1])
         # Reduce does not use the third input of the pe, just wire it to the external inputs
         self.wire(self.pe_data_in[2], self.ext_pe_data_in[2])
-        self.wire(self.pe_data_in_valid_in[2], self.ext_pe_data_in_valid_in[2])
-        self.wire(self.pe_data_in_ready_out[2], self.ext_pe_data_in_ready_out[2])
 
         # Wire the output of the pe also to the reduce
-        self._test = self.var("test", self.data_width + 1, packed=True)
         self.wire(self._pe_data_to_reduce, self.onyxpe.ports.res)
-        self.wire(self._pe_data_to_reduce_valid, self.onyxpe.ports.res_valid)
-        self.wire(self._pe_ready_in, kts.ternary(self._pe_in_sel,
-                                                 self._ext_pe_ready_in,
-                                                 self._pe_data_to_reduce_ready))
-        if self.add_clk_enable:
-            kts.passes.auto_insert_clock_enable(self.internal_generator)
-            clk_en_port = self.internal_generator.get_port("clk_en")
-            clk_en_port.add_attribute(ControlSignalAttr(False))
+
+        # clk enable logic
+        kts.passes.auto_insert_clock_enable(self.internal_generator)
+        clk_en_port = self.internal_generator.get_port("clk_en")
+        clk_en_port.add_attribute(ControlSignalAttr(False))
 
         flush_port = None
         if self.add_flush:
@@ -242,7 +203,8 @@ class ReducePECluster(MemoryController):
 
         # Lift the configuration register of the internal modules so they are 
         # visible at the cluster level
-        lift_config_reg(self.internal_generator)
+        if self.do_lift_config:
+            lift_config_reg(self.internal_generator)
 
     def get_bitstream(self, config_kwargs):
         assert 'submodule' in config_kwargs
@@ -262,7 +224,8 @@ if __name__ == "__main__":
                                             fifo_depth=2,
                                             defer_fifo=False,
                                             add_flush=False,
-                                            perf_debug=False)
+                                            perf_debug=False,
+                                            do_lift_config=True)
     kts.verilog(reduce_pe_cluster_dut, 
                 filename="reduce_pe_cluster.sv",
                 optimize_if=False)

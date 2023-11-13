@@ -405,7 +405,7 @@ class OnyxPE(MemoryController):
 
 if __name__ == "__main__":
 
-    pe_dut = OnyxPE(data_width=16, defer_fifos=False, do_config_lift=True)
+    pe_dut = OnyxPE(data_width=16, defer_fifos=False, do_config_lift=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

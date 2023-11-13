@@ -76,7 +76,7 @@ initial begin
         // Make as many transfers from the memory as needed.
         while(num_tx < TX_SIZE_USE && done_count > 0) begin
             @(posedge clk);
-            #1; //TODO: debug the issue with the 1 unit time delay with line 90
+            //#1; //TODO: debug the issue with the 1 unit time delay with line 90
 
             valid = 0;
             DELAY = $urandom & mask;
@@ -88,7 +88,7 @@ initial begin
 
             data = local_mem[num_tx];
             valid = 1;
-            // #1;
+            #1;
             if(ready == 1 && valid == 1) begin
                 if (data == DONE_TOKEN) begin
                     done_count--;

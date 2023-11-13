@@ -89,14 +89,8 @@ class Reg(MemoryController):
 
         # Interface with the PE
         self._data_to_pe0 = self.output("data_to_pe0", self.data_width + 1, packed=True)
-        self._data_to_pe_valid0 = self.output("data_to_pe_valid0", 1)
-        self._data_to_pe_ready0 = self.input("data_to_pe_ready0", 1)
         self._data_to_pe1 = self.output("data_to_pe1", self.data_width + 1, packed=True)
-        self._data_to_pe_valid1 = self.output("data_to_pe_valid1", 1)
-        self._data_to_pe_ready1 = self.input("data_to_pe_ready1", 1)
         self._data_from_pe = self.input("data_from_pe", self.data_width + 1, packed=True)
-        self._data_from_pe_valid = self.input("data_from_pe_valid", 1)
-        self._data_from_pe_ready = self.output("data_from_pe_ready", 1)
 
         # Declare the accum reg
         self._accum_reg = self.var("accum_reg", self.data_width)
@@ -151,7 +145,8 @@ class Reg(MemoryController):
         self.wire(self._infifo_out_valid, ~self._infifo.ports.empty)
         self.wire(self._data_to_pe0, self._infifo_out_packed)
         # Loop for accumulation
-        self.wire(self._data_to_pe1, self._data_from_pe)
+        self.wire(self._data_to_pe1[self.data_width - 1, 0], self._accum_reg)
+        self.wire(self._data_to_pe1[self.data_width], kts.const(0, 1))
 
 # ==============================
 # OUTPUT FIFO
@@ -212,6 +207,7 @@ class Reg(MemoryController):
         # self._accum_happened = sticky_flag(self, self._set_accum_happened, clear=self._clr_accum_happened, name='accum_happened_reg')
 
         self._reg_clr = self.var("reg_clr", 1)
+        self._update_accum_reg = self.var("update_accum_reg", 1)
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def accum_reg_ff():
@@ -219,7 +215,7 @@ class Reg(MemoryController):
                 self._accum_reg = 0
             elif self._reg_clr:
                 self._accum_reg = self._default_value
-            elif self._data_from_pe_valid:
+            elif self._update_accum_reg:
                 self._accum_reg = self._data_from_pe[self.data_width - 1, 0]
         self.add_code(accum_reg_ff)
 
@@ -237,16 +233,13 @@ class Reg(MemoryController):
         self.accum_fsm.output(self._data_to_fifo)
         self.accum_fsm.output(self._outfifo_in_eos)
         self.accum_fsm.output(self._reg_clr)
-        self.accum_fsm.output(self._data_to_pe_valid0)
-        self.accum_fsm.output(self._data_to_pe_valid1)
-        self.accum_fsm.output(self._data_from_pe_ready)
-
+        self.accum_fsm.output(self._update_accum_reg)
         # State Transitions
 
         # In START, we are looking for some valid data and checking if the PE is ready
         # If we see EOS, we know we can consume the stop token
         # If we don't see EOS, we can start accumulating
-        START.next(ACCUM, self._infifo_out_valid & ~self._infifo_out_eos & self._data_to_pe_ready0 & self._data_to_pe_ready1)
+        START.next(ACCUM, self._infifo_out_valid & ~self._infifo_out_eos)
         START.next(DONE, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(1, 2)))
         START.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data[9, 8] == kts.const(0, 2)))
         START.next(START, None)
@@ -256,7 +249,7 @@ class Reg(MemoryController):
         # Need to crush lower level stops then move on when we see the appropriate level
         # ACCUM.next(ACCUM, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data > self._stop_lvl))
         # ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & (self._infifo_out_data == self._stop_lvl))
-        ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos & self._data_from_pe_valid)
+        ACCUM.next(OUTPUT, self._infifo_out_valid & self._infifo_out_eos)
         ACCUM.next(ACCUM, None)
 
         OUTPUT.next(STOP_PASS, ~self._outfifo_full)
@@ -282,37 +275,28 @@ class Reg(MemoryController):
         #############
         # When in START, if we see just eos but not valid, then that was a blank stream and we should pop it...
         # START.output(self._infifo_pop, self._infifo_out_eos & self._infifo_out_valid)
-        START.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos & self._data_to_pe_ready0 & self._data_to_pe_ready1)
+        START.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos)
         START.output(self._outfifo_push, 0)
         START.output(self._data_to_fifo, kts.const(0, 16))
         START.output(self._outfifo_in_eos, 0)
         START.output(self._reg_clr, 0)
-        # Indicate data is valid if the inputs are non eos data
-        START.output(self._data_to_pe_valid0, self._infifo_out_valid & ~self._infifo_out_eos)
-        START.output(self._data_to_pe_valid1, self._infifo_out_valid & ~self._infifo_out_eos)
-        START.output(self._data_from_pe_ready, 0)
+        START.output(self._update_accum_reg, 0)
 
         #############
         # ACCUM
         #############
         # Pop if we have a valid data or an eos above the stop level to crush
         # The data pushed in previously is coming back, ready to push another one
-        ACCUM.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos & self._data_to_pe_ready0 & self._data_to_pe_ready1 & self._data_from_pe_valid)
+        ACCUM.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos)
         ACCUM.output(self._outfifo_push, 0)
         ACCUM.output(self._data_to_fifo, kts.const(0, 16))
         ACCUM.output(self._outfifo_in_eos, 0)
         ACCUM.output(self._reg_clr, 0)
-        ACCUM.output(self._data_to_pe_valid0, self._infifo_out_valid & ~self._infifo_out_eos & self._data_from_pe_valid)
-        ACCUM.output(self._data_to_pe_valid1, self._infifo_out_valid & ~self._infifo_out_eos & self._data_from_pe_valid)
-        ACCUM.output(self._data_from_pe_ready, self._data_from_pe_valid)
-
-        # ACCUM.output(self._set_accum_happened, self._infifo_out_valid & ~self._infifo_out_eos)
-        # ACCUM.output(self._clr_accum_happened, 0)
+        ACCUM.output(self._update_accum_reg, self._infifo_out_valid & ~self._infifo_out_eos)
 
         #############
         # OUTPUT
         #############
-        # OUTPUT.output(self._infifo_pop, self._infifo_out_valid & ~self._outfifo_full)
         # Don't pop the fifo, just use this state to output a value to the output fifo
         # TODO: Merge states with ACCUM
         OUTPUT.output(self._infifo_pop, 0)
@@ -321,11 +305,7 @@ class Reg(MemoryController):
         OUTPUT.output(self._reg_clr, 0)
         OUTPUT.output(self._data_to_fifo, self._accum_reg)
         OUTPUT.output(self._outfifo_in_eos, 0)
-        OUTPUT.output(self._data_to_pe_valid0, 0)
-        OUTPUT.output(self._data_to_pe_valid1, 0)
-        OUTPUT.output(self._data_from_pe_ready, 0)
-        # OUTPUT.output(self._set_accum_happened, 0)
-        # OUTPUT.output(self._clr_accum_happened, 0)
+        OUTPUT.output(self._update_accum_reg, 0)
 
         #############
         # STOP_PASS - Deal with full output...
@@ -343,9 +323,7 @@ class Reg(MemoryController):
         STOP_PASS.output(self._data_to_fifo, self._infifo_out_data - 1)
         # STOP_PASS.output(self._outfifo_in_eos, self._infifo_out_valid & self._infifo_out_eos)
         STOP_PASS.output(self._outfifo_in_eos, 1)
-        STOP_PASS.output(self._data_to_pe_valid0, 0)
-        STOP_PASS.output(self._data_to_pe_valid1, 0)
-        STOP_PASS.output(self._data_from_pe_ready, 0)
+        STOP_PASS.output(self._update_accum_reg, 0)
         # STOP_PASS.output(self._set_accum_happened, 0)
         # STOP_PASS.output(self._clr_accum_happened, 1)
 
@@ -360,10 +338,7 @@ class Reg(MemoryController):
         DONE.output(self._reg_clr, 1)
         DONE.output(self._data_to_fifo, self._infifo_out_data)
         DONE.output(self._outfifo_in_eos, self._infifo_out_eos)
-        DONE.output(self._data_to_pe_valid0, self._infifo_out_valid & ~self._infifo_out_eos & self._data_from_pe_valid)
-        DONE.output(self._data_to_pe_valid1, self._infifo_out_valid & ~self._infifo_out_eos & self._data_from_pe_valid)
-        DONE.output(self._data_from_pe_ready, self._data_from_pe_valid)
-
+        DONE.output(self._update_accum_reg, 0)
 
         if self.add_dispatcher:
             self.add_dispatch_logic()
