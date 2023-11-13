@@ -166,6 +166,9 @@ class WriteScanner(MemoryController):
         self._init_blank = self.input("init_blank", 1)
         self._init_blank.add_attribute(ConfigRegAttr("Init blank fiber (for sparse accum)"))
 
+        # Vector Reduce Mode
+        self._vector_reduce_mode = self.input("vector_reduce_mode", 1)
+
         self._set_blank_done = self.var("set_blank_done", 1)
         self._clr_blank_done = self.var("clr_blank_done", 1)
         self._blank_done = sticky_flag(self, self._set_blank_done,
@@ -194,10 +197,24 @@ class WriteScanner(MemoryController):
         self._data_infifo_valid_in = self.var("data_infifo_valid_in", 1)
         self._data_infifo_eos_in = self.var("data_infifo_eos_in", 1)
 
+
+
         # Stupid convert
         self._data_infifo_in_packed = self.var("data_infifo_in_packed", 1 * self.data_width + 1, packed=True)
-        self.wire(self._data_infifo_in_packed[self.data_width], self._data_in[self.data_width])
-        self.wire(self._data_infifo_in_packed[self.data_width - 1, 0], self._data_in[self.data_width - 1, 0])
+
+
+        self._done_token = self.var("done_token", self.data_width + 1)
+        self._semi_done_token = self.var("semi_done_token", self.data_width + 1)
+        self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
+        self.wire(self._semi_done_token, kts.concat(kts.const(1, 1), kts.const(0, 11), kts.const(1, 1), kts.const(0, 4)))
+
+        #self.wire(self._data_infifo_in_packed[self.data_width], self._data_in[self.data_width])
+        #self.wire(self._data_infifo_in_packed[self.data_width - 1, 0], self._data_in[self.data_width - 1, 0])
+        
+        self._vr_fsm_wr_scan_data_in = self.var("vr_fsm_wr_scan_data_in", self.data_width + 1)
+        self.wire(self._vr_fsm_wr_scan_data_in, kts.ternary((self._data_in == self._semi_done_token), self._done_token, self._data_in))
+        self.wire(self._data_infifo_in_packed, kts.ternary(self._vector_reduce_mode, self._vr_fsm_wr_scan_data_in, self._data_in))
+
         self._data_infifo_out_packed = self.var("data_infifo_out_packed", 1 * self.data_width + 1, packed=True)
         self.wire(self._data_infifo_eos_in, self._data_infifo_out_packed[self.data_width])
         self.wire(self._data_infifo_data_in, self._data_infifo_out_packed[self.data_width - 1, 0])

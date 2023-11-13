@@ -11,6 +11,7 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
+from lake.modules.reg_fifo_no_almost_full import RegFIFO_no_almost_full
 
 
 class ScannerPipe(MemoryController):
@@ -99,6 +100,9 @@ class ScannerPipe(MemoryController):
 
         # MO: Used in VR mode
         self._output_row_fully_accumulated = self.input("output_row_fully_accumulated", 1)
+
+        # MO: Used in VR mode
+        self._output_matrix_fully_accumulated = self.input("output_matrix_fully_accumulated", 1)
 
         # MO: Used in VR mode
         self._vr_fsm_state_init_blank = self.input("vr_fsm_state_init_blank", 1)
@@ -1997,9 +2001,13 @@ class ScannerPipe(MemoryController):
 
         self.wire(self._coord_data_in_packed, self._crd_res_fifo_data_out)
 
+        self._S_level_0 = self.var("S_level_0", self.data_width + 1)
+        self.wire(self._S_level_0, kts.concat(kts.const(1, 1), kts.const(0, 16)))
         self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
-        self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])
+        self.wire(self._coord_out[self.data_width], kts.ternary(self._vr_fsm_state_init_blank, self._S_level_0[self.data_width], self._coord_data_out_packed[self.data_width]))
+        self.wire(self._coord_out[self.data_width - 1, 0], kts.ternary(self._vr_fsm_state_init_blank, self._S_level_0[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0]))
+        #self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
+        #self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])
 
         # Signal for getting pushed done
         self._set_final_pushed_done = self.var("set_final_pushed_done", 1)
@@ -2037,6 +2045,8 @@ class ScannerPipe(MemoryController):
         self._coord_fifo_push = self.var("coord_fifo_push", 1)
         self.wire(self._coord_fifo_push, kts.ternary(self._vector_reduce_mode, (self._non_vr_coord_fifo_push & ~self._output_row_fully_accumulated), self._non_vr_coord_fifo_push))
 
+        #self._almost_full_dummy = self.output("almost_full_dummy", 1)
+        
         self.add_child(f"coordinate_fifo",
                        self._coord_fifo,
                        clk=self._gclk,
@@ -2050,9 +2060,21 @@ class ScannerPipe(MemoryController):
                     #    push=self._crd_res_fifo_valid & ~self._block_mode & (self._readout_dst_out == 0),
                        pop=self._coord_out_ready_in,
                        data_in=self._coord_data_in_packed,
+                       #almost_full=self._almost_full_dummy,
                        data_out=self._coord_data_out_packed)
 
-        self.wire(self._coord_out_valid_out, ~self._coord_fifo.ports.empty)
+        
+        
+        #self.wire(self._coord_out_valid_out, self._my_mux)
+        #self.wire(self._coord_out_valid_out, ~self._coord_fifo.ports.empty)
+
+
+
+        #self.wire(self._coord_out_valid_out, kts.ternary(self._vr_fsm_state_init_blank, kts.const(1, 1), ~self._coord_fifo.ports.empty))
+        self.wire(self._coord_out_valid_out, (self._vr_fsm_state_init_blank | ~self._coord_fifo.ports.empty))
+
+
+
         self.wire(self._fifo_full_pre[0], self._coord_fifo.ports.full)
 
         # self.wire(self._crd_res_fifo_pop, ~self._coord_fifo.ports.full)
@@ -2092,6 +2114,10 @@ class ScannerPipe(MemoryController):
         self.wire(self._pos_out[self.data_width], self._pos_data_out_packed[self.data_width])
         self.wire(self._pos_out[self.data_width - 1, 0], self._pos_data_out_packed[self.data_width - 1, 0])
 
+
+        self._done_token = self.var("done_token", self.data_width + 1)
+        self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
+
         self.add_child(f"pos_fifo",
                        self._pos_fifo,
                        clk=self._gclk,
@@ -2102,11 +2128,12 @@ class ScannerPipe(MemoryController):
                        data_in=self._pos_data_in_packed,
                        data_out=self._pos_data_out_packed)
 
-        self.wire(self._pos_out_valid_out, ~self._pos_fifo.ports.empty)
+        self._pos_out_valid_mux_sel = self.var("pos_out_valid_mux_sel", 1)
+        self.wire(self._pos_out_valid_mux_sel, self._vector_reduce_mode & (self._pos_out == self._done_token))
+        #self.wire(self._pos_out_valid_out, ~self._pos_fifo.ports.empty)
+        self.wire(self._pos_out_valid_out, (~self._pos_out_valid_mux_sel & ~self._pos_fifo.ports.empty) | (self._pos_out_valid_mux_sel & (self._output_matrix_fully_accumulated & ~self._pos_fifo.ports.empty)))
+        #self.wire(self._pos_out_valid_out, kts.ternary((self._vector_reduce_mode & (self._pos_out == self._done_token)), (self._output_matrix_fully_accumulated & ~self._pos_fifo.ports.empty), ~self._pos_fifo.ports.empty))
         self.wire(self._fifo_full_pre[1], self._pos_fifo.ports.full)
-
-        self._done_token = self.var("done_token", self.data_width + 1)
-        self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
 
         # MO: For VR mode
         self._rs_has_prepped_ds_row = self.output("rs_has_prepped_ds_row", 1)
