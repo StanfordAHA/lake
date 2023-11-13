@@ -90,7 +90,6 @@ class ReducePECluster(MemoryController):
         self.reduce = Reg(data_width=16,
                           fifo_depth=self.fifo_depth,
                           defer_fifos=self.defer_fifo,
-                          add_flush=self.add_flush,
                           perf_debug=perf_debug)
         
         self.add_child("reduce",
@@ -176,7 +175,6 @@ class ReducePECluster(MemoryController):
                             ext_pe_prefix=self.pe_prefix,
                             pe_ro=True,
                             do_config_lift=False,
-                            add_flush=self.add_flush,
                             perf_debug=perf_debug)
         
         self.add_child("pe",
