@@ -48,34 +48,37 @@ module pe_tb;
     wire [3:0] done;
     parameter NUM_CYCLES = 4000;
 
-    PE_onyx #(
+    reduce_pe_cluster #(
         
     ) dut (
-        .bit0(bit0),
-        .bit1(bit1),
-        .bit2(bit2),
+        .pe_bit0(bit0),
+        .pe_bit1(bit1),
+        .pe_bit2(bit2),
         .clk(clk),
         .clk_en(clk_en),
-        .data0(data0),
-        .data0_valid(data0_valid),
-        .data0_ready(data0_ready),
-        .data1(data1),
-        .data1_valid(data1_valid),
-        .data1_ready(data1_ready),
-        .data2(data2),
-        .data2_valid(data2_valid),
-        .data2_ready(data2_ready),
-        .dense_mode(dense_mode),
-        .sparse_num_inputs(num_inputs),
+        .ext_pe_data0(data0),
+        .ext_pe_data0_valid(data0_valid),
+        .ext_pe_data0_ready(data0_ready),
+        .ext_pe_data1(data1),
+        .ext_pe_data1_valid(data1_valid),
+        .ext_pe_data1_ready(data1_ready),
+        .ext_pe_data2(data2),
+        .ext_pe_data2_valid(data2_valid),
+        .ext_pe_data2_ready(data2_ready),
+        .pe_dense_mode(dense_mode),
+        .pe_sparse_num_inputs(num_inputs),
         .tile_en(tile_en),
-        .res(res),
-        .res_p(res_p),
-        .res_valid(res_valid),
-        .res_ready(res_ready),
+        .pe_tile_en(tile_en),
+        .reduce_tile_en(tile_en),
+        .ext_pe_res(res),
+        .ext_pe_res_p(res_p),
+        .ext_pe_res_valid(res_valid),
+        .ext_pe_res_ready(res_ready),
         .rst_n(rst_n),
         .flush(flush),
-        .tile_en(tile_en),
-        .onyxpeintf_inst(inst)
+        .pe_onyxpeintf_inst(inst),
+        // select external data input
+        .pe_in_external(1'b1)
     );
 
     glb_write #(
@@ -151,7 +154,7 @@ module pe_tb;
 
         //onyxpeintf_inst = 'h4_8000_0400_0100_0040_0000;
         onyxpeintf_inst = $value$plusargs("inst=%h", inst);
-        sparse_num_inputs = $value$plusargs("num_inputs=%h", num_inputs);;
+        sparse_num_inputs = $value$plusargs("num_inputs=%h", num_inputs);
         #1;
         $display("inst %h", inst);
         $display("num inputs%d", num_inputs);

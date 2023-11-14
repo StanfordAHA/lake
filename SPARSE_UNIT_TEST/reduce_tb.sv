@@ -26,22 +26,37 @@ module reduce_tb;
     wire [1:0] done;
     parameter NUM_CYCLES = 4000;
 
-    reg_cr #(
+    // instruction 
+    reg [83:0] inst;
+    reg [83:0] onyxpeintf_inst;
+    reg [2:0] sparse_num_inputs;
+    reg [2:0] num_inputs;
+
+    reduce_pe_cluster #(
         
     ) dut (
         .clk(clk),
         .clk_en(clk_en),
-        .data_in(val_in),
-        .data_in_valid(val_in_valid),
-        .data_out_ready(val_out_ready),
-        .default_value(16'b0),
+        .pe_bit0(1'b0),
+        .pe_bit1(1'b0),
+        .pe_bit2(1'b0),
+        // Configure pe to dense mode
+        .pe_dense_mode(1'b1),
+        // Configure pe to use internal connection with reduce
+        .pe_in_external(1'b0),
+        .reduce_data_in(val_in),
+        .reduce_data_in_valid(val_in_valid),
+        .reduce_data_out_ready(val_out_ready),
+        .reduce_default_value(16'b0),
         .flush(flush),
         .rst_n(rst_n),
-        .stop_lvl(16'b0),
+        .reduce_stop_lvl(16'b0),
         .tile_en(tile_en),
-        .data_in_ready(val_in_ready),
-        .data_out(val_out),
-        .data_out_valid(val_out_valid)
+        .reduce_tile_en(tile_en),
+        .reduce_data_in_ready(val_in_ready),
+        .reduce_data_out(val_out),
+        .reduce_data_out_valid(val_out_valid),
+        .pe_onyxpeintf_inst(inst)
     );
 
     glb_write #(
@@ -94,6 +109,9 @@ module reduce_tb;
         rst_n = 1;
         #5 clk = 0;
         flush = 0;
+
+        onyxpeintf_inst = $value$plusargs("inst=%h", inst);
+        sparse_num_inputs = $value$plusargs("num_inputs=%h", num_inputs);
 
         for(integer i = 0; i < NUM_CYCLES * 2; i = i + 1) begin
             #5 clk = ~clk;

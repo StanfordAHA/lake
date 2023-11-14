@@ -48,8 +48,8 @@ class ReducePECluster(MemoryController):
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
 
         # Select signal for internal/external PE input
-        self._pe_in_sel = self.input("pe_in_sel", 1)
-        self._pe_in_sel.add_attribute(ConfigRegAttr("This logic selects between the internal/external data I/O for the PE"))
+        self._pe_in_external = self.input("pe_in_external", 1)
+        self._pe_in_external.add_attribute(ConfigRegAttr("This logic selects between the internal/external data I/O for the PE"))
 
         # Clock gating logic
         gclk = self.var("gclk", 1)
@@ -61,7 +61,7 @@ class ReducePECluster(MemoryController):
         self._reduce_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         self._reduce_valid_in = self.input("reduce_data_in_valid", 1)
         self._reduce_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-        self._reduce_ready_out = self.output("data_data_in_ready", 1)
+        self._reduce_ready_out = self.output("reduce_data_in_ready", 1)
         self._reduce_ready_out.add_attribute(ControlSignalAttr(is_control=False))
         self._reduce_data_out = self.output("reduce_data_out", self.data_width + 1, packed=True)
         self._reduce_data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -100,23 +100,22 @@ class ReducePECluster(MemoryController):
                        data_to_pe1=self.reduce_data_to_pe[1],
                        data_from_pe=self._pe_data_to_reduce)
 
-        # The I/O interface for the onyx PE
         self.pe_data_in = []
-        self.pe_data_in_valid_in = []
-        self.pe_data_in_ready_out = []
         # Data and ready valid IO for the PE from outside the cluster
         self.ext_pe_data_in = []
+        self.ext_pe_data_in_valid_in = []
+        self.ext_pe_data_in_ready_out = []
         self.pe_bit_in = []
         for i in range(3):
             tmp_pe_data_in = self.var(f"pe_data{i}", self.data_width + 1, packed=True)
-            tmp_pe_data_in_valid_in = self.input(f"pe_data{i}_valid", 1)
-            tmp_pe_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-            tmp_pe_data_in_ready_out = self.output(f"pe_data{i}_ready", 1)
-            tmp_pe_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+            tmp_ext_pe_data_in_valid_in = self.input(f"ext_pe_data{i}_valid", 1)
+            tmp_ext_pe_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+            tmp_ext_pe_data_in_ready_out = self.output(f"ext_pe_data{i}_ready", 1)
+            tmp_ext_pe_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
             self.pe_data_in.append(tmp_pe_data_in)
-            self.pe_data_in_valid_in.append(tmp_pe_data_in_valid_in)
-            self.pe_data_in_ready_out.append(tmp_pe_data_in_ready_out)
+            self.ext_pe_data_in_valid_in.append(tmp_ext_pe_data_in_valid_in)
+            self.ext_pe_data_in_ready_out.append(tmp_ext_pe_data_in_ready_out)
 
             tmp_ext_pe_data_in = self.input(f"ext_pe_data{i}", self.data_width + 1, packed=True)
             tmp_ext_pe_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -132,17 +131,18 @@ class ReducePECluster(MemoryController):
 
             self.pe_bit_in.append(tmp_pe_data_in)
         
-        self._pe_data_out = self.output("pe_res", self.data_width + 1, packed=True)
+        # PE results output to other primitives external to this cluster
+        self._pe_data_out = self.output("ext_pe_res", self.data_width + 1, packed=True)
         self._pe_data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         self._pe_data_out.add_attribute(HybridPortAddr())
 
-        self._pe_valid_out = self.output("pe_res_valid", 1)
+        self._pe_valid_out = self.output("ext_pe_res_valid", 1)
         self._pe_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
         self._pe_ready_in = self.input("ext_pe_res_ready", 1)
         self._pe_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._pe_data_out_p = self.output("pe_res_p", 1)
+        self._pe_data_out_p = self.output("ext_pe_res_p", 1)
         self._pe_data_out_p.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         # Instantiate the PE here
@@ -160,14 +160,14 @@ class ReducePECluster(MemoryController):
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
                        data0=self.pe_data_in[0],
-                       data0_valid=self.pe_data_in_valid_in[0],
-                       data0_ready=self.pe_data_in_ready_out[0],
+                       data0_valid=self.ext_pe_data_in_valid_in[0],
+                       data0_ready=self.ext_pe_data_in_ready_out[0],
                        data1=self.pe_data_in[1],
-                       data1_valid=self.pe_data_in_valid_in[1],
-                       data1_ready=self.pe_data_in_ready_out[1],
+                       data1_valid=self.ext_pe_data_in_valid_in[1],
+                       data1_ready=self.ext_pe_data_in_ready_out[1],
                        data2=self.pe_data_in[2],
-                       data2_valid=self.pe_data_in_valid_in[2],
-                       data2_ready=self.pe_data_in_ready_out[2],
+                       data2_valid=self.ext_pe_data_in_valid_in[2],
+                       data2_ready=self.ext_pe_data_in_ready_out[2],
                        bit0=self.pe_bit_in[0],
                        bit1=self.pe_bit_in[1],
                        bit2=self.pe_bit_in[2],
@@ -177,10 +177,10 @@ class ReducePECluster(MemoryController):
                        res_p=self._pe_data_out_p)
 
         # Select between the internal/external signal connection for the PE
-        self.wire(self.pe_data_in[0], kts.ternary(self._pe_in_sel,
+        self.wire(self.pe_data_in[0], kts.ternary(self._pe_in_external,
                                                    self.ext_pe_data_in[0],
                                                    self.reduce_data_to_pe[0]))
-        self.wire(self.pe_data_in[1], kts.ternary(self._pe_in_sel,
+        self.wire(self.pe_data_in[1], kts.ternary(self._pe_in_external,
                                                    self.ext_pe_data_in[1],
                                                    self.reduce_data_to_pe[1]))
         # Reduce does not use the third input of the pe, just wire it to the external inputs
@@ -218,6 +218,13 @@ class ReducePECluster(MemoryController):
         config += [("pe_in_sel", pe_in_sel)]
     
         return config
+    def get_memory_ports(self):
+        '''
+        Use this method to indicate what memory ports this controller has
+        '''
+        return [[None]]
+    def get_config_mode_str(self):
+        return "reduce_pe_cluster"
 
 if __name__ == "__main__":
     reduce_pe_cluster_dut = ReducePECluster(data_width=16,

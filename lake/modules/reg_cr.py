@@ -275,7 +275,7 @@ class Reg(MemoryController):
         #############
         # When in START, if we see just eos but not valid, then that was a blank stream and we should pop it...
         # START.output(self._infifo_pop, self._infifo_out_eos & self._infifo_out_valid)
-        START.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos)
+        START.output(self._infifo_pop, 0)
         START.output(self._outfifo_push, 0)
         START.output(self._data_to_fifo, kts.const(0, 16))
         START.output(self._outfifo_in_eos, 0)
