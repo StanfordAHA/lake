@@ -108,16 +108,17 @@ class ReducePECluster(MemoryController):
         self.pe_bit_in = []
         for i in range(3):
             tmp_pe_data_in = self.var(f"pe_data{i}", self.data_width + 1, packed=True)
-            tmp_ext_pe_data_in_valid_in = self.input(f"ext_pe_data{i}_valid", 1)
+            # external data input
+            tmp_ext_pe_data_in_valid_in = self.input(f"data{i}_valid", 1)
             tmp_ext_pe_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-            tmp_ext_pe_data_in_ready_out = self.output(f"ext_pe_data{i}_ready", 1)
+            tmp_ext_pe_data_in_ready_out = self.output(f"data{i}_ready", 1)
             tmp_ext_pe_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
 
             self.pe_data_in.append(tmp_pe_data_in)
             self.ext_pe_data_in_valid_in.append(tmp_ext_pe_data_in_valid_in)
             self.ext_pe_data_in_ready_out.append(tmp_ext_pe_data_in_ready_out)
 
-            tmp_ext_pe_data_in = self.input(f"ext_pe_data{i}", self.data_width + 1, packed=True)
+            tmp_ext_pe_data_in = self.input(f"data{i}", self.data_width + 1, packed=True)
             tmp_ext_pe_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
             # Mark as hybrid port to allow bypassing at the core combiner level
             tmp_ext_pe_data_in.add_attribute(HybridPortAddr())
@@ -126,23 +127,23 @@ class ReducePECluster(MemoryController):
 
         # The 1-bit data I/O
         for i in range(3):
-            tmp_pe_data_in = self.input(f"pe_bit{i}", 1)
+            tmp_pe_data_in = self.input(f"bit{i}", 1)
             tmp_pe_data_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
             self.pe_bit_in.append(tmp_pe_data_in)
         
         # PE results output to other primitives external to this cluster
-        self._pe_data_out = self.output("ext_pe_res", self.data_width + 1, packed=True)
+        self._pe_data_out = self.output("res", self.data_width + 1, packed=True)
         self._pe_data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         self._pe_data_out.add_attribute(HybridPortAddr())
 
-        self._pe_valid_out = self.output("ext_pe_res_valid", 1)
+        self._pe_valid_out = self.output("res_valid", 1)
         self._pe_valid_out.add_attribute(ControlSignalAttr(is_control=False))
 
-        self._pe_ready_in = self.input("ext_pe_res_ready", 1)
+        self._pe_ready_in = self.input("res_ready", 1)
         self._pe_ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
-        self._pe_data_out_p = self.output("ext_pe_res_p", 1)
+        self._pe_data_out_p = self.output("res_p", 1)
         self._pe_data_out_p.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
         # Instantiate the PE here
@@ -207,24 +208,44 @@ class ReducePECluster(MemoryController):
             lift_config_reg(self.internal_generator)
 
     def get_bitstream(self, config_kwargs):
-        assert 'submodule' in config_kwargs
-        submodule = config_kwargs['submodule']
-        pe_in_sel = config_kwargs['pe_in_sel']
-        if submodule == 'pe':
-            config = self.onyxpe.get_bitstream(config_kwargs=config_kwargs)
-        elif submodule == 'reduce':
-            config = self.reduce.get_bitstream(config_kwargs=config_kwargs)
+        assert 'pe_only' in config_kwargs
+        assert 'pe_in_external' in config_kwargs
+
+        pe_only = config_kwargs['pe_only']
+        pe_in_external = config_kwargs['pe_in_external']
+
+        config = []
+        # configure the specific module according to the keyword specified
+        if pe_only:
+            sub_config = self.onyxpe.get_bitstream(config_kwargs=config_kwargs)
+            for config_tuple in sub_config:
+                config_name, config_value = config_tuple
+                config += [(f"{self.onyxpe.instance_name}_{config_name}", config_value)]
+        else:
+            sub_config = self.reduce.get_bitstream(config_kwargs=config_kwargs)
+            for config_tuple in sub_config:
+                config_name, config_value = config_tuple
+                config += [(f"{self.reduce.instance_name}_{config_name}", config_value)]
+            sub_config = self.onyxpe.get_bitstream(config_kwargs=config_kwargs)
+            for config_tuple in sub_config:
+                config_name, config_value = config_tuple
+                config += [(f"{self.onyxpe.instance_name}_{config_name}", config_value)]
+            
         config += [("tile_en", 1)]
-        config += [("pe_in_sel", pe_in_sel)]
-    
+        config += [("pe_in_external", pe_in_external)]
+
         return config
+
     def get_memory_ports(self):
         '''
         Use this method to indicate what memory ports this controller has
         '''
         return [[None]]
     def get_config_mode_str(self):
-        return "reduce_pe_cluster"
+        # FIXME: Override the config mode str of underlying pe since in dense mode, the mapping/routing
+        # logic look for this keyword to perfrom mapping and routing to/from the pe
+        return "alu"
+
 
 if __name__ == "__main__":
     reduce_pe_cluster_dut = ReducePECluster(data_width=16,
