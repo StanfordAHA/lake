@@ -90,6 +90,15 @@ if __name__ == "__main__":
                         type=int,
                         help="optional: depth for memory",
                         default=256)
+    parser.add_argument("-tb",
+                        type=int,
+                        help="optional: depth for tb",
+                        default=2)
+    parser.add_argument("-dpflag",
+                        action='store_true',
+                        help='dual port config flag',
+                        default=False)
+
     parser.add_argument("-pl",
                         type=int,
                         help="optional: iterator support for Pond memory",
@@ -158,6 +167,10 @@ if __name__ == "__main__":
     lake_kwargs = {}
 
     if args.p is False:
+        #comment the following two line for dp memory
+        if args.dpflag is True:
+            lake_kwargs['area_opt'] = False
+            lake_kwargs['pond_area_opt_dual_config'] = False
         if args.onyx is True:
             # This should be marked as true
             lake_kwargs['area_opt'] = False
@@ -179,6 +192,7 @@ if __name__ == "__main__":
 
         # Use updated codepath for wrapper generation of laketop
         lake_kwargs['stencil_valid'] = args.s
+        lake_kwargs["tb_height"] = args.tb
         lake_kwargs['mem_width'] = args.mw
         lake_kwargs['mem_depth'] = args.d
         lake_kwargs['rw_same_cycle'] = args.dp

@@ -683,24 +683,24 @@ class StrgUBVec(MemoryController):
         # for camera_pipeline_2x2 to pass aha glb
         # pre-parser: hack to linearize in2agg and agg2sram data_stride
         linearize_data_stride = False
-        if self.area_opt:
-            def check_linear_data_stride(data_stride, extent, mem_size):
-                for i in range(len(data_stride) - 1):
-                    if (data_stride[i] * extent[i]) % mem_size != data_stride[i + 1] % mem_size:
-                        return False
-                return True
+        #if self.area_opt:
+        #    def check_linear_data_stride(data_stride, extent, mem_size):
+        #        for i in range(len(data_stride) - 1):
+        #            if (data_stride[i] * extent[i]) % mem_size != data_stride[i + 1] % mem_size:
+        #                return False
+        #        return True
 
-            if "agg2sram_0" in config_json:
-                if config_json["agg2sram_0"]["mode"][0] == 0:
-                    linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
-                    linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
-                    if not linear_agg_read or not linear_sram_read:
-                        linearize_data_stride = True
-                    if (linearize_data_stride):
-                        print("linearization is true")
-                        print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
-                        print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
-                        print("original extent", config_json["agg2sram_0"]["extent"])
+        #    if "agg2sram_0" in config_json:
+        #        if config_json["agg2sram_0"]["mode"][0] == 0:
+        #            linear_agg_read = check_linear_data_stride(config_json["agg2sram_0"]["read_data_stride"], config_json["agg2sram_0"]["extent"], 4)
+        #            linear_sram_read = check_linear_data_stride(config_json["agg2sram_0"]["write_data_stride"], config_json["agg2sram_0"]["extent"], 512)
+        #            if not linear_agg_read or not linear_sram_read:
+        #                linearize_data_stride = True
+        #            if (linearize_data_stride):
+        #                print("linearization is true")
+        #                print("original read_data_stride", config_json["agg2sram_0"]["read_data_stride"])
+        #                print("original write_data_stride", config_json["agg2sram_0"]["write_data_stride"])
+        #                print("original extent", config_json["agg2sram_0"]["extent"])
 
         # Store all configurations here
         config = []
