@@ -390,6 +390,14 @@ class OnyxPE(MemoryController):
         if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
             override_dense = True
             config += [("dense_mode", 1)]
+        elif 'pe_connected_to_reduce' in config_kwargs and config_kwargs['pe_connected_to_reduce'] is True:
+            # If this flag is set, we want to connect the pe to reduce
+            # We want to bypass the fifos
+            config +=[("dense_mode", 1)]
+            # But we are still not explicitly supplying the opcode to pe
+            # Instead, we are still relying on the assembler to decode the opcode
+            override_dense = False
+            
         if op < 3:
             config += [("sparse_num_inputs", 0b011)]
         else:
