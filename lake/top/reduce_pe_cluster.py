@@ -32,9 +32,8 @@ class ReducePECluster(MemoryController):
 
         self.add_dispatcher = add_dispatcher
         self.dispatcher_size = dispatcher_size
-        self.pe_prefix=pe_prefix
+        self.pe_prefix = pe_prefix
         self.do_lift_config = do_lift_config
-
 
         # inputs
         self._clk = self.clock("clk")
@@ -84,7 +83,7 @@ class ReducePECluster(MemoryController):
                           fifo_depth=self.fifo_depth,
                           defer_fifos=self.defer_fifo,
                           perf_debug=perf_debug)
-        
+
         self.add_child("reduce",
                        self.reduce,
                        clk=self._gclk,
@@ -131,7 +130,7 @@ class ReducePECluster(MemoryController):
             tmp_pe_data_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
             self.pe_bit_in.append(tmp_pe_data_in)
-        
+
         # PE results output to other primitives external to this cluster
         self._pe_data_out = self.output("res", self.data_width + 1, packed=True)
         self._pe_data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -154,7 +153,7 @@ class ReducePECluster(MemoryController):
                             pe_ro=True,
                             do_config_lift=False,
                             perf_debug=perf_debug)
-        
+
         self.add_child("pe",
                        self.onyxpe,
                        clk=self._gclk,
@@ -202,7 +201,7 @@ class ReducePECluster(MemoryController):
             flush_port = self.internal_generator.get_port("flush")
             flush_port.add_attribute(ControlSignalAttr(True))
 
-        # Lift the configuration register of the internal modules so they are 
+        # Lift the configuration register of the internal modules so they are
         # visible at the cluster level
         if self.do_lift_config:
             lift_config_reg(self.internal_generator)
@@ -230,7 +229,7 @@ class ReducePECluster(MemoryController):
             for config_tuple in sub_config:
                 config_name, config_value = config_tuple
                 config += [(f"{self.onyxpe.instance_name}_{config_name}", config_value)]
-            
+
         config += [("tile_en", 1)]
         config += [("pe_in_external", pe_in_external)]
 
@@ -241,6 +240,7 @@ class ReducePECluster(MemoryController):
         Use this method to indicate what memory ports this controller has
         '''
         return [[None]]
+
     def get_config_mode_str(self):
         # FIXME: Override the config mode str of underlying pe since in dense mode, the mapping/routing
         # logic look for this keyword to perfrom mapping and routing to/from the pe
@@ -254,6 +254,6 @@ if __name__ == "__main__":
                                             add_flush=False,
                                             perf_debug=False,
                                             do_lift_config=True)
-    kts.verilog(reduce_pe_cluster_dut, 
+    kts.verilog(reduce_pe_cluster_dut,
                 filename="reduce_pe_cluster.sv",
                 optimize_if=False)
