@@ -76,13 +76,13 @@ initial begin
         // Make as many transfers from the memory as needed.
         while(num_tx < TX_SIZE_USE && done_count > 0) begin
             @(posedge clk);
-            //#1; //TODO: debug the issue with the 1 unit time delay with line 90
+            #1; //TODO: debug the issue with the 1 unit time delay with line 90
 
             valid = 0;
             DELAY = $urandom & mask;
             while (DELAY > 0 & ADD_DELAY) begin
                 @(posedge clk);
-                #1;
+                // #1;
                 DELAY--;
             end
 

@@ -397,7 +397,7 @@ class OnyxPE(MemoryController):
             # But we are still not explicitly supplying the opcode to pe
             # Instead, we are still relying on the assembler to decode the opcode
             override_dense = False
-   
+
         if op < 3:
             config += [("sparse_num_inputs", 0b011)]
         else:
