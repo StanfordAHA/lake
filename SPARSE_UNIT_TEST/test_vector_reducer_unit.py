@@ -8,7 +8,7 @@ import kratos as k
 import sparse_helper
 from sparse_helper import convert_stream_to_onyx_interp
 from sam.sim.src.base import remove_emptystr
-from sam.sim.src.accumulator import SpAcc1
+from sam.sim.src.accumulator import SparseAccumulator1
 from sam.sim.test.test import TIMEOUT
 
 
@@ -131,7 +131,7 @@ def create_gold(in_crd0, in_crd1, in_val):
     done = False
     time = 0
 
-    spacc = SpAcc1(valtype=int, val_stkn=True)
+    spacc = SparseAccumulator1(valtype=int, val_stkn=True)
     out_crd = []
     out_val = []
 
