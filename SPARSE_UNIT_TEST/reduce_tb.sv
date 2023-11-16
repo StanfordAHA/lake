@@ -37,9 +37,9 @@ module reduce_tb;
     ) dut (
         .clk(clk),
         .clk_en(clk_en),
-        .pe_bit0(1'b0),
-        .pe_bit1(1'b0),
-        .pe_bit2(1'b0),
+        .bit0(1'b0),
+        .bit1(1'b0),
+        .bit2(1'b0),
         // Configure pe to dense mode
         .pe_dense_mode(1'b1),
         // Configure pe to use internal connection with reduce
