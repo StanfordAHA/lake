@@ -228,6 +228,14 @@ def load_test_module(test_name):
 
         return create_gold(in_crd0, in_crd1, in_val), num_rows
 
+    elif test_name == "blank_fiber":
+        num_rows = 7
+        in_crd0 = ['S1', 'S1', 'S1', 'S1', 'S1', 'S1', 'S2', 'D']
+        in_crd1 = ['S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S1', 'D']
+        in_val = ['S1', 'S1', 'S1', 'S1', 'S1', 'S1', 'S2', 'D']
+
+        return create_gold(in_crd0, in_crd1, in_val), num_rows
+
     elif test_name == "empty_2d":
         in_crd1 = ['S0', 'S0', 'S0', 'S1', 'D']
         in_ref1 = ['S0', 'S0', 'S0', 'S1', 'D']
@@ -275,6 +283,8 @@ def load_test_module(test_name):
 
 # TODO: Modify this 
 def module_iter_basic(test_name, add_test=""):
+    print("THIS IS MY TEST")
+    print(test_name)
     [coords_and_vals, num_rows] = load_test_module(test_name)
     ic0 = coords_and_vals[0]
     ic1 = coords_and_vals[1]
@@ -362,7 +372,7 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_direct_1D():
     init_module()
-    test_list =  ["direct_2d_0", "direct_2d_1", "direct_2d_2", "direct_3d_1", "direct_3d_2", "repeated_single_element_3d"]
+    test_list =  ["direct_2d_0", "direct_2d_1", "direct_2d_2", "direct_3d_1", "direct_3d_2", "repeated_single_element_3d", "blank_fiber"]
     for test in test_list:
         module_iter_basic(test)
     #for i in range(10):
