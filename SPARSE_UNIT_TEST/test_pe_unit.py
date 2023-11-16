@@ -2,15 +2,11 @@ from lake.modules.onyx_pe import *
 from lake.modules.onyx_pe_intf import *
 import magma as m
 from magma import *
-import tempfile
 import kratos as k
 
 import sparse_helper
 from sparse_helper import convert_stream_to_onyx_interp
-from sam.sim.src.base import remove_emptystr
-# from sam.sim.src.joiner import Intersect2
-from sam.sim.test.test import TIMEOUT
-from hwtypes import SIntVector, UIntVector, BitVector, Bit
+from hwtypes import BitVector
 from lassen.utils import float2bfbin, bfbin2float
 
 from peak.family import PyFamily
@@ -26,20 +22,7 @@ random.seed(15)
 import string
 
 def init_module():
-    dut = OnyxPE(data_width=16,
-                 fifo_depth=2,
-                 defer_fifos=False,
-                 ext_pe_prefix="PE_GEN_",
-                 pe_ro=True,
-                 do_config_lift=False,
-                 add_flush=True,
-                 perf_debug=False)
-    verilog(dut, filename=f"./modules/PE.sv",
-            optimize_if=False)
     sparse_helper.update_tcl("pe_tb")
-    dut = OnyxPEInterface(data_width=16)
-    verilog(dut, filename=f"./modules/PEInterface.sv",
-            optimize_if=False)
 
 def load_test_module(test_name):
     gold_data_p = []
