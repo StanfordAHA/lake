@@ -11,7 +11,6 @@ from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.attributes.control_signal_attr import ControlSignalAttr
 from _kratos import create_wrapper_flatten
 from lake.modules.reg_fifo import RegFIFO
-from lake.modules.reg_fifo_no_almost_full import RegFIFO_no_almost_full
 
 
 class ScannerPipe(MemoryController):
