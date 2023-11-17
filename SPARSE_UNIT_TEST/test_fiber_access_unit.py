@@ -396,7 +396,7 @@ def module_iter_basic(test_name, add_test=""):
     cycle_count_line = output[output.find("write cycle count:"):]
     lines = cycle_count_line.splitlines()
     print(lines[0])
-    print(lines[1])
+    #print(lines[1])
 
     coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
     pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
