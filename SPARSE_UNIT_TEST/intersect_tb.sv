@@ -16,6 +16,7 @@ module intersect_tb;
     reg [0:0] config_read ;
     reg [0:0] config_write ;
     reg [0:0] joiner_op;
+    reg [0:0] vector_reduce_mode;
     wire [63:0] cycle_count ;
 
     // wire for dut input & output
@@ -74,7 +75,8 @@ module intersect_tb;
         .pos_out_1_ready(pos_out_1_ready),
         .rst_n(rst_n),
         .flush(flush),
-        .tile_en(tile_en)
+        .tile_en(tile_en),
+        .vector_reduce_mode(vector_reduce_mode)
     );
 
     glb_write #(
@@ -186,6 +188,7 @@ module intersect_tb;
 
         clk = 0;
         joiner_op = 1'b0;
+        vector_reduce_mode = 1'b0;
         clk_en = 1;
         rst_n = 0;
         tile_en = 1;

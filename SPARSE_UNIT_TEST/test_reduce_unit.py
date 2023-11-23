@@ -1,15 +1,17 @@
-from lake.modules.reg_cr import *
 import magma as m
 import tempfile
 import kratos as k
-
 
 import sparse_helper
 from sparse_helper import convert_stream_to_onyx_interp
 from sam.sim.src.base import remove_emptystr
 from sam.sim.src.accumulator import Reduce
 from sam.sim.test.test import TIMEOUT
-
+from hwtypes.modifiers import strip_modifiers
+from peak.family import PyFamily
+from peak.assembler import Assembler
+from lassen.sim import PE_fc as lassen_fc
+import lassen.asm as asm
 
 import subprocess
 import os
@@ -19,14 +21,6 @@ import string
 
 
 def init_module():
-    dut = Reg(data_width=16,
-                        fifo_depth=2,
-                        defer_fifos=False,
-                        add_flush=True)
-
-    # magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
-    verilog(dut, filename=f"./modules/Reduce.sv",
-            optimize_if=False)
     sparse_helper.update_tcl("reduce_tb")
 
 def create_random_fiber(rate, size, d, f_type = "coord"):
@@ -163,14 +157,23 @@ def module_iter_basic(test_name, add_test=""):
 
     sparse_helper.write_txt("coord_in_0.txt", iv)
     sparse_helper.clear_txt("coord_out.txt")
-    
+
+    instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
+    asm_ = Assembler(instr_type)
+    # configurate pe in cluster to perform add
+    config = hex(int(asm_.assemble(asm.add())))
+    num_inputs = 0b011
+    print(config)
+
+
     #run command "make sim" to run the simulation
     if add_test == "":
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=reduce_tb.sv", "TOP=reduce_tb",\
-                             "TEST_UNIT=Reduce.sv"], capture_output=True, text=True)
+                             "TEST_UNIT=garnet.v", f"INST=+inst={config}", f"NUM_INPUTS=+num_inputs={num_inputs}"], capture_output=True, text=True)
     else:
         sim_result = subprocess.run(["make", "sim", "TEST_TAR=reduce_tb.sv",\
-                             "TOP=reduce_tb", "TX_NUM_GLB=2", "TEST_UNIT=Reduce.sv"\
+                             "TOP=reduce_tb", "TX_NUM_GLB=2", "TEST_UNIT=garnet.v",\
+                             f"INST=+inst={config}", f"NUM_INPUTS=+num_inputs={num_inputs}"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)

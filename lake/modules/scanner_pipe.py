@@ -94,6 +94,16 @@ class ScannerPipe(MemoryController):
         # self._spacc_mode = self.input("spacc_mode", 1)
         # self._spacc_mode.add_attribute(ConfigRegAttr("Sparse accum mode"))
 
+        # Vector Reduce Mode
+        self._vector_reduce_mode = self.input("vector_reduce_mode", 1)
+
+        # MO: The signals below are for VR mode
+        self._output_row_fully_accumulated = self.input("output_row_fully_accumulated", 1)
+
+        # MO: Used in VR mode
+        self._output_matrix_fully_accumulated = self.input("output_matrix_fully_accumulated", 1)
+        self._vr_fsm_state_init_blank = self.input("vr_fsm_state_init_blank", 1)
+
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
@@ -125,6 +135,7 @@ class ScannerPipe(MemoryController):
 
         self._block_rd_out_ready_in = self.input("block_rd_out_ready", 1)
         self._block_rd_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
+
         # Eos for both streams...
         # self._eos_out = self.output("eos_out", 2)
         # self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
@@ -296,6 +307,13 @@ class ScannerPipe(MemoryController):
         self._upstream_valid_in = self.input("us_pos_in_valid", 1)
         self._upstream_valid_in.add_attribute(ControlSignalAttr(is_control=True))
 
+        # MO: the below 4 are for VR mode
+        self._pos_to_read_scanner_from_vr_fsm = self.input("pos_to_read_scanner_from_vr_fsm", self.data_width + 1, packed=True)
+        self._pos_to_read_scanner_from_vr_fsm.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+
+        # self._pos_valid_to_read_scanner_from_vr_fsm = self.input("pos_valid_to_read_scanner_from_vr_fsm", 1)
+        # self._pos_valid_to_read_scanner_from_vr_fsm.add_attribute(ControlSignalAttr(is_control=True))
+
         # self._upstream_eos_in = self.input("us_eos_in", 1)
         # self._upstream_eos_in.add_attribute(ControlSignalAttr(is_control=True))
 
@@ -317,14 +335,26 @@ class ScannerPipe(MemoryController):
         self._us_fifo_inject_eos = self.var("us_fifo_inject_eos", 1)
 
         self._us_fifo_push = self.var("us_fifo_push", 1)
-        self.wire(self._us_fifo_push, kts.ternary(self._root, self._us_fifo_inject_push, self._upstream_valid_in))
+
+        # self._non_vr_mode_us_pos_fifo_eos_in = self.var("non_vr_mode_us_pos_fifo_eos_in", 1)
+        # self._non_vr_mode_us_pos_fifo_data_in = self.var("non_vr_mode_us_pos_fifo_data_in", 16)
+        # self._non_vr_mode_us_pos_fifo_push = self.var("non_vr_mode_us_pos_fifo_push", 1)
+
+        # self.wire(self._non_vr_mode_us_pos_fifo_eos_in, kts.ternary(self._root, self._us_fifo_inject_eos, self._upstream_pos_in[self.data_width]))
+        # self.wire(self._non_vr_mode_us_pos_fifo_data_in, kts.ternary(self._root, self._us_fifo_inject_data, self._upstream_pos_in[self.data_width - 1, 0]))
+        # self.wire(self._non_vr_mode_us_pos_fifo_push, kts.ternary(self._root, self._us_fifo_inject_push, self._upstream_valid_in))
 
         # indicate valid data as well
         # self.wire(self._pos_in_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2], self._upstream_coord_in)
         # self.wire(self._pos_in_us_packed[self.data_width + 1], self._upstream_valid_in)
+
         # The EOS tags on the last valid in the stream
+        # self.wire(self._pos_in_us_packed[self.data_width], kts.ternary(self._vector_reduce_mode, self._pos_to_read_scanner_from_vr_fsm[self.data_width], self._non_vr_mode_us_pos_fifo_eos_in))
         self.wire(self._pos_in_us_packed[self.data_width], kts.ternary(self._root, self._us_fifo_inject_eos, self._upstream_pos_in[self.data_width]))
+        # self.wire(self._pos_in_us_packed[self.data_width - 1, 0], kts.ternary(self._vector_reduce_mode, self._pos_to_read_scanner_from_vr_fsm[self.data_width - 1, 0], self._non_vr_mode_us_pos_fifo_data_in))
         self.wire(self._pos_in_us_packed[self.data_width - 1, 0], kts.ternary(self._root, self._us_fifo_inject_data, self._upstream_pos_in[self.data_width - 1, 0]))
+        # self.wire(self._us_fifo_push, kts.ternary(self._vector_reduce_mode, self._pos_valid_to_read_scanner_from_vr_fsm, self._non_vr_mode_us_pos_fifo_push))
+        self.wire(self._us_fifo_push, kts.ternary(self._root, self._us_fifo_inject_push, self._upstream_valid_in))
 
         self._data_out_us_packed = self.var("fifo_out_us_packed", 1 * self.data_width + 1, packed=True)
         # self.wire(self._infifo_coord_in, self._data_out_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2])
@@ -867,7 +897,7 @@ class ScannerPipe(MemoryController):
 
         # self._fifo_push = self.var("fifo_push", 1)
         self._coord_out_fifo_push = self.var("coord_out_fifo_push", 1)
-        self._pos_out_fifo_push = self.var("pos_out_fifo_push", 1)
+        self._non_vr_pos_out_fifo_push = self.var("non_vr_pos_out_fifo_push", 1)
         # self._block_rd_out_fifo_push = self.var("block_rd_out_fifo_push", 1)
 
         self._tag_eos = self.var("tag_eos", 1)
@@ -1429,7 +1459,7 @@ class ScannerPipe(MemoryController):
         self.scan_fsm_crd.output(self._crd_ID_out_to_fifo)
         self.scan_fsm_crd.output(self._crd_req_push)
         self.scan_fsm_crd.output(self._crd_rd_rsp_fifo_pop)
-        self.scan_fsm_crd.output(self._pos_out_fifo_push)
+        self.scan_fsm_crd.output(self._non_vr_pos_out_fifo_push)
         self.scan_fsm_crd.output(self._crd_pop_infifo)
         self.scan_fsm_crd.output(self._en_reg_data_in)
         self.scan_fsm_crd.output(self._pos_out_to_fifo)
@@ -1592,7 +1622,7 @@ class ScannerPipe(MemoryController):
         START_CRD.output(self._crd_ID_out_to_fifo, 0)
         START_CRD.output(self._crd_req_push, 0)
         START_CRD.output(self._crd_rd_rsp_fifo_pop, 0)
-        START_CRD.output(self._pos_out_fifo_push, 0)
+        START_CRD.output(self._non_vr_pos_out_fifo_push, 0)
         START_CRD.output(self._crd_pop_infifo, 0)
         START_CRD.output(self._en_reg_data_in, 0)
         START_CRD.output(self._pos_out_to_fifo, 0)
@@ -1618,7 +1648,7 @@ class ScannerPipe(MemoryController):
         DENSE_STRM.output(self._crd_rd_rsp_fifo_pop, 0)
         # Push out to the pos fifo if the current input is valid - if it's a stop token then push it
         # if there is room, otherwise push it if there have been few enough requests made
-        DENSE_STRM.output(self._pos_out_fifo_push, self._seg_res_fifo_valid & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full &
+        DENSE_STRM.output(self._non_vr_pos_out_fifo_push, self._seg_res_fifo_valid & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full &
                                                     kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
                                                                 kts.const(1, 1),
                                                                 (self._num_req_made_crd < self._dim_size)))
@@ -1667,7 +1697,7 @@ class ScannerPipe(MemoryController):
         SEQ_STRM.output(self._crd_req_push, self._seg_res_fifo_valid & ~self._seg_res_fifo_data_out[0][self.data_width] &
                         ~self._crd_res_fifo_full & (self._num_req_made_crd < self._seq_length_ptr_math) & ~self._pos_fifo.ports.full)
         SEQ_STRM.output(self._crd_rd_rsp_fifo_pop, 1)
-        SEQ_STRM.output(self._pos_out_fifo_push, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
+        SEQ_STRM.output(self._non_vr_pos_out_fifo_push, kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
                                                              ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid,
                                                              self._any_crd_grant_push & (self._num_req_made_crd < self._seq_length_ptr_math) &
                                                              ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_valid))
@@ -1707,7 +1737,7 @@ class ScannerPipe(MemoryController):
                                                               kts.const(1, self._crd_ID_out_to_fifo.width)))
         FREE_CRD.output(self._crd_req_push, 1)
         FREE_CRD.output(self._crd_rd_rsp_fifo_pop, 0)
-        FREE_CRD.output(self._pos_out_fifo_push, 0)
+        FREE_CRD.output(self._non_vr_pos_out_fifo_push, 0)
         FREE_CRD.output(self._crd_pop_infifo, 0)
         FREE_CRD.output(self._en_reg_data_in, 0)
         FREE_CRD.output(self._pos_out_to_fifo, 0)
@@ -1730,7 +1760,7 @@ class ScannerPipe(MemoryController):
         FREE_CRD2.output(self._crd_ID_out_to_fifo, 1)
         FREE_CRD2.output(self._crd_req_push, 1)
         FREE_CRD2.output(self._crd_rd_rsp_fifo_pop, 0)
-        FREE_CRD2.output(self._pos_out_fifo_push, 0)
+        FREE_CRD2.output(self._non_vr_pos_out_fifo_push, 0)
         FREE_CRD2.output(self._crd_pop_infifo, 0)
         FREE_CRD2.output(self._en_reg_data_in, 0)
         FREE_CRD2.output(self._pos_out_to_fifo, 0)
@@ -1752,7 +1782,7 @@ class ScannerPipe(MemoryController):
         BLOCK_1_SIZE_REQ.output(self._crd_ID_out_to_fifo, 0)
         BLOCK_1_SIZE_REQ.output(self._crd_req_push, ~self._crd_res_fifo_full)
         BLOCK_1_SIZE_REQ.output(self._crd_rd_rsp_fifo_pop, 0)
-        BLOCK_1_SIZE_REQ.output(self._pos_out_fifo_push, 0)
+        BLOCK_1_SIZE_REQ.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_1_SIZE_REQ.output(self._crd_pop_infifo, 0)
         BLOCK_1_SIZE_REQ.output(self._en_reg_data_in, 0)
         BLOCK_1_SIZE_REQ.output(self._pos_out_to_fifo, 0)
@@ -1776,7 +1806,7 @@ class ScannerPipe(MemoryController):
         BLOCK_1_SIZE_REC.output(self._crd_ID_out_to_fifo, 0)
         BLOCK_1_SIZE_REC.output(self._crd_req_push, 0)
         BLOCK_1_SIZE_REC.output(self._crd_rd_rsp_fifo_pop, 1)
-        BLOCK_1_SIZE_REC.output(self._pos_out_fifo_push, 0)
+        BLOCK_1_SIZE_REC.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_1_SIZE_REC.output(self._crd_pop_infifo, 0)
         BLOCK_1_SIZE_REC.output(self._en_reg_data_in, 0)
         BLOCK_1_SIZE_REC.output(self._pos_out_to_fifo, 0)
@@ -1800,7 +1830,7 @@ class ScannerPipe(MemoryController):
         # BLOCK_1_RD.output(self._crd_req_push, (self._num_req_made_crd < self._ptr_reg) & self._crd_grant_push & ~self._crd_res_fifo_full)
         BLOCK_1_RD.output(self._crd_req_push, (self._num_req_made_crd < self._ptr_reg) & ~self._crd_res_fifo_full)
         BLOCK_1_RD.output(self._crd_rd_rsp_fifo_pop, (self._num_req_rec_crd < self._ptr_reg))
-        BLOCK_1_RD.output(self._pos_out_fifo_push, 0)
+        BLOCK_1_RD.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_1_RD.output(self._crd_pop_infifo, 0)
         BLOCK_1_RD.output(self._en_reg_data_in, 0)
         BLOCK_1_RD.output(self._pos_out_to_fifo, 0)
@@ -1824,7 +1854,7 @@ class ScannerPipe(MemoryController):
         BLOCK_2_SIZE_REQ.output(self._crd_ID_out_to_fifo, 1)
         BLOCK_2_SIZE_REQ.output(self._crd_req_push, ~self._crd_res_fifo_full)
         BLOCK_2_SIZE_REQ.output(self._crd_rd_rsp_fifo_pop, 0)
-        BLOCK_2_SIZE_REQ.output(self._pos_out_fifo_push, 0)
+        BLOCK_2_SIZE_REQ.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_2_SIZE_REQ.output(self._crd_pop_infifo, 0)
         BLOCK_2_SIZE_REQ.output(self._en_reg_data_in, 0)
         BLOCK_2_SIZE_REQ.output(self._pos_out_to_fifo, 0)
@@ -1846,7 +1876,7 @@ class ScannerPipe(MemoryController):
         BLOCK_2_SIZE_REC.output(self._crd_ID_out_to_fifo, 0)
         BLOCK_2_SIZE_REC.output(self._crd_req_push, 0)
         BLOCK_2_SIZE_REC.output(self._crd_rd_rsp_fifo_pop, 1)
-        BLOCK_2_SIZE_REC.output(self._pos_out_fifo_push, 0)
+        BLOCK_2_SIZE_REC.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_2_SIZE_REC.output(self._crd_pop_infifo, 0)
         BLOCK_2_SIZE_REC.output(self._en_reg_data_in, 0)
         BLOCK_2_SIZE_REC.output(self._pos_out_to_fifo, 0)
@@ -1868,7 +1898,7 @@ class ScannerPipe(MemoryController):
         BLOCK_2_RD.output(self._crd_ID_out_to_fifo, 1)
         BLOCK_2_RD.output(self._crd_req_push, (self._num_req_made_crd < self._ptr_reg) & ~self._crd_res_fifo_full)
         BLOCK_2_RD.output(self._crd_rd_rsp_fifo_pop, (self._num_req_rec_crd < self._ptr_reg))
-        BLOCK_2_RD.output(self._pos_out_fifo_push, 0)
+        BLOCK_2_RD.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_2_RD.output(self._crd_pop_infifo, 0)
         BLOCK_2_RD.output(self._en_reg_data_in, 0)
         BLOCK_2_RD.output(self._pos_out_to_fifo, 0)
@@ -1891,7 +1921,7 @@ class ScannerPipe(MemoryController):
         READOUT_SYNC_LOCK.output(self._crd_ID_out_to_fifo, 0)
         READOUT_SYNC_LOCK.output(self._crd_req_push, 0)
         READOUT_SYNC_LOCK.output(self._crd_rd_rsp_fifo_pop, 0)
-        READOUT_SYNC_LOCK.output(self._pos_out_fifo_push, 0)
+        READOUT_SYNC_LOCK.output(self._non_vr_pos_out_fifo_push, 0)
         READOUT_SYNC_LOCK.output(self._crd_pop_infifo, 0)
         READOUT_SYNC_LOCK.output(self._en_reg_data_in, 0)
         READOUT_SYNC_LOCK.output(self._pos_out_to_fifo, 0)
@@ -1915,7 +1945,7 @@ class ScannerPipe(MemoryController):
         PASS_DONE_CRD.output(self._crd_ID_out_to_fifo, 0)
         PASS_DONE_CRD.output(self._crd_req_push, 0)
         PASS_DONE_CRD.output(self._crd_rd_rsp_fifo_pop, 0)
-        PASS_DONE_CRD.output(self._pos_out_fifo_push, ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_done_out & self._seg_res_fifo_valid)
+        PASS_DONE_CRD.output(self._non_vr_pos_out_fifo_push, ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full & self._seg_res_fifo_done_out & self._seg_res_fifo_valid)
         PASS_DONE_CRD.output(self._crd_pop_infifo, 0)
         PASS_DONE_CRD.output(self._en_reg_data_in, 0)
         PASS_DONE_CRD.output(self._pos_out_to_fifo, self.DONE_PROXY)
@@ -1939,7 +1969,7 @@ class ScannerPipe(MemoryController):
         DONE_CRD.output(self._crd_ID_out_to_fifo, 0)
         DONE_CRD.output(self._crd_req_push, 0)
         DONE_CRD.output(self._crd_rd_rsp_fifo_pop, 0)
-        DONE_CRD.output(self._pos_out_fifo_push, 0)
+        DONE_CRD.output(self._non_vr_pos_out_fifo_push, 0)
         DONE_CRD.output(self._crd_pop_infifo, 0)
         DONE_CRD.output(self._en_reg_data_in, 0)
         DONE_CRD.output(self._pos_out_to_fifo, 0)
@@ -1987,9 +2017,13 @@ class ScannerPipe(MemoryController):
 
         self.wire(self._coord_data_in_packed, self._crd_res_fifo_data_out)
 
+        self._S_level_0 = self.var("S_level_0", self.data_width + 1)
+        self.wire(self._S_level_0, kts.concat(kts.const(1, 1), kts.const(0, 16)))
         self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
-        self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])
+        self.wire(self._coord_out[self.data_width], kts.ternary(self._vr_fsm_state_init_blank, self._S_level_0[self.data_width], self._coord_data_out_packed[self.data_width]))
+        self.wire(self._coord_out[self.data_width - 1, 0], kts.ternary(self._vr_fsm_state_init_blank, self._S_level_0[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0]))
+        # self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
+        # self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])
 
         # Signal for getting pushed done
         self._set_final_pushed_done = self.var("set_final_pushed_done", 1)
@@ -2022,6 +2056,13 @@ class ScannerPipe(MemoryController):
         # self.wire(self._clr_final_pushed_done, self._crd_res_fifo_valid & ~self._block_mode & crd_res_routing_token & self._spacc_mode & ~self._crd_res_fifo_data_out[0])
         self.wire(self._clr_final_pushed_done, 0)
 
+        self._non_vr_coord_fifo_push = self.var("non_vr_coord_fifo_push", 1)
+        self.wire(self._non_vr_coord_fifo_push, self._crd_res_fifo_valid & ~self._block_mode & ~crd_res_routing_token)
+        self._coord_fifo_push = self.var("coord_fifo_push", 1)
+        self.wire(self._coord_fifo_push, kts.ternary(self._vector_reduce_mode, (self._non_vr_coord_fifo_push & ~self._output_row_fully_accumulated), self._non_vr_coord_fifo_push))
+
+        # self._almost_full_dummy = self.output("almost_full_dummy", 1)
+
         self.add_child(f"coordinate_fifo",
                        self._coord_fifo,
                        clk=self._gclk,
@@ -2029,13 +2070,21 @@ class ScannerPipe(MemoryController):
                        clk_en=self._clk_en,
                     #    push=self._crd_res_fifo_valid & ~self._block_mode & ~(self._spacc_mode & self._readout_loop & self._final_pushed_done),
                     #    push=self._crd_res_fifo_valid & ~self._block_mode & ~(self._spacc_mode & self._final_pushed_done) & ~crd_res_routing_token,
-                       push=self._crd_res_fifo_valid & ~self._block_mode & ~crd_res_routing_token,
+                    #   push=self._crd_res_fifo_valid & ~self._block_mode & ~crd_res_routing_token,
+                        push=self._coord_fifo_push,
+
                     #    push=self._crd_res_fifo_valid & ~self._block_mode & (self._readout_dst_out == 0),
                        pop=self._coord_out_ready_in,
                        data_in=self._coord_data_in_packed,
+                       # almost_full=self._almost_full_dummy,
                        data_out=self._coord_data_out_packed)
 
-        self.wire(self._coord_out_valid_out, ~self._coord_fifo.ports.empty)
+        # self.wire(self._coord_out_valid_out, self._my_mux)
+        # self.wire(self._coord_out_valid_out, ~self._coord_fifo.ports.empty)
+
+        # self.wire(self._coord_out_valid_out, kts.ternary(self._vr_fsm_state_init_blank, kts.const(1, 1), ~self._coord_fifo.ports.empty))
+        self.wire(self._coord_out_valid_out, (self._vr_fsm_state_init_blank | ~self._coord_fifo.ports.empty))
+
         self.wire(self._fifo_full_pre[0], self._coord_fifo.ports.full)
 
         # self.wire(self._crd_res_fifo_pop, ~self._coord_fifo.ports.full)
@@ -2066,11 +2115,17 @@ class ScannerPipe(MemoryController):
         self._pos_data_in_packed = self.var("pos_fifo_in_packed", self.data_width + 1, packed=True)
         # self.wire(self._pos_data_in_packed[self.data_width], self._tag_eos)
         # self.wire(self._pos_data_in_packed[self.data_width - 1, 0], self._pos_out_to_fifo)
-        self.wire(self._pos_data_in_packed, self._pos_out_to_fifo)
+        self.wire(self._pos_data_in_packed, kts.ternary(self._vector_reduce_mode, self._coord_data_in_packed, self._pos_out_to_fifo))
+
+        self._pos_out_fifo_push = self.var("pos_out_fifo_push", 1)
+        self.wire(self._pos_out_fifo_push, kts.ternary(self._vector_reduce_mode, (self._non_vr_coord_fifo_push & self._output_row_fully_accumulated), self._non_vr_pos_out_fifo_push))
 
         self._pos_data_out_packed = self.var("pos_fifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._pos_out[self.data_width], self._pos_data_out_packed[self.data_width])
         self.wire(self._pos_out[self.data_width - 1, 0], self._pos_data_out_packed[self.data_width - 1, 0])
+
+        self._done_token = self.var("done_token", self.data_width + 1)
+        self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
 
         self.add_child(f"pos_fifo",
                        self._pos_fifo,
@@ -2082,8 +2137,18 @@ class ScannerPipe(MemoryController):
                        data_in=self._pos_data_in_packed,
                        data_out=self._pos_data_out_packed)
 
-        self.wire(self._pos_out_valid_out, ~self._pos_fifo.ports.empty)
+        self._pos_out_valid_mux_sel = self.var("pos_out_valid_mux_sel", 1)
+        self.wire(self._pos_out_valid_mux_sel, self._vector_reduce_mode & (self._pos_out == self._done_token))
+        # self.wire(self._pos_out_valid_out, ~self._pos_fifo.ports.empty)
+        self.wire(self._pos_out_valid_out, (~self._pos_out_valid_mux_sel & ~self._pos_fifo.ports.empty) | (self._pos_out_valid_mux_sel & (self._output_matrix_fully_accumulated & ~self._pos_fifo.ports.empty)))
+        # self.wire(self._pos_out_valid_out, kts.ternary((self._vector_reduce_mode & (self._pos_out == self._done_token)), (self._output_matrix_fully_accumulated & ~self._pos_fifo.ports.empty), ~self._pos_fifo.ports.empty))
         self.wire(self._fifo_full_pre[1], self._pos_fifo.ports.full)
+
+        # MO: For VR mode
+        self._rs_has_prepped_ds_row = self.output("rs_has_prepped_ds_row", 1)
+        rs_has_prepped_ds_row_sticky = sticky_flag(self, (self._pos_data_in_packed == self._done_token) & self._pos_out_fifo_push & ~self._fifo_full_pre[1],
+                                    clear=self._vr_fsm_state_init_blank, name="rs_has_prepped_ds_row_sticky")
+        self.wire(self._rs_has_prepped_ds_row, rs_has_prepped_ds_row_sticky)
 
         ### Block Read FIFO
         self.add_child(f"block_rd_fifo",

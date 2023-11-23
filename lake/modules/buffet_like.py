@@ -342,6 +342,7 @@ class BuffetLike(MemoryController):
 
         # Read fifos joined
         self._read_joined = [self.var(f"read_joined_{i}", 1) for i in range(self.num_read_ports)]
+
         if self.num_read_ports == 1:
             [self.wire(self._read_joined[i], self._rd_ID_fifo_valid[i] & self._rd_op_fifo_valid[i] & self._rd_addr_fifo_valid[i]) for i in range(self.num_read_ports)]
         else:
@@ -373,6 +374,7 @@ class BuffetLike(MemoryController):
 
         self._read_pop_full = self.var("read_pop_full", self.num_ID)
         self._read_pop = [self.var(f"read_pop_{i}", 1) for i in range(self.num_read_ports)]
+        self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=kts.const(1, 1), name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
 
         if self.optimize_wide and self.mem_width > self.data_width:
 
@@ -570,6 +572,9 @@ class BuffetLike(MemoryController):
             else:
                 self._last_read_addr = [register(self, self._rd_addr_fifo_out_addr[i][self.mem_addr_bit_range_inner], enable=rd_acq[i], name=f"last_read_addr_{i}", packed=True) for i in range(self.num_read_ports)]
                 self._last_read_addr_wide = [register(self, self._addr_to_mem, enable=rd_acq[i], name=f"last_read_addr_wide_{i}", packed=True) for i in range(self.num_read_ports)]
+                # TODO: important. This signal only works for num_read_ports == 2 and self.optimize_wide and self.mem_width > self.data_width
+                self._read_addr_delayed = [register(self, self._rd_addr_fifo_out_addr[i], enable=self._rd_addr_fifo_pop[i] & self._rd_addr_fifo_valid[i],
+                                                    name=f"read_addr_delayed_{i}", packed=True) for i in range(self.num_read_ports)]
 
             # self._last_read_addr = register(self, self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner], enable=self._ren_to_mem, name="last_read_addr", packed=True)
             # self._last_read_addr_wide = register(self, self._addr_to_mem, enable=self._ren_to_mem, name="last_read_addr_wide", packed=True)
@@ -590,6 +595,7 @@ class BuffetLike(MemoryController):
 
             # Determine whether to use the output register of the SRAM or the cached word
             self._use_cached_read = [self.var(f"use_cached_read_{idx}", 1) for idx in range(self.num_ID)]
+            self._from_cached_read = [self.var(f"from_cached_read_{idx}", 1) for idx in range(self.num_ID)]
             # First, check that the word is valid (which is set when the proper read happens)
             # Then, if the last read was to this word, we check that the id and addr match (they should)
             # Otherwise, we check the op, addr, ID and joined read valids
@@ -627,27 +633,40 @@ class BuffetLike(MemoryController):
                                                            self._data_from_mem[self._last_read_addr[0][self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
 
             else:
-                [self.wire(self._use_cached_read[idx], self._read_wide_word_valid[idx] &
-                                                    #    (self._read_word_addr[idx][self.mem_addr_bit_range_outer] == self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer]) &
-                                                    #    (self._read_word_addr[idx] == self._addr_to_mem) &
-                                                    #    self._read_joined &
-                                                    #    kts.ternary((self._valid_from_mem & self._ren_full_d1[idx]),
-                                                    kts.ternary((self._valid_from_mem & self._ren_full_d1[idx]),
-                                                                        (self._last_read_addr_wide[idx] == self._read_word_addr[idx]),
-                                                                #    ((self._rd_addr_fifo_out_addr + self._blk_base[idx] + self._buffet_base[idx]) == self._read_word_addr[idx]) &
-                                                                #    ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx] + self._buffet_base[idx]) == self._read_word_addr[idx]) &
-                                                                #    ((((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx]) % (self._buffet_capacity[idx] >> self.subword_addr_bits)) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
-                                                                #    ((((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx]) >> self._buffet_capacity_log[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
-                                                                ((((self._rd_addr_fifo_out_addr[idx][self.mem_addr_bit_range_outer] + self._blk_base[idx]) & self._buffet_capacity_mask[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
-                                                                        # (self._addr_to_mem == self._read_word_addr[idx]) &
-                                                                        (self._rd_op_fifo_out_op[idx] == kts.const(1, 2)) &
-                                                                        # ~self._valid_from_mem &
-                                                                        ~self._ren_full_d1[idx] &
-                                                                        self._read_joined[idx])) for idx in range(self.num_ID)]
+                # [self.wire(self._use_cached_read[idx], self._read_wide_word_valid[idx] &
+                #                                     #    (self._read_word_addr[idx][self.mem_addr_bit_range_outer] == self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer]) &
+                #                                     #    (self._read_word_addr[idx] == self._addr_to_mem) &
+                #                                     #    self._read_joined &
+                #                                     #    kts.ternary((self._valid_from_mem & self._ren_full_d1[idx]),
+                #                                     kts.ternary((self._valid_from_mem & self._ren_full_d1[idx]),
+                #                                                         (self._last_read_addr_wide[idx] == self._read_word_addr[idx]),
+                #                                                 #    ((self._rd_addr_fifo_out_addr + self._blk_base[idx] + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                #                                                 #    ((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx] + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                #                                                 #    ((((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx]) % (self._buffet_capacity[idx] >> self.subword_addr_bits)) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                #                                                 #    ((((self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_outer] + self._blk_base[idx]) >> self._buffet_capacity_log[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                #                                                 ((((self._rd_addr_fifo_out_addr[idx][self.mem_addr_bit_range_outer] + self._blk_base[idx]) & self._buffet_capacity_mask[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                #                                                         # (self._addr_to_mem == self._read_word_addr[idx]) &
+                #                                                         (self._rd_op_fifo_out_op[idx] == kts.const(1, 2)) &
+                #                                                         # ~self._valid_from_mem &
+                #                                                         ~self._ren_full_d1[idx] &
+                #                                                         self._read_joined[idx])) for idx in range(self.num_ID)]
 
-                [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx] & self._read_wide_word_valid[idx] & ~self._ren_full_d1[idx],
-                                                           self._read_wide_word[idx][self._rd_addr_fifo_out_addr[idx][self.mem_addr_bit_range_inner]],
-                                                        #    self._data_from_mem[self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
+                [self.wire(self._use_cached_read[idx], self._read_wide_word_valid[idx] &
+                                                        ((((self._rd_addr_fifo_out_addr[idx][self.mem_addr_bit_range_outer] + self._blk_base[idx]) & self._buffet_capacity_mask[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                                                                (self._rd_op_fifo_out_op[idx] == kts.const(1, 2)) &
+                                                                # ~self._ren_full_d1[idx] &
+                                                                self._read_joined[idx]) for idx in range(self.num_ID)]
+
+                [self.wire(self._from_cached_read[idx], self._read_wide_word_valid[idx] &
+                                                                ((((self._read_addr_delayed[idx][self.mem_addr_bit_range_outer] + self._blk_base[idx]) & self._buffet_capacity_mask[idx]) + self._buffet_base[idx]) == self._read_word_addr[idx]) &
+                                                                self._read_joined_d1[idx]) for idx in range(self.num_ID)]
+
+                # [self.wire(self._chosen_read[idx], kts.ternary(self._use_cached_read[idx] & self._read_wide_word_valid[idx] & ~self._ren_full_d1[idx],
+                #                                            self._read_wide_word[idx][self._rd_addr_fifo_out_addr[idx][self.mem_addr_bit_range_inner]],
+                #                                         #    self._data_from_mem[self._rd_addr_fifo_out_addr[self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
+                #                                            self._data_from_mem[self._last_read_addr[idx][self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
+                [self.wire(self._chosen_read[idx], kts.ternary(~self._ren_full_d1[idx],
+                                                           self._read_wide_word[idx][self._read_addr_delayed[idx][self.mem_addr_bit_range_inner]],
                                                            self._data_from_mem[self._last_read_addr[idx][self.mem_addr_bit_range_inner]])) for idx in range(self.num_ID)]
             #  (self._rd_ID_fifo_out_data == kts.const(idx, 1)) &
             #    (self._last_read_ID == kts.const(idx, 1)) &
@@ -861,7 +880,7 @@ class BuffetLike(MemoryController):
         self._rd_rsp_fifo_in_data = [self.var(f"rd_rsp_fifo_{i}_in_data", self.data_width + 1, packed=True) for i in range(self.num_read_ports)]
         self._rd_rsp_out_fifo = [RegFIFO(data_width=self._rd_rsp_fifo_in_data[i].width, width_mult=1,
                                         depth=self.fifo_depth, min_depth=2, defer_hrdwr_gen=self.defer_fifos,
-                                        almost_full_diff=1) for i in range(self.num_read_ports)]
+                                        almost_full_diff=0) for i in range(self.num_read_ports)]
         [self._rd_rsp_out_fifo[i].add_attribute(SharedFifoAttr(direction="OUT")) for i in range(self.num_read_ports)]
 
         [self.add_child(f"rd_rsp_fifo_{i}",
@@ -898,12 +917,17 @@ class BuffetLike(MemoryController):
             # Shove back in the chosen read or the block size
             if self.num_read_ports == 2:
 
-                [self.wire(self._rd_rsp_fifo_in_data[i][self.data_width - 1, 0], kts.ternary(self._use_cached_read[i] & self._read_wide_word_valid[i],
+                # [self.wire(self._rd_rsp_fifo_in_data[i][self.data_width - 1, 0], kts.ternary(self._use_cached_read[i] & self._read_wide_word_valid[i],
+                #                                                                      self._chosen_read[i], chosen_size_block)) for i in range(self.num_read_ports)]
+                # [self.wire(self._rd_rsp_fifo_in_data[i][self.data_width], kts.ternary(self._use_cached_read[i],
+                #                                                                   kts.const(0, 1),
+                #                                                                   kts.const(1, 1))) for i in range(self.num_read_ports)]
+
+                [self.wire(self._rd_rsp_fifo_in_data[i][self.data_width - 1, 0], kts.ternary((self._from_cached_read[i]) & self._read_wide_word_valid[i],
                                                                                      self._chosen_read[i], chosen_size_block)) for i in range(self.num_read_ports)]
-                [self.wire(self._rd_rsp_fifo_in_data[i][self.data_width], kts.ternary(self._use_cached_read[i],
+                [self.wire(self._rd_rsp_fifo_in_data[i][self.data_width], kts.ternary(self._from_cached_read[i],
                                                                                   kts.const(0, 1),
                                                                                   kts.const(1, 1))) for i in range(self.num_read_ports)]
-
             else:
                 self.wire(self._rd_rsp_fifo_in_data[0][self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0],
                                                                                      self._chosen_read[0],
@@ -921,7 +945,8 @@ class BuffetLike(MemoryController):
             # self.wire(self._rd_rsp_fifo_push, self._valid_from_mem | (kts.concat(*self._use_cached_read).r_or()) | self._size_request_full.r_or())
             # [self.wire(self._rd_rsp_fifo_push[i], self._valid_from_mem | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
             if self.num_read_ports == 2:
-                [self.wire(self._rd_rsp_fifo_push[i], self._ren_full_d1[i] | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
+                # [self.wire(self._rd_rsp_fifo_push[i], self._ren_full_d1[i] | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
+                [self.wire(self._rd_rsp_fifo_push[i], self._from_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
             else:
                 [self.wire(self._rd_rsp_fifo_push[i], self._valid_from_mem | (kts.concat(*self._use_cached_read)).r_or() | self._size_request_full.r_or()) for i in range(self.num_read_ports)]
 
@@ -1333,7 +1358,8 @@ class BuffetLike(MemoryController):
                                                                                  kts.ternary(op_fifo_use == 1,
                                                                                             #  (self._mem_acq[2 * ID_idx + 1] | self._use_cached_read[ID_idx]) & ~self._rd_rsp_fifo_full,
                                                                                             #  (self._mem_acq[2 * ID_idx + 1] | (self._use_cached_read[ID_idx] & ~self._valid_from_mem)) & ~rd_rsp_fifo_full_proxy,
-                                                                                             (self._mem_acq[2 * ID_idx + 1] | (self._use_cached_read[ID_idx] & ~self._ren_full_d1[ID_idx])) & ~rd_rsp_fifo_full_proxy,
+                                                                                            #  (self._mem_acq[2 * ID_idx + 1] | (self._use_cached_read[ID_idx] & ~self._ren_full_d1[ID_idx])) & ~rd_rsp_fifo_full_proxy,
+                                                                                             (self._mem_acq[2 * ID_idx + 1] | (self._use_cached_read[ID_idx])) & ~rd_rsp_fifo_full_proxy,
                                                                                              kts.const(1, 1))) &
                                                                                  read_joined_use &
                                                                                  self._rd_ID_fifo_check)
