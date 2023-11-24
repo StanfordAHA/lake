@@ -2107,9 +2107,9 @@ class ScannerPipe(MemoryController):
         #                                                                                   ~self._block_rd_fifo.ports.full,
         #                                                                                   ~self._coord_fifo.ports.full)),
         #                                                           ~self._coord_fifo.ports.full)))
-        self.wire(self._crd_res_fifo_pop, kts.ternary(self._block_mode,
+        self.wire(self._crd_res_fifo_pop, kts.ternary(self._vector_reduce_mode & self._output_row_fully_accumulated, ~self._pos_fifo.ports.full, kts.ternary(self._block_mode,
                                                       ~self._block_rd_fifo.ports.full,
-                                                      ~self._coord_fifo.ports.full))
+                                                      ~self._coord_fifo.ports.full)))
 
         ### POS FIFO
         self._pos_data_in_packed = self.var("pos_fifo_in_packed", self.data_width + 1, packed=True)
