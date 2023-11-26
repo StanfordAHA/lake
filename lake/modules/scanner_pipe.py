@@ -102,7 +102,8 @@ class ScannerPipe(MemoryController):
 
         # MO: Used in VR mode
         self._output_matrix_fully_accumulated = self.input("output_matrix_fully_accumulated", 1)
-        self._vr_fsm_state_init_blank = self.input("vr_fsm_state_init_blank", 1)
+        self._vr_fsm_state_init_blank_S0 = self.input("vr_fsm_state_init_blank_S0", 1)
+        self._vr_fsm_state_init_blank_DONE = self.input("vr_fsm_state_init_blank_DONE", 1)
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -2019,9 +2020,12 @@ class ScannerPipe(MemoryController):
 
         self._S_level_0 = self.var("S_level_0", self.data_width + 1)
         self.wire(self._S_level_0, kts.concat(kts.const(1, 1), kts.const(0, 16)))
+        self._done_token = self.var("done_token", self.data_width + 1)
+        self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
         self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
-        self.wire(self._coord_out[self.data_width], kts.ternary(self._vr_fsm_state_init_blank, self._S_level_0[self.data_width], self._coord_data_out_packed[self.data_width]))
-        self.wire(self._coord_out[self.data_width - 1, 0], kts.ternary(self._vr_fsm_state_init_blank, self._S_level_0[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0]))
+        self.wire(self._coord_out[self.data_width], kts.ternary(self._vr_fsm_state_init_blank_DONE, self._done_token[self.data_width], kts.ternary(self._vr_fsm_state_init_blank_S0, self._S_level_0[self.data_width], self._coord_data_out_packed[self.data_width])))
+        self.wire(self._coord_out[self.data_width - 1, 0], kts.ternary(self._vr_fsm_state_init_blank_DONE, self._done_token[self.data_width - 1, 0], kts.ternary(self._vr_fsm_state_init_blank_S0, self._S_level_0[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])))
+        
         # self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
         # self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])
 
@@ -2082,8 +2086,8 @@ class ScannerPipe(MemoryController):
         # self.wire(self._coord_out_valid_out, self._my_mux)
         # self.wire(self._coord_out_valid_out, ~self._coord_fifo.ports.empty)
 
-        # self.wire(self._coord_out_valid_out, kts.ternary(self._vr_fsm_state_init_blank, kts.const(1, 1), ~self._coord_fifo.ports.empty))
-        self.wire(self._coord_out_valid_out, (self._vr_fsm_state_init_blank | ~self._coord_fifo.ports.empty))
+        # self.wire(self._coord_out_valid_out, kts.ternary(self._vr_fsm_state_init_blank_S0, kts.const(1, 1), ~self._coord_fifo.ports.empty))
+        self.wire(self._coord_out_valid_out, (self._vr_fsm_state_init_blank_S0 | self._vr_fsm_state_init_blank_DONE | ~self._coord_fifo.ports.empty))
 
         self.wire(self._fifo_full_pre[0], self._coord_fifo.ports.full)
 
@@ -2124,9 +2128,6 @@ class ScannerPipe(MemoryController):
         self.wire(self._pos_out[self.data_width], self._pos_data_out_packed[self.data_width])
         self.wire(self._pos_out[self.data_width - 1, 0], self._pos_data_out_packed[self.data_width - 1, 0])
 
-        self._done_token = self.var("done_token", self.data_width + 1)
-        self.wire(self._done_token, kts.concat(kts.const(1, 1), kts.const(0, 7), kts.const(1, 1), kts.const(0, 8)))
-
         self.add_child(f"pos_fifo",
                        self._pos_fifo,
                        clk=self._gclk,
@@ -2147,7 +2148,7 @@ class ScannerPipe(MemoryController):
         # MO: For VR mode
         self._rs_has_prepped_ds_row = self.output("rs_has_prepped_ds_row", 1)
         rs_has_prepped_ds_row_sticky = sticky_flag(self, (self._pos_data_in_packed == self._done_token) & self._pos_out_fifo_push & ~self._fifo_full_pre[1],
-                                    clear=self._vr_fsm_state_init_blank, name="rs_has_prepped_ds_row_sticky")
+                                    clear=self._vr_fsm_state_init_blank_S0, name="rs_has_prepped_ds_row_sticky")
         self.wire(self._rs_has_prepped_ds_row, rs_has_prepped_ds_row_sticky)
 
         ### Block Read FIFO
