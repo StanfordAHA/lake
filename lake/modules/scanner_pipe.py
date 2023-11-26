@@ -2025,7 +2025,7 @@ class ScannerPipe(MemoryController):
         self._coord_data_out_packed = self.var("coord_fifo_out_packed", self.data_width + 1, packed=True)
         self.wire(self._coord_out[self.data_width], kts.ternary(self._vr_fsm_state_init_blank_DONE, self._done_token[self.data_width], kts.ternary(self._vr_fsm_state_init_blank_S0, self._S_level_0[self.data_width], self._coord_data_out_packed[self.data_width])))
         self.wire(self._coord_out[self.data_width - 1, 0], kts.ternary(self._vr_fsm_state_init_blank_DONE, self._done_token[self.data_width - 1, 0], kts.ternary(self._vr_fsm_state_init_blank_S0, self._S_level_0[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])))
-        
+
         # self.wire(self._coord_out[self.data_width], self._coord_data_out_packed[self.data_width])
         # self.wire(self._coord_out[self.data_width - 1, 0], self._coord_data_out_packed[self.data_width - 1, 0])
 

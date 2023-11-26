@@ -366,14 +366,14 @@ class Intersect(MemoryController):
         # The only way to leave DRAIN is to get new data where both streams are valid but not both streams are eos
         # In VR_mode, DRAIN transitions "unconditionally" to PASS_DONE
         # CHANGE 1
-        #DRAIN.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or())
+        # DRAIN.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or())
         DRAIN.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or() & valid_concat.r_and())
         DRAIN.next(DONE, ~self._vector_reduce_mode & ~self._all_have_eos & valid_concat.r_and())
         DRAIN.next(DRAIN, None)
 
         # PASS_DONE can only be accessed in VR mode to insert a semi-DONE token into the outgoing stream.
         # CHANGE 2
-        #PASS_DONE.next(WAIT_FOR_VALID, ~self._fifo_full.r_or())
+        # PASS_DONE.next(WAIT_FOR_VALID, ~self._fifo_full.r_or())
         PASS_DONE.next(WAIT_FOR_VALID, ~self._fifo_full.r_or() & valid_concat.r_and())
         PASS_DONE.next(PASS_DONE, None)
 
@@ -486,12 +486,12 @@ class Intersect(MemoryController):
         # PASS_DONE
         ###########
         # CHANGE 4
-        #PASS_DONE.output(self._pop_fifo[0], (self._coord_in_fifo_valid_in[0] & (self._coord_in_fifo_in[0] == self._done_token)))
-        #PASS_DONE.output(self._pop_fifo[1], (self._coord_in_fifo_valid_in[1] & (self._coord_in_fifo_in[1] == self._done_token)))
+        # PASS_DONE.output(self._pop_fifo[0], (self._coord_in_fifo_valid_in[0] & (self._coord_in_fifo_in[0] == self._done_token)))
+        # PASS_DONE.output(self._pop_fifo[1], (self._coord_in_fifo_valid_in[1] & (self._coord_in_fifo_in[1] == self._done_token)))
         PASS_DONE.output(self._pop_fifo[0], (valid_concat.r_and() & (self._coord_in_fifo_in[0] == self._done_token)))
         PASS_DONE.output(self._pop_fifo[1], (valid_concat.r_and() & (self._coord_in_fifo_in[1] == self._done_token)))
         # CHANGE 3
-        #PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or())
+        # PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or())
         PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or() & valid_concat.r_and())
         PASS_DONE.output(self._clr_eos_sticky[0], 0)
         PASS_DONE.output(self._clr_eos_sticky[1], 0)
@@ -502,7 +502,6 @@ class Intersect(MemoryController):
         PASS_DONE.output(self._coord_to_fifo_eos, kts.const(1, 1))
         PASS_DONE.output(self._pos_to_fifo_eos[0], kts.const(1, 1))
         PASS_DONE.output(self._pos_to_fifo_eos[1], kts.const(1, 1))
-        
 
         #################
         # WAIT_FOR_VALID
