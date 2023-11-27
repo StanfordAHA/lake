@@ -401,7 +401,7 @@ class OnyxPE(MemoryController):
         if op < 3:
             config += [("sparse_num_inputs", 0b011)]
         else:
-            config += [("sparse_num_inputs", 0b001)]
+            config += [("sparse_num_inputs", 0b010)]
 
         sub_config = self.my_alu.get_bitstream(op, override_dense=override_dense)
         for config_tuple in sub_config:
