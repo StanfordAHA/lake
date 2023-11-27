@@ -680,12 +680,12 @@ class StrgUBVec(MemoryController):
         # for camera_pipeline_2x2 to pass aha glb
         # pre-parser: hack to linearize in2agg and agg2sram data_stride
         linearize_data_stride = False
-        if self.area_opt:
-            def check_linear_data_stride(data_stride, extent, mem_size):
-                for i in range(len(data_stride) - 1):
-                    if (data_stride[i] * extent[i]) % mem_size != data_stride[i + 1] % mem_size:
-                        return False
-                return True
+        # if self.area_opt:
+        #     def check_linear_data_stride(data_stride, extent, mem_size):
+        #         for i in range(len(data_stride) - 1):
+        #             if (data_stride[i] * extent[i]) % mem_size != data_stride[i + 1] % mem_size:
+        #                 return False
+        #         return True
 
             # if "agg2sram_0" in config_json:
             #     if config_json["agg2sram_0"]["mode"][0] == 0:
