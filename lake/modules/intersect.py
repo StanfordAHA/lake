@@ -375,6 +375,7 @@ class Intersect(MemoryController):
 
         # WAIT_FOR_VALID can only be accessed while in VR_mode. We stay in this state while waiting for a new stream. The transition condition is the same
         # as that of leaving DRAIN in non-VR mode
+        WAIT_FOR_VALID.next(DONE, self._vector_reduce_mode & valid_concat.r_and())
         WAIT_FOR_VALID.next(DONE, ~self._all_have_eos & valid_concat.r_and())
         WAIT_FOR_VALID.next(WAIT_FOR_VALID, None)
 

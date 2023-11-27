@@ -147,8 +147,10 @@ class FiberAccess(MemoryController):
         self.vr_fsm.set_start_state(START)
 
         # Create FSM output wires
-        self._vr_fsm_pos_to_read_scanner = self.var("vr_fsm_pos_to_read_scanner", self.data_width + 1)
+        self._vr_fsm_pos_to_read_scanner = self.var("vr_fsm_pos_to_read_scanner", self.data_width + 1, packed=True)
+        self._vr_fsm_pos_to_read_scanner.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         self._vr_fsm_pos_valid_to_read_scanner = self.var("vr_fsm_pos_valid_to_read_scanner", 1)
+        self._vr_fsm_pos_valid_to_read_scanner.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
         self._vr_fsm_init_blank = self.var("vr_fsm_init_blank", 1)
 
         # Bind FSM Outputs
@@ -170,23 +172,24 @@ class FiberAccess(MemoryController):
 
         self.add_always(delay_one_cycle_block)
 
-        # Keep track of highest stop token seen (useful for FSM logic)
-        self._highest_seen_stoken = self.var("highest_seen_stoken", self.data_width + 1)
+        # Keep track of bottom-most 3 bits of highest stop token seen (useful for FSM logic)
+        # self._highest_seen_stoken = self.var("highest_seen_stoken", self.data_width + 1)
+        self._highest_seen_stoken = self.var("highest_seen_stoken", 3)
 
         self._is_stop_token = self.var("is_stop_token", 1)
         self.wire(self._is_stop_token, (self._wr_scan_data_in[self.data_width] == 1) & ~(self._wr_scan_data_in == self._done_token) & ~(self._wr_scan_data_in == self._semi_done_token))
 
         self._new_highest_stoken_seen = self.var("new_highest_stoken_seen", 1)
-        self.wire(self._new_highest_stoken_seen, self._is_stop_token & (self._wr_scan_data_in > self._highest_seen_stoken) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready)
+        self.wire(self._new_highest_stoken_seen, self._is_stop_token & (self._wr_scan_data_in[2, 0] > self._highest_seen_stoken) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready)
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def highest_seen_stoken_block(self):
             if ~self._rst_n:
-                self._highest_seen_stoken = self._S_level_0
+                self._highest_seen_stoken = self._S_level_0[2, 0]
             elif self._done_sent_to_ds:
-                self._highest_seen_stoken = self._S_level_0
+                self._highest_seen_stoken = self._S_level_0[2, 0]
             elif self._new_highest_stoken_seen:
-                self._highest_seen_stoken = self._wr_scan_data_in
+                self._highest_seen_stoken = self._wr_scan_data_in[2, 0]
 
         self.add_always(highest_seen_stoken_block)
 
@@ -200,8 +203,8 @@ class FiberAccess(MemoryController):
         PROCESS_ROW.next(ISSUE_READ_SEND_REF_CNT, self._input_row_fully_processed)
         PROCESS_ROW.next(PROCESS_ROW, None)
 
-        ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_DONE, self._rd_scan_us_pos_in_ready & (~self._output_matrix_fully_accumulated | (self._output_matrix_fully_accumulated & ~(self._highest_seen_stoken > self._S_level_1))))
-        ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_S0, self._rd_scan_us_pos_in_ready & self._output_matrix_fully_accumulated & (self._highest_seen_stoken > self._S_level_1))
+        ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_DONE, self._rd_scan_us_pos_in_ready & (~self._output_matrix_fully_accumulated | (self._output_matrix_fully_accumulated & ~(self._highest_seen_stoken > self._S_level_1[2, 0]))))
+        ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_S0, self._rd_scan_us_pos_in_ready & self._output_matrix_fully_accumulated & (self._highest_seen_stoken > self._S_level_1[2, 0]))
         ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_REF_CNT, None)
 
         ISSUE_READ_SEND_S0.next(ISSUE_READ_SEND_DONE, self._rd_scan_us_pos_in_ready)
@@ -392,10 +395,12 @@ class FiberAccess(MemoryController):
         wr_scan_data_mux1.case_(None, self._vr_fsm_wr_scan_data_in_tmp(self._wr_scan_data_in))
         """
 
-        self._vr_fsm_wr_scan_data_in = self.var("vr_fsm_wr_scan_data_in", self.data_width + 1)
-        self.wire(self._vr_fsm_wr_scan_data_in, kts.ternary((self._wr_scan_data_in == self._semi_done_token), self._done_token, self._wr_scan_data_in))
+        # self._vr_fsm_wr_scan_data_in = self.var("vr_fsm_wr_scan_data_in", self.data_width + 1)
+        # self.wire(self._vr_fsm_wr_scan_data_in, kts.ternary((self._wr_scan_data_in == self._semi_done_token), self._done_token, self._wr_scan_data_in))
 
-        self.wire(self.wr_scan.ports.data_in, kts.ternary(self._vector_reduce_mode, self._vr_fsm_wr_scan_data_in, self._wr_scan_data_in))
+        # self.wire(self.wr_scan.ports.data_in, kts.ternary(self._vector_reduce_mode, self._vr_fsm_wr_scan_data_in, self._wr_scan_data_in))
+        self.wire(self._vector_reduce_mode, self.wr_scan.ports.vector_reduce_mode)
+        self.wire(self._wr_scan_data_in, self.wr_scan.ports.data_in)
         self.wire(self._wr_scan_data_in_ready, self.wr_scan.ports.data_in_ready)
         self.wire(self._wr_scan_data_in_valid, self.wr_scan.ports.data_in_valid)
 
@@ -407,18 +412,24 @@ class FiberAccess(MemoryController):
         self.wire(self._wr_scan_block_wr_in_ready, self.wr_scan.ports.block_wr_in_ready)
         self.wire(self._wr_scan_block_wr_in_valid, self.wr_scan.ports.block_wr_in_valid)
 
-        self.wire(self._rd_scan_coord_out, kts.ternary(self._vr_fsm_init_blank, self._S_level_0, self.rd_scan.ports.coord_out))
-        self.wire(self._rd_scan_coord_out_valid, kts.ternary(self._vr_fsm_init_blank, kts.const(1, 1), self.rd_scan.ports.coord_out_valid))
+        self.wire(self._rd_scan_coord_out, self.rd_scan.ports.coord_out)
+        # self.wire(self._rd_scan_coord_out, kts.ternary(self._vr_fsm_init_blank, self._S_level_0, self.rd_scan.ports.coord_out))
+        self.wire(self._rd_scan_coord_out_valid, self.rd_scan.ports.coord_out_valid)
+        # self.wire(self._rd_scan_coord_out_valid, kts.ternary(self._vr_fsm_init_blank, kts.const(1, 1), self.rd_scan.ports.coord_out_valid))
 
         self.wire(self._rd_scan_pos_out, self.rd_scan.ports.pos_out)
         self.wire(self._rd_scan_pos_out_ready, self.rd_scan.ports.pos_out_ready)
-        self.wire(self._rd_scan_pos_out_valid, kts.ternary((self._vector_reduce_mode & (self.rd_scan.ports.pos_out == self._done_token)), (self._output_matrix_fully_accumulated & self.rd_scan.ports.pos_out_valid), self.rd_scan.ports.pos_out_valid))
-
+        # self.wire(self._rd_scan_pos_out_valid, kts.ternary((self._vector_reduce_mode & (self.rd_scan.ports.pos_out == self._done_token)), (self._output_matrix_fully_accumulated & self.rd_scan.ports.pos_out_valid), self.rd_scan.ports.pos_out_valid))
+        self.wire(self._rd_scan_pos_out_valid, self.rd_scan.ports.pos_out_valid)
         self.wire(self.rd_scan.ports.us_pos_in, kts.ternary(self._vector_reduce_mode, self._vr_fsm_pos_to_read_scanner, self._rd_scan_us_pos_in))
         self.wire(self.rd_scan.ports.us_pos_in_valid, kts.ternary(self._vector_reduce_mode, self._vr_fsm_pos_valid_to_read_scanner, self._rd_scan_us_pos_in_valid))
+
+        self.wire(self._vr_fsm_pos_to_read_scanner, self.rd_scan.ports.pos_to_read_scanner_from_vr_fsm)
+        # self.wire(self._vr_fsm_pos_valid_to_read_scanner, self.rd_scan.ports.pos_valid_to_read_scanner_from_vr_fsm)
         self.wire(self._vr_fsm_init_blank, self.rd_scan.ports.vr_fsm_state_init_blank)
         self.wire(self._vector_reduce_mode, self.rd_scan.ports.vector_reduce_mode)
         self.wire(self._output_row_fully_accumulated, self.rd_scan.ports.output_row_fully_accumulated)
+        self.wire(self._output_matrix_fully_accumulated, self.rd_scan.ports.output_matrix_fully_accumulated)
 
         if self.add_clk_enable:
             kts.passes.auto_insert_clock_enable(self.internal_generator)

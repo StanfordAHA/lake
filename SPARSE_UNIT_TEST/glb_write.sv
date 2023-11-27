@@ -82,13 +82,13 @@ initial begin
             DELAY = $urandom & mask;
             while (DELAY > 0 & ADD_DELAY) begin
                 @(posedge clk);
-                #1;
+                // #1;
                 DELAY--;
             end
 
             data = local_mem[num_tx];
             valid = 1;
-            // #1;
+            #1;
             if(ready == 1 && valid == 1) begin
                 if (data == DONE_TOKEN) begin
                     done_count--;

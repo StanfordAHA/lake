@@ -87,6 +87,11 @@ class Reg(MemoryController):
         self._stop_lvl = self.input("stop_lvl", 16)
         self._stop_lvl.add_attribute(ConfigRegAttr("What level stop tokens should this reduction block crush"))
 
+        # Interface with the PE
+        self._data_to_pe0 = self.output("data_to_pe0", self.data_width + 1, packed=True)
+        self._data_to_pe1 = self.output("data_to_pe1", self.data_width + 1, packed=True)
+        self._data_from_pe = self.input("data_from_pe", self.data_width + 1, packed=True)
+
         # Declare the accum reg
         self._accum_reg = self.var("accum_reg", self.data_width)
         self._data_to_fifo = self.var("data_to_fifo", self.data_width)
@@ -138,6 +143,10 @@ class Reg(MemoryController):
                        data_out=self._infifo_out_packed)
 
         self.wire(self._infifo_out_valid, ~self._infifo.ports.empty)
+        self.wire(self._data_to_pe0, self._infifo_out_packed)
+        # Loop for accumulation
+        self.wire(self._data_to_pe1[self.data_width - 1, 0], self._accum_reg)
+        self.wire(self._data_to_pe1[self.data_width], kts.const(0, 1))
 
 # ==============================
 # OUTPUT FIFO
@@ -174,11 +183,6 @@ class Reg(MemoryController):
         self._outfifo_full = self.var("outfifo_full", 1)
         # self._outfifo_empty = self.var("outfifo_empty", 1)
 
-        self._clr_once_popped = self.var("clr_once_popped", 1)
-        self._set_once_popped = self.var("set_once_popped", 1)
-        # self._stop_lvl_sticky = sticky_flag(self, self._infifo_out_valid & (self._infifo_out_data == self._stop_lvl) & self._infifo_pop, clear=self._clr_stop_lvl_sticky, seq_only=True)
-        self._stop_lvl_sticky = sticky_flag(self, self._set_once_popped, clear=self._clr_once_popped, seq_only=True)
-
         self.add_child(f"output_fifo",
                        self._outfifo,
                        clk=self._gclk,
@@ -203,7 +207,7 @@ class Reg(MemoryController):
         # self._accum_happened = sticky_flag(self, self._set_accum_happened, clear=self._clr_accum_happened, name='accum_happened_reg')
 
         self._reg_clr = self.var("reg_clr", 1)
-        self._reg_accum = self.var("reg_accum", 1)
+        self._update_accum_reg = self.var("update_accum_reg", 1)
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def accum_reg_ff():
@@ -211,8 +215,8 @@ class Reg(MemoryController):
                 self._accum_reg = 0
             elif self._reg_clr:
                 self._accum_reg = self._default_value
-            elif self._reg_accum:
-                self._accum_reg = self._accum_reg + self._infifo_out_data
+            elif self._update_accum_reg:
+                self._accum_reg = self._data_from_pe[self.data_width - 1, 0]
         self.add_code(accum_reg_ff)
 
         # Create FSM
@@ -226,18 +230,13 @@ class Reg(MemoryController):
 
         self.accum_fsm.output(self._infifo_pop)
         self.accum_fsm.output(self._outfifo_push)
-        self.accum_fsm.output(self._reg_clr)
-        self.accum_fsm.output(self._reg_accum)
         self.accum_fsm.output(self._data_to_fifo)
         self.accum_fsm.output(self._outfifo_in_eos)
-        self.accum_fsm.output(self._set_once_popped)
-        self.accum_fsm.output(self._clr_once_popped)
-        # self.accum_fsm.output(self._set_accum_happened)
-        # self.accum_fsm.output(self._clr_accum_happened)
-
+        self.accum_fsm.output(self._reg_clr)
+        self.accum_fsm.output(self._update_accum_reg)
         # State Transitions
 
-        # In START, we are looking for some valid data
+        # In START, we are looking for some valid data and checking if the PE is ready
         # If we see EOS, we know we can consume the stop token
         # If we don't see EOS, we can start accumulating
         START.next(ACCUM, self._infifo_out_valid & ~self._infifo_out_eos)
@@ -278,50 +277,35 @@ class Reg(MemoryController):
         # START.output(self._infifo_pop, self._infifo_out_eos & self._infifo_out_valid)
         START.output(self._infifo_pop, 0)
         START.output(self._outfifo_push, 0)
-        START.output(self._reg_clr, 0)
-        START.output(self._reg_accum, 0)
         START.output(self._data_to_fifo, kts.const(0, 16))
         START.output(self._outfifo_in_eos, 0)
-        START.output(self._set_once_popped, 0)
-        START.output(self._clr_once_popped, 0)
-        # START.output(self._set_accum_happened, 0)
-        # START.output(self._clr_accum_happened, 0)
+        START.output(self._reg_clr, 0)
+        START.output(self._update_accum_reg, 0)
 
         #############
         # ACCUM
         #############
         # Pop if we have a valid data or an eos above the stop level to crush
-        # ACCUM.output(self._infifo_pop, self._infifo_out_valid & (~self._infifo_out_eos | (self._infifo_out_eos & self._infifo_out_data > self._stop_lvl)))
+        # The data pushed in previously is coming back, ready to push another one
         ACCUM.output(self._infifo_pop, self._infifo_out_valid & ~self._infifo_out_eos)
         ACCUM.output(self._outfifo_push, 0)
-        ACCUM.output(self._reg_clr, 0)
-        ACCUM.output(self._reg_accum, self._infifo_out_valid & ~self._infifo_out_eos)
         ACCUM.output(self._data_to_fifo, kts.const(0, 16))
         ACCUM.output(self._outfifo_in_eos, 0)
-        ACCUM.output(self._set_once_popped, 0)
-        ACCUM.output(self._clr_once_popped, 0)
-        # ACCUM.output(self._set_accum_happened, self._infifo_out_valid & ~self._infifo_out_eos)
-        # ACCUM.output(self._clr_accum_happened, 0)
+        ACCUM.output(self._reg_clr, 0)
+        ACCUM.output(self._update_accum_reg, self._infifo_out_valid & ~self._infifo_out_eos)
 
         #############
         # OUTPUT
         #############
-        # OUTPUT.output(self._infifo_pop, self._infifo_out_valid & ~self._outfifo_full)
         # Don't pop the fifo, just use this state to output a value to the output fifo
         # TODO: Merge states with ACCUM
-        # OUTPUT.output(self._infifo_pop, ~self._stop_lvl_sticky)
         OUTPUT.output(self._infifo_pop, 0)
         OUTPUT.output(self._outfifo_push, ~self._outfifo_full)
         # OUTPUT.output(self._outfifo_push, ~self._outfifo_full & self._accum_happened)
         OUTPUT.output(self._reg_clr, 0)
-        OUTPUT.output(self._reg_accum, 0)
         OUTPUT.output(self._data_to_fifo, self._accum_reg)
         OUTPUT.output(self._outfifo_in_eos, 0)
-        # OUTPUT.output(self._set_once_popped, ~self._stop_lvl_sticky)
-        OUTPUT.output(self._set_once_popped, 0)
-        OUTPUT.output(self._clr_once_popped, 0)
-        # OUTPUT.output(self._set_accum_happened, 0)
-        # OUTPUT.output(self._clr_accum_happened, 0)
+        OUTPUT.output(self._update_accum_reg, 0)
 
         #############
         # STOP_PASS - Deal with full output...
@@ -335,13 +319,11 @@ class Reg(MemoryController):
         STOP_PASS.output(self._outfifo_push, ~self._outfifo_full & self._infifo_out_valid & self._infifo_out_eos &
                          (self._infifo_out_data[9, 8] == 0) & (self._infifo_out_data[7, 0] > 0))
         STOP_PASS.output(self._reg_clr, 1)
-        STOP_PASS.output(self._reg_accum, 0)
         # Reduce the stop level by 1 - if it's 0, the stop token gets squashed
         STOP_PASS.output(self._data_to_fifo, self._infifo_out_data - 1)
         # STOP_PASS.output(self._outfifo_in_eos, self._infifo_out_valid & self._infifo_out_eos)
         STOP_PASS.output(self._outfifo_in_eos, 1)
-        STOP_PASS.output(self._set_once_popped, 0)
-        STOP_PASS.output(self._clr_once_popped, 1)
+        STOP_PASS.output(self._update_accum_reg, 0)
         # STOP_PASS.output(self._set_accum_happened, 0)
         # STOP_PASS.output(self._clr_accum_happened, 1)
 
@@ -354,29 +336,9 @@ class Reg(MemoryController):
         DONE.output(self._infifo_pop, ~self._outfifo_full)
         DONE.output(self._outfifo_push, ~self._outfifo_full)
         DONE.output(self._reg_clr, 1)
-        DONE.output(self._reg_accum, 0)
         DONE.output(self._data_to_fifo, self._infifo_out_data)
         DONE.output(self._outfifo_in_eos, self._infifo_out_eos)
-        DONE.output(self._set_once_popped, 0)
-        DONE.output(self._clr_once_popped, 1)
-        # DONE.output(self._set_accum_happened, 0)
-        # DONE.output(self._clr_accum_happened, 1)
-
-        # self._data_written = self.var("data_written", 1)
-        # self.wire(self._valid_out, self._data_written | self._write_en)
-
-        # self._reg_d_out = self.var("reg_d_out", self.data_width)
-        # self.wire(self._data_out, self._reg_d_out)
-
-        # @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        # def reg_ff():
-        #     if ~self._rst_n:
-        #         self._reg_d_out = 0
-        #         self._data_written = 0
-        #     elif self._write_en:
-        #         self._reg_d_out = self._data_in
-        #         self._data_written = 1
-        # self.add_code(reg_ff)
+        DONE.output(self._update_accum_reg, 0)
 
         if self.add_dispatcher:
             self.add_dispatch_logic()

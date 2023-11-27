@@ -11,6 +11,7 @@ module fiber_access_tb;
     reg stall;
     reg flush;
     reg tile_en;
+    reg vector_reduce_mode; 
     wire [63:0] cycle_count ;
 
     // wire for dut input & output
@@ -119,7 +120,8 @@ module fiber_access_tb;
     .wen_to_mem(memory_0_write_enable_p0),
     .write_scanner_addr_in_ready(ws_addr_ready),
     .write_scanner_block_wr_in_ready(ws_blk_ready),
-    .write_scanner_data_in_ready(coord_in_0_ready)
+    .write_scanner_data_in_ready(coord_in_0_ready),
+    .vector_reduce_mode(vector_reduce_mode)
     );
 
     glb_write #(
@@ -205,6 +207,7 @@ module fiber_access_tb;
         clk_en = 1;
         rst_n = 0;
         tile_en = 1;
+        vector_reduce_mode = 0;
         flush = 0;
 
         #5 clk = 1;
