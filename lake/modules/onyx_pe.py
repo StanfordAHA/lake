@@ -398,9 +398,9 @@ class OnyxPE(MemoryController):
             # Instead, we are still relying on the assembler to decode the opcode
             override_dense = False
 
-        if op < 3:
+        if op < 3 or op > 4:
             config += [("sparse_num_inputs", 0b011)]
-        else:
+        elif op == 3 or op == 4:
             config += [("sparse_num_inputs", 0b010)]
 
         sub_config = self.my_alu.get_bitstream(op, override_dense=override_dense)
