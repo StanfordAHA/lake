@@ -7,6 +7,7 @@ from peak.assembler import Assembler
 from hwtypes.modifiers import strip_modifiers
 from lassen.sim import PE_fc as lassen_fc
 import lassen.asm as asm
+from lassen.asm import Mode_t
 
 
 class OnyxPEInterface(MemoryController):
@@ -74,18 +75,32 @@ class OnyxPEInterface(MemoryController):
     def get_config_mode_str(self):
         return "alu_ext"
 
-    def get_bitstream(self, op, override_dense=False):
+    def get_bitstream(self, op, override_dense=False, config_kwargs):
 
         instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
         asm_ = Assembler(instr_type)
+        
+        kwargs = {}
+        if "rb_const" in config_kwargs:
+            # the b operand is a constant
+            # support constant operand for and and fp_mul for now 
+            assert op == 5 or op == 6
+            # config the b port of pe to constant mode
+            kwargs["rb_mode"] = Mode_t.CONST
+            # config the value of b port constant
+            kwargs["rb_const"] = config_kwargs["rb_const"]
 
         opcode_mapping = {
-            0: asm.add(),  # ADD
-            1: asm.smult0(),  # MUL
-            2: asm.sub(),   # SUB
-            3: asm.abs(),   # abs
-            4: asm.smax(),   # smax
-            5: asm.fp_mul(),
+            0: asm.add(**kwargs),  # ADD
+            1: asm.smult0(**kwargs),  # MUL
+            2: asm.sub(**kwargs),   # SUB
+            3: asm.abs(**kwargs),   # abs
+            4: asm.smax(**kwargs),   # smax
+            5: asm.and_(**kwargs),
+            6: asm.fp_mul(**kwargs),
+            7: asm.fgetfint(**kwargs),
+            8: asm.fgetffrac(**kwargs),
+            9: asm.faddiexp(**kwargs),
         }
 
         if override_dense:

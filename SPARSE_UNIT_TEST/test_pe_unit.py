@@ -244,10 +244,6 @@ def module_iter_basic(test_name, add_test=""):
     
     data_out = sparse_helper.read_txt("out_data.txt", addit=add_test != "")
     data_out_p = sparse_helper.read_txt("out_data_p.txt", addit=add_test != "")
-    print(in_data0)
-    print(in_data1)
-    print(gold_data)
-    print(data_out)
 
     #compare each element in the output from data_out.txt with the gold output
     assert len(data_out) == len(gold_data), \
