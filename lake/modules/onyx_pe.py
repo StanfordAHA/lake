@@ -410,9 +410,16 @@ class OnyxPE(MemoryController):
             8: 0b001,
             9: 0b011, 
         }
-        config += [('sparse_num_inputs', op_sparse_num_inputs_mapping[op])]
+        sparse_num_inputs = op_sparse_num_inputs_mapping[op]
+        if "rb_const" in config_kwargs:
+            # the b operand is a constant
+            # support constant operand for and and fp_mul for now 
+            assert op == 5 or op == 6
+            # only accepting one input from port a 
+            sparse_num_inputs = 0b001
+        config += [('sparse_num_inputs', sparse_num_inputs)]
 
-        sub_config = self.my_alu.get_bitstream(op, override_dense=override_dense, config_kwargs)
+        sub_config = self.my_alu.get_bitstream(op=op, override_dense=override_dense, config_kwargs=config_kwargs)
         for config_tuple in sub_config:
             config_name, config_value = config_tuple
             config += [(f"{self.my_alu.instance_name}_{config_name}", config_value)]

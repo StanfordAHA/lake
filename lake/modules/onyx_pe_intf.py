@@ -75,7 +75,7 @@ class OnyxPEInterface(MemoryController):
     def get_config_mode_str(self):
         return "alu_ext"
 
-    def get_bitstream(self, op, override_dense=False, config_kwargs):
+    def get_bitstream(self, op, config_kwargs, override_dense=False):
 
         instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
         asm_ = Assembler(instr_type)
