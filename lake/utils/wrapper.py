@@ -166,7 +166,7 @@ if __name__ == "__main__":
     lake_kwargs = {}
 
     if args.p is False:
-        #comment the following two line for dp memory
+        # comment the following two line for dp memory
         if args.dpflag is True:
             lake_kwargs['area_opt'] = False
             lake_kwargs['pond_area_opt_dual_config'] = False
