@@ -35,6 +35,7 @@ class LakeTop(Generator):
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
                  agg_height=4,
+                 tb_height=2,
                  config_data_width=32,
                  config_addr_width=8,
                  num_tiles=1,
@@ -69,6 +70,7 @@ class LakeTop(Generator):
         self.mem_output_ports = mem_output_ports
         self.use_sim_sram = use_sim_sram
         self.agg_height = agg_height
+        self.tb_height = tb_height
         self.input_port_sched_width = clog2(self.interconnect_input_ports)
         assert self.mem_width >= self.data_width, "Data width needs to be smaller than mem"
         self.fw_int = int(self.mem_width / self.data_width)
@@ -142,6 +144,7 @@ class LakeTop(Generator):
                                          read_delay=self.read_delay,
                                          rw_same_cycle=self.rw_same_cycle,
                                          agg_height=self.agg_height,
+                                         tb_height=self.tb_height,
                                          config_width=self.config_width,
                                          area_opt=self.area_opt,
                                          reduced_id_config_width=self.reduced_id_config_width,
