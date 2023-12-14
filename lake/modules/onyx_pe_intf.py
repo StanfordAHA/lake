@@ -79,11 +79,11 @@ class OnyxPEInterface(MemoryController):
 
         instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
         asm_ = Assembler(instr_type)
-        
+
         kwargs = {}
         if config_kwargs["rb_const"] is not None:
             # the b operand is a constant
-            # support constant operand for and and fp_mul for now 
+            # support constant operand for and and fp_mul for now
             assert op == 5 or op == 6
             # config the b port of pe to constant mode
             kwargs["rb_mode"] = Mode_t.CONST
