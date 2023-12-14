@@ -87,22 +87,6 @@ def load_test_module(test_name):
         in_data0 = [data0.value, 'S0', data0.value, data0.value, data0.value, 'S1', 'D']
         in_data1 = [data0.value, 'S0', data0.value, data0.value, data0.value, 'S1', 'D']
         gold_data = [res.value, 'S0', res.value, res.value, res.value, 'S1', 'D']
-    elif test_name == "basic_fp_max":
-        #TODO generate different numbers
-        Data = BitVector[16]
-        inst = asm.fp_sub()
-        binary_string = float2bfbin(3.0)
-        binary_string2 = float2bfbin(4.0)
-        num = int(binary_string, 2)
-        num2 = int(binary_string2, 2)
-        data0 = Data(num)
-        data1 = Data(num2)
-        PE = lassen_fc(PyFamily())
-        pe = PE()
-        res, res_p, _, _, _ = pe(inst, data0, data1)
-        in_data0 = [data0.value, 'S0', data0.value, data1.value, data1.value, 'S1', 'D']
-        in_data1 = [data1.value, 'S0', data0.value, data1.value, data0.value, 'S1', 'D']
-        gold_data = [data1.value, 'S0', data0.value, data1.value, data1.value, 'S1', 'D']
     elif test_name == "basic_fp_relu":
         #TODO generate different numbers
         Data = BitVector[16]
@@ -162,6 +146,30 @@ def load_test_module(test_name):
         in_data0 = [data0.value, 'S0', data0.value, data0.value, data0.value, 'S1', 'D']
         in_data1 = [data1.value, 'S0', data1.value, data1.value, data1.value, 'S1', 'D']
         gold_data = [res.value, 'S0', res.value, res.value, res.value, 'S1', 'D']
+    elif test_name == "basic_fp_max":
+        Data = BitVector[16]
+        inst = asm.fp_max()
+        binary_string0 = float2bfbin(4.258354384)
+        binary_string1 = float2bfbin(-6.474)
+        binary_string2 = float2bfbin(10.33745)
+        num0 = int(binary_string0, 2)
+        num1 = int(binary_string1, 2)
+        num2 = int(binary_string2, 2)
+        data0 = Data(num0)
+        data1 = Data(num1)
+        data2 = Data(num2)
+        PE = lassen_fc(PyFamily())
+        pe = PE()
+        res0_1, res_p, _, _, _ = pe(inst, data0, data1)
+        res0_2, res_p, _, _, _ = pe(inst, data0, data2)
+        res1_2, res_p, _, _, _ = pe(inst, data1, data2)
+        res1_0, res_p, _, _, _ = pe(inst, data1, data0)
+        res2_0, res_p, _, _, _ = pe(inst, data2, data0)
+        res2_1, res_p, _, _, _ = pe(inst, data2, data1)
+        in_data0 = [data0.value, data0.value, data1.value, 'S0', data1.value, data2.value, data2.value, 'S1', 'D']
+        in_data1 = [data1.value, data2.value, data2.value, 'S0', data0.value, data0.value, data1.value, 'S1', 'D']
+        gold_data = [res0_1.value, res0_2.value, res1_2.value, 'S0', res1_0.value, res2_0.value, res2_1.value, 'S1', 'D']
+
 
     in_data0 = convert_stream_to_onyx_interp(in_data0)
     in_data1 = convert_stream_to_onyx_interp(in_data1)
@@ -277,8 +285,7 @@ def test_basic():
                  "basic_srelu",
                  'basic_fp_add', 'basic_fp_max',
                  'basic_fp_relu', 'basic_fgetfint',
-                 'basic_fgetffrac', 'basic_faddiexp'
-                ]
+                 'basic_fgetffrac', 'basic_faddiexp']
 
 
     
