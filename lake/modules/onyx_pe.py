@@ -409,9 +409,11 @@ class OnyxPE(MemoryController):
             7: 0b001,
             8: 0b001,
             9: 0b011, 
+            10: 0b011,
+            11: 0b011,
         }
         sparse_num_inputs = op_sparse_num_inputs_mapping[op]
-        if "rb_const" in config_kwargs:
+        if config_kwargs["rb_const"] is not None:
             # the b operand is a constant
             # support constant operand for and and fp_mul for now 
             assert op == 5 or op == 6

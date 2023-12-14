@@ -81,7 +81,7 @@ class OnyxPEInterface(MemoryController):
         asm_ = Assembler(instr_type)
         
         kwargs = {}
-        if "rb_const" in config_kwargs:
+        if config_kwargs["rb_const"] is not None:
             # the b operand is a constant
             # support constant operand for and and fp_mul for now 
             assert op == 5 or op == 6
@@ -101,6 +101,8 @@ class OnyxPEInterface(MemoryController):
             7: asm.fgetfint(**kwargs),
             8: asm.fgetffrac(**kwargs),
             9: asm.faddiexp(**kwargs),
+            10: asm.fp_max(**kwargs),
+            11: asm.fp_add(**kwargs),
         }
 
         if override_dense:
