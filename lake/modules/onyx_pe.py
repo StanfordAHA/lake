@@ -382,22 +382,7 @@ class OnyxPE(MemoryController):
         config = [("tile_en", 1)]
 
         op = config_kwargs['op']
-
-        # opcode mapping 0-2 is 2 input
-
         override_dense = False
-
-        if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
-            override_dense = True
-            config += [("dense_mode", 1)]
-        elif 'pe_connected_to_reduce' in config_kwargs and config_kwargs['pe_connected_to_reduce'] is True:
-            # If this flag is set, we want to connect the pe to reduce
-            # We want to bypass the fifos
-            config += [("dense_mode", 1)]
-            # But we are still not explicitly supplying the opcode to pe
-            # Instead, we are still relying on the assembler to decode the opcode
-            override_dense = False
-
         op_sparse_num_inputs_mapping = {
             0: 0b011,
             1: 0b011,
@@ -412,13 +397,26 @@ class OnyxPE(MemoryController):
             10: 0b011,
             11: 0b011,
         }
-        sparse_num_inputs = op_sparse_num_inputs_mapping[op]
-        if config_kwargs["rb_const"] is not None:
-            # the b operand is a constant
-            # support constant operand for and and fp_mul for now
-            assert op == 5 or op == 6
-            # only accepting one input from port a【
-            sparse_num_inputs = 0b001
+        sparse_num_inputs = 0b000
+        if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
+            override_dense = True
+            config += [("dense_mode", 1)]
+        elif 'pe_connected_to_reduce' in config_kwargs and config_kwargs['pe_connected_to_reduce'] is True:
+            # If this flag is set, we want to connect the pe to reduce
+            # We want to bypass the fifos
+            config += [("dense_mode", 1)]
+            # But we are still not explicitly supplying the opcode to pe
+            # Instead, we are still relying on the assembler to decode the opcode
+            override_dense = False
+        else:
+            # we are deploying the pe in sparse mode
+            sparse_num_inputs = op_sparse_num_inputs_mapping[op]
+            if config_kwargs["rb_const"] is not None:
+                # the b operand is a constant
+                # support constant operand for and and fp_mul for now
+                assert op == 5 or op == 6
+                # only accepting one input from port a
+                sparse_num_inputs = 0b001
         config += [('sparse_num_inputs', sparse_num_inputs)]
 
         sub_config = self.my_alu.get_bitstream(op=op, override_dense=override_dense, config_kwargs=config_kwargs)

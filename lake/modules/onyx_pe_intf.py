@@ -81,7 +81,7 @@ class OnyxPEInterface(MemoryController):
         asm_ = Assembler(instr_type)
 
         kwargs = {}
-        if config_kwargs["rb_const"] is not None:
+        if "rb_const" in config_kwargs and config_kwargs["rb_const"] is not None:
             # the b operand is a constant
             # support constant operand for and and fp_mul for now
             assert op == 5 or op == 6
