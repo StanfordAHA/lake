@@ -97,12 +97,12 @@ class OnyxPEInterface(MemoryController):
             3: asm.abs(**kwargs),   # abs
             4: asm.smax(**kwargs),   # smax
             5: asm.and_(**kwargs),
-            6: asm.fp_mul(**kwargs),
-            7: asm.fgetfint(**kwargs),
-            8: asm.fgetffrac(**kwargs),
-            9: asm.faddiexp(**kwargs),
-            10: asm.fp_max(**kwargs),
-            11: asm.fp_add(**kwargs),
+            # 6: asm.fp_mul(**kwargs),
+            # 7: asm.fgetfint(**kwargs),
+            # 8: asm.fgetffrac(**kwargs),
+            # 9: asm.faddiexp(**kwargs),
+            # 10: asm.fp_max(**kwargs),
+            # 11: asm.fp_add(**kwargs),
         }
 
         if override_dense:
