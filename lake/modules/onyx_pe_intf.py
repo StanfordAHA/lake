@@ -75,7 +75,7 @@ class OnyxPEInterface(MemoryController):
     def get_config_mode_str(self):
         return "alu_ext"
 
-    def get_bitstream(self, op, config_kwargs, override_dense=False):
+    def get_bitstream(self, op, config_kwargs):
 
         instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
         asm_ = Assembler(instr_type)
@@ -90,31 +90,7 @@ class OnyxPEInterface(MemoryController):
             # config the value of b port constant
             kwargs["rb_const"] = config_kwargs["rb_const"]
 
-        opcode_mapping = {
-            0: asm.add(**kwargs),  # ADD
-            1: asm.smult0(**kwargs),  # MUL
-            2: asm.sub(**kwargs),   # SUB
-            3: asm.abs(**kwargs),   # abs
-            4: asm.smax(**kwargs),   # smax
-            5: asm.and_(**kwargs),
-            6: asm.fp_mul(**kwargs),
-            7: asm.fgetfint(**kwargs),
-            8: asm.fgetffrac(**kwargs),
-            9: asm.faddiexp(**kwargs),
-            10: asm.fp_max(**kwargs),
-            11: asm.fp_add(**kwargs),
-        }
-
-        if override_dense:
-            print(f"OVERRIDE DENSE CONFIG: {op}")
-            op_config = op
-        else:
-            if op not in opcode_mapping:
-                raise NotImplementedError
-            pe_bs = asm_.assemble(opcode_mapping[op])
-            op_config = int(pe_bs)
-
-        config_base = [("inst", op_config)]
+        config_base = [("inst", op)]
         config = self.chop_config(config_base=config_base)
 
         return config
