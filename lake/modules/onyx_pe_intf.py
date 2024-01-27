@@ -75,7 +75,7 @@ class OnyxPEInterface(MemoryController):
     def get_config_mode_str(self):
         return "alu_ext"
 
-    def get_bitstream(self, op, config_kwargs, override_dense=False):
+    def get_bitstream(self, op, config_kwargs, override_dense=False, only_dense_hw=False):
 
         instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
         asm_ = Assembler(instr_type)
@@ -104,8 +104,10 @@ class OnyxPEInterface(MemoryController):
             # 10: asm.fp_max(**kwargs),
             # 11: asm.fp_add(**kwargs),
         }
-
-        if override_dense:
+   
+        if only_dense_hw:
+            op_config = op
+        elif override_dense:
             print(f"OVERRIDE DENSE CONFIG: {op}")
             op_config = op
         else:

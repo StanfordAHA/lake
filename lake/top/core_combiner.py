@@ -85,11 +85,13 @@ class CoreCombiner(Generator):
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
         assert controllers is not None
-        assert len(controllers) > 0
+        #assert len(controllers) > 0
         self.controllers = controllers
 
         # Create a MemoryTileBuilder
-        MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix, fifo_depth=self.fifo_depth)
+        #breakpoint()
+        #MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix, fifo_depth=self.fifo_depth)
+        MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix, fifo_depth=self.fifo_depth, ready_valid=False)
 
         # For our current implementation, we are just using 1 bank of SRAM
         MTB.set_banks(self.banks)
