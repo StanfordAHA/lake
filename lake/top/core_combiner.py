@@ -59,7 +59,7 @@ class CoreCombiner(Generator):
                  ready_valid=True):
         super().__init__(name, debug=True)
 
-        self.ready_valid=ready_valid
+        self.ready_valid = ready_valid
         self.data_width = data_width
         self.mem_width = mem_width
         self.mem_depth = mem_depth
@@ -87,7 +87,7 @@ class CoreCombiner(Generator):
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
         assert controllers is not None
-        #assert len(controllers) > 0
+        # assert len(controllers) > 0
         self.controllers = controllers
 
         # Create a MemoryTileBuilder

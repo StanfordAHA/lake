@@ -245,21 +245,21 @@ class LakeTop(Generator):
                     "LakeTop_input_width_17_num_0": "chain_data_in_0",
                     "LakeTop_input_width_17_num_1": "chain_data_in_1",
                     "LakeTop_input_width_17_num_2": "data_in_0",
-                    "LakeTop_input_width_17_num_3": "data_in_1",        
+                    "LakeTop_input_width_17_num_3": "data_in_1",
                 }
             else:
                 replace_ins = {
                     "LakeTop_input_width_16_num_0": "chain_data_in_0",
                     "LakeTop_input_width_16_num_1": "chain_data_in_1",
                     "LakeTop_input_width_16_num_2": "data_in_0",
-                    "LakeTop_input_width_16_num_3": "data_in_1", 
+                    "LakeTop_input_width_16_num_3": "data_in_1",
                 }
 
             if self.comply_with_17:
                 replace_outs = {
                     "LakeTop_output_width_17_num_0": "data_out_0",
                     "LakeTop_output_width_17_num_1": "data_out_1",
-                    "LakeTop_output_width_1_num_2": "stencil_valid",  
+                    "LakeTop_output_width_1_num_2": "stencil_valid",
                 }
             else:
                 replace_outs = {
@@ -276,8 +276,8 @@ class LakeTop(Generator):
                     "LakeTop_input_width_17_num_2": "data_in_0",
                     "LakeTop_input_width_17_num_3": "data_in_1",
                 }
-            else: 
-                 replace_ins = {
+            else:
+                replace_ins = {
                     "LakeTop_input_width_16_num_0": "chain_data_in_0",
                     "LakeTop_input_width_16_num_1": "chain_data_in_1",
                     "LakeTop_input_width_16_num_2": "data_in_0",
@@ -290,8 +290,8 @@ class LakeTop(Generator):
                     "LakeTop_output_width_17_num_1": "data_out_1",
                     "LakeTop_output_width_1_num_2": "stencil_valid",
                 }
-            else: 
-                 replace_outs = {
+            else:
+                replace_outs = {
                     "LakeTop_output_width_16_num_0": "data_out_0",
                     "LakeTop_output_width_16_num_1": "data_out_1",
                     "LakeTop_output_width_1_num_2": "stencil_valid",

@@ -104,7 +104,7 @@ class OnyxPEInterface(MemoryController):
             # 10: asm.fp_max(**kwargs),
             # 11: asm.fp_add(**kwargs),
         }
-   
+
         if only_dense_hw:
             op_config = op
         elif override_dense:
