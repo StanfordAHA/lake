@@ -27,7 +27,7 @@ integer ENABLED;
 integer DELAY;
 integer ADD_DELAY;
 integer done_count;
-integer length_count;
+integer DONE_TOKEN;
 integer mask;
 
 initial begin
@@ -40,7 +40,7 @@ initial begin
     ENABLED = 1;
     ADD_DELAY = 0;
     done_count = TX_NUM;
-    length_count = 0;
+    DONE_TOKEN = 17'h10100;
     mask = 32'd3  << RAN_SHITF;
 
     // ENABLED_PARGS = $sformatf("%s_ENABLED=%%d", LOCATION);
@@ -62,7 +62,6 @@ initial begin
         $value$plusargs(TX_SIZE_PARGS, TX_SIZE_USE);
 
         num_tx = 0;
-        length_count = local_mem[num_tx];
         valid = 0;
         done = 0;
         data = 0;
@@ -91,12 +90,11 @@ initial begin
             valid = 1;
             #1;
             if(ready == 1 && valid == 1) begin
-                num_tx = num_tx + 1;
-                length_count = length_count - 1;
-                if (length_count == 0) begin
-                    done_count = done_count - 1;
-                    length_count = local_mem[num_tx]; // potential segfault
+                if (data == DONE_TOKEN) begin
+                    done_count--;
+                    // valid = 0;
                 end
+                num_tx = num_tx + 1;
             end
         end
     end

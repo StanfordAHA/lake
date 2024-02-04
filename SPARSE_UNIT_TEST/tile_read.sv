@@ -25,6 +25,7 @@ integer NUM_BLOCKS_USE;
 string F1_USE;
 string ENABLED_PARGS;
 integer ENABLED;
+integer DONE_TOKEN;
 integer done_count;
 integer delay_count;
 integer ADD_DELAY;
@@ -40,8 +41,8 @@ initial begin
     ready = 0;
     size_0 = 0;
     done = 0;
+    DONE_TOKEN = 17'h10100;
     done_count = TX_NUM;
-    length_count = local_mem[num_rx];
     ADD_DELAY = 0;
     mask = 32'd3  << RAN_SHITF;
 
@@ -81,12 +82,10 @@ initial begin
             ready = 1;
             if(ready == 1 && valid == 1) begin
                 local_mem_0[num_rx] = data;
-                num_rx = num_rx + 1;
-                length_count = length_count - 1;
-                if (length_count == 0) begin
-                    done_count = done_count - 1;
-                    length_count = local_mem[num_rx]; // potential segfault
+                if (data == DONE_TOKEN) begin
+                    done_count--;
                 end
+                num_rx = num_rx + 1;
             end
         end
         @(posedge clk);
