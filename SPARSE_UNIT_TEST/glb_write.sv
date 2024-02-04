@@ -1,4 +1,4 @@
-module glb_write #(
+module tile_write #(
     parameter TX_SIZE = 2048,
     parameter FILE_NAME = "src.txt",
     parameter LOCATION = "X00_Y00",

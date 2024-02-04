@@ -54,7 +54,7 @@ module repeat_tb;
     );
 
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("pos_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -68,7 +68,7 @@ module repeat_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("pos_in_1.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
@@ -83,7 +83,7 @@ module repeat_tb;
     );
 
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("pos_out_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(2)

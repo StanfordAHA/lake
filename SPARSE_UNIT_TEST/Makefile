@@ -30,15 +30,14 @@ CLK_PERIOD ?= 1ns
 TX_NUM_GLB ?= 1
 
 DESIGN_FILES += $(TEST_TAR) \
-				glb_read.sv \
-				glb_write.sv\
+				tile_read.sv \
+				tile_write.sv\
 				sram_sp.sv\
 				behavioral_pe_add.sv\
 				-y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \
 				+libext+.v+.sv 
 
 DESIGN_FILES += $(module_dir)/$(TEST_UNIT)
-DESIGN_FILES += $(module_dir)/Intersect.sv
 # TB_FILES += -F tb/tb_cgra.f
 
 # IP_FILES += -y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \

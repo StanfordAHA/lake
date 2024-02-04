@@ -61,7 +61,7 @@ module compression_tb;
         .cmrg_mode(1'b0) // force the mode to perform compression
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("val_in.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -75,7 +75,7 @@ module compression_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
@@ -89,7 +89,7 @@ module compression_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("val_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(2)
@@ -103,7 +103,7 @@ module compression_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("coord_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(3)

@@ -262,7 +262,7 @@ module vector_reducer_tb;
         .out(loop_val_out)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("crddrp_crd_in.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -277,7 +277,7 @@ module vector_reducer_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("mult_val_in.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -292,7 +292,7 @@ module vector_reducer_tb;
     );
 
     // DUMMY 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("ext_us_pos_in.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -307,7 +307,7 @@ module vector_reducer_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("column_coords_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -321,7 +321,7 @@ module vector_reducer_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("vals_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)

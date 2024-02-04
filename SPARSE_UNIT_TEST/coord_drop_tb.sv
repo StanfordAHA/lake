@@ -61,7 +61,7 @@ module coord_drop_tb;
         .cmrg_mode(1'b1)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -75,7 +75,7 @@ module coord_drop_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in_1.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
@@ -89,7 +89,7 @@ module coord_drop_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("pos_out_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(2)
@@ -103,7 +103,7 @@ module coord_drop_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("pos_out_1.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(3)

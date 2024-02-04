@@ -1,4 +1,4 @@
-module glb_read #(
+module tile_read #(
     parameter NUM_BLOCKS = 1,
     parameter FILE_NAME = "dst.txt",
     parameter LOCATION = "X00_Y00",
