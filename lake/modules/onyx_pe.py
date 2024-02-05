@@ -393,13 +393,7 @@ class OnyxPE(MemoryController):
             # We want to bypass the fifos
             config += [("dense_mode", 1)]
         else:
-            # we are deploying the pe in sparse mode
-            if config_kwargs["rb_const"] is not None:
-                # the b operand is a constant
-                # support constant operand for and and fp_mul for now
-                assert op == 5 or op == 6
-                # only accepting one input from port a
-                sparse_num_inputs = 0b001
+            config += [("dense_mode", 0)]
 
         sub_config = self.my_alu.get_bitstream(op=op, config_kwargs=config_kwargs)
         for config_tuple in sub_config:

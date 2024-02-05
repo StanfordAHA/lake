@@ -76,23 +76,8 @@ class OnyxPEInterface(MemoryController):
         return "alu_ext"
 
     def get_bitstream(self, op, config_kwargs):
-
-        instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
-        asm_ = Assembler(instr_type)
-
-        kwargs = {}
-        if "rb_const" in config_kwargs and config_kwargs["rb_const"] is not None:
-            # the b operand is a constant
-            # support constant operand for and and fp_mul for now
-            assert op == 5 or op == 6
-            # config the b port of pe to constant mode
-            kwargs["rb_mode"] = Mode_t.CONST
-            # config the value of b port constant
-            kwargs["rb_const"] = config_kwargs["rb_const"]
-
         config_base = [("inst", op)]
         config = self.chop_config(config_base=config_base)
-
         return config
 
 
