@@ -43,7 +43,7 @@ def init_module():
 
     k.verilog(fiber_access, filename=f"./modules/Fiber_access.sv", optimize_if=False)
 
-    sparse_helper.update_tcl("fiber_glb_crd_tb")
+    sparse_helper.update_tcl("fiber_glb_val_tb")
 
 
 def create_gold(in_crd, in_ref):
@@ -117,54 +117,29 @@ def create_gold(in_crd, in_ref):
 
 def load_test_module(test_name):
     if test_name == "direct_l0":
-        in_crd = [2, 0, 4, 4, 0, 1, 2, 3]
+        in_crd = [2, 0, 4]
         return in_crd
 
     if test_name == "direct_l1":
-        in_crd = [5, 0, 4, 7, 9, 12, 12, 0, 1, 2, 3, 0, 1, 3, 0, 2, 0, 1, 3]
+        in_crd = [5, 10, 4, 7, 9, 12]
         return in_crd
 
     if test_name == "direct_l2":
-        in_crd = [19, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,\
-                    19, 2, 4, 1, 4, 5, 9, 1, 0, 2, 7, 8, 2, 0, 8, 2, 0, 7, 1, 9]
+        in_crd = [19, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
         return in_crd
 
     if test_name == "diag":
-        in_crd = [7, 0, 1, 2, 3, 4, 5, 6, 6, 1, 2, 3, 4, 5, 6]
+        in_crd = [7, 0, 1, 2, 3, 4, 5, 6]
         return in_crd
 
     elif test_name[0:2] == "rd":
-        size = int(test_name.split("_")[2])
-        f_n = random.randint(1, 64)
-        if test_name[3] == "1":
-            f = random.sample(range(int(size * 1.5)), size)
-            f.sort()
-            f = [2, 0, size, size] + f
-            return f
-        fibers =[]
-        size = size // f_n
-        if size == 0:
-            size = 1 #ensure there is something
-        for i in range(f_n):
-            crd = random.sample(range(int(size * 1.5)), size)
-            crd.sort()
-            fibers.append(crd)
-        seg = []
-        seg.append(len(fibers) + 1)
-        seg.append(0)
-        cur_ptr = 0
-        for f in fibers:
-            cur_ptr += len(f)
-            seg.append(cur_ptr)
-            assert len(f) > 0, "Fiber length is 0"
-            assert len(f) == seg[-1] - seg[-2], "Fiber length is not consistent"
-        crd = [seg[-1]]
-        for f in fibers:
-            crd += f
-        return seg + crd
+        size = int(test_name.split("_")[1])
+        vals = [random.randint(1, 600) for i in range(size)]
+        v = [size] + vals
+        return v
         
     else:
-        in_crd = [2, 0, 1, 1, 0]
+        in_crd = [2, 0, 0]
         return in_crd
 
 
@@ -184,11 +159,11 @@ def module_iter_basic(test_name, add_test=""):
 
     #run command "make sim" to run the simulation
     if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_crd_tb.sv", "TOP=fiber_glb_crd_tb",\
-                              "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_val_tb.sv", "TOP=fiber_glb_val_tb",\
+                              "TX_NUM_GLB=1", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
     else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_crd_tb.sv",\
-                             "TOP=fiber_glb_crd_tb", "TX_NUM_GLB=4", "TEST_UNIT=Fiber_access.sv"\
+        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_val_tb.sv",\
+                             "TOP=fiber_glb_val_tb", "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"\
                              ], capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
@@ -210,41 +185,28 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-def test_iter_basic():
+# def test_iter_basic():
+#     init_module()
+#     test_list = ["direct_l0", "direct_l1", "direct_l2", "diag", "xxx"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+# def test_iter_random():
+#     init_module()
+#     for i in range(200):
+#         size = i + 1
+#         module_iter_basic(f"rd_{size}")
+
+
+# def test_iter_seq():
+#     init_module()
+#     module_iter_basic("direct_l0", "direct_l1")
+#     module_iter_basic("direct_l2", "diag")
+
+
+def test_iter_random_sweep():
     init_module()
-    test_list = ["direct_l0", "direct_l1", "direct_l2", "diag", "xxx"]
-    for test in test_list:
-        module_iter_basic(test)
-
-
-def test_iter_random():
-    init_module()
-    for i in range(30):
-        size = random.randint(1, 200)
-        module_iter_basic(f"rd_1d_{size}")
-
-
-def test_iter_random():
-    init_module()
-    for i in range(30):
-        size = random.randint(1, 200)
-        module_iter_basic(f"rd_Nd_{size}")
-
-
-def test_iter_seq():
-    init_module()
-    module_iter_basic("direct_l0", "direct_l1")
-    module_iter_basic("direct_l2", "diag")
-
-
-def test_iter_seq_random():
-    init_module()
-    test_list = ["direct_l0", "direct_l1", "direct_l2", "diag"]
-    for i in range(100):
-        if i % 2 == 0:
-            test_list.append(f"rd_1d_{random.randint(1, 400)}")
-        else:
-            test_list.append(f"rd_Nd_{random.randint(1, 400)}")
-    for i in range(30):
-        rand = random.sample(test_list, 2)
-        module_iter_basic(rand[0], rand[1])
+    for i in range(200):
+        size = i + 1
+        module_iter_basic(f"rd_{size}", f"rd_{size}")
