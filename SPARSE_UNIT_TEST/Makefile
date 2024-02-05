@@ -32,6 +32,8 @@ TX_NUM_GLB ?= 1
 DESIGN_FILES += $(TEST_TAR) \
 				tile_read.sv \
 				tile_write.sv\
+				glb_read.sv \
+				glb_write.sv\
 				sram_sp.sv\
 				behavioral_pe_add.sv\
 				-y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \

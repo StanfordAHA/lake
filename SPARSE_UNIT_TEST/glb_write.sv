@@ -1,4 +1,4 @@
-module tile_write #(
+module glb_write #(
     parameter TX_SIZE = 2048,
     parameter FILE_NAME = "src.txt",
     parameter LOCATION = "X00_Y00",
@@ -62,7 +62,7 @@ initial begin
         $value$plusargs(TX_SIZE_PARGS, TX_SIZE_USE);
 
         num_tx = 0;
-        length_count = local_mem[num_tx];
+        length_count = local_mem[num_tx] + 1;
         valid = 0;
         done = 0;
         data = 0;
@@ -95,7 +95,7 @@ initial begin
                 length_count = length_count - 1;
                 if (length_count == 0) begin
                     done_count = done_count - 1;
-                    length_count = local_mem[num_tx]; // potential segfault
+                    length_count = local_mem[num_tx] + 1; // potential segfault
                 end
             end
         end
