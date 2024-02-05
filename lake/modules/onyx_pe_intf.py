@@ -56,13 +56,8 @@ class OnyxPEInterface(MemoryController):
             self._O4 = self.output("O4", self.data_width)
             self._O4.add_attribute(ConfigRegAttr("PIPE REG 2", read_only=True))
 
-        # self._config_addr = self.input("config_addr", 8)
-        # self._config_data = self.input("config_data", 32)
-        # self._config_en = self.input("config_en", 1)
-
         self._O0 = self.output("O0", self.data_width)
         self._O1 = self.output("O1", 1)
-        # self._O2 = self.output("O2", 2 * self.data_width)
 
         self.external = True
 
@@ -75,7 +70,7 @@ class OnyxPEInterface(MemoryController):
     def get_config_mode_str(self):
         return "alu_ext"
 
-    def get_bitstream(self, op, config_kwargs):
+    def get_bitstream(self, op):
         config_base = [("inst", op)]
         config = self.chop_config(config_base=config_base)
         return config

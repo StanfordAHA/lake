@@ -75,65 +75,24 @@ class OnyxPE(MemoryController):
             tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
             # Mark as hybrid port to allow bypassing at the core combiner level
             tmp_data_in.add_attribute(HybridPortAddr())
-            # self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
 
             tmp_data_in_valid_in = self.input(f"data{i}_valid", 1)
             tmp_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-            # self._valid_in = self.input("valid_in", 2)
 
             tmp_data_in_ready_out = self.output(f"data{i}_ready", 1)
             tmp_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
-            # self._ready_out = self.output("ready_out", 2)
-
-            # tmp_data_in_eos_in = self.var(f"data{i}_eos", 1)
-            # tmp_data_in_eos_in.add_attribute(ControlSignalAttr(is_control=True))
-            # self.wire(tmp_data_in_eos_in, tmp_data_in[self.data_width])
-            # self._eos_in = self.input("eos_in", 2)
 
             self._data_in.append(tmp_data_in)
             self._data_in_valid_in.append(tmp_data_in_valid_in)
             self._data_in_ready_out.append(tmp_data_in_ready_out)
-            # self._data_in_eos_in.append(tmp_data_in_eos_in)
-
-        # for i in range(3):
-
-        # tmp_data_in = self.input(f"data2", self.data_width + 1, packed=True)
-        # tmp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-        # self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
-
-        # tmp_data_in_valid_in = self.input(f"data2_valid", 1)
-        # tmp_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-        # self._valid_in = self.input("valid_in", 2)
-
-        # tmp_data_in_ready_out = self.output(f"data2_ready", 1)
-        # tmp_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
-        # self._ready_out = self.output("ready_out", 2)
-
-        # tmp_data_in_eos_in = self.var(f"data2_eos", 1)
-        # tmp_data_in_eos_in.add_attribute(ControlSignalAttr(is_control=True))
-        # self.wire(tmp_data_in_eos_in, tmp_data_in[self.data_width])
-        # self._eos_in = self.input("eos_in", 2)
 
         self._data_in.append(tmp_data_in)
-        # self._data_in_eos_in.append(tmp_data_in_eos_in)
 
         self._bit_in = []
-        # self._data_in_valid_in = []
-        # self._data_in_ready_out = []
-        # self._data_in_eos_in = []
-
         for i in range(3):
 
             tmp_data_in = self.input(f"bit{i}", 1)
             tmp_data_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-            # self._data_in = self.input("data_in", self.data_width, size=2, explicit_array=True, packed=True)
-
-            # tmp_data_in_valid_in = self.input(f"bit{i}_valid", 1)
-            # tmp_data_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-
-            # tmp_data_in_ready_out = self.output(f"bit{i}_ready", 1)
-            # tmp_data_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
-
             self._bit_in.append(tmp_data_in)
 
         self._data_out = self.output("res", self.data_width + 1, packed=True)
@@ -247,7 +206,6 @@ class OnyxPE(MemoryController):
         self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_eos)
         self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
-        # self.wire(self._eos_out, self._outfifo_out_packed[self.data_width])
         self.wire(self._data_out, kts.ternary(self._dense_mode, self._pe_output, self._outfifo_out_packed))
 
         # Push when there's incoming transaction and room to accept it
@@ -256,7 +214,6 @@ class OnyxPE(MemoryController):
         # Pop when ready to accum more streams
         self._outfifo_pop = self.var("outfifo_pop", 1)
         self._outfifo_full = self.var("outfifo_full", 1)
-        # self._outfifo_empty = self.var("outfifo_empty", 1)
 
         self.add_child(f"output_fifo",
                        self._outfifo,
@@ -272,17 +229,10 @@ class OnyxPE(MemoryController):
 
         self.wire(self._outfifo_pop, self._ready_in)
         self.wire(self._outfifo_full, self._outfifo.ports.full)
-        # self.wire(self._outfifo_empty, self._outfifo.ports.empty)
 
 # =============================
 # Instantiate actual PE
 # =============================
-
-        # self._execute_op = self.var("execute_op", 1)
-        # self.wire(self._execute_op, (self._infifo_out_valid.r_and() & ~self._infifo_out_eos.r_or() & ~self._outfifo_full))
-
-        # self._op = self.input("op", 1)
-        # self._op.add_attribute(ConfigRegAttr("Operation"))
 
         self.my_alu = OnyxPEInterface(data_width=self.data_width,
                                       name_prefix=self.ext_pe_prefix,
@@ -395,7 +345,7 @@ class OnyxPE(MemoryController):
         else:
             config += [("dense_mode", 0)]
 
-        sub_config = self.my_alu.get_bitstream(op=op, config_kwargs=config_kwargs)
+        sub_config = self.my_alu.get_bitstream(op=op)
         for config_tuple in sub_config:
             config_name, config_value = config_tuple
             config += [(f"{self.my_alu.instance_name}_{config_name}", config_value)]
