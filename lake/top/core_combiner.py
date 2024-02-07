@@ -55,9 +55,11 @@ class CoreCombiner(Generator):
                  tech_map_name='TSMC',
                  io_prefix="",
                  fifo_depth=2,
-                 sram_columns=2):
+                 sram_columns=2,
+                 ready_valid=True):
         super().__init__(name, debug=True)
 
+        self.ready_valid = ready_valid
         self.data_width = data_width
         self.mem_width = mem_width
         self.mem_depth = mem_depth
@@ -85,11 +87,11 @@ class CoreCombiner(Generator):
         self.total_sets = max(1, self.banks * self.sets_per_macro)
 
         assert controllers is not None
-        assert len(controllers) > 0
+        # assert len(controllers) > 0
         self.controllers = controllers
 
         # Create a MemoryTileBuilder
-        MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix, fifo_depth=self.fifo_depth)
+        MTB = MemoryTileBuilder(name, True, io_prefix=self.io_prefix, fifo_depth=self.fifo_depth, ready_valid=self.ready_valid)
 
         # For our current implementation, we are just using 1 bank of SRAM
         MTB.set_banks(self.banks)

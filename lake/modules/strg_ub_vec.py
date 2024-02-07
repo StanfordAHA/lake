@@ -32,6 +32,7 @@ class StrgUBVec(MemoryController):
                  interconnect_output_ports=2,
                  read_delay=1,  # Cycle delay in read (SRAM vs Register File)
                  rw_same_cycle=False,  # Does the memory allow r+w in same cycle?
+                 comply_with_17=True,
                  agg_height=4,
                  tb_height=2,
                  area_opt=True,
@@ -57,6 +58,8 @@ class StrgUBVec(MemoryController):
         self.data_width = data_width
         self.read_delay = read_delay
         self.rw_same_cycle = rw_same_cycle
+        self.comply_with_17 = comply_with_17
+        self.add_bits = 1 if self.comply_with_17 else 0
         self.input_config_width = config_width
         self.input_addr_iterator_support = input_addr_iterator_support
         self.input_sched_iterator_support = input_sched_iterator_support
@@ -81,7 +84,7 @@ class StrgUBVec(MemoryController):
         self._clk = self.clock("clk")
         self._rst_n = self.reset("rst_n")
 
-        self._data_in = self.input("data_in", self.data_width + 1,
+        self._data_in = self.input("data_in", self.data_width + self.add_bits,
                                    size=self.interconnect_input_ports,
                                    packed=True,
                                    explicit_array=True)
@@ -114,7 +117,7 @@ class StrgUBVec(MemoryController):
 
         self._valid_out = self.output("accessor_output", self.interconnect_output_ports)
         self._valid_out_int = self.var("accessor_output_int", self.interconnect_output_ports)
-        self._data_out = self.output("data_out", self.data_width + 1,
+        self._data_out = self.output("data_out", self.data_width + self.add_bits,
                                      size=self.interconnect_output_ports,
                                      packed=True,
                                      explicit_array=True)
@@ -130,8 +133,11 @@ class StrgUBVec(MemoryController):
                                        explicit_array=True)
 
         for idx in range(self.interconnect_output_ports):
-            self.wire(self._data_out[idx][self.data_width - 1, 0], self._data_out_thin[idx])
-            self.wire(self._data_out[idx][self.data_width], kts.const(0, 1))
+            if self.comply_with_17:
+                self.wire(self._data_out[idx][self.data_width - 1, 0], self._data_out_thin[idx])
+                self.wire(self._data_out[idx][self.data_width], kts.const(0, 1))
+            else:
+                self.wire(self._data_out[idx], self._data_out_thin[idx])
 
         ##################################################################################
         # CYCLE COUNTER
@@ -357,7 +363,7 @@ class StrgUBVec(MemoryController):
 
         # Add chaining in here... since we only use in the UB case...
         self._chain_data_in = self.input("chain_data_in",
-                                         self.data_width + 1,
+                                         self.data_width + self.add_bits,
                                          size=self.interconnect_output_ports,
                                          packed=True,
                                          explicit_array=True)
