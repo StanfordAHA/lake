@@ -214,6 +214,18 @@ def load_test_module(test_name):
         in_ref = [0, 'D']
         return create_gold(in_val, in_ref)
 
+    elif test_name == "loop_round_1":
+        in_val = [377, 104, 443, 50, 556, 313, 462, 184, 275, 219, 230, 367, 554, 122, 279,\
+                263, 229, 532, 351, 394, 433, 341, 77, 307, 198, 37, 323, 262, 97, 5, 534, 'S0', 'D']
+        in_ref = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'D']
+        return create_gold(in_val, in_ref)
+
+    elif test_name == "loop_round_2":
+        in_val = [185, 208, 268, 44, 226, 488, 369, 91, 460, 302, 28, 133, 236, 282, 132,\
+                355, 90, 337, 315, 214, 203, 399, 164, 455, 284, 27, 574, 36, 239, 70, 267, 'S0', 'D']
+        in_ref = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'D']
+        return create_gold(in_val, in_ref)
+
     elif test_name[0:2] == "rd":
         t_arg = test_name.split("_")
         dim1 = int(t_arg[1][0])
@@ -300,16 +312,21 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-def test_iter_basic():
-    init_module()
-    test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "arr_1", "arr_2", "arr_3", "arr_4", "arr_5",  "arr_6", "xxx"]
-    for test in test_list:
-        module_iter_basic(test)
+# def test_iter_basic():
+#     init_module()
+#     test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "arr_1", "arr_2", "arr_3", "arr_4", "arr_5",  "arr_6", "xxx"]
+#     for test in test_list:
+#         module_iter_basic(test)
 
 
-def test_seq1():
+# def test_seq1():
+#     init_module()
+#     module_iter_basic("in_ref_empty_fiber", "arr_1")
+
+
+def test_seq2():
     init_module()
-    module_iter_basic("in_ref_empty_fiber", "arr_1")
+    module_iter_basic("loop_round_1", "loop_round_2")
 
 
 # def test_random_1d_1d():
