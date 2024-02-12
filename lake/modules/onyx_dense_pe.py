@@ -144,10 +144,7 @@ class OnyxDensePE(MemoryController):
         config = [("tile_en", 1)]
 
         op = config_kwargs['op']
-        override_dense = False
-
-        only_dense_hw = True
-        sub_config = self.my_alu.get_bitstream(op=op, override_dense=override_dense, config_kwargs=config_kwargs, only_dense_hw=only_dense_hw)
+        sub_config = self.my_alu.get_bitstream(op=op)
         for config_tuple in sub_config:
             config_name, config_value = config_tuple
             config += [(f"{self.my_alu.instance_name}_{config_name}", config_value)]
