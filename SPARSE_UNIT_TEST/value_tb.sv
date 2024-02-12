@@ -11,6 +11,7 @@ module value_tb;
     reg stall;
     reg flush;
     reg tile_en;
+    reg vector_reduce_mode;
     wire [63:0] cycle_count ;
 
     // wire for dut input & output
@@ -84,8 +85,8 @@ module value_tb;
     .read_scanner_repeat_factor(16'b0),
     .read_scanner_repeat_outer_inner_n(1'b0),
     .read_scanner_root(1'b0),
-    .read_scanner_spacc_mode(1'b0),
-    .read_scanner_stop_lvl(16'b0),
+    // .read_scanner_spacc_mode(1'b0),
+    // .read_scanner_stop_lvl(16'b0),
     .read_scanner_tile_en(tile_en),
     .read_scanner_us_pos_in(pos_in_0),
     // .read_scanner_us_pos_in_valid(pos_in_0_valid & start_read == 1),
@@ -102,7 +103,7 @@ module value_tb;
     .write_scanner_data_in_valid(coord_in_0_valid),
     .write_scanner_init_blank(1'b0),
     .write_scanner_lowest_level(1'b1),
-    .write_scanner_spacc_mode(1'b0),
+    // .write_scanner_spacc_mode(1'b0),
     .write_scanner_stop_lvl(16'b0),
     .write_scanner_tile_en(tile_en),
     .addr_to_mem(memory_addr_to_mem_p0),
@@ -118,10 +119,11 @@ module value_tb;
     .wen_to_mem(memory_0_write_enable_p0),
     .write_scanner_addr_in_ready(ws_addr_ready),
     .write_scanner_block_wr_in_ready(ws_blk_ready),
-    .write_scanner_data_in_ready(coord_in_0_ready)
+    .write_scanner_data_in_ready(coord_in_0_ready),
+    .vector_reduce_mode(vector_reduce_mode)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -135,7 +137,7 @@ module value_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("pos_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
@@ -150,7 +152,7 @@ module value_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("coord_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(2)
@@ -164,7 +166,7 @@ module value_tb;
         .flush(flush)
     );
 
-    // glb_read #(
+    // tile_read #(
     //     .FILE_NAME("pos_out_0.txt"),
     //     .TX_NUM(`TX_NUM_GLB),
     //     .RAN_SHITF(3)
@@ -203,6 +205,7 @@ module value_tb;
         clk_en = 1;
         rst_n = 0;
         tile_en = 1;
+        vector_reduce_mode = 0;
         flush = 0;
 
         #5 clk = 1;

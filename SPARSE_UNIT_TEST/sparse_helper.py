@@ -100,6 +100,23 @@ def read_txt(file_name, addit=False):
     return r
 
 
+def read_glb(file_name):
+    r = []
+    count = 0
+    with open(file_name, "r") as f:
+        for line in f:
+            v = int(line, 16)
+            if count == 0 and v == 0:
+                break
+            if count == 0:
+                count = v
+            else:
+                count -= 1
+            r.append(v)
+        f.close()
+    return r
+
+
 def tohex(val, nbits):
   return hex((val + (1 << nbits)) % (1 << nbits))
 

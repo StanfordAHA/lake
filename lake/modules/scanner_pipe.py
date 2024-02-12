@@ -1781,7 +1781,7 @@ class ScannerPipe(MemoryController):
         BLOCK_1_SIZE_REQ.output(self._crd_addr_out_to_fifo, 0)
         BLOCK_1_SIZE_REQ.output(self._crd_op_out_to_fifo, 2)
         BLOCK_1_SIZE_REQ.output(self._crd_ID_out_to_fifo, 0)
-        BLOCK_1_SIZE_REQ.output(self._crd_req_push, ~self._crd_res_fifo_full)
+        BLOCK_1_SIZE_REQ.output(self._crd_req_push, (~self._crd_res_fifo_full) | (self._lookup_mode & self._block_mode))
         BLOCK_1_SIZE_REQ.output(self._crd_rd_rsp_fifo_pop, 0)
         BLOCK_1_SIZE_REQ.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_1_SIZE_REQ.output(self._crd_pop_infifo, 0)
@@ -2111,9 +2111,11 @@ class ScannerPipe(MemoryController):
         #                                                                                   ~self._block_rd_fifo.ports.full,
         #                                                                                   ~self._coord_fifo.ports.full)),
         #                                                           ~self._coord_fifo.ports.full)))
-        self.wire(self._crd_res_fifo_pop, kts.ternary(self._vector_reduce_mode & self._output_row_fully_accumulated, ~self._pos_fifo.ports.full, kts.ternary(self._block_mode,
-                                                      ~self._block_rd_fifo.ports.full,
-                                                      ~self._coord_fifo.ports.full)))
+        self.wire(self._crd_res_fifo_pop, kts.ternary(self._vector_reduce_mode & self._output_row_fully_accumulated,
+                                                      ~self._pos_fifo.ports.full,
+                                                      kts.ternary(self._block_mode,
+                                                        ~self._block_rd_fifo.ports.full,
+                                                        ~self._coord_fifo.ports.full)))
 
         ### POS FIFO
         self._pos_data_in_packed = self.var("pos_fifo_in_packed", self.data_width + 1, packed=True)

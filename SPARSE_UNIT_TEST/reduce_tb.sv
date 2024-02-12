@@ -59,7 +59,7 @@ module reduce_tb;
         .pe_onyxpeintf_inst(inst)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -73,7 +73,7 @@ module reduce_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("coord_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)

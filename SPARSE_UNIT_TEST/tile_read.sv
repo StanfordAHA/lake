@@ -1,4 +1,4 @@
-module glb_read #(
+module tile_read #(
     parameter NUM_BLOCKS = 1,
     parameter FILE_NAME = "dst.txt",
     parameter LOCATION = "X00_Y00",
@@ -25,8 +25,8 @@ integer NUM_BLOCKS_USE;
 string F1_USE;
 string ENABLED_PARGS;
 integer ENABLED;
+integer DONE_TOKEN;
 integer done_count;
-integer length_count;
 integer delay_count;
 integer ADD_DELAY;
 integer mask;
@@ -41,8 +41,8 @@ initial begin
     ready = 0;
     size_0 = 0;
     done = 0;
-    done_count = TX_NUM + 1; // extra 1 for the initialization
-    length_count = 0;
+    DONE_TOKEN = 17'h10100;
+    done_count = TX_NUM;
     ADD_DELAY = 0;
     mask = 32'd3  << RAN_SHITF;
 
@@ -66,7 +66,7 @@ initial begin
         @(posedge clk);
         @(posedge clk);
 
-        while(done_count != 1 | length_count != 0) begin
+        while(done_count > 0) begin
             @(posedge clk);
             #1;
             // ready = $urandom();
@@ -82,12 +82,10 @@ initial begin
             ready = 1;
             if(ready == 1 && valid == 1) begin
                 local_mem_0[num_rx] = data;
-                if (length_count == 0) begin
-                    done_count = done_count - 1;
-                    length_count = data + 1;
+                if (data == DONE_TOKEN) begin
+                    done_count--;
                 end
                 num_rx = num_rx + 1;
-                length_count = length_count - 1;
             end
         end
         @(posedge clk);

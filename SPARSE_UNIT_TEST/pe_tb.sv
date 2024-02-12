@@ -81,7 +81,7 @@ module pe_tb;
         .pe_in_external(1'b1)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("in_data0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -95,7 +95,7 @@ module pe_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("in_data1.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
@@ -109,7 +109,7 @@ module pe_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("in_data2.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
@@ -123,7 +123,7 @@ module pe_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("out_data.txt"),
         .FILE_NAME2("out_data_p.txt"),
         .TX_NUM(`TX_NUM_GLB),

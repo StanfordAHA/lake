@@ -121,7 +121,7 @@ module sam_dense_tb;
     .write_scanner_data_in_ready(coord_in_0_ready)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -135,7 +135,7 @@ module sam_dense_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("pos_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
@@ -150,7 +150,7 @@ module sam_dense_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("coord_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(2)
@@ -164,7 +164,7 @@ module sam_dense_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("pos_out_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(3)

@@ -79,7 +79,7 @@ module unioner_tb;
         .vector_reduce_mode(vector_reduce_mode)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
@@ -93,7 +93,7 @@ module unioner_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in_1.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(1)
@@ -107,7 +107,7 @@ module unioner_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("pos_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(2)
@@ -121,7 +121,7 @@ module unioner_tb;
         .flush(flush)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("pos_in_1.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(3)
@@ -135,7 +135,7 @@ module unioner_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("coord_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(4)
@@ -149,7 +149,7 @@ module unioner_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("pos_out_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(5)
@@ -163,7 +163,7 @@ module unioner_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_read #(
         .FILE_NAME("pos_out_1.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(6)
