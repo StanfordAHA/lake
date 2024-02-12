@@ -56,13 +56,8 @@ class OnyxPEInterface(MemoryController):
             self._O4 = self.output("O4", self.data_width)
             self._O4.add_attribute(ConfigRegAttr("PIPE REG 2", read_only=True))
 
-        # self._config_addr = self.input("config_addr", 8)
-        # self._config_data = self.input("config_data", 32)
-        # self._config_en = self.input("config_en", 1)
-
         self._O0 = self.output("O0", self.data_width)
         self._O1 = self.output("O1", 1)
-        # self._O2 = self.output("O2", 2 * self.data_width)
 
         self.external = True
 
@@ -75,50 +70,9 @@ class OnyxPEInterface(MemoryController):
     def get_config_mode_str(self):
         return "alu_ext"
 
-    def get_bitstream(self, op, config_kwargs, override_dense=False, only_dense_hw=False):
-
-        instr_type = strip_modifiers(lassen_fc.Py.input_t.field_dict['inst'])
-        asm_ = Assembler(instr_type)
-
-        kwargs = {}
-        if "rb_const" in config_kwargs and config_kwargs["rb_const"] is not None:
-            # the b operand is a constant
-            # support constant operand for and and fp_mul for now
-            assert op == 5 or op == 6
-            # config the b port of pe to constant mode
-            kwargs["rb_mode"] = Mode_t.CONST
-            # config the value of b port constant
-            kwargs["rb_const"] = config_kwargs["rb_const"]
-
-        opcode_mapping = {
-            0: asm.add(**kwargs),  # ADD
-            1: asm.smult0(**kwargs),  # MUL
-            2: asm.sub(**kwargs),   # SUB
-            3: asm.abs(**kwargs),   # abs
-            4: asm.smax(**kwargs),   # smax
-            5: asm.and_(**kwargs),
-            6: asm.fp_mul(**kwargs),
-            7: asm.fgetfint(**kwargs),
-            8: asm.fgetffrac(**kwargs),
-            9: asm.faddiexp(**kwargs),
-            10: asm.fp_max(**kwargs),
-            11: asm.fp_add(**kwargs),
-        }
-
-        if only_dense_hw:
-            op_config = op
-        elif override_dense:
-            print(f"OVERRIDE DENSE CONFIG: {op}")
-            op_config = op
-        else:
-            if op not in opcode_mapping:
-                raise NotImplementedError
-            pe_bs = asm_.assemble(opcode_mapping[op])
-            op_config = int(pe_bs)
-
-        config_base = [("inst", op_config)]
+    def get_bitstream(self, op):
+        config_base = [("inst", op)]
         config = self.chop_config(config_base=config_base)
-
         return config
 
 
