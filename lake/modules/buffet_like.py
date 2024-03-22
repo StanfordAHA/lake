@@ -1022,7 +1022,8 @@ class BuffetLike(MemoryController):
             # Only update when pushed or popped
             elif self._push_blk[idx] or self._pop_blk[idx]:
                 self._curr_capacity_pre[idx] = self._curr_capacity_pre[idx] + kts.ternary(self._push_blk[idx],
-                                                                                          self._blk_bounds[idx],
+                                                                                        #   self._blk_bounds[idx],
+                                                                                          self._curr_bounds[idx],
                                                                                           kts.const(0, width=self.data_width)) - kts.ternary(self._pop_blk[idx],
                                                                                                                                              self._blk_bounds[idx],
                                                                                                                                              kts.const(0, width=self.data_width))
