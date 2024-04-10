@@ -80,6 +80,7 @@ initial begin
 
             valid = 0;
             DELAY = $urandom & mask;
+            DELAY = DELAY >> RAN_SHITF;
             while (DELAY > 0 & ADD_DELAY) begin
                 @(posedge clk);
                 // #1;
