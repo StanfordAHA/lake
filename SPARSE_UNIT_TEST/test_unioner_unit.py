@@ -292,7 +292,6 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_iter_basic():
     init_module()
-    # test_list = ["direct_2d_bad"]
     test_list = ["direct_1d", "direct_2d", "direct_2d_bad", "xxx", "empty_2d", "array_1d", "array_2d"]
     for test in test_list:
         module_iter_basic(test)
