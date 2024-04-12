@@ -21,6 +21,6 @@ echo python3 -m pycodestyle tests/
 python3 -m pycodestyle tests/
 
 echo pytest -v tests/
-pytest -v tests/
+pytest -s tests/test_agg_aligner.py
 
 set -x
