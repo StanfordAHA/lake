@@ -363,7 +363,9 @@ class Intersect(MemoryController):
         # UNION.next(DRAIN, self._all_have_eos)
         # CHANGE 1
         # In non-VR mode, we stay in this stage
-        UNION.next(DRAIN, self._all_have_eos & self._vector_reduce_mode)
+        # UNION.next(DRAIN, self._all_have_eos & self._vector_reduce_mode)
+        UNION.next(DRAIN, self._all_have_eos & self._vector_reduce_mode & self._fifo_full.r_or())
+        UNION.next(PASS_DONE, self._all_have_eos & self._vector_reduce_mode & ~self._fifo_full.r_or())  # Failed to push to the down stream
         UNION.next(UNION, None)
 
         # Then in DRAIN, we pass thru the stop tokens (MO: and the DONE token in non-VR mode)
