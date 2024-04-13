@@ -39,7 +39,8 @@ jobs:
         docker exec -i lakebox /bin/bash -c "rm -rf /aha/lake"
         docker cp ../lake lakebox:/aha/lake
         #
-        docker exec -i lakebox bash -c 'cd lake && python3 -m pip install -e .'
+        # May not actually need/want this???
+        # docker exec -i lakebox bash -c 'cd lake && python3 -m pip install -e .'
     - name: Run tests ⚙️
       shell: bash
       run: |
