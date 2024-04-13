@@ -6,19 +6,14 @@ cd /lake
 
 source scripts/setenv.sh
 
-
-
-
-
-
 # force color
 export PYTEST_ADDOPTS="--color=yes"
 
-# Do we really need these?
-# echo pip install py, apt-get install verilator
-# pip install py
-# apt-get update
-# apt-get install verilator
+echo pip install py, apt-get install verilator
+set -x
+pip install py | yes
+apt-get update
+apt-get install verilator
 
 echo python3 -m pycodestyle lake/
 python3 -m pycodestyle lake/
