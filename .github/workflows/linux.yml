@@ -31,10 +31,9 @@ jobs:
         docker exec -i lakebox /bin/bash -c "rm -rf /aha/lake"
         docker cp ../lake lakebox:/aha/lake
         # Install venv and verilator
-        docker exec -i lakebox bash -c 'source /aha/bin/activate'
         docker exec -i lakebox bash -c 'yes | apt-get install verilator'
         # Run the tests already omg
-        docker exec -i lakebox bash -c 'cd lake; pytest -v tests/'
+        docker exec -i lakebox bash -c 'source /aha/bin/activate; cd lake; pytest -v tests/'
 
 
 #     - name: Install deps 🛠️

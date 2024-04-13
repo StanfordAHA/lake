@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# This script is completely unused now, I think, but I'm too chicken to delete it.
+
+
 set +x
 set -e
 
