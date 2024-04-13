@@ -19,7 +19,7 @@ jobs:
     - name: Pull and run docker 🐋 
       shell: bash
       run: |
-        docker run -it -d --name lake --mount type=bind,source="$(pwd)"/../lake,target=/lake keyiz/kratos-full bash
+        docker run -it -d --name lake --mount type=bind,source="$(pwd)"/../lake,target=/lake stanfordaha/garnet:latest bash
     - name: Install deps 🛠️
       shell: bash
       run: |
