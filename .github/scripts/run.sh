@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# This script is completely unused now, I think, but I'm too chicken to delete it.
-
+# As of April 2024: This script is completely unused now,
+# I think, but I'm too chicken to delete it :)
 
 set +x
 set -e
@@ -14,10 +14,9 @@ source scripts/setenv.sh
 export PYTEST_ADDOPTS="--color=yes"
 
 echo pip install py, apt-get install verilator
-set -x
-yes | pip install py | head -100
+pip install py
 apt-get update
-# apt-get install verilator
+apt-get install verilator
 
 echo python3 -m pycodestyle lake/
 python3 -m pycodestyle lake/

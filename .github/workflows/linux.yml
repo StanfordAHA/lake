@@ -10,54 +10,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-
     - name: Checkout submodules
       shell: bash
       run: |
         auth_header="$(git config --local --get http.https://github.com/.extraheader)"
         git submodule sync --recursive
         git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
-
     - name: Pull and run docker 🐋 
       shell: bash
       run: |
         docker run -it -d --name lakebox --mount type=bind,source="$(pwd)"/../lake,target=/lake stanfordaha/garnet:latest bash
-
     - name: Run tests ⚙️
       shell: bash
       run: |
-        # docker exec -i lakebox bash -c 'lake/.github/scripts/run.sh'
-        # Replace docker lake with target lake
+        # Remove docker lake and insert our version that we want to test
         docker exec -i lakebox /bin/bash -c "rm -rf /aha/lake"
         docker cp ../lake lakebox:/aha/lake
-        # Install venv and verilator
+        # Tests require installation of verilator
         docker exec -i lakebox bash -c 'yes | apt-get install verilator'
-        # Run the tests already omg
+        # Run the tests
         docker exec -i lakebox bash -c 'source /aha/bin/activate; cd lake; pytest -v tests/'
-
-
-#     - name: Install deps 🛠️
-#       shell: bash
-#       run: |
-#         docker exec -i lakebox bash -c 'apt update && apt install -y libgmp-dev libmpfr-dev libmpc-dev python3-dev'
-#         docker exec -i lakebox bash -c 'python3 -m pip install --upgrade pip'
-#         docker exec -i lakebox bash -c 'python3 -m pip install setuptools wheel'
-#         #
-#         # Fault be muckin' us up maybe
-#         # docker exec -i lakebox bash -c 'python3 -m pip install pytest fault pytest-codestyle pycodestyle'
-#         docker exec -i lakebox bash -c 'python3 -m pip install pytest pytest-codestyle pycodestyle'
-#         #
-#         docker exec -i lakebox bash -c 'python3 -m pip install importlib_resources'
-#         #
-#         # Already have sam I think, complains when try to reinstall anyway
-#         # docker exec -i lakebox bash -c 'git clone https://github.com/weiya711/sam.git && cd sam && python3 -m pip install -e .'
-#         #
-#         docker exec -i lakebox /bin/bash -c "rm -rf /aha/lake"
-#         docker cp ../lake lakebox:/aha/lake
-#         #
-#         # May not actually need/want this???
-#         # docker exec -i lakebox bash -c 'cd lake && python3 -m pip install -e .'
-#     - name: Run tests ⚙️
-#       shell: bash
-#       run: |
-#         docker exec -i lakebox bash -c 'lake/.github/scripts/run.sh'
