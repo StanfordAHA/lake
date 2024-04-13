@@ -6,6 +6,11 @@ cd /lake
 
 source scripts/setenv.sh
 
+
+
+
+
+
 # force color
 export PYTEST_ADDOPTS="--color=yes"
 
