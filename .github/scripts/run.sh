@@ -13,7 +13,7 @@ echo pip install py, apt-get install verilator
 set -x
 yes | pip install py | head -100
 apt-get update
-apt-get install verilator
+# apt-get install verilator
 
 echo python3 -m pycodestyle lake/
 python3 -m pycodestyle lake/
