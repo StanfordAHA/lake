@@ -11,7 +11,7 @@ export PYTEST_ADDOPTS="--color=yes"
 
 echo pip install py, apt-get install verilator
 set -x
-pip install py | yes
+yes | pip install py | head -100
 apt-get update
 apt-get install verilator
 
