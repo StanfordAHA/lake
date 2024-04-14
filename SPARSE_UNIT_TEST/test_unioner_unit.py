@@ -194,6 +194,14 @@ def load_test_module(test_name):
         in_ref2 = [0, 1, 2, 'S0', 'S0', 2, 3, 4, 'S0', 'S1', 'D']
         return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
 
+    if test_name == "direct_2d_bad":
+        in_crd1 = [0, 4, 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 0, 1, 2, 'S1', 'D']
+        in_ref1 = [0, 4, 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 'S0', 1, 2, 3, 'S1', 'D']
+        in_crd2 = [0, 1, 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 0, 1, 2, 'S1', 'D']
+        in_ref2 = [0, 1, 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 2, 'S0', 0, 1, 2, 'S1', 'D']
+
+        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
         n = int(t_arg[1][0])
@@ -284,7 +292,7 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_iter_basic():
     init_module()
-    test_list = ["direct_1d", "direct_2d", "xxx", "empty_2d", "array_1d", "array_2d"]
+    test_list = ["direct_1d", "direct_2d", "direct_2d_bad", "xxx", "empty_2d", "array_1d", "array_2d"]
     for test in test_list:
         module_iter_basic(test)
 

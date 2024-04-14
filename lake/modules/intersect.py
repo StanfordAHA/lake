@@ -359,7 +359,13 @@ class Intersect(MemoryController):
         ALIGN.next(ALIGN, None)
 
         # For Union, there is no real early stop, we just can go until both streams hit stop tokens
-        UNION.next(DRAIN, self._eos_in_sticky.r_and())
+        # UNION.next(DRAIN, self._eos_in_sticky.r_and())
+        # UNION.next(DRAIN, self._all_have_eos)
+        # CHANGE 1
+        # In non-VR mode, we stay in this stage
+        # UNION.next(DRAIN, self._all_have_eos & self._vector_reduce_mode)
+        UNION.next(DRAIN, self._all_have_eos & self._vector_reduce_mode & self._fifo_full.r_or())
+        UNION.next(PASS_DONE, self._all_have_eos & self._vector_reduce_mode & ~self._fifo_full.r_or())  # Failed to push to the down stream
         UNION.next(UNION, None)
 
         # Then in DRAIN, we pass thru the stop tokens (MO: and the DONE token in non-VR mode)
@@ -367,8 +373,11 @@ class Intersect(MemoryController):
         # In VR_mode, DRAIN transitions "unconditionally" to PASS_DONE
         # CHANGE 1
         # DRAIN.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or())
-        DRAIN.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or() & valid_concat.r_and())
-        DRAIN.next(DONE, ~self._vector_reduce_mode & ~self._all_have_eos & valid_concat.r_and())
+        # CHANGE 2
+        # No longer reachable from non-VR mode
+        # DRAIN.next(PASS_DONE, self._vector_reduce_mode & ~self._fifo_full.r_or() & valid_concat.r_and())
+        DRAIN.next(PASS_DONE, ~self._fifo_full.r_or() & valid_concat.r_and())
+        # DRAIN.next(UNION, ~self._vector_reduce_mode & ~self._all_have_eos & valid_concat.r_and())
         DRAIN.next(DRAIN, None)
 
         # PASS_DONE can only be accessed in VR mode to insert a semi-DONE token into the outgoing stream.
@@ -416,8 +425,10 @@ class Intersect(MemoryController):
         #            (~self._all_have_eos & all_have_eos_and_all_valid[1]))
         # ITER.output(self._pop_fifo[1], self._all_are_valid & ((~self._any_has_eos | self._all_have_eos) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) & ~self._fifo_full.r_or()) |
         #            (~self._all_have_eos & all_have_eos_and_all_valid[0]))
-        ITER.output(self._pop_fifo[0], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
-        ITER.output(self._pop_fifo[1], ((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or())
+        ITER.output(self._pop_fifo[0], (((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or()) |
+                    (self._all_are_valid & ~self._all_have_eos & all_have_eos_and_all_valid[1]))
+        ITER.output(self._pop_fifo[1], (((self._all_are_valid_but_no_eos | (self._all_are_valid & self._all_have_eos)) & (self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1])) & ~self._fifo_full.r_or()) |
+                    (self._all_are_valid & ~self._all_have_eos & all_have_eos_and_all_valid[0]))
         # We need to push any good coordinates, then push at EOS? Or do something so that EOS gets in the pipe
         ITER.output(self._fifo_push, self._all_are_valid & (((self._coord_in_fifo_in[0] == self._coord_in_fifo_in[1]) & ~self._any_has_eos) | (self._all_have_eos)) & ~self._fifo_full.r_or())
         ITER.output(self._clr_eos_sticky[0], (self._all_have_eos & ~self._fifo_full.r_or()))
@@ -450,29 +461,43 @@ class Intersect(MemoryController):
         # UNION
         #######
         # Pop if the lesser coord or the other stream is at eos
-        UNION.output(self._pop_fifo[0], self._all_are_valid & ((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[1]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[0])
-        UNION.output(self._pop_fifo[1], self._all_are_valid & ((self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[0]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[1])
+        # UNION.output(self._pop_fifo[0], self._all_are_valid & ((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[1]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[0])
+        # UNION.output(self._pop_fifo[1], self._all_are_valid & ((self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[0]) & ~self._fifo_full.r_or() & ~self._coord_in_fifo_eos_in[1])
+        UNION.output(self._pop_fifo[0], self._all_are_valid & ~self._fifo_full.r_or() & ((((self._coord_in_fifo_in[0] <= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[1]) & ~self._coord_in_fifo_eos_in[0]) | self._all_have_eos))
+        UNION.output(self._pop_fifo[1], self._all_are_valid & ~self._fifo_full.r_or() & ((((self._coord_in_fifo_in[0] >= self._coord_in_fifo_in[1]) | self._coord_in_fifo_eos_in[0]) & ~self._coord_in_fifo_eos_in[1]) | self._all_have_eos))
         # We need to push any coordinate period as long as there is room and they are not all eos
         # UNION.output(self._fifo_push, self._all_are_valid_but_no_eos & ~self._fifo_full.r_or() & ~self._all_have_eos)
-        UNION.output(self._fifo_push, self._all_are_valid & ~self._fifo_full.r_or() & ~self._all_have_eos)
+        # UNION.output(self._fifo_push, self._all_are_valid & ~self._fifo_full.r_or() & ~self._all_have_eos)
+        UNION.output(self._fifo_push, self._all_are_valid & ~self._fifo_full.r_or())
         UNION.output(self._clr_eos_sticky[0], 0)
         UNION.output(self._clr_eos_sticky[1], 0)
         # Need to pick which FIFO to pass through
-        UNION.output(self._coord_to_fifo, kts.ternary(self._pop_fifo[0], self._coord_in_fifo_in[0][15, 0], self._coord_in_fifo_in[1][15, 0]))
-        UNION.output(self._pos_to_fifo[0], kts.ternary(self._pop_fifo[0], self._pos_in_fifo_in[0][15, 0], self._maybe))
-        UNION.output(self._pos_to_fifo[1], kts.ternary(self._pop_fifo[1], self._pos_in_fifo_in[1][15, 0], self._maybe))
-        UNION.output(self._coord_to_fifo_eos, 0)
-        UNION.output(self._pos_to_fifo_eos[0], ~self._vector_reduce_mode & ~self._pop_fifo[0])  # MO: Will maybe token having EOS cause issues?
-        UNION.output(self._pos_to_fifo_eos[1], ~self._vector_reduce_mode & ~self._pop_fifo[1])  # MO: Will maybe token having EOS cause issues?
+        # UNION.output(self._coord_to_fifo, kts.ternary(self._pop_fifo[0], self._coord_in_fifo_in[0][15, 0], self._coord_in_fifo_in[1][15, 0]))
+        # UNION.output(self._pos_to_fifo[0], kts.ternary(self._pop_fifo[0], self._pos_in_fifo_in[0][15, 0], self._maybe))
+        # UNION.output(self._pos_to_fifo[1], kts.ternary(self._pop_fifo[1], self._pos_in_fifo_in[1][15, 0], self._maybe))
+        UNION.output(self._coord_to_fifo, kts.ternary(self._all_have_eos, self._coord_in_fifo_in[0][15, 0],
+                                                    kts.ternary(self._pop_fifo[0], self._coord_in_fifo_in[0][15, 0], self._coord_in_fifo_in[1][15, 0])))
+        UNION.output(self._pos_to_fifo[0], kts.ternary(self._all_have_eos, self._pos_in_fifo_in[0][15, 0],
+                                                    kts.ternary(self._pop_fifo[0], self._pos_in_fifo_in[0][15, 0], self._maybe)))
+        UNION.output(self._pos_to_fifo[1], kts.ternary(self._all_have_eos, self._pos_in_fifo_in[0][15, 0],  # In Theory, the stop token value should be aligned
+                                                    kts.ternary(self._pop_fifo[1], self._pos_in_fifo_in[1][15, 0], self._maybe)))
+        # UNION.output(self._coord_to_fifo_eos, 0)
+        # UNION.output(self._pos_to_fifo_eos[0], ~self._vector_reduce_mode & ~self._pop_fifo[0])  # MO: Will maybe token having EOS cause issues?
+        # UNION.output(self._pos_to_fifo_eos[1], ~self._vector_reduce_mode & ~self._pop_fifo[1])  # MO: Will maybe token having EOS cause issues?
+        UNION.output(self._coord_to_fifo_eos, self._all_have_eos)
+        UNION.output(self._pos_to_fifo_eos[0], (~self._vector_reduce_mode & ~self._pop_fifo[0]) | self._all_have_eos)  # MO: Will maybe token having EOS cause issues?
+        UNION.output(self._pos_to_fifo_eos[1], (~self._vector_reduce_mode & ~self._pop_fifo[1]) | self._all_have_eos)  # MO: Will maybe token having EOS cause issues?
 
         #######
         # DRAIN
         #######
-        DRAIN.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
-        DRAIN.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        # DRAIN.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        # DRAIN.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        DRAIN.output(self._pop_fifo[0], ~self._fifo_full.r_or() & self._all_have_eos)
+        DRAIN.output(self._pop_fifo[1], ~self._fifo_full.r_or() & self._all_have_eos)
         # Keep DRAINing while we have eos in...should be aligned
         # DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._coord_in_fifo_eos_in[0] & valid_concat.r_and())
-        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos & valid_concat.r_and())
+        DRAIN.output(self._fifo_push, ~self._fifo_full.r_or() & self._all_have_eos)
         DRAIN.output(self._clr_eos_sticky[0], 0)
         DRAIN.output(self._clr_eos_sticky[1], 0)
         DRAIN.output(self._coord_to_fifo, self._coord_in_fifo_in[0][15, 0])
