@@ -132,6 +132,10 @@ def load_test_module(test_name):
         in_crd = [7, 0, 1, 2, 3, 4, 5, 6]
         return in_crd
 
+    if test_name == "empty":
+        in_crd = [0]
+        return in_crd
+
     elif test_name[0:2] == "rd":
         size = int(test_name.split("_")[1])
         vals = [random.randint(1, 600) for i in range(size)]
@@ -185,24 +189,24 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-# def test_iter_basic():
-#     init_module()
-#     test_list = ["direct_l0", "direct_l1", "direct_l2", "diag", "xxx"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_iter_basic():
+    init_module()
+    test_list = ["direct_l0", "direct_l1", "direct_l2", "diag", "xxx"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_iter_random():
-#     init_module()
-#     for i in range(200):
-#         size = i + 1
-#         module_iter_basic(f"rd_{size}")
+def test_iter_random():
+    init_module()
+    for i in range(200):
+        size = i + 1
+        module_iter_basic(f"rd_{size}")
 
 
-# def test_iter_seq():
-#     init_module()
-#     module_iter_basic("direct_l0", "direct_l1")
-#     module_iter_basic("direct_l2", "diag")
+def test_iter_seq():
+    init_module()
+    module_iter_basic("direct_l0", "direct_l1")
+    module_iter_basic("direct_l2", "diag")
 
 
 def test_iter_random_sweep():

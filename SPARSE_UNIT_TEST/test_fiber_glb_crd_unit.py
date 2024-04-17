@@ -133,6 +133,10 @@ def load_test_module(test_name):
         in_crd = [7, 0, 1, 2, 3, 4, 5, 6, 6, 1, 2, 3, 4, 5, 6]
         return in_crd
 
+    if test_name == "empty":
+        in_crd = [2, 0, 0, 0]
+        return in_crd
+
     elif test_name[0:2] == "rd":
         size = int(test_name.split("_")[2])
         f_n = random.randint(1, 64)
