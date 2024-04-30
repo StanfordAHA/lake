@@ -28,12 +28,19 @@ export WAVEFORM ?= 0
 # -------------------------------------------------------------------
 CLK_PERIOD ?= 1ns
 TX_NUM_GLB ?= 1
+TX_NUM_0 ?= 0
+TX_NUM_1 ?= 0
+TX_NUM_2 ?= 0
+TX_NUM_3 ?= 0
+SEG_MODE ?= 0
 
 DESIGN_FILES += $(TEST_TAR) \
 				tile_read.sv \
 				tile_write.sv\
 				glb_read.sv \
 				glb_write.sv\
+				glb_stream_read.sv \
+				glb_stream_write.sv\
 				sram_sp.sv\
 				behavioral_pe_add.sv\
 				-y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \
@@ -115,10 +122,21 @@ XRUN = xrun \
 # Compile & Run
 # -------------------------------------------------------------------
 COMPILE_RTL_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD) \
-					+define+TX_NUM_GLB=$(TX_NUM_GLB)
+					+define+TX_NUM_GLB=$(TX_NUM_GLB) \
+					+define+TX_NUM_0=$(TX_NUM_0) \
+					+define+TX_NUM_1=$(TX_NUM_1) \
+					+define+TX_NUM_2=$(TX_NUM_2) \
+					+define+TX_NUM_3=$(TX_NUM_3) \
+					+define+SEG_MODE=$(SEG_MODE)
 
 COMPILE_GLS_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD) \
-					+define+TX_NUM_GLB=$(TX_NUM_GLB)
+					+define+TX_NUM_GLB=$(TX_NUM_GLB) \
+					+define+TX_NUM_0=$(TX_NUM_0) \
+					+define+TX_NUM_1=$(TX_NUM_1) \
+					+define+TX_NUM_2=$(TX_NUM_2) \
+					+define+TX_NUM_3=$(TX_NUM_3) \
+					+define+SEG_MODE=$(SEG_MODE)
+
 ifeq ($(TOOL), XCELIUM)
     COMPILE = $(XRUN)
     # COMPILE_RTL_ARGS += -xminitialize 0 -xminit_log init.log -nospecify

@@ -73,6 +73,12 @@ class Arbiter(Generator):
         self._grant_line = self.var("grant_line", self.ins)
         self._grant_line_ready = self.var("grant_line_ready", self.ins)
 
+        if self.algo == "RR_STREAM":
+            self._num_req = self.input("num_req", kts.clog2(self.ins))
+            self._max_grant_line = self.var("max_grant_line", self.ins)
+            # self.wire(self._max_grant_line, self._grant_line.ashr(self._num_req))  # TODO confirm this expression
+            self.wire(self._max_grant_line, self._grant_line >> self._num_req)  # TODO confirm this expression
+
         if self.ins == 1:
             self.wire(self._grant_out[0], self._resource_ready)
             return
@@ -90,6 +96,18 @@ class Arbiter(Generator):
             def grant_line_ff(self):
                 # self._grant_line = kts.ternary(self._request_in[0], kts.const(1, self.ins), kts.const(2, self.ins))
                 self._grant_line = kts.ternary(self._request_in[1], kts.const(2, self.ins), kts.const(1, self.ins))
+        elif self.algo == "RR_STREAM":  # TODO get the correct granularity
+            @always_ff((posedge, self._clk), (negedge, self._rst_n))
+            def grant_line_ff(self):
+                if ~self._rst_n:
+                    self._grant_line = 1
+                elif self._request_in.r_or():
+                    if self._max_grant_line == 1:
+                        self._grant_line = 1
+                    else:
+                        self._grant_line = kts.concat(self._grant_line[self.ins - 2, 0], self._grant_line[self.ins - 1])
+                else:
+                    self._grant_line = self._grant_line  # TODO
         else:
             raise RuntimeError("No supported algorithm for arbiter...")
         self.add_code(grant_line_ff)
