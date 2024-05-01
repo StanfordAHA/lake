@@ -62,10 +62,6 @@ class ScannerPipe(MemoryController):
         self._dense = self.input("dense", 1)
         self._dense.add_attribute(ConfigRegAttr("This scanner is 'scanning' a dense data structure..."))
 
-        # Dimension Size
-        self._dim_size = self.input("dim_size", 16)
-        self._dim_size.add_attribute(ConfigRegAttr("This scanner is 'scanning' a dense data structure of this size..."))
-
         # Repeat number
         self._do_repeat = self.input("do_repeat", 1)
         self._do_repeat.add_attribute(ConfigRegAttr("If this scanner should do a repeat for creating outer coords"))
@@ -83,16 +79,6 @@ class ScannerPipe(MemoryController):
 
         self._lookup_mode = self.input("lookup", 1)
         self._lookup_mode.add_attribute(ConfigRegAttr("Random access/lookup mode...."))
-
-        # Set the stop token injection level - (default 0 + 1 for root)
-        # self._stop_lvl = self.input("stop_lvl", 16)
-        # self._stop_lvl.add_attribute(ConfigRegAttr("What level stop tokens should this scanner inject/In sparse accum mode, when to pop the data blocks"))
-
-        # self._stop_lvl_spill = self.input("stop_lvl_spill", 16)
-        # self._stop_lvl_spill.add_attribute(ConfigRegAttr("What level stop tokens should this scanner inject/In sparse accum mode, when to pop the data blocks"))
-
-        # self._spacc_mode = self.input("spacc_mode", 1)
-        # self._spacc_mode.add_attribute(ConfigRegAttr("Sparse accum mode"))
 
         # Vector Reduce Mode
         self._vector_reduce_mode = self.input("vector_reduce_mode", 1)
@@ -136,18 +122,6 @@ class ScannerPipe(MemoryController):
 
         self._block_rd_out_ready_in = self.input("block_rd_out_ready", 1)
         self._block_rd_out_ready_in.add_attribute(ControlSignalAttr(is_control=True))
-
-        # Eos for both streams...
-        # self._eos_out = self.output("eos_out", 2)
-        # self._eos_out.add_attribute(ControlSignalAttr(is_control=False))
-
-        # Valid out for both streams
-        # self._valid_out = self.output("valid_out", 2)
-        # self._valid_out.add_attribute(ControlSignalAttr(is_control=False))
-
-        # Ready in for pos and coord
-        # self._ready_in = self.input("ready_in", 2)
-        # self._ready_in.add_attribute(ControlSignalAttr(is_control=True))
 
         ################################################################################
         # TO BUFFET
@@ -196,76 +170,8 @@ class ScannerPipe(MemoryController):
             self._ID_out_valid_out = [self.output(f"ID_out_{i}_valid", 1) for i in range(num_ports)]
             [self._ID_out_valid_out[i].add_attribute(ControlSignalAttr(is_control=False, full_bus=False)) for i in range(num_ports)]
 
-        #     for i in range(num_ports):
-        #         self._addr_out.append()
-
-        #         self._addr_out_ready_in.append()
-
-        #         self._addr_out_valid_out.append()
-
-        #         # OP out r/v
-        #         self._op_out.append()
-
-        #         self._op_out_ready_in.append()
-
-        #         self._op_out_valid_out.append()
-
-        #         # Response channel from buffet
-        #         self._rd_rsp_data_in.append()
-
-        #         self._rd_rsp_valid_in.append()
-        #         self._rd_rsp_ready_out.append()
-
-        # else:
-        #     self._addr_out = self.output("addr_out", self.data_width + 1, explicit_array=True, packed=True)
-        #     self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-        #     self._addr_out_ready_in = self.input("addr_out_ready", 1)
-        #     self._addr_out_ready_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-
-        #     self._addr_out_valid_out = self.output("addr_out_valid", 1)
-        #     self._addr_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-
-        #     # OP out r/v
-        #     self._op_out = self.output("op_out", self.data_width + 1, explicit_array=True, packed=True)
-        #     self._op_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-        #     self._op_out_ready_in = self.input("op_out_ready", 1)
-        #     self._op_out_ready_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-
-        #     self._op_out_valid_out = self.output("op_out_valid", 1)
-        #     self._op_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-
-        #     # ID out r/v
-        #     self._ID_out = self.output("ID_out", self.data_width + 1, explicit_array=True, packed=True)
-        #     self._ID_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-        #     self._ID_out_ready_in = self.input("ID_out_ready", 1)
-        #     self._ID_out_ready_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-
-        #     self._ID_out_valid_out = self.output("ID_out_valid", 1)
-        #     self._ID_out_valid_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-
-        #     # Response channel from buffet
-        #     self._rd_rsp_data_in = self.input("rd_rsp_data_in", self.data_width + 1, explicit_array=True, packed=True)
-        #     self._rd_rsp_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-        #     self._rd_rsp_valid_in = self.input("rd_rsp_data_in_valid", 1)
-        #     self._rd_rsp_valid_in.add_attribute(ControlSignalAttr(is_control=True))
-
-        #     self._rd_rsp_ready_out = self.output("rd_rsp_data_in_ready", 1)
-        #     self._rd_rsp_ready_out.add_attribute(ControlSignalAttr(is_control=False))
-
-        # Intermediate for typing...
-        # self._ren = self.var("ren", 1)
-
         # Point to the row in storage for data recovery
         self._payload_ptr = self.var("payload_ptr", self.data_width)
-        # self._payload_ptr.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-
-        # self.wire(self._addr_out[0][self.data_width + 1 - 1], kts.const(0, 1))
-        # self.wire(self._op_out[0][self.data_width + 1 - 1], kts.const(0, 1))
-        # self.wire(self._ID_out[0][self.data_width + 1 - 1], kts.const(0, 1))
 
 # ==========================================
 # Generate addresses to scan over fiber...
@@ -278,7 +184,6 @@ class ScannerPipe(MemoryController):
         self._inc_rep = self.var("inc_rep", 1)
         self._clr_rep = self.var("clr_rep", 1)
         self._num_reps = add_counter(self, "num_reps", 16, self._inc_rep, self._clr_rep)
-        # self._step_agen = self.var("step_agen", 1)
 
 # =============================
 # Input FIFO
@@ -337,29 +242,12 @@ class ScannerPipe(MemoryController):
 
         self._us_fifo_push = self.var("us_fifo_push", 1)
 
-        # self._non_vr_mode_us_pos_fifo_eos_in = self.var("non_vr_mode_us_pos_fifo_eos_in", 1)
-        # self._non_vr_mode_us_pos_fifo_data_in = self.var("non_vr_mode_us_pos_fifo_data_in", 16)
-        # self._non_vr_mode_us_pos_fifo_push = self.var("non_vr_mode_us_pos_fifo_push", 1)
-
-        # self.wire(self._non_vr_mode_us_pos_fifo_eos_in, kts.ternary(self._root, self._us_fifo_inject_eos, self._upstream_pos_in[self.data_width]))
-        # self.wire(self._non_vr_mode_us_pos_fifo_data_in, kts.ternary(self._root, self._us_fifo_inject_data, self._upstream_pos_in[self.data_width - 1, 0]))
-        # self.wire(self._non_vr_mode_us_pos_fifo_push, kts.ternary(self._root, self._us_fifo_inject_push, self._upstream_valid_in))
-
-        # indicate valid data as well
-        # self.wire(self._pos_in_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2], self._upstream_coord_in)
-        # self.wire(self._pos_in_us_packed[self.data_width + 1], self._upstream_valid_in)
-
         # The EOS tags on the last valid in the stream
-        # self.wire(self._pos_in_us_packed[self.data_width], kts.ternary(self._vector_reduce_mode, self._pos_to_read_scanner_from_vr_fsm[self.data_width], self._non_vr_mode_us_pos_fifo_eos_in))
         self.wire(self._pos_in_us_packed[self.data_width], kts.ternary(self._root, self._us_fifo_inject_eos, self._upstream_pos_in[self.data_width]))
-        # self.wire(self._pos_in_us_packed[self.data_width - 1, 0], kts.ternary(self._vector_reduce_mode, self._pos_to_read_scanner_from_vr_fsm[self.data_width - 1, 0], self._non_vr_mode_us_pos_fifo_data_in))
         self.wire(self._pos_in_us_packed[self.data_width - 1, 0], kts.ternary(self._root, self._us_fifo_inject_data, self._upstream_pos_in[self.data_width - 1, 0]))
-        # self.wire(self._us_fifo_push, kts.ternary(self._vector_reduce_mode, self._pos_valid_to_read_scanner_from_vr_fsm, self._non_vr_mode_us_pos_fifo_push))
         self.wire(self._us_fifo_push, kts.ternary(self._root, self._us_fifo_inject_push, self._upstream_valid_in))
 
         self._data_out_us_packed = self.var("fifo_out_us_packed", 1 * self.data_width + 1, packed=True)
-        # self.wire(self._infifo_coord_in, self._data_out_us_packed[2 * self.data_width + 2 - 1, self.data_width + 2])
-        # self.wire(self._infifo_valid_in, self._data_out_us_packed[self.data_width + 1])
         self.wire(self._infifo_eos_in, self._data_out_us_packed[self.data_width])
         self.wire(self._infifo_pos_in, self._data_out_us_packed[self.data_width - 1, 0])
 
@@ -386,16 +274,6 @@ class ScannerPipe(MemoryController):
         self.wire(self._upstream_ready_out, ~self._fifo_us_full)
 
         self.wire(self._infifo_valid_in, ~self._infifo.ports.empty)
-
-        # @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        # def eos_seen_ff():
-        #     if ~self._rst_n:
-        #         self._eos_in_seen = 0
-        #     elif self._infifo_eos_in:
-        #         self._eos_in_seen = 1
-        # self.add_code(eos_seen_ff)
-
-        # Read Response FIFO
 
 # =============================
 # Input FIFOS from BUFFET
@@ -903,8 +781,6 @@ class ScannerPipe(MemoryController):
         self.wire(self._fifo_full, self._fifo_full_pre.r_or())
 
         self._data_to_fifo = self.var("data_to_fifo", self.data_width)
-        # Gate ready after last read in the stream
-        # self._ready_gate = self.var("ready_gate", 1)
 
         # Define logic for iter_finish + rep_finish
         self._iter_finish = sticky_flag(self, self._last_valid_accepting, clear=self._clr_fiber_addr, name="iter_finish")
@@ -924,20 +800,15 @@ class ScannerPipe(MemoryController):
         self._maybe_in = self.var("maybe_in", 1)
         self.wire(self._maybe_in, self._infifo_eos_in & self._infifo_valid_in & (self._infifo_pos_in[9, 8] == kts.const(2, 2)))
 
-        # self._seg_stop_lvl_geq = self.var("seg_stop_lvl_geq", 1)
-        # self.wire(self._seg_stop_lvl_geq, self._seg_res_fifo_fill_data_in[16] & (self._seg_res_fifo_fill_data_in[self.OPCODE_BT] == self.STOP_CODE) &
-        #                               (self._seg_res_fifo_fill_data_in[self.STOP_BT] >= self._stop_lvl[self.STOP_BT]))
-
-        # # This indicates we should go into the readout loop
-        # self._seg_stop_lvl_geq_p1 = self.var("seg_stop_lvl_geq_p1", 1)
-        # self.wire(self._seg_stop_lvl_geq_p1, self._seg_res_fifo_fill_data_in[16] & (self._seg_res_fifo_fill_data_in[self.OPCODE_BT] == self.STOP_CODE) &
-        #                               (self._seg_res_fifo_fill_data_in[self.STOP_BT] >= (self._stop_lvl[self.STOP_BT] + 1)))
-
-        # self._seg_stop_lvl_geq_p1_sticky = sticky_flag(self, self._seg_stop_lvl_geq_p1 & self._seg_res_fifo_push_alloc & self._seg_res_fifo_push_fill,
-        #                                                clear=self._clr_readout_loop_seg, name="go_to_readout_sticky")
-
-        self._infifo_pos_in_d1_en = self.var("infifo_pos_in_d1_en", 1)
-        self._infifo_pos_in_d1 = register(self, self._infifo_pos_in, enable=self._infifo_pos_in_d1_en)
+        ####### Logic for dense scanning
+        # counter for generating the dense coordinate and bookkeeping for inserting stop token
+        self._inc_dense_scan_cnt = self.var("inc_dense_scan_cnt", 1)
+        self._clr_dense_scan_cnt = self.var("clr_dense_scan_cnt", 1)
+        self._dense_scan_cnt = add_counter(self, name="dense_scan_cnt", bitwidth=16, increment=self._inc_dense_scan_cnt, clear=self._clr_dense_scan_cnt)
+        # register for storing the dimension size of the dense matrix
+        self._dim_size_reg_en = self.var("dim_size_reg_en", 1)
+        self._dim_size_reg = register(self, self._seg_res_fifo_data_out[0][self.data_width - 1, 0], enable=self._dim_size_reg_en)
+        
 
         ####### Logic for block reads
         self._inc_req_made_seg = self.var("inc_req_made_seg", 1)
@@ -1194,7 +1065,6 @@ class ScannerPipe(MemoryController):
         INJECT_ROUTING.output(self._us_fifo_inject_push, 1)
         INJECT_ROUTING.output(self._seg_res_fifo_push_alloc, ~self._seg_res_fifo_full)
         INJECT_ROUTING.output(self._seg_res_fifo_push_fill, ~self._seg_res_fifo_full)
-        # INJECT_0.output(self._seg_res_fifo_push_reserve, 0)
         INJECT_ROUTING.output(self._seg_res_fifo_fill_data_in, kts.concat(kts.const(1, 1), kts.const(0, 6), kts.const(3, 2), kts.const(0, 7), self._readout_loop))
 
         #######
@@ -1204,7 +1074,6 @@ class ScannerPipe(MemoryController):
         READ.output(self._seg_op_out_to_fifo, 1)
         READ.output(self._seg_ID_out_to_fifo, 0)
         # Only request a push when there's valid, non-eos data on the fifo
-        # READ.output(self._seg_req_push, self._infifo_valid_in & ~self._infifo_eos_in & ~self._seg_res_fifo_full & ~self._dense)
         READ.output(self._seg_req_push, ((self._infifo_valid_in & ~self._infifo_eos_in & ~self._dense) | self._readout_loop) & ~self._seg_res_fifo_full)
         # Can pop the infifo if we have done or are in dense mode
         # READ.output(self._seg_pop_infifo, (((self._done_in | (self._dense & self._infifo_valid_in & ~self._eos_in)) & ~self._seg_res_fifo_full) | self._maybe_in) & ~self._readout_loop)
