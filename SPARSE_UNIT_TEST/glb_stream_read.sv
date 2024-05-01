@@ -16,7 +16,7 @@ module glb_stream_read #(
     input logic seg_mode
 );
 
-logic [16:0] local_mem_0 [0:2047];
+logic [16:0] local_mem_0 [0:4095];
 integer num_rx;
 integer size_0;
 
