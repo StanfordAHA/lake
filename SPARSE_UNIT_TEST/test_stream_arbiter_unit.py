@@ -15,6 +15,7 @@ import random
 random.seed(15)
 import string
 import copy
+import numpy as np
 
 
 def init_module():
@@ -28,76 +29,48 @@ def init_module():
             optimize_if=False)
     sparse_helper.update_tcl("stream_arbiter_tb")
 
-# def create_random_fiber(rate, size, d, f_type = "coord"):
-#     # size = int(size*random.uniform(1.0, 1.0+d))
-#     s = int(rate*size)
-#     if f_type == "coord":
-#         crd = random.sample(range(size), s)
-#         crd.sort()
-#         return crd
-#     elif f_type == "pos":
-#         pos = random.sample(range(1, size + 1), s)
-#         pos.sort()
-#         return pos
-#     else:
-#         val = [random.uniform(0, 2**15-1) for i in range(s)]
-#         return val
 
-# def create_random(n, rate, size, d1=0):
-#     if n == 1:
-#         in_crd1 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
-#         in_ref1 = create_random_fiber(1, len(in_crd1) - 2, 0, "pos") + ['S0', 'D']
-#         in_crd2 = create_random_fiber(rate, size, 0.2, "coord") + ['S0', 'D']
-#         in_ref2 = create_random_fiber(1, len(in_crd2) - 2, 0, "pos") + ['S0', 'D']
-#         return in_crd1, in_crd2, in_ref1, in_ref2
-    
-#     elif n == 2:
-#         if d1 == 0:
-#             d1 = int(random.uniform(2, int(size**(1/2))))
-#         d2 = size // d1
-#         rate = rate**(1/2)
-#         ret = [[] for i in range(4)]
-#         for i in range(d1):
-#             ret_t = [[] for j in range(4)]
-#             if random.random() < rate:
-#                 ret_t[0] = create_random_fiber(rate, d2, 0.2, "coord")
-#                 ret_t[1] = create_random_fiber(1, len(ret_t[0]), 0, "pos")
-#             if random.random() < rate:
-#                 ret_t[2] = create_random_fiber(rate, d2, 0.2, "coord")
-#                 ret_t[3] = create_random_fiber(1, len(ret_t[2]), 0, "pos")
+def create_random_stream(rate, size, dim, f_type="seg", allow_empty=False):
+    assert rate >= 0 and rate <= 1, "Rate should be between 0 and 1"
+    num_elem = size ** dim
+    mat_1d = np.random.randint(-1024, 1024, size=num_elem)
+    zero_index = random.sample(range(num_elem), int(num_elem * rate))
+    for i in zero_index:
+        mat_1d[i] = 0
+    mat_nd = mat_1d.reshape((-1, size))
+    mat_nd = mat_nd.tolist()
+    # print(mat_nd)
+    # print(mat_1d)
 
-#             for j in range(4):
-#                 if i == d1 - 1:
-#                     ret[j] = ret[j] + ret_t[j] + ['S1', 'D']
-#                 else:
-#                     ret[j] = ret[j] + ret_t[j] + ['S0']
-#         return ret[0], ret[1], ret[2], ret[3]
-#     elif n == 3:
-#         if d1 == 0:
-#             d1 = int(random.uniform(2, int(size**(1/3))))
-#         d2 = size // d1
-#         d1_ = int(random.uniform(2, int(d2**(1/2))))
-#         rate = rate**(1/3)
-#         ret = [[] for i in range(4)]
-#         # print(d1, d2, rate)
-#         for i in range(d1):
-#             # print("i---------: ", i)
-#             ret_t = [[] for j in range(4)]
-#             if random.random() < rate:
-#                 ret_t[0], ret_t[1], ret_t[2], ret_t[3] = create_random(2, rate*rate, d2, d1_)
-#             else:
-#                 for j in range(4):
-#                     ret_t[j] = ret_t[j] + ['S1', 'D']
-            
-#             for j in range(4):
-#                 if i == d1 - 1:
-#                     ret[j] = ret[j] + ret_t[j][:-2] + ['S2', 'D']
-#                 else:
-#                     ret[j] = ret[j] + ret_t[j][:-1]
-#                 # print(j)
-#                 # print(ret_t[j][:-1])
-#                 # print(ret[j])
-#         return ret[0], ret[1], ret[2], ret[3]
+    if f_type == "seg":
+        if allow_empty:
+            seg = [0]
+            cur_seg = 0
+            crd = []
+            for fiber in mat_nd:
+                sub_crd = [e for e in fiber if e != 0]
+                cur_seg += len(sub_crd)
+                seg.append(cur_seg)
+                crd += sub_crd
+        else:
+            seg = [0]
+            for i in range(len(mat_nd)):
+                seg.append((i+1)*size)
+            crd = [i for i in range(len(mat_1d))]
+        seg.insert(0, len(seg))
+        crd.insert(0, len(crd))
+        # print(seg)
+        # print(crd)
+        out_stream = seg + crd
+    else:
+        if allow_empty:
+            val = mat_1d.tolist()
+        else:
+            val = [e for e in mat_1d if e != 0]
+        val.insert(0, len(val))
+        out_stream = val
+    # print(out_stream)
+    return out_stream
 
 
 def check_streams(inputs, outputs):
@@ -123,7 +96,6 @@ def check_streams(inputs, outputs):
         valid_inpus[ids[stream_id]] = valid_inpus[ids[stream_id]][1:]
         
 
-
 def load_test_module(test_name):
     sample_3tr_seg = []
     sample_3tr_val = []
@@ -131,7 +103,7 @@ def load_test_module(test_name):
     sample_3tr_seg.append([1, 2, 0, 10, 10, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
     sample_3tr_seg.append([1, 3, 0, 1, 2, 2, 100, 500])
     sample_3tr_val.append([1, 7, 1, 2, 3, 4, 5, 6, 7])
-    sample_3tr_val.append([1, 10, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
+    sample_3tr_val.append([1, 10, 8, 9, 10, -11, 12, 13, 14, 15, 16, 17])
     sample_3tr_val.append([1, 2, 100, 500])
 
     if test_name == "1_merge_3str_seg":
@@ -261,11 +233,46 @@ def load_test_module(test_name):
 
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
-        n = int(t_arg[1][0])
-        rate = float(t_arg[2])
-        size = int(t_arg[3])
-        [in_crd1, in_ref1, in_crd2, in_ref2] = create_random(n, rate, size)
-        return create_gold(in_crd1, in_crd2, in_ref1, in_ref2)
+        stream_num = int(t_arg[1][0])
+        assert stream_num > 0 and stream_num <= 4, "Stream number should be between 1 and 4"
+        even = t_arg[2] == "even"
+        allow_empty = t_arg[3] == "empty"
+        f_type = t_arg[4]
+
+        if f_type == "seg":
+            seg_mode = 1
+        else:
+            seg_mode = 0
+
+        all_stream = []
+        ids = [1, 2, 4, 8]  # to be determined for future design
+
+        # parameters
+        trans_range = [8, 32]
+        rate_range = [0.8, 1.0]
+        dim = [1, 2, 3]
+        size_range = [1, 5]
+
+        stream_lengths = [0 for i in range(4)]
+
+        st_length = random.randint(trans_range[0], trans_range[1])
+        var_length = [random.randint(trans_range[0], trans_range[1]) for i in range(stream_num)]
+        for i in range(stream_num):
+            l = st_length
+            if not even:
+                l = var_length[i]
+            in_temp = []
+            for j in range(l):
+                f = create_random_stream(random.uniform(rate_range[0], rate_range[1]), random.randint(size_range[0], size_range[1]), random.choice(dim), f_type=f_type, allow_empty=allow_empty)
+                f.insert(0, ids[i])
+                in_temp.append(f)
+            all_stream.append(in_temp)
+        
+        if len(all_stream) < 4:
+            for i in range(4 - len(all_stream)):
+                all_stream.append([])
+
+        return all_stream, seg_mode
 
     else:
         in0 = [[1, 2, 0, 0, 0]]
@@ -306,18 +313,18 @@ def module_iter_basic(test_name):
     print(cycle_count_line.splitlines()[0])
 
     stream_out = sparse_helper.read_glb_stream("stream_out.txt", total_num=total_num, seg_mode=seg_mode)
-    print(stream_out)
+    # print(stream_out)
 
     check_streams(all_stream, stream_out)
     
     print(test_name, " passed\n")
 
 
-# def test_iter_basic():
-#     init_module()
-#     test_list = ["1_merge_3str_seg", "1_merge_3str_val", "2_merge_3str_seg", "2_merge_3str_val", "3_merge_3str_seg", "3_merge_3str_val", "4_merge_3str_seg", "4_merge_3str_val"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_iter_basic():
+    init_module()
+    test_list = ["1_merge_3str_seg", "1_merge_3str_val", "2_merge_3str_seg", "2_merge_3str_val", "3_merge_3str_seg", "3_merge_3str_val", "4_merge_3str_seg", "4_merge_3str_val"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
 def test_iter_advan():
@@ -327,32 +334,21 @@ def test_iter_advan():
         module_iter_basic(test)
 
 
-# def test_random_1d():
-#     init_module()
-#     test_list = ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_1stream():
+    init_module()
+    test_list = ["rd_1st_even_empty_val", "rd_1st_even_empty_seg", "rd_1st_even_noempty_val", "rd_1st_even_noempty_seg"\
+                "rd_1st_uneven_empty_val", "rd_1st_uneven_empty_seg", "rd_1st_uneven_noempty_val", "rd_1st_uneven_noempty_seg"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_2d():
-#     init_module()
-#     test_list = ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_2d_1.0_400"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-
-# def test_random_3d():
-#     init_module()
-#     test_list = ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_3d_1.0_400"]
-#     for test in test_list:
-#         module_iter_basic(test) 
-
-
-# def test_seq():
-#     init_module()
-#     test_list =  ["rd_1d_0.1_400", "rd_1d_0.3_400", "rd_1d_0.5_400", "rd_1d_0.8_400", "rd_1d_1.0_400"] +\
-#                  ["rd_2d_0.1_400", "rd_2d_0.3_400", "rd_2d_0.5_400", "rd_2d_0.8_400", "rd_1d_1.0_400"] +\
-#                  ["rd_3d_0.1_400", "rd_3d_0.3_400", "rd_3d_0.5_400", "rd_3d_0.8_400", "rd_1d_1.0_400"]
-#     for i in range(10):
-#         rand = random.sample(test_list, 2)
-#         module_iter_basic(rand[0], rand[1])
+def test_random_mulstream():
+    init_module()
+    test_list = ["rd_2st_even_empty_val", "rd_2st_even_empty_seg", "rd_2st_even_noempty_val", "rd_2st_even_noempty_seg"\
+                "rd_3st_even_empty_val", "rd_3st_even_empty_seg", "rd_3st_even_noempty_val", "rd_3st_even_noempty_seg"\
+                "rd_4st_even_empty_val", "rd_4st_even_empty_seg", "rd_4st_even_noempty_val", "rd_4st_even_noempty_seg"
+                "rd_2st_uneven_empty_val", "rd_2st_uneven_empty_seg", "rd_2st_uneven_noempty_val", "rd_2st_uneven_noempty_seg"\
+                "rd_3st_uneven_empty_val", "rd_3st_uneven_empty_seg", "rd_3st_uneven_noempty_val", "rd_3st_uneven_noempty_seg"\
+                "rd_4st_uneven_empty_val", "rd_4st_uneven_empty_seg", "rd_4st_uneven_noempty_val", "rd_4st_uneven_noempty_seg"]
+    for test in test_list:
+        module_iter_basic(test)

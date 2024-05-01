@@ -128,6 +128,8 @@ def read_glb_stream(file_name, total_num, seg_mode):
         r_sub = []
         for line in f:
             v = int(line, 16)
+            if v > 0x7FFF:  # assuming everything is signed 16-bit
+                v -= 0x10000
             if has_id == 0:
                 has_id = 1
                 stream_count = seg_mode + 1
