@@ -2049,7 +2049,6 @@ class ScannerPipe(MemoryController):
     def get_config_mode_str(self):
         return "read_scanner"
 
-    # def get_bitstream(self, inner_offset, max_out, ranges, strides, root, do_repeat=0, repeat_outer=0, repeat_factor=0, stop_lvl=0, block_mode=0, lookup=0):
     def get_bitstream(self, config_kwargs):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
@@ -2063,12 +2062,9 @@ class ScannerPipe(MemoryController):
         do_repeat = config_kwargs['do_repeat']
         repeat_outer = config_kwargs['repeat_outer']
         repeat_factor = config_kwargs['repeat_factor']
-        # stop_lvl = config_kwargs['stop_lvl']
         block_mode = config_kwargs['block_mode']
         lookup = config_kwargs['lookup']
         dense = config_kwargs['dense']
-        dim_size = config_kwargs['dim_size']
-        # spacc_mode = config_kwargs['spacc_mode']
 
         # Store all configurations here
         config = [
@@ -2082,7 +2078,6 @@ class ScannerPipe(MemoryController):
             ('lookup', lookup),
             ('root', root),
             ('dense', dense),
-            ('dim_size', dim_size),
             # ('spacc_mode', spacc_mode),
             ('tile_en', 1)]
 
@@ -2091,11 +2086,6 @@ class ScannerPipe(MemoryController):
             tform_ranges, tform_strides = transform_strides_and_ranges(ranges=ranges,
                                                                        strides=strides,
                                                                        dimensionality=dim)
-            # for i in range(dim):
-            #     config += [("fiber_outer_iter_dimensionality", dim)]
-            #     config += [(f"fiber_outer_iter_ranges_{i}", tform_ranges[i])]
-            #     config += [(f"fiber_outer_addr_strides_{i}", tform_strides[i])]
-            #     config += [("fiber_outer_addr_starting_addr", 0)]
 
         return trim_config_list(flattened, config)
 
@@ -2108,10 +2098,6 @@ if __name__ == "__main__":
                               add_clk_enable=True,
                               perf_debug=True,
                               split_mem_requests=False)
-
-    # Lift config regs and generate annotation
-    # lift_config_reg(pond_dut.internal_generator)
-    # extract_formal_annotation(pond_dut, "pond.txt")
 
     verilog(scanner_dut, filename="scanner_pipe.sv",
             optimize_if=False)
