@@ -150,7 +150,7 @@ class StreamArbiter(MemoryController):
 
         self._set_stream_length = self.var("set_stream_length", 1)
         self._clr_stream_length = self.var("clr_stream_length", 1)
-        self._max_stream_length = self.var("max_stream_length", self.data_width)
+        self._max_stream_length = register(self, self._stream_to_fifo[self.data_width-1, 0], enable=self._set_stream_length, clear=self._clr_stream_length, name="max_stream_length", packed=True)
         # by seq_only = True, we have 1 cycle delay. Function as a valid signal here, for case of str length = 0
         self._stream_max_sticky = sticky_flag(self, self._set_stream_length, self._clr_stream_length, "max_stream_length_sticky", seq_only=True)
 
@@ -176,7 +176,6 @@ class StreamArbiter(MemoryController):
         self._clear_grant = self.var("clear_grant", 1)
         self._lock_grant = register(self, self._arb_grant, enable=self._any_grant, clear=self._clear_grant, name="lock_grant", packed=True)
 
-        self.add_code(self.lock_max_stream_length)
         self.add_code(self.stream_out_mux)
 
         self.add_child(f"rr_arbiter",
@@ -332,17 +331,6 @@ class StreamArbiter(MemoryController):
 
     def get_config_mode_str(self):
         return "stream_arbiter"
-
-    @always_ff((posedge, "clk"), (negedge, "rst_n"))
-    def lock_max_stream_length(self):
-        if ~self._rst_n:
-            self._max_stream_length = 0
-        elif self._set_stream_length:
-            self._max_stream_length = self._stream_to_fifo[self.data_width-1, 0]
-        elif self._clr_stream_length:
-            self._max_stream_length = 0
-        else:
-            self._max_stream_length = self._max_stream_length
 
     @always_comb
     def stream_out_mux(self):  # hardcoded to support input of 4
