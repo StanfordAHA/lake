@@ -755,8 +755,10 @@ class ScannerPipe(MemoryController):
                                               self._seg_res_fifo_data_out[1][self.data_width - 1, 0]))
         # sticky flag that indicate if a seg request has been sent to the buffet or not 
         # used in dense mode since we only need to send a seg request once to lookup dim size
+        # A push to the request fifo is successful when the arbitor grants the request and the reservation fifo have space 
+        # to store the eventual data returning from buffet
         self._clr_seg_req_sent = self.var("clr_seg_req_sent", 1)
-        self._seg_req_sent = sticky_flag(self, self._seg_req_push, name="seg_req_sent", clear=self._clr_seg_req_sent, seq_only=True)
+        self._seg_req_sent = sticky_flag(self, self._any_seg_grant_push & ~self._seg_res_fifo_full, name="seg_req_sent", clear=self._clr_seg_req_sent, seq_only=True)
         
         # Hold state for iterator - just length
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -901,20 +903,14 @@ class ScannerPipe(MemoryController):
 
         INJECT_ROUTING.next(READ, ~self._seg_res_fifo_full)
 
-        # From READ - we have one option
-        # 1. Issue read to first address in seg pair and reserve room in the reservation FIFO and
-        # Pop this thing off so we can have the next data or the EOS token as soon as possible
-        # READ.next(PASS_STOP, self._maybe_in | ~self._seg_res_fifo_full)
-        # Additionally, if we are in dense mode, we will ping pong between these states of PASS_STOP and read
-        # Can go to pass stop if we are in dense mode and we don't have a done in
-        # READ.next(PASS_STOP, self._maybe_in | (self._dense & ~self._done_in & ~self._seg_res_fifo_full & self._infifo_valid_in))
-        # READ.next(PASS_STOP, self._maybe_in | ((self._dense & ~self._done_in & ~self._seg_res_fifo_full & self._infifo_valid_in) | (~self._dense & ~self._spacc_mode & self._eos_in)))
-        # READ.next(PASS_STOP, self._maybe_in | ((self._dense & ~self._done_in & ~self._seg_res_fifo_full & self._infifo_valid_in) | ((~self._spacc_mode | ~self._readout_loop) & ~self._dense & self._eos_in & (~self._spacc_mode | ~self._used_data))))
+        # From READ - the situations are as follows
+        # 1. If we are in dense mode, and we have already sent the request for the dim size, the next step is to pass a S0 stop token or a input eos
+        # 2. TODO: maybe token?
+        # 3. If we are in sparse mode, and the input coming up is a stop token, we need to propoagate the stop token
+        # 4. If the first seg request is accepted, go the READ_ALT to send out the second seg request (seg comes in pairs)
+        # 5. If we see a done token, we are done with the fiber tree, go to FREE_SEG to free up the ID0 data structure
         READ.next(PASS_STOP, self._maybe_in | (((self._dense & self._seg_req_sent) & ~self._done_in & ~self._seg_res_fifo_full & self._infifo_valid_in) | (~self._dense & self._eos_in)))
-        # READ.next(READ_ALT, self._seg_grant_push & ~self._seg_res_fifo_full)
         READ.next(READ_ALT, self._any_seg_grant_push & ~self._seg_res_fifo_full)
-        # For now, just handle PASS_STOP here...
-        # READ.next(PASS_STOP, self._infifo_valid_in & self._infifo_eos_in & ~self._done_in)
         READ.next(FREE_SEG, self._done_in & ~self._seg_res_fifo_full)
         READ.next(READ, None)
 
@@ -989,8 +985,7 @@ class ScannerPipe(MemoryController):
         # DONE_SEG.next(START_SEG, (~self._dense & ~self._lookup_mode & self._crd_in_done_state) | self._lookup_mode)
         DONE_SEG.next(START_SEG, kts.ternary(self._lookup_mode,
                                              kts.const(1, 1),
-                                            #  ~self._dense & self._crd_in_done_state))
-                                             ~self._dense & self._crd_in_done_state))
+                                             self._crd_in_done_state))
         # DONE_SEG.next(DONE_SEG, None)
 
         #######
@@ -1085,11 +1080,8 @@ class ScannerPipe(MemoryController):
         READ.output(self._seg_op_out_to_fifo, 1)
         READ.output(self._seg_ID_out_to_fifo, 0)
         # Only request a push when there's valid, non-eos data on the fifo
-        # In dense mode, only request a push once to read out the dim size
+        # In dense mode, only request a pair of seg once to read out the dim size
         READ.output(self._seg_req_push, ((self._infifo_valid_in & ~self._infifo_eos_in & ~(self._dense & self._seg_req_sent)) | self._readout_loop) & ~self._seg_res_fifo_full)
-        # Clear the segment request sent indicator when we are done with this fiber tree
-        # so we can read the dim size of the next fiber input 
-        READ.output(self._clr_seg_req_sent, self._done_in & ~self._seg_res_fifo_full)
         # Can pop the infifo if we have done or are in dense mode and we have sent the request to read the dim size
         READ.output(self._seg_pop_infifo, (((self._done_in | (self._infifo_valid_in & ~self._eos_in & ((self._dense & self._seg_req_sent) | self._any_seg_grant_push))) & ~self._seg_res_fifo_full) |
                                            self._maybe_in) & ~self._readout_loop)
@@ -1109,21 +1101,14 @@ class ScannerPipe(MemoryController):
         READ.output(self._seg_res_fifo_push_fill, (self._done_in | (self._dense & self._seg_req_sent & self._infifo_valid_in & ~self._eos_in)) & ~self._seg_res_fifo_full)
         READ.output(self._seg_res_fifo_fill_data_in, kts.concat(self._infifo_eos_in, self._infifo_pos_in))
         READ.output(self._infifo_pos_in_d1_en, self._any_seg_grant_push & ~self._seg_res_fifo_full)
-        # READ.output(self._set_pushed_done_seg, self._done_in & ~self._seg_res_fifo_full & self._spacc_mode & self._infifo_valid_in)
 
         #######
         # READ_ALT
         #######
-        # READ_ALT.output(self._seg_addr_out_to_fifo, self._infifo_pos_in + 1)
-        # READ_ALT.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop, 1, self._infifo_pos_in + 1))
         READ_ALT.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop, 1, self._infifo_pos_in_d1 + 1))
         READ_ALT.output(self._seg_op_out_to_fifo, 1)
         READ_ALT.output(self._seg_ID_out_to_fifo, 0)
-        # READ_ALT.output(self._seg_req_push, self._infifo_valid_in & ~self._infifo_eos_in & ~self._seg_res_fifo_full)
         READ_ALT.output(self._seg_req_push, ~self._seg_res_fifo_full)
-        # READ_ALT.output(self._seg_pop_infifo, self._seg_grant_push & ~self._seg_res_fifo_full)
-        # READ_ALT.output(self._seg_pop_infifo, (self._any_seg_grant_push & ~self._seg_res_fifo_full) & ~self._readout_loop)
-        # Only pop the infifo if it is a stop token (not DONE) and there is room
         READ_ALT.output(self._seg_pop_infifo, self._eos_in & ~self._done_in & (self._any_seg_grant_push & ~self._seg_res_fifo_full) & ~self._readout_loop)
         READ_ALT.output(self._inc_req_made_seg, 0)
         READ_ALT.output(self._clr_req_made_seg, 0)
@@ -1265,6 +1250,9 @@ class ScannerPipe(MemoryController):
         DONE_SEG.output(self._seg_op_out_to_fifo, 0)
         DONE_SEG.output(self._seg_ID_out_to_fifo, 0)
         DONE_SEG.output(self._seg_req_push, 0)
+        # Clear the segment request sent indicator when we are done with this fiber tree
+        # so we can read the dim size of the next fiber tree 
+        DONE_SEG.output(self._clr_seg_req_sent, 1)
         DONE_SEG.output(self._seg_pop_infifo, 0)
         DONE_SEG.output(self._inc_req_made_seg, 0)
         DONE_SEG.output(self._clr_req_made_seg, 0)
@@ -1352,6 +1340,8 @@ class ScannerPipe(MemoryController):
         self.wire(self._seg_res_fifo_done_out, self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width] &
                       (self._seg_res_fifo_data_out[0][9, 8] == kts.const(1, 2)))
 
+        # When we see a done token from the seg fsm, we are done with the fibertree, traverse to done state
+        DENSE_STRM.next(DONE_CRD, self._seg_res_fifo_done_out & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full)
         DENSE_STRM.next(DENSE_STRM, None)
 
         SEQ_STRM.next(FREE_CRD, ((self._seg_res_fifo_done_out) & ~self._crd_res_fifo_full & ~self._pos_fifo.ports.full))
