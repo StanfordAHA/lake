@@ -46,6 +46,15 @@ def is_STOP_sam(s_, level = -1):
         return False
 
 
+def is_MAYBE_sam(s_):
+    if type(s_) is int:
+        return False
+    if s_ == 'N':
+        return True
+    else:
+        return False
+
+
 def convert_stream_to_onyx_interp(stream):
 
     ctrl_op_offset = 8

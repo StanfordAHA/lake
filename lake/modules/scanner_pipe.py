@@ -81,6 +81,12 @@ class ScannerPipe(MemoryController):
         self._block_mode = self.input("block_mode", 1)
         self._block_mode.add_attribute(ConfigRegAttr("Performing block reads"))
 
+        self._glb_addr_base = self.input("glb_addr_base", 16)  # Exact size to be determined
+        self._glb_addr_base.add_attribute(ConfigRegAttr("Base address for global memory"))
+
+        self._glb_addr_stride = self.input("glb_addr_stride", 16)
+        self._glb_addr_stride.add_attribute(ConfigRegAttr("Stride for global memory"))
+
         self._lookup_mode = self.input("lookup", 1)
         self._lookup_mode.add_attribute(ConfigRegAttr("Random access/lookup mode...."))
 
@@ -410,7 +416,7 @@ class ScannerPipe(MemoryController):
 
         # Every response has preallocated room - should be able to wire to 1
         # self.wire(self._rd_rsp_fifo_pop, self._seg_rd_rsp_fifo_pop | self._crd_rd_rsp_fifo_pop)
-        [self.wire(self._rd_rsp_fifo_pop[i], kts.const(1, 1)) for i in range(num_ports)]
+        # [self.wire(self._rd_rsp_fifo_pop[i], kts.const(1, 1)) for i in range(num_ports)]
 
         self._rd_rsp_fifo_valid = [self.var(f"rd_rsp_fifo_{i}_valid", 1) for i in range(num_ports)]
 
@@ -666,6 +672,17 @@ class ScannerPipe(MemoryController):
 # Midpoint Reservation FIFOs
 # =================================
 
+        self._push_glb_addr = self.var("push_glb_addr", 1)
+        self._glb_addr = self.var("glb_addr", self.data_width)
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def glb_addr_gen():
+            if ~self._rst_n:
+                self._glb_addr = self._glb_addr_base
+            elif self._push_glb_addr:
+                self._glb_addr = self._glb_addr + self._glb_addr_stride
+        self.add_code(glb_addr_gen)
+
+
         self._seg_res_fifo = ReservationFIFO(depth=8, data_width=self.data_width + 1, num_per=2)
 
         # self._seg_res_fifo_data_out = self.var("seg_res_fifo_data_out", (self.data_width + 1) * 2, packed=True)
@@ -737,7 +754,7 @@ class ScannerPipe(MemoryController):
             crd_res_data_in = kts.concat(kts.const(0, 1), self._rd_rsp_fifo_out_data[0][self.data_width - 1, 0])
 
         if num_ports == 2:
-            push_reserve_crd_res_fifo = self._rd_rsp_fifo_valid[crd_port_num] | (self._rd_rsp_fifo_valid[0] & (self._block_mode | self._lookup_mode))
+            push_reserve_crd_res_fifo = self._rd_rsp_fifo_valid[crd_port_num] | (self._rd_rsp_fifo_valid[0] & ((self._block_mode & ~self._push_glb_addr) | (self._lookup_mode & ~self._block_mode)))  # TODO: crd res push
         else:
             push_reserve_crd_res_fifo = self._rd_rsp_fifo_valid[0] & ((self._rd_rsp_fifo_out_data[0][self.data_width] == kts.const(1, 1)) | self._block_mode | self._lookup_mode)
 
@@ -769,6 +786,14 @@ class ScannerPipe(MemoryController):
                        pop=self._crd_res_fifo_pop,
                        valid=self._crd_res_fifo_valid,
                        full=self._crd_res_fifo_full)
+
+
+        self.wire(self._rd_rsp_fifo_pop[0], kts.ternary(self._block_mode,
+                                                         self._crd_rd_rsp_fifo_pop,
+                                                         1))
+        self.wire(self._rd_rsp_fifo_pop[1], kts.ternary(self._block_mode,
+                                                         ~self._crd_res_fifo_full,
+                                                         1))
 
         self._seg_in_done_state = self.var("seg_in_done_state", 1)
         self._seg_in_start_state = self.var("seg_in_start_state", 1)
@@ -1446,6 +1471,7 @@ class ScannerPipe(MemoryController):
         # Block readout
         BLOCK_1_SIZE_REQ = self.scan_fsm_crd.add_state("BLOCK_1_SIZE_REQ")
         BLOCK_1_SIZE_REC = self.scan_fsm_crd.add_state("BLOCK_1_SIZE_REC")
+        BLOCK_1_SIZE_PUSH = self.scan_fsm_crd.add_state("BLOCK_1_SIZE_PUSH")
         BLOCK_1_RD = self.scan_fsm_crd.add_state("BLOCK_1_RD")
         BLOCK_2_SIZE_REQ = self.scan_fsm_crd.add_state("BLOCK_2_SIZE_REQ")
         BLOCK_2_SIZE_REC = self.scan_fsm_crd.add_state("BLOCK_2_SIZE_REC")
@@ -1479,6 +1505,7 @@ class ScannerPipe(MemoryController):
         self.scan_fsm_crd.output(self._clr_pushed_done_crd, default=kts.const(0, 1))
         self.scan_fsm_crd.output(self._set_readout_loop_crd, default=kts.const(0, 1))
         self.scan_fsm_crd.output(self._clr_readout_loop_crd, default=kts.const(0, 1))
+        self.scan_fsm_crd.output(self._push_glb_addr, default=kts.const(0, 1))
         # self.scan_fsm.output(self._ren)
         # self.scan_fsm.output(self._fifo_push)
         # self.scan_fsm.output(self._coord_out_fifo_push)
@@ -1540,8 +1567,11 @@ class ScannerPipe(MemoryController):
         # BLOCK_1_SIZE_REC.next(BLOCK_1_RD, self._crd_grant_push & ~self._crd_res_fifo_full & self._rd_rsp_fifo_valid)
         # BLOCK_1_SIZE_REC.next(BLOCK_1_RD, self._rd_rsp_fifo_valid[crd_port_num])
         # Block 1 will always be on the 0 port regardless of parameterization
-        BLOCK_1_SIZE_REC.next(BLOCK_1_RD, self._rd_rsp_fifo_valid[0])
+        BLOCK_1_SIZE_REC.next(BLOCK_1_SIZE_PUSH, self._rd_rsp_fifo_valid[0] & ~self._block_rd_fifo.ports.full)  # TODO: might have bug when down stream is blocked
         BLOCK_1_SIZE_REC.next(BLOCK_1_SIZE_REC, None)
+
+        BLOCK_1_SIZE_PUSH.next(BLOCK_1_RD, ~self._crd_res_fifo_full)  # self._rd_rsp_fifo_valid[0] must be valid
+        BLOCK_1_SIZE_PUSH.next(BLOCK_1_SIZE_PUSH, None)
 
         BLOCK_1_RD.next(BLOCK_2_SIZE_REQ, (self._num_req_rec_crd == self._ptr_reg) & ~self._lookup_mode)
         BLOCK_1_RD.next(FREE_CRD, (self._num_req_rec_crd == self._ptr_reg) & self._lookup_mode)
@@ -1806,14 +1836,14 @@ class ScannerPipe(MemoryController):
         BLOCK_1_SIZE_REC.output(self._crd_op_out_to_fifo, 0)
         BLOCK_1_SIZE_REC.output(self._crd_ID_out_to_fifo, 0)
         BLOCK_1_SIZE_REC.output(self._crd_req_push, 0)
-        BLOCK_1_SIZE_REC.output(self._crd_rd_rsp_fifo_pop, 1)
+        BLOCK_1_SIZE_REC.output(self._crd_rd_rsp_fifo_pop, 0)
         BLOCK_1_SIZE_REC.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_1_SIZE_REC.output(self._crd_pop_infifo, 0)
         BLOCK_1_SIZE_REC.output(self._en_reg_data_in, 0)
         BLOCK_1_SIZE_REC.output(self._pos_out_to_fifo, 0)
         BLOCK_1_SIZE_REC.output(self._crd_out_to_fifo, 0)
         BLOCK_1_SIZE_REC.output(self._inc_req_made_crd, 0)
-        BLOCK_1_SIZE_REC.output(self._clr_req_made_crd, 1)
+        BLOCK_1_SIZE_REC.output(self._clr_req_made_crd, 0)
         BLOCK_1_SIZE_REC.output(self._inc_req_rec_crd, 0)
         BLOCK_1_SIZE_REC.output(self._clr_req_rec_crd, 0)
         BLOCK_1_SIZE_REC.output(self._crd_res_fifo_push_alloc, 0)
@@ -1821,6 +1851,29 @@ class ScannerPipe(MemoryController):
         # BLOCK_1_SIZE_REC.output(self._ptr_reg_en, self._rd_rsp_fifo_valid[crd_port_num])
         BLOCK_1_SIZE_REC.output(self._ptr_reg_en, self._rd_rsp_fifo_valid[0])
         BLOCK_1_SIZE_REC.output(self._seg_res_fifo_pop, 0)
+        BLOCK_1_SIZE_REC.output(self._push_glb_addr, self._rd_rsp_fifo_valid[0] & ~self._block_rd_fifo.ports.full)
+
+        ######################
+        # BLOCK_1_SIZE_PUSH
+        ######################
+        BLOCK_1_SIZE_PUSH.output(self._crd_addr_out_to_fifo, 0)
+        BLOCK_1_SIZE_PUSH.output(self._crd_op_out_to_fifo, 0)
+        BLOCK_1_SIZE_PUSH.output(self._crd_ID_out_to_fifo, 0)
+        BLOCK_1_SIZE_PUSH.output(self._crd_req_push, 0)
+        BLOCK_1_SIZE_PUSH.output(self._crd_rd_rsp_fifo_pop, ~self._crd_res_fifo_full)
+        BLOCK_1_SIZE_PUSH.output(self._non_vr_pos_out_fifo_push, 0)
+        BLOCK_1_SIZE_PUSH.output(self._crd_pop_infifo, 0)
+        BLOCK_1_SIZE_PUSH.output(self._en_reg_data_in, 0)
+        BLOCK_1_SIZE_PUSH.output(self._pos_out_to_fifo, 0)
+        BLOCK_1_SIZE_PUSH.output(self._crd_out_to_fifo, 0)
+        BLOCK_1_SIZE_PUSH.output(self._inc_req_made_crd, 0)
+        BLOCK_1_SIZE_PUSH.output(self._clr_req_made_crd, 1)
+        BLOCK_1_SIZE_PUSH.output(self._inc_req_rec_crd, 0)
+        BLOCK_1_SIZE_PUSH.output(self._clr_req_rec_crd, 0)
+        BLOCK_1_SIZE_PUSH.output(self._crd_res_fifo_push_alloc, 0)
+        BLOCK_1_SIZE_PUSH.output(self._crd_res_fifo_push_fill, 0)
+        BLOCK_1_SIZE_PUSH.output(self._ptr_reg_en, self._rd_rsp_fifo_valid[0])
+        BLOCK_1_SIZE_PUSH.output(self._seg_res_fifo_pop, 0)
 
         ######################
         # BLOCK_1_RD
@@ -2111,7 +2164,7 @@ class ScannerPipe(MemoryController):
         #                                                                                   ~self._block_rd_fifo.ports.full,
         #                                                                                   ~self._coord_fifo.ports.full)),
         #                                                           ~self._coord_fifo.ports.full)))
-        self.wire(self._crd_res_fifo_pop, kts.ternary(self._vector_reduce_mode & self._output_row_fully_accumulated,
+        self.wire(self._crd_res_fifo_pop, kts.ternary(self._vector_reduce_mode & self._output_row_fully_accumulated,  # TODO: pop res fifo
                                                       ~self._pos_fifo.ports.full,
                                                       kts.ternary(self._block_mode,
                                                         ~self._block_rd_fifo.ports.full,
@@ -2161,10 +2214,12 @@ class ScannerPipe(MemoryController):
                        clk_en=self._clk_en,
                     #    push=self._crd_res_fifo_valid & (self._block_mode | (self._spacc_mode & self._readout_loop & self._final_pushed_done)),
                     #    push=self._crd_res_fifo_valid & (self._block_mode | (self._spacc_mode & self._final_pushed_done)) & ~crd_res_routing_token,
-                       push=self._crd_res_fifo_valid & (self._block_mode) & ~crd_res_routing_token,
+                       push=(self._crd_res_fifo_valid | self._push_glb_addr) & (self._block_mode) & ~crd_res_routing_token,
                     #    push=self._crd_res_fifo_valid & (self._block_mode | (self._readout_dst_out == 1)),
                        pop=self._block_rd_out_ready_in,
-                       data_in=self._crd_res_fifo_data_out,
+                       data_in=kts.ternary(self._push_glb_addr,
+                                        kts.concat(kts.const(0, 1), self._glb_addr),
+                                        self._crd_res_fifo_data_out),  # TODO: insert logic here
                        data_out=self._block_rd_out)
 
         self.wire(self._block_rd_out_valid_out, ~self._block_rd_fifo.ports.empty)
