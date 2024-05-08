@@ -9,7 +9,7 @@
 `define SEG_MODE 1
 `endif
 
-module fiber_glb_crd_tb;
+module fiber_glb_tb;
 
     reg clk;
     reg clk_en;
@@ -91,7 +91,7 @@ module fiber_glb_crd_tb;
     .read_scanner_glb_addr_base(16'd800),
     .read_scanner_glb_addr_stride(16'd100),
     .read_scanner_inner_dim_offset(16'b0),
-    .read_scanner_lookup(1'b0),
+    .read_scanner_lookup(~seg_mode),
     .read_scanner_pos_out_ready(pos_out_0_ready),
     .read_scanner_repeat_factor(16'b0),
     .read_scanner_repeat_outer_inner_n(1'b0),
@@ -113,7 +113,7 @@ module fiber_glb_crd_tb;
     .write_scanner_data_in(coord_in_0),
     .write_scanner_data_in_valid(coord_in_0_valid),
     .write_scanner_init_blank(1'b0),
-    .write_scanner_lowest_level(1'b0),
+    .write_scanner_lowest_level(~seg_mode),
     .write_scanner_stream_id(stream_id),
     // .write_scanner_spacc_mode(1'b0),
     // .write_scanner_stop_lvl(16'b0),

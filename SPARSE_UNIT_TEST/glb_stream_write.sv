@@ -16,7 +16,7 @@ module glb_stream_write #(
     input logic seg_mode
 );
 
-logic [16:0] local_mem [0:2047];
+logic [16:0] local_mem [0:4095];
 integer num_tx;
 
 string TX_SIZE_PARGS;
