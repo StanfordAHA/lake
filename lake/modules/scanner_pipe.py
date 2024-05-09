@@ -748,12 +748,6 @@ class ScannerPipe(MemoryController):
         # sticky flag that indicates whether dim size register has been set
         self._clr_dim_size_set = self.var("clr_dim_size_set", 1)
         self._dim_size_reg_set = sticky_flag(self, self._dim_size_reg_en, name="dim_size_reg_set", clear=self._clr_dim_size_set, seq_only=True)
-        # sticky flag that indicate if a seg request has been sent to the buffet or not 
-        # used in dense mode since we only need to send a seg request once to lookup dim size
-        # A push to the request fifo is successful when the arbitor grants the request and the reservation fifo have space 
-        # to store the eventual data returning from buffet
-        self._clr_seg_req_sent = self.var("clr_seg_req_sent", 1)
-        self._seg_req_sent = sticky_flag(self, self._any_seg_grant_push & ~self._seg_res_fifo_full, name="seg_req_sent", clear=self._clr_seg_req_sent, seq_only=True)
         
         # Hold state for iterator - just length
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -855,7 +849,6 @@ class ScannerPipe(MemoryController):
         self.scan_fsm_seg.output(self._seg_op_out_to_fifo)
         self.scan_fsm_seg.output(self._seg_ID_out_to_fifo)
         self.scan_fsm_seg.output(self._seg_req_push)
-        self.scan_fsm_seg.output(self._clr_seg_req_sent, default=kts.const(0, 1))
         self.scan_fsm_seg.output(self._seg_pop_infifo)
         self.scan_fsm_seg.output(self._inc_req_made_seg)
         self.scan_fsm_seg.output(self._clr_req_made_seg)
@@ -1295,7 +1288,6 @@ class ScannerPipe(MemoryController):
         DONE_SEG.output(self._seg_req_push, 0)
         # Clear the segment request sent indicator when we are done with this fiber tree
         # so we can read the dim size of the next fiber tree 
-        DONE_SEG.output(self._clr_seg_req_sent, 1)
         DONE_SEG.output(self._seg_pop_infifo, 0)
         DONE_SEG.output(self._inc_req_made_seg, 0)
         DONE_SEG.output(self._clr_req_made_seg, 0)
