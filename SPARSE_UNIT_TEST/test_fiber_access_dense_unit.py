@@ -172,6 +172,11 @@ def load_test_module(test_name):
         in_ref = [0, 1, 'S1', 'D']
         return create_gold(dim_size, in_ref)
 
+    elif test_name == "in_ref_empty_fiber":
+        dim_size = 20
+        in_ref = ['S0', 'S0', 1, 0, 'S0', 'S0', 1, 'S1', 'D']
+        return (create_gold(dim_size, in_ref))
+
     # test case 
     elif test_name == "rd_full_mat_scan":
         t_arg = test_name.split("_")
@@ -260,7 +265,25 @@ def test_rd_full_mat_scan():
     for i in range(0, 10):
         module_iter_basic("rd_full_mat_scan")
 
+def test_seq_basic():
+    init_module()
+    module_iter_basic("basic_1d", "basic_2d")
+
+def test_empty_fiber():
+    init_module()
+    module_iter_basic("in_ref_empty_fiber")
+    
+
 def test_rd_pos_input():
     init_module()
     for i in range(0, 10):
         module_iter_basic("rd_pos_input")
+
+def test_seq_rd():
+    init_module()
+    test_list = ["basic_1d", "basic_2d", "rd_full_mat_scan", "rd_pos_input", "in_ref_empty_fiber"]
+    for i in range(0, 20):
+        random_test_cases = []
+        random_test_cases.append(random.choice(test_list))
+        random_test_cases.append(random.choice(test_list))
+        module_iter_basic(random_test_cases[0], random_test_cases[1])
