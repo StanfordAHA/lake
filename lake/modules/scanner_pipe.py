@@ -1109,8 +1109,7 @@ class ScannerPipe(MemoryController):
         #######
         # READ
         #######
-        # The dimension size pair is stored in addr 0 and 1 in dense mode
-        READ.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop | self._dense, 0, self._infifo_pos_in))
+        READ.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop, 0, self._infifo_pos_in))
         READ.output(self._seg_op_out_to_fifo, 1)
         READ.output(self._seg_ID_out_to_fifo, 0)
         # Only request a push when there's valid, non-eos data on the fifo
@@ -1139,9 +1138,7 @@ class ScannerPipe(MemoryController):
         #######
         # READ_ALT
         #######
-        # The dimension size pair is stored in addr 0 and 1 in dense mode
-        # TODO: this may be wrong in the case of tile pipelining
-        READ_ALT.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop | self._dense, 1, self._infifo_pos_in_d1 + 1))
+        READ_ALT.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop, 1, self._infifo_pos_in_d1 + 1))
         READ_ALT.output(self._seg_op_out_to_fifo, 1)
         READ_ALT.output(self._seg_ID_out_to_fifo, 0)
         READ_ALT.output(self._seg_req_push, ~self._seg_res_fifo_full)
