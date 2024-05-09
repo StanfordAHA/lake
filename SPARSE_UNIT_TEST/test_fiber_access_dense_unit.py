@@ -45,29 +45,21 @@ def init_module():
 
     sparse_helper.update_tcl("fiber_access_dense_tb")
 
-def create_random_fiber(rate, size, d, f_type = "coord", maybe = 0.0):
+def create_random_fiber(rate, size, d, maybe = 0.0):
     # size = int(size*random.uniform(1.0, 1.0+d))
 
     s = int(rate*size)
-    if f_type == "coord":
-        crd = random.sample(range(size), s)
-        crd.sort()
-        return crd
-    elif f_type == "pos":
-        pos = random.sample(range(1, size + 1), s)
-        pos.sort()
-        if maybe != 0.0:
-            replace = random.sample(range(0, len(pos)), int(len(pos)*maybe))
-            for i in replace:
-                pos[i] = 'N'
-        return pos
-    else:
-        val = [random.uniform(0, 2**15-1) for i in range(s)]
-        return val
+    pos = random.sample(range(0, size + 1), s)
+    pos.sort()
+    if maybe != 0.0:
+        replace = random.sample(range(0, len(pos)), int(len(pos)*maybe))
+        for i in replace:
+            pos[i] = 'N'
+    return pos
 
 def create_random(n, rate, size, d1=0, maybe = 0.0): #d1 is the num of the outer level
     if n == 1:
-        in_crd1 = create_random_fiber(rate, size, 0.2, "coord", maybe) + ['S0', 'D']
+        in_crd1 = create_random_fiber(rate, size, maybe) + ['S0', 'D']
         return in_crd1
     
     elif n == 2:
@@ -79,7 +71,7 @@ def create_random(n, rate, size, d1=0, maybe = 0.0): #d1 is the num of the outer
         for i in range(d1):
             ret_t = []
             if random.random() < rate:
-                ret_t = ret_t + create_random_fiber(rate, d2, 0.2, "coord", maybe)
+                ret_t = ret_t + create_random_fiber(rate, d2, maybe)
             if i == d1 - 1:
                 ret = ret + ret_t + ['S1', 'D']
             else:
@@ -181,7 +173,7 @@ def load_test_module(test_name):
         return create_gold(dim_size, in_ref)
 
     # test case 
-    elif test_name == "rd_full_mat_scan_1d":
+    elif test_name == "rd_full_mat_scan":
         t_arg = test_name.split("_")
         dim_size = random.randint(1, 30)
         num_fiber = random.randint(1, 30)
@@ -191,53 +183,13 @@ def load_test_module(test_name):
         in_ref.append("S0")
         in_ref.append("D")
         return create_gold(dim_size, in_ref)
-
-        
-    elif test_name[0:2] == "rd":
-        t_arg = test_name.split("_")
-        dim1 = int(t_arg[1][0])
-        rate1 = float(t_arg[2])
-        size1 = int(t_arg[3]) # unlike other tests, the size here is the final size
-        t_size = int(size1 / rate1)
-
-        use_root = False
-        dim2 = 0
-        if t_arg[4] == 'root':
-            use_root = True
-        
-        if not use_root:
-            dim2 = int(t_arg[4][0])
-        rate2 = float(t_arg[5])
-        size2 = int(t_arg[6])
-        coord = sparse_helper.coord_drop(create_random(dim1, rate1, t_size))
-
-        coord_t = coord[:] #only used for seq
-
-        ref = create_ref(coord, 1, 1.0, 2)
-        if use_root:
-            ref = [i for i in ref if not sparse_helper.is_STOP_sam(i)]
-        else:
-            ref = create_ref(coord, dim2, rate2, size2)
-        [ic, ir, gc, gr] = create_gold(coord, ref)
-        
-        if len(t_arg[0]) == 3:
-            ref = create_ref(coord_t, 1, 1.0, 2)
-            if use_root:
-                ref = [i for i in ref if not sparse_helper.is_STOP_sam(i)]
-            else:
-                ref = create_ref(coord_t, dim2, rate2, size2)
-            [ic1, ir1, gc1, gr1] = create_gold(coord_t, ref)
-            ic += ic1
-            ir += ir1
-            gc += gc1
-            gr += gr1
-        return [ic, ir, gc, gr]
-
-    else:
-        in_crd = [0, 'S0', 'D']
-        in_ref = [0, 0, 0, 'D']
-        return create_gold(in_crd, in_ref)
-
+    elif test_name == "rd_pos_input":
+        dim_size = random.randint(1, 30)
+        n = random.randint(1, 3)
+        rate = random.uniform(0, 1)
+        size = random.randint(1, 30)
+        in_ref = create_random(n, rate, size)
+        return create_gold(dim_size, in_ref)
 
 def module_iter_basic(test_name, add_test=""):
     [ic, ir, gc, gr] = load_test_module(test_name)
@@ -303,7 +255,12 @@ def test_iter_basic():
     for test in test_list:
         module_iter_basic(test)
 
-def test_rd_full_mat_scan_1d():
+def test_rd_full_mat_scan():
     init_module()
     for i in range(0, 10):
-        module_iter_basic("rd_full_mat_scan_1d")
+        module_iter_basic("rd_full_mat_scan")
+
+def test_rd_pos_input():
+    init_module()
+    for i in range(0, 10):
+        module_iter_basic("rd_pos_input")

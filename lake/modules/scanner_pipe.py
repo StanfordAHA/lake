@@ -744,15 +744,10 @@ class ScannerPipe(MemoryController):
         ####### Logic for dense scanning
         # register for storing the dimension size of the dense matrix
         self._dim_size_reg_en = self.var("dim_size_reg_en", 1)
-        self._dim_size_reg = register(self, self._seg_res_fifo_data_out[1][self.data_width - 1, 0], enable=self._dim_size_reg_en)
+        self._dim_size = register(self, self._seg_res_fifo_data_out[1][self.data_width - 1, 0], enable=self._dim_size_reg_en)
         # sticky flag that indicates whether dim size register has been set
         self._clr_dim_size_set = self.var("clr_dim_size_set", 1)
         self._dim_size_reg_set = sticky_flag(self, self._dim_size_reg_en, name="dim_size_reg_set", clear=self._clr_dim_size_set, seq_only=True)
-        # variable that takes care of deciding the dim size the cycle it is being stored into the dim size register
-        self._dim_size = self.var("dim_size", 16)
-        self.wire(self._dim_size, kts.ternary(self._dim_size_reg_set, 
-                                              self._dim_size_reg, 
-                                              self._seg_res_fifo_data_out[1][self.data_width - 1, 0]))
         # sticky flag that indicate if a seg request has been sent to the buffet or not 
         # used in dense mode since we only need to send a seg request once to lookup dim size
         # A push to the request fifo is successful when the arbitor grants the request and the reservation fifo have space 
@@ -842,6 +837,8 @@ class ScannerPipe(MemoryController):
         self.scan_fsm_seg = self.add_fsm("scan_seq_seg", reset_high=False)
         START_SEG = self.scan_fsm_seg.add_state("START_SEG")
         INJECT_ROUTING = self.scan_fsm_seg.add_state("INJECT_ROUTING")
+        INJECT_DIM_SIZE_REQ = self.scan_fsm_seg.add_state("INJECT_DIM_SIZE_REQ")
+        INJECT_DIM_SIZE_REQ_ALT = self.scan_fsm_seg.add_state("INJECT_DIM_SIZE_REQ_ALT")
         INJECT_0 = self.scan_fsm_seg.add_state("INJECT_0")
         INJECT_DONE = self.scan_fsm_seg.add_state("INJECT_DONE")
         READ = self.scan_fsm_seg.add_state("READ")
@@ -881,21 +878,20 @@ class ScannerPipe(MemoryController):
     # Dummy state for eventual filling block.
         # Sit in start if in block mode - everything else handled by CRD FSM
         START_SEG.next(START_SEG, self._block_mode)
-        # START_SEG.next(READ, ~self._root & ~self._lookup_mode & ~self._block_mode & (~self._spacc_mode | ~self._pushed_done))
-        # Can return to the read state for a readout_loop
-        # START_SEG.next(READ, (~self._root | (self._spacc_mode & self._readout_loop)) & ~self._lookup_mode & ~self._block_mode)
-        # START_SEG.next(READ, ~self._root & ~self._lookup_mode & ~self._block_mode & self._tile_en)
-        # START_SEG.next(READ, ~self._root & ~self._lookup_mode & ~self._block_mode & self._infifo_valid_in & self._tile_en)
-        # START_SEG.next(READ, ~self._root & ~self._lookup_mode & ~self._block_mode & self._infifo_valid_in & self._tile_en & ~self._spacc_mode)
-        # START_SEG.next(READ, ~self._root & ~self._lookup_mode & ~self._block_mode & ~self._spacc_mode & self._tile_en)
+        # For dense mode, we need to inject a 0 to the ref stream to lookup dim_size
+        START_SEG.next(INJECT_DIM_SIZE_REQ, self._dense & ~self._lookup_mode & ~self._block_mode & self._tile_en)
         START_SEG.next(READ, ~self._root & ~self._lookup_mode & ~self._block_mode & self._tile_en)
-        # START_SEG.next(INJECT_ROUTING, ~self._root & ~self._lookup_mode & ~self._block_mode & (self._infifo_valid_in | self._readout_loop) & self._spacc_mode & self._tile_en)
-        # START_SEG.next(INJECT_ROUTING, 0)
         START_SEG.next(INJECT_0, self._root & ~self._lookup_mode & ~self._block_mode & self._tile_en)
-        # START_SEG.next(LOOKUP, ~self._root & self._lookup_mode & ~self._block_mode & (~self._spacc_mode | ~self._pushed_done))
         START_SEG.next(LOOKUP, ~self._root & self._lookup_mode & ~self._block_mode & self._tile_en)
 
-        # Inject a single value into the fifo
+        # Inject a single request straight to the buffet to lookup the dim size
+        INJECT_DIM_SIZE_REQ.next(INJECT_DIM_SIZE_REQ_ALT, None)
+
+        # Inject a second request straight to the buffet to complete the (0, dim_size) request pair
+        INJECT_DIM_SIZE_REQ_ALT.next(INJECT_0, self._root)
+        INJECT_DIM_SIZE_REQ_ALT.next(READ, None)
+
+        # Inject a single 0 into the input fifo to lookup the root fiber
         INJECT_0.next(INJECT_DONE, None)
 
         # Inject a single done into the fifo
@@ -908,8 +904,9 @@ class ScannerPipe(MemoryController):
         # 2. TODO: maybe token?
         # 3. If we are in sparse mode, and the input coming up is a stop token, we need to propoagate the stop token
         # 4. If the first seg request is accepted, go the READ_ALT to send out the second seg request (seg comes in pairs)
+        #    this applies for looking up dim size in dense mode and normal seg lookup in sparse mode
         # 5. If we see a done token, we are done with the fiber tree, go to FREE_SEG to free up the ID0 data structure
-        READ.next(PASS_STOP, self._maybe_in | (((self._dense & self._seg_req_sent) & ~self._done_in & ~self._seg_res_fifo_full & self._infifo_valid_in) | (~self._dense & self._eos_in)))
+        READ.next(PASS_STOP, self._maybe_in | ((self._dense & ~self._done_in & ~self._seg_res_fifo_full & self._infifo_valid_in) | (~self._dense & self._eos_in)))
         READ.next(READ_ALT, self._any_seg_grant_push & ~self._seg_res_fifo_full)
         READ.next(FREE_SEG, self._done_in & ~self._seg_res_fifo_full)
         READ.next(READ, None)
@@ -1006,13 +1003,58 @@ class ScannerPipe(MemoryController):
         START_SEG.output(self._us_fifo_inject_eos, 0)
         START_SEG.output(self._us_fifo_inject_push, 0)
         START_SEG.output(self._seg_res_fifo_push_alloc, 0)
-        # START_SEG.output(self._seg_res_fifo_push_reserve, 0)
         START_SEG.output(self._seg_res_fifo_push_fill, 0)
         START_SEG.output(self._seg_res_fifo_fill_data_in, 0)
         # Special case where there is no accum and we go directly do readout mode...need to pop the incoming fifo
         # START_SEG.output(self._set_readout_loop_seg, self._eos_in & self._spacc_mode & ~self._root & ~self._lookup_mode & ~self._block_mode & ~self._readout_loop)
         START_SEG.output(self._set_readout_loop_seg, 0)
         START_SEG.output(self._seg_in_start_state, 1)
+
+        #######
+        # INJECT_DIM_SIZE_REQ
+        #######
+        # TODO: this may be wrong in the case of tile pipelining
+        INJECT_DIM_SIZE_REQ.output(self._seg_addr_out_to_fifo, 0)
+        INJECT_DIM_SIZE_REQ.output(self._seg_op_out_to_fifo, 1)
+        INJECT_DIM_SIZE_REQ.output(self._seg_ID_out_to_fifo, 0)
+        INJECT_DIM_SIZE_REQ.output(self._seg_req_push, ~self._seg_res_fifo_full)
+        # We are pushing an extra request to lookup dim size before any of the ref input in the fifo
+        # Do do not pop the input fifo
+        INJECT_DIM_SIZE_REQ.output(self._seg_pop_infifo, 0)
+        INJECT_DIM_SIZE_REQ.output(self._inc_req_made_seg, 0)
+        INJECT_DIM_SIZE_REQ.output(self._clr_req_made_seg, 0)
+        INJECT_DIM_SIZE_REQ.output(self._inc_req_rec_seg, 0)
+        INJECT_DIM_SIZE_REQ.output(self._clr_req_rec_seg, 0)
+        INJECT_DIM_SIZE_REQ.output(self._us_fifo_inject_data, 0)
+        INJECT_DIM_SIZE_REQ.output(self._us_fifo_inject_eos, 0)
+        INJECT_DIM_SIZE_REQ.output(self._us_fifo_inject_push, 0)
+        # Allocate a spot in the reservation fifo to store the dim size when the push is granted
+        INJECT_DIM_SIZE_REQ.output(self._seg_res_fifo_push_alloc, ~self._seg_res_fifo_full & self._any_seg_grant_push)
+        INJECT_DIM_SIZE_REQ.output(self._seg_res_fifo_push_fill, 0)
+        INJECT_DIM_SIZE_REQ.output(self._seg_res_fifo_fill_data_in, 0)
+
+        #######
+        # INJECT_DIM_SIZE_REQ_ALT
+        #######
+        # TODO: this may be wrong in the case of tile pipelining
+        INJECT_DIM_SIZE_REQ_ALT.output(self._seg_addr_out_to_fifo, 1)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._seg_op_out_to_fifo, 1)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._seg_ID_out_to_fifo, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._seg_req_push, ~self._seg_res_fifo_full)
+        # We are pushing an request to lookup dim size before any of the ref input in the fifo
+        # Do do not pop the input fifo
+        INJECT_DIM_SIZE_REQ_ALT.output(self._seg_pop_infifo, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._inc_req_made_seg, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._clr_req_made_seg, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._inc_req_rec_seg, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._clr_req_rec_seg, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._us_fifo_inject_data, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._us_fifo_inject_eos, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._us_fifo_inject_push, 0)
+        # A spot in the seg_res_fifo has already been allocated in the INJECT_DIM_SIZE_REQ state
+        INJECT_DIM_SIZE_REQ_ALT.output(self._seg_res_fifo_push_alloc, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._seg_res_fifo_push_fill, 0)
+        INJECT_DIM_SIZE_REQ_ALT.output(self._seg_res_fifo_fill_data_in, 0)
 
         #######
         # INJECT_0
@@ -1030,7 +1072,6 @@ class ScannerPipe(MemoryController):
         INJECT_0.output(self._us_fifo_inject_eos, 0)
         INJECT_0.output(self._us_fifo_inject_push, 1)
         INJECT_0.output(self._seg_res_fifo_push_alloc, 0)
-        # INJECT_0.output(self._seg_res_fifo_push_reserve, 0)
         INJECT_0.output(self._seg_res_fifo_push_fill, 0)
         INJECT_0.output(self._seg_res_fifo_fill_data_in, 0)
 
@@ -1050,7 +1091,6 @@ class ScannerPipe(MemoryController):
         INJECT_DONE.output(self._us_fifo_inject_eos, 1)
         INJECT_DONE.output(self._us_fifo_inject_push, 1)
         INJECT_DONE.output(self._seg_res_fifo_push_alloc, 0)
-        # INJECT_DONE.output(self._seg_res_fifo_push_reserve, 0)
         INJECT_DONE.output(self._seg_res_fifo_push_fill, 0)
         INJECT_DONE.output(self._seg_res_fifo_fill_data_in, 0)
 
@@ -1076,14 +1116,15 @@ class ScannerPipe(MemoryController):
         #######
         # READ
         #######
-        READ.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop, 0, self._infifo_pos_in))
+        # The dimension size pair is stored in addr 0 and 1 in dense mode
+        READ.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop | self._dense, 0, self._infifo_pos_in))
         READ.output(self._seg_op_out_to_fifo, 1)
         READ.output(self._seg_ID_out_to_fifo, 0)
         # Only request a push when there's valid, non-eos data on the fifo
         # In dense mode, only request a pair of seg once to read out the dim size
-        READ.output(self._seg_req_push, ((self._infifo_valid_in & ~self._infifo_eos_in & ~(self._dense & self._seg_req_sent)) | self._readout_loop) & ~self._seg_res_fifo_full)
+        READ.output(self._seg_req_push, ((self._infifo_valid_in & ~self._infifo_eos_in & ~self._dense) | self._readout_loop) & ~self._seg_res_fifo_full)
         # Can pop the infifo if we have done or are in dense mode and we have sent the request to read the dim size
-        READ.output(self._seg_pop_infifo, (((self._done_in | (self._infifo_valid_in & ~self._eos_in & ((self._dense & self._seg_req_sent) | self._any_seg_grant_push))) & ~self._seg_res_fifo_full) |
+        READ.output(self._seg_pop_infifo, (((self._done_in | (self._infifo_valid_in & ~self._eos_in & (self._dense | self._any_seg_grant_push))) & ~self._seg_res_fifo_full) |
                                            self._maybe_in) & ~self._readout_loop)
         READ.output(self._inc_req_made_seg, 0)
         READ.output(self._clr_req_made_seg, 0)
@@ -1093,19 +1134,21 @@ class ScannerPipe(MemoryController):
         READ.output(self._us_fifo_inject_eos, 0)
         READ.output(self._us_fifo_inject_push, 0)
         # Only push through the done in READ, in conjunction with the fill pulse
-        READ.output(self._seg_res_fifo_push_alloc, kts.ternary(self._done_in | (self._dense & self._seg_req_sent),
+        READ.output(self._seg_res_fifo_push_alloc, kts.ternary(self._done_in | self._dense,
                                                                ~self._seg_res_fifo_full & self._infifo_valid_in & ~self._eos_in,
                                                             #    (~self._seg_res_fifo_full & self._seg_grant_push) & ~self._maybe_in))
                                                                (~self._seg_res_fifo_full & self._any_seg_grant_push) & ~self._maybe_in))
         # Only fill if we have done_in
-        READ.output(self._seg_res_fifo_push_fill, (self._done_in | (self._dense & self._seg_req_sent & self._infifo_valid_in & ~self._eos_in)) & ~self._seg_res_fifo_full)
+        READ.output(self._seg_res_fifo_push_fill, (self._done_in | (self._dense & self._infifo_valid_in & ~self._eos_in)) & ~self._seg_res_fifo_full)
         READ.output(self._seg_res_fifo_fill_data_in, kts.concat(self._infifo_eos_in, self._infifo_pos_in))
         READ.output(self._infifo_pos_in_d1_en, self._any_seg_grant_push & ~self._seg_res_fifo_full)
 
         #######
         # READ_ALT
         #######
-        READ_ALT.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop, 1, self._infifo_pos_in_d1 + 1))
+        # The dimension size pair is stored in addr 0 and 1 in dense mode
+        # TODO: this may be wrong in the case of tile pipelining
+        READ_ALT.output(self._seg_addr_out_to_fifo, kts.ternary(self._readout_loop | self._dense, 1, self._infifo_pos_in_d1 + 1))
         READ_ALT.output(self._seg_op_out_to_fifo, 1)
         READ_ALT.output(self._seg_ID_out_to_fifo, 0)
         READ_ALT.output(self._seg_req_push, ~self._seg_res_fifo_full)
@@ -1281,12 +1324,12 @@ class ScannerPipe(MemoryController):
         self.scan_fsm_crd = self.add_fsm("scan_seq_crd", reset_high=False)
 
         START_CRD = self.scan_fsm_crd.add_state("START_CRD")
+        # For scanning dense tensor
+        GET_DIM_SIZE = self.scan_fsm_crd.add_state("GET_DIM_SIZE")
         DENSE_STRM = self.scan_fsm_crd.add_state("DENSE_STRM")
-        SEQ_STRM = self.scan_fsm_crd.add_state("SEQ_STRM")
-        # SEQ_ITER = self.scan_fsm.add_state("SEQ_ITER")
-        # SEQ_DONE = self.scan_fsm.add_state("SEQ_DONE")
-        # SEQ_STOP = self.scan_fsm.add_state("SEQ_STOP")
 
+        # For scanning sparse tensor
+        SEQ_STRM = self.scan_fsm_crd.add_state("SEQ_STRM")
         FREE_CRD = self.scan_fsm_crd.add_state("FREE_CRD")
         # If performing the block reads, need to free both data structures :shrug:
         FREE_CRD2 = self.scan_fsm_crd.add_state("FREE_CRD2")
@@ -1333,12 +1376,16 @@ class ScannerPipe(MemoryController):
         # Next State Logic
         ####################
         START_CRD.next(BLOCK_1_SIZE_REQ, self._block_mode & self._tile_en)
-        START_CRD.next(DENSE_STRM, self._dense & ~self._lookup_mode & self._tile_en)
+        START_CRD.next(GET_DIM_SIZE, self._dense & ~self._lookup_mode & self._tile_en)
         START_CRD.next(SEQ_STRM, ~self._dense & ~self._lookup_mode & self._tile_en)
 
         self._seg_res_fifo_done_out = self.var("seg_res_fifo_done_out", 1)
         self.wire(self._seg_res_fifo_done_out, self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width] &
                       (self._seg_res_fifo_data_out[0][9, 8] == kts.const(1, 2)))
+        
+        # Dimension size arrived at seg_res_fifo, dim size obtained
+        GET_DIM_SIZE.next(DENSE_STRM, self._seg_res_fifo_valid)
+        GET_DIM_SIZE.next(GET_DIM_SIZE, None)
 
         # When we see a done token from the seg fsm, we are done with the fibertree, traverse to done state
         DENSE_STRM.next(DONE_CRD, self._seg_res_fifo_done_out & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full)
@@ -1408,6 +1455,29 @@ class ScannerPipe(MemoryController):
         ######################
         # DENSE_STRM
         ######################
+        GET_DIM_SIZE.output(self._crd_addr_out_to_fifo, 0)
+        GET_DIM_SIZE.output(self._crd_op_out_to_fifo, 0)
+        GET_DIM_SIZE.output(self._crd_ID_out_to_fifo, 0)
+        GET_DIM_SIZE.output(self._crd_req_push, 0)
+        GET_DIM_SIZE.output(self._non_vr_pos_out_fifo_push, 0)
+        GET_DIM_SIZE.output(self._crd_pop_infifo, 0)
+        GET_DIM_SIZE.output(self._en_reg_data_in, 0)
+        GET_DIM_SIZE.output(self._pos_out_to_fifo, 0)
+        GET_DIM_SIZE.output(self._crd_out_to_fifo, 0)
+        GET_DIM_SIZE.output(self._inc_req_made_crd, 0)
+        GET_DIM_SIZE.output(self._clr_req_made_crd, 0)
+        GET_DIM_SIZE.output(self._inc_req_rec_crd, 0)
+        GET_DIM_SIZE.output(self._clr_req_rec_crd, 0)
+        # Store dim size when it arrives in seg_res_fifo
+        GET_DIM_SIZE.output(self._dim_size_reg_en, self._seg_res_fifo_valid)
+        GET_DIM_SIZE.output(self._crd_res_fifo_push_alloc, 0)
+        GET_DIM_SIZE.output(self._crd_res_fifo_push_fill, 0)
+        GET_DIM_SIZE.output(self._ptr_reg_en, 0)
+        # Pop dim size from the seg_res_fifo
+        GET_DIM_SIZE.output(self._seg_res_fifo_pop, self._seg_res_fifo_valid)
+        ######################
+        # DENSE_STRM
+        ######################
         DENSE_STRM.output(self._crd_addr_out_to_fifo, 0)
         DENSE_STRM.output(self._crd_op_out_to_fifo, 0)
         DENSE_STRM.output(self._crd_ID_out_to_fifo, 0)
@@ -1435,10 +1505,6 @@ class ScannerPipe(MemoryController):
         DENSE_STRM.output(self._clr_req_made_crd, self._seg_res_fifo_valid & self._seg_res_fifo_data_out[0][self.data_width])
         DENSE_STRM.output(self._inc_req_rec_crd, 0)
         DENSE_STRM.output(self._clr_req_rec_crd, 0)
-        DENSE_STRM.output(self._dim_size_reg_en, ~self._dim_size_reg_set & self._seg_res_fifo_valid)
-        # clear the dim size set indicator when we finish processing the current fiber tree 
-        # and is poping the done token off the seg_res_fifo 
-        DENSE_STRM.output(self._clr_dim_size_set, self._seg_res_fifo_done_out & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full)
         # Push the data
         DENSE_STRM.output(self._crd_res_fifo_push_alloc, self._seg_res_fifo_valid & ~self._pos_fifo.ports.full & ~self._crd_res_fifo_full &
                                                             kts.ternary(self._seg_res_fifo_data_out[0][self.data_width],
@@ -1736,6 +1802,7 @@ class ScannerPipe(MemoryController):
         DONE_CRD.output(self._clr_req_made_crd, 1)
         DONE_CRD.output(self._inc_req_rec_crd, 0)
         DONE_CRD.output(self._clr_req_rec_crd, 1)
+        DONE_CRD.output(self._clr_dim_size_set, 1)
         DONE_CRD.output(self._crd_res_fifo_push_alloc, 0)
         DONE_CRD.output(self._crd_res_fifo_push_fill, 0)
         DONE_CRD.output(self._ptr_reg_en, 0)
