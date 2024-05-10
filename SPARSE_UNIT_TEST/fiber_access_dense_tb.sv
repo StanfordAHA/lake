@@ -2,6 +2,9 @@
 `ifndef TX_NUM_GLB
 `define TX_NUM_GLB 1
 `endif
+`ifndef FIBER_ACCESS_ROOT
+`define FIBER_ACCESS_ROOT 0
+`endif
 
 module fiber_access_dense_tb;
 
@@ -84,7 +87,7 @@ fiber_access_16 dut
     .read_scanner_pos_out_ready(pos_out_0_ready),
     .read_scanner_repeat_factor(16'b0),
     .read_scanner_repeat_outer_inner_n(1'b0),
-    .read_scanner_root(1'b0),
+    .read_scanner_root(`FIBER_ACCESS_ROOT),
     // .read_scanner_spacc_mode(1'b0),
     // .read_scanner_stop_lvl(16'b0),
     .read_scanner_tile_en(tile_en),

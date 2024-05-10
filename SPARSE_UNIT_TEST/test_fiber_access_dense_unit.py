@@ -114,12 +114,12 @@ def create_ref(coord, dim, rate, size, maybe = False):
     return t
 
 
-def create_gold(dim_size, in_ref):
+def create_gold(dim_size, in_ref, root=False):
+    # overwrite the input ref to 0, 'D' if we are testing root
+    if root:
+        in_ref = [0, 'D']
     dim_size_cpy = dim_size
     i_r_cpy = in_ref[:]
-
-    print(i_r_cpy)
-    print(dim_size_cpy)
 
     done = False
     time = 0
@@ -161,7 +161,7 @@ def create_gold(dim_size, in_ref):
     return tr_st
 
 
-def load_test_module(test_name):
+def load_test_module(test_name, root=False):
     if test_name == "basic_2d":
         dim_size = 10
         in_ref = [0, 1, 'S0', 0, 1, 2, 'D']
@@ -175,7 +175,7 @@ def load_test_module(test_name):
     elif test_name == "in_ref_empty_fiber":
         dim_size = 20
         in_ref = ['S0', 'S0', 1, 0, 'S0', 'S0', 1, 'S1', 'D']
-        return (create_gold(dim_size, in_ref))
+        return create_gold(dim_size, in_ref)
 
     # test case 
     elif test_name == "rd_full_mat_scan":
@@ -195,12 +195,15 @@ def load_test_module(test_name):
         size = random.randint(1, 30)
         in_ref = create_random(n, rate, size)
         return create_gold(dim_size, in_ref)
+    elif test_name == "test_root_basic":
+        dim_size = random.randint(1, 30)
+        return create_gold(dim_size, [], root=True)
 
-def module_iter_basic(test_name, add_test=""):
-    [ic, ir, gc, gr] = load_test_module(test_name)
+def module_iter_basic(test_name, add_test="", root=False):
+    [ic, ir, gc, gr] = load_test_module(test_name, root=root)
 
     if add_test != "" and add_test != "void":
-        additional_t = load_test_module(add_test)
+        additional_t = load_test_module(add_test, root=root)
         ic = ic + additional_t[0]
         ir = ir + additional_t[1]
         gc = gc + additional_t[2]
@@ -219,12 +222,16 @@ def module_iter_basic(test_name, add_test=""):
 
     #run command "make sim" to run the simulation
     if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_dense_tb.sv", "TOP=fiber_access_dense_tb",\
-                             "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
+        sim_cmd = ["make", "sim", "TEST_TAR=fiber_access_dense_tb.sv", "TOP=fiber_access_dense_tb",\
+                   "TEST_UNIT=Fiber_access.sv"]
     else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_access_dense_tb.sv",\
-                             "TOP=fiber_access_dense_tb", "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"\
-                             ], capture_output=True, text=True)
+        sim_cmd = ["make", "sim", "TEST_TAR=fiber_access_dense_tb.sv",\
+                   "TOP=fiber_access_dense_tb", "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"]
+
+    if root:
+        sim_cmd.append("FIBER_ACCESS_ROOT=1")
+
+    sim_result = subprocess.run(sim_cmd, capture_output=True, text=True)
     output = sim_result.stdout
     # print(output)
     cycle_count_line = output[output.find("write cycle count:"):]
@@ -287,3 +294,13 @@ def test_seq_rd():
         random_test_cases.append(random.choice(test_list))
         random_test_cases.append(random.choice(test_list))
         module_iter_basic(random_test_cases[0], random_test_cases[1])
+
+def test_root_basic():
+    init_module()
+    for i in range(0, 20):
+        module_iter_basic("test_root_basic", root=True)
+
+def test_root_basic_seq():
+    init_module()
+    for i in range(0, 20):
+        module_iter_basic("test_root_basic", "test_root_basic", root=True)
