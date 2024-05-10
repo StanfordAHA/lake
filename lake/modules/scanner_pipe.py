@@ -745,9 +745,6 @@ class ScannerPipe(MemoryController):
         # register for storing the dimension size of the dense matrix
         self._dim_size_reg_en = self.var("dim_size_reg_en", 1)
         self._dim_size = register(self, self._seg_res_fifo_data_out[1][self.data_width - 1, 0], enable=self._dim_size_reg_en)
-        # sticky flag that indicates whether dim size register has been set
-        self._clr_dim_size_set = self.var("clr_dim_size_set", 1)
-        self._dim_size_reg_set = sticky_flag(self, self._dim_size_reg_en, name="dim_size_reg_set", clear=self._clr_dim_size_set, seq_only=True)
         
         # Hold state for iterator - just length
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -1345,7 +1342,6 @@ class ScannerPipe(MemoryController):
         self.scan_fsm_crd.output(self._pos_out_to_fifo)
         # Only use for DENSE_STRM
         self.scan_fsm_crd.output(self._dim_size_reg_en, default=kts.const(0, 1))
-        self.scan_fsm_crd.output(self._clr_dim_size_set, default=kts.const(0, 1))
         self.scan_fsm_crd.output(self._crd_out_to_fifo)
         self.scan_fsm_crd.output(self._inc_req_made_crd)
         self.scan_fsm_crd.output(self._clr_req_made_crd)
@@ -1791,7 +1787,6 @@ class ScannerPipe(MemoryController):
         DONE_CRD.output(self._clr_req_made_crd, 1)
         DONE_CRD.output(self._inc_req_rec_crd, 0)
         DONE_CRD.output(self._clr_req_rec_crd, 1)
-        DONE_CRD.output(self._clr_dim_size_set, 1)
         DONE_CRD.output(self._crd_res_fifo_push_alloc, 0)
         DONE_CRD.output(self._crd_res_fifo_push_fill, 0)
         DONE_CRD.output(self._ptr_reg_en, 0)
