@@ -238,7 +238,7 @@ class StreamArbiter(MemoryController):
         # PASS1
         #######
         for i in range(self.num_streams):
-            PASS1.output(self._pop_fifo[i], self._lock_grant[i] & self._stream_out_fifo_ready & ~self._stream_done)
+            PASS1.output(self._pop_fifo[i], self._lock_grant[i] & self._stream_out_fifo_ready & ~self._stream_done & self._stream_in_fifo_valid_in[i])
         PASS1.output(self._fifo_push, self._any_pop)
         # don't increment for the first cycle
         PASS1.output(self._inc_stream_pass, self._any_pop & self._stream_max_sticky & ~self._stream_done)  # TODO: check for the special case with 0 length
@@ -252,7 +252,7 @@ class StreamArbiter(MemoryController):
         # PASS2
         #######
         for i in range(self.num_streams):
-            PASS2.output(self._pop_fifo[i], self._lock_grant[i] & self._stream_out_fifo_ready & ~self._stream_done)
+            PASS2.output(self._pop_fifo[i], self._lock_grant[i] & self._stream_out_fifo_ready & ~self._stream_done & self._stream_in_fifo_valid_in[i])
         PASS2.output(self._fifo_push, self._any_pop)
         PASS2.output(self._inc_stream_pass, self._any_pop & self._stream_max_sticky & ~self._stream_done)
         PASS2.output(self._clr_stream_pass, self._stream_done)

@@ -46,7 +46,9 @@ DESIGN_FILES += $(TEST_TAR) \
 				-y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \
 				+libext+.v+.sv 
 
-DESIGN_FILES += $(module_dir)/$(TEST_UNIT)
+# DESIGN_FILES += $(module_dir)/$(TEST_UNIT)
+DESIGN_FILES += $(foreach unit,$(TEST_UNIT),$(module_dir)/$(unit))
+
 # TB_FILES += -F tb/tb_cgra.f
 
 # IP_FILES += -y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \

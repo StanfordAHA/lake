@@ -25,7 +25,7 @@ def init_module():
                     fifo_depth=2)
 
     # magma_dut = k.util.to_magma(dut, flatten_array=False, check_flip_flop_always_ff=True)
-    verilog(dut, filename=f"./modules/StreamArbiter.sv",
+    k.verilog(dut, filename=f"./modules/StreamArbiter.sv",
             optimize_if=False)
     sparse_helper.update_tcl("stream_arbiter_tb")
 
