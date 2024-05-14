@@ -964,10 +964,10 @@ class ScannerPipe(MemoryController):
         READ.output(self._us_fifo_inject_push, 0)
         # Only push through the done in READ, in conjunction with the fill pulse
         READ.output(self._seg_res_fifo_push_alloc, kts.ternary(self._done_in | self._dense,
-                                                               ~self._seg_res_fifo_full & self._infifo_valid_in & ~self._eos_in,
+                                                               ~self._seg_res_fifo_full & self._infifo_valid_in & ~self._eos_in & ~self._maybe_in,
                                                                (~self._seg_res_fifo_full & self._any_seg_grant_push) & ~self._maybe_in))
         # Only fill if we have done_in
-        READ.output(self._seg_res_fifo_push_fill, (self._done_in | (self._dense & self._infifo_valid_in & ~self._eos_in)) & ~self._seg_res_fifo_full)
+        READ.output(self._seg_res_fifo_push_fill, (self._done_in | (self._dense & self._infifo_valid_in & ~self._eos_in & ~self._maybe_in)) & ~self._seg_res_fifo_full)
         READ.output(self._seg_res_fifo_fill_data_in, kts.concat(self._infifo_eos_in, self._infifo_pos_in))
         READ.output(self._infifo_pos_in_d1_en, self._any_seg_grant_push & ~self._seg_res_fifo_full)
 

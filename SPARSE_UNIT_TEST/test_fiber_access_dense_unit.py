@@ -45,9 +45,7 @@ def init_module():
 
     sparse_helper.update_tcl("fiber_access_dense_tb")
 
-def create_random_fiber(rate, size, d, maybe = 0.0):
-    # size = int(size*random.uniform(1.0, 1.0+d))
-
+def create_random_fiber(rate, size, maybe = 0.0):
     s = int(rate*size)
     pos = random.sample(range(0, size + 1), s)
     pos.sort()
@@ -57,7 +55,7 @@ def create_random_fiber(rate, size, d, maybe = 0.0):
             pos[i] = 'N'
     return pos
 
-def create_random(n, rate, size, d1=0, maybe = 0.0): #d1 is the num of the outer level
+def create_random(n, rate, size, d1=0, maybe=0.0): #d1 is the num of the outer level
     if n == 1:
         in_crd1 = create_random_fiber(rate, size, maybe) + ['S0', 'D']
         return in_crd1
@@ -87,7 +85,7 @@ def create_random(n, rate, size, d1=0, maybe = 0.0): #d1 is the num of the outer
         for i in range(d1):
             ret_t = []
             if random.random() < rate:
-                ret_t = create_random(2, rate*rate, d2, d1_)
+                ret_t = create_random(2, rate*rate, d2, d1_, maybe)
             else:
                 ret_t = ret_t + ['S1', 'D']
 
@@ -121,6 +119,9 @@ def create_gold(dim_size, in_ref, root=False):
     dim_size_cpy = dim_size
     i_r_cpy = in_ref[:]
 
+    print(dim_size_cpy)
+    print(i_r_cpy)
+
     done = False
     time = 0
 
@@ -143,7 +144,7 @@ def create_gold(dim_size, in_ref, root=False):
         time += 1
 
     print("sam read cycle count: ", time)
-    
+
     out_crd = remove_emptystr(out_crd)
     out_ref = remove_emptystr(out_ref)
 
@@ -176,7 +177,6 @@ def load_test_module(test_name, root=False):
         dim_size = 20
         in_ref = ['S0', 'S0', 1, 0, 'S0', 'S0', 1, 'S1', 'D']
         return create_gold(dim_size, in_ref)
-
     # test case 
     elif test_name == "rd_full_mat_scan":
         t_arg = test_name.split("_")
@@ -194,6 +194,25 @@ def load_test_module(test_name, root=False):
         rate = random.uniform(0, 1)
         size = random.randint(1, 30)
         in_ref = create_random(n, rate, size)
+        return create_gold(dim_size, in_ref)
+    elif test_name == "maybe_token_1":
+        dim_size = 10
+        in_ref = [0, 'N', 'S0', 'N', 'N', 2, 'D']
+        return create_gold(dim_size, in_ref)
+    elif test_name == "maybe_token_2":
+        dim_size = 20
+        in_ref = ['N', 'S0', 1, 'N', 'S0', 'N', 'S1', 'D']
+        return create_gold(dim_size, in_ref)
+    elif test_name == "maybe_token_3":
+        dim_size = 30
+        in_ref = ['S0', 'S0', 'N', 'N', 'S0', 'S0', 1, 'N', 'S1', 'D']
+        return create_gold(dim_size, in_ref)
+    elif test_name == "rd_pos_input_maybe":
+        dim_size = random.randint(1, 30)
+        n = random.randint(1, 3)
+        size = random.randint(3, 30)
+        maybe = random.uniform(0.5, 0.8)
+        in_ref = create_random(n, 1.0, size, maybe=maybe)
         return create_gold(dim_size, in_ref)
     elif test_name == "test_root_basic":
         dim_size = random.randint(1, 30)
@@ -286,21 +305,33 @@ def test_rd_pos_input():
     for i in range(0, 10):
         module_iter_basic("rd_pos_input")
 
+def test_maybe():
+    init_module()
+    test_list = ["maybe_token_1", "maybe_token_2", "maybe_token_3"]
+    for test in test_list:
+        module_iter_basic(test)
+
+def test_rd_pos_input_maybe():
+    init_module()
+    for i in range(0, 10):
+        module_iter_basic("rd_pos_input_maybe")
+
+def test_root_basic():
+    init_module()
+    for i in range(0, 10):
+        module_iter_basic("test_root_basic", root=True)
+
+def test_root_basic_seq():
+    init_module()
+    for i in range(0, 10):
+        module_iter_basic("test_root_basic", "test_root_basic", root=True)
+
 def test_seq_rd():
     init_module()
-    test_list = ["basic_1d", "basic_2d", "rd_full_mat_scan", "rd_pos_input", "in_ref_empty_fiber"]
+    test_list = ["basic_1d", "basic_2d", "rd_full_mat_scan", "rd_pos_input", "maybe_token_1", "maybe_token_2", "maybe_token_3",
+                 "in_ref_empty_fiber", "rd_pos_input_maybe", "test_root_basic"]
     for i in range(0, 20):
         random_test_cases = []
         random_test_cases.append(random.choice(test_list))
         random_test_cases.append(random.choice(test_list))
         module_iter_basic(random_test_cases[0], random_test_cases[1])
-
-def test_root_basic():
-    init_module()
-    for i in range(0, 20):
-        module_iter_basic("test_root_basic", root=True)
-
-def test_root_basic_seq():
-    init_module()
-    for i in range(0, 20):
-        module_iter_basic("test_root_basic", "test_root_basic", root=True)
