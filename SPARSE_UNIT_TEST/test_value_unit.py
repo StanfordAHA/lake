@@ -134,7 +134,9 @@ def create_gold(in_val, in_ref):
 
     out_v = []
     for addr in in_ref:
-        if (not sparse_helper.is_STOP_sam(addr) and not sparse_helper.is_DONE_sam(addr)):
+        if sparse_helper.is_MAYBE_sam(addr):
+            out_v.append(0)
+        elif (not sparse_helper.is_STOP_sam(addr) and not sparse_helper.is_DONE_sam(addr)):
             assert addr <= max_addr
             out_v.append(mem[addr])
         else:
@@ -214,8 +216,8 @@ def load_test_module(test_name):
         in_ref = [0, 'D']
         return create_gold(in_val, in_ref)
 
-    elif test_name == "nothing":
-        in_val = ['D']
+    elif test_name == "empty":
+        in_val = ['S0', 'D']
         in_ref = ['D']
         return create_gold(in_val, in_ref)
 
@@ -245,25 +247,10 @@ def load_test_module(test_name):
 
         coord_t = coord[:] #only used for seq
 
-        ref = create_ref(coord, 1, 1.0, 2)
-        if use_root:
-            ref = [i for i in ref if not sparse_helper.is_STOP_sam(i)]
-        else:
-            ref = create_ref(coord, dim2, rate2, size2)
-        [ic, ir, gc, gr] = create_gold(coord, ref)
-        
-        if len(t_arg[0]) == 3:
-            ref = create_ref(coord_t, 1, 1.0, 2)
-            if use_root:
-                ref = [i for i in ref if not sparse_helper.is_STOP_sam(i)]
-            else:
-                ref = create_ref(coord_t, dim2, rate2, size2)
-            [ic1, ir1, gc1, gr1] = create_gold(coord_t, ref)
-            ic += ic1
-            ir += ir1
-            gc += gc1
-            gr += gr1
-        return [ic, ir, gc, gr]
+        ref = create_ref(coord, dim2, rate2, size2)
+        print(coord)
+        print(ref)
+        return create_gold(coord, ref)
 
     else:
         in_val = [0, 'S0', 'D']
@@ -317,55 +304,55 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-# def test_iter_basic():
-#     init_module()
-#     test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "arr_1", "arr_2", "arr_3", "arr_4", "arr_5",  "arr_6", "nothing", "xxx"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_iter_basic():
+    init_module()
+    test_list = ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "seq_1_1", "arr_1", "arr_2", "arr_3", "arr_4", "arr_5",  "arr_6", "xxx"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_seq1():
-#     init_module()
-#     module_iter_basic("in_ref_empty_fiber", "arr_1")
+def test_seq1():
+    init_module()
+    module_iter_basic("in_ref_empty_fiber", "arr_1")
 
 
-# def test_seq2():
-#     init_module()
-#     module_iter_basic("loop_round_1", "loop_round_2")
+def test_seq2():
+    init_module()
+    module_iter_basic("loop_round_1", "loop_round_2")
 
 
 def test_seq3():
     init_module()
-    module_iter_basic("in_ref_2d_1", "nothing")
+    module_iter_basic("in_ref_empty_fiber", "empty")
 
 
-# def test_random_1d_1d():
-#     init_module()
-#     test_list = ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_1d_1d():
+    init_module()
+    test_list = ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_2d_1d():
-#     init_module()
-#     test_list = ["rd_2d_0.1_100_1d_1.0_3", "rd_2d_0.3_100_1d_1.0_3", "rd_2d_0.5_100_1d_1.0_3", "rd_2d_0.8_100_1d_1.0_3", "rd_2d_1.0_100_1d_1.0_3"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_2d_1d():
+    init_module()
+    test_list = ["rd_2d_0.1_100_1d_1.0_3", "rd_2d_0.3_100_1d_1.0_3", "rd_2d_0.5_100_1d_1.0_3", "rd_2d_0.8_100_1d_1.0_3", "rd_2d_1.0_100_1d_1.0_3"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_random_2d_2d():
-#     init_module()
-#     test_list = ["rd_2d_0.1_100_2d_0.3_30", "rd_2d_0.3_100_2d_0.3_30", "rd_2d_0.5_100_2d_0.3_30", "rd_2d_0.8_100_2d_0.3_30", "rd_2d_1.0_100_2d_0.3_30"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_random_2d_2d():
+    init_module()
+    test_list = ["rd_2d_0.1_100_2d_0.3_30", "rd_2d_0.3_100_2d_0.3_30", "rd_2d_0.5_100_2d_0.3_30", "rd_2d_0.8_100_2d_0.3_30", "rd_2d_1.0_100_2d_0.3_30"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_seq3():
-#     init_module()
-#     # test_list =  ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"] +\
-#     #              ["rd_2d_0.1_100_1d_1.0_3", "rd_2d_0.3_100_1d_1.0_3", "rd_2d_0.5_100_1d_1.0_3", "rd_2d_0.8_100_1d_1.0_3", "rd_2d_1.0_100_1d_1.0_3"] +\
-#     #              ["rd_2d_0.1_100_2d_0.3_30", "rd_2d_0.3_100_2d_0.3_30", "rd_2d_0.5_100_2d_0.3_30", "rd_2d_0.8_100_2d_0.3_30", "rd_2d_1.0_100_2d_0.3_30"] +\ 
-#     test_list =  ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "arr_1", "arr_2", "arr_3", "arr_4", "arr_5", "arr_6", "xxx"]
-#     for i in range(30):
-#         rand = random.sample(test_list, 2)
-#         module_iter_basic(rand[0], rand[1])
+def test_seq3():
+    init_module()
+    test_list =  ["rd_1d_0.1_200_1d_1.0_3", "rd_1d_0.3_200_1d_1.0_3", "rd_1d_0.5_200_1d_1.0_3", "rd_1d_0.8_200_1d_1.0_3", "rd_1d_1.0_200_1d_1.0_3"] +\
+                 ["rd_2d_0.1_100_1d_1.0_3", "rd_2d_0.3_100_1d_1.0_3", "rd_2d_0.5_100_1d_1.0_3", "rd_2d_0.8_100_1d_1.0_3", "rd_2d_1.0_100_1d_1.0_3"] +\
+                 ["rd_2d_0.1_100_2d_0.3_30", "rd_2d_0.3_100_2d_0.3_30", "rd_2d_0.5_100_2d_0.3_30", "rd_2d_0.8_100_2d_0.3_30", "rd_2d_1.0_100_2d_0.3_30"] +\
+                 ["direct_1d", "direct_2d", "in_ref_2d_1", "in_ref_2d_2", "in_ref_empty_fiber", "arr_1", "arr_2", "arr_3", "arr_4", "arr_5", "arr_6", "xxx"]
+    for i in range(30):
+        rand = random.sample(test_list, 2)
+        module_iter_basic(rand[0], rand[1])

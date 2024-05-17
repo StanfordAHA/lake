@@ -43,7 +43,7 @@ def init_module():
 
     k.verilog(fiber_access, filename=f"./modules/Fiber_access.sv", optimize_if=False)
 
-    sparse_helper.update_tcl("fiber_fib2glb_val_tb")
+    sparse_helper.update_tcl("fiber_fib2glb_seg_tb")
 
 
 def create_gold(in_crd, in_ref):
@@ -126,49 +126,49 @@ def check_output(gd, coord_out):
 def load_test_module(test_name):
     if test_name == "direct_l0":
         in_val = [[0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']]
-        blk_gold = [[6, 0, 2, 3, 4, 5, 6]]
+        blk_gold = [[3, 0, 3, 6], [6, 0, 2, 3, 4, 5, 6]]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
 
     if test_name == "empty_stop":
         in_val = [['S0', 'D']]
-        blk_gold = [[0]]
+        blk_gold = [[2, 0, 0], [0]]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
 
     if test_name == "empty_total":
         in_val = [['D']]
-        blk_gold = [[0]]
+        blk_gold = [[1, 0], [0]]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
 
     if test_name == "regular_b2b":
-        in_val = [[0, 2, 3, 'S0', 4, 5, 6, 7, 8, 'S1', 'D'], [1, 1, 1, 1, 'S0', 'D']]
-        blk_gold = [[8, 0, 2, 3, 4, 5, 6, 7, 8], [4, 1, 1, 1, 1]]
+        in_val = [[0, 2, 3, 'S0', 4, 5, 6, 7, 8, 'S1', 'D'], [1, 2, 10, 111, 'S0', 'D']]
+        blk_gold = [[3, 0, 3, 8], [8, 0, 2, 3, 4, 5, 6, 7, 8], [2, 0, 4], [4, 1, 2, 10, 111]]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
 
     if test_name == "empty_series":
-        in_val = [[0, 0, 0, 'S0', 'D'], ['D'], ['D'], [11, 29, 9, 7, 3, 'S1', 'D'], ['D'], [1, 2, 3, 4, 5, 6, 7, 8, 'S2', 'D']]
-        blk_gold = [[3, 0, 0, 0], [0], [0], [5, 11, 29, 9, 7, 3], [0], [8, 1, 2, 3, 4, 5, 6, 7, 8]]
+        in_val = [[0, 10, 100, 'S0', 'D'], ['D'], ['D'], [11, 29, 99, 112, 113, 'S1', 'D'], ['D'], [1, 2, 3, 4, 5, 6, 7, 8, 'S2', 'D']]
+        blk_gold = [[2, 0, 3], [3, 0, 10, 100], [1, 0], [0], [1, 0], [0], [2, 0, 5], [5, 11, 29, 99, 112, 113], [1, 0], [0], [2, 0, 8], [8, 1, 2, 3, 4, 5, 6, 7, 8]]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
 
     if test_name == "all_empty_series":
         in_val = [['S0', 'D'], ['D'], ['D']]
-        blk_gold = [[0], [0], [0]]
+        blk_gold = [[2, 0, 0], [0], [1, 0], [0], [1, 0], [0],]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
 
     if test_name == "single_ele_empty":
         in_val = [[0, 'S0', 'D'], ['S0', 'D']]
-        blk_gold = [[1, 0], [0]]
+        blk_gold = [[2, 0, 1], [1, 0], [1, 0], [0],]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
     
     if test_name == "single_ele_mul":
         in_val = [[1, 'S0', 'D'], [2, 'S0', 'D'], [3, 'S0', 'D']]
-        blk_gold = [[1, 1], [1, 2], [1, 3]]
+        blk_gold = [[2, 0, 1], [1, 1], [2, 0, 1], [1, 2], [2, 0, 1], [1, 3]]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
 
@@ -180,7 +180,7 @@ def load_test_module(test_name):
         
     else:
         in_val = [[2002, 'S0', 'D']]
-        blk_gold = [[1, 2002]]
+        blk_gold = [[2, 0, 1], [1, 2002]]
         in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
         return in_val_t, blk_gold
 
@@ -202,8 +202,8 @@ def module_iter_basic(test_name, add_test=""):
     sparse_helper.clear_txt("coord_out.txt")
 
     #run command "make sim" to run the simulation
-    sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_fib2glb_val_tb.sv", "TOP=fiber_fib2glb_val_tb",\
-                            f"TX_NUM_GLB={TX_NUM}", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
+    sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_fib2glb_seg_tb.sv", "TOP=fiber_fib2glb_seg_tb",\
+                            f"TX_NUM_GLB={TX_NUM // 2}", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
 
     output = sim_result.stdout
     # print(output)

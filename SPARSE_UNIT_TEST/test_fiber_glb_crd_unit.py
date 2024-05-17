@@ -181,15 +181,14 @@ def module_iter_basic(test_name, add_test=""):
     sparse_helper.write_txt("coord_in_0.txt", ic)
 
     sparse_helper.clear_txt("coord_out.txt")
+    TX_NUM = 2
+    if add_test != "":
+        TX_NUM = 4
 
     #run command "make sim" to run the simulation
-    if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_crd_tb.sv", "TOP=fiber_glb_crd_tb",\
-                              "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
-    else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_crd_tb.sv",\
-                             "TOP=fiber_glb_crd_tb", "TX_NUM_GLB=4", "TEST_UNIT=Fiber_access.sv"\
-                             ], capture_output=True, text=True)
+    sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_crd_tb.sv", "TOP=fiber_glb_crd_tb",\
+                            f"TX_NUM_GLB={TX_NUM}", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
+
     output = sim_result.stdout
     # print(output)
     cycle_count_line = output[output.find("write cycle count:"):]
@@ -197,7 +196,10 @@ def module_iter_basic(test_name, add_test=""):
     print(lines[0])
     print(lines[1])
 
-    coord_out = sparse_helper.read_glb("coord_out.txt")
+    coord_out_t = sparse_helper.read_glb("coord_out.txt", TX_NUM)
+    coord_out = []
+    for i in coord_out_t:
+        coord_out += i
     # print(coord_out)
 
     #compare each element in the output from coord_out.txt with the gold output

@@ -996,7 +996,7 @@ class WriteScanner(MemoryController):
         UL_EMIT.output(self._clr_curr_coord, ~self._wen_made)
         # Assumption is that valid sets of coordinates are always passed here so I should be able to hit new data
         # Pop until we have a DONE
-        UL_EMIT.output(self._infifo_pop[0], self._data_infifo_valid_in & self._join_out_ready & ~self._data_done_in)
+        UL_EMIT.output(self._infifo_pop[0], self._data_infifo_valid_in & (self._join_out_ready | self._data_done_in))
         UL_EMIT.output(self._infifo_pop[1], 0)
         # UL_EMIT.output(self._clr_wen_made, 0)
         UL_EMIT.output(self._clr_wen_made, self._wen_made & self._data_infifo_valid_in)
