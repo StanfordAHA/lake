@@ -93,11 +93,8 @@ def convert_stream_to_onyx_interp(stream):
     return converted_stream
 
 
-def read_txt(file_name, addit=False):
+def read_txt(file_name, count=1):
     r = []
-    count = 1
-    if addit:
-        count = 2
     with open(file_name, "r") as f:
         for line in f:
             r.append(int(line, 16))
