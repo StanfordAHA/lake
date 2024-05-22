@@ -1,6 +1,6 @@
 dump -file cgra.fsdb -type FSDB
-dump -add unioner_tb -fsdb_opt +mda+packedmda+struct
-power unioner_tb.dut
+dump -add fiber_glb2fib_seg_tb -fsdb_opt +mda+packedmda+struct
+power fiber_glb2fib_seg_tb.dut
 power -enable
 run
 power -disable

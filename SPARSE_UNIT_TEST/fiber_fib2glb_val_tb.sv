@@ -3,7 +3,7 @@
 `define TX_NUM_GLB 1
 `endif
 
-module fiber_glb_crd_tb;
+module fiber_fib2glb_val_tb;
 
     reg clk;
     reg clk_en;
@@ -48,7 +48,7 @@ module fiber_glb_crd_tb;
     wire rs_blk_valid;
     wire rs_blk_ready;
 
-    assign {ws_addr, ws_addr_valid, coord_in_0, coord_in_0_valid} = 0;
+    assign {ws_addr, ws_addr_valid, ws_blk, ws_blk_valid} = 0;
     assign {coord_out_ready, pos_out_0_ready} = 0;
     assign {pos_in_0, pos_in_0_valid} = 0;
 
@@ -81,7 +81,7 @@ module fiber_glb_crd_tb;
     // .read_scanner_dim_size(16'b0),
     .read_scanner_do_repeat(1'b0),
     .read_scanner_inner_dim_offset(16'b0),
-    .read_scanner_lookup(1'b0),
+    .read_scanner_lookup(1'b1),
     .read_scanner_pos_out_ready(pos_out_0_ready),
     .read_scanner_repeat_factor(16'b0),
     .read_scanner_repeat_outer_inner_n(1'b0),
@@ -96,14 +96,14 @@ module fiber_glb_crd_tb;
     .tile_en(tile_en),
     .write_scanner_addr_in(ws_addr),
     .write_scanner_addr_in_valid(ws_addr_valid),
-    .write_scanner_block_mode(1'b1),
+    .write_scanner_block_mode(1'b0),
     .write_scanner_block_wr_in(ws_blk),
     .write_scanner_block_wr_in_valid(ws_blk_valid),
     .write_scanner_compressed(1'b1),
     .write_scanner_data_in(coord_in_0),
     .write_scanner_data_in_valid(coord_in_0_valid),
     .write_scanner_init_blank(1'b0),
-    .write_scanner_lowest_level(1'b0),
+    .write_scanner_lowest_level(1'b1),
     // .write_scanner_spacc_mode(1'b0),
     .write_scanner_stop_lvl(16'b0),
     .write_scanner_tile_en(tile_en),
@@ -124,16 +124,16 @@ module fiber_glb_crd_tb;
     .vector_reduce_mode(vector_reduce_mode)
     );
 
-    glb_write #(
+    tile_write #(
         .FILE_NAME("coord_in_0.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .data(ws_blk),
-        .ready(ws_blk_ready),
-        .valid(ws_blk_valid),
+        .data(coord_in_0),
+        .ready(coord_in_0_ready),
+        .valid(coord_in_0_valid),
         .done(done[0]),
         .flush(flush)
     );

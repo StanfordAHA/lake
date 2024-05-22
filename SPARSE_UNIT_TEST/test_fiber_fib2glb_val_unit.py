@@ -43,7 +43,7 @@ def init_module():
 
     k.verilog(fiber_access, filename=f"./modules/Fiber_access.sv", optimize_if=False)
 
-    sparse_helper.update_tcl("fiber_glb_crd_tb")
+    sparse_helper.update_tcl("fiber_fib2glb_val_tb")
 
 
 def create_gold(in_crd, in_ref):
@@ -115,78 +115,94 @@ def create_gold(in_crd, in_ref):
     return tr_st
 
 
+def check_output(gd, coord_out):
+    assert len(gd) == len(coord_out), f"Length of gold {len(gd)} didn't match output {len(coord_out)}"
+    for i in range(len(gd)):
+        assert len(gd[i]) == len(coord_out[i]), f"Length of gold {len(gd[i])} didn't match output {len(coord_out[i])}"
+        for j in range(len(gd[i])):
+            assert gd[i][j] == coord_out[i][j], f"Gold {gd[i][j]} didn't match output {coord_out[i][j]}"
+
+
 def load_test_module(test_name):
     if test_name == "direct_l0":
-        in_crd = [2, 0, 4, 4, 0, 1, 2, 3]
-        return in_crd
+        in_val = [[0, 2, 3, 'S0', 4, 5, 6, 'S1', 'D']]
+        blk_gold = [[6, 0, 2, 3, 4, 5, 6]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
 
-    if test_name == "direct_l1":
-        in_crd = [5, 0, 4, 7, 9, 12, 12, 0, 1, 2, 3, 0, 1, 3, 0, 2, 0, 1, 3]
-        return in_crd
+    if test_name == "empty_stop":
+        in_val = [['S0', 'D']]
+        blk_gold = [[0]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
 
-    if test_name == "direct_l2":
-        in_crd = [19, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,\
-                    19, 2, 4, 1, 4, 5, 9, 1, 0, 2, 7, 8, 2, 0, 8, 2, 0, 7, 1, 9]
-        return in_crd
+    if test_name == "empty_total":
+        in_val = [['D']]
+        blk_gold = [[0]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
 
-    if test_name == "diag":
-        in_crd = [7, 0, 1, 2, 3, 4, 5, 6, 6, 1, 2, 3, 4, 5, 6]
-        return in_crd
+    if test_name == "regular_b2b":
+        in_val = [[0, 2, 3, 'S0', 4, 5, 6, 7, 8, 'S1', 'D'], [1, 1, 1, 1, 'S0', 'D']]
+        blk_gold = [[8, 0, 2, 3, 4, 5, 6, 7, 8], [4, 1, 1, 1, 1]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
 
-    elif test_name[0:2] == "rd":
-        size = int(test_name.split("_")[2])
-        f_n = random.randint(1, 64)
-        if test_name[3] == "1":
-            f = random.sample(range(int(size * 1.5)), size)
-            f.sort()
-            f = [2, 0, size, size] + f
-            return f
-        fibers =[]
-        size = size // f_n
-        if size == 0:
-            size = 1 #ensure there is something
-        for i in range(f_n):
-            crd = random.sample(range(int(size * 1.5)), size)
-            crd.sort()
-            fibers.append(crd)
-        seg = []
-        seg.append(len(fibers) + 1)
-        seg.append(0)
-        cur_ptr = 0
-        for f in fibers:
-            cur_ptr += len(f)
-            seg.append(cur_ptr)
-            assert len(f) > 0, "Fiber length is 0"
-            assert len(f) == seg[-1] - seg[-2], "Fiber length is not consistent"
-        crd = [seg[-1]]
-        for f in fibers:
-            crd += f
-        return seg + crd
+    if test_name == "empty_series":
+        in_val = [[0, 0, 0, 'S0', 'D'], ['D'], ['D'], [11, 29, 9, 7, 3, 'S1', 'D'], ['D'], [1, 2, 3, 4, 5, 6, 7, 8, 'S2', 'D']]
+        blk_gold = [[3, 0, 0, 0], [0], [0], [5, 11, 29, 9, 7, 3], [0], [8, 1, 2, 3, 4, 5, 6, 7, 8]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
+
+    if test_name == "all_empty_series":
+        in_val = [['S0', 'D'], ['D'], ['D']]
+        blk_gold = [[0], [0], [0]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
+
+    if test_name == "single_ele_empty":
+        in_val = [[0, 'S0', 'D'], ['S0', 'D']]
+        blk_gold = [[1, 0], [0]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
+    
+    if test_name == "single_ele_mul":
+        in_val = [[1, 'S0', 'D'], [2, 'S0', 'D'], [3, 'S0', 'D']]
+        blk_gold = [[1, 1], [1, 2], [1, 3]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
+
+    # elif test_name[0:2] == "rd":
+    #     size = int(test_name.split("_")[1])
+    #     vals = [random.randint(1, 600) for i in range(size)]
+    #     v = [size] + vals
+    #     return v
         
     else:
-        in_crd = [2, 0, 1, 1, 0]
-        return in_crd
+        in_val = [[2002, 'S0', 'D']]
+        blk_gold = [[1, 2002]]
+        in_val_t = [convert_stream_to_onyx_interp(i) for i in in_val]
+        return in_val_t, blk_gold
 
 
 def module_iter_basic(test_name, add_test=""):
-    ic = load_test_module(test_name)
+    iv, blk_gold = load_test_module(test_name)
 
-    if add_test != "" and add_test != "void":
-        additional_t = load_test_module(add_test)
-        ic = ic + additional_t
+    print(iv)
+    print(blk_gold)
+    TX_NUM = len(blk_gold)
+    iv_c = []
+    for i in iv:
+        iv_c += i
+    print(iv_c)
+    print(TX_NUM)
 
-    print(ic)
-    gc = ic[:]
-
-    sparse_helper.write_txt("coord_in_0.txt", ic)
+    sparse_helper.write_txt("coord_in_0.txt", iv_c)
 
     sparse_helper.clear_txt("coord_out.txt")
-    TX_NUM = 2
-    if add_test != "":
-        TX_NUM = 4
 
     #run command "make sim" to run the simulation
-    sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_crd_tb.sv", "TOP=fiber_glb_crd_tb",\
+    sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_fib2glb_val_tb.sv", "TOP=fiber_fib2glb_val_tb",\
                             f"TX_NUM_GLB={TX_NUM}", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
 
     output = sim_result.stdout
@@ -196,57 +212,17 @@ def module_iter_basic(test_name, add_test=""):
     print(lines[0])
     print(lines[1])
 
-    coord_out_t = sparse_helper.read_glb("coord_out.txt", TX_NUM)
-    coord_out = []
-    for i in coord_out_t:
-        coord_out += i
-    # print(coord_out)
+    coord_out = sparse_helper.read_glb("coord_out.txt", tx_num=TX_NUM)
+    print(coord_out)
 
     #compare each element in the output from coord_out.txt with the gold output
-    assert len(coord_out) == len(gc), \
-        f"Output length {len(coord_out)} didn't match gold length {len(gc)}"
-    for i in range(len(coord_out)):
-        assert coord_out[i] == gc[i], \
-            f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
+    check_output(blk_gold, coord_out)
     
     print(test_name, " passed\n")
 
 
 def test_iter_basic():
     init_module()
-    test_list = ["direct_l0", "direct_l1", "direct_l2", "diag", "xxx"]
+    test_list = ["direct_l0", "regular_b2b", "xxx", "regular_b2b", "empty_series", "all_empty_series", "empty_stop", "empty_total", "single_ele_mul"]
     for test in test_list:
         module_iter_basic(test)
-
-
-def test_iter_random():
-    init_module()
-    for i in range(30):
-        size = random.randint(1, 200)
-        module_iter_basic(f"rd_1d_{size}")
-
-
-def test_iter_random():
-    init_module()
-    for i in range(30):
-        size = random.randint(1, 200)
-        module_iter_basic(f"rd_Nd_{size}")
-
-
-def test_iter_seq():
-    init_module()
-    module_iter_basic("direct_l0", "direct_l1")
-    module_iter_basic("direct_l2", "diag")
-
-
-def test_iter_seq_random():
-    init_module()
-    test_list = ["direct_l0", "direct_l1", "direct_l2", "diag"]
-    for i in range(100):
-        if i % 2 == 0:
-            test_list.append(f"rd_1d_{random.randint(1, 400)}")
-        else:
-            test_list.append(f"rd_Nd_{random.randint(1, 400)}")
-    for i in range(30):
-        rand = random.sample(test_list, 2)
-        module_iter_basic(rand[0], rand[1])

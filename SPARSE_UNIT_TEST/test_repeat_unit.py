@@ -325,7 +325,10 @@ def module_iter_basic(test_name, add_test=""):
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
 
-    pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
+    tx_num = 1
+    if add_test != "":
+        tx_num = 2
+    pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", count=tx_num)
     
     #compare each element in the output from pos_out_0.txt with the gold output
     print(pos_out_0)

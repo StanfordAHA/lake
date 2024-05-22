@@ -3,7 +3,7 @@
 `define TX_NUM_GLB 1
 `endif
 
-module fiber_glb_crd_tb;
+module fiber_glb2fib_seg_tb;
 
     reg clk;
     reg clk_en;
@@ -48,13 +48,11 @@ module fiber_glb_crd_tb;
     wire rs_blk_valid;
     wire rs_blk_ready;
 
-    assign {ws_addr, ws_addr_valid, coord_in_0, coord_in_0_valid} = 0;
-    assign {coord_out_ready, pos_out_0_ready} = 0;
-    assign {pos_in_0, pos_in_0_valid} = 0;
+    assign {ws_addr, ws_addr_valid, rs_blk_ready} = 0;
 
     logic [1:0] [31:0] config_out;
 
-    wire [1:0] done;
+    wire [3:0] done;
     parameter NUM_CYCLES = 40000;
 
     integer clk_count;
@@ -74,7 +72,7 @@ module fiber_glb_crd_tb;
     .clk(clk),
     .clk_en(clk_en),
     .flush(flush),
-    .read_scanner_block_mode(1'b1),
+    .read_scanner_block_mode(1'b0),
     .read_scanner_block_rd_out_ready(rs_blk_ready),
     .read_scanner_coord_out_ready(coord_out_ready),
     .read_scanner_dense(1'b0),
@@ -126,7 +124,7 @@ module fiber_glb_crd_tb;
 
     glb_write #(
         .FILE_NAME("coord_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB),
+        .TX_NUM(`TX_NUM_GLB*2),
         .RAN_SHITF(0)
     ) coord_in_0_inst (
         .clk(clk),
@@ -138,17 +136,46 @@ module fiber_glb_crd_tb;
         .flush(flush)
     );
 
-    glb_read #(
+    tile_write #(
+        .FILE_NAME("pos_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(1)
+    ) pos_in_0_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .data(pos_in_0),
+        // .ready(pos_in_0_ready & start_read == 1),
+        .ready(pos_in_0_ready),
+        .valid(pos_in_0_valid),
+        .done(done[1]),
+        .flush(flush)
+    );
+
+    tile_read #(
         .FILE_NAME("coord_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
-        .RAN_SHITF(0)
+        .RAN_SHITF(2)
     ) coord_out_0_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .data(rs_blk),
-        .ready(rs_blk_ready),
-        .valid(rs_blk_valid),
-        .done(done[1]),
+        .data(coord_out),
+        .ready(coord_out_ready),
+        .valid(coord_out_valid),
+        .done(done[2]),
+        .flush(flush)
+    );
+
+    tile_read #(
+        .FILE_NAME("pos_out.txt"),
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(3)
+    ) pos_out_0_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .data(pos_out_0),
+        .ready(pos_out_0_ready),
+        .valid(pos_out_0_valid),
+        .done(done[3]),
         .flush(flush)
     );
 
