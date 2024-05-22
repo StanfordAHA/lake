@@ -352,27 +352,15 @@ class BuffetLike(MemoryController):
 
         self._en_curr_bounds = self.var("en_curr_bounds", self.num_ID)
         self._clr_curr_bounds = self.var("clr_curr_bounds", self.num_ID)
-        # self._curr_bounds = self.var("curr_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
-        # self._curr_bounds = [register(self, self._wr_addr_fifo_out_data, enable=self._en_curr_bounds[i],
-        #                               name=f"curr_bounds_{i}", packed=True, reset_value=kts.const(int(2**self._wr_addr_fifo_out_data.width) - 1,
-        #                                                                                           self._wr_addr_fifo_out_data.width)) for i in range(self.num_ID)]
         self._curr_bounds = [register(self, self._wr_addr_fifo_out_data + 1, enable=self._en_curr_bounds[i], clear=self._clr_curr_bounds[i],
                                       name=f"curr_bounds_{i}", packed=True) for i in range(self.num_ID)]
 
         self._en_curr_base = self.var("en_curr_base", self.num_ID)
         self._first_base_set = [sticky_flag(self, self._en_curr_base[idx_], name=f"first_base_set_{idx_}", seq_only=True) for idx_ in range(self.num_ID)]
-        # self._curr_base = [register(self, self._wr_addr, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
-        # self._curr_base = [register(self, self._curr_bounds[i] + 1, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
-        # self._curr_base = [register(self, (self._curr_bounds[i] >> self.subword_addr_bits) + 1, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
         self._curr_base_pre = [self.var(f"curr_base_pre_{i}", self.data_width) for i in range(self.num_ID)]
-        # self._curr_base = [register(self, kts.ternary(self._first_base_set[i],
-        #                                               (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i],
-        #                                               0), enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
         self._curr_base = [register(self, self._curr_base_pre[i], enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
 
         [self.wire(self._curr_base_pre[i], kts.ternary(self._curr_bounds[i][self.subword_addr_bits-1,0] == kts.const(0, self.subword_addr_bits),
-        # [self.wire(self._curr_base_pre[i], kts.ternary(self._first_base_set[i],
-                                                    #    (self._curr_bounds[i] >> self.subword_addr_bits) + (self._curr_bounds[i][self.subword_addr_bits-1,0] != 0) + self._curr_base[i],
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + self._curr_base[i],
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i])) for i in range(self.num_ID)]
 
@@ -905,8 +893,7 @@ class BuffetLike(MemoryController):
         [self.wire(self._rd_rsp_fifo_almost_full[i], self._rd_rsp_out_fifo[i].ports.almost_full) for i in range(self.num_read_ports)]
         [self.wire(self._rd_rsp_valid[i], ~self._rd_rsp_out_fifo[i].ports.empty) for i in range(self.num_read_ports)]
 
-        # chosen_size_block = decode(self, self._size_request_full, self._blk_bounds) + 1  # Changing the base to 0
-        chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)
+        chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)  # Changing the base to 0
 
         if self.optimize_wide and self.mem_width > self.data_width:
             # self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0] & (self._rd_ID_fifo_out_data[0] == kts.const(0, 1)),
@@ -1020,7 +1007,7 @@ class BuffetLike(MemoryController):
         self._curr_capacity_pre = self.var("curr_capacity_pre", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
         # self._curr_capacity = self.var("curr_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
-        @always_ff((posedge, self._clk), (negedge, self._rst_n))  # TODO update with the correct bounds
+        @always_ff((posedge, self._clk), (negedge, self._rst_n))
         def cap_reg(self, idx):
             if ~self._rst_n:
                 self._curr_capacity_pre[idx] = kts.const(0, self.data_width)

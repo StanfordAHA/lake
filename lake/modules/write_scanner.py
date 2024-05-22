@@ -1078,8 +1078,6 @@ class WriteScanner(MemoryController):
         DONE.output(self._clr_seg_ctr, 0)
         DONE.output(self._set_curr_coord, 0)
         DONE.output(self._clr_curr_coord, 0)
-        # DONE.output(self._infifo_pop[0], 0)
-        # DONE.output(self._infifo_pop[0], self._data_done_in)
         DONE.output(self._infifo_pop[0], 0)
         DONE.output(self._infifo_pop[1], 0)
         DONE.output(self._clr_wen_made, 0)
