@@ -251,7 +251,7 @@ class CrdDrop(MemoryController):
         self.wire(self._coord_out_valid_out[0], ~inner_outfifo.ports.empty)
 
         ##############
-        # Inner Stream Output FIFO
+        # Outer Stream Output FIFO
         ##############
         # push singal that would need to hooked up later
         self._outer_outfifo_push = self.var(f"outer_outfifo_push", 1)
@@ -278,7 +278,7 @@ class CrdDrop(MemoryController):
         self.wire(self._outer_outfifo_full, outer_outfifo.ports.full)
 
         # Hook up the valid singal to downstream primitive
-        self.wire(self._coord_out_valid_out[1], ~inner_outfifo.ports.empty)
+        self.wire(self._coord_out_valid_out[1], ~outer_outfifo.ports.empty)
 
     def get_bitstream(self, config_kwargs):
         cmrg_mode = config_kwargs['cmrg_mode']
