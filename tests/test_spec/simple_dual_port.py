@@ -58,12 +58,75 @@ def build_simple_dual_port(dims: int = 6) -> Spec:
     return ls
 
 
-if __name__ == "__main__":
+def get_linear_test():
 
-    print("Hello")
+    linear_test = {}
 
+    linear_test[0] = {
+                        'type': Direction.IN,
+                        'name': 'write_port_0',
+                        'config': {
+                            'dimensionality': 1,
+                            'extents': [64],
+                            'address': {
+                                'strides': [1],
+                                'offset': 0
+                            },
+                            'schedule': {
+                                'strides': [1],
+                                'offset': 0
+                            }
+                        }
+                     }
+
+    linear_test[1] = {
+                        'type': Direction.OUT,
+                        'name': 'read_port_0',
+                        'config': {
+                            'dimensionality': 1,
+                            'extents': [64],
+                            'address': {
+                                'strides': [1],
+                                'offset': 0
+                            },
+                            'schedule': {
+                                'strides': [1],
+                                'offset': 16
+                            }
+                        }
+                     }
+    
+    return linear_test
+
+
+def test_linear_read_write():
+
+    # Build the spec
     simple_dual_port_spec = build_simple_dual_port()
     simple_dual_port_spec.visualize_graph()
     simple_dual_port_spec.generate_hardware()
     simple_dual_port_spec.extract_compiler_information()
     simple_dual_port_spec.get_verilog()
+
+    # Define the test
+    lt = get_linear_test()
+
+    # Now generate the bitstream to a file (will be loaded in test harness later)
+    bs = simple_dual_port_spec.gen_bitstream(lt)
+
+    print('final bs')
+    print(bs)
+
+
+
+if __name__ == "__main__":
+
+    print("Hello")
+
+    # simple_dual_port_spec = build_simple_dual_port()
+    # simple_dual_port_spec.visualize_graph()
+    # simple_dual_port_spec.generate_hardware()
+    # simple_dual_port_spec.extract_compiler_information()
+    # simple_dual_port_spec.get_verilog()
+
+    test_linear_read_write()

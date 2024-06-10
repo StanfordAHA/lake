@@ -12,6 +12,13 @@ class IterationDomain(Component):
         self.dimensionality_support = dimensionality
         self.extent_width = extent_width
 
+    def gen_bitstream(self, dimensionality, extents):
+        # idk
+        self.configure(self._dimensionality, dimensionality)
+        self.configure(self._extents, extents)
+        # This will return pairs of ranges with values w.r.t. the node's configuration
+        return self.get_configuration()
+
     def get_extent_width(self):
         return self.extent_width
 
@@ -137,9 +144,6 @@ class IterationDomain(Component):
             self._mux_sel_msb_r = self._mux_sel_msb_init
         elif self._restart:
             self._mux_sel_msb_r = ~self._mux_sel_msb_r
-
-    def gen_bitstream(self):
-        return super().gen_bitstream()
 
 
 class DefaultIterationDomain(IterationDomain):

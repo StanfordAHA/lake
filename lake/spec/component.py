@@ -21,6 +21,10 @@ class Component(kratos.Generator):
         # super().__init__(name=f"{rand.randint(0, 10000)}", debug=True)
         self.config_space = []
         self.config_size = 0
+        self.cfg_reg_to_range = {}
+        # A live configuration consists of a list of ranges and value
+        self.configuration = []
+        self.remap_flatten_config = {}
 
     def gen_hardware(self, pos_reset=False):
         """Generate the kratos hardware for this component
@@ -36,6 +40,36 @@ class Component(kratos.Generator):
             If this function is not overriden in inheriting classes it will throw this error
         """
         raise NotImplementedError
+    
+    def get_configuration(self):
+        return self.configuration
+
+    def clear_configuration(self):
+        self.configuration = []
+
+    def configure(self, cfg_reg, value):
+        '''Do the actual configuration of the config reg
+        '''
+        # Can actually pass in the var or the name - if it's not a string I will make it a string
+        if type(cfg_reg) is not str:
+            cfg_reg = cfg_reg.name
+
+        # Now use the string to locate the map and add the value to the current configuration
+        print(self.cfg_reg_to_range)
+        # If it's not in the map, check if it was flattened and renamed...
+        if cfg_reg not in self.cfg_reg_to_range:
+            # If not in here, check if it was flattened and handed a list, else bad
+            if cfg_reg in self.remap_flatten_config and type(value) is list:
+                # for i_, remapped_name in enumerate(self.remap_flatten_config[cfg_reg]):
+                # for i_, remapped_name in enumerate(self.remap_flatten_config[cfg_reg]):
+                for i_ in range(len(value)):
+                    range_ = self.cfg_reg_to_range[self.remap_flatten_config[cfg_reg][i_]]
+                    self.configuration.append((range_, value[i_]))
+            else:
+                raise NotImplementedError
+        else:
+            range_ = self.cfg_reg_to_range[cfg_reg]
+            self.configuration.append((range_, value))
 
     def config_reg(self, **kwargs):
         assert 'name' in kwargs
@@ -52,28 +86,39 @@ class Component(kratos.Generator):
 
         # Actually flatten these here if size > 1
         if size_ > 1:
+
+            save_unflat_name = kwargs['name']
+            self.remap_flatten_config[kwargs['name']] = []
+
             lcl_var = self.var(**kwargs)
             ret_ = []
             del kwargs['size']
             del kwargs['name']
             for i_ in range(size_):
                 kwargs['name'] = f"{name_}_{i_}"
+                self.remap_flatten_config[save_unflat_name].append(kwargs['name'])
                 tmp = self.input(**kwargs)
                 ret_.append(tmp)
-                self.config_size += total_config_size_
                 self.config_space.append((total_config_size_, tmp))
                 self.wire(tmp, lcl_var[i_])
+                # Map the name to this range
+                self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_, self.config_size)
+                self.config_size += total_config_size_
             ret_ = lcl_var
 
         else:
             ret_ = self.input(**kwargs)
-            self.config_size += total_config_size_
             self.config_space.append((total_config_size_, ret_))
+            self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_, self.config_size)
+            self.config_size += total_config_size_
 
         # ret_.add_attribute(ConfigRegAttr("Default Description"))
 
         # return lcl_var
         return ret_
+
+    def get_cfg_map(self):
+        return self.cfg_reg_to_range
 
     def gen_bitstream(self):
         raise NotImplementedError

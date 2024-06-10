@@ -20,14 +20,34 @@ class Spec():
         self._final_gen = None
         self._name = name
         self._memport_map = {}
+        self._num_nodes = 0
+        self._index_to_node = {}
+        self._node_to_index = {}
+        # Each node by index will have its base here
+        self._config_bases = []
+        self.configuration = None
+        self.config_int = None
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
+        self._hw_graph[comp]['index'] = self._num_nodes
+        self._index_to_node[self._num_nodes] = comp
+        self._num_nodes += 1
+
+    def get_node_from_idx(self, idx):
+        print(idx)
+        print(self._index_to_node)
+        assert idx in self._index_to_node
+        return self._index_to_node[idx]
 
     def register(self, *comps):
-        self._hw_graph.add_nodes_from(comps)
-        # for comp in comps:
-        #     self.register_(comp=comp)
+        # self._hw_graph.add_nodes_from(comps)
+        for comp in comps:
+            # self.register_(comp=comp)
+            self._hw_graph.add_node(comp)
+            self._node_to_index[comp] = self._num_nodes
+            self._index_to_node[self._num_nodes] = comp
+            self._num_nodes += 1
 
     def connect(self, node1, node2):
         self._hw_graph.add_edge(node1, node2)
@@ -78,6 +98,8 @@ class Spec():
 
         for node in self._hw_graph.nodes:
             print(node.get_name())
+            # The config bases will contain a number for each node - should match?
+            self._config_bases.append(total_config_size)
             total_config_size += node.get_config_size()
         self.config_memory = self._final_gen.input(name=f"config_memory_size_{total_config_size}", width=total_config_size, packed=True)
         base = 0
@@ -90,7 +112,7 @@ class Spec():
 
     def generate_hardware(self) -> None:
 
-        self._final_gen = kts.Generator(name=self._name, debug=True)
+        self._final_gen = kts.Generator(name=self._name, debug=False)
 
         # self._final_gen.clk = self._final_gen.clock("clk")
 
@@ -135,13 +157,15 @@ class Spec():
         port_nodes = self.get_nodes(Port)
         for i_, port in enumerate(port_nodes):
             port: Port
+
+            port_id, port_ag, port_sg = self.get_port_controllers(port=port)
             # Assemble the ID,AG,SG (or at least their interfaces) on the port
-            port_id: IterationDomain = self.get_associated_controller(IterationDomain, port)
-            assert port_id is not None
-            port_ag: AddressGenerator = self.get_associated_controller(AddressGenerator, port)
-            assert port_ag is not None
-            port_sg: ScheduleGenerator = self.get_associated_controller(ScheduleGenerator, port)
-            assert port_sg is not None
+            # port_id: IterationDomain = self.get_associated_controller(IterationDomain, port)
+            # assert port_id is not None
+            # port_ag: AddressGenerator = self.get_associated_controller(AddressGenerator, port)
+            # assert port_ag is not None
+            # port_sg: ScheduleGenerator = self.get_associated_controller(ScheduleGenerator, port)
+            # assert port_sg is not None
 
             # Connect port's data to all of the memoryports
             memports_ = self.get_memory_ports(port=port)
@@ -150,7 +174,7 @@ class Spec():
             port_ag.gen_hardware(memports_, port_id)
             port_sg.gen_hardware(port_id)
 
-            self._final_gen.add_child(f"port_{i_}", port)
+            self._final_gen.add_child(f"port_inst_{i_}", port)
 
             # Connect the ag/sg/id together
             self._final_gen.add_child(f"port_id_{i_}", port_id,
@@ -166,8 +190,8 @@ class Spec():
             self._final_gen.wire(port_id.ports.mux_sel_out, port_ag.ports.mux_sel)
             self._final_gen.wire(port_id.ports.dim_counter, port_ag.ports.iterators)
 
-            self._final_gen.wire(port_id.ports.mux_sel_out, port_ag.ports.mux_sel)
-            self._final_gen.wire(port_id.ports.dim_counter, port_ag.ports.iterators)
+            self._final_gen.wire(port_id.ports.mux_sel_out, port_sg.ports.mux_sel)
+            self._final_gen.wire(port_id.ports.dim_counter, port_sg.ports.iterators)
 
             # step signal
             self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
@@ -180,11 +204,24 @@ class Spec():
             assembled_port['addr'] = port_ag.get_address()
             assembled_port['en'] = port_sg.get_step()
 
-            # send signals through memintf decoder
+            print('i is asdasdas')
+            print(i_)
+
+            # send signals through memintf decoder (one port to many memoryports, doing decoding based on address)
             memintf_dec = MemoryInterfaceDecoder(name=f"memintfdec_{i_}", port_type=port.get_direction(),
                                                  port_intf=assembled_port, memports=memports_)
-
             memintf_dec.gen_hardware()
+
+            self._final_gen.add_child(f"memintfdec_inst_{i_}", memintf_dec)
+            # After this, need to connect the decoded ports to the actual memports
+            mintf_ints = memintf_dec.get_mp_intf()
+            for j_, mp in enumerate(memports_):
+                self._connect_memintfdec_mp(mintf_ints[j_], mp)
+            
+            memintf_dec_p_intf = memintf_dec.get_p_intf()
+            self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])
+            self._final_gen.wire(assembled_port['addr'], memintf_dec_p_intf['addr'])
+            self._final_gen.wire(assembled_port['en'], memintf_dec_p_intf['en'])
 
             # Now add the port interfaces to the module
             ub_intf = port.get_ub_intf()
@@ -196,6 +233,7 @@ class Spec():
 
         self.lift_config_regs()
         self.add_flush()
+
 
     def get_verilog(self):
         kts.verilog(self._final_gen, filename=f"{self._name}.sv",
@@ -209,6 +247,30 @@ class Spec():
 
     def extract_compiler_information(self) -> None:
         pass
+
+    def get_port_controllers(self, port) -> tuple[IterationDomain, AddressGenerator, ScheduleGenerator]:
+        # Assemble the ID,AG,SG (or at least their interfaces) on the port
+        port_id: IterationDomain = self.get_associated_controller(IterationDomain, port)
+        assert port_id is not None
+        port_ag: AddressGenerator = self.get_associated_controller(AddressGenerator, port)
+        assert port_ag is not None
+        port_sg: ScheduleGenerator = self.get_associated_controller(ScheduleGenerator, port)
+        assert port_sg is not None
+
+        return (port_id, port_ag, port_sg)
+
+    def _connect_memintfdec_mp(self, mid_int, mp):
+        # Do this in a dumb way for now but add in muxing when needed.
+        mp_type = mp.get_type()
+        mp_port_intf = mp.get_port_intf()
+        if mp_type == MemoryPortType.R:
+            self._final_gen.wire(mid_int['addr'], mp_port_intf['addr'])
+            self._final_gen.wire(mid_int['data'], mp_port_intf['read_data'])
+            self._final_gen.wire(mid_int['en'], mp_port_intf['read_en'])
+        elif mp_type == MemoryPortType.W:
+            self._final_gen.wire(mid_int['addr'], mp_port_intf['addr'])
+            self._final_gen.wire(mid_int['data'], mp_port_intf['write_data'])
+            self._final_gen.wire(mid_int['en'], mp_port_intf['write_en'])
 
     def _connect_memoryport_storage(self, mptype: MemoryPortType = None,
                                     memport_intf=None, strg_intf=None):
@@ -231,3 +293,74 @@ class Spec():
 
         for signal in signals:
             self._final_gen.wire(memport_intf[signal], strg_intf[signal])
+
+
+    def clear_configuration(self):
+        # Each node has a configuration range
+        self.configuration = []
+        self.config_int = 0
+
+    def get_configuration(self):
+        return self.configuration
+
+    def get_config_base(self, node):
+        node_idx = self._node_to_index[node]
+        return self._config_bases[node_idx]
+
+    def configure(self, node, bs):
+        node_config_base = self.get_config_base(node)
+        for reg_bound, value in bs:
+            upper, lower = reg_bound
+            self.configuration.append(((upper + node_config_base, lower + node_config_base), value))
+
+    def create_config_int(self):
+        # Shift and add across the board
+        self.config_int = 0
+        for bounds, value in self.configuration:
+            upper, lower = bounds
+            self.config_int = self.config_int + (value << lower)
+
+    def get_config_int(self):
+        return self.config_int
+
+    def gen_bitstream(self, application):
+        '''Overall flow of the bitstreams is to basically go through each port and map down the information.
+           There may be other information that needs to go into the configuration, but that could be in the object hierarchy
+        '''
+
+        # Need to integrate all the bitstream information
+        # into one single integer/string for the verilog harness
+
+        print(application)
+        self.clear_configuration()
+
+        # Each piece in the application is a port
+        for port_num, maps in application.items():
+            # Get the port and associated controllers
+            port = self.get_node_from_idx(port_num)
+
+            port_name = maps['name']
+            print(f"Configuring the port named: {port_name}")
+            # Get the associated controllers...
+            port_config = maps['config']
+            addr_map = port_config['address']
+            sched_map = port_config['schedule']
+            port_id, port_ag, port_sg = self.get_port_controllers(port=port)
+            id_bs = port_id.gen_bitstream(port_config['dimensionality'], port_config['extents'])
+            ag_bs = port_ag.gen_bitstream(addr_map)
+            sg_bs = port_sg.gen_bitstream(sched_map)
+
+            # Create a clear configuration
+            self.configure(port_id, id_bs)
+            self.configure(port_ag, ag_bs)
+            self.configure(port_sg, sg_bs)
+
+        print(5 << 1)
+
+        self.create_config_int()
+
+        print(self.get_configuration())
+
+        return self.get_config_int()
+
+

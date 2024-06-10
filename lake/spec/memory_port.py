@@ -51,6 +51,8 @@ class MemoryPort(Component):
 
         elif self.mptype == MemoryPortType.W:
 
+            print('mek')
+
             # in set
             addr_from_port = self.input(f"memory_port_write_addr_in", self.addr_width)
             data_from_port = self.input(f"memory_port_write_data_in", self.width)

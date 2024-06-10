@@ -10,7 +10,7 @@ class MemoryInterfaceDecoder(kts.Generator):
     def __init__(self, name: str = None, port_type: Direction = None, port_intf: dict = None, memports=None):
         super().__init__(name=name, debug=True)
         # super().__init__(name, debug, is_clone, internal_generator)
-        self.p_intf = {}
+        self.p_intf = None
         self.mp_intf = {}
         self.memports = memports
         self.port_intf = port_intf
@@ -18,6 +18,8 @@ class MemoryInterfaceDecoder(kts.Generator):
         self.addr_ranges = None
 
     def gen_hardware(self):
+
+        self.p_intf = {}
 
         # Create the port facing side
         if self.port_direction == Direction.IN:

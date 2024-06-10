@@ -83,11 +83,18 @@ class AddressGenerator(Component):
         elif self._step:
             self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
-    def gen_bitstream(self):
-        return super().gen_bitstream()
+    def gen_bitstream(self, address_map):
+        assert 'strides' in address_map
+        assert 'offset' in address_map
+        self.configure(self._strides, address_map['strides'])
+        self.configure(self._starting_addr, address_map['offset'])
+        # This will return pairs of ranges with values w.r.t. the node's configuration
+        return self.get_configuration()
+
+        # return super().gen_bitstream()
 
     def get_address(self):
-        return self._current_addr
+        return self._addr_out
 
 
 class ExplicitAddressGenerator(AddressGenerator):

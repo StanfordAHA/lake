@@ -77,7 +77,14 @@ class ScheduleGenerator(Component):
         elif self._step:
             self._current_cycle = self._current_cycle + self._strides[self._mux_sel]
 
-    def gen_bitstream(self):
+    def gen_bitstream(self, schedule_map):
+        assert 'strides' in schedule_map
+        assert 'offset' in schedule_map
+        self.configure(self._strides, schedule_map['strides'])
+        self.configure(self._starting_cycle, schedule_map['offset'])
+        # This will return pairs of ranges with values w.r.t. the node's configuration
+        return self.get_configuration()
+
         return super().gen_bitstream()
 
     def get_step(self):
