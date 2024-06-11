@@ -117,7 +117,16 @@ def test_linear_read_write():
     print('final bs')
     print(bs)
 
+    bin_rep = bin(bs)
+    print(bin_rep)
+    print(f"'b{bin_rep[2:]}")
 
+    # Convert the number to a hexadecimal string
+    hex_string = hex(bs)[2:]  # Remove the '0x' prefix
+
+    # Write the hexadecimal string to a file
+    with open('number_in_hex.txt', 'w') as file:
+        file.write(hex_string)
 
 if __name__ == "__main__":
 
