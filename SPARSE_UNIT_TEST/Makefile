@@ -18,6 +18,7 @@ TOP ?= 0
 TEST_UNIT ?= 0
 INST ?= 0
 NUM_INPUTS ?= 0
+FIBER_ACCESS_ROOT ?= 0
 
 export WAVEFORM ?= 0
 # export WAVEFORM_GLB_ONLY ?= 0
@@ -125,6 +126,7 @@ XRUN = xrun \
 # -------------------------------------------------------------------
 COMPILE_RTL_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD) \
 					+define+TX_NUM_GLB=$(TX_NUM_GLB) \
+					+define+FIBER_ACCESS_ROOT=$(FIBER_ACCESS_ROOT) \
 					+define+TX_NUM_0=$(TX_NUM_0) \
 					+define+TX_NUM_1=$(TX_NUM_1) \
 					+define+TX_NUM_2=$(TX_NUM_2) \

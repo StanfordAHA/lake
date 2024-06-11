@@ -77,7 +77,6 @@ module value_tb;
     .read_scanner_block_rd_out_ready(rs_blk_ready),
     .read_scanner_coord_out_ready(coord_out_ready),
     .read_scanner_dense(1'b0),
-    .read_scanner_dim_size(16'b0),
     .read_scanner_do_repeat(1'b0),
     .read_scanner_inner_dim_offset(16'b0),
     .read_scanner_lookup(1'b1),

@@ -249,9 +249,13 @@ def module_iter_basic(test_name, add_test=""):
     output = sim_result.stdout
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
-    
-    data_out = sparse_helper.read_txt("out_data.txt", addit=add_test != "")
-    data_out_p = sparse_helper.read_txt("out_data_p.txt", addit=add_test != "")
+
+    tx_num = 1
+    if add_test != "":
+        tx_num = 2
+
+    data_out = sparse_helper.read_txt("out_data.txt", count=tx_num)
+    data_out_p = sparse_helper.read_txt("out_data_p.txt", count=tx_num)
 
     #compare each element in the output from data_out.txt with the gold output
     assert len(data_out) == len(gold_data), \

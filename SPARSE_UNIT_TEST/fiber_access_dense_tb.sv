@@ -1,15 +1,12 @@
 `timescale 1ns/1ns
-`ifndef TX_NUM_0
-`define TX_NUM_0 1
+`ifndef TX_NUM_GLB
+`define TX_NUM_GLB 1
 `endif
-`ifndef TX_NUM_1
-`define TX_NUM_1 1
-`endif
-`ifndef SEG_MODE
-`define SEG_MODE 1
+`ifndef FIBER_ACCESS_ROOT
+`define FIBER_ACCESS_ROOT 0
 `endif
 
-module fiber_glb_tb;
+module fiber_access_dense_tb;
 
     reg clk;
     reg clk_en;
@@ -19,7 +16,6 @@ module fiber_glb_tb;
     reg tile_en;
     reg vector_reduce_mode; 
     wire [63:0] cycle_count;
-    reg seg_mode;
     reg [15:0] stream_id;
 
     // wire for dut input & output
@@ -57,12 +53,11 @@ module fiber_glb_tb;
     wire rs_blk_ready;
 
     assign {ws_addr, ws_addr_valid, coord_in_0, coord_in_0_valid} = 0;
-    assign {coord_out_ready, pos_out_0_ready} = 0;
-    assign {pos_in_0, pos_in_0_valid} = 0;
+    assign {rs_blk, rs_blk_valid} = 17'b0;
 
     logic [1:0] [31:0] config_out;
 
-    wire [1:0] done;
+    wire [3:0] done;
     parameter NUM_CYCLES = 40000;
 
     integer clk_count;
@@ -72,9 +67,10 @@ module fiber_glb_tb;
     logic start_read;
     logic read_input_in;
     integer read_count;
+    integer wait_gap = 0; // should pass with arb gap
     integer DONE_TOKEN = 17'h10100;
 
-    fiber_access_16 dut 
+fiber_access_16 dut 
     (
     .buffet_buffet_capacity_log({4'b1000, 4'b1000}),
     .data_from_mem(memory_0_data_out_p0),
@@ -82,20 +78,17 @@ module fiber_glb_tb;
     .clk(clk),
     .clk_en(clk_en),
     .flush(flush),
-    .read_scanner_block_mode(1'b1),
+    .read_scanner_block_mode(1'b0),
     .read_scanner_block_rd_out_ready(rs_blk_ready),
     .read_scanner_coord_out_ready(coord_out_ready),
-    .read_scanner_dense(1'b0),
-    // .read_scanner_dim_size(16'b0),
+    .read_scanner_dense(1'b1),
     .read_scanner_do_repeat(1'b0),
-    .read_scanner_glb_addr_base(16'd800),
-    .read_scanner_glb_addr_stride(16'd100),
     .read_scanner_inner_dim_offset(16'b0),
-    .read_scanner_lookup(~seg_mode),
+    .read_scanner_lookup(1'b0),
     .read_scanner_pos_out_ready(pos_out_0_ready),
     .read_scanner_repeat_factor(16'b0),
     .read_scanner_repeat_outer_inner_n(1'b0),
-    .read_scanner_root(1'b0),
+    .read_scanner_root(`FIBER_ACCESS_ROOT),
     // .read_scanner_spacc_mode(1'b0),
     // .read_scanner_stop_lvl(16'b0),
     .read_scanner_tile_en(tile_en),
@@ -113,7 +106,7 @@ module fiber_glb_tb;
     .write_scanner_data_in(coord_in_0),
     .write_scanner_data_in_valid(coord_in_0_valid),
     .write_scanner_init_blank(1'b0),
-    .write_scanner_lowest_level(~seg_mode),
+    .write_scanner_lowest_level(1'b1),
     .write_scanner_stream_id(stream_id),
     // .write_scanner_spacc_mode(1'b0),
     // .write_scanner_stop_lvl(16'b0),
@@ -135,34 +128,61 @@ module fiber_glb_tb;
     .vector_reduce_mode(vector_reduce_mode)
     );
 
-    glb_stream_write #(
-        .FILE_NAME("stream_in_0.txt"),
-        .TX_NUM(`TX_NUM_0),
+    glb_write #(
+        .FILE_NAME("coord_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(0)
-    ) stream_in_0_inst (
+    ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
         .data(ws_blk),
         .ready(ws_blk_ready),
         .valid(ws_blk_valid),
         .done(done[0]),
-        .flush(flush),
-        .seg_mode(seg_mode)
+        .flush(flush)
     );
 
-    glb_stream_read #(
-        .FILE_NAME("stream_out.txt"),
-        .TX_NUM(`TX_NUM_1),
-        .RAN_SHITF(0)
-    ) stream_out_0_inst (
+    tile_write #(
+        .FILE_NAME("pos_in_0.txt"),
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(1)
+    ) pos_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .data(rs_blk),
-        .ready(rs_blk_ready),
-        .valid(rs_blk_valid),
+        .data(pos_in_0),
+        // .ready(pos_in_0_ready & start_read == 1),
+        .ready(pos_in_0_ready),
+        .valid(pos_in_0_valid),
         .done(done[1]),
-        .flush(flush),
-        .seg_mode(seg_mode)
+        .flush(flush)
+    );
+
+    tile_read #(
+        .FILE_NAME("coord_out.txt"),
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(2)
+    ) coord_out_0_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .data(coord_out),
+        .ready(coord_out_ready),
+        .valid(coord_out_valid),
+        .done(done[2]),
+        .flush(flush)
+    );
+
+    tile_read #(
+        .FILE_NAME("pos_out_0.txt"),
+        .TX_NUM(`TX_NUM_GLB),
+        .RAN_SHITF(3)
+    ) pos_out_0_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .data(pos_out_0),
+        .ready(pos_out_0_ready),
+        .valid(pos_out_0_valid),
+        .done(done[3]),
+        .flush(flush)
     );
 
     sram_sp memory_0 (
@@ -186,7 +206,6 @@ module fiber_glb_tb;
         start_read = 0;
         read_input_in = 0;
         read_count = 0;
-        seg_mode = `SEG_MODE;
         stream_id = 1885; // a magic number
 
         clk = 0;
@@ -205,28 +224,38 @@ module fiber_glb_tb;
         for(integer i = 0; i < NUM_CYCLES * 2; i = i + 1) begin
             #5 clk = ~clk;
             
-            if (clk && rs_blk_valid) begin
+            if (clk && pos_in_0_valid) begin
                 read_input_in = 1;
             end
 
             // FSM
-            if (clk && ws_blk_valid && start_write == 0) begin
+            if (clk && coord_in_0_valid && start_write == 0) begin
                 start_write = 1;
+            end
+            if (clk && start_write == 1 && coord_in_0 == DONE_TOKEN && coord_in_0_ready && coord_in_0_valid) begin
+                write_eos = 1;
+            end
+            if (clk && start_write == 1 && write_eos && |{coord_in_0 != DONE_TOKEN, coord_in_0_ready, coord_in_0_valid}) begin
+                write_eos = 0;
+                start_write = 2;
             end
 
             // DATA
-            if (clk && start_write == 1 && ~done[0]) begin
+            if (clk && start_write == 1) begin
                 write_count += 1;
             end
 
-            if (clk && start_read == 0 && read_input_in) begin
+            if (clk && start_write == 2 && wait_gap > 0) begin
+                wait_gap -= 1;
+            end
+
+            if (clk && start_write == 2 && wait_gap == 0 && start_read == 0 && read_input_in) begin
                 start_read = 1;
             end
 
-            if (clk && start_read == 1 && ~done[1]) begin
+            if (clk && start_read == 1 && ~(done[2] & done[3])) begin
                 read_count += 1;
             end
-
         end
         $display("write cycle count: %0d", write_count);
         $display("read cycle count: %0d", read_count);

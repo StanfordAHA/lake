@@ -93,11 +93,8 @@ def convert_stream_to_onyx_interp(stream):
     return converted_stream
 
 
-def read_txt(file_name, addit=False):
+def read_txt(file_name, count=1):
     r = []
-    count = 1
-    if addit:
-        count = 2
     with open(file_name, "r") as f:
         for line in f:
             r.append(int(line, 16))
@@ -109,19 +106,35 @@ def read_txt(file_name, addit=False):
     return r
 
 
-def read_glb(file_name):
+def read_glb(file_name, tx_num=1):
     r = []
-    count = 0
+    has_length = 0
+    total_count = tx_num
+    length_count = 0
+    stream_count = 0
     with open(file_name, "r") as f:
+        r_sub = []
         for line in f:
             v = int(line, 16)
-            if count == 0 and v == 0:
-                break
-            if count == 0:
-                count = v
+            if v > 0x7FFF:  # assuming everything is signed 16-bit
+                v -= 0x10000
+            if has_length == 0:
+                r_sub = []
+                length_count = v
+                r_sub.append(v)
+                has_length = 1
+                # print("get length")
+                # print(r)
             else:
-                count -= 1
-            r.append(v)
+                length_count -= 1
+                r_sub.append(v)
+                
+            if length_count == 0:
+                total_count -= 1
+                has_length = 0
+                r.append(r_sub)
+            if total_count == 0:
+                break
         f.close()
     return r
 

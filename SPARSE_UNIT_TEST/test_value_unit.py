@@ -291,7 +291,10 @@ def module_iter_basic(test_name, add_test=""):
     print(lines[0])
     print(lines[1])
 
-    value_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
+    tx_num = 1
+    if add_test != "":
+        tx_num = 2
+    value_out = sparse_helper.read_txt("coord_out.txt", count=tx_num)
     print(value_out)
 
     #compare each element in the output from coord_out.txt with the gold output
@@ -319,6 +322,11 @@ def test_seq1():
 def test_seq2():
     init_module()
     module_iter_basic("loop_round_1", "loop_round_2")
+
+
+def test_seq3():
+    init_module()
+    module_iter_basic("in_ref_empty_fiber", "empty")
 
 
 def test_random_1d_1d():
