@@ -10,6 +10,7 @@ from lake.spec.port import Port
 from lake.modules.memory_interface_decoder import MemoryInterfaceDecoder
 import kratos as kts
 from kratos import clog2
+from typing import Tuple
 
 
 class Spec():
@@ -248,7 +249,7 @@ class Spec():
     def extract_compiler_information(self) -> None:
         pass
 
-    def get_port_controllers(self, port) -> tuple[IterationDomain, AddressGenerator, ScheduleGenerator]:
+    def get_port_controllers(self, port) -> Tuple[IterationDomain, AddressGenerator, ScheduleGenerator]:
         # Assemble the ID,AG,SG (or at least their interfaces) on the port
         port_id: IterationDomain = self.get_associated_controller(IterationDomain, port)
         assert port_id is not None

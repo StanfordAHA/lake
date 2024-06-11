@@ -30,6 +30,7 @@ setup(
         "kratos",
         "fault",
         "magma-lang",
-        "pytest"
+        "pytest",
+        "matplotlib"
     ]
 )
