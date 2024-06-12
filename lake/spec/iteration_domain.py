@@ -34,12 +34,12 @@ class IterationDomain(Component):
         self._dimensionality = self.config_reg(name="dimensionality", width=1 + kts.clog2(self.dimensionality_support))
 
         self._step = self.input("step", 1)
+        # OUTPUTS
         self._mux_sel_out = self.output("mux_sel_out", max(kts.clog2(self.dimensionality_support), 1))
         self._dim_counter_out = self.output("dim_counter", self.extent_width,
                                          size=self.dimensionality_support,
                                          packed=True,
                                          explicit_array=True)
-        # OUTPUTS
 
         # PORT DEFS: end
 

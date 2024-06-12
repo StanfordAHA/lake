@@ -20,7 +20,7 @@ module lake_static_tb;
     parameter NUM_CYCLES = 1000;
 
     // logic [63:0] bitstream [0:BITSTREAM_MAX_SIZE - 1];
-    logic [549:0] bitstream;
+    logic [549:0] bitstream [0:0];
     // logic [31:0] bitstream_addr [0:BITSTREAM_MAX_SIZE - 1];
     // logic [31:0] bitstream_data [0:BITSTREAM_MAX_SIZE - 1];
 
