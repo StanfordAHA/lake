@@ -1185,6 +1185,7 @@ class WriteScanner(MemoryController):
         block_mode = config_kwargs['block_mode']
         # spacc_mode = config_kwargs['spacc_mode']
         init_blank = config_kwargs['init_blank']
+        stream_id = config_kwargs['stream_id']
 
         # Store all configurations here
         config = [
@@ -1195,6 +1196,7 @@ class WriteScanner(MemoryController):
             ("block_mode", block_mode),
             # ("spacc_mode", spacc_mode),
             ("init_blank", init_blank),
+            ("stream_id", stream_id),
             ("tile_en", 1)]
 
         return trim_config_list(flattened, config)

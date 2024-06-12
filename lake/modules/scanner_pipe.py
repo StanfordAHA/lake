@@ -1855,6 +1855,8 @@ class ScannerPipe(MemoryController):
         block_mode = config_kwargs['block_mode']
         lookup = config_kwargs['lookup']
         dense = config_kwargs['dense']
+        glb_addr_base = config_kwargs['glb_addr_base']
+        glb_addr_stride = config_kwargs['glb_addr_stride']
 
         # Store all configurations here
         config = [
@@ -1869,6 +1871,8 @@ class ScannerPipe(MemoryController):
             ('root', root),
             ('dense', dense),
             # ('spacc_mode', spacc_mode),
+            ('glb_addr_base', glb_addr_base),
+            ('glb_addr_stride', glb_addr_stride),
             ('tile_en', 1)]
 
         if root:
