@@ -585,11 +585,11 @@ class CrdDrop(MemoryController):
                     elif (self._inner_is_eos & self._not_leading_eos):
                         # the buffer have a eos in it, compare the level between the existing eos and the new eos
                         # replace the buffered eos if the new eos is of higher level
-                        if (self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer):
+                        if (self._empty_fiber_drop_buffer_is_eos):
                             if (self._inner_infifo_data > self._empty_fiber_drop_data_buffer):
                                 self._empty_fiber_drop_buffer_en = 1
                         # the buffer is empty, buffer the eos
-                        elif (~self._empty_fiber_drop_buffer_valid):
+                        else:
                             self._empty_fiber_drop_buffer_en = 1
         self.add_code(empty_fiber_drop_buffer_logic)
 
