@@ -139,7 +139,6 @@ module coord_drop_tb;
 
         for(integer i = 0; i < NUM_CYCLES * 2; i = i + 1) begin
             #5 clk = ~clk;
-            $display("cycle: %0d", i);
             if (~start_record && clk && (coord_in_0_valid | coord_in_1_valid)) begin
                 start_record = 1;
             end
