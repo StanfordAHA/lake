@@ -93,26 +93,25 @@ def create_random(n, rate, size, d1=0): # d1 is the total fiber number
         ret = ret[:-1] + ['S2', 'D']
         return ret
 
-
-def remove_emptyfiber(out_in):
-    r = []
-    max_level = 0
-    pushed_non_empty = False
-    for i in range(len(out_in)):
-        if sparse_helper.is_STOP_sam(out_in[i]):
-            max_level = max(max_level, int(out_in[i][1]))
-        if sparse_helper.is_STOP_sam(out_in[i]) and sparse_helper.is_STOP_sam(out_in[i + 1]): 
-            continue
-        if sparse_helper.is_STOP_sam(out_in[i]):
-            if pushed_non_empty:
-                r.append(f'S{max_level}')
-            pushed_non_empty = False
-        else:
-            r.append(out_in[i])
-            pushed_non_empty = True
-        max_level = 0
-        
-    return r
+def create_inner_fiber(outer_fiber, rate, size):
+    ret = []
+    num_fiber = len([x for x in outer_fiber if type(x) is int])
+    fiber_size = max(1, int(size // num_fiber))
+    for idx, token in enumerate(outer_fiber):
+        # actual coordinate
+        if type(token) is int:
+            if random.random() < rate:
+                ret = ret + create_random_fiber(rate, fiber_size, 0.2, "coord", 0.2)
+            if type(outer_fiber[idx+1]) is int:
+                ret = ret + ['S0']
+        else: 
+            if token == 'D':
+                ret = ret + ['D']
+            # stop token
+            else:
+                stkn_level = int(token[1]) + 1
+                ret = ret + ['S' + str(stkn_level)]
+    return ret
 
 def create_gold(in_crd1, in_crd2): # 1 is outer, 0 is inner
     # if len([x for x in in_crd1 if type(x) is int]) == 0:
@@ -218,9 +217,7 @@ def load_test_module(test_name):
         if fiber_num == 0: # assure something is in the outer
             in_crd_o = [1] + in_crd_o
             fiber_num = len([i for i in in_crd_o if type(i) is int])
-        in_crd_o = remove_emptyfiber(in_crd_o)
-        in_crd_i = create_random(dim2, rate2, size2, d1=fiber_num)
-
+        in_crd_i = create_inner_fiber(in_crd_o, rate2, size2)
         return create_gold(in_crd_o, in_crd_i)
 
     else:
@@ -270,8 +267,8 @@ def module_iter_basic(test_name, add_test=""):
     pos_out_1 = sparse_helper.read_txt("pos_out_0.txt", count=tx_num)
     pos_out_0 = sparse_helper.read_txt("pos_out_1.txt", count=tx_num)
 
-    print(pos_out_0)
-    print(pos_out_1)
+    # print(pos_out_0)
+    # print(pos_out_1)
     
     #compare each element in the output from pos_out_0.txt with the gold output
     assert len(pos_out_0) == len(gc1), \
@@ -304,41 +301,25 @@ def test_random_1d_2d():
         module_iter_basic(test)
 
 
-def test_random_1d_3d():
+def test_random_2d_3d():
     init_module()
-    test_list = ["rd_1d_0.3_30_3d_0.1_80", "rd_1d_0.3_30_3d_0.3_80", "rd_1d_0.3_30_3d_0.5_80", "rd_1d_0.3_30_3d_0.8_80", "rd_1d_0.3_30_3d_1.0_80"]
+    test_list = ["rd_2d_0.3_30_3d_0.1_80", "rd_2d_0.3_30_3d_0.3_80", "rd_2d_0.3_30_3d_0.5_80", "rd_2d_0.3_30_3d_0.8_80", "rd_2d_0.3_30_3d_1.0_80"]
     for test in test_list:
         module_iter_basic(test)
 
 
-def test_random_2d_2d():
+def test_seq():
     init_module()
-    test_list = ["rd_2d_0.3_30_2d_0.1_80", "rd_2d_0.3_30_2d_0.3_80", "rd_2d_0.3_30_2d_0.5_80", "rd_2d_0.3_30_2d_0.8_80", "rd_2d_0.3_30_2d_1.0_80"]
+    test_list =  ["stream_1", "stream_2", "stream_3", "stream_4", "stream_5", "stream_6", "stream_7", "xxx"] +\
+                 ["rd_1d_0.3_30_2d_0.1_80", "rd_1d_0.3_30_2d_0.3_80", "rd_1d_0.3_30_2d_0.5_80", "rd_1d_0.3_30_2d_0.8_80", "rd_1d_0.3_30_2d_1.0_80"] +\
+                 ["rd_2d_0.3_30_3d_0.1_80", "rd_2d_0.3_30_3d_0.3_80", "rd_2d_0.3_30_3d_0.5_80", "rd_2d_0.3_30_3d_0.8_80", "rd_2d_0.3_30_3d_1.0_80"]
+    for i in range(20):
+        rand = random.sample(test_list, 2)
+        module_iter_basic(rand[0], rand[1])
+
+
+def test_eff():
+    init_module()
+    test_list = ["rd_2d_0.8_80_3d_0.1_200", "rd_2d_0.8_80_3d_0.3_200", "rd_2d_0.8_80_3d_0.5_200", "rd_2d_0.8_80_3d_0.8_200", "rd_2d_0.8_80_3d_1.0_200"]
     for test in test_list:
         module_iter_basic(test)
-
-
-# def test_random_2d_3d():
-#     init_module()
-#     test_list = ["rd_2d_0.3_30_3d_0.1_80", "rd_2d_0.3_30_3d_0.3_80", "rd_2d_0.3_30_3d_0.5_80", "rd_2d_0.3_30_3d_0.8_80", "rd_2d_0.3_30_3d_1.0_80"]
-#     for test in test_list:
-#         module_iter_basic(test)
-
-
-# def test_seq():
-#     init_module()
-#     test_list =  ["stream_1", "stream_2", "stream_3", "stream_4", "stream_5", "stream_6", "stream_7", "xxx"] +\
-#                  ["rd_1d_0.3_30_2d_0.1_80", "rd_1d_0.3_30_2d_0.3_80", "rd_1d_0.3_30_2d_0.5_80", "rd_1d_0.3_30_2d_0.8_80", "rd_1d_0.3_30_2d_1.0_80"] +\
-#                  ["rd_1d_0.3_30_3d_0.1_80", "rd_1d_0.3_30_3d_0.3_80", "rd_1d_0.3_30_3d_0.5_80", "rd_1d_0.3_30_3d_0.8_80", "rd_1d_0.3_30_3d_1.0_80"] +\
-#                  ["rd_2d_0.3_30_2d_0.1_80", "rd_2d_0.3_30_2d_0.3_80", "rd_2d_0.3_30_2d_0.5_80", "rd_2d_0.3_30_2d_0.8_80", "rd_2d_0.3_30_2d_1.0_80"] +\
-#                  ["rd_2d_0.3_30_3d_0.1_80", "rd_2d_0.3_30_3d_0.3_80", "rd_2d_0.3_30_3d_0.5_80", "rd_2d_0.3_30_3d_0.8_80", "rd_2d_0.3_30_3d_1.0_80"]
-#     for i in range(20):
-#         rand = random.sample(test_list, 2)
-#         module_iter_basic(rand[0], rand[1])
-
-
-# def test_eff():
-#     init_module()
-#     test_list = ["rd_2d_0.8_80_3d_0.1_200", "rd_2d_0.8_80_3d_0.3_200", "rd_2d_0.8_80_3d_0.5_200", "rd_2d_0.8_80_3d_0.8_200", "rd_2d_0.8_80_3d_1.0_200"]
-#     for test in test_list:
-#         module_iter_basic(test)
