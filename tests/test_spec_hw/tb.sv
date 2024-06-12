@@ -52,7 +52,7 @@ module lake_static_tb;
         .rst_n(rst_n),
         .flush(flush),
         // config
-        .config_memory_size_550(bitstream),
+        .config_memory_size_550(bitstream[0]),
         // input ports
         .port_0(port_0_data),
         // output ports

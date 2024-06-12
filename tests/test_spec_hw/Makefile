@@ -158,11 +158,10 @@ compile:
 # run: TEST_ARGS = $(TEST_DIR)/COLLAT_DIR/PARGS.txt
 # run: TMP_PARGS = $(shell cat $(TEST_ARGS))
 run:
-# $(RUN) $(DUMP_ARGS) $(RUN_ARGS) $(APP_ARGS)
+	$(RUN) $(DUMP_ARGS) $(RUN_ARGS) $(APP_ARGS)
 #	rm -f $(TEST_DIR)/OUTPUT_DIR/*
 #	$(RUN) $(DUMP_ARGS) $(TMP_PARGS)
 #	python $(COMPARISON_SCRIPT) --do_comparison --gold_mat_dir=$(TEST_DIR)/GLB_DIR --sim_mat_dir=$(TEST_DIR)/OUTPUT_DIR/ --unroll $(UNROLL)
-	$(shell cat 'mek')
 
 .PHONY: sim
 # sim: libcgra.so compile run
