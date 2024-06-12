@@ -133,6 +133,12 @@ def load_test_module(test_name):
         in_ref_t, stream_gld = create_gold(in_ref, blk_write)
         return in_ref_t, blk_write, stream_gld
 
+    if test_name == "empty_read":
+        in_ref = [[0, 'S0', 'D'], ['S1', 'D'], [0, 'S0', 1, 'S1', 'D']]
+        blk_write = [[2, 0, 1], [1, 15], [10, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18], [18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], [3, 0, 8, 10], [10, 1, 2, 3, 4, 5, 6, 7, 8, 19, 20]]
+        in_ref_t, stream_gld = create_gold(in_ref, blk_write)
+        return in_ref_t, blk_write, stream_gld
+
     if test_name == "all_empty_series":
         in_ref = [['S0', 'D'], ['N', 'S0', 'D'], ['D']]
         blk_write = [[2, 0, 0], [0], [1, 0], [0], [1, 0], [0],]
@@ -211,6 +217,6 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_iter_basic():
     init_module()
-    test_list = ["direct_l0", "empty_stop", "empty_total", "regular_b2b", "empty_series", "all_empty_series", "single_ele_empty", "single_ele_mul", "xxx"]
+    test_list = ["direct_l0", "empty_stop", "empty_total", "regular_b2b", "empty_series", "empty_read", "all_empty_series", "single_ele_empty", "single_ele_mul", "xxx"]
     for test in test_list:
         module_iter_basic(test)
