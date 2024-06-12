@@ -64,6 +64,12 @@ class AddressGenerator(Component):
         self.wire(self._strt_addr, self._starting_addr)
         self.wire(self._addr_out, self._current_addr)
 
+        self._tmp_addr_calc = []
+        for i in range(self.dimensionality_support):
+            tmp = self.var(f"tmp_addr_calc_{i}", self._ctrs[i].width + self._strides[i].width)
+            self.wire(tmp, kts.ext(self._ctrs[i] * self._strides[i], tmp.width))
+            self._tmp_addr_calc.append(tmp)
+
         self.add_code(self.calculate_address_count)
         # self.add_code(self.calculate_address_delta)
 
@@ -71,8 +77,7 @@ class AddressGenerator(Component):
     def calculate_address_count(self):
         self._current_addr = self._strt_addr
         for i in range(self.dimensionality_support):
-            # self._current_addr = self._current_addr + self._ctrs[i] * self._strides[i]
-            self._current_addr = self._current_addr + (self._ctrs[i] * self._strides[i])[self.addr_width - 1, 0]
+            self._current_addr += (self._tmp_addr_calc[i])[self.addr_width - 1, 0]
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def calculate_address_delta(self):
