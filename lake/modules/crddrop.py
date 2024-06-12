@@ -62,22 +62,6 @@ class CrdDrop(MemoryController):
 
         self.add_stream_io()
 
-        # performance debuggin hw
-        if self.perf_debug:
-
-            cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
-
-            # Start when any of the coord inputs is valid
-            self._start_signal = sticky_flag(self, kts.concat((*[self._coord_in_valid_in[i] for i in range(2)])).r_or(),
-                                             name='start_indicator')
-            self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
-
-            # End when we see DONE on the output coord
-            self._done_signal = sticky_flag(self, (self._cmrg_coord_out[0] == MemoryController.DONE_PROXY) &
-                                                    self._cmrg_coord_out[0][MemoryController.EOS_BIT] & self._cmrg_coord_out_valid_out[0],
-                                                    name='done_indicator')
-            self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
-
         self.add_io_fifo()
 
         ####################
@@ -448,7 +432,8 @@ class CrdDrop(MemoryController):
                         # check for fifo capacity and empty fiber drop buffer availability, pop both the 
                         # inner and outer stream and push both of them. 
                         if (self._inner_fiber_not_empty):
-                            if (~self._inner_outfifo_full & ~self._outer_outfifo_full):
+                            # TODO: fix this 
+                            if (self._empty_fiber_drop_buffer_avail & ~self._outer_outfifo_full):
                                 self._inner_infifo_pop_crddrop = 1
                                 self._outer_infifo_pop_crddrop = 1
                                 self._inner_outfifo_push_crddrop = 1
