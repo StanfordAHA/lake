@@ -281,14 +281,8 @@ class CrdDrop(MemoryController):
                        data_in=self._outer_infifo_data_packed,
                        data_out=self._coord_out[1])
         
-        # Unpacked data and indicator signals from the fifo for ease of use
-        self._outer_outfifo_data = self.var("outer_outfifo_data", 16)
-        self._outer_outfifo_is_eos = self.var("outer_outfifo_is_eos", 1)
+        # indicator signals from the fifo for ease of use
         self._outer_outfifo_full = self.var("outer_outfifo_full", 1)
-
-        # Unpack the data
-        self.wire(self._outer_outfifo_is_eos, self._outer_infifo_data_packed[self.data_width])
-        self.wire(self._outer_outfifo_data, self._outer_infifo_data_packed[self.data_width - 1, 0])
 
         self.wire(self._outer_outfifo_full, outer_outfifo.ports.full)
 
@@ -539,27 +533,31 @@ class CrdDrop(MemoryController):
         self.crddrop_compress_fsm.set_start_state(START)
 
     def add_empty_fiber_drop_logic(self):
-        ####################
-        # Helper Logic and Register
-        ####################
-        self._empty_fiber_drop_data_buffer = self.var("empty_fiber_drop_data_buffer", self.data_width)
-        self._empty_fiber_drop_eos_buffer = self.var("empty_fiber_drop_eos_buffer", 1)
+        #############################
+        # Helper Logic and Register #
+        #############################
+        # registers for buffering the inner stream data and eos indicator 
+        self._empty_fiber_drop_buffer_en = self.var("empty_fiber_drop_data_buffer_en", 1)
+        self._empty_fiber_drop_data_buffer = register(self, self._inner_infifo_data, 
+                                                      enable=self._empty_fiber_drop_buffer_en,
+                                                      name="empty_fiber_drop_data_buffer")
+        self._empty_fiber_drop_eos_buffer = register(self, self._inner_infifo_is_eos, 
+                                                     enable=self._empty_fiber_drop_buffer_en,
+                                                     name="empty_fiber_drop_eos_buffer")
         # indicator flag for indicating if the empty fiber drop buffer is occupied or not
-        # as long as the buffer is being pushed, it will be valid
-        # the only situation where it is not going to be valid is when we are pushing the content in the buffer
-        # to the outpuf fifo and the crddrop is not pushing data
-        self._empty_fiber_drop_buffer_valid = sticky_flag(self, self._inner_outfifo_push_crddrop_compress_fsm,
-                                                          clear=self._inner_outfifo_push_empty_fiber_drop & ~self._inner_outfifo_push_crddrop_compress_fsm, 
-                                                          name="empty_fiber_drop_buffer_valid", seq_only=False)
+        # data is sucessfully pushed to the buffer (by setting the empty_fiber_drop_buffer_en singal), 
+        # it will be valid. the only situation where it is not going to be valid is when we are pushing 
+        # the content in the buffer to the outpuf fifo and no data is coming up to replace it
+        self._empty_fiber_drop_buffer_valid = sticky_flag(self, self._empty_fiber_drop_buffer_en,
+                                                          clear=self._inner_outfifo_push_empty_fiber_drop & ~self._empty_fiber_drop_buffer_en, 
+                                                          name="empty_fiber_drop_buffer_valid", seq_only=True)
         self._empty_fiber_drop_buffer_avail = self.var("empty_fiber_drop_buffer_avail", 1)
-        # the buffer is available to be pushed if it is empty, or the current buffered data are being pushed
-        self.wire(self._empty_fiber_drop_buffer_avail, ~self._empty_fiber_drop_buffer_valid | (self._empty_fiber_drop_buffer_valid & self._inner_outfifo_push_empty_fiber_drop))
         # indicator flag for indicating if the empty fiber drop is not seeing leading stop tokens
         self._clr_not_leading_eos = self.var("clr_not_leading_eos", 1)
-        # we are not seeing a leading stop token as soon as we see a valid data or done token
-        self._not_leading_eos = sticky_flag(self, ~self._inner_is_eos, 
+        # it's no longer possible to have a leading stop token as soon as we see a valid data or done token
+        self._not_leading_eos = sticky_flag(self, self._inner_is_data | self._inner_is_done, 
                                             clear=self._clr_not_leading_eos,
-                                            name="leading_not_eos", seq_only=False)
+                                            name="leading_not_eos", seq_only=True)
         
         # indicators showing whether the buffered data is a coordinate, stop token or done token
         self._empty_fiber_drop_buffer_is_data = self.var("empty_fiber_drop_buffer_is_data", 1)
@@ -569,39 +567,30 @@ class CrdDrop(MemoryController):
         self._empty_fiber_drop_buffer_is_done = self.var("empty_fiber_drop_buffer_is_done", 1)
         self.wire(self._empty_fiber_drop_buffer_is_done, self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer & (self._empty_fiber_drop_data_buffer[9, 8] == kts.const(1, 2)))
         
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        @always_comb
         def empty_fiber_drop_buffer_logic(self):
-            if (~self._rst_n):
-                self._empty_fiber_drop_data_buffer = 0
-                self._empty_fiber_drop_eos_buffer = 0
-                self._clr_not_leading_eos = 0
-            else:
-                # default value, do nothing
-                self._empty_fiber_drop_data_buffer = self._empty_fiber_drop_data_buffer
-                self._empty_fiber_drop_eos_buffer = self._empty_fiber_drop_eos_buffer
-                self._clr_not_leading_eos = 0
-                # only operates when the crddrop is in crddrop mode
-                if (self._tile_en & self._cmrg_mode):
-                    if (self._inner_outfifo_push_crddrop_compress_fsm):
-                        # buffer the inner stream token it is a peice of data or done token
-                        if (self._inner_is_data | self._inner_is_done):
-                            self._empty_fiber_drop_data_buffer = self._inner_infifo_data
-                            self._empty_fiber_drop_eos_buffer = self._inner_infifo_is_eos
-                            # end of fiber stree, reset the not leading eos flag
-                            if (self._inner_is_done):
-                                self._clr_not_leading_eos = 1
-                        # only consider buffering eos if it is not a leading the fiber tree
-                        elif (self._inner_is_eos & self._not_leading_eos):
-                            # the buffer have a eos init, compare the level between the existing eos and the new eos
-                            # replace the buffered eos if the new eos is of higher level
-                            if (self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer):
-                                if (self._inner_infifo_data[9, 8] > self._empty_fiber_drop_data_buffer[9, 8]):
-                                    self._empty_fiber_drop_data_buffer = self._inner_infifo_data
-                                    self._empty_fiber_drop_eos_buffer = self._inner_infifo_is_eos
-                            # the buffer is empty, buffer the eos
-                            elif (~self._empty_fiber_drop_buffer_valid):
-                                    self._empty_fiber_drop_data_buffer = self._inner_infifo_data
-                                    self._empty_fiber_drop_eos_buffer = self._inner_infifo_is_eos
+            # default value, do nothing
+            self._empty_fiber_drop_buffer_en = 0
+            self._clr_not_leading_eos = 0
+            # only operates when the crddrop is in crddrop mode
+            if (self._tile_en & self._cmrg_mode):
+                if (self._inner_outfifo_push_crddrop_compress_fsm):
+                    # buffer the inner stream token it is a peice of data or done token
+                    if (self._inner_is_data | self._inner_is_done):
+                        self._empty_fiber_drop_buffer_en = 1
+                        # end of fiber stree, reset the not leading eos flag
+                        if (self._inner_is_done):
+                            self._clr_not_leading_eos = 1
+                    # only consider buffering eos if it is not leading the fiber tree
+                    elif (self._inner_is_eos & self._not_leading_eos):
+                        # the buffer have a eos in it, compare the level between the existing eos and the new eos
+                        # replace the buffered eos if the new eos is of higher level
+                        if (self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer):
+                            if (self._inner_infifo_data > self._empty_fiber_drop_data_buffer):
+                                self._empty_fiber_drop_buffer_en = 1
+                        # the buffer is empty, buffer the eos
+                        elif (~self._empty_fiber_drop_buffer_valid):
+                            self._empty_fiber_drop_buffer_en = 1
         self.add_code(empty_fiber_drop_buffer_logic)
 
         @always_comb
@@ -619,6 +608,25 @@ class CrdDrop(MemoryController):
                     self._inner_outfifo_push_empty_fiber_drop = 1
 
         self.add_code(empty_fiber_drop_buffer_push_logic)
+
+        @always_comb
+        def empty_fiber_drop_buffer_avail_logic(self):
+            # default valules, the buffer is not available
+            self._empty_fiber_drop_buffer_avail = 0
+            # the buffer is available to be pushed if it is empty
+            if (~self._empty_fiber_drop_buffer_valid):
+                self._empty_fiber_drop_buffer_avail = 1
+            else:
+                # the buffer is not empty, but it is available if the current buffered data is getting 
+                # pushed to the output fifo and can be replaced
+                if (self._inner_outfifo_push_empty_fiber_drop):
+                    self._empty_fiber_drop_buffer_avail = 1
+                # the currently buffered data is a stop token, and the next token is also a stop token,
+                # the buffer will be marked as available to allow the crddrop fsm to push to it,
+                # so we can compare the level of the two stop tokens
+                elif (self._empty_fiber_drop_buffer_is_eos & self._inner_is_eos):
+                    self._empty_fiber_drop_buffer_avail = 1
+        self.add_code(empty_fiber_drop_buffer_avail_logic)
 
     def get_memory_ports(self):
         '''
