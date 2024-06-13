@@ -113,3 +113,15 @@ class RecurrentScheduleGenerator(ScheduleGenerator):
 
     def gen_bitstream(self):
         return super().gen_bitstream()
+    
+
+class ReadyValidScheduleGenerator(ScheduleGenerator):
+
+    def __init__(self, dimensionality=16):
+        super().__init__(dimensionality=dimensionality)
+
+    def gen_hardware(self, pos_reset=False):
+        return super().gen_hardware(pos_reset)
+
+    def gen_bitstream(self):
+        return super().gen_bitstream()

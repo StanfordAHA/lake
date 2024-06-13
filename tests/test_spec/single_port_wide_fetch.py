@@ -8,12 +8,14 @@ from lake.spec.storage import SingleBankStorage, Storage
 from lake.spec.memory_port import MemoryPort
 
 
-def build_simple_dual_port(dims: int = 6) -> Spec:
+def build_single_port_wide_fetch(dims: int = 6, width = 4) -> Spec:
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=16, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=16, runtime=Runtime.STATIC, direction=Direction.OUT)
+    dw = 16
+
+    in_port = Port(ext_data_width=dw, int_data_width=dw * width, runtime=Runtime.STATIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=dw, int_data_width=dw * width, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 
@@ -30,8 +32,8 @@ def build_simple_dual_port(dims: int = 6) -> Spec:
 
     # 1024 Bytes
     stg = SingleBankStorage(capacity=1024)
-    wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
-    rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=1)
+    wr_mem_port = MemoryPort(data_width=dw * width, mptype=MemoryPortType.W, delay=1)
+    rd_mem_port = MemoryPort(data_width=dw * width, mptype=MemoryPortType.R, delay=1)
     ls.register(stg, wr_mem_port, rd_mem_port, stg)
 
     # All cores are registered at this point
@@ -99,10 +101,10 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write():
+def test_linear_read_write_sp_wf():
 
     # Build the spec
-    simple_dual_port_spec = build_simple_dual_port()
+    simple_dual_port_spec = build_single_port_wide_fetch()
     simple_dual_port_spec.visualize_graph()
     simple_dual_port_spec.generate_hardware()
     simple_dual_port_spec.extract_compiler_information()
@@ -138,4 +140,4 @@ if __name__ == "__main__":
     # simple_dual_port_spec.extract_compiler_information()
     # simple_dual_port_spec.get_verilog()
 
-    test_linear_read_write()
+    test_linear_read_write_sp_wf()

@@ -3,27 +3,27 @@ from lake.spec.port import Port
 from lake.utils.spec_enum import Runtime, Direction, MemoryPortType
 from lake.spec.address_generator import AddressGenerator
 from lake.spec.iteration_domain import IterationDomain
-from lake.spec.schedule_generator import ScheduleGenerator
+from lake.spec.schedule_generator import ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage, Storage
 from lake.spec.memory_port import MemoryPort
 
 
-def build_simple_dual_port(dims: int = 6) -> Spec:
+def build_simple_dual_port_rv(dims: int = 6, data_width: int = 16) -> Spec:
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=16, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=16, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 
     in_id = IterationDomain(dimensionality=dims, extent_width=16)
     in_ag = AddressGenerator(dimensionality=dims)
-    in_sg = ScheduleGenerator(dimensionality=dims)
+    in_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
     out_id = IterationDomain(dimensionality=dims, extent_width=16)
     out_ag = AddressGenerator(dimensionality=dims)
-    out_sg = ScheduleGenerator(dimensionality=dims)
+    out_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
     ls.register(in_id, in_ag, in_sg)
     ls.register(out_id, out_ag, out_sg)
@@ -102,17 +102,17 @@ def get_linear_test():
 def test_linear_read_write():
 
     # Build the spec
-    simple_dual_port_spec = build_simple_dual_port()
-    simple_dual_port_spec.visualize_graph()
-    simple_dual_port_spec.generate_hardware()
-    simple_dual_port_spec.extract_compiler_information()
-    simple_dual_port_spec.get_verilog()
+    lakespec = build_simple_dual_port_rv()
+    lakespec.visualize_graph()
+    lakespec.generate_hardware()
+    lakespec.extract_compiler_information()
+    lakespec.get_verilog()
 
     # Define the test
     lt = get_linear_test()
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
-    bs = simple_dual_port_spec.gen_bitstream(lt)
+    bs = lakespec.gen_bitstream(lt)
 
     print('final bs')
     print(bs)
@@ -131,11 +131,5 @@ def test_linear_read_write():
 if __name__ == "__main__":
 
     print("Hello")
-
-    # simple_dual_port_spec = build_simple_dual_port()
-    # simple_dual_port_spec.visualize_graph()
-    # simple_dual_port_spec.generate_hardware()
-    # simple_dual_port_spec.extract_compiler_information()
-    # simple_dual_port_spec.get_verilog()
 
     test_linear_read_write()
