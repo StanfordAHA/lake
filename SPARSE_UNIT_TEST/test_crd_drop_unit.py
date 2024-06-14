@@ -114,12 +114,7 @@ def create_inner_fiber(outer_fiber, rate, size):
     return ret
 
 def create_gold(in_crd1, in_crd2): # 1 is outer, 0 is inner
-    # if len([x for x in in_crd1 if type(x) is int]) == 0:
-    #     assert len([x for x in in_crd2 if sparse_helper.is_STOP_sam(x)]) == 1
-    # else:
-    #     assert (len([x for x in in_crd1 if type(x) is int]) == \
-    #         len([x for x in in_crd2 if sparse_helper.is_STOP_sam(x)]))
-    
+
     i_c1_cpy = in_crd1[:]
     i_c2_cpy = in_crd2[:]
 
@@ -158,7 +153,7 @@ def create_gold(in_crd1, in_crd2): # 1 is outer, 0 is inner
     for s in st:
         tr_st.append(convert_stream_to_onyx_interp(s))
 
-    return tr_st
+    return tr_st, time
 
 
 def load_test_module(test_name):
@@ -228,13 +223,14 @@ def load_test_module(test_name):
 
 
 def module_iter_basic(test_name, add_test=""):
-    [ic1, ic2, gc1, gc2] = load_test_module(test_name)
+    [ic1, ic2, gc1, gc2], sam_cycs = load_test_module(test_name)
     if add_test != "":
-        additional_t = load_test_module(add_test)
+        additional_t, add_sam_cycs = load_test_module(add_test)
         ic1 = ic1 + additional_t[0]
         ic2 = ic2 + additional_t[1]
         gc1 = gc1 + additional_t[2]
         gc2 = gc2 + additional_t[3]
+        sam_cycs = sam_cycs + add_sam_cycs
 
     print("ic1", ic1)
     print("ic2", ic2)
@@ -259,6 +255,7 @@ def module_iter_basic(test_name, add_test=""):
     assert output.find("Valid signal fails to end") == -1, "Valid signal fails to end"
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
+    hw_cycs = int(cycle_count_line.splitlines()[0].split(":")[1])
 
     tx_num = 1
     if add_test != "":
@@ -285,6 +282,7 @@ def module_iter_basic(test_name, add_test=""):
             f"Output {pos_out_1[i]} didn't match gold {gc2[i]} at index {i}"
     
     print(test_name, " passed\n")
+    sparse_helper.write_csv("crd_drop", test_name + "_" + add_test, hw_cycs, sam_cycs)
 
 
 def test_iter_basic():
