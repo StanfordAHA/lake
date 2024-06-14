@@ -1,0 +1,33 @@
+#=========================================================================
+# Comparison of netlists using Calibre
+#=========================================================================
+# Author : Kartik Prabhu
+# Date   : June 13, 2021
+#
+
+name: mentor-calibre-comparison
+
+#-------------------------------------------------------------------------
+# Inputs and Outputs
+#-------------------------------------------------------------------------
+inputs:
+  - adk
+  - design_extracted.spice
+  - design.lvs.v
+
+outputs:
+  - lvs.report
+
+#-------------------------------------------------------------------------
+# Parameters
+#-------------------------------------------------------------------------
+
+parameters:
+  design_name: undefined
+
+commands: 
+  - sh run_lvs.sh
+
+debug:
+  - calibre -rve -lvs svdb
+

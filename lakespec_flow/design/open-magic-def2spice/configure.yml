@@ -1,0 +1,34 @@
+#=========================================================================
+# Extract spice from def using magic
+#=========================================================================
+# Author : Priyanka Raina
+# Date   : Dec 12, 2020
+#
+
+name: open-magic-def2spice
+
+#-------------------------------------------------------------------------
+# Inputs and Outputs
+#-------------------------------------------------------------------------
+inputs:
+  - adk
+  - design.def.gz
+
+outputs:
+  - design_extracted.spice
+
+#-------------------------------------------------------------------------
+# Parameters
+#-------------------------------------------------------------------------
+
+parameters:
+  design_name: undefined
+
+commands:
+  - cp inputs/adk/magicrc .magicrc
+  - cp inputs/adk/rtk-tech.lef rtk-tech-nolicon.lef
+  - sed -i '/LAYER licon/,/END licon/d' rtk-tech-nolicon.lef
+  - cp -L inputs/design.def.gz design.def.gz 
+  - gunzip design.def.gz 
+  - sed -i 's/\//____/g' design.def # FIXME: Fix generated names properly in layout 
+  - magic -noconsole -dnull extract.tcl | tee def2spice.log

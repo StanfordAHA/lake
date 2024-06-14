@@ -1,0 +1,29 @@
+#=========================================================================
+# Run antenna check
+#=========================================================================
+# Author : Kartik Prabhu
+# Date   : May 25, 2021
+#
+
+name: open-magic-antenna
+
+#-------------------------------------------------------------------------
+# Inputs and Outputs
+#-------------------------------------------------------------------------
+inputs:
+  - adk
+  - design_merged.gds
+
+outputs:
+  - antenna_check.log
+
+#-------------------------------------------------------------------------
+# Parameters
+#-------------------------------------------------------------------------
+
+parameters:
+  design_name: undefined
+
+commands:
+  - cp inputs/adk/magicrc .magicrc
+  - magic -noconsole -dnull run_antenna.tcl | tee outputs/antenna_check.log

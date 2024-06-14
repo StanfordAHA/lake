@@ -1,0 +1,8 @@
+name: rtl
+
+outputs:
+  - design.v
+
+commands:
+  - cp ../../../lakespec.sv .
+  - cat lakespec.sv > outputs/design.v

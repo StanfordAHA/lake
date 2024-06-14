@@ -1,0 +1,12 @@
+.subckt sky130_fd_pr__pfet_01v8 d g s b
+.ends
+
+.subckt sky130_fd_pr__pfet_01v8_hvt d g s b
+.ends
+
+.subckt sky130_fd_pr__nfet_01v8 d g s b
+.ends
+
+.subckt sky130_fd_pr__nfet_01v8_hvt d g s b
+.ends
+

@@ -1,0 +1,41 @@
+#=========================================================================
+# Synopsys PTPX -- RTL
+#=========================================================================
+
+name: synopsys-ptpx-rtl
+
+#-------------------------------------------------------------------------
+# Inputs and Outputs
+#-------------------------------------------------------------------------
+
+inputs:
+  - adk
+  - design.vcs.v
+  - design.spef.gz
+  - design.pt.sdc
+  - run.saif
+  - design.namemap
+
+outputs:
+  - design.pwr.rpt
+  - design.pwr.hier.rpt
+  - design.sw.rpt
+
+#-------------------------------------------------------------------------
+# Commands
+#-------------------------------------------------------------------------
+
+commands:
+  - pt_shell -file pt_px.tcl
+  - cp reports/*.pwr.rpt outputs/design.pwr.rpt
+  - cp reports/*.pwr.hier.rpt outputs/design.pwr.hier.rpt
+  - cp reports/*.sw.rpt outputs/design.sw.rpt
+
+#-------------------------------------------------------------------------
+# Parameters
+#-------------------------------------------------------------------------
+
+parameters:
+  clock_period: 1.0
+  design_name: undefined
+  strip_path: undefined
