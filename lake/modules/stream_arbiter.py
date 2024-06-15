@@ -345,32 +345,6 @@ class StreamArbiter(MemoryController):
         else:
             self._stream_to_fifo = 0
 
-    def get_memory_ports(self):
-        '''
-        Use this method to indicate what memory ports this controller has
-        '''
-        return [[None]]
-
-    def get_config_mode_str(self):
-        return "stream_arbiter"
-
-    def get_bitstream(self, config_kwargs):
-
-        num_requests = config_kwargs['num_requests']
-        seg_mode = config_kwargs['seg_mode']
-
-        # Store all configurations here
-        config = [("tile_en", 1),
-                  ("num_requests", num_requests),
-                  ("seg_mode", seg_mode)]
-
-        # Dummy variables to fill in later when compiler
-        # generates different collateral for different designs
-        flattened = create_wrapper_flatten(self.internal_generator.clone(),
-                                           self.name + "_W")
-
-        # Trim the list
-        return trim_config_list(flattened, config)
 
 if __name__ == "__main__":
     stream_arbiter_dut = StreamArbiter(data_width=16,
