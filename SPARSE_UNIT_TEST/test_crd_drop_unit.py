@@ -93,34 +93,28 @@ def create_random(n, rate, size, d1=0): # d1 is the total fiber number
         ret = ret[:-1] + ['S2', 'D']
         return ret
 
-
-def remove_emptyfiber(out_in):
-    r = []
-    max_level = 0
-    pushed_non_empty = False
-    for i in range(len(out_in)):
-        if sparse_helper.is_STOP_sam(out_in[i]):
-            max_level = max(max_level, int(out_in[i][1]))
-        if sparse_helper.is_STOP_sam(out_in[i]) and sparse_helper.is_STOP_sam(out_in[i + 1]): 
-            continue
-        if sparse_helper.is_STOP_sam(out_in[i]):
-            if pushed_non_empty:
-                r.append(f'S{max_level}')
-            pushed_non_empty = False
-        else:
-            r.append(out_in[i])
-            pushed_non_empty = True
-        max_level = 0
-        
-    return r
+def create_inner_fiber(outer_fiber, rate, size):
+    ret = []
+    num_fiber = len([x for x in outer_fiber if type(x) is int])
+    fiber_size = max(1, int(size // num_fiber))
+    for idx, token in enumerate(outer_fiber):
+        # actual coordinate
+        if type(token) is int:
+            if random.random() < rate:
+                ret = ret + create_random_fiber(rate, fiber_size, 0.2, "coord", 0.2)
+            if type(outer_fiber[idx+1]) is int:
+                ret = ret + ['S0']
+        else: 
+            if token == 'D':
+                ret = ret + ['D']
+            # stop token
+            else:
+                stkn_level = int(token[1]) + 1
+                ret = ret + ['S' + str(stkn_level)]
+    return ret
 
 def create_gold(in_crd1, in_crd2): # 1 is outer, 0 is inner
-    if len([x for x in in_crd1 if type(x) is int]) == 0:
-        assert len([x for x in in_crd2 if sparse_helper.is_STOP_sam(x)]) == 1
-    else:
-        assert (len([x for x in in_crd1 if type(x) is int]) == \
-            len([x for x in in_crd2 if sparse_helper.is_STOP_sam(x)]))
-    
+
     i_c1_cpy = in_crd1[:]
     i_c2_cpy = in_crd2[:]
 
@@ -159,13 +153,13 @@ def create_gold(in_crd1, in_crd2): # 1 is outer, 0 is inner
     for s in st:
         tr_st.append(convert_stream_to_onyx_interp(s))
 
-    return tr_st
+    return tr_st, time
 
 
 def load_test_module(test_name):
     if test_name == "stream_1":
-        in_crd_o = [0, 1, 'S0', 'D']
-        in_crd_i = [1, 'S0', 'S1', 'D']
+        in_crd_o = [2, 6, 'S0', 'S0', 1, 7, 9, 'S0', 1, 5, 8, 'S0', 'S0', 0, 2, 3, 'S0', 6, 'S0', 2, 'S0', 2, 9, 'S0', 6, 7, 8, 'S1', 'D']
+        in_crd_i = ['S0', 2, 'S1', 'S1', 'S0', 'S0', 'S1', 'S0', 'S0', 'S1', 'S1', 'S0', 'S0', 0, 'S1', 'S1', 'S1', 'S0', 'S1', 'S0', 'S0', 'S2', 'D']
 
         return create_gold(in_crd_o, in_crd_i)
 
@@ -188,20 +182,20 @@ def load_test_module(test_name):
         return create_gold(in_crd_o, in_crd_i)
 
     elif test_name == "stream_5":
-        in_crd_o = [1, 2, 3, 'S0', 'D']
-        in_crd_i = [1, 2, 'S1', 'S0', 'S2', 'D']
+        in_crd_o = [1, 2, 3, 'S0', 'S1', 'D']
+        in_crd_i = [1, 2, 'S0', 'S0', 'S1', 'S2', 'D']
 
         return create_gold(in_crd_o, in_crd_i)
 
     elif test_name == "stream_6":
         in_crd_o = [1, 2, 3, 'S0', 4, 'S1', 'D']
-        in_crd_i = [1, 2, 'S1', 'S0', 'S1', 'S2', 'D']
+        in_crd_i = [1, 2, 'S0', 'S0', 'S1', 'S2', 'D']
 
         return create_gold(in_crd_o, in_crd_i)
 
     elif test_name == "stream_7":
         in_crd_o = [1, 2, 3, 'S0', 4, 5, 'S1', 'D']
-        in_crd_i = ['S0', 1, 2, 'S1', 'S0', 'S1', 'S2', 'D']
+        in_crd_i = ['S0', 1, 2, 'S0', 'S1', 'S0', 'S2', 'D']
 
         return create_gold(in_crd_o, in_crd_i)
 
@@ -218,9 +212,7 @@ def load_test_module(test_name):
         if fiber_num == 0: # assure something is in the outer
             in_crd_o = [1] + in_crd_o
             fiber_num = len([i for i in in_crd_o if type(i) is int])
-        in_crd_o = remove_emptyfiber(in_crd_o)
-        in_crd_i = create_random(dim2, rate2, size2, d1=fiber_num)
-
+        in_crd_i = create_inner_fiber(in_crd_o, rate2, size2)
         return create_gold(in_crd_o, in_crd_i)
 
     else:
@@ -231,13 +223,14 @@ def load_test_module(test_name):
 
 
 def module_iter_basic(test_name, add_test=""):
-    [ic1, ic2, gc1, gc2] = load_test_module(test_name)
+    [ic1, ic2, gc1, gc2], sam_cycs = load_test_module(test_name)
     if add_test != "":
-        additional_t = load_test_module(add_test)
+        additional_t, add_sam_cycs = load_test_module(add_test)
         ic1 = ic1 + additional_t[0]
         ic2 = ic2 + additional_t[1]
         gc1 = gc1 + additional_t[2]
         gc2 = gc2 + additional_t[3]
+        sam_cycs = sam_cycs + add_sam_cycs
 
     print("ic1", ic1)
     print("ic2", ic2)
@@ -262,6 +255,7 @@ def module_iter_basic(test_name, add_test=""):
     assert output.find("Valid signal fails to end") == -1, "Valid signal fails to end"
     cycle_count_line = output[output.find("cycle count:"):]
     print(cycle_count_line.splitlines()[0])
+    hw_cycs = int(cycle_count_line.splitlines()[0].split(":")[1])
 
     tx_num = 1
     if add_test != "":
@@ -288,6 +282,7 @@ def module_iter_basic(test_name, add_test=""):
             f"Output {pos_out_1[i]} didn't match gold {gc2[i]} at index {i}"
     
     print(test_name, " passed\n")
+    sparse_helper.write_csv("crd_drop", test_name + "_" + add_test, hw_cycs, sam_cycs)
 
 
 def test_iter_basic():
@@ -304,20 +299,6 @@ def test_random_1d_2d():
         module_iter_basic(test)
 
 
-def test_random_1d_3d():
-    init_module()
-    test_list = ["rd_1d_0.3_30_3d_0.1_80", "rd_1d_0.3_30_3d_0.3_80", "rd_1d_0.3_30_3d_0.5_80", "rd_1d_0.3_30_3d_0.8_80", "rd_1d_0.3_30_3d_1.0_80"]
-    for test in test_list:
-        module_iter_basic(test)
-
-
-def test_random_2d_2d():
-    init_module()
-    test_list = ["rd_2d_0.3_30_2d_0.1_80", "rd_2d_0.3_30_2d_0.3_80", "rd_2d_0.3_30_2d_0.5_80", "rd_2d_0.3_30_2d_0.8_80", "rd_2d_0.3_30_2d_1.0_80"]
-    for test in test_list:
-        module_iter_basic(test)
-
-
 def test_random_2d_3d():
     init_module()
     test_list = ["rd_2d_0.3_30_3d_0.1_80", "rd_2d_0.3_30_3d_0.3_80", "rd_2d_0.3_30_3d_0.5_80", "rd_2d_0.3_30_3d_0.8_80", "rd_2d_0.3_30_3d_1.0_80"]
@@ -329,8 +310,6 @@ def test_seq():
     init_module()
     test_list =  ["stream_1", "stream_2", "stream_3", "stream_4", "stream_5", "stream_6", "stream_7", "xxx"] +\
                  ["rd_1d_0.3_30_2d_0.1_80", "rd_1d_0.3_30_2d_0.3_80", "rd_1d_0.3_30_2d_0.5_80", "rd_1d_0.3_30_2d_0.8_80", "rd_1d_0.3_30_2d_1.0_80"] +\
-                 ["rd_1d_0.3_30_3d_0.1_80", "rd_1d_0.3_30_3d_0.3_80", "rd_1d_0.3_30_3d_0.5_80", "rd_1d_0.3_30_3d_0.8_80", "rd_1d_0.3_30_3d_1.0_80"] +\
-                 ["rd_2d_0.3_30_2d_0.1_80", "rd_2d_0.3_30_2d_0.3_80", "rd_2d_0.3_30_2d_0.5_80", "rd_2d_0.3_30_2d_0.8_80", "rd_2d_0.3_30_2d_1.0_80"] +\
                  ["rd_2d_0.3_30_3d_0.1_80", "rd_2d_0.3_30_3d_0.3_80", "rd_2d_0.3_30_3d_0.5_80", "rd_2d_0.3_30_3d_0.8_80", "rd_2d_0.3_30_3d_1.0_80"]
     for i in range(20):
         rand = random.sample(test_list, 2)

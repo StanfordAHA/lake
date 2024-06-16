@@ -989,21 +989,6 @@ class BuffetLike(MemoryController):
         self._blk_valid = self.var("blk_valid", self.num_ID)
         self._blk_full = self.var("blk_full", self.num_ID)
 
-        self._blk_count = [self.var(f"blk_count_{i}", 8) for i in range(self.num_ID)]  # Log 512, approximately the maximum num of blk storage
-
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def blk_lock(self, idx):
-            if ~self._rst_n:
-                self._blk_count[idx] = 0
-            elif self._push_blk[idx]:
-                self._blk_count[idx] = self._blk_count[idx] + 1
-            elif self._pop_blk[idx]:
-                self._blk_count[idx] = self._blk_count[idx] - 1
-            else:
-                self._blk_count[idx] = self._blk_count[idx]
-
-        [self.add_code(blk_lock, idx=i) for i in range(self.num_ID)]
-
         self._curr_capacity_pre = self.var("curr_capacity_pre", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
         # self._curr_capacity = self.var("curr_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
@@ -1266,7 +1251,7 @@ class BuffetLike(MemoryController):
                 # RD_START
                 ####################
                 # Get the first block size...
-                RD_START[ID_idx].next(RD_PAUSE[ID_idx], (self._blk_count[ID_idx] == 0) & (op_fifo_use == 0) &
+                RD_START[ID_idx].next(RD_PAUSE[ID_idx], ~self._blk_valid[ID_idx] & (op_fifo_use == 0) &
                                                         read_joined_use & self._rd_ID_fifo_check)
                 RD_START[ID_idx].next(RD_START[ID_idx], None)
 
@@ -1334,7 +1319,7 @@ class BuffetLike(MemoryController):
                 RD_START[ID_idx].output(self._pop_blk[ID_idx], (op_fifo_use == 0) &
                                                                read_joined_use &
                                                             #    self._rd_ID_fifo_check)
-                                                               self._rd_ID_fifo_check & (self._blk_count[ID_idx] > 0))
+                                                               self._rd_ID_fifo_check & self._blk_valid[ID_idx])
                 # Guarantee there's room for the read to land (need to use almost full, not full...)
                 # RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
                 RD_START[ID_idx].output(self._ren_full[ID_idx], (op_fifo_use == 1) &
