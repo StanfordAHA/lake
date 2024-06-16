@@ -54,6 +54,7 @@ def construct():
   # hls           = Step( this_dir + '/hls'           )
   # testbench     = Step( this_dir + '/testbench'     )
   constraints   = Step( this_dir + '/constraints'   )
+  signoff_area_plotting  = Step( this_dir + '/signoff_area_plotting'           )
 
 
 
@@ -122,6 +123,7 @@ def construct():
   # g.add_step( sram         )
   g.add_step( rtl          )
   # g.add_step( hls          )
+  g.add_step( signoff_area_plotting          )
   # g.add_step( testbench    )
   g.add_step( constraints  )
   g.add_step( dc           )
@@ -163,7 +165,6 @@ def construct():
   init.extend_inputs(['dont-use-cells.tcl', 'floorplan.tcl', 'pin-assignments.tcl'])
 
   # Connect by name
-
   g.connect_by_name( adk,          dc           )
   # g.connect_by_name( sram,         dc           )
   # g.connect_by_name( hls,          dc           )
@@ -224,7 +225,9 @@ def construct():
   g.connect_by_name( route,           postroute       )
   g.connect_by_name( postroute,       postroute_hold  )
   g.connect_by_name( postroute_hold,  signoff         )
+  g.connect_by_name( signoff,         signoff_area_plotting)
   g.connect_by_name( signoff,         gdsmerge        )
+
   
   #############
   g.connect_by_name( floorplan,     init         )
