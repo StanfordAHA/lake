@@ -19,7 +19,6 @@ outputs:
 # Parameters
 #-------------------------------------------------------------------------
 parameters:
-  clock_period: 8.0
   design_name: lakespec
 
 commands: 
