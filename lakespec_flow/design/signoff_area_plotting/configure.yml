@@ -12,9 +12,25 @@ name: signoff_area_plotting
 inputs:
   - signoff.area.rpt
 
+outputs:
+  - images/
+
 #-------------------------------------------------------------------------
 # Parameters
 #-------------------------------------------------------------------------
+parameters:
+  clock_period: 8.0
+  design_name: lakespec
 
 commands: 
   - python3 area_rpt_to_csv.py
+  - cp -r ./images ./outputs/
+
+
+#-------------------------------------------------------------------------
+# Assertions
+#-------------------------------------------------------------------------
+
+
+postconditions:
+  - assert File( 'outputs/images/' )       # must exist

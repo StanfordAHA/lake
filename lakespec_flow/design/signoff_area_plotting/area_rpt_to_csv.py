@@ -109,6 +109,8 @@ def process_area_report(input_file_path, output_csv_path):
     plt.savefig(pie_chart_path)
 
 
+
+
     # Plotting data for the total breakdown with stacked bar
     labels_totals = ['Storage', 'Control', 'Clock']
     control_sizes = [total_area_ag, total_area_sg, total_area_id]
@@ -120,11 +122,11 @@ def process_area_report(input_file_path, output_csv_path):
     fig, ax = plt.subplots(figsize=(8, 8))
     bars = np.add(total_area_ag, total_area_sg).tolist()
     
-    ax.bar(labels_totals[0], storage_area, color=colors_totals[2], label='Storage')
+    ax.bar(labels_totals[0], storage_area, color=colors_totals[0], label='Storage')
     ax.bar(labels_totals[1], total_area_ag, color=colors_control[2], label='AddressGenerator')
     ax.bar(labels_totals[1], total_area_sg, bottom=total_area_ag, color=colors_control[1], label='ScheduleGenerator')
     ax.bar(labels_totals[1], total_area_id, bottom=bars, color=colors_control[0], label='IterationDomain')
-    ax.bar(labels_totals[2], clock_area, color=colors_totals[0], label='Clock')
+    ax.bar(labels_totals[2], clock_area, color=colors_totals[2], label='Clock')
 
     ax.set_ylabel('Area (mm²)')
     ax.set_title('Area Distribution')
@@ -133,6 +135,33 @@ def process_area_report(input_file_path, output_csv_path):
     plt.savefig('./images/area_bar_chart_total_breakdown_stacked.png')
     plt.close()
     
+
+
+
+    # # Define colors and labels
+    # colors = ['#ADD8E6','#0073E6','#003366', '#ff9999', '#66b3ff']
+    # labels = ['AddressGenerator', 'ScheduleGenerator', 'IterationDomain', 'Clock', 'Storage']
+
+    # # Create data for pie chart
+    # control_total = total_area_ag + total_area_sg + total_area_id
+    # sizes = [total_area_ag, total_area_sg, total_area_id, clock_area, storage_area]
+    # explode = (0, 0, 0, 0.1, 0.1)  # Explode clock and storage slices
+
+    # # Plotting
+    # fig, ax = plt.subplots()
+    # ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, explode=explode,
+    #        wedgeprops={'edgecolor': 'black'})
+
+    # ax.axis('equal')  # Equal aspect ratio ensures pie is drawn as a circle.
+    # # plt.title('Area Distribution with Detailed Control Section')
+    # plt.legend(labels, title="Components", loc="center left", bbox_to_anchor=(1, 0, 0.5, 1))
+
+    # # Save the plot
+    # plt.savefig('./images/area_pie_chart_detailed_control.png')
+    # plt.close()
+
+
+
 
     # Print the total area accumulated
     print(f"Total accumulated area ag: {total_area_ag}\n")
