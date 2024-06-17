@@ -4,5 +4,6 @@ outputs:
   - design.v
 
 commands:
-  - cp ../../../lakespec.sv .
+  - python3 ../../../tests/test_spec/simple_dual_port.py 
+  # - cp ../../../lakespec.sv .
   - cat lakespec.sv > outputs/design.v
