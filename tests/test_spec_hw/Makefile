@@ -107,7 +107,7 @@ XRUN = xrun \
 	   -notimingchecks \
 	   $(COMPILE_ARGS) \
 	   $(INPUT_ARGS) \
-	   -TEST_DIRECTORY=.
+	   +define+TEST_DIRECTORY=.
 
 #    -initmem0 
 #    -initreg0 

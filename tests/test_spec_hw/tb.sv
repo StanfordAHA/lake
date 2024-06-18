@@ -84,6 +84,8 @@ module lake_static_tb;
         // $value$plusargs("BITSTREAM_LOCATION=%s", BITSTREAM_LOCATION);
         // $value$plusargs("BITSTREAM_LOCATION=%s", BITSTREAM_LOCATION);
         BITSTREAM_LOCATION = $sformatf("%s/inputs/bitstream.bs", TEST_DIRECTORY);
+
+        $display("BITSTREAM IS AT : %s", BITSTREAM_LOCATION);
         // Load the bitstream as an int into the bitstream memory
         $readmemh(BITSTREAM_LOCATION, bitstream);
         // $readmemh(BITSTREAM_LOCATION, bitstream);
@@ -149,8 +151,8 @@ module lake_static_tb;
 
         clk <= 1'b0;
         rst_n <= 1'b0;
-        config_read <= 1'd0;
-        config_write <= 1'd0;
+        // config_read <= 1'd0;
+        // config_write <= 1'd0;
         #5 clk ^= 1;
         #5 clk ^= 1;
         flush <= 1'b1;
