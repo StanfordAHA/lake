@@ -11,6 +11,7 @@ from lake.modules.memory_interface_decoder import MemoryInterfaceDecoder
 import kratos as kts
 from kratos import clog2
 from typing import Tuple
+import os as os
 
 
 class Spec():
@@ -236,8 +237,11 @@ class Spec():
         self.add_flush()
 
 
-    def get_verilog(self):
-        kts.verilog(self._final_gen, filename=f"{self._name}.sv",
+    def get_verilog(self, output_dir):
+        # kts.verilog(self._final_gen, filename=f"{self._name}.sv",
+        fn_ = f"{self._name}.sv"
+        full_path = os.path.join(output_dir, fn_)
+        kts.verilog(self._final_gen, filename=full_path,
                     optimize_if=False)
 
     def add_flush(self):

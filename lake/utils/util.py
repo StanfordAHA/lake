@@ -6,8 +6,40 @@ import os as os
 from enum import Enum
 from lake.attributes.formal_attr import *
 import csv
+from pathlib import Path
+import shutil as shutil
+
 
 lake_util_verbose_trim = False
+
+
+def prepare_hw_test(base_dir: str = None):
+
+    # Put it at the lake directory
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        final_dir = base_dir + "/../TEST/"
+        final_dir = os.path.join(base_dir, "../", "TEST")
+
+    else:
+        final_dir = base_dir
+
+    print(f" Prepare hw test at ...{final_dir}")
+
+    os.makedirs(final_dir, exist_ok=True)
+    os.makedirs(os.path.join(final_dir, "inputs"), exist_ok=True)
+    os.makedirs(os.path.join(final_dir, "outputs"), exist_ok=True)
+
+    # Now copy over the tests/test_hw_spec
+    tb_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../tests/test_spec_hw/")
+    for filename in os.listdir(tb_base_path):
+        src_file = os.path.join(tb_base_path, filename)
+        dst_file = os.path.join(final_dir, filename)
+        if os.path.isfile(src_file):  # Check if it's a file (not a directory)
+            shutil.copy2(src_file, dst_file)
+
+    return final_dir
+
 
 
 def check_env():

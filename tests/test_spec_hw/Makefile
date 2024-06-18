@@ -23,7 +23,7 @@ export BITSTREAM_SIZE ?= 0
 CLK_PERIOD ?= 1ns
 
 DESIGN_FILES += tb.sv \
-				lakespec.sv
+				inputs/lakespec.sv
 # DESIGN_FILES += sparse_tb.sv \
 # 				SparseTBBuilder.v \
 # 				CW_fp_add.v \
@@ -106,7 +106,8 @@ XRUN = xrun \
 	   -access r \
 	   -notimingchecks \
 	   $(COMPILE_ARGS) \
-	   $(INPUT_ARGS)
+	   $(INPUT_ARGS) \
+	   -TEST_DIRECTORY=.
 
 #    -initmem0 
 #    -initreg0 

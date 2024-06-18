@@ -69,16 +69,24 @@ module lake_static_tb;
     integer THIS_CYC_COUNT;
     // integer BITSTREAM_CURR_SIZE;
     // integer BITSTREAM_CURR_SIZE_CNT;
-    string  BITSTREAM_LOCATION = "/home/max/Documents/lake/number_in_hex.txt";
-    
 
+
+
+    string TEST_DIRECTORY; // = "/home/max/Documents/lake/number_in_hex.txt";
+    string BITSTREAM_LOCATION; // = "/home/max/Documents/lake/number_in_hex.txt";
+    
     initial begin
+
+        $value$plusargs("TEST_DIRECTORY=%s", TEST_DIRECTORY);
+
         // string file_str;
         // file_str = $sformatf("/home/max/Documents/SPARSE/garnet/generic_memory_%d.txt", FILE_NO);
         // $value$plusargs("BITSTREAM_LOCATION=%s", BITSTREAM_LOCATION);
         // $value$plusargs("BITSTREAM_LOCATION=%s", BITSTREAM_LOCATION);
+        BITSTREAM_LOCATION = $sformatf("%s/inputs/bitstream.bs", TEST_DIRECTORY);
         // Load the bitstream as an int into the bitstream memory
         $readmemh(BITSTREAM_LOCATION, bitstream);
+        // $readmemh(BITSTREAM_LOCATION, bitstream);
         // for (integer i_ = 0; i_ < BITSTREAM_MAX_SIZE; i_ = i_ + 1) begin
             // bitstream_addr[i_] = bitstream[i_][63: 32];
             // bitstream_data[i_] = bitstream[i_][31: 0];
@@ -147,18 +155,6 @@ module lake_static_tb;
         #5 clk ^= 1;
         flush <= 1'b1;
         #1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
         #5 clk ^= 1;
         #5 clk ^= 1;
         #5 clk ^= 1;

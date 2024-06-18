@@ -1,6 +1,10 @@
 from lake.spec.component import Component
 from lake.utils.spec_enum import *
 import random as rand
+from lake.spec.address_generator import AddressGenerator
+from lake.spec.iteration_domain import IterationDomain
+from lake.spec.schedule_generator import ScheduleGenerator
+from lake.spec.storage import SingleBankStorage, Storage
 
 
 def print_class_hierarchy(obj):
@@ -12,7 +16,8 @@ def print_class_hierarchy(obj):
 class Port(Component):
 
     def __init__(self, ext_data_width=16, int_data_width=16,
-                 runtime=Runtime.STATIC, direction=Direction.IN):
+                 runtime=Runtime.STATIC, direction=Direction.IN,
+                 vec_capacity=None):
         super().__init__()
         self._mp_intf = {}
         self._ub_intf = {}
@@ -21,6 +26,9 @@ class Port(Component):
         self._runtime = runtime
         self._direction = direction
         self._fw = self._int_data_width // self._ext_data_width
+        if self._fw != 1:
+            assert self._vec_capacity is not None
+        self._vec_capacity = vec_capacity
 
     def gen_hardware(self, pos_reset=False):
         if self._direction == Direction.IN:
@@ -37,7 +45,12 @@ class Port(Component):
                 self.wire(data_from_ub, data_to_memport)
 
             else:
-                raise NotImplementedError
+                # For the write port with a wide fetch, we need 
+                # storage and memory ports for SIPO, ID, AG, SG (original size + 1) on the front
+                # Capacity of the storage will be w.r.t. external data width
+                self._sipo_strg = SingleBankStorage(capacity=self._vec_capacity)
+                self,_id_ext = IterationDomain(dimensionality=6)
+                # 2xAG between for read of SIPO and Write of SRAM, ID, SG of original size
 
         elif self._direction == Direction.OUT:
 
