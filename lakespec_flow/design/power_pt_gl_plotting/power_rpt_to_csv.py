@@ -41,6 +41,7 @@ def process_heir_power_report(input_file_path, output_csv_path):
                     except ValueError:
                         pass
                 if "port_id" in row_data[0]:
+                    print(row_data)
                     try:
                         total_power_id += float(row_data[5])
                     except ValueError:
@@ -77,7 +78,7 @@ def process_heir_power_report(input_file_path, output_csv_path):
 
     # Data for plotting
     labels = ['Address\nGenerator', 'Schedule\nGenerator', 'Iteration\nDomain']
-    sizes = [total_power_ag, total_power_sg/10, total_power_id]  # example data values
+    sizes = [total_power_ag, total_power_sg, total_power_id]  # example data values
     colors = ['#ADD8E6','#0073E6','#003366']
 
     # Check if the 'images/' directory exists, and create it if it does not
@@ -104,9 +105,9 @@ def process_heir_power_report(input_file_path, output_csv_path):
 
 
     # Data for plotting
-    labels_totals = ['Storage', 'Control', 'Clock']
+    labels_totals = ['Storage', 'Control', 'Clock\nGating']
     sizes_totals = [storage_power, (total_power_ag+total_power_sg+total_power_id), clock_power]  # example data values
-    colors_totals = ['#ff9999','#66b3ff','#99ff99']
+    colors_totals = ['#99ff99','#66b3ff','#ff9999']
 
     # Bar graph using Matplotlib for total breakdown
     plt.figure(figsize=(8, 8))
@@ -130,10 +131,10 @@ def process_heir_power_report(input_file_path, output_csv_path):
 
 
     # Plotting data for the total breakdown with stacked bar
-    labels_totals = ['Storage', 'Control', 'Clock']
+    labels_totals = ['Storage', 'Control', 'Clock\nGating']
     control_sizes = [total_power_ag, total_power_sg, total_power_id]
     sizes_totals = [clock_power, sum(control_sizes), storage_power]
-    colors_control = ['#ADD8E6','#0073E6','#003366']
+    colors_control = ['#003366','#0073E6','#ADD8E6']
     colors_totals = ['#ff9999','#66b3ff','#99ff99']
 
     # Create a bar graph for the total breakdown
@@ -204,7 +205,7 @@ def process_power_report(input_file_path, output_csv_path):
                 csv_writer.writerow(row_data)
 
     # Data for plotting
-    labels = ['Clock\nNetwork', 'Register', 'Combinational']
+    labels = ['Clock\nGated\nRegisters', 'Register', 'Combinational']
     sizes = [total_power_clock, total_power_reg, total_power_comb]  # example data values
     colors = ['#ADD8E6','#0073E6','#003366']
 
@@ -233,9 +234,9 @@ def process_power_report(input_file_path, output_csv_path):
     plt.savefig(pie_chart_path)
 
     # Print the total power accumulated
-    print(f"Total accumulated power register: {total_power_id}\n")
-    print(f"Total accumulated power clock: {clock_power}\n")
-    print(f"Total accumulated power combinational: {storage_power}\n")
+    print(f"Total accumulated power register: {total_power_reg}\n")
+    print(f"Total accumulated power clock: {total_power_clock}\n")
+    print(f"Total accumulated power combinational: {total_power_comb}\n")
 
 
 input_file_path = './inputs/power.heir.rpt'  # specify your input file path here
