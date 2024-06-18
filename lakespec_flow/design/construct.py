@@ -54,8 +54,9 @@ def construct():
   # hls           = Step( this_dir + '/hls'           )
   # testbench     = Step( this_dir + '/testbench'     )
   constraints   = Step( this_dir + '/constraints'   )
+  
   signoff_area_plotting  = Step( this_dir + '/signoff_area_plotting'           )
-
+  power_pt_gl_plotting  = Step( this_dir + '/power_pt_gl_plotting'           )
 
 
   # Power node is custom because power and gnd pins are named differently in
@@ -82,6 +83,7 @@ def construct():
   netgen_lvs      = Step( this_dir + '/open-netgen-lvs'                 )
   magic_antenna   = Step( this_dir + '/open-magic-antenna'              )
   calibre_lvs     = Step( this_dir + '/mentor-calibre-comparison'       )
+  pt_power_gl     = Step( this_dir + '/synopsys-ptpx-gl'       )
 
 
 
@@ -113,7 +115,7 @@ def construct():
   netgen_lvs_gds  = netgen_lvs.clone()
   netgen_lvs_gds.set_name('netgen-lvs-gds')
 
-  pt_power_gl     = Step( 'synopsys-ptpx-gl',              default=True )
+  # pt_power_gl     = Step( 'synopsys-ptpx-gl',              default=True )
 
   #-----------------------------------------------------------------------
   # Graph -- Add nodes
@@ -123,6 +125,7 @@ def construct():
   # g.add_step( sram         )
   g.add_step( rtl          )
   # g.add_step( hls          )
+  g.add_step( power_pt_gl_plotting )
   g.add_step( signoff_area_plotting          )
   # g.add_step( testbench    )
   g.add_step( constraints  )
@@ -258,6 +261,7 @@ def construct():
   g.connect_by_name( signoff,         pt_power_gl     )
 
 
+  g.connect_by_name( pt_power_gl,         power_pt_gl_plotting)
 
   #-----------------------------------------------------------------------
   # Parameterize
