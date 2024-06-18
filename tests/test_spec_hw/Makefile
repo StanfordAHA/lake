@@ -158,7 +158,7 @@ compile:
 # run: TEST_ARGS = $(TEST_DIR)/COLLAT_DIR/PARGS.txt
 # run: TMP_PARGS = $(shell cat $(TEST_ARGS))
 run:
-	$(RUN) $(DUMP_ARGS) $(RUN_ARGS) $(APP_ARGS) +define+TEST_DIRECTORY=.
+	$(RUN) $(DUMP_ARGS) $(RUN_ARGS) $(APP_ARGS) +TEST_DIRECTORY=./
 
 #	rm -f $(TEST_DIR)/OUTPUT_DIR/*
 #	$(RUN) $(DUMP_ARGS) $(TMP_PARGS)
