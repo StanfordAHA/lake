@@ -78,7 +78,15 @@ module lake_static_tb;
 
     initial begin
 
-        $value$plusargs("TEST_DIRECTORY=%s", TEST_DIRECTORY);
+        TEST_DIRECTORY = "./";
+
+        if ($value$plusargs("TEST_DIRECTORY=%s", TEST_DIRECTORY)) begin
+            $display("TEST_DIRECTORY set to %s", TEST_DIRECTORY);
+        end else begin
+            $display("TEST_DIRECTORY not set, using default value %s", TEST_DIRECTORY);
+        end
+
+        // $value$plusargs("TEST_DIRECTORY=%s", TEST_DIRECTORY);
 
         // string file_str;
         // file_str = $sformatf("/home/max/Documents/SPARSE/garnet/generic_memory_%d.txt", FILE_NO);
