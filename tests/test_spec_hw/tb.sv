@@ -74,7 +74,8 @@ module lake_static_tb;
 
     string TEST_DIRECTORY; // = "/home/max/Documents/lake/number_in_hex.txt";
     string BITSTREAM_LOCATION; // = "/home/max/Documents/lake/number_in_hex.txt";
-    
+    string OUTPUT_LOCATION;
+
     initial begin
 
         $value$plusargs("TEST_DIRECTORY=%s", TEST_DIRECTORY);
@@ -186,7 +187,10 @@ module lake_static_tb;
             port_1_mem[THIS_CYC_COUNT] = port_1_data;
         end
 
-        $writememh("/home/max/Documents/lake/port_1_output.txt", port_1_mem);
+
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_1_output.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_1_mem);
+        // $writememh("/home/max/Documents/lake/port_1_output.txt", port_1_mem);
 
         #20 $finish;
     end
