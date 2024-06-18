@@ -18,8 +18,7 @@ def prepare_hw_test(base_dir: str = None):
     # Put it at the lake directory
     if base_dir is None:
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        final_dir = base_dir + "/../TEST/"
-        final_dir = os.path.join(base_dir, "../", "TEST")
+        final_dir = os.path.join(base_dir, "../../", "TEST")
 
     else:
         final_dir = base_dir
