@@ -9,16 +9,15 @@ from lake.spec.memory_port import MemoryPort
 from lake.utils.util import prepare_hw_test
 from lake.top.tech_maps import GF_Tech_Map
 import argparse
+import os
 
 
-def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, width=4) -> Spec:
+def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4) -> Spec:
 
     ls = Spec()
 
-    dw = 16
-
-    in_port = Port(ext_data_width=dw, int_data_width=dw * width, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=dw, int_data_width=dw * width, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, runtime=Runtime.STATIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 
@@ -34,10 +33,10 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     ls.register(out_id, out_ag, out_sg)
 
     # 1024 Bytes
-    data_bytes = data_width // 8
-    stg = SingleBankStorage(capacity=storage_capacity, tech_map=GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=False))
-    wr_mem_port = MemoryPort(data_width=dw * width, mptype=MemoryPortType.W, delay=1)
-    rd_mem_port = MemoryPort(data_width=dw * width, mptype=MemoryPortType.R, delay=1)
+    data_bytes = data_width // (8 * vec_width)
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False))
+    wr_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.W, delay=1)
+    rd_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=1)
     ls.register(stg, wr_mem_port, rd_mem_port, stg)
 
     # All cores are registered at this point
@@ -105,14 +104,25 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write_sp_wf():
+def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4):
 
+    # Put it at the lake directory by default
+    if output_dir is None:
+        output_dir = os.path.dirname(os.path.abspath(__file__))
+        output_dir = output_dir + "/../../"
+
+    output_dir_verilog = os.path.join(output_dir, 'inputs')
+
+    print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
-    simple_dual_port_spec = build_single_port_wide_fetch()
+    simple_dual_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
+                                                         physical=physical, vec_width=vec_width)
     simple_dual_port_spec.visualize_graph()
     simple_dual_port_spec.generate_hardware()
     simple_dual_port_spec.extract_compiler_information()
-    simple_dual_port_spec.get_verilog()
+
+    # output this to the inputs thing
+    simple_dual_port_spec.get_verilog(output_dir=output_dir_verilog)
 
     # Define the test
     lt = get_linear_test()
@@ -130,8 +140,12 @@ def test_linear_read_write_sp_wf():
     # Convert the number to a hexadecimal string
     hex_string = hex(bs)[2:]  # Remove the '0x' prefix
 
-    # Write the hexadecimal string to a file
-    with open('number_in_hex.txt', 'w') as file:
+    bs_output_path = os.path.join(output_dir, "inputs", "bitstream.bs")
+
+    print(f"bitstream path {bs_output_path}")
+
+    # Write the hexadecimal string to the input folders
+    with open(bs_output_path, 'w') as file:
         file.write(hex_string)
 
 
@@ -153,5 +167,5 @@ if __name__ == "__main__":
     hw_test_dir = prepare_hw_test()
     print(f"Put hw test at {hw_test_dir}")
 
-
-    test_linear_read_write_sp_wf()
+    test_linear_read_write_sp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
+                                 physical=args.physical, vec_width=args.vec_width)
