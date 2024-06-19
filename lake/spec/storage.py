@@ -54,7 +54,7 @@ class SingleBankStorage(Storage):
     def create_interface(self):
 
         # For those with actual tech maps
-        self.use_physical = self.parameter("use_physical", 1)
+        # self.use_physical = self.parameter("use_physical", 1)
         # Loop through the memory ports and create the proper signals - only need a few signals
         # for pnum, port in enumerate(self.mem_ports):
         #     local_memport_set = {}
