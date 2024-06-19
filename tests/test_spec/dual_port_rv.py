@@ -63,39 +63,39 @@ def get_linear_test():
     linear_test = {}
 
     linear_test[0] = {
-                        'type': Direction.IN,
-                        'name': 'write_port_0',
-                        'config': {
-                            'dimensionality': 1,
-                            'extents': [64],
-                            'address': {
-                                'strides': [1],
-                                'offset': 0
-                            },
-                            'schedule': {
-                                'strides': [1],
-                                'offset': 0
-                            }
-                        }
-                     }
+        'type': Direction.IN,
+        'name': 'write_port_0',
+        'config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1],
+                'offset': 0
+            }
+        }
+    }
 
     linear_test[1] = {
-                        'type': Direction.OUT,
-                        'name': 'read_port_0',
-                        'config': {
-                            'dimensionality': 1,
-                            'extents': [64],
-                            'address': {
-                                'strides': [1],
-                                'offset': 0
-                            },
-                            'schedule': {
-                                'strides': [1],
-                                'offset': 16
-                            }
-                        }
-                     }
-    
+        'type': Direction.OUT,
+        'name': 'read_port_0',
+        'config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1],
+                'offset': 16
+            }
+        }
+    }
+
     return linear_test
 
 
@@ -127,6 +127,7 @@ def test_linear_read_write():
     # Write the hexadecimal string to a file
     with open('number_in_hex.txt', 'w') as file:
         file.write(hex_string)
+
 
 if __name__ == "__main__":
 

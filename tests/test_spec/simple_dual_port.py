@@ -12,12 +12,12 @@ import os as os
 import argparse
 
 
-def build_simple_dual_port(storage_capacity: int = 1024, dims: int = 6) -> Spec:
+def build_simple_dual_port(storage_capacity: int = 1024, data_width=16, dims: int = 6) -> Spec:
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=16, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=16, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 
@@ -33,7 +33,8 @@ def build_simple_dual_port(storage_capacity: int = 1024, dims: int = 6) -> Spec:
     ls.register(out_id, out_ag, out_sg)
 
     # 1024 Bytes
-    stg = SingleBankStorage(capacity=storage_capacity, tech_map=GF_Tech_Map(depth=storage_capacity / 2, width=16, dual_port=True))
+    data_bytes = data_width // 8
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True))
     wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
     rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=1)
     ls.register(stg, wr_mem_port, rd_mem_port, stg)
@@ -67,39 +68,39 @@ def get_linear_test():
     linear_test = {}
 
     linear_test[0] = {
-                        'type': Direction.IN,
-                        'name': 'write_port_0',
-                        'config': {
-                            'dimensionality': 1,
-                            'extents': [64],
-                            'address': {
-                                'strides': [1],
-                                'offset': 0
-                            },
-                            'schedule': {
-                                'strides': [1],
-                                'offset': 0
-                            }
-                        }
-                     }
+        'type': Direction.IN,
+        'name': 'write_port_0',
+        'config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1],
+                'offset': 0
+            }
+        }
+    }
 
     linear_test[1] = {
-                        'type': Direction.OUT,
-                        'name': 'read_port_0',
-                        'config': {
-                            'dimensionality': 1,
-                            'extents': [64],
-                            'address': {
-                                'strides': [1],
-                                'offset': 0
-                            },
-                            'schedule': {
-                                'strides': [1],
-                                'offset': 16
-                            }
-                        }
-                     }
-    
+        'type': Direction.OUT,
+        'name': 'read_port_0',
+        'config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1],
+                'offset': 16
+            }
+        }
+    }
+
     return linear_test
 
 
@@ -146,20 +147,14 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024):
     with open(bs_output_path, 'w') as file:
         file.write(hex_string)
 
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Simple Dual Port')
-    parser.add_argument("-f",
-                        help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for")
-    parser.add_argument("--fetch_width", type=int, default=4)
+    parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
-    parser.add_argument("--banks", type=int, default=1)
-    parser.add_argument("--dual_port", action="store_true")
-    parser.add_argument("--fifo_mode", action="store_true")
-    parser.add_argument("--stencil_valid", action="store_true")
-    parser.add_argument("--rf", action="store_true")
-    parser.add_argument("--tech", type=str, default="Intel")
-
+    parser.add_argument("--tech", type=str, default="GF")
+    parser.add_argument("--physical", action="store_true")
 
     args = parser.parse_args()
 
