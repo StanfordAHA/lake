@@ -4,11 +4,14 @@ from lake.utils.spec_enum import Runtime, Direction, MemoryPortType
 from lake.spec.address_generator import AddressGenerator
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator
-from lake.spec.storage import SingleBankStorage, Storage
+from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
+from lake.utils.util import prepare_hw_test
+from lake.top.tech_maps import GF_Tech_Map
+import argparse
 
 
-def build_single_port_wide_fetch(dims: int = 6, width=4) -> Spec:
+def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, width=4) -> Spec:
 
     ls = Spec()
 
@@ -31,7 +34,8 @@ def build_single_port_wide_fetch(dims: int = 6, width=4) -> Spec:
     ls.register(out_id, out_ag, out_sg)
 
     # 1024 Bytes
-    stg = SingleBankStorage(capacity=1024)
+    data_bytes = data_width // 8
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=False))
     wr_mem_port = MemoryPort(data_width=dw * width, mptype=MemoryPortType.W, delay=1)
     rd_mem_port = MemoryPort(data_width=dw * width, mptype=MemoryPortType.R, delay=1)
     ls.register(stg, wr_mem_port, rd_mem_port, stg)
@@ -133,12 +137,21 @@ def test_linear_read_write_sp_wf():
 
 if __name__ == "__main__":
 
-    print("Hello")
+    parser = argparse.ArgumentParser(description='Simple Dual Port')
+    parser.add_argument("--storage_capacity", type=int, default=1024)
+    parser.add_argument("--data_width", type=int, default=16)
+    parser.add_argument("--vec_width", type=int, default=4)
+    parser.add_argument("--tech", type=str, default="GF")
+    parser.add_argument("--physical", action="store_true")
 
-    # simple_dual_port_spec = build_simple_dual_port()
-    # simple_dual_port_spec.visualize_graph()
-    # simple_dual_port_spec.generate_hardware()
-    # simple_dual_port_spec.extract_compiler_information()
-    # simple_dual_port_spec.get_verilog()
+    args = parser.parse_args()
+
+    print("Preparing hardware test")
+
+    # argparser
+
+    hw_test_dir = prepare_hw_test()
+    print(f"Put hw test at {hw_test_dir}")
+
 
     test_linear_read_write_sp_wf()

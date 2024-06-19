@@ -4,7 +4,7 @@ from lake.utils.spec_enum import Runtime, Direction, MemoryPortType
 from lake.spec.address_generator import AddressGenerator
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator
-from lake.spec.storage import SingleBankStorage, Storage
+from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
 from lake.utils.util import prepare_hw_test
 from lake.top.tech_maps import GF_Tech_Map
@@ -12,7 +12,7 @@ import os as os
 import argparse
 
 
-def build_simple_dual_port(storage_capacity: int = 1024, data_width=16, dims: int = 6) -> Spec:
+def build_simple_dual_port(storage_capacity: int = 1024, data_width=16, dims: int = 6, physical=False) -> Spec:
 
     ls = Spec()
 
@@ -34,7 +34,12 @@ def build_simple_dual_port(storage_capacity: int = 1024, data_width=16, dims: in
 
     # 1024 Bytes
     data_bytes = data_width // 8
-    stg = SingleBankStorage(capacity=storage_capacity, tech_map=GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True))
+
+    tech_map = None
+    if physical:
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True)
+
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
     wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
     rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=1)
     ls.register(stg, wr_mem_port, rd_mem_port, stg)
@@ -104,7 +109,7 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write(output_dir=None, storage_capacity=1024):
+def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, physical=False):
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -115,7 +120,7 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024):
 
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
-    simple_dual_port_spec = build_simple_dual_port(storage_capacity=storage_capacity)
+    simple_dual_port_spec = build_simple_dual_port(storage_capacity=storage_capacity, data_width=data_width, physical=physical)
     simple_dual_port_spec.visualize_graph()
     simple_dual_port_spec.generate_hardware()
     simple_dual_port_spec.extract_compiler_information()
@@ -155,7 +160,6 @@ if __name__ == "__main__":
     parser.add_argument("--data_width", type=int, default=16)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
-
     args = parser.parse_args()
 
     print("Preparing hardware test")
@@ -165,10 +169,5 @@ if __name__ == "__main__":
     hw_test_dir = prepare_hw_test()
     print(f"Put hw test at {hw_test_dir}")
 
-    # simple_dual_port_spec = build_simple_dual_port()
-    # simple_dual_port_spec.visualize_graph()
-    # simple_dual_port_spec.generate_hardware()
-    # simple_dual_port_spec.extract_compiler_information()
-    # simple_dual_port_spec.get_verilog()
-
-    test_linear_read_write(output_dir=hw_test_dir)
+    test_linear_read_write(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
+                           physical=args.physical)
