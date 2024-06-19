@@ -27,7 +27,7 @@ class Port(Component):
         self._direction = direction
         self._fw = self._int_data_width // self._ext_data_width
         if self._fw != 1:
-            assert self._vec_capacity is not None
+            assert vec_capacity is not None
         self._vec_capacity = vec_capacity
 
     def gen_hardware(self, pos_reset=False):

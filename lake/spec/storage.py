@@ -202,9 +202,6 @@ class SingleBankStorage(Storage):
 
         self.create_interface()
 
-        print("MEKEKEKEKEKEK")
-        print(self.memport_sets)
-
         self.realize_hw()
         return self.memport_sets
 
@@ -217,7 +214,7 @@ class SingleBankStorage(Storage):
         self.tech_map_provided = True
 
     def realize_hw(self):
-        if False:
+        if self.tech_map is None:
             self.create_simulatable_memory()
         else:
             assert self.tech_map is not None, f"Need to provide tech map for macro realization"
@@ -230,11 +227,6 @@ class SingleBankStorage(Storage):
         pass
 
     def get_ports(self):
-        print("showing memory ports")
-        print(self.memory_ports)
-        for mp in self.memory_ports:
-            print(mp.get_type())
-            print(mp.get_name())
         return self.memory_ports
 
     def get_num_ports(self):
@@ -247,11 +239,7 @@ class SingleBankStorage(Storage):
         self._build_array()
         # Give each memory port an interface into the memory
 
-        print("HELLO")
-        print(self.memory_ports)
-        print("HELLO2")
         for pnum, mem_port in enumerate(self.memory_ports):
-            print("HERE MAX")
             local_memport_set = self.memport_sets[pnum]
             # Get the memoryport information
             mp_width = mem_port.get_width()
@@ -276,8 +264,6 @@ class SingleBankStorage(Storage):
                 data = local_memport_set['read_data']
                 en = local_memport_set['read_en']
 
-                print("Hooking up read data")
-
                 @always_ff((posedge, "clk"))
                 def materialize_r(self):
                     if en:
@@ -289,13 +275,6 @@ class SingleBankStorage(Storage):
                 tmp_intf = self.var(f"mem_intf_w_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
                 self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=1)
-                # addr = self.input(f"memory_port_{mp_num}_write_addr", addr_width)
-                # data = self.input(f"memory_port_{mp_num}_write_data", mp_width)
-                # en = self.input(f"memory_port_{mp_num}_write_en", 1)
-                # local_memport_set['type'] = MemoryPortType.W
-                # local_memport_set['addr'] = addr
-                # local_memport_set['write_data'] = data
-                # local_memport_set['write_en'] = en
 
                 addr = local_memport_set['addr']
                 data = local_memport_set['write_data']
@@ -317,16 +296,6 @@ class SingleBankStorage(Storage):
                 self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=1)
                 # addr = self.input(f"memory_port_{mp_num}_read_addr", addr_width)
                 # wdata = self.input(f"memory_port_{mp_num}_write_data", mp_width)
-                # rdata = self.output(f"memory_port_{mp_num}_read_data", mp_width)
-                # wen = self.input(f"memory_port_{mp_num}_write_en", 1)
-                # ren = self.input(f"memory_port_{mp_num}_read_en", 1)
-                # local_memport_set['type'] = MemoryPortType.RW
-                # local_memport_set['addr'] = addr
-                # local_memport_set['read_data'] = rdata
-                # local_memport_set['write_data'] = wdata
-                # local_memport_set['read_en'] = ren
-                # local_memport_set['write_en'] = wen
-
                 addr = local_memport_set['addr']
                 wdata = local_memport_set['write_data']
                 rdata = local_memport_set['read_data']
@@ -410,8 +379,6 @@ class SingleBankStorage(Storage):
         p_pint = physical.get_port_interface()
         # Just wire things through for this...
         self.wire(self._clk, p_pint['clk'])
-        print(l_pint)
-        print(p_pint)
         self.wire(l_pint['read_data'], p_pint['read_data'])
         self.wire(l_pint['addr'], p_pint['addr'])
         if physical.get_active_low():
@@ -429,7 +396,6 @@ class SingleBankStorage(Storage):
         self.wire(self._clk, p_pint['clk'])
         self.wire(l_pint['data_out'], p_pint['data_out'])
         self.wire(l_pint['data_in'], p_pint['data_in'])
-        print(p_pint)
         self.wire(kts.ternary(l_pint['write_enable'],
                               l_pint['write_addr'],
                               l_pint['read_addr']), p_pint['addr'])
@@ -459,8 +425,6 @@ class SingleBankStorage(Storage):
         l_pint = self.memport_sets[port_idx]
         p_pint = physical.get_port_interface()
         # Just wire things through for this...
-        print(l_pint)
-        print(p_pint)
         self.wire(self._clk, p_pint['clk'])
         self.wire(l_pint['write_data'], p_pint['write_data'])
         self.wire(l_pint['addr'], p_pint['addr'])
@@ -493,9 +457,6 @@ class SingleBankStorage(Storage):
 
         # Create physical ports to map the logical ports into
         for (idx, port) in enumerate(self.get_ports()):
-            print('phy loop')
-            print(port.get_name())
-            print(port.get_type())
             new_phys_port = PhysicalMemoryPort(port.get_type(), delay=1, active_read=True,
                                                active=self.tech_map['active'], port_map=port_maps[idx])
             self.physical_ports.append(new_phys_port)
@@ -572,8 +533,6 @@ class PhysicalMemoryStub(kts.Generator):
 
     def create_interface(self):
 
-        print(self.mem_depth)
-        # exit()
         # Create the port interfaces - clocks belong here now since there are actually clocks
         for port in self.get_ports():
             port_intf = port.get_port_interface()

@@ -12,12 +12,12 @@ import argparse
 import os
 
 
-def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4) -> Spec:
+def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 
@@ -32,9 +32,13 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     ls.register(in_id, in_ag, in_sg)
     ls.register(out_id, out_ag, out_sg)
 
+    tech_map = None
+    if physical:
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True)
+
     # 1024 Bytes
     data_bytes = data_width // (8 * vec_width)
-    stg = SingleBankStorage(capacity=storage_capacity, tech_map=GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False))
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
     wr_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.W, delay=1)
     rd_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=1)
     ls.register(stg, wr_mem_port, rd_mem_port, stg)
