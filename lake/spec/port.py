@@ -45,11 +45,11 @@ class Port(Component):
                 self.wire(data_from_ub, data_to_memport)
 
             else:
-                # For the write port with a wide fetch, we need 
+                # For the write port with a wide fetch, we need
                 # storage and memory ports for SIPO, ID, AG, SG (original size + 1) on the front
                 # Capacity of the storage will be w.r.t. external data width
                 self._sipo_strg = SingleBankStorage(capacity=self._vec_capacity)
-                self,_id_ext = IterationDomain(dimensionality=6)
+                self._id_ext = IterationDomain(dimensionality=6)
                 # 2xAG between for read of SIPO and Write of SRAM, ID, SG of original size
 
         elif self._direction == Direction.OUT:

@@ -1,11 +1,17 @@
 from lake.spec.component import Component
 from lake.utils.spec_enum import *
 from kratos import clog2
+import kratos as kts
+
+
+class MemoryPortExclusionAttr(kts.Attribute):
+    def __init__(self):
+        super().__init__()
 
 
 class MemoryPort(Component):
 
-    def __init__(self, data_width=16, mptype=MemoryPortType.R, delay=0):
+    def __init__(self, data_width=16, mptype=MemoryPortType.R, delay=0, active_read=True):
         super().__init__()
         self.width = data_width
         self.mptype = mptype
@@ -14,9 +20,34 @@ class MemoryPort(Component):
         self.num_addrs = None
         self.addr_width = None
         self.hw_genned = False
+        # This is this ^
+        # self.port_interface_set = False
+
+        self.delay = delay
+        self.active_read = active_read
+
+        self.port_interface = {}
+        self.port_interface_set = False
+
+    def __str__(self):
+        conn_str = ""
+        for (name, conn) in self._port_intf.items():
+            if conn is None:
+                conn_str += f"conn: {name}, DISCONNECTED\n"
+            else:
+                conn_str += f"conn: {name}, {conn.name}\n"
+        return f"Port: Type: {self.get_type()}, conns:\n{conn_str}"
+
+    def set_num_addrs(self, num_addrs):
+        self.num_addrs = num_addrs
 
     def get_num_addrs(self):
         return self.num_addrs
+
+    def get_port_interface(self):
+        if self.port_interface_set is False:
+            self.create_port_interface()
+        return self.port_interface
 
     def gen_hardware(self, pos_reset=False, storage_node=None):
 
@@ -131,6 +162,15 @@ class MemoryPort(Component):
     def get_hw_genned(self):
         return self.hw_genned
 
+    def get_port_delay(self):
+        return self.delay
+
+    def get_active_read(self):
+        if self.mpt == MemoryPortType.WRITE:
+            return False
+        else:
+            return self.active_read
+
 
 class ReadMemoryPort(MemoryPort):
 
@@ -166,3 +206,75 @@ class ReadWriteMemoryPort(MemoryPort):
 
     def gen_bitstream(self):
         return super().gen_bitstream()
+
+
+class PhysicalMemoryPort(MemoryPort):
+    def __init__(self, mptype: MemoryPortType, delay, active_read, active='low', port_map=None):
+        super().__init__(mptype=mptype, delay=delay, active_read=active_read)
+        # Capture alternate inputs for testing commonly used in these memories.
+        self.alt_sigs = None
+        if 'alt_sigs' in port_map:
+            self.alt_sigs = port_map['alt_sigs']
+        self.active_low = active == 'low'
+        self.port_map = port_map
+
+    def get_active_low(self):
+        '''
+        Lets us know if we need to do active low for the physical map
+        '''
+        return self.active_low
+
+    def create_port_interface(self):
+        # Unlike the virtual memory port, the physical memory port needs an inherent mapping
+        # between the "logical" view of the physical ports and the actual names.
+        assert self.port_map is not None, f"Need to provide port map first..."
+
+        print("Printing self port map")
+        print(self.port_map)
+
+        if self.mptype == MemoryPortType.R:
+            self.port_interface['read_data'] = self.port_map['read_data']
+            # self.port_interface['read_addr'] = self.port_map['read_addr']
+            self.port_interface['addr'] = self.port_map['addr']
+            self.port_interface['cen'] = self.port_map['cen']
+            self.port_interface['clk'] = self.port_map['clk']
+            self.port_interface_set = True
+        elif self.mptype == MemoryPortType.W:
+            self.port_interface['write_data'] = self.port_map['write_data']
+            self.port_interface['addr'] = self.port_map['addr']
+            self.port_interface['write_en'] = self.port_map['write_en']
+            self.port_interface['cen'] = self.port_map['cen']
+            self.port_interface['clk'] = self.port_map['clk']
+            self.port_interface_set = True
+        elif self.mptype == MemoryPortType.RW:
+            self.port_interface['write_data'] = self.port_map['write_data']
+            self.port_interface['read_data'] = self.port_map['read_data']
+            self.port_interface['write_en'] = self.port_map['write_en']
+            self.port_interface['addr'] = self.port_map['addr']
+
+            # Check for read_enable as well
+            if 'read_enable' in self.port_map:
+                self.port_interface['read_enable'] = self.port_map['read_enable']
+            else:
+                self.port_interface['cen'] = self.port_map['cen']
+            self.port_interface['clk'] = self.port_map['clk']
+            self.port_interface_set = True
+        else:
+            assert False, "Memory port has illegal interface"
+
+        # Add in the alternate signals - usually setting to a specific value
+        if self.alt_sigs is not None:
+            for signal in self.alt_sigs:
+                # (val, width) tuples
+                self.port_interface[signal] = self.alt_sigs[signal]
+
+    def set_port_map(self, port_map):
+        self.port_map = port_map
+        if 'alt_sigs' in port_map:
+            self.alt_sigs = port_map['alt_sigs']
+
+    def get_port_map(self):
+        return self.port_map
+
+    def get_alt_signals(self):
+        return self.alt_sigs

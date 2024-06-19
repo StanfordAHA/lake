@@ -21,3 +21,6 @@ class MemoryPortType(Enum):
     R = 0
     W = 1
     RW = 2
+    READ = 0
+    WRITE = 1
+    READWRITE = 2

@@ -113,7 +113,7 @@ class RecurrentScheduleGenerator(ScheduleGenerator):
 
     def gen_bitstream(self):
         return super().gen_bitstream()
-    
+
 
 class ReadyValidScheduleGenerator(ScheduleGenerator):
 

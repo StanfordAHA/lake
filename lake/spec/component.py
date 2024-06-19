@@ -40,7 +40,7 @@ class Component(kratos.Generator):
             If this function is not overriden in inheriting classes it will throw this error
         """
         raise NotImplementedError
-    
+
     def get_configuration(self):
         return self.configuration
 

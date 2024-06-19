@@ -7,7 +7,9 @@ from lake.spec.schedule_generator import ScheduleGenerator
 from lake.spec.storage import SingleBankStorage, Storage
 from lake.spec.memory_port import MemoryPort
 from lake.utils.util import prepare_hw_test
+from lake.top.tech_maps import GF_Tech_Map
 import os as os
+import argparse
 
 
 def build_simple_dual_port(storage_capacity: int = 1024, dims: int = 6) -> Spec:
@@ -31,7 +33,7 @@ def build_simple_dual_port(storage_capacity: int = 1024, dims: int = 6) -> Spec:
     ls.register(out_id, out_ag, out_sg)
 
     # 1024 Bytes
-    stg = SingleBankStorage(capacity=storage_capacity)
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=GF_Tech_Map(depth=storage_capacity / 2, width=16, dual_port=True))
     wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
     rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=1)
     ls.register(stg, wr_mem_port, rd_mem_port, stg)
@@ -145,6 +147,21 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024):
         file.write(hex_string)
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description='Simple Dual Port')
+    parser.add_argument("-f",
+                        help="optional: will generate verilog, annotation file, and dim to strides/range mapping collateral to solve a formal problem. must provide module to solve for")
+    parser.add_argument("--fetch_width", type=int, default=4)
+    parser.add_argument("--data_width", type=int, default=16)
+    parser.add_argument("--banks", type=int, default=1)
+    parser.add_argument("--dual_port", action="store_true")
+    parser.add_argument("--fifo_mode", action="store_true")
+    parser.add_argument("--stencil_valid", action="store_true")
+    parser.add_argument("--rf", action="store_true")
+    parser.add_argument("--tech", type=str, default="Intel")
+
+
+    args = parser.parse_args()
 
     print("Preparing hardware test")
 

@@ -40,7 +40,6 @@ def prepare_hw_test(base_dir: str = None):
     return final_dir
 
 
-
 def check_env():
     lake_controller_path = os.getenv("LAKE_CONTROLLERS")
     lake_stream_path = os.getenv("LAKE_STREAM")

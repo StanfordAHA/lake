@@ -4,17 +4,12 @@ from kratos.stmts import *
 import _kratos
 import math
 from lake.utils.util import register
+from lake.utils.spec_enum import MemoryPortType
 
 
 class MemoryPortExclusionAttr(kts.Attribute):
     def __init__(self):
         super().__init__()
-
-
-class MemoryPortType(Enum):
-    READ = 0
-    WRITE = 1
-    READWRITE = 2
 
 
 class MemoryPort():

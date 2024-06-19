@@ -6,12 +6,12 @@ def TSMC_Tech_Map(depth, width) -> dict:
     ports = []
 
     single_port = {
-        'data_in': 'D',
+        'write_data': 'D',
         'addr': 'A',
         'write_enable': 'WEB',
         'cen': 'CEB',
         'clk': 'CLK',
-        'data_out': 'Q',
+        'read_data': 'Q',
         'alt_sigs': {
             # value, width
             'RTSEL': (0, 2),
@@ -43,12 +43,12 @@ def SKY_Tech_Map() -> dict:
 
     # READWRITE Port
     first_port = {
-        'data_in': 'din0',
+        'write_data': 'din0',
         'addr': 'addr0',
         'write_enable': 'web0',
         'cen': 'csb0',
         'clk': 'clk0',
-        'data_out': 'dout0',
+        'read_data': 'dout0',
         'alt_sigs': {
             # value, width
             'wmask0': (2 ** 4 - 1, 4)
@@ -57,8 +57,8 @@ def SKY_Tech_Map() -> dict:
 
     # READ Port
     second_port = {
-        'data_out': 'dout1',
-        'read_addr': 'addr1',
+        'read_data': 'dout1',
+        'addr': 'addr1',
         'cen': 'csb1',
         'clk': 'clk1',
         'alt_sigs': {}
@@ -89,12 +89,12 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
     ports = []
 
     single_port = {
-        'data_in': 'D',
+        'write_data': 'D',
         'addr': 'A',
-        'write_enable': 'RDWEN',
+        'write_en': 'RDWEN',
         'cen': 'CEN',
         'clk': 'CLK',
-        'data_out': 'Q',
+        'read_data': 'Q',
         'alt_sigs': {
             # value, width
             'T_LOGIC': (0, 1),
@@ -117,10 +117,10 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
         # port RW
         'clk': 'CLK_A',
         'cen': 'CEN_A',
-        'write_enable': 'RDWEN_A',
+        'write_en': 'RDWEN_A',
         'addr': 'A_A',
-        'data_in': 'D_A',
-        'data_out': 'Q_A',
+        'write_data': 'D_A',
+        'read_data': 'Q_A',
         'alt_sigs': {
             # value, width
             'T_Q_RST_A': (0, 1),
@@ -138,11 +138,11 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
     }
 
     dual_port_p1r = {
-        # port RW
+        # port R
         'clk': 'CLK_B',
         'cen': 'CEN_B',
-        'read_addr': 'A_B',
-        'data_out': 'Q_B',
+        'addr': 'A_B',
+        'read_data': 'Q_B',
         'alt_sigs': {
             # value, width
             'T_Q_RST_B': (0, 1),
@@ -205,13 +205,13 @@ def Intel_Tech_Map(depth, width,
     assert async_reset is not None
 
     single_port = {
-        'data_in': 'din',
+        'write_data': 'din',
         'addr': 'adr',
-        'write_enable': 'wen',
-        'read_enable': 'ren',
+        'write_en': 'wen',
+        'read_en': 'ren',
         # 'cen': 'CEB',
         'clk': 'clk',
-        'data_out': 'q',
+        'read_data': 'q',
         'alt_sigs': {
             # value, width
             'fwen': (async_reset, 1),

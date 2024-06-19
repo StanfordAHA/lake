@@ -219,7 +219,7 @@ class Spec():
             mintf_ints = memintf_dec.get_mp_intf()
             for j_, mp in enumerate(memports_):
                 self._connect_memintfdec_mp(mintf_ints[j_], mp)
-            
+
             memintf_dec_p_intf = memintf_dec.get_p_intf()
             self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])
             self._final_gen.wire(assembled_port['addr'], memintf_dec_p_intf['addr'])
@@ -235,7 +235,6 @@ class Spec():
 
         self.lift_config_regs()
         self.add_flush()
-
 
     def get_verilog(self, output_dir):
         # kts.verilog(self._final_gen, filename=f"{self._name}.sv",
@@ -298,7 +297,6 @@ class Spec():
 
         for signal in signals:
             self._final_gen.wire(memport_intf[signal], strg_intf[signal])
-
 
     def clear_configuration(self):
         # Each node has a configuration range
@@ -367,5 +365,3 @@ class Spec():
         print(self.get_configuration())
 
         return self.get_config_int()
-
-
