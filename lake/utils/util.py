@@ -3,10 +3,8 @@ import kratos as kts
 from kratos import *
 import math
 import os as os
-from enum import Enum
+from lake.utils.spec_enum import MemoryPortType
 from lake.attributes.formal_attr import *
-import csv
-from pathlib import Path
 import shutil as shutil
 
 
@@ -778,6 +776,31 @@ def get_priority_encode(generator, signal):
                 prev_if = new_if
 
     return new_sig
+
+
+def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType = None,
+                               memport_intf=None, strg_intf=None):
+    if mptype == MemoryPortType.R:
+        signals = ['addr',
+                    'read_data',
+                    'read_en']
+    elif mptype == MemoryPortType.W:
+        signals = ['addr',
+                    'write_data',
+                    'write_en']
+    elif mptype == MemoryPortType.RW:
+        signals = ['addr',
+                    'read_data',
+                    'write_data',
+                    'read_en',
+                    'write_en']
+    else:
+        raise NotImplementedError
+
+    for signal in signals:
+        # generator.wire(memport_intf[signal], strg_intf[signal])
+        # self._final_gen.wire(memport_intf[signal], strg_intf[signal])
+        generator.wire(memport_intf[signal], strg_intf[signal])
 
 
 if __name__ == "__main__":

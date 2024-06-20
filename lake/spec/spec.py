@@ -12,6 +12,7 @@ import kratos as kts
 from kratos import clog2
 from typing import Tuple
 import os as os
+from lake.utils.util import connect_memoryport_storage
 
 
 class Spec():
@@ -112,6 +113,9 @@ class Spec():
                 base += node_config_size
         # Concatenate them
 
+    # @staticmethod
+    # def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType = None,
+
     def generate_hardware(self) -> None:
 
         self._final_gen = kts.Generator(name=self._name, debug=False)
@@ -129,9 +133,9 @@ class Spec():
             storage_node: Storage
             print('in storage')
             # get MemoryPorts
-            memoryports = nx.neighbors(self._hw_graph, storage_node)
+            memoryports = list(nx.neighbors(self._hw_graph, storage_node))
             storage_node.gen_hardware(pos_reset=False, memory_ports=memoryports)
-            memoryports = nx.neighbors(self._hw_graph, storage_node)
+            # memoryports = nx.neighbors(self._hw_graph, storage_node)
             # Now we have the storage generated, want to generate the memoryports hardware which will be simply
             # passthru of the port currently...
             for memoryport in memoryports:
@@ -151,7 +155,8 @@ class Spec():
                 print(mp.get_name())
                 mp.gen_hardware(pos_reset=False, storage_node=storage_node)
                 self._final_gen.add_child(f"memoryport_{i_}_storage_{j_}", mp)
-                self._connect_memoryport_storage(mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
+                # self._connect_memoryport_storage(mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
+                connect_memoryport_storage(self._final_gen, mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
                 # Connected the memory ports to the storage
 
         # Now that we have generated the memory ports and storage, we can realize
@@ -170,11 +175,14 @@ class Spec():
             # assert port_sg is not None
 
             # Connect port's data to all of the memoryports
+            id_dims = port_id.get_dimensionality()
             memports_ = self.get_memory_ports(port=port)
-            port.gen_hardware()
+            # Port needs to know about the dimensionality in case of a vectorized port to
+            # build the proper hardware within the port
             port_id.gen_hardware()
             port_ag.gen_hardware(memports_, port_id)
             port_sg.gen_hardware(port_id)
+            port.gen_hardware(dimensionality=id_dims, external_id=port_id)
 
             self._final_gen.add_child(f"port_inst_{i_}", port)
 
@@ -275,28 +283,6 @@ class Spec():
             self._final_gen.wire(mid_int['addr'], mp_port_intf['addr'])
             self._final_gen.wire(mid_int['data'], mp_port_intf['write_data'])
             self._final_gen.wire(mid_int['en'], mp_port_intf['write_en'])
-
-    def _connect_memoryport_storage(self, mptype: MemoryPortType = None,
-                                    memport_intf=None, strg_intf=None):
-        if mptype == MemoryPortType.R:
-            signals = ['addr',
-                       'read_data',
-                       'read_en']
-        elif mptype == MemoryPortType.W:
-            signals = ['addr',
-                       'write_data',
-                       'write_en']
-        elif mptype == MemoryPortType.RW:
-            signals = ['addr',
-                       'read_data',
-                       'write_data',
-                       'read_en',
-                       'write_en']
-        else:
-            raise NotImplementedError
-
-        for signal in signals:
-            self._final_gen.wire(memport_intf[signal], strg_intf[signal])
 
     def clear_configuration(self):
         # Each node has a configuration range

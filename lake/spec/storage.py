@@ -54,7 +54,7 @@ class SingleBankStorage(Storage):
     def create_interface(self):
 
         # For those with actual tech maps
-        self.use_physical = self.parameter("use_physical", 1)
+        # self.use_physical = self.parameter("use_physical", 1)
         # Loop through the memory ports and create the proper signals - only need a few signals
         # for pnum, port in enumerate(self.mem_ports):
         #     local_memport_set = {}
@@ -89,7 +89,13 @@ class SingleBankStorage(Storage):
             # Get the memoryport information
             mp_width = mem_port.get_width()
             mp_type = mem_port.get_type()
+            print("ballzak")
+            print(mem_port)
+            print(mp_width)
+            print(mp_type)
+            print(mem_port.get_name())
             num_addrs = self._capacity // (mp_width // 8)
+            print(num_addrs)
             mem_port.set_num_addrs(num_addrs)
             addr_width = clog2(num_addrs)
             # mp_width = const(mp_width, addr_width)
@@ -99,6 +105,8 @@ class SingleBankStorage(Storage):
                 # tmp_intf = self.var(f"mem_intf_r_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
                 # self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=0)
+                print("herro")
+                print(addr_width)
                 addr = self.input(f"memory_port_{pnum}_read_addr", addr_width)
                 data = self.output(f"memory_port_{pnum}_read_data", mp_width)
                 en = self.input(f"memory_port_{pnum}_read_en", 1)

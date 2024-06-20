@@ -114,7 +114,7 @@ module lake_static_tb;
 
         clk <= 1'b0;
         clk <= 1'b0;
-        rst_n <= 1'b0;
+        rst_n <= 1'b1;
         stall <= 1'b0;
         flush <= 1'b0;
         // config_config_addr <= 32'd0;
@@ -122,11 +122,11 @@ module lake_static_tb;
         // config_read <= 1'd0;
         // config_write <= 1'd0;
         stall <= 1'b1;
-        rst_n <= 1'b0;
+        rst_n <= 1'b1;
         #1;
         #5 clk ^= 1;
         #5 clk ^= 1;
-        rst_n <= 1'b1;
+        rst_n <= 1'b0;
         #5 clk ^= 1;
         #5 clk ^= 1;
         stall <= 1'b1;
@@ -159,7 +159,7 @@ module lake_static_tb;
         // end
 
         clk <= 1'b0;
-        rst_n <= 1'b0;
+        rst_n <= 1'b1;
         // config_read <= 1'd0;
         // config_write <= 1'd0;
         #5 clk ^= 1;
