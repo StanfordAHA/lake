@@ -1,15 +1,7 @@
-# TODO: Set number of vectors parameter in python file and testbench from yml
-
 name: testbench
 
 outputs:
   - testbench.sv
-  - test_vectors.txt
-  - design.args
-
-parameters:
-  testbench_name: GcdUnitTb
-  dut_name: GcdUnit_inst
 
 commands:
   - cp GcdUnitTb.sv outputs/testbench.sv

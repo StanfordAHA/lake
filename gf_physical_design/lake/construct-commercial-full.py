@@ -55,6 +55,7 @@ def construct():
   info           = Step( 'info',                           default=True )
   constraints    = Step( 'constraints',                    default=True )
   dc             = Step( 'synopsys-dc-synthesis',          default=True )
+  # dc             = Step( 'cadence-genus-synthesis',          default=True )
   iflow          = Step( 'cadence-innovus-flowsetup',      default=True )
   init           = Step( 'cadence-innovus-init',           default=True )
   power          = Step( 'cadence-innovus-power',          default=True )
@@ -74,15 +75,13 @@ def construct():
   vcs_sim        = Step( 'synopsys-vcs-sim',               default=True )
   power_est      = Step( 'synopsys-pt-power',              default=True )
   formal_verif   = Step( 'synopsys-formality-verification', default=True )
-  # gen_saif       = Step('synopsys-vcd2saif-convert', default=True)
+  gen_saif       = Step('synopsys-vcd2saif-convert', default=True)
+  pt_power_synth    = Step( this_dir + '/synopsys-ptpx-synth')
 
 
   #-----------------------------------------------------------------------
   # Modify Nodes
   #-----------------------------------------------------------------------
-
-  vcs_sim.extend_inputs(['test_vectors.txt'])
-  vcs_sim.update_params(testbench.params())
 
   verif_post_synth = formal_verif.clone()
   verif_post_synth.set_name('verif_post_synth')
@@ -119,7 +118,18 @@ def construct():
   g.add_step( power_est      )
   g.add_step( verif_post_synth )
   g.add_step( verif_post_layout )
-  # g.add_step( gen_saif    )
+  g.add_step( gen_saif    )
+  g.add_step( pt_power_synth    )
+
+  dc.extend_inputs( ['sram_tt.lib', 'sram.lef', 'sram_tt.db'] )
+  hier_steps = [ iflow, init, power, place, cts, postcts_hold, route, postroute, signoff]#, vcs_sim]
+
+  for step in hier_steps:
+    step.extend_inputs( ['sram_tt.lib', 'sram.lef'] )
+
+  vcs_sim.extend_inputs(['sram.v', 'design.v'])
+
+  pt_power_synth.extend_inputs(['sram_tt.db'])
 
   #-----------------------------------------------------------------------
   # Graph -- Add edges
@@ -143,6 +153,7 @@ def construct():
   g.connect_by_name( adk,            gdsmerge       )
   g.connect_by_name( adk,            drc            )
   g.connect_by_name( adk,            lvs            )
+  g.connect_by_name( adk,             pt_power_synth    )
 
   g.connect_by_name( rtl,            dc             )
   g.connect_by_name( rtl,            gen_sram             )
@@ -153,6 +164,11 @@ def construct():
   g.connect_by_name( dc,             power          )
   g.connect_by_name( dc,             place          )
   g.connect_by_name( dc,             cts            )
+  g.connect_by_name( dc,              pt_power_synth    ) # design.namemap
+  # g.connect_by_name( gen_saif,              dc    )
+  g.connect_by_name( gen_saif,     pt_power_synth     )
+
+  g.connect_by_name( vcs_sim,       gen_saif )
 
   g.connect_by_name( iflow,          init           )
   g.connect_by_name( iflow,          power          )
@@ -193,12 +209,13 @@ def construct():
   g.connect_by_name( lvs,            debugcalibre   )
 
   g.connect_by_name( adk,            vcs_sim        )
-  g.connect_by_name( signoff,        vcs_sim        )
-  g.connect_by_name( testbench,      vcs_sim        )
+  # g.connect_by_name( signoff,        vcs_sim        )
+  
 
   g.connect_by_name( adk,            power_est      )
   g.connect_by_name( signoff,        power_est      )
   g.connect_by_name( vcs_sim,        power_est      )
+  g.connect_by_name( gen_sram,        vcs_sim      )
 
   g.connect_by_name( gen_sram,      dc          )
   g.connect_by_name( gen_sram,      iflow          )
@@ -211,6 +228,7 @@ def construct():
   g.connect_by_name( gen_sram,      postroute      )
   g.connect_by_name( gen_sram,      postroute_hold )
   g.connect_by_name( gen_sram,      signoff        )
+  g.connect_by_name( gen_sram,     pt_power_synth     )
   # g.connect_by_name( gen_sram,      genlibdb       )
   # g.connect_by_name( gen_sram,      pt_signoff     )
   # g.connect_by_name( gen_sram,      drc            )
@@ -224,9 +242,12 @@ def construct():
 
   g.connect_by_name( adk,            verif_post_layout )
   g.connect_by_name( dc,             verif_post_layout )
-  g.connect( dc.o('design.v'), verif_post_layout.i('design.ref.v') )
+  g.connect( dc.o('design.v'), vcs_sim.i('design.v') )
+  g.connect( rtl.o('testbench.sv'), vcs_sim.i('testbench.sv') )
   g.connect( signoff.o('design.lvs.v'), verif_post_layout.i('design.impl.v') )
 
+
+  
   #-----------------------------------------------------------------------
   # Parameterize
   #-----------------------------------------------------------------------

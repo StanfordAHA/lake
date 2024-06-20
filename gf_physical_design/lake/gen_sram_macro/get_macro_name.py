@@ -20,4 +20,12 @@ if __name__ == "__main__":
     os.environ["MACRO_NAME"] = result
     print(result)
 
-    subprocess.run(["bash", "inputs/adk/gen_srams.sh", result])
+    types = ["S1DB", "S1PB", "SDPB", "R2PB"]
+    result_type = None
+
+    for type_ in types:
+      if type_ in result:
+        result_type = type_
+        break
+
+    subprocess.run(["bash", "inputs/adk/gen_srams.sh", result, result_type])

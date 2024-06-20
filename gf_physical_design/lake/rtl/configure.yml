@@ -2,6 +2,7 @@ name: rtl
 
 outputs:
   - design.v
+  - testbench.sv
 
 commands:
 
@@ -22,5 +23,7 @@ commands:
 
   - cd $CURR
   - mv $TOP/TEST/inputs/lakespec.sv outputs/design.v
+  - cp $TOP/tests/test_spec_hw/tb.sv outputs/testbench.sv
+  
   - echo $PWD
   

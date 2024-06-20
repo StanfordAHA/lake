@@ -23,7 +23,7 @@ parameters:
   # S1PB: single port high performance
   # SDPB: dual port high performance
   # R2PB: dual port reg file
-  sram_family: "S1DB"
+  sram_family: "SDPB"
   num_words: 2048
   word_size: 64
   mux_size: 8
