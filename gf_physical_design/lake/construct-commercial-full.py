@@ -29,7 +29,7 @@ def construct():
     'clock_period'   : 2000,
     'adk'            : adk_name,
     'adk_view'       : adk_view,
-    'topographical'  : False,
+    'topographical'  : True,
     'saif_instance'  : 'GcdUnitTb/GcdUnit_inst'
   }
 
@@ -53,7 +53,7 @@ def construct():
   # Default steps
 
   info           = Step( 'info',                           default=True )
-  constraints    = Step( 'constraints',                    default=True )
+  constraints    = Step( this_dir + '/constraints',        )
   dc             = Step( 'synopsys-dc-synthesis',          default=True )
   # dc             = Step( 'cadence-genus-synthesis',          default=True )
   iflow          = Step( 'cadence-innovus-flowsetup',      default=True )
