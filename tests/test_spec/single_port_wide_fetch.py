@@ -119,20 +119,20 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
 
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
-    simple_dual_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
+    simple_single_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
                                                          physical=physical, vec_width=vec_width)
-    simple_dual_port_spec.visualize_graph()
-    simple_dual_port_spec.generate_hardware()
-    simple_dual_port_spec.extract_compiler_information()
+    simple_single_port_spec.visualize_graph()
+    simple_single_port_spec.generate_hardware()
+    simple_single_port_spec.extract_compiler_information()
 
-    # output this to the inputs thing
-    simple_dual_port_spec.get_verilog(output_dir=output_dir_verilog)
+    # output this to simple_single_port_specthe inputs thing
+    simple_single_port_spec.get_verilog(output_dir=output_dir_verilog)
 
     # Define the test
     lt = get_linear_test()
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
-    bs = simple_dual_port_spec.gen_bitstream(lt)
+    bs = simple_single_port_spec.gen_bitstream(lt)
 
     print('final bs')
     print(bs)

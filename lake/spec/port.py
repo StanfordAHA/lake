@@ -2,9 +2,11 @@ from lake.spec.component import Component
 from lake.utils.spec_enum import *
 import random as rand
 from lake.spec.address_generator import AddressGenerator
+from lake.spec.memory_port import MemoryPort
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator
 from lake.spec.storage import SingleBankStorage, Storage
+from lake.utils.util import connect_memoryport_storage
 
 
 def print_class_hierarchy(obj):
@@ -28,9 +30,25 @@ class Port(Component):
         self._fw = self._int_data_width // self._ext_data_width
         if self._fw != 1:
             assert vec_capacity is not None
+        # Vec capacity is multiplied by the wider side
         self._vec_capacity = vec_capacity
+        self.dimensionality = None
+        self._internal_step = None
 
-    def gen_hardware(self, pos_reset=False):
+    def set_dimensionality(self, dim):
+        self.dimensionality = dim
+
+    def get_internal_ag_intf(self):
+        '''Only used in a vectorization context
+        '''
+        assert self._fw != 1
+        return self._internal_ag_intf
+
+    def gen_hardware(self, pos_reset=False, dimensionality=None, external_id=None):
+
+        if dimensionality is not None:
+            self.set_dimensionality(dimensionality)
+
         if self._direction == Direction.IN:
 
             # This is the hardware for a single fetch width
@@ -45,11 +63,97 @@ class Port(Component):
                 self.wire(data_from_ub, data_to_memport)
 
             else:
+                # Cannot build the hardware without this information
+                assert self.dimensionality is not None
+                assert external_id is not None
                 # For the write port with a wide fetch, we need
                 # storage and memory ports for SIPO, ID, AG, SG (original size + 1) on the front
-                # Capacity of the storage will be w.r.t. external data width
-                self._sipo_strg = SingleBankStorage(capacity=self._vec_capacity)
-                self._id_ext = IterationDomain(dimensionality=6)
+                # Capacity of the storage will be w.r.t. wider width
+                self._clk = self.clock('clk')
+                print("vec cap")
+                print(self._vec_capacity)
+                if self._ext_data_width > self._int_data_width:
+                    storage_vec_cap = self._ext_data_width * self._vec_capacity
+                else:
+                    storage_vec_cap = self._int_data_width * self._vec_capacity
+                self._sipo_strg = SingleBankStorage(capacity=storage_vec_cap)
+                self._sipo_strg_mp_in = MemoryPort(data_width=self._ext_data_width, mptype=MemoryPortType.W)
+                self._sipo_strg_mp_out = MemoryPort(data_width=self._int_data_width, mptype=MemoryPortType.R, delay=0, active_read=False)
+
+                memports = [self._sipo_strg_mp_in, self._sipo_strg_mp_out]
+
+                self._sipo_strg.gen_hardware(memory_ports=memports)
+                self._sipo_strg_mp_in.gen_hardware(storage_node=self._sipo_strg)
+                self._sipo_strg_mp_out.gen_hardware(storage_node=self._sipo_strg)
+
+                strg_intfs = self._sipo_strg.get_memport_intfs()
+
+                self.add_child('vec_storage', self._sipo_strg, clk=self._clk)
+                self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in)
+                self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out)
+
+                connect_memoryport_storage(self, mptype=self._sipo_strg_mp_in.get_type(),
+                                           memport_intf=self._sipo_strg_mp_in.get_storage_intf(),
+                                           strg_intf=strg_intfs[0])
+                connect_memoryport_storage(self, mptype=self._sipo_strg_mp_out.get_type(),
+                                           memport_intf=self._sipo_strg_mp_out.get_storage_intf(),
+                                           strg_intf=strg_intfs[1])
+                # Generate the storage and connect the memory ports
+
+                # Now that we have built the storage and MemoryPort interfaces, we can build the extra controllers and wire them
+                # to the memory ports
+                # Input side stuff
+                self._id_ext = IterationDomain(dimensionality=self.dimensionality)
+                self._sg_ext = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
+                self._ag_ext = AddressGenerator(dimensionality=self.dimensionality)
+                # Output side stuff - don't actually need the ID, SG, can just use the ID, SG from the original spec which will be built to
+                # drive the Storage element anyway. Just need to accept a step/enable signal in from the outside anyway
+                # self._id_int = IterationDomain(dimensionality=self.dimensionality)
+                # self._sg_int = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
+
+                # id_dims = port_id.get_dimensionality()
+                # memports_ = self.get_memory_ports(port=port)
+                # Port needs to know about the dimensionality in case of a vectorized port to
+                # build the proper hardware within the port
+                # port.gen_hardware(dimensionality=id_dims)
+                self._id_ext.gen_hardware()
+                self._sg_ext.gen_hardware(self._id_ext)
+                self._ag_ext.gen_hardware(memports, self._id_ext)
+
+                # Connect the ag/sg/id together
+                self.add_child(f"port_id_ext_in", self._id_ext,
+                                        clk=self.hw_attr['clk'],
+                                        rst_n=self.hw_attr['rst_n'])
+                self.add_child(f"port_ag_ext_in", self._ag_ext,
+                                        clk=self.hw_attr['clk'],
+                                        rst_n=self.hw_attr['rst_n'])
+                self.add_child(f"port_sg_ext_in", self._sg_ext,
+                                        clk=self.hw_attr['clk'],
+                                        rst_n=self.hw_attr['rst_n'])
+
+                self.wire(self._id_ext.ports.mux_sel_out, self._ag_ext.ports.mux_sel)
+                self.wire(self._id_ext.ports.dim_counter, self._ag_ext.ports.iterators)
+
+                self.wire(self._id_ext.ports.mux_sel_out, self._sg_ext.ports.mux_sel)
+                self.wire(self._id_ext.ports.dim_counter, self._sg_ext.ports.iterators)
+
+                # Need to add the AG ports to the port interface to get connected later
+                self._ag_int = AddressGenerator(dimensionality=self.dimensionality)
+                self._ag_int.gen_hardware(memports=[self._sipo_strg_mp_out], id=external_id)
+                self._internal_ag_intf = {}
+
+                # step_tmp = self.input(f"port_vec_internal_step", 1)
+                # self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", 1)
+                # self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", 1)
+
+                self._internal_ag_intf['step'] = self.input(f"port_vec_internal_step", 1)
+                self._internal_ag_intf['mux_sel'] = self.input(f"port_vec_internal_mux_sel", self._ag_int.ports.mux_sel.width)
+                self._internal_ag_intf['iterators'] = self.input(f"port_vec_internal_dim_ctrs", self._ag_int.ports.iterators.width)
+                self.wire(self._internal_ag_intf['step'], self._ag_int.ports.step)
+                self.wire(self._internal_ag_intf['mux_sel'], self._ag_int.ports.mux_sel)
+                self.wire(self._internal_ag_intf['iterators'], self._ag_int.ports.iterators)
+                # self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", self._ag_int.ports.mux_sel.width)
+                # self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", self._ag_int.ports.iterators.width)
                 # 2xAG between for read of SIPO and Write of SRAM, ID, SG of original size
 
         elif self._direction == Direction.OUT:
@@ -64,7 +168,94 @@ class Port(Component):
                 # wire together
                 self.wire(data_from_memport, data_to_ub)
             else:
-                raise NotImplementedError
+
+                assert self.dimensionality is not None
+                assert external_id is not None
+                # For the write port with a wide fetch, we need
+                # storage and memory ports for SIPO, ID, AG, SG (original size + 1) on the front
+                # Capacity of the storage will be w.r.t. external data width2
+                print("vec cap2")
+                print(self._vec_capacity)
+                if self._ext_data_width > self._int_data_width:
+                    storage_vec_cap = self._ext_data_width * self._vec_capacity
+                else:
+                    storage_vec_cap = self._int_data_width * self._vec_capacity
+                self._sipo_strg = SingleBankStorage(capacity=storage_vec_cap)
+                self._sipo_strg_mp_in = MemoryPort(data_width=self._int_data_width, mptype=MemoryPortType.W)
+                self._sipo_strg_mp_out = MemoryPort(data_width=self._ext_data_width, mptype=MemoryPortType.R, delay=0, active_read=False)
+
+                memports = [self._sipo_strg_mp_in, self._sipo_strg_mp_out]
+
+                self._sipo_strg.gen_hardware(memory_ports=memports)
+                self._sipo_strg_mp_in.gen_hardware(storage_node=self._sipo_strg)
+                self._sipo_strg_mp_out.gen_hardware(storage_node=self._sipo_strg)
+
+                strg_intfs = self._sipo_strg.get_memport_intfs()
+
+                self.add_child('vec_storage', self._sipo_strg, clk=self._clk)
+                self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in)
+                self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out)
+
+                connect_memoryport_storage(self, mptype=self._sipo_strg_mp_in.get_type(),
+                                           memport_intf=self._sipo_strg_mp_in.get_storage_intf(),
+                                           strg_intf=strg_intfs[0])
+                connect_memoryport_storage(self, mptype=self._sipo_strg_mp_out.get_type(),
+                                           memport_intf=self._sipo_strg_mp_out.get_storage_intf(),
+                                           strg_intf=strg_intfs[1])
+                # Generate the storage and connect the memory ports
+
+                # Now that we have built the storage and MemoryPort interfaces, we can build the extra controllers and wire them
+                # to the memory ports
+                # Input side stuff
+                self._id_int = IterationDomain(dimensionality=self.dimensionality)
+                self._sg_int = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
+                self._ag_int = AddressGenerator(dimensionality=self.dimensionality)
+                # Output side stuff - don't actually need the ID, SG, can just use the ID, SG from the original spec which will be built to
+                # drive the Storage element anyway. Just need to accept a step/enable signal in from the outside anyway
+                # self._id_int = IterationDomain(dimensionality=self.dimensionality)
+                # self._sg_int = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
+
+                # id_dims = port_id.get_dimensionality()
+                # memports_ = self.get_memory_ports(port=port)
+                # Port needs to know about the dimensionality in case of a vectorized port to
+                # build the proper hardware within the port
+                # port.gen_hardware(dimensionality=id_dims)
+                self._id_int.gen_hardware()
+                self._sg_int.gen_hardware(self._id_ext)
+                self._ag_int.gen_hardware(memports, self._id_ext)
+
+                # Connect the ag/sg/id together
+                self.add_child(f"port_id_int_in", self._id_int,
+                                        clk=self.hw_attr['clk'],
+                                        rst_n=self.hw_attr['rst_n'])
+                self.add_child(f"port_ag_int_in", self._ag_int,
+                                        clk=self.hw_attr['clk'],
+                                        rst_n=self.hw_attr['rst_n'])
+                self.add_child(f"port_sg_int_in", self._sg_int,
+                                        clk=self.hw_attr['clk'],
+                                        rst_n=self.hw_attr['rst_n'])
+
+                self.wire(self._id_int.ports.mux_sel_out, self._ag_int.ports.mux_sel)
+                self.wire(self._id_int.ports.dim_counter, self._ag_int.ports.iterators)
+
+                self.wire(self._id_int.ports.mux_sel_out, self._sg_int.ports.mux_sel)
+                self.wire(self._id_int.ports.dim_counter, self._sg_int.ports.iterators)
+
+                # Need to add the AG ports to the port interface to get connected later
+                self._ag_int = AddressGenerator(dimensionality=self.dimensionality)
+                self._ag_int.gen_hardware(memports=[self._sipo_strg_mp_out], id=external_id)
+                self._internal_step = {}
+
+                # step_tmp = self.input(f"port_vec_internal_step", 1)
+                # self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", 1)
+                # self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", 1)
+
+                self._internal_step['step'] = self.input(f"port_vec_internal_step", 1)
+                self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", self._ag_int.ports.mux_sel.width)
+                self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", self._ag_int.ports.iterators.width)
+                self.wire(self._internal_step['step'], self._ag_int.ports.step)
+                self.wire(self._internal_step['mux_sel'], self._ag_int.ports.mux_sel)
+                self.wire(self._internal_step['iterators'], self._ag_int.ports.iterators)
 
         else:
             raise NotImplementedError

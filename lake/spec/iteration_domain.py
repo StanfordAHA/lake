@@ -12,6 +12,9 @@ class IterationDomain(Component):
         self.dimensionality_support = dimensionality
         self.extent_width = extent_width
 
+    def get_dimensionality(self):
+        return self.dimensionality_support
+
     def gen_bitstream(self, dimensionality, extents):
         # idk
         self.configure(self._dimensionality, dimensionality)
