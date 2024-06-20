@@ -1,5 +1,5 @@
 `timescale 1ns/1ns
-module lake_static_tb;
+module tb;
 
     parameter DATA_WIDTH = 16;
 
