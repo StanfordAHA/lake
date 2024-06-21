@@ -44,15 +44,16 @@ class MemoryPort(Component):
     def get_num_addrs(self):
         return self.num_addrs
 
-    def get_port_interface(self):
-        if self.port_interface_set is False:
-            self.create_port_interface()
-        return self.port_interface
+    # def get_port_interface(self):
+    #     if self.port_interface_set is False:
+    #         self.create_port_interface()
+    #     return self.port_interface
 
     def gen_hardware(self, pos_reset=False, storage_node=None):
 
         assert storage_node is not None
         # Extract info from storage node
+        # Num addrs is capacity of storage in bytes / (bitwidth of interface / 8 to get bytes)
         self.num_addrs = storage_node.get_capacity() // (self.width // 8)
         self.addr_width = clog2(self.num_addrs)
 

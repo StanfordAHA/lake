@@ -89,13 +89,7 @@ class SingleBankStorage(Storage):
             # Get the memoryport information
             mp_width = mem_port.get_width()
             mp_type = mem_port.get_type()
-            print("ballzak")
-            print(mem_port)
-            print(mp_width)
-            print(mp_type)
-            print(mem_port.get_name())
             num_addrs = self._capacity // (mp_width // 8)
-            print(num_addrs)
             mem_port.set_num_addrs(num_addrs)
             addr_width = clog2(num_addrs)
             # mp_width = const(mp_width, addr_width)

@@ -12,7 +12,8 @@ import os as os
 import argparse
 
 
-def build_simple_dual_port(storage_capacity: int = 1024, data_width=16, dims: int = 6, physical=False) -> Spec:
+def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
+                           dims: int = 6, clock_count_width=16, physical=False) -> Spec:
 
     ls = Spec()
 
@@ -21,11 +22,11 @@ def build_simple_dual_port(storage_capacity: int = 1024, data_width=16, dims: in
 
     ls.register(in_port, out_port)
 
-    in_id = IterationDomain(dimensionality=dims, extent_width=16)
+    in_id = IterationDomain(dimensionality=dims, extent_width=clock_count_width)
     in_ag = AddressGenerator(dimensionality=dims)
     in_sg = ScheduleGenerator(dimensionality=dims)
 
-    out_id = IterationDomain(dimensionality=dims, extent_width=16)
+    out_id = IterationDomain(dimensionality=dims, extent_width=clock_count_width)
     out_ag = AddressGenerator(dimensionality=dims)
     out_sg = ScheduleGenerator(dimensionality=dims)
 
@@ -109,7 +110,7 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, physical=False):
+def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, clock_count_width=64, physical=False):
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -158,6 +159,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple Dual Port')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
+    parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
     args = parser.parse_args()
@@ -170,4 +172,4 @@ if __name__ == "__main__":
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                           physical=args.physical)
+                           clock_count_width=args.clock_count_width, physical=args.physical)

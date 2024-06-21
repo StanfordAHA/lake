@@ -2,6 +2,7 @@
 module lake_static_tb;
 
     parameter DATA_WIDTH = 16;
+    parameter CONFIG_MEMORY_SIZE = 512;
 
     reg clk;
     reg rst_n;
@@ -20,57 +21,33 @@ module lake_static_tb;
     parameter NUM_CYCLES = 1000;
 
     // logic [63:0] bitstream [0:BITSTREAM_MAX_SIZE - 1];
-    logic [549:0] bitstream [0:0];
+    // logic [549:0] bitstream [0:0];
+    logic [CONFIG_MEMORY_SIZE - 1:0] bitstream [0:0];
     // logic [31:0] bitstream_addr [0:BITSTREAM_MAX_SIZE - 1];
     // logic [31:0] bitstream_data [0:BITSTREAM_MAX_SIZE - 1];
 
     logic [DATA_WIDTH - 1:0] port_0_data;
     logic [DATA_WIDTH - 1:0] port_1_data;
-
     logic [DATA_WIDTH - 1:0] port_0_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_1_mem [0:NUM_CYCLES - 1] ;
-    // SparseTBBuilder #(
-        
-    // ) dut (
-    //     .clk(clk),
-    //     .rst_n(rst_n),
-    //     .stall(stall),
-    //     .flush(flush),
-    //     .config_config_addr(config_config_addr),
-    //     .config_config_data(config_config_data),
-    //     .config_read(config_read),
-    //     .config_write(config_write),
-    //     .done(done),
-    //     .cycle_count(cycle_count)
-    // );
 
-    lakespec #(
-
-    ) dut (
+    lakespec dut (
         // inputs
         .clk(clk),
         .rst_n(rst_n),
         .flush(flush),
         // config
-        .config_memory_size_550(bitstream[0]),
+        .config_memory(bitstream[0]),
         // input ports
         .port_0(port_0_data),
         // output ports
         .port_1(port_1_data)
-    // input logic clk,
-    // input logic [549:0] config_memory_size_550,
-    // input logic flush,
-    // input logic [15:0] port_0,
-    // input logic rst_n,
-    // output logic [15:0] port_1
     );
 
 
     integer THIS_CYC_COUNT;
     // integer BITSTREAM_CURR_SIZE;
     // integer BITSTREAM_CURR_SIZE_CNT;
-
-
 
     string TEST_DIRECTORY; // = "/home/max/Documents/lake/number_in_hex.txt";
     string BITSTREAM_LOCATION; // = "/home/max/Documents/lake/number_in_hex.txt";
@@ -106,10 +83,6 @@ module lake_static_tb;
 
     initial begin
 
-        // $value$plusargs("BITSTREAM_SIZE=%d", BITSTREAM_CURR_SIZE);
-        // BITSTREAM_CURR_SIZE_CNT = 0;
-        // $display("BITSTREAM SIZE IS: %d", BITSTREAM_CURR_SIZE);
-
         THIS_CYC_COUNT = 0;
 
         clk <= 1'b0;
@@ -117,10 +90,6 @@ module lake_static_tb;
         rst_n <= 1'b1;
         stall <= 1'b0;
         flush <= 1'b0;
-        // config_config_addr <= 32'd0;
-        // config_config_data <= 32'd0;
-        // config_read <= 1'd0;
-        // config_write <= 1'd0;
         stall <= 1'b1;
         rst_n <= 1'b1;
         #1;
@@ -132,36 +101,8 @@ module lake_static_tb;
         stall <= 1'b1;
         #1;
 
-        // for (BITSTREAM_CURR_SIZE_CNT = 0; BITSTREAM_CURR_SIZE_CNT < BITSTREAM_CURR_SIZE; BITSTREAM_CURR_SIZE_CNT = BITSTREAM_CURR_SIZE_CNT + 1) begin
-        //     clk <= 1'b0;
-        //     rst_n <= 1'b0;
-        //     config_config_addr <= bitstream_addr[BITSTREAM_CURR_SIZE_CNT];
-        //     config_config_data <= bitstream_data[BITSTREAM_CURR_SIZE_CNT];
-        //     config_read <= 1'd0;
-        //     config_write <= 1'd1;
-        //     #5 clk ^= 1;
-        //     #5 clk ^= 1;
-        //     config_write <= 1'd0;
-        //     #1;
-        // end
-
-        // foreach (bitstream_addr[i]) begin
-        //     clk <= 1'b0;
-        //     rst_n <= 1'b0;
-        //     config_config_addr <= bitstream_addr[i];
-        //     config_config_data <= bitstream_data[i];
-        //     config_read <= 1'd0;
-        //     config_write <= 1'd1;
-        //     #5 clk ^= 1;
-        //     #5 clk ^= 1;
-        //     config_write <= 1'd0;
-        //     #1;
-        // end
-
         clk <= 1'b0;
         rst_n <= 1'b1;
-        // config_read <= 1'd0;
-        // config_write <= 1'd0;
         #5 clk ^= 1;
         #5 clk ^= 1;
         flush <= 1'b1;
@@ -195,10 +136,8 @@ module lake_static_tb;
             port_1_mem[THIS_CYC_COUNT] = port_1_data;
         end
 
-
         OUTPUT_LOCATION = $sformatf("%s/outputs/port_1_output.txt", TEST_DIRECTORY);
         $writememh(OUTPUT_LOCATION, port_1_mem);
-        // $writememh("/home/max/Documents/lake/port_1_output.txt", port_1_mem);
 
         #20 $finish;
     end

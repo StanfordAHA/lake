@@ -30,6 +30,7 @@ class Spec():
         self._config_bases = []
         self.configuration = None
         self.config_int = None
+        self.total_config_size = None
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
@@ -104,7 +105,12 @@ class Spec():
             # The config bases will contain a number for each node - should match?
             self._config_bases.append(total_config_size)
             total_config_size += node.get_config_size()
-        self.config_memory = self._final_gen.input(name=f"config_memory_size_{total_config_size}", width=total_config_size, packed=True)
+
+        self.total_config_size = total_config_size
+
+        # self.config_memory = self._final_gen.input(name=f"config_memory", width=self._config_memory_size, packed=True)
+        # self.config_memory = self._final_gen.input(name=f"config_memory_size_{total_config_size}", width=total_config_size, packed=True)
+        self.config_memory = self._final_gen.input(name=f"config_memory", width=total_config_size, packed=True)
         base = 0
         for node in self._hw_graph.nodes:
             cfgspc = node.get_config_space()
@@ -119,6 +125,7 @@ class Spec():
     def generate_hardware(self) -> None:
 
         self._final_gen = kts.Generator(name=self._name, debug=False)
+        # self._config_memory_size = self._final_gen.parameter('CFG_SIZE', initial_value=1)
 
         # self._final_gen.clk = self._final_gen.clock("clk")
 
@@ -184,7 +191,9 @@ class Spec():
             port_sg.gen_hardware(port_id)
             port.gen_hardware(dimensionality=id_dims, external_id=port_id)
 
-            self._final_gen.add_child(f"port_inst_{i_}", port)
+            self._final_gen.add_child(f"port_inst_{i_}", port,
+                                      clk=self.hw_attr['clk'],
+                                      rst_n=self.hw_attr['rst_n'])
 
             # Connect the ag/sg/id together
             self._final_gen.add_child(f"port_id_{i_}", port_id,
@@ -197,15 +206,22 @@ class Spec():
                                       clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
 
-            self._final_gen.wire(port_id.ports.mux_sel_out, port_ag.ports.mux_sel)
-            self._final_gen.wire(port_id.ports.dim_counter, port_ag.ports.iterators)
+            self._final_gen.wire(port_id.ports.mux_sel, port_ag.ports.mux_sel)
+            self._final_gen.wire(port_id.ports.iterators, port_ag.ports.iterators)
 
-            self._final_gen.wire(port_id.ports.mux_sel_out, port_sg.ports.mux_sel)
-            self._final_gen.wire(port_id.ports.dim_counter, port_sg.ports.iterators)
+            self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
+            self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
             # step signal
             self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
             self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
+
+            # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
+            if port.get_fw() > 1:
+                ext_intf = port.get_internal_ag_intf()
+                self._final_gen.wire(ext_intf['step'], port_sg.ports.step)
+                self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
+                self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
 
             # Gen the hardware for each, assemble the signals
             assembled_port = {}
@@ -213,9 +229,6 @@ class Spec():
             assembled_port['data'] = port.get_mp_intf()['data']
             assembled_port['addr'] = port_ag.get_address()
             assembled_port['en'] = port_sg.get_step()
-
-            print('i is asdasdas')
-            print(i_)
 
             # send signals through memintf decoder (one port to many memoryports, doing decoding based on address)
             memintf_dec = MemoryInterfaceDecoder(name=f"memintfdec_{i_}", port_type=port.get_direction(),
@@ -312,6 +325,9 @@ class Spec():
     def get_config_int(self):
         return self.config_int
 
+    def get_total_config_size(self):
+        return self.total_config_size
+
     def gen_bitstream(self, application):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
            There may be other information that needs to go into the configuration, but that could be in the object hierarchy
@@ -326,7 +342,9 @@ class Spec():
         # Each piece in the application is a port
         for port_num, maps in application.items():
             # Get the port and associated controllers
-            port = self.get_node_from_idx(port_num)
+            port: Port = self.get_node_from_idx(port_num)
+
+            port_vec = port.get_fw() != 1
 
             port_name = maps['name']
             print(f"Configuring the port named: {port_name}")
@@ -335,6 +353,12 @@ class Spec():
             addr_map = port_config['address']
             sched_map = port_config['schedule']
             port_id, port_ag, port_sg = self.get_port_controllers(port=port)
+
+            # Get the configuration for the Port's internal controllers if vectorized
+            if port_vec:
+                port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'], vec_out=maps['vec_out_config'])
+                self.configure(port, port_bs)
+
             id_bs = port_id.gen_bitstream(port_config['dimensionality'], port_config['extents'])
             ag_bs = port_ag.gen_bitstream(addr_map)
             sg_bs = port_sg.gen_bitstream(sched_map)
@@ -343,8 +367,6 @@ class Spec():
             self.configure(port_id, id_bs)
             self.configure(port_ag, ag_bs)
             self.configure(port_sg, sg_bs)
-
-        print(5 << 1)
 
         self.create_config_int()
 

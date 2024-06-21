@@ -32,12 +32,12 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     ls.register(in_id, in_ag, in_sg)
     ls.register(out_id, out_ag, out_sg)
 
+    data_bytes = data_width // (8 * vec_width)
     tech_map = None
     if physical:
         tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True)
 
     # 1024 Bytes
-    data_bytes = data_width // (8 * vec_width)
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
     wr_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.W, delay=1)
     rd_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=1)
@@ -85,6 +85,30 @@ def get_linear_test():
                 'strides': [1],
                 'offset': 0
             }
+        },
+        'vec_in_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1],
+                'offset': 0
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1],
+                'offset': 0
+            }
         }
     }
 
@@ -92,6 +116,30 @@ def get_linear_test():
         'type': Direction.OUT,
         'name': 'read_port_0',
         'config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1],
+                'offset': 16
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1],
+                'offset': 16
+            }
+        },
+        'vec_out_config': {
             'dimensionality': 1,
             'extents': [64],
             'address': {
