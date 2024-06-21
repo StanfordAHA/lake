@@ -153,6 +153,14 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     with open(bs_output_path, 'w') as file:
         file.write(hex_string)
 
+    # Write out the preprocessor args to inputs
+    cfgsz_output_path = os.path.join(output_dir, "inputs", "comp_args.txt")
+    config_size = simple_dual_port_spec.get_total_config_size()
+    config_define_str = f"+define+CONFIG_MEMORY_SIZE={config_size}"
+
+    with open(cfgsz_output_path, 'w') as file:
+        file.write(config_define_str)
+
 
 if __name__ == "__main__":
 

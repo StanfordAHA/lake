@@ -152,11 +152,10 @@ UNROLL?=1
 compile: COMPILE_ARGS = $(COMPILE_RTL_ARGS)
 compile: INPUT_ARGS = $(DESIGN_FILES) $(TB_FILES) $(IP_FILES)
 compile:
-	$(COMPILE)
+	$(COMPILE) $(shell cat "./inputs/comp_args.txt")
 
 .PHONY: run
 # run: TEST_ARGS = $(TEST_DIR)/COLLAT_DIR/PARGS.txt
-# run: TMP_PARGS = $(shell cat $(TEST_ARGS))
 run:
 	$(RUN) $(DUMP_ARGS) $(RUN_ARGS) $(APP_ARGS) +TEST_DIRECTORY=./
 
