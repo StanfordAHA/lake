@@ -1,8 +1,15 @@
 `timescale 1ns/1ns
+
+
 module lake_static_tb;
 
     parameter DATA_WIDTH = 16;
+
+`ifdef CONFIG_MEMORY_SIZE
+    parameter CONFIG_MEMORY_SIZE = `CONFIG_MEMORY_SIZE;
+`else
     parameter CONFIG_MEMORY_SIZE = 512;
+`endif
 
     reg clk;
     reg rst_n;
