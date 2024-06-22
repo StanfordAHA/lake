@@ -369,7 +369,7 @@ class Port(Component):
                 external_ag_bs = self._ag_int.gen_bitstream(address_map=vec_out_addr_map)
                 external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_int])
 
-                all_bs = [internal_ag_bs, internal_sg_bs, internal_sg_bs, external_ag_bs]
+                all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
 
             elif self.get_direction() == Direction.OUT:
                 vec_in_addr_map = vec_in['address']
@@ -387,7 +387,7 @@ class Port(Component):
                 vec_out_addr_map = vec_out['address']
                 external_ag_bs = self._ag_ext.gen_bitstream(address_map=vec_out_addr_map)
                 external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_ext])
-                all_bs = [internal_ag_bs, internal_sg_bs, internal_sg_bs, external_ag_bs]
+                all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
 
             else:
                 raise NotImplementedError
