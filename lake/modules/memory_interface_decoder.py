@@ -63,8 +63,8 @@ class MemoryInterfaceDecoder(kts.Generator):
                 # The enable will be high if the address is in the range of the memport
                 self.mp_intf[i_]['en'] = 0
                 if (self.p_intf['addr'] >= base) and (self.p_intf['addr'] <= (base + addr_range - 1)):
-                    self.mp_intf[i_]['en'] = 1
-                    # self.mp_intf[i_]['en'] = self.p_intf['en']
+                    # self.mp_intf[i_]['en'] = 1
+                    self.mp_intf[i_]['en'] = self.p_intf['en']
 
             self.add_code(decode_en)
             base = base + addr_range
