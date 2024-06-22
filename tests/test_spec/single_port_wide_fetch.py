@@ -82,19 +82,19 @@ def get_linear_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
-                'offset': 0
+                'strides': [4],
+                'offset': 4
             }
         },
         'vec_in_config': {
-            'dimensionality': 1,
-            'extents': [64],
+            'dimensionality': 2,
+            'extents': [4, 64],
             'address': {
-                'strides': [1],
+                'strides': [1, 4],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
+                'strides': [1, 4],
                 'offset': 0
             }
         },
@@ -106,8 +106,8 @@ def get_linear_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
-                'offset': 0
+                'strides': [4],
+                'offset': 4
             }
         }
     }
@@ -123,7 +123,7 @@ def get_linear_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
+                'strides': [8],
                 'offset': 16
             }
         },
@@ -135,20 +135,20 @@ def get_linear_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
+                'strides': [8],
                 'offset': 16
             }
         },
         'vec_out_config': {
-            'dimensionality': 1,
-            'extents': [64],
+            'dimensionality': 2,
+            'extents': [4, 16],
             'address': {
-                'strides': [1],
+                'strides': [0, 1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
-                'offset': 16
+                'strides': [1, 4],
+                'offset': 17
             }
         }
     }
