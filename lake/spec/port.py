@@ -337,10 +337,17 @@ class Port(Component):
             raise NotImplementedError
 
         # Now lift everything's config space up
+        self.child_cfg_bases = {}
+        running_config_size = 0
         for component_ in all_to_lift:
+            # component_: Component
             lift_config_space(self, component_)
+            self.child_cfg_bases[component_] = running_config_size
+            running_config_size += component_.get_config_size()
 
     def gen_bitstream(self, vec_in=None, vec_out=None):
+
+        all_bs = []
 
         # Only generate vec bitstream if it's vecced
         if vec_in is not None or vec_out is not None:
@@ -350,15 +357,19 @@ class Port(Component):
                 vec_in_sched_map = vec_in['schedule']
                 internal_id_bs = self._id_ext.gen_bitstream(dimensionality=vec_in['dimensionality'],
                                                             extents=vec_in['extents'])
-
-                print("Internal id bs")
-                print(internal_id_bs)
                 internal_ag_bs = self._ag_ext.gen_bitstream(address_map=vec_in_addr_map)
-                # internal_sg_bs = self._sg_ext.gen_bitstream(schedule_map=vec_in_sched_map)
+                internal_sg_bs = self._sg_ext.gen_bitstream(schedule_map=vec_in_sched_map)
 
+                internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_ext])
+                internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_ext])
+                internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_ext])
+                # add on the respective base
                 # Now get the output part
                 vec_out_addr_map = vec_out['address']
                 external_ag_bs = self._ag_int.gen_bitstream(address_map=vec_out_addr_map)
+                external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_int])
+
+                all_bs = [internal_ag_bs, internal_sg_bs, internal_sg_bs, external_ag_bs]
 
             elif self.get_direction() == Direction.OUT:
                 vec_in_addr_map = vec_in['address']
@@ -368,11 +379,21 @@ class Port(Component):
                 internal_ag_bs = self._ag_int.gen_bitstream(address_map=vec_in_addr_map)
                 internal_sg_bs = self._sg_int.gen_bitstream(schedule_map=vec_in_sched_map)
 
+                internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_int])
+                internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_int])
+                internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_int])
+
                 # Now get the output part
                 vec_out_addr_map = vec_out['address']
                 external_ag_bs = self._ag_ext.gen_bitstream(address_map=vec_out_addr_map)
+                external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_ext])
+                all_bs = [internal_ag_bs, internal_sg_bs, internal_sg_bs, external_ag_bs]
+
             else:
                 raise NotImplementedError
+
+        for cfg_ in all_bs:
+            self._add_configuration_manual(config=cfg_)
 
         return self.get_configuration()
 
