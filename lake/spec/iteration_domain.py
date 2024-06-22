@@ -18,7 +18,11 @@ class IterationDomain(Component):
     def gen_bitstream(self, dimensionality, extents):
         # idk
         self.configure(self._dimensionality, dimensionality)
-        self.configure(self._extents, extents)
+
+        # Do a - 2 thing...
+        use_exts = [extent - 2 for extent in extents]
+
+        self.configure(self._extents, use_exts)
         # This will return pairs of ranges with values w.r.t. the node's configuration
         return self.get_configuration()
 
