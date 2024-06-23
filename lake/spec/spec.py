@@ -110,8 +110,6 @@ class Spec():
 
         self.total_config_size = total_config_size
 
-        # self.config_memory = self._final_gen.input(name=f"config_memory", width=self._config_memory_size, packed=True)
-        # self.config_memory = self._final_gen.input(name=f"config_memory_size_{total_config_size}", width=total_config_size, packed=True)
         self.config_memory = self._final_gen.input(name=f"config_memory", width=total_config_size, packed=True)
         base = 0
         for node in self._hw_graph.nodes:
@@ -120,9 +118,6 @@ class Spec():
                 self._final_gen.wire(self.config_memory[base + node_config_size - 1, base], signal_name_lcl)
                 base += node_config_size
         # Concatenate them
-
-    # @staticmethod
-    # def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType = None,
 
     def generate_hardware(self) -> None:
 
@@ -170,9 +165,18 @@ class Spec():
 
         # Now that we have generated the memory ports and storage, we can realize
         # the ports and supporting hardware
+
+        # Before we go into the port loop, if any of the schedule generators is dynamic (vs. static), we need to know this and collect
+        # information before genning the hardware
+        any_rv_sg = True
+        num_writes = 1
+        num_reads = 1
+
         port_nodes = self.get_nodes(Port)
         for i_, port in enumerate(port_nodes):
             port: Port
+
+            port_direction = port.get_direction()
 
             port_id, port_ag, port_sg = self.get_port_controllers(port=port)
             # Assemble the ID,AG,SG (or at least their interfaces) on the port
@@ -214,14 +218,32 @@ class Spec():
             self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
+            quali_step = port_sg.ports.step
+            # Here we need to qualify the port sg's step before sending it into the memory port, ID, SG
+            if any_rv_sg:
+                # If it is an IN Port, we need to qualify the step with the incoming data being valid
+                # as well as the grant for the MemoryPort's arbitration
+                # In this case, the step is the req line to the arbiter and the ready line to the data
+                if port_direction == Direction.IN:
+                    quali_step = self.qualify_step(port_sg, Direction.IN)
+                # If it is an OUT Port, we need to qualify the step with the grant line from the arbitration and the
+                # downstream ready
+                elif port_direction == Direction.OUT:
+                    quali_step = self.qualify_step(port_sg, Direction.OUT)
+                else:
+                    raise NotImplementedError(f"Only support {Direction.IN} and {Direction.OUT}")
+
+                # Now that we have the qualified steps to plug in everywhere, we also need to handle the 
+
+            # This is in the case of a ready/valid system
             # step signal
-            self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
+            self._final_gen.wire(quali_step, port_ag.ports.step)
             self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
 
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
                 ext_intf = port.get_internal_ag_intf()
-                self._final_gen.wire(ext_intf['step'], port_sg.ports.step)
+                self._final_gen.wire(ext_intf['step'], quali_step)
                 self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
                 self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
 
@@ -230,7 +252,10 @@ class Spec():
             assembled_port['dir'] = port.get_direction()
             assembled_port['data'] = port.get_mp_intf()['data']
             assembled_port['addr'] = port_ag.get_address()
-            assembled_port['en'] = port_sg.get_step()
+            assembled_port['en'] = quali_step
+            # assembled_port['en'] = port_sg.get_step()
+
+
 
             # send signals through memintf decoder (one port to many memoryports, doing decoding based on address)
             memintf_dec = MemoryInterfaceDecoder(name=f"memintfdec_{i_}", port_type=port.get_direction(),
