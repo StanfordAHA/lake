@@ -323,8 +323,8 @@ class Spec():
                     ens = [mid_intf['en'] for mid_intf in mid_intf_lst]
                     addrs = [mid_intf['addr'] for mid_intf in mid_intf_lst]
                     datas = [mid_intf['data'] for mid_intf in mid_intf_lst]
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_read_en", sel=sels, one=mp_port_intf['read_en'], many=ens)
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_read_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_read_en", sel=sels, one=mp_port_intf['read_en'], many=ens)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_read_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
                     # inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_read_data", sel=sels, one=mp_port_intf['read_data'], many=datas)
                     # Don't actually mux read data, just send to both outputs, might not want to in the pursuit of limiting toggling
                     [self._final_gen.wire(mp_port_intf['read_data'], datas[i]) for i in range(len(datas))]
@@ -334,9 +334,9 @@ class Spec():
                     ens = [mid_intf['en'] for mid_intf in mid_intf_lst]
                     addrs = [mid_intf['addr'] for mid_intf in mid_intf_lst]
                     datas = [mid_intf['data'] for mid_intf in mid_intf_lst]
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_write_en", sel=sels, one=mp_port_intf['write_en'], many=ens)
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_write_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_write_data", sel=sels, one=mp_port_intf['write_data'], many=datas)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_write_en", sel=sels, one=mp_port_intf['write_en'], many=ens)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_write_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_write_data", sel=sels, one=mp_port_intf['write_data'], many=datas)
 
                 elif mp_type == MemoryPortType.RW:
                     sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
@@ -388,11 +388,11 @@ class Spec():
                             self._final_gen.wire(mp_port_intf['read_data'], mid_intf['data'])
 
                     # Now finally mux the rest
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_write_en", sel=sels, one=mp_port_intf['write_en'], many=write_ens)
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_read_en", sel=sels, one=mp_port_intf['read_en'], many=read_ens)
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_write_data", sel=sels, one=mp_port_intf['write_data'], many=write_datas)
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_write_addr", sel=sels, one=mp_port_intf['write_addr'], many=write_addrs)
-                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_read_addr", sel=sels, one=mp_port_intf['read_addr'], many=read_addrs)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_rw_write_en", sel=sels, one=mp_port_intf['write_en'], many=write_ens)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_rw_read_en", sel=sels, one=mp_port_intf['read_en'], many=read_ens)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_rw_write_data", sel=sels, one=mp_port_intf['write_data'], many=write_datas)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_rw_write_addr", sel=sels, one=mp_port_intf['write_addr'], many=write_addrs)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_rw_read_addr", sel=sels, one=mp_port_intf['read_addr'], many=read_addrs)
 
                 else:
                     raise NotImplementedError
