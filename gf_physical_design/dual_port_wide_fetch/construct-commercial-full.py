@@ -66,7 +66,7 @@ def construct():
   route          = Step( 'cadence-innovus-route',          default=True )
   postroute      = Step( 'cadence-innovus-postroute',      default=True )
   postroute_hold = Step( 'cadence-innovus-postroute_hold', default=True )
-  signoff        = Step( 'cadence-innovus-signoff',        default=True )
+  signoff        = Step( this_dir + '/cadence-innovus-signoff')
   pt_signoff     = Step( 'synopsys-pt-timing-signoff',     default=True )
   genlibdb       = Step( 'synopsys-ptpx-genlibdb',         default=True )
   gdsmerge       = Step( 'mentor-calibre-gdsmerge',        default=True )
