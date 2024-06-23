@@ -1,0 +1,29 @@
+name: rtl
+
+outputs:
+  - design.v
+  - testbench.sv
+
+commands:
+
+  - export CURR=$PWD
+  - echo $CURR
+
+  - git clone https://github.com/StanfordAHA/lake/
+  - cd lake
+  - git checkout new_asplos
+  - export TOP=$PWD
+
+  - python3.7 -m venv lake_env
+  - source lake_env/bin/activate
+  - python -m pip install --upgrade pip
+  - pip install -e .
+
+  - python tests/test_spec/single_port_wide_fetch.py --physical
+
+  - cd $CURR
+  - cp $TOP/TEST/inputs/lakespec.sv outputs/design.v
+  - cp $TOP/tests/test_spec_hw/tb.sv outputs/testbench.sv
+  
+  - echo $PWD
+  
