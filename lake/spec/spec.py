@@ -12,7 +12,8 @@ import kratos as kts
 from kratos import clog2
 from typing import Tuple
 import os as os
-from lake.utils.util import connect_memoryport_storage
+from lake.utils.spec_enum import Direction
+from lake.utils.util import connect_memoryport_storage, inline_multiplexer
 
 
 class Spec():
@@ -31,6 +32,7 @@ class Spec():
         self.configuration = None
         self.config_int = None
         self.total_config_size = None
+        self.mp_to_mid = None
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
@@ -239,7 +241,8 @@ class Spec():
             # After this, need to connect the decoded ports to the actual memports
             mintf_ints = memintf_dec.get_mp_intf()
             for j_, mp in enumerate(memports_):
-                self._connect_memintfdec_mp(mintf_ints[j_], mp)
+                self.register_mid_w_mp(mid=mintf_ints[j_], mp=mp)
+                # self._connect_memintfdec_mp(mintf_ints[j_], mp)
 
             memintf_dec_p_intf = memintf_dec.get_p_intf()
             self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])
@@ -253,6 +256,9 @@ class Spec():
             elif port.get_direction() == Direction.OUT:
                 p_temp = self._final_gen.output(f"port_{i_}", width=ub_intf['data'].width)
             self._final_gen.wire(p_temp, ub_intf['data'])
+
+        # Now can build all the muxing in between the memintf and the mps
+        self.build_mp_p()
 
         self.lift_config_regs()
         self.add_flush()
@@ -283,6 +289,116 @@ class Spec():
         assert port_sg is not None
 
         return (port_id, port_ag, port_sg)
+
+    def register_mid_w_mp(self, mid, mp):
+        if self.mp_to_mid is None:
+            self.mp_to_mid = {}
+
+        if mp not in self.mp_to_mid:
+            self.mp_to_mid[mp] = [mid]
+        else:
+            self.mp_to_mid[mp].append(mid)
+
+    def build_mp_p(self, static=True):
+        ''' We have to now build the arbitration and muxes between the Ports and
+            their shared MemoryPorts - if `static` is `True`, arbitration will just be simple priority
+            encoding as that won't matter since no two controllers will access the same
+            resource on the same cycle
+        '''
+        if static:
+            for mp, mid_intf_lst in self.mp_to_mid.items():
+                # We have a memory port and a set of connections to go to it - build a mux for
+                # addr, data, en
+                num_mids = len(mid_intf_lst)
+                # Use a one-hot select line mux
+                sels = None
+                ens = None
+                addrs = None
+                data = None
+                mp_type = mp.get_type()
+                mp_port_intf = mp.get_port_intf()
+                # all_mux_pairs
+                if mp_type == MemoryPortType.R:
+                    sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                    ens = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                    addrs = [mid_intf['addr'] for mid_intf in mid_intf_lst]
+                    datas = [mid_intf['data'] for mid_intf in mid_intf_lst]
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_read_en", sel=sels, one=mp_port_intf['read_en'], many=ens)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_read_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
+                    # inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_read_data", sel=sels, one=mp_port_intf['read_data'], many=datas)
+                    # Don't actually mux read data, just send to both outputs, might not want to in the pursuit of limiting toggling
+                    [self._final_gen.wire(mp_port_intf['read_data'], datas[i]) for i in range(len(datas))]
+
+                elif mp_type == MemoryPortType.W:
+                    sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                    ens = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                    addrs = [mid_intf['addr'] for mid_intf in mid_intf_lst]
+                    datas = [mid_intf['data'] for mid_intf in mid_intf_lst]
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_write_en", sel=sels, one=mp_port_intf['write_en'], many=ens)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_write_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_write_data", sel=sels, one=mp_port_intf['write_data'], many=datas)
+
+                elif mp_type == MemoryPortType.RW:
+                    sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                    # addrs = [mid_intf['addr'] for mid_intf in mid_intf_lst]
+
+                    print("ADDRESSES")
+                    print(addrs)
+
+                    # Can build a multiplexer for the address normally
+                    # inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
+
+                    # Make a mapping from each index to the direction
+                    in_map = [mid_intf['direction'] == Direction.IN for mid_intf in mid_intf_lst]
+                    # out_map = [1 - in_map_item for in_map_item in in_map]
+                    # in_map = []
+                    # out_map = []
+                    # for i in range(len(mid_intf_lst)):
+                    #     if mid_intf_lst[i]['direction'] == Direction.IN:
+                    #         in_map.append(1)
+                    #     else:
+                    #         in_map.append(0)
+
+                    # Now with this mapping, we need to build 4 streams and mux them
+                    write_ens = []
+                    read_ens = []
+                    write_datas = []
+                    write_addrs = []
+                    read_addrs = []
+                    # read_datas = []
+
+                    for i, mid_intf in enumerate(mid_intf_lst):
+                        data_width = mid_intf['data'].width
+                        addr_width = mid_intf['addr'].width
+                        if in_map[i]:
+                            # Add in the signals, don't need to do anything about read data
+                            write_ens.append(mid_intf['en'])
+                            read_ens.append(kts.const(0, 1))
+                            write_datas.append(mid_intf['data'])
+                            write_addrs.append(mid_intf['addr'])
+                            read_addrs.append(kts.const(0, addr_width))
+                            # read_datas.append(kts.const(0, ))
+                        else:
+                            # Add in the signals, but if it's out, wire the data
+                            write_ens.append(kts.const(0, 1))
+                            read_ens.append(mid_intf['en'])
+                            write_datas.append(kts.const(0, data_width))
+                            write_addrs.append(kts.const(0, addr_width))
+                            read_addrs.append(mid_intf['addr'])
+                            self._final_gen.wire(mp_port_intf['read_data'], mid_intf['data'])
+
+                    # Now finally mux the rest
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_write_en", sel=sels, one=mp_port_intf['write_en'], many=write_ens)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_read_en", sel=sels, one=mp_port_intf['read_en'], many=read_ens)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_write_data", sel=sels, one=mp_port_intf['write_data'], many=write_datas)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_write_addr", sel=sels, one=mp_port_intf['write_addr'], many=write_addrs)
+                    inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_read_addr", sel=sels, one=mp_port_intf['read_addr'], many=read_addrs)
+
+                else:
+                    raise NotImplementedError
+
+        else:
+            raise NotImplementedError
 
     def _connect_memintfdec_mp(self, mid_int, mp):
         # Do this in a dumb way for now but add in muxing when needed.

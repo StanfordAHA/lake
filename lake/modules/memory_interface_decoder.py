@@ -20,6 +20,7 @@ class MemoryInterfaceDecoder(kts.Generator):
     def gen_hardware(self):
 
         self.p_intf = {}
+        self.p_intf['direction'] = self.port_direction
 
         # Create the port facing side
         if self.port_direction == Direction.IN:
@@ -42,6 +43,7 @@ class MemoryInterfaceDecoder(kts.Generator):
             self.addr_ranges.append((base, base + addr_range - 1))
 
             self.mp_intf[i_] = {}
+            self.mp_intf[i_]['direction'] = self.port_direction
 
             # Create the MemoryPort facing side
             self.mp_intf[i_]['addr'] = self.output(f"mp_addr_{i_}", kts.clog2(mp.get_num_addrs()))

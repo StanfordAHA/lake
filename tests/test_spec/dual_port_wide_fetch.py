@@ -12,7 +12,7 @@ import argparse
 import os
 
 
-def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
+def build_dual_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
 
     ls = Spec()
 
@@ -35,12 +35,13 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
     if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False)
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=True)
 
     # 1024 Bytes
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
-    shared_rw_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.RW, delay=1)
-    ls.register(stg, shared_rw_mem_port)
+    wr_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.W, delay=1)
+    rd_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=1)
+    ls.register(stg, wr_mem_port, rd_mem_port)
 
     # All cores are registered at this point
     # Now connect them
@@ -55,12 +56,13 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     ls.connect(out_port, out_ag)
     ls.connect(out_port, out_sg)
 
-    # In and Out to shared memory port
-    ls.connect(in_port, shared_rw_mem_port)
-    ls.connect(out_port, shared_rw_mem_port)
+    # In and Out to memory ports
+    ls.connect(in_port, wr_mem_port)
+    ls.connect(out_port, rd_mem_port)
 
     # Memory Ports to storage
-    ls.connect(shared_rw_mem_port, stg)
+    ls.connect(wr_mem_port, stg)
+    ls.connect(rd_mem_port, stg)
 
     return ls
 
@@ -118,11 +120,11 @@ def get_linear_test():
             'extents': [64],
             'address': {
                 'strides': [1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [8],
-                'offset': 16 + 1
+                'offset': 16
             }
         },
         'vec_in_config': {
@@ -130,11 +132,11 @@ def get_linear_test():
             'extents': [64],
             'address': {
                 'strides': [1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [8],
-                'offset': 16 + 1
+                'offset': 16
             }
         },
         'vec_out_config': {
@@ -142,11 +144,11 @@ def get_linear_test():
             'extents': [4, 16],
             'address': {
                 'strides': [0, 1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [1, 4],
-                'offset': 17 + 1
+                'offset': 17
             }
         }
     }
@@ -154,7 +156,7 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4):
+def test_linear_read_write_dp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4):
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -165,7 +167,7 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
 
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
-    simple_single_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
+    simple_single_port_spec = build_dual_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
                                                          physical=physical, vec_width=vec_width)
     simple_single_port_spec.visualize_graph()
     simple_single_port_spec.generate_hardware()
@@ -225,5 +227,5 @@ if __name__ == "__main__":
     hw_test_dir = prepare_hw_test()
     print(f"Put hw test at {hw_test_dir}")
 
-    test_linear_read_write_sp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
+    test_linear_read_write_dp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
                                  physical=args.physical, vec_width=args.vec_width)
