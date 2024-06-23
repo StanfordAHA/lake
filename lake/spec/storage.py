@@ -89,13 +89,7 @@ class SingleBankStorage(Storage):
             # Get the memoryport information
             mp_width = mem_port.get_width()
             mp_type = mem_port.get_type()
-            print("ballzak")
-            print(mem_port)
-            print(mp_width)
-            print(mp_type)
-            print(mem_port.get_name())
             num_addrs = self._capacity // (mp_width // 8)
-            print(num_addrs)
             mem_port.set_num_addrs(num_addrs)
             addr_width = clog2(num_addrs)
             # mp_width = const(mp_width, addr_width)
@@ -142,13 +136,13 @@ class SingleBankStorage(Storage):
 
                 # self.add_code(materialize_w)
             elif mp_type == MemoryPortType.RW:
-                tmp_intf_r = self.var(f"mem_intf_r_{pnum}", mp_width, size=num_addrs, explicit_array=True)
+                tmp_intf_r = self.var(f"mem_intf_rw_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
                 # self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=0)
                 # tmp_intf_w = self.var(f"mem_intf_w_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
                 # self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=1)
-                addr = self.input(f"memory_port_{pnum}_read_addr", addr_width)
+                addr = self.input(f"memory_port_{pnum}_addr", addr_width)
                 wdata = self.input(f"memory_port_{pnum}_write_data", mp_width)
                 rdata = self.output(f"memory_port_{pnum}_read_data", mp_width)
                 wen = self.input(f"memory_port_{pnum}_write_en", 1)
@@ -298,10 +292,10 @@ class SingleBankStorage(Storage):
             elif mp_type == MemoryPortType.RW:
                 tmp_intf_r = self.var(f"mem_intf_r_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
-                self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=0)
+                self._map_array_to_intf(tmp_intf=tmp_intf_r, mp_width=mp_width, num_addrs=num_addrs, rw=0)
                 tmp_intf_w = self.var(f"mem_intf_w_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
-                self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=1)
+                self._map_array_to_intf(tmp_intf=tmp_intf_w, mp_width=mp_width, num_addrs=num_addrs, rw=1)
                 # addr = self.input(f"memory_port_{mp_num}_read_addr", addr_width)
                 # wdata = self.input(f"memory_port_{mp_num}_write_data", mp_width)
                 addr = local_memport_set['addr']
@@ -401,32 +395,39 @@ class SingleBankStorage(Storage):
         l_pint = self.memport_sets[port_idx]
         p_pint = physical.get_port_interface()
         # Just wire things through for this...
+        print("Printing logical interface")
+        print(l_pint)
+        print(p_pint)
         self.wire(self._clk, p_pint['clk'])
-        self.wire(l_pint['data_out'], p_pint['data_out'])
-        self.wire(l_pint['data_in'], p_pint['data_in'])
-        self.wire(kts.ternary(l_pint['write_enable'],
-                              l_pint['write_addr'],
-                              l_pint['read_addr']), p_pint['addr'])
+        self.wire(l_pint['read_data'], p_pint['read_data'])
+        self.wire(l_pint['write_data'], p_pint['write_data'])
+
+        # We are actually handling the address from the logical port in the memory port
+        # self.wire(kts.ternary(l_pint['write_en'],
+        #                       l_pint['write_addr'],
+        #                       l_pint['read_addr']), p_pint['addr'])
+        self.wire(l_pint['addr'], p_pint['addr'])
+
         cen_on = 'cen' in p_pint
         # Handle wen and cen
         if physical.get_active_low():
-            self.wire(~l_pint['write_enable'], p_pint['write_enable'])
+            self.wire(~l_pint['write_en'], p_pint['write_en'])
             if cen_on:
-                self.wire(~(l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
+                self.wire(~(l_pint['write_en'] | l_pint['read_en']), p_pint['cen'])
             else:
                 if write_prio:
-                    self.wire(~(l_pint['read_enable'] & ~l_pint['write_enable']), p_pint['read_enable'])
+                    self.wire(~(l_pint['read_en'] & ~l_pint['write_en']), p_pint['read_en'])
                 else:
-                    self.wire(~l_pint['read_enable'], p_pint['read_enable'])
+                    self.wire(~l_pint['read_en'], p_pint['read_en'])
         else:
-            self.wire(l_pint['write_enable'], p_pint['write_enable'])
+            self.wire(l_pint['write_en'], p_pint['write_en'])
             if cen_on:
-                self.wire((l_pint['write_enable'] | l_pint['read_enable']), p_pint['cen'])
+                self.wire((l_pint['write_en'] | l_pint['read_en']), p_pint['cen'])
             else:
                 if write_prio:
-                    self.wire(l_pint['read_enable'] & ~l_pint['write_enable'], p_pint['read_enable'])
+                    self.wire(l_pint['read_en'] & ~l_pint['write_en'], p_pint['read_en'])
                 else:
-                    self.wire(l_pint['read_enable'], p_pint['read_enable'])
+                    self.wire(l_pint['read_en'], p_pint['read_en'])
 
     def realize_write_port_phys(self, logical: MemoryPort, physical: PhysicalMemoryPort, port_idx: int):
         # l_pint = logical.get_port_interface()
@@ -462,6 +463,8 @@ class SingleBankStorage(Storage):
         # The port list
         port_maps = self.tech_map['ports']
         self.physical_ports = []
+
+        print(self.get_ports)
 
         # Create physical ports to map the logical ports into
         for (idx, port) in enumerate(self.get_ports()):
@@ -687,10 +690,10 @@ class PhysicalMemoryStub(kts.Generator):
                     child_ports_wide = [self.composed_children[(x, y)] for x in range(num_wide)]
                     # concat their ports and handle broadcasting data, addr
                     child_ports_wide_intf = [child.get_ports()[i].get_port_interface() for child in child_ports_wide]
-                    concat_data_in = kts.concat(*[cintf['data_in'] for cintf in child_ports_wide_intf])
-                    self.wire(port_intf['data_in'], concat_data_in)
-                    concat_addr_in = kts.concat(*[cintf['write_addr'] for cintf in child_ports_wide_intf])
-                    self.wire(port_intf['write_addr'], concat_addr_in)
+                    concat_data_in = kts.concat(*[cintf['write_data'] for cintf in child_ports_wide_intf])
+                    self.wire(port_intf['write_data'], concat_data_in)
+                    concat_addr_in = kts.concat(*[cintf['addr'] for cintf in child_ports_wide_intf])
+                    self.wire(port_intf['addr'], concat_addr_in)
                     for ix in range(num_wide):
                         self.wire(port_intf['clk'], child_ports_wide_intf[ix]['clk'])
                         # Now decode write enable and cen through here...

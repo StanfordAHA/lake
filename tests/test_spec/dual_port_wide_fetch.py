@@ -8,42 +8,40 @@ from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
 from lake.utils.util import prepare_hw_test
 from lake.top.tech_maps import GF_Tech_Map
-import os as os
 import argparse
+import os
 
 
-def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
-                           dims: int = 6, clock_count_width=16, physical=False) -> Spec:
+def build_dual_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 
-    in_id = IterationDomain(dimensionality=dims, extent_width=clock_count_width)
+    in_id = IterationDomain(dimensionality=dims, extent_width=16)
     in_ag = AddressGenerator(dimensionality=dims)
     in_sg = ScheduleGenerator(dimensionality=dims)
 
-    out_id = IterationDomain(dimensionality=dims, extent_width=clock_count_width)
+    out_id = IterationDomain(dimensionality=dims, extent_width=16)
     out_ag = AddressGenerator(dimensionality=dims)
     out_sg = ScheduleGenerator(dimensionality=dims)
 
     ls.register(in_id, in_ag, in_sg)
     ls.register(out_id, out_ag, out_sg)
 
-    # 1024 Bytes
-    data_bytes = data_width // 8
-
+    data_bytes = (data_width * vec_width) // 8
     tech_map = None
     if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True)
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=True)
 
+    # 1024 Bytes
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
-    wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
-    rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=1)
-    ls.register(stg, wr_mem_port, rd_mem_port, stg)
+    wr_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.W, delay=1)
+    rd_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=1)
+    ls.register(stg, wr_mem_port, rd_mem_port)
 
     # All cores are registered at this point
     # Now connect them
@@ -84,8 +82,32 @@ def get_linear_test():
                 'offset': 0
             },
             'schedule': {
+                'strides': [4],
+                'offset': 4
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 2,
+            'extents': [4, 64],
+            'address': {
+                'strides': [1, 4],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 0
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
                 'strides': [1],
                 'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 4
             }
         }
     }
@@ -101,8 +123,32 @@ def get_linear_test():
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
+                'strides': [8],
                 'offset': 16
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [8],
+                'offset': 16
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 2,
+            'extents': [4, 16],
+            'address': {
+                'strides': [0, 1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 17
             }
         }
     }
@@ -110,7 +156,7 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, clock_count_width=64, physical=False):
+def test_linear_read_write_dp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4):
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -121,19 +167,20 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
 
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
-    simple_dual_port_spec = build_simple_dual_port(storage_capacity=storage_capacity, data_width=data_width, physical=physical)
-    simple_dual_port_spec.visualize_graph()
-    simple_dual_port_spec.generate_hardware()
-    simple_dual_port_spec.extract_compiler_information()
+    simple_single_port_spec = build_dual_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
+                                                         physical=physical, vec_width=vec_width)
+    simple_single_port_spec.visualize_graph()
+    simple_single_port_spec.generate_hardware()
+    simple_single_port_spec.extract_compiler_information()
 
-    # output this to the inputs thing
-    simple_dual_port_spec.get_verilog(output_dir=output_dir_verilog)
+    # output this to simple_single_port_specthe inputs thing
+    simple_single_port_spec.get_verilog(output_dir=output_dir_verilog)
 
     # Define the test
     lt = get_linear_test()
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
-    bs = simple_dual_port_spec.gen_bitstream(lt)
+    bs = simple_single_port_spec.gen_bitstream(lt)
 
     print('final bs')
     print(bs)
@@ -155,7 +202,7 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
 
     # Write out the preprocessor args to inputs
     cfgsz_output_path = os.path.join(output_dir, "inputs", "comp_args.txt")
-    config_size = simple_dual_port_spec.get_total_config_size()
+    config_size = simple_single_port_spec.get_total_config_size()
     config_define_str = f"+define+CONFIG_MEMORY_SIZE={config_size}"
 
     with open(cfgsz_output_path, 'w') as file:
@@ -167,9 +214,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple Dual Port')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
-    parser.add_argument("--clock_count_width", type=int, default=64)
+    parser.add_argument("--vec_width", type=int, default=4)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
+
     args = parser.parse_args()
 
     print("Preparing hardware test")
@@ -179,5 +227,5 @@ if __name__ == "__main__":
     hw_test_dir = prepare_hw_test()
     print(f"Put hw test at {hw_test_dir}")
 
-    test_linear_read_write(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                           clock_count_width=args.clock_count_width, physical=args.physical)
+    test_linear_read_write_dp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
+                                 physical=args.physical, vec_width=args.vec_width)

@@ -18,7 +18,11 @@ class IterationDomain(Component):
     def gen_bitstream(self, dimensionality, extents):
         # idk
         self.configure(self._dimensionality, dimensionality)
-        self.configure(self._extents, extents)
+
+        # Do a - 2 thing...
+        use_exts = [extent - 2 for extent in extents]
+
+        self.configure(self._extents, use_exts)
         # This will return pairs of ranges with values w.r.t. the node's configuration
         return self.get_configuration()
 
@@ -38,8 +42,8 @@ class IterationDomain(Component):
 
         self._step = self.input("step", 1)
         # OUTPUTS
-        self._mux_sel_out = self.output("mux_sel_out", max(kts.clog2(self.dimensionality_support), 1))
-        self._dim_counter_out = self.output("dim_counter", self.extent_width,
+        self._mux_sel_out = self.output("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._dim_counter_out = self.output("iterators", self.extent_width,
                                          size=self.dimensionality_support,
                                          packed=True,
                                          explicit_array=True)
@@ -60,7 +64,7 @@ class IterationDomain(Component):
 
         self._max_value = self.var("max_value", self.dimensionality_support)
 
-        self._mux_sel = self.var("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._mux_sel = self.var("mux_sel_lcl", max(kts.clog2(self.dimensionality_support), 1))
 
         # Gate mux_sel if step is low
         for i in range(self._mux_sel.width):

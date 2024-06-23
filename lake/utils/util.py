@@ -6,6 +6,7 @@ import os as os
 from lake.utils.spec_enum import MemoryPortType
 from lake.attributes.formal_attr import *
 import shutil as shutil
+from lake.spec.component import Component
 
 
 lake_util_verbose_trim = False
@@ -801,6 +802,62 @@ def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType 
         # generator.wire(memport_intf[signal], strg_intf[signal])
         # self._final_gen.wire(memport_intf[signal], strg_intf[signal])
         generator.wire(memport_intf[signal], strg_intf[signal])
+
+
+def lift_config_space(parent_component: Component, child_component: Component):
+    # assert child_component in parent_component.internal_generator.children
+    # Get the child name
+    child_name = child_component.name
+    # Get its config space which is (size, name) tuples, already should be
+    # flattened at this stage
+    child_space = child_component.get_config_space()
+    for cfg_reg_size, child_cfg_reg_input in child_space:
+        cfg_reg_kwargs = {'name': child_cfg_reg_input.name,
+                          'width': cfg_reg_size}
+        new_cfg_reg = parent_component.config_reg(name=f"{child_name}_{child_cfg_reg_input.name}", width=cfg_reg_size, packed=child_cfg_reg_input.is_packed)
+        parent_component.wire(new_cfg_reg, child_cfg_reg_input)
+        # tmp = parent_component.confi
+        # self.config_space.append((total_config_size_, ret_))
+        # self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_, self.config_size)
+        # self.config_size += total_config_size_
+
+
+def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
+
+    assert type(many) is list
+    assert len(many) > 0
+
+    mux_gen = kts.Generator(name=name)
+    mux_width = one.width
+
+    mux_gen_one_out = mux_gen.output('mux_gen_one_out', mux_width)
+    mux_gen_many_in = [mux_gen.input(f"many_in_{i}", mux_width) for i in range(len(many))]
+
+    # Do a scan through and pick the lowest one (priority)
+    if one_hot_sel:
+        tmp_done = mux_gen.var("tmp_done", 1)
+        len_sel = len(sel)
+
+        @always_comb
+        def set_outs():
+            tmp_done = 0
+            mux_gen_one_out = 0
+            # Iterate through the bits of the signal, find the first one that's high
+            for i in range(len_sel):
+                if ~tmp_done:
+                    if sel[i]:
+                        mux_gen_one_out = mux_gen_many_in[i]
+                        tmp_done = 1
+
+        mux_gen.add_code(set_outs)
+    else:
+        raise NotImplementedError
+
+    # Now instantiate the generator, add the child, and hook it up
+    generator.add_child(f"{name}_inst", mux_gen)
+    generator.wire(one, mux_gen_one_out)
+    for i_ in range(len(many)):
+        generator.wire(many[i_], mux_gen_many_in[i_])
 
 
 if __name__ == "__main__":

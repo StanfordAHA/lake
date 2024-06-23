@@ -25,6 +25,16 @@ class Component(kratos.Generator):
         # A live configuration consists of a list of ranges and value
         self.configuration = []
         self.remap_flatten_config = {}
+        self.child_cfg_bases = None
+
+    def populate_child_cfg_bases(self):
+        pass
+
+    def _add_base_to_cfg_space(self, cfg_space, base):
+        for i_, (range_tuple, value) in enumerate(cfg_space):
+            range_upper, range_lower = range_tuple
+            cfg_space[i_] = ((range_upper + base, range_lower + base), value)
+        return cfg_space
 
     def gen_hardware(self, pos_reset=False):
         """Generate the kratos hardware for this component
@@ -46,6 +56,12 @@ class Component(kratos.Generator):
 
     def clear_configuration(self):
         self.configuration = []
+
+    def _add_configuration_manual(self, config):
+        if type(config) is not list:
+            self.configuration.append(config)
+        else:
+            self.configuration.extend(config)
 
     def configure(self, cfg_reg, value):
         '''Do the actual configuration of the config reg

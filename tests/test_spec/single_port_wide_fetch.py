@@ -32,16 +32,15 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     ls.register(in_id, in_ag, in_sg)
     ls.register(out_id, out_ag, out_sg)
 
+    data_bytes = (data_width * vec_width) // 8
     tech_map = None
     if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True)
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False)
 
     # 1024 Bytes
-    data_bytes = data_width // (8 * vec_width)
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
-    wr_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.W, delay=1)
-    rd_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=1)
-    ls.register(stg, wr_mem_port, rd_mem_port, stg)
+    shared_rw_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.RW, delay=1)
+    ls.register(stg, shared_rw_mem_port)
 
     # All cores are registered at this point
     # Now connect them
@@ -56,13 +55,12 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     ls.connect(out_port, out_ag)
     ls.connect(out_port, out_sg)
 
-    # In and Out to memory ports
-    ls.connect(in_port, wr_mem_port)
-    ls.connect(out_port, rd_mem_port)
+    # In and Out to shared memory port
+    ls.connect(in_port, shared_rw_mem_port)
+    ls.connect(out_port, shared_rw_mem_port)
 
     # Memory Ports to storage
-    ls.connect(wr_mem_port, stg)
-    ls.connect(rd_mem_port, stg)
+    ls.connect(shared_rw_mem_port, stg)
 
     return ls
 
@@ -82,8 +80,32 @@ def get_linear_test():
                 'offset': 0
             },
             'schedule': {
+                'strides': [4],
+                'offset': 4
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 2,
+            'extents': [4, 64],
+            'address': {
+                'strides': [1, 4],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 0
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
                 'strides': [1],
                 'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 4
             }
         }
     }
@@ -96,11 +118,35 @@ def get_linear_test():
             'extents': [64],
             'address': {
                 'strides': [1],
-                'offset': 0
+                'offset': 0 + 1
             },
             'schedule': {
+                'strides': [8],
+                'offset': 16 + 1
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
                 'strides': [1],
-                'offset': 16
+                'offset': 0 + 1
+            },
+            'schedule': {
+                'strides': [8],
+                'offset': 16 + 1
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 2,
+            'extents': [4, 16],
+            'address': {
+                'strides': [0, 1],
+                'offset': 0 + 1
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 17 + 1
             }
         }
     }
@@ -151,6 +197,14 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
     # Write the hexadecimal string to the input folders
     with open(bs_output_path, 'w') as file:
         file.write(hex_string)
+
+    # Write out the preprocessor args to inputs
+    cfgsz_output_path = os.path.join(output_dir, "inputs", "comp_args.txt")
+    config_size = simple_single_port_spec.get_total_config_size()
+    config_define_str = f"+define+CONFIG_MEMORY_SIZE={config_size}"
+
+    with open(cfgsz_output_path, 'w') as file:
+        file.write(config_define_str)
 
 
 if __name__ == "__main__":
