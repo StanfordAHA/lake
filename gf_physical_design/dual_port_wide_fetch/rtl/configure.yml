@@ -9,9 +9,8 @@ commands:
   - export CURR=$PWD
   - echo $CURR
 
-  - git clone https://github.com/StanfordAHA/lake/
+  - cp -r /home/skavya/lake .
   - cd lake
-  - git checkout new_asplos
   - export TOP=$PWD
 
   - python3.7 -m venv lake_env

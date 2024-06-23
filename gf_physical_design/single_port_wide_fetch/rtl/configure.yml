@@ -19,7 +19,7 @@ commands:
   - python -m pip install --upgrade pip
   - pip install -e .
 
-  - python tests/test_spec/single_port_wide_fetch.py --physical
+  - python tests/test_spec/single_port_wide_fetch.py --physical --storage_capacity 4096
 
   - cd $CURR
   - cp $TOP/TEST/inputs/lakespec.sv outputs/design.v
