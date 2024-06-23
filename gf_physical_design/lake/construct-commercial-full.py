@@ -26,7 +26,7 @@ def construct():
   parameters = {
     'construct_path' : __file__,
     'design_name'    : 'lakespec',
-    'clock_period'   : 2000,
+    'clock_period'   : 20000,
     'adk'            : adk_name,
     'adk_view'       : adk_view,
     'topographical'  : True,
@@ -57,7 +57,8 @@ def construct():
   dc             = Step( 'synopsys-dc-synthesis',          default=True )
   # dc             = Step( 'cadence-genus-synthesis',          default=True )
   iflow          = Step( 'cadence-innovus-flowsetup',      default=True )
-  init           = Step( 'cadence-innovus-init',           default=True )
+  init           = Step( this_dir + '/cadence-innovus-init')
+  # init           = Step( 'cadence-innovus-init', default=True)
   power          = Step( 'cadence-innovus-power',          default=True )
   place          = Step( 'cadence-innovus-place',          default=True )
   cts            = Step( 'cadence-innovus-cts',            default=True )
@@ -77,6 +78,7 @@ def construct():
   formal_verif   = Step( 'synopsys-formality-verification', default=True )
   gen_saif       = Step('synopsys-vcd2saif-convert', default=True)
   pt_power_synth    = Step( this_dir + '/synopsys-ptpx-synth')
+  pt_power_gl = Step('synopsys-ptpx-gl', default=True)
 
 
   #-----------------------------------------------------------------------
@@ -120,6 +122,7 @@ def construct():
   g.add_step( verif_post_layout )
   g.add_step( gen_saif    )
   g.add_step( pt_power_synth    )
+  g.add_step(pt_power_gl)
 
   dc.extend_inputs( ['sram_tt.lib', 'sram.lef', 'sram_tt.db'] )
   hier_steps = [ iflow, init, power, place, cts, postcts_hold, route, postroute, signoff]#, vcs_sim]
@@ -127,9 +130,11 @@ def construct():
   for step in hier_steps:
     step.extend_inputs( ['sram_tt.lib', 'sram.lef'] )
 
-  vcs_sim.extend_inputs(['sram.v', 'design.v'])
+  # vcs_sim.extend_inputs(['sram.v', 'design.v'])
+  vcs_sim.extend_inputs(['sram.v'])
 
   pt_power_synth.extend_inputs(['sram_tt.db'])
+  pt_power_gl.extend_inputs(['sram_tt.db'])
 
   #-----------------------------------------------------------------------
   # Graph -- Add edges
@@ -154,6 +159,7 @@ def construct():
   g.connect_by_name( adk,            drc            )
   g.connect_by_name( adk,            lvs            )
   g.connect_by_name( adk,             pt_power_synth    )
+  g.connect_by_name(adk, pt_power_gl)
 
   g.connect_by_name( rtl,            dc             )
   g.connect_by_name( rtl,            gen_sram             )
@@ -167,6 +173,7 @@ def construct():
   g.connect_by_name( dc,              pt_power_synth    ) # design.namemap
   # g.connect_by_name( gen_saif,              dc    )
   g.connect_by_name( gen_saif,     pt_power_synth     )
+  g.connect_by_name(gen_saif, pt_power_gl)
 
   g.connect_by_name( vcs_sim,       gen_saif )
 
@@ -229,11 +236,14 @@ def construct():
   g.connect_by_name( gen_sram,      postroute_hold )
   g.connect_by_name( gen_sram,      signoff        )
   g.connect_by_name( gen_sram,     pt_power_synth     )
+  g.connect_by_name(gen_sram, pt_power_gl)
   # g.connect_by_name( gen_sram,      genlibdb       )
   # g.connect_by_name( gen_sram,      pt_signoff     )
   # g.connect_by_name( gen_sram,      drc            )
   # g.connect_by_name( gen_sram,      drc_pm         )
   # g.connect_by_name( gen_sram,      lvs            )
+
+  g.connect_by_name(signoff, pt_power_gl)
 
   g.connect_by_name( adk,            verif_post_synth )
   g.connect_by_name( dc,             verif_post_synth )
@@ -242,7 +252,8 @@ def construct():
 
   g.connect_by_name( adk,            verif_post_layout )
   g.connect_by_name( dc,             verif_post_layout )
-  g.connect( dc.o('design.v'), vcs_sim.i('design.v') )
+  # g.connect( dc.o('design.v'), vcs_sim.i('design.v') )
+  g.connect_by_name( signoff,        vcs_sim      )
   g.connect( rtl.o('testbench.sv'), vcs_sim.i('testbench.sv') )
   g.connect( signoff.o('design.lvs.v'), verif_post_layout.i('design.impl.v') )
 
