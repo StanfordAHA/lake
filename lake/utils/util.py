@@ -830,6 +830,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
     mux_gen = kts.Generator(name=name)
     mux_width = one.width
 
+    mux_gen_sel_in = mux_gen.input("sel", len(many))
     mux_gen_one_out = mux_gen.output('mux_gen_one_out', mux_width)
     mux_gen_many_in = [mux_gen.input(f"many_in_{i}", mux_width) for i in range(len(many))]
 
@@ -845,7 +846,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
             # Iterate through the bits of the signal, find the first one that's high
             for i in range(len_sel):
                 if ~tmp_done:
-                    if sel[i]:
+                    if mux_gen_sel_in[i]:
                         mux_gen_one_out = mux_gen_many_in[i]
                         tmp_done = 1
 
@@ -858,6 +859,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
     generator.wire(one, mux_gen_one_out)
     for i_ in range(len(many)):
         generator.wire(many[i_], mux_gen_many_in[i_])
+        generator.wire(sel[i_], mux_gen_sel_in[i_])
 
 
 if __name__ == "__main__":
