@@ -26,7 +26,7 @@ def construct():
   parameters = {
     'construct_path' : __file__,
     'design_name'    : 'lakespec',
-    'clock_period'   : 2000,
+    'clock_period'   : 2100,
     'adk'            : adk_name,
     'adk_view'       : adk_view,
     'topographical'  : True,
@@ -254,7 +254,8 @@ def construct():
   g.connect_by_name( dc,             verif_post_layout )
   # g.connect( dc.o('design.v'), vcs_sim.i('design.v') )
   g.connect_by_name( signoff,        vcs_sim      )
-  g.connect( rtl.o('testbench.sv'), vcs_sim.i('testbench.sv') )
+  g.connect_by_name( rtl,        vcs_sim      )
+  # g.connect( rtl.o('testbench.sv'), vcs_sim.i('testbench.sv') )
   g.connect( signoff.o('design.lvs.v'), verif_post_layout.i('design.impl.v') )
 
 

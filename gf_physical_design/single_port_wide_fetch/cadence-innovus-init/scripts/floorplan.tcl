@@ -44,7 +44,7 @@ set core_margin_l [expr ([llength $pwr_net_list] * ($savedvars(p_ring_width) + $
 #floorPlan -r $core_aspect_ratio $core_density_target \
 #             $core_margin_l $core_margin_b $core_margin_r $core_margin_t
 
-floorPlan -s 250 250 \
+floorPlan -s 100 200 \
              $core_margin_l $core_margin_b $core_margin_r $core_margin_t
 
 setFlipping s
