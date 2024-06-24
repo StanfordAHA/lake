@@ -8,23 +8,26 @@ from kratos import always_ff, always_comb, posedge, negedge
 
 class ScheduleGenerator(Component):
 
-    def __init__(self, dimensionality=6, stride_width=16, rv=False):
+    def __init__(self, dimensionality=6, stride_width=16, rv=False, name=None):
         # super().__init__()
+        self.mod_name = name
+        if name is None:
+            self.mod_name = f"sched_gen_{self.dimensionality_support}_{self.stride_width}"
+        super().__init__(name=self.mod_name)
         self.dimensionality_support = dimensionality
         self.stride_width = stride_width
         self.rv = rv
+        self.mod_name = name
 
     def get_rv(self):
         return self.rv
 
-    def gen_hardware(self, id: IterationDomain = None, pos_reset=False):
+    def gen_hardware(self, id: IterationDomain = None, num_comparisons: int = 1, pos_reset=False):
         assert id is not None
         id_ext_width = id.get_extent_width()
         # Total cycle width right now is stride width + ext_width
         self.total_cycle_width = id_ext_width + self.stride_width + self.dimensionality_support + 1
 
-        module_name = f"sched_gen_{self.dimensionality_support}_{self.stride_width}"
-        super().__init__(name=module_name)
         ##########
         ### IO ###
         ##########
@@ -94,6 +97,9 @@ class ScheduleGenerator(Component):
     def get_step(self):
         return self._step_out
 
+    def get_dimensionality(self):
+        return self.dimensionality_support
+
 
 class ExplicitScheduleGenerator(ScheduleGenerator):
 
@@ -121,8 +127,11 @@ class RecurrentScheduleGenerator(ScheduleGenerator):
 
 class ReadyValidScheduleGenerator(ScheduleGenerator):
 
-    def __init__(self, dimensionality=16):
-        super().__init__(dimensionality=dimensionality, rv=True)
+    def __init__(self, dimensionality=16, name=None):
+        use_name = name
+        if name is None:
+            use_name = f"schedulegenerator_rv_dim_{dimensionality}"
+        super().__init__(dimensionality=dimensionality, rv=True, name=use_name)
         self.num_comparisons = 1
 
     def get_num_comparisons(self):
@@ -136,10 +145,10 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self.num_comparisons = num_comparisons
         id_ext_width = id.get_extent_width()
         # Total cycle width right now is stride width + ext_width
-        self.total_cycle_width = id_ext_width + self.stride_width + self.dimensionality_support + 1
+        # self.total_cycle_width = id_ext_width + self.stride_width + self.dimensionality_support + 1
 
-        module_name = f"sched_gen_rv_{self.dimensionality_support}_{self.stride_width}"
-        super().__init__(name=module_name)
+        # module_name = f"sched_gen_rv_{self.dimensionality_support}_{self.stride_width}"
+        # super().__init__(mod_name=module_name)
         ##########
         ### IO ###
         ##########
@@ -150,7 +159,7 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self._flush = self.input("flush", 1)
         self.add_attribute("sync-reset=flush")
 
-        # Still accept the iterators/mux_sel for the 
+        # Still accept the iterators/mux_sel
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
@@ -159,12 +168,12 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
 
         ### Outputs
         self._step_out = self.output("step", 1)
-        self._step_ack = self.output("step_ack", 1)
+        # self._step_ack = self.output("step_ack", 1)
 
         ### Local variables
         # self._current_cycle = self.var("current_cycle", self.total_cycle_width)
         # self._strt_cycle = self.var("strt_cycle", self.total_cycle_width)
-        # self._step = self.var("step_lcl", 1)
+        self._step = self.var("step_lcl", 1)
 
         ### Logic
         # self.wire(self._strt_cycle, kts.ext(self._starting_cycle, self.total_cycle_width))
@@ -181,17 +190,22 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self._comparisons_in = self.input("comparisons", self.num_comparisons)
 
         self.iterator_intf = {}
-        self.iterator_intf['iterators_out'] = self._iterators_out
-        self.iterator_intf['comparisons_in'] = self._comparisons_in
+        self.iterator_intf['iterators'] = self._iterators_out
+        self.iterator_intf['comparisons'] = self._comparisons_in
 
         # We define the step to be the reduction-and of all the in comparisons
         self.wire(self._step, self._comparisons_in.r_and())
         # Everything else will be qualified outside the module to go to the AG, ID
 
+        self.wire(self._iterators_out, self._ctrs)
         # self.add_code(self.calculate_cycle_count)
         # self.add_code(self.calculate_cycle_delta)
 
         # this is the valid out
 
-    def gen_bitstream(self):
-        return super().gen_bitstream()
+    def get_iterator_intf(self):
+        return self.iterator_intf
+
+    def gen_bitstream(self, sched_map):
+        return []
+        # return super().gen_bitstream(schedule_map=sched_map)
