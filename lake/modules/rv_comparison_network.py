@@ -1,7 +1,7 @@
 import kratos as kts
 from lake.utils.spec_enum import Direction
 from lake.spec.schedule_generator import ScheduleGenerator
-from lake.modules.lf_comp_block import LFCompBlock
+from lake.modules.lf_comp_block import LFCompBlock, LFComparisonOperator
 from lake.utils.util import inline_multiplexer
 
 
@@ -70,11 +70,11 @@ class RVComparisonNetwork(kts.Generator):
             in_sel = kts.const(0, num_write_ctrs_bw)
 
             for j in range(len(self.reads)):
-                read_sg = self.reads[i]
+                read_sg = self.reads[j]
                 read_iters = self._reader_iterators[j]
                 # read_iters = read_sg.get_iterator_intf()['iterators']
                 read_width = read_iters.width
-                lf_comp_block = LFCompBlock(name='lf_comp_block', in_width=write_width, out_width=read_width)
+                lf_comp_block = LFCompBlock(name='lf_comp_block', in_width=write_width, out_width=read_width, comparisonOp=LFComparisonOperator.LT)
                 # Now have lf block, need to instantiate it, then wire up a mux based on the config
                 lf_comp_block.gen_hardware()
                 self.add_child(f"lfcompblock_w_{i}_r_{j}", lf_comp_block)
@@ -101,11 +101,11 @@ class RVComparisonNetwork(kts.Generator):
             num_read_ctrs_bw = max(1, kts.clog2(num_write_ctrs))
             in_sel = kts.const(0, num_read_ctrs_bw)
             for j in range(len(self.writes)):
-                write_sg = self.writes[i]
+                write_sg = self.writes[j]
                 write_iters = self._writer_iterators[j]
                 # read_iters = read_sg.get_iterator_intf()['iterators']
                 write_width = write_iters.width
-                lf_comp_block = LFCompBlock(name='lf_comp_block', in_width=read_width, out_width=write_width)
+                lf_comp_block = LFCompBlock(name='lf_comp_block', in_width=read_width, out_width=write_width, comparisonOp=LFComparisonOperator.GT)
                 # Now have lf block, need to instantiate it, then wire up a mux based on the config
                 lf_comp_block.gen_hardware()
                 self.add_child(f"lfcompblock_r_{i}_w_{j}", lf_comp_block)

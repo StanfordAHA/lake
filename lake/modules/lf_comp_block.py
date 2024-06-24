@@ -44,9 +44,13 @@ class LFCompBlock(kts.Generator):
         def calculate_comparison():
             self._comparison = 0
             if self._comp_reg == LFComparisonOperator.LT.value:
-                self._comparison = self._input_counter < self._output_counter
+                self._comparison = self._input_counter < self._output_counter + 64
             elif self._comp_reg == LFComparisonOperator.GT.value:
-                self._comparison = self._input_counter > self._output_counter
+                self._comparison = self._input_counter < self._output_counter
+            # if self._comp_reg == LFComparisonOperator.LT.value:
+            #     self._comparison = self._input_counter < self._output_counter
+            # elif self._comp_reg == LFComparisonOperator.GT.value:
+            #     self._comparison = self._input_counter > self._output_counter
             elif self._comp_reg == LFComparisonOperator.EQ.value:
                 self._comparison = self._input_counter == self._output_counter
             elif self._comp_reg == LFComparisonOperator.LTE.value:
