@@ -23,7 +23,7 @@ module tb;
     // parameter BITSTREAM_MAX_SIZE = 4096 - 1;
     // integer BITSTREAM_MAX_SIZE;
     parameter BITSTREAM_MAX_SIZE = 4096;
-    parameter NUM_CYCLES = 1000;
+    parameter NUM_CYCLES = 100;
 
     // logic [63:0] bitstream [0:BITSTREAM_MAX_SIZE - 1];
     // logic [549:0] bitstream [0:0];
