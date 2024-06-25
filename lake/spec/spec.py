@@ -14,6 +14,7 @@ from typing import Tuple
 import os as os
 from lake.utils.spec_enum import Direction
 from lake.utils.util import connect_memoryport_storage, inline_multiplexer
+from lake.modules.rv_comparison_network import RVComparisonNetwork
 
 
 class Spec():
@@ -33,6 +34,8 @@ class Spec():
         self.config_int = None
         self.total_config_size = None
         self.mp_to_mid = None
+        self.any_rv_sg = False
+        self.rv_comparison_network = None
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
@@ -50,6 +53,9 @@ class Spec():
         # self._hw_graph.add_nodes_from(comps)
         for comp in comps:
             # self.register_(comp=comp)
+            if isinstance(comp, ScheduleGenerator) and comp.get_rv():
+                self.any_rv_sg = True
+
             self._hw_graph.add_node(comp)
             self._node_to_index[comp] = self._num_nodes
             self._index_to_node[self._num_nodes] = comp
@@ -110,8 +116,6 @@ class Spec():
 
         self.total_config_size = total_config_size
 
-        # self.config_memory = self._final_gen.input(name=f"config_memory", width=self._config_memory_size, packed=True)
-        # self.config_memory = self._final_gen.input(name=f"config_memory_size_{total_config_size}", width=total_config_size, packed=True)
         self.config_memory = self._final_gen.input(name=f"config_memory", width=total_config_size, packed=True)
         base = 0
         for node in self._hw_graph.nodes:
@@ -121,15 +125,23 @@ class Spec():
                 base += node_config_size
         # Concatenate them
 
-    # @staticmethod
-    # def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType = None,
-
     def generate_hardware(self) -> None:
 
         self._final_gen = kts.Generator(name=self._name, debug=False)
         # self._config_memory_size = self._final_gen.parameter('CFG_SIZE', initial_value=1)
 
         # self._final_gen.clk = self._final_gen.clock("clk")
+
+        # Before we go into the port loop, if any of the schedule generators is dynamic (vs. static), we need to know this and collect
+        # information before genning the hardware
+        # any_rv_sg = True
+        num_writes = 1
+        num_reads = 1
+
+        # Just instantiate one comparison thing for now...
+        if self.any_rv_sg:
+            # In later stage of spec hw gen will add each read and write port to this...
+            self.rv_comparison_network = RVComparisonNetwork(name='rv_comparison_network_this_spec')
 
         self.hw_attr = {}
         self.hw_attr['clk'] = self._final_gen.clock("clk")
@@ -138,6 +150,7 @@ class Spec():
         # First generate the storages based on the ports connected to them and their capacities
         storage_nodes = self.get_nodes(Storage)
         print(storage_nodes)
+
         for j_, storage_node in enumerate(storage_nodes):
             storage_node: Storage
             print('in storage')
@@ -170,9 +183,12 @@ class Spec():
 
         # Now that we have generated the memory ports and storage, we can realize
         # the ports and supporting hardware
+
         port_nodes = self.get_nodes(Port)
         for i_, port in enumerate(port_nodes):
             port: Port
+
+            port_direction = port.get_direction()
 
             port_id, port_ag, port_sg = self.get_port_controllers(port=port)
             # Assemble the ID,AG,SG (or at least their interfaces) on the port
@@ -190,7 +206,22 @@ class Spec():
             # build the proper hardware within the port
             port_id.gen_hardware()
             port_ag.gen_hardware(memports_, port_id)
-            port_sg.gen_hardware(port_id)
+
+            if self.any_rv_sg:
+                # We need to include some information about the other ports when building schedule generator
+                if port_direction == Direction.IN:
+                    port_sg.gen_hardware(id=port_id, num_comparisons=num_reads)
+                elif port_direction == Direction.OUT:
+                    port_sg.gen_hardware(id=port_id, num_comparisons=num_writes)
+                else:
+                    raise NotImplementedError()
+            else:
+                port_sg.gen_hardware(port_id)
+
+            if self.any_rv_sg:
+                # Just add the Port Direction and SG to the RVComparisonNetwork
+                self.rv_comparison_network.add_reader_writer(direction=port_direction, sg=port_sg)
+
             port.gen_hardware(dimensionality=id_dims, external_id=port_id)
 
             self._final_gen.add_child(f"port_inst_{i_}", port,
@@ -214,14 +245,34 @@ class Spec():
             self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
+            quali_step = port_sg.ports.step
+            # Here we need to qualify the port sg's step before sending it into the memory port, ID, SG
+            if self.any_rv_sg:
+                # If it is an IN Port, we need to qualify the step with the incoming data being valid
+                # as well as the grant for the MemoryPort's arbitration
+                # In this case, the step is the req line to the arbiter and the ready line to the data
+                if port_direction == Direction.IN:
+                    # quali_step = self.qualify_step(port_sg, Direction.IN)
+                    quali_step = port_sg.ports.step
+                # If it is an OUT Port, we need to qualify the step with the grant line from the arbitration and the
+                # downstream ready (from the Port I guess)
+                elif port_direction == Direction.OUT:
+                    quali_step = port_sg.ports.step
+                    # quali_step = self.qualify_step(port_sg, Direction.OUT)
+                else:
+                    raise NotImplementedError(f"Only support {Direction.IN} and {Direction.OUT}")
+
+                # Now that we have the qualified steps to plug in everywhere, we also need to handle comparison hardware
+
+            # This is in the case of a ready/valid system
             # step signal
-            self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
+            self._final_gen.wire(quali_step, port_ag.ports.step)
             self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
 
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
                 ext_intf = port.get_internal_ag_intf()
-                self._final_gen.wire(ext_intf['step'], port_sg.ports.step)
+                self._final_gen.wire(ext_intf['step'], quali_step)
                 self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
                 self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
 
@@ -230,7 +281,8 @@ class Spec():
             assembled_port['dir'] = port.get_direction()
             assembled_port['data'] = port.get_mp_intf()['data']
             assembled_port['addr'] = port_ag.get_address()
-            assembled_port['en'] = port_sg.get_step()
+            assembled_port['en'] = quali_step
+            # assembled_port['en'] = port_sg.get_step()
 
             # send signals through memintf decoder (one port to many memoryports, doing decoding based on address)
             memintf_dec = MemoryInterfaceDecoder(name=f"memintfdec_{i_}", port_type=port.get_direction(),
@@ -259,6 +311,15 @@ class Spec():
 
         # Now can build all the muxing in between the memintf and the mps
         self.build_mp_p()
+
+        # Can now build the comparison network if it's there...
+        if self.any_rv_sg:
+            self.rv_comparison_network.gen_hardware()
+            self._final_gen.add_child('rv_comp_network_top_spec', self.rv_comparison_network)
+            rv_comp_conns = self.rv_comparison_network.get_connections()
+            for conn_tuple in rv_comp_conns:
+                p1, p2 = conn_tuple
+                self._final_gen.wire(p1, p2)
 
         self.lift_config_regs()
         self.add_flush()
@@ -477,7 +538,10 @@ class Spec():
 
             id_bs = port_id.gen_bitstream(port_config['dimensionality'], port_config['extents'])
             ag_bs = port_ag.gen_bitstream(addr_map)
-            sg_bs = port_sg.gen_bitstream(sched_map)
+            if self.any_rv_sg:
+                sg_bs = port_sg.gen_bitstream(sched_map)
+            else:
+                sg_bs = port_sg.gen_bitstream(sched_map)
 
             # Create a clear configuration
             self.configure(port_id, id_bs)

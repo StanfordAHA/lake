@@ -824,18 +824,32 @@ def lift_config_space(parent_component: Component, child_component: Component):
 
 def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
 
-    assert type(many) is list
-    assert len(many) > 0
+    many_list = False
+    if type(many) is list:
+        assert len(many) > 0
+        many_list = True
+
+    print(sel)
+    print(many)
+    # assert type(many) is list
+    # assert len(many) > 0
 
     mux_gen = kts.Generator(name=name)
     mux_width = one.width
 
-    mux_gen_sel_in = mux_gen.input("sel", len(many))
+    if one_hot_sel:
+        mux_gen_sel_in = mux_gen.input("sel", len(many))
+    else:
+        mux_gen_sel_in = mux_gen.input("sel", sel.width)
     mux_gen_one_out = mux_gen.output('mux_gen_one_out', mux_width)
+    # if many_list:
     mux_gen_many_in = [mux_gen.input(f"many_in_{i}", mux_width) for i in range(len(many))]
+    # else:
+    # mux_gen_many_in = mux_gen.input(f"many_in", )
 
     # Do a scan through and pick the lowest one (priority)
     if one_hot_sel:
+        print("Building one-hot mux...")
         tmp_done = mux_gen.var("tmp_done", 1)
         len_sel = len(sel)
 
@@ -852,14 +866,41 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
 
         mux_gen.add_code(set_outs)
     else:
-        raise NotImplementedError
+
+        print("Building non-one-hot mux...")
+        # Non-one-hot (normal sel lines)
+        tmp_done = mux_gen.var("tmp_done", 1)
+        # len_sel = len(sel)
+
+        # For this, assume the bitwidth of sel is large enough
+        # to support many, could assert this
+        len_many = len(many)
+        assert sel.width >= kts.clog2(len_many)
+
+        @always_comb
+        def set_outs():
+            tmp_done = 0
+            mux_gen_one_out = 0
+            # Iterate through the bits of the signal, find the first one that's high
+            for i in range(len_many):
+                if ~tmp_done:
+                    if mux_gen_sel_in == i:
+                        mux_gen_one_out = mux_gen_many_in[i]
+                        tmp_done = 1
+
+        mux_gen.add_code(set_outs)
 
     # Now instantiate the generator, add the child, and hook it up
     generator.add_child(f"{name}_inst", mux_gen)
     generator.wire(one, mux_gen_one_out)
-    for i_ in range(len(many)):
-        generator.wire(many[i_], mux_gen_many_in[i_])
-        generator.wire(sel[i_], mux_gen_sel_in[i_])
+    if one_hot_sel:
+        for i_ in range(len(many)):
+            generator.wire(many[i_], mux_gen_many_in[i_])
+            generator.wire(sel[i_], mux_gen_sel_in[i_])
+    else:
+        for i_ in range(len(many)):
+            generator.wire(many[i_], mux_gen_many_in[i_])
+        generator.wire(sel, mux_gen_sel_in)
 
 
 if __name__ == "__main__":
