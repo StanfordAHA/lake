@@ -1,6 +1,6 @@
 dump -file cgra.fsdb -type FSDB
-dump -add fiber_glb2fib_seg_tb -fsdb_opt +mda+packedmda+struct
-power fiber_glb2fib_seg_tb.dut
+dump -add pass_through_tb -fsdb_opt +mda+packedmda+struct
+power pass_through_tb.dut
 power -enable
 run
 power -disable

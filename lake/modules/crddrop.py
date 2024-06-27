@@ -408,7 +408,8 @@ class CrdDrop(MemoryController):
             # and push them to the outer fifo and the inner straem empty fiber drop logic
             if (self._outer_is_eos | self._outer_is_done):
                 # check the availability of the outer output fifo and the emprt fiber drop buffer
-                if (~self._outer_outfifo_full & self._empty_fiber_drop_buffer_avail):
+                # also need to make sure that the inner eos/done token is ready to be consumed
+                if (~self._outer_outfifo_full & self._empty_fiber_drop_buffer_avail & (self._inner_is_eos | self._inner_is_done)):
                     self._inner_infifo_pop_crddrop = 1
                     self._outer_infifo_pop_crddrop = 1
                     self._inner_outfifo_push_crddrop = 1

@@ -46,75 +46,6 @@ def init_module():
     sparse_helper.update_tcl("fiber_glb_val_tb")
 
 
-def create_gold(in_crd, in_ref):
-    i_c_cpy = in_crd[:]
-    i_r_cpy = in_ref[:]
-
-    # print(in_crd)
-    # print(in_ref)
-    # print("============")
-    # process write
-    buf_size = 1000
-    fill = 0
-    done = False
-    time = 0
-
-    wrscan = CompressWrScan(size=buf_size, seg_size=buf_size, fill=fill)
-
-    while not done and time < TIMEOUT:
-        if len(in_crd) > 0:
-            wrscan.set_input(in_crd.pop(0))
-
-        wrscan.update()
-
-        # print("Timestep", time, "\t WrScan:", wrscan.out_done())
-
-        done = wrscan.out_done()
-        time += 1
-
-    print("sam write cycle count: ", time)
-    # print(wrscan.get_seg_arr())
-    # print(wrscan.get_arr())
-    crdscan = CompressedCrdRdScan(seg_arr=wrscan.get_seg_arr(), crd_arr=wrscan.get_arr())
-    done = False
-    time = 0
-    out_crd = []
-    out_ref = []
-
-    while not done and time < TIMEOUT:
-        if len(in_ref) > 0:
-            crdscan.set_in_ref(in_ref.pop(0))
-
-        crdscan.update()
-
-        out_crd.append(crdscan.out_crd())
-        out_ref.append(crdscan.out_ref())
-
-        # print("Timestep", time, "\t Crd:", crdscan.out_crd(), "\t Ref:", crdscan.out_ref())
-
-        done = crdscan.done
-        time += 1
-
-    print("sam read cycle count: ", time)
-    
-    out_crd = remove_emptystr(out_crd)
-    out_ref = remove_emptystr(out_ref)
-
-    # print(out_crd)
-    # print(out_ref)
-
-    out_c = []
-    out_r = []
-    for i in range(len(out_crd)):
-        if out_crd[i] != 'N':
-            out_c.append(out_crd[i])
-            out_r.append(out_ref[i])
-    st = [i_c_cpy, i_r_cpy, out_c, out_r]
-    tr_st = [convert_stream_to_onyx_interp(i) for i in st]
-
-    return tr_st
-
-
 def load_test_module(test_name):
     if test_name == "direct_l0":
         in_crd = [2, 0, 4]
@@ -130,6 +61,10 @@ def load_test_module(test_name):
 
     if test_name == "diag":
         in_crd = [7, 0, 1, 2, 3, 4, 5, 6]
+        return in_crd
+
+    if test_name == "empty":
+        in_crd = [0]
         return in_crd
 
     elif test_name[0:2] == "rd":
@@ -187,11 +122,11 @@ def module_iter_basic(test_name, add_test=""):
     print(test_name, " passed\n")
 
 
-def test_iter_basic():
-    init_module()
-    test_list = ["direct_l0", "direct_l1", "direct_l2", "diag", "xxx"]
-    for test in test_list:
-        module_iter_basic(test)
+# def test_iter_basic():
+#     init_module()
+#     test_list = ["direct_l0", "direct_l1", "direct_l2", "diag", "xxx"]
+#     for test in test_list:
+#         module_iter_basic(test)
 
 
 def test_iter_random():

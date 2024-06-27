@@ -140,6 +140,50 @@ def read_glb(file_name, tx_num=1):
     return r
 
 
+def read_glb_stream(file_name, total_num, seg_mode):
+    r = []
+    has_id = 0
+    has_length = 0
+    total_count = total_num
+    length_count = 0
+    stream_count = 0
+    with open(file_name, "r") as f:
+        r_sub = []
+        for line in f:
+            v = int(line, 16)
+            if v > 0x7FFF:  # assuming everything is signed 16-bit
+                v -= 0x10000
+            if has_id == 0:
+                has_id = 1
+                stream_count = seg_mode + 1
+                # print(stream_count)
+                r_sub = [v]
+                # print("TX: ", total_count)
+                # print(r)
+            else:
+                if has_length == 0:
+                    length_count = v
+                    r_sub.append(v)
+                    has_length = 1
+                    # print("get length")
+                    # print(r)
+                else:
+                    length_count -= 1
+                    r_sub.append(v)
+                    
+                if length_count == 0:
+                    stream_count -= 1
+                    has_length = 0
+                if stream_count == 0:
+                    r.append(r_sub)
+                    total_count -= 1
+                    has_id = 0
+                if total_count == 0:
+                    break
+        f.close()
+    return r
+
+
 def tohex(val, nbits):
   return hex((val + (1 << nbits)) % (1 << nbits))
 

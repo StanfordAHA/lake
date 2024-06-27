@@ -103,7 +103,7 @@ module value_tb;
     .write_scanner_init_blank(1'b0),
     .write_scanner_lowest_level(1'b1),
     // .write_scanner_spacc_mode(1'b0),
-    .write_scanner_stop_lvl(16'b0),
+    // .write_scanner_stop_lvl(16'b0),
     .write_scanner_tile_en(tile_en),
     .addr_to_mem(memory_addr_to_mem_p0),
     .data_to_mem(memory_0_data_in_p0),

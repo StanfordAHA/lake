@@ -155,7 +155,8 @@ def create_gold(dim_size, in_ref, root=False):
             out_c.append(out_crd[i])
             out_r.append(out_ref[i])
     # now encode the dim size to (2, 0, dim_size) data pair
-    encoded_dim_size = [2, 0, dim_size_cpy]
+    # encoded_dim_size = [2, 0, dim_size_cpy]
+    encoded_dim_size = [1885, 2, 0, dim_size_cpy]  # fit into the current multiplexing
     st = [encoded_dim_size, i_r_cpy, out_c, out_r]
     tr_st = [convert_stream_to_onyx_interp(i) for i in st]
 
