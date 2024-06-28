@@ -26,9 +26,18 @@ class Component(kratos.Generator):
         self.configuration = []
         self.remap_flatten_config = {}
         self.child_cfg_bases = None
+        self.config_space_fixed = False
 
     def populate_child_cfg_bases(self):
         pass
+
+    def add_child(self, instance_name, generator, comment="", python_only=False, **kwargs):
+        super().add_child(instance_name=instance_name, generator=generator,
+                          comment=comment, python_only=python_only, **kwargs)
+        if self.child_cfg_bases is None:
+            self.child_cfg_bases = {}
+        # For now, let's assume if we make it to the add_child phase, the config space is fixed
+        # self.child_cfg_bases[kwargs['generator']] =
 
     def _add_base_to_cfg_space(self, cfg_space, base):
         for i_, (range_tuple, value) in enumerate(cfg_space):

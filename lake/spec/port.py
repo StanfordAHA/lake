@@ -54,6 +54,8 @@ class Port(Component):
         self._clk = self.clock('clk')
         self._rst_n = self.reset('rst_n')
 
+        # Going to always have a ready/valid in
+
         if dimensionality is not None:
             self.set_dimensionality(dimensionality)
 
@@ -344,6 +346,7 @@ class Port(Component):
             lift_config_space(self, component_)
             self.child_cfg_bases[component_] = running_config_size
             running_config_size += component_.get_config_size()
+        self.config_space_fixed = True
 
     def gen_bitstream(self, vec_in=None, vec_out=None):
 
