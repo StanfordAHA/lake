@@ -510,7 +510,7 @@ class Spec():
         return self.config_int
 
     def get_total_config_size(self):
-        return self.total_config_size
+        return self._final_gen.get_config_size()
 
     def gen_bitstream(self, application):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
