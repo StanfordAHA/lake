@@ -15,7 +15,10 @@ class Component(kratos.Generator):
         """
             Create component
         """
-        use_name = f"{self.__class__.__name__}_{Component.component_num}"
+        if name is None:
+            use_name = f"{self.__class__.__name__}_{Component.component_num}"
+        else:
+            use_name = name
         super().__init__(name=use_name, debug=True)
         Component.component_num += 1
         # super().__init__(name=f"{rand.randint(0, 10000)}", debug=True)
