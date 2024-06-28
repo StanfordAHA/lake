@@ -230,12 +230,10 @@ class Spec():
             self._final_gen.add_child(f"port_inst_{i_}", port,
                                       clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
-            print("Hello1")
             # Connect the ag/sg/id together
             self._final_gen.add_child(f"port_id_{i_}", port_id,
                                       clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
-            print("Hello2")
             self._final_gen.add_child(f"port_ag_{i_}", port_ag,
                                       clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
@@ -494,6 +492,8 @@ class Spec():
 
     def configure(self, node, bs):
         # node_config_base = self.get_config_base(node)
+        print("Showing all child bases...")
+        print(self._final_gen.child_cfg_bases)
         node_config_base = self._final_gen.child_cfg_bases[node]
         for reg_bound, value in bs:
             upper, lower = reg_bound

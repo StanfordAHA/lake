@@ -71,12 +71,13 @@ class Component(kratos.Generator):
             assert generator.get_config_space_fixed()
             child_size = generator.get_config_size()
 
-            # Escape if there is no config memory in the child...
-            if child_size == 0:
-                return
             # Now we know the child's config base is fixed here...
             # So we can automatically raise the configuration registers
             self.child_cfg_bases[generator] = self.config_size
+
+            # Escape if there is no config memory in the child...
+            if child_size == 0:
+                return
 
             # To lift the space, we don't need to do much, just ask the child for its
             # config size and wire up...
