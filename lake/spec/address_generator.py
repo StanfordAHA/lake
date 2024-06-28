@@ -72,6 +72,8 @@ class AddressGenerator(Component):
 
         self.add_code(self.calculate_address_count)
         # self.add_code(self.calculate_address_delta)
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
 
     @always_comb
     def calculate_address_count(self):

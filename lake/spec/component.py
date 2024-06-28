@@ -27,16 +27,62 @@ class Component(kratos.Generator):
         self.remap_flatten_config = {}
         self.child_cfg_bases = None
         self.config_space_fixed = False
+        self._config_memory = None
+        self._name_to_var_cfg = {}
+
+    def get_config_space_fixed(self):
+        return self.config_space_fixed
 
     def populate_child_cfg_bases(self):
         pass
 
+    def _assemble_cfg_memory_input(self):
+        # So this should be called at the end of a gen_hardware.
+        # this will set the config_space_fixed as well
+        # Calling this means the hardware consutrction for this Component and any children is
+        # complete
+        print(f"Making config space for {self.name}")
+        if self.config_size == 0:
+            # Early out in case there is no configuration
+            return
+        self._config_memory = self.input("config_memory", self.config_size, packed=True)
+
+        # Now go through the config space
+        for cfg_reg_name, range_tuple in self.cfg_reg_to_range.items():
+            range_upper, range_lower = range_tuple
+            cfg_reg_signal = self._name_to_var_cfg[cfg_reg_name]
+            self.wire(self._config_memory[range_upper, range_lower], cfg_reg_signal)
+
     def add_child(self, instance_name, generator, comment="", python_only=False, **kwargs):
+        print("Called this one...")
         super().add_child(instance_name=instance_name, generator=generator,
                           comment=comment, python_only=python_only, **kwargs)
         if self.child_cfg_bases is None:
             self.child_cfg_bases = {}
         # For now, let's assume if we make it to the add_child phase, the config space is fixed
+        # Also, I am going to make it so you can only add components as children to components,
+        # to guarantee this additional functionality.
+        # assert isinstance(generator, Component)
+        if isinstance(generator, Component):
+            print("actually lifting...")
+            assert generator.get_config_space_fixed()
+            child_size = generator.get_config_size()
+
+            # Escape if there is no config memory in the child...
+            if child_size == 0:
+                return
+            # Now we know the child's config base is fixed here...
+            # So we can automatically raise the configuration registers
+            self.child_cfg_bases[generator] = self.config_size
+
+            # To lift the space, we don't need to do much, just ask the child for its
+            # config size and wire up...
+            child_name = generator.name
+            temporary_cfg_reg = self.config_reg(name=f"{child_name}_{instance_name}_config_memory", width=child_size)
+
+            self.wire(temporary_cfg_reg, generator.ports.config_memory)
+            # lift_config_space(self, generator)
+
         # self.child_cfg_bases[kwargs['generator']] =
 
     def _add_base_to_cfg_space(self, cfg_space, base):
@@ -115,6 +161,7 @@ class Component(kratos.Generator):
             save_unflat_name = kwargs['name']
             self.remap_flatten_config[kwargs['name']] = []
 
+            # Let this be the actual variable
             lcl_var = self.var(**kwargs)
             ret_ = []
             del kwargs['size']
@@ -122,19 +169,27 @@ class Component(kratos.Generator):
             for i_ in range(size_):
                 kwargs['name'] = f"{name_}_{i_}"
                 self.remap_flatten_config[save_unflat_name].append(kwargs['name'])
-                tmp = self.input(**kwargs)
-                ret_.append(tmp)
-                self.config_space.append((total_config_size_, tmp))
-                self.wire(tmp, lcl_var[i_])
+                # Don't make it input, just make it a lcl var, wire it up, then we will come through at the
+                # end and
+                # tmp = self.input(**kwargs)
+                # tmp = self.var(**kwargs)
+                # ret_.append(tmp)
+                self.config_space.append((total_config_size_, lcl_var[i_]))
+                # self.config_space.append((total_config_size_, tmp))
+                # self.wire(tmp, lcl_var[i_])
                 # Map the name to this range
-                self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_, self.config_size)
+                self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_ - 1, self.config_size)
+                self._name_to_var_cfg[kwargs['name']] = lcl_var[i_]
+                # self._name_to_var_cfg[kwargs['name']] = tmp
                 self.config_size += total_config_size_
             ret_ = lcl_var
 
         else:
-            ret_ = self.input(**kwargs)
+            ret_ = self.var(**kwargs)
+            # ret_ = self.input(**kwargs)
             self.config_space.append((total_config_size_, ret_))
-            self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_, self.config_size)
+            self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_ - 1, self.config_size)
+            self._name_to_var_cfg[kwargs['name']] = ret_
             self.config_size += total_config_size_
 
         # ret_.add_attribute(ConfigRegAttr("Default Description"))
@@ -174,3 +229,25 @@ class Component(kratos.Generator):
     #         if "clk" in curr_port.name or "rst_n" in curr_port.name:
     #             liftable.append(curr_port)
     #     return liftable
+
+
+def lift_config_space(parent_component: Component, child_component: Component):
+    # assert child_component in parent_component.internal_generator.children
+    # Get the child name
+    child_name = child_component.name
+    # Get its config space which is (size, name) tuples, already should be
+    # flattened at this stage
+
+    # Actually now everything has config_memory at its top, so make a local one
+    # and wire it up.
+
+    child_space = child_component.get_config_space()
+    for cfg_reg_size, child_cfg_reg_input in child_space:
+        cfg_reg_kwargs = {'name': child_cfg_reg_input.name,
+                          'width': cfg_reg_size}
+        new_cfg_reg = parent_component.config_reg(name=f"{child_name}_{child_cfg_reg_input.name}", width=cfg_reg_size, packed=child_cfg_reg_input.is_packed)
+        parent_component.wire(new_cfg_reg, child_cfg_reg_input)
+        # tmp = parent_component.confi
+        # self.config_space.append((total_config_size_, ret_))
+        # self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_, self.config_size)
+        # self.config_size += total_config_size_

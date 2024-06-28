@@ -15,6 +15,7 @@ import os as os
 from lake.utils.spec_enum import Direction
 from lake.utils.util import connect_memoryport_storage, inline_multiplexer
 from lake.modules.rv_comparison_network import RVComparisonNetwork
+from lake.spec.component import Component
 
 
 class Spec():
@@ -127,7 +128,9 @@ class Spec():
 
     def generate_hardware(self) -> None:
 
-        self._final_gen = kts.Generator(name=self._name, debug=False)
+        # self._final_gen = kts.Generator(name=self._name, debug=False)
+        print(self._name)
+        self._final_gen = Component(name=self._name)
         # self._config_memory_size = self._final_gen.parameter('CFG_SIZE', initial_value=1)
 
         # self._final_gen.clk = self._final_gen.clock("clk")
@@ -227,11 +230,12 @@ class Spec():
             self._final_gen.add_child(f"port_inst_{i_}", port,
                                       clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
-
+            print("Hello1")
             # Connect the ag/sg/id together
             self._final_gen.add_child(f"port_id_{i_}", port_id,
                                       clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
+            print("Hello2")
             self._final_gen.add_child(f"port_ag_{i_}", port_ag,
                                       clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
@@ -321,7 +325,9 @@ class Spec():
                 p1, p2 = conn_tuple
                 self._final_gen.wire(p1, p2)
 
-        self.lift_config_regs()
+        # self.lift_config_regs()
+        print("building spec cfg memory input")
+        self._final_gen._assemble_cfg_memory_input()
         self.add_flush()
 
     def get_verilog(self, output_dir):
@@ -487,7 +493,8 @@ class Spec():
         return self._config_bases[node_idx]
 
     def configure(self, node, bs):
-        node_config_base = self.get_config_base(node)
+        # node_config_base = self.get_config_base(node)
+        node_config_base = self._final_gen.child_cfg_bases[node]
         for reg_bound, value in bs:
             upper, lower = reg_bound
             self.configuration.append(((upper + node_config_base, lower + node_config_base), value))

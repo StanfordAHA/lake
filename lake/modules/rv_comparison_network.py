@@ -204,6 +204,7 @@ class RVComparisonNetwork(Component):
                                    one_hot_sel=False)
 
         self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
 
     def gen_bitstream(self, constraints):
         # Every constraint in constraints is between a port,port,comparator,offset

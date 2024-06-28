@@ -205,6 +205,9 @@ class SingleBankStorage(Storage):
         self.create_interface()
 
         self.realize_hw()
+
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
         return self.memport_sets
 
     def gen_bitstream(self):

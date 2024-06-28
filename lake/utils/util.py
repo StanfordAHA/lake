@@ -6,7 +6,7 @@ import os as os
 from lake.utils.spec_enum import MemoryPortType
 from lake.attributes.formal_attr import *
 import shutil as shutil
-from lake.spec.component import Component
+# from lake.spec.component import Component
 
 
 lake_util_verbose_trim = False
@@ -802,24 +802,6 @@ def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType 
         # generator.wire(memport_intf[signal], strg_intf[signal])
         # self._final_gen.wire(memport_intf[signal], strg_intf[signal])
         generator.wire(memport_intf[signal], strg_intf[signal])
-
-
-def lift_config_space(parent_component: Component, child_component: Component):
-    # assert child_component in parent_component.internal_generator.children
-    # Get the child name
-    child_name = child_component.name
-    # Get its config space which is (size, name) tuples, already should be
-    # flattened at this stage
-    child_space = child_component.get_config_space()
-    for cfg_reg_size, child_cfg_reg_input in child_space:
-        cfg_reg_kwargs = {'name': child_cfg_reg_input.name,
-                          'width': cfg_reg_size}
-        new_cfg_reg = parent_component.config_reg(name=f"{child_name}_{child_cfg_reg_input.name}", width=cfg_reg_size, packed=child_cfg_reg_input.is_packed)
-        parent_component.wire(new_cfg_reg, child_cfg_reg_input)
-        # tmp = parent_component.confi
-        # self.config_space.append((total_config_size_, ret_))
-        # self.cfg_reg_to_range[kwargs['name']] = (self.config_size + total_config_size_, self.config_size)
-        # self.config_size += total_config_size_
 
 
 def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):

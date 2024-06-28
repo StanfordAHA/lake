@@ -72,6 +72,9 @@ class LFCompBlock(Component):
         self.interfaces['out_counter'] = self._output_counter
         self.interfaces['comparison'] = self._comparison
 
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input
+
     def get_interfaces(self):
         return self.interfaces
 
