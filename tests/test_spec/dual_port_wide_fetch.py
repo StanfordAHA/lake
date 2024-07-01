@@ -203,10 +203,14 @@ def test_linear_read_write_dp_wf(output_dir=None, storage_capacity=1024, data_wi
     # Write out the preprocessor args to inputs
     cfgsz_output_path = os.path.join(output_dir, "inputs", "comp_args.txt")
     config_size = simple_single_port_spec.get_total_config_size()
-    config_define_str = f"+define+CONFIG_MEMORY_SIZE={config_size}"
+    config_define_str = f"+define+CONFIG_MEMORY_SIZE={config_size}\n"
+    # Write out num ports for preprocessor arg
+    num_ports = simple_single_port_spec.get_num_ports()
+    numports_define_str = f"+define+NUMBER_PORTS={num_ports}\n"
 
     with open(cfgsz_output_path, 'w') as file:
         file.write(config_define_str)
+        file.write(numports_define_str)
 
 
 if __name__ == "__main__":
@@ -215,6 +219,7 @@ if __name__ == "__main__":
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
     parser.add_argument("--vec_width", type=int, default=4)
+    parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--outdir", type=str, default=None)

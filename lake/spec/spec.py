@@ -37,12 +37,16 @@ class Spec():
         self.mp_to_mid = None
         self.any_rv_sg = False
         self.rv_comparison_network = None
+        self.num_ports = 0
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
         self._hw_graph[comp]['index'] = self._num_nodes
         self._index_to_node[self._num_nodes] = comp
         self._num_nodes += 1
+
+    def get_num_ports(self):
+        return self.num_ports
 
     def get_node_from_idx(self, idx):
         print(idx)
@@ -56,6 +60,8 @@ class Spec():
             # self.register_(comp=comp)
             if isinstance(comp, ScheduleGenerator) and comp.get_rv():
                 self.any_rv_sg = True
+            if isinstance(comp, Port):
+                self.num_ports += 1
 
             self._hw_graph.add_node(comp)
             self._node_to_index[comp] = self._num_nodes
