@@ -215,14 +215,14 @@ if __name__ == "__main__":
     parser.add_argument("--vec_width", type=int, default=4)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
-
+    parser.add_argument("--outdir", type=str, default=None)
     args = parser.parse_args()
 
     print("Preparing hardware test")
 
     # argparser
 
-    hw_test_dir = prepare_hw_test()
+    hw_test_dir = prepare_hw_test(base_dir=args.outdir)
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_sp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,

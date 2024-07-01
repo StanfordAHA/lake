@@ -20,7 +20,8 @@ def prepare_hw_test(base_dir: str = None):
         final_dir = os.path.join(base_dir, "../../", "TEST")
 
     else:
-        final_dir = base_dir
+        # Simpler to use absolute path here
+        final_dir = os.path.abspath(base_dir)
 
     print(f" Prepare hw test at ...{final_dir}")
 
