@@ -15,6 +15,7 @@ import os as os
 from lake.utils.spec_enum import Direction
 from lake.utils.util import connect_memoryport_storage, inline_multiplexer
 from lake.modules.rv_comparison_network import RVComparisonNetwork
+from lake.spec.component import Component
 
 
 class Spec():
@@ -36,12 +37,16 @@ class Spec():
         self.mp_to_mid = None
         self.any_rv_sg = False
         self.rv_comparison_network = None
+        self.num_ports = 0
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
         self._hw_graph[comp]['index'] = self._num_nodes
         self._index_to_node[self._num_nodes] = comp
         self._num_nodes += 1
+
+    def get_num_ports(self):
+        return self.num_ports
 
     def get_node_from_idx(self, idx):
         print(idx)
@@ -55,6 +60,8 @@ class Spec():
             # self.register_(comp=comp)
             if isinstance(comp, ScheduleGenerator) and comp.get_rv():
                 self.any_rv_sg = True
+            if isinstance(comp, Port):
+                self.num_ports += 1
 
             self._hw_graph.add_node(comp)
             self._node_to_index[comp] = self._num_nodes
@@ -127,7 +134,9 @@ class Spec():
 
     def generate_hardware(self) -> None:
 
-        self._final_gen = kts.Generator(name=self._name, debug=False)
+        # self._final_gen = kts.Generator(name=self._name, debug=False)
+        print(self._name)
+        self._final_gen = Component(name=self._name)
         # self._config_memory_size = self._final_gen.parameter('CFG_SIZE', initial_value=1)
 
         # self._final_gen.clk = self._final_gen.clock("clk")
@@ -227,7 +236,6 @@ class Spec():
             self._final_gen.add_child(f"port_inst_{i_}", port,
                                       clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
-
             # Connect the ag/sg/id together
             self._final_gen.add_child(f"port_id_{i_}", port_id,
                                       clk=self.hw_attr['clk'],
@@ -321,7 +329,9 @@ class Spec():
                 p1, p2 = conn_tuple
                 self._final_gen.wire(p1, p2)
 
-        self.lift_config_regs()
+        # self.lift_config_regs()
+        print("building spec cfg memory input")
+        self._final_gen._assemble_cfg_memory_input()
         self.add_flush()
 
     def get_verilog(self, output_dir):
@@ -487,7 +497,10 @@ class Spec():
         return self._config_bases[node_idx]
 
     def configure(self, node, bs):
-        node_config_base = self.get_config_base(node)
+        # node_config_base = self.get_config_base(node)
+        print("Showing all child bases...")
+        print(self._final_gen.child_cfg_bases)
+        node_config_base = self._final_gen.child_cfg_bases[node]
         for reg_bound, value in bs:
             upper, lower = reg_bound
             self.configuration.append(((upper + node_config_base, lower + node_config_base), value))
@@ -503,7 +516,7 @@ class Spec():
         return self.config_int
 
     def get_total_config_size(self):
-        return self.total_config_size
+        return self._final_gen.get_config_size()
 
     def gen_bitstream(self, application):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.

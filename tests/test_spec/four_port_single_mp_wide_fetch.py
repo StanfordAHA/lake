@@ -12,25 +12,37 @@ import argparse
 import os
 
 
-def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
+def build_four_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
 
     ls = Spec()
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+    in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+    out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
 
-    ls.register(in_port, out_port)
+    ls.register(in_port, in_port2, out_port, out_port2)
 
     in_id = IterationDomain(dimensionality=dims, extent_width=16)
     in_ag = AddressGenerator(dimensionality=dims)
     in_sg = ScheduleGenerator(dimensionality=dims)
 
+    in_id2 = IterationDomain(dimensionality=dims, extent_width=16)
+    in_ag2 = AddressGenerator(dimensionality=dims)
+    in_sg2 = ScheduleGenerator(dimensionality=dims)
+
     out_id = IterationDomain(dimensionality=dims, extent_width=16)
     out_ag = AddressGenerator(dimensionality=dims)
     out_sg = ScheduleGenerator(dimensionality=dims)
 
+    out_id2 = IterationDomain(dimensionality=dims, extent_width=16)
+    out_ag2 = AddressGenerator(dimensionality=dims)
+    out_sg2 = ScheduleGenerator(dimensionality=dims)
+
     ls.register(in_id, in_ag, in_sg)
+    ls.register(in_id2, in_ag2, in_sg2)
     ls.register(out_id, out_ag, out_sg)
+    ls.register(out_id2, out_ag2, out_sg2)
 
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
@@ -50,14 +62,24 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     ls.connect(in_port, in_ag)
     ls.connect(in_port, in_sg)
 
+    ls.connect(in_port2, in_id2)
+    ls.connect(in_port2, in_ag2)
+    ls.connect(in_port2, in_sg2)
+
     # Out to out
     ls.connect(out_port, out_id)
     ls.connect(out_port, out_ag)
     ls.connect(out_port, out_sg)
 
+    ls.connect(out_port2, out_id2)
+    ls.connect(out_port2, out_ag2)
+    ls.connect(out_port2, out_sg2)
+
     # In and Out to shared memory port
     ls.connect(in_port, shared_rw_mem_port)
+    ls.connect(in_port2, shared_rw_mem_port)
     ls.connect(out_port, shared_rw_mem_port)
+    ls.connect(out_port2, shared_rw_mem_port)
 
     # Memory Ports to storage
     ls.connect(shared_rw_mem_port, stg)
@@ -154,7 +176,7 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4):
+def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4):
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -165,20 +187,20 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
 
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
-    simple_single_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
+    simple_four_port_spec = build_four_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
                                                          physical=physical, vec_width=vec_width)
-    simple_single_port_spec.visualize_graph()
-    simple_single_port_spec.generate_hardware()
-    simple_single_port_spec.extract_compiler_information()
+    simple_four_port_spec.visualize_graph()
+    simple_four_port_spec.generate_hardware()
+    simple_four_port_spec.extract_compiler_information()
 
     # output this to simple_single_port_specthe inputs thing
-    simple_single_port_spec.get_verilog(output_dir=output_dir_verilog)
+    simple_four_port_spec.get_verilog(output_dir=output_dir_verilog)
 
     # Define the test
     lt = get_linear_test()
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
-    bs = simple_single_port_spec.gen_bitstream(lt)
+    bs = simple_four_port_spec.gen_bitstream(lt)
 
     print('final bs')
     print(bs)
@@ -200,11 +222,15 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
 
     # Write out the preprocessor args to inputs
     cfgsz_output_path = os.path.join(output_dir, "inputs", "comp_args.txt")
-    config_size = simple_single_port_spec.get_total_config_size()
-    config_define_str = f"+define+CONFIG_MEMORY_SIZE={config_size}"
+    config_size = simple_four_port_spec.get_total_config_size()
+    config_define_str = f"+define+CONFIG_MEMORY_SIZE={config_size}\n"
+    # Write out num ports for preprocessor arg
+    num_ports = simple_four_port_spec.get_num_ports()
+    numports_define_str = f"+define+NUMBER_PORTS={num_ports}\n"
 
     with open(cfgsz_output_path, 'w') as file:
         file.write(config_define_str)
+        file.write(numports_define_str)
 
 
 if __name__ == "__main__":
@@ -213,17 +239,18 @@ if __name__ == "__main__":
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
     parser.add_argument("--vec_width", type=int, default=4)
+    parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
-
+    parser.add_argument("--outdir", type=str, default=None)
     args = parser.parse_args()
 
     print("Preparing hardware test")
 
     # argparser
 
-    hw_test_dir = prepare_hw_test()
+    hw_test_dir = prepare_hw_test(base_dir=args.outdir)
     print(f"Put hw test at {hw_test_dir}")
 
-    test_linear_read_write_sp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
+    test_linear_read_write_qp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
                                  physical=args.physical, vec_width=args.vec_width)

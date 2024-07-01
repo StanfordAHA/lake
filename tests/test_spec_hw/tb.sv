@@ -9,6 +9,12 @@ module tb;
     parameter CONFIG_MEMORY_SIZE = 512;
 `endif
 
+`ifdef NUMBER_PORTS
+    parameter NUMBER_PORTS = `NUMBER_PORTS;
+`else
+    parameter NUMBER_PORTS = 2;
+`endif
+
     reg clk;
     reg rst_n;
     reg stall;
@@ -31,23 +37,86 @@ module tb;
     // logic [31:0] bitstream_addr [0:BITSTREAM_MAX_SIZE - 1];
     // logic [31:0] bitstream_data [0:BITSTREAM_MAX_SIZE - 1];
 
-    logic [DATA_WIDTH - 1:0] port_0_data;
-    logic [DATA_WIDTH - 1:0] port_1_data;
-    logic [DATA_WIDTH - 1:0] port_0_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_1_mem [0:NUM_CYCLES - 1] ;
+    logic [DATA_WIDTH - 1:0] port_w0_data;
+    logic [DATA_WIDTH - 1:0] port_w1_data;
+    logic [DATA_WIDTH - 1:0] port_w2_data;
+    logic [DATA_WIDTH - 1:0] port_w3_data;
+    logic [DATA_WIDTH - 1:0] port_r0_data;
+    logic [DATA_WIDTH - 1:0] port_r1_data;
+    logic [DATA_WIDTH - 1:0] port_r2_data;
+    logic [DATA_WIDTH - 1:0] port_r3_data;
+    logic [DATA_WIDTH - 1:0] port_w0_mem [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_w1_mem [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_w2_mem [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_w3_mem [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r0_mem [0:NUM_CYCLES - 1] ;
+    logic [DATA_WIDTH - 1:0] port_r1_mem [0:NUM_CYCLES - 1] ;
+    logic [DATA_WIDTH - 1:0] port_r2_mem [0:NUM_CYCLES - 1] ;
+    logic [DATA_WIDTH - 1:0] port_r3_mem [0:NUM_CYCLES - 1] ;
 
-    lakespec dut (
-        // inputs
-        .clk(clk),
-        .rst_n(rst_n),
-        .flush(flush),
-        // config
-        .config_memory(bitstream[0]),
-        // input ports
-        .port_0(port_0_data),
-        // output ports
-        .port_1(port_1_data)
-    );
+    if (NUMBER_PORTS == 2) begin
+
+        lakespec dut (
+            // inputs
+            .clk(clk),
+            .rst_n(rst_n),
+            .flush(flush),
+            // config
+            .config_memory(bitstream[0]),
+            // input ports
+            .port_0(port_w0_data),
+            // output ports
+            .port_1(port_r0_data)
+        );
+
+        port_r1_data = 0;
+        port_r2_data = 0;
+        port_r3_data = 0;
+
+    end
+    else if (NUMBER_PORTS == 2) begin
+
+        lakespec dut (
+            // inputs
+            .clk(clk),
+            .rst_n(rst_n),
+            .flush(flush),
+            // config
+            .config_memory(bitstream[0]),
+            // input ports
+            .port_0(port_w0_data),
+            .port_1(port_w1_data),
+            // output ports
+            .port_2(port_r0_data)
+            .port_3(port_r1_data)
+        );
+
+        port_r2_data = 0;
+        port_r3_data = 0;
+
+    end
+    else if (NUMBER_PORTS == 4) begin
+
+        lakespec dut (
+            // inputs
+            .clk(clk),
+            .rst_n(rst_n),
+            .flush(flush),
+            // config
+            .config_memory(bitstream[0]),
+            // input ports
+            .port_0(port_w0_data),
+            .port_1(port_w1_data),
+            .port_2(port_w2_data),
+            .port_3(port_w3_data),
+            // output ports
+            .port_4(port_r0_data)
+            .port_5(port_r1_data)
+            .port_6(port_r2_data)
+            .port_7(port_r3_data)
+        );
+
+    end
 
 
     integer THIS_CYC_COUNT;
@@ -68,22 +137,12 @@ module tb;
             $display("TEST_DIRECTORY not set, using default value %s", TEST_DIRECTORY);
         end
 
-        // $value$plusargs("TEST_DIRECTORY=%s", TEST_DIRECTORY);
-
-        // string file_str;
-        // file_str = $sformatf("/home/max/Documents/SPARSE/garnet/generic_memory_%d.txt", FILE_NO);
-        // $value$plusargs("BITSTREAM_LOCATION=%s", BITSTREAM_LOCATION);
-        // $value$plusargs("BITSTREAM_LOCATION=%s", BITSTREAM_LOCATION);
         BITSTREAM_LOCATION = $sformatf("%s/inputs/bitstream.bs", TEST_DIRECTORY);
 
         $display("BITSTREAM IS AT : %s", BITSTREAM_LOCATION);
         // Load the bitstream as an int into the bitstream memory
         $readmemh(BITSTREAM_LOCATION, bitstream);
-        // $readmemh(BITSTREAM_LOCATION, bitstream);
-        // for (integer i_ = 0; i_ < BITSTREAM_MAX_SIZE; i_ = i_ + 1) begin
-            // bitstream_addr[i_] = bitstream[i_][63: 32];
-            // bitstream_data[i_] = bitstream[i_][31: 0];
-        // end
+
     end
 
     initial begin
@@ -134,15 +193,27 @@ module tb;
             //     $finish;
             // end
             // Input 2*i
-            port_0_data = THIS_CYC_COUNT * 2;
+            port_w0_data = THIS_CYC_COUNT * 2;
+            port_w1_data = THIS_CYC_COUNT * 2;
+            port_w2_data = THIS_CYC_COUNT * 2;
+            port_w3_data = THIS_CYC_COUNT * 2;
             #5 clk ^= 1;
             #5 clk ^= 1;
             THIS_CYC_COUNT = THIS_CYC_COUNT + 1;
-            port_1_mem[THIS_CYC_COUNT] = port_1_data;
+            port_r0_mem[THIS_CYC_COUNT] = port_r0_data;
+            port_r1_mem[THIS_CYC_COUNT] = port_r1_data;
+            port_r2_mem[THIS_CYC_COUNT] = port_r2_data;
+            port_r3_mem[THIS_CYC_COUNT] = port_r3_data;
         end
 
-        OUTPUT_LOCATION = $sformatf("%s/outputs/port_1_output.txt", TEST_DIRECTORY);
-        $writememh(OUTPUT_LOCATION, port_1_mem);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r0_output.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_r0_mem);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r1_output.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_r1_mem);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r2_output.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_r2_mem);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r3_output.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_r3_mem);
 
         #20 $finish;
     end

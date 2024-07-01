@@ -147,6 +147,8 @@ class MemoryPort(Component):
             self._strg_intf['read_en'] = ren_to_strg
 
         self.hw_genned = True
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
 
     def gen_bitstream(self):
         return super().gen_bitstream()

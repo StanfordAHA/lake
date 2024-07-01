@@ -96,6 +96,9 @@ class IterationDomain(Component):
 
         self.wire(self._restart, self._step & (~self._done))
 
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
+
     @always_comb
     # Find lowest ready
     def set_mux_sel(self):

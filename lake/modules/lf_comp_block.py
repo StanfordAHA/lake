@@ -2,6 +2,7 @@ import kratos as kts
 from kratos import always_comb
 from enum import Enum
 import operator
+from lake.spec.component import Component
 
 
 class LFComparisonOperator(Enum):
@@ -11,11 +12,12 @@ class LFComparisonOperator(Enum):
     LTE = 3
 
 
-class LFCompBlock(kts.Generator):
+class LFCompBlock(Component):
 
     def __init__(self, name: str, debug: bool = True, is_clone: bool = False, internal_generator=None,
                  in_width: int = None, out_width: int = None, comparisonOp: LFComparisonOperator = None):
-        super().__init__(name, debug, is_clone, internal_generator)
+        # super().__init__(name, debug, is_clone, internal_generator)
+        super().__init__(name=name)
         self.in_width = in_width
         self.out_width = out_width
         self.hard_op = comparisonOp
@@ -35,7 +37,14 @@ class LFCompBlock(kts.Generator):
 
         # Generate a reconfigurable block if no hard op given
         if self.hard_op is None:
-            self._comp_reg = kts.const(0, num_comps_bw)
+            # Make it a configuration register
+            # self._comp_reg = kts.const(0, num_comps_bw)
+
+            # self._extents = self.config_reg(name="extents", width=self.extent_width,
+            #                                 size=self.dimensionality_support,
+            #                                 packed=True, explicit_array=True)
+
+            self._comp_reg = self.config_reg(name="comparison_op", width=num_comps_bw)
         else:
             print(self.hard_op)
             self._comp_reg = kts.const(self.hard_op.value, num_comps_bw)
@@ -63,8 +72,14 @@ class LFCompBlock(kts.Generator):
         self.interfaces['out_counter'] = self._output_counter
         self.interfaces['comparison'] = self._comparison
 
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input
+
     def get_interfaces(self):
         return self.interfaces
+
+    def gen_bitstream(self, comparator, scalar):
+        self.configure(self._comp_reg, comparator)
 
 
 if __name__ == "__main__":

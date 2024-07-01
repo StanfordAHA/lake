@@ -12,7 +12,7 @@ class ScheduleGenerator(Component):
         # super().__init__()
         self.mod_name = name
         if name is None:
-            self.mod_name = f"sched_gen_{self.dimensionality_support}_{self.stride_width}"
+            self.mod_name = f"sched_gen_{dimensionality}_{stride_width}"
         super().__init__(name=self.mod_name)
         self.dimensionality_support = dimensionality
         self.stride_width = stride_width
@@ -68,6 +68,9 @@ class ScheduleGenerator(Component):
 
         self.add_code(self.calculate_cycle_count)
         # self.add_code(self.calculate_cycle_delta)
+
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
 
     @always_comb
     def calculate_cycle_count(self):
@@ -202,6 +205,7 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         # self.add_code(self.calculate_cycle_delta)
 
         # this is the valid out
+        self.config_space_fixed = True
 
     def get_iterator_intf(self):
         return self.iterator_intf

@@ -1,4 +1,4 @@
-from lake.spec.component import Component
+from lake.spec.component import Component, lift_config_space
 from lake.utils.spec_enum import *
 import random as rand
 from lake.spec.address_generator import AddressGenerator
@@ -6,7 +6,7 @@ from lake.spec.memory_port import MemoryPort
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator
 from lake.spec.storage import SingleBankStorage, Storage
-from lake.utils.util import connect_memoryport_storage, lift_config_space
+from lake.utils.util import connect_memoryport_storage
 
 
 def print_class_hierarchy(obj):
@@ -53,6 +53,8 @@ class Port(Component):
 
         self._clk = self.clock('clk')
         self._rst_n = self.reset('rst_n')
+
+        # Going to always have a ready/valid in
 
         if dimensionality is not None:
             self.set_dimensionality(dimensionality)
@@ -337,13 +339,15 @@ class Port(Component):
             raise NotImplementedError
 
         # Now lift everything's config space up
-        self.child_cfg_bases = {}
-        running_config_size = 0
-        for component_ in all_to_lift:
-            # component_: Component
-            lift_config_space(self, component_)
-            self.child_cfg_bases[component_] = running_config_size
-            running_config_size += component_.get_config_size()
+        # self.child_cfg_bases = {}
+        # running_config_size = 0
+        # for component_ in all_to_lift:
+        #     # component_: Component
+        #     lift_config_space(self, component_)
+        #     self.child_cfg_bases[component_] = running_config_size
+        #     running_config_size += component_.get_config_size()
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
 
     def gen_bitstream(self, vec_in=None, vec_out=None):
 
