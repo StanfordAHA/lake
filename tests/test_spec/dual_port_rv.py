@@ -17,8 +17,8 @@ def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 

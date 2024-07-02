@@ -2,6 +2,8 @@ import kratos
 import random as rand
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from kratos import PortDirection
+from lake.modules.ready_valid_interface import RVInterface
+from lake.utils.spec_enum import Direction
 
 
 class Component(kratos.Generator):
@@ -35,6 +37,20 @@ class Component(kratos.Generator):
 
     def get_config_space_fixed(self):
         return self.config_space_fixed
+
+    def rvinput(self, **kwargs):
+        '''This utility allows a designer to add rv signals to an interface but still using the same
+            interface as kratos input/output
+        '''
+        new_rv = RVInterface(self, direction=Direction.IN, **kwargs)
+        return new_rv
+
+    def rvoutput(self, **kwargs):
+        '''This utility allows a designer to add rv signals to an interface but still using the same
+            interface as kratos input/output
+        '''
+        new_rv = RVInterface(self, direction=Direction.OUT, **kwargs)
+        return new_rv
 
     def populate_child_cfg_bases(self):
         pass

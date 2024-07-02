@@ -63,14 +63,27 @@ class Port(Component):
 
             # This is the hardware for a single fetch width
             # in set
-            data_from_ub = self.input(f"port_write_data_in", self._ext_data_width)
-            data_to_memport = self.output(f"port_write_data_out", self._int_data_width)
-            self._ub_intf['data'] = data_from_ub
-            self._mp_intf['data'] = data_to_memport
+            if self._runtime == Runtime.STATIC:
+                data_from_ub = self.input(f"port_write_data_in", self._ext_data_width)
+                data_to_memport = self.output(f"port_write_data_out", self._int_data_width)
+                self._ub_intf['data'] = data_from_ub
+                self._mp_intf['data'] = data_to_memport
+            else:
+                data_from_ub = self.rvinput(name=f"port_write_data_in", width=self._ext_data_width)
+                data_to_memport = self.rvoutput(name=f"port_write_data_out", width=self._int_data_width)
+                self._ub_intf['data'] = data_from_ub.get_port()
+                self._mp_intf['data'] = data_to_memport.get_port()
 
             if self._fw == 1:
                 # wire together
-                self.wire(data_from_ub, data_to_memport)
+                if self._runtime == Runtime.STATIC:
+                    self.wire(data_from_ub, data_to_memport)
+                else:
+                    data_from_pintf = data_from_ub.get_port_interface()
+                    data_to_pintf = data_to_memport.get_port_interface()
+                    self.wire(data_from_pintf['data'], data_to_pintf['data'])
+                    self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
+                    self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
 
             else:
                 # Cannot build the hardware without this information
