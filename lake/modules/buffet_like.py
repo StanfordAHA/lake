@@ -364,9 +364,11 @@ class BuffetLike(MemoryController):
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + self._curr_base[i],
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i])) for i in range(self.num_ID)]
 
+        self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]
         self._read_pop_full = self.var("read_pop_full", self.num_ID)
         self._read_pop = [self.var(f"read_pop_{i}", 1) for i in range(self.num_read_ports)]
-        self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=kts.const(1, 1), name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
+        # self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=kts.const(1, 1), name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
+        self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=~self._rd_rsp_fifo_full[idx], name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
 
         if self.optimize_wide and self.mem_width > self.data_width:
 
@@ -866,7 +868,7 @@ class BuffetLike(MemoryController):
         self._size_request_full = self.var("size_request_full", self.num_ID)
 
         self._rd_rsp_fifo_push = [self.var(f"rd_rsp_fifo_{i}_push", 1) for i in range(self.num_read_ports)]
-        self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]
+        # self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]  # move to the declaration of _read_joined_d1
         self._rd_rsp_fifo_almost_full = [self.var(f"rd_rsp_fifo_{i}_almost_full", 1) for i in range(self.num_read_ports)]
 
         self._rd_rsp_fifo_in_data = [self.var(f"rd_rsp_fifo_{i}_in_data", self.data_width + 1, packed=True) for i in range(self.num_read_ports)]
@@ -938,7 +940,8 @@ class BuffetLike(MemoryController):
             # [self.wire(self._rd_rsp_fifo_push[i], self._valid_from_mem | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
             if self.num_read_ports == 2:
                 # [self.wire(self._rd_rsp_fifo_push[i], self._ren_full_d1[i] | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
-                [self.wire(self._rd_rsp_fifo_push[i], self._from_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
+                # The rd_rsp_fifo space of size request is guaranteed by ren_full_d1
+                [self.wire(self._rd_rsp_fifo_push[i], (self._from_cached_read[i] & ~self._rd_rsp_fifo_full[i]) | self._size_request_full[i]) for i in range(self.num_read_ports)]
             else:
                 [self.wire(self._rd_rsp_fifo_push[i], self._valid_from_mem | (kts.concat(*self._use_cached_read)).r_or() | self._size_request_full.r_or()) for i in range(self.num_read_ports)]
 

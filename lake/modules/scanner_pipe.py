@@ -556,10 +556,13 @@ class ScannerPipe(MemoryController):
             crd_port_num = 0
             crd_res_data_in = kts.concat(kts.const(0, 1), self._rd_rsp_fifo_out_data[0][self.data_width - 1, 0])
 
+        self._push_reserve_crd_res_fifo_common = self.var("push_reserve_crd_res_fifo_common", 1)
         if num_ports == 2:
-            push_reserve_crd_res_fifo = self._rd_rsp_fifo_valid[crd_port_num] | (self._rd_rsp_fifo_valid[0] & ((self._block_mode & ~self._push_glb_addr) | (self._lookup_mode & ~self._block_mode)))  # TODO: crd res push
+            self._push_reserve_crd_res_fifo_common = self._rd_rsp_fifo_valid[crd_port_num] | (self._rd_rsp_fifo_valid[0] & ((self._block_mode & ~self._push_glb_addr) | (self._lookup_mode & ~self._block_mode)))  # TODO: crd res push
         else:
-            push_reserve_crd_res_fifo = self._rd_rsp_fifo_valid[0] & ((self._rd_rsp_fifo_out_data[0][self.data_width] == kts.const(1, 1)) | self._block_mode | self._lookup_mode)
+            self._push_reserve_crd_res_fifo_common = self._rd_rsp_fifo_valid[0] & ((self._rd_rsp_fifo_out_data[0][self.data_width] == kts.const(1, 1)) | self._block_mode | self._lookup_mode)
+
+        self._push_reserve_crd_res_fifo = self.var("push_reserve_crd_res_fifo", 1)
 
         # Technically if you reserved something it will always be ready to receive
         # data for the reserved spot by design
@@ -576,7 +579,7 @@ class ScannerPipe(MemoryController):
                                                             self._seg_res_fifo_data_out[0])),
                        data_out_0=self._crd_res_fifo_data_out,
                        push_alloc=kts.ternary(self._lookup_mode, self._seg_res_fifo_push_alloc, self._crd_res_fifo_push_alloc),
-                       push_reserve=push_reserve_crd_res_fifo,
+                       push_reserve=self._push_reserve_crd_res_fifo,
                        push_fill=kts.ternary(self._lookup_mode, self._seg_res_fifo_push_fill, self._crd_res_fifo_push_fill),
                        pop=self._crd_res_fifo_pop,
                        valid=self._crd_res_fifo_valid,
@@ -698,6 +701,10 @@ class ScannerPipe(MemoryController):
         self.wire(self._rd_rsp_fifo_pop[1], kts.ternary(self._block_mode,
                                                          ~self._block_rd_fifo.ports.full,
                                                          1))
+
+        self.wire(self._push_reserve_crd_res_fifo, kts.ternary(self._block_mode,
+                                                               self._push_reserve_crd_res_fifo_common & ~self._block_rd_fifo.ports.full,
+                                                               self._push_reserve_crd_res_fifo_common))
 
         self._coord_out_fifo_push = self.var("coord_out_fifo_push", 1)
         self._non_vr_pos_out_fifo_push = self.var("non_vr_pos_out_fifo_push", 1)
@@ -1516,7 +1523,7 @@ class ScannerPipe(MemoryController):
         BLOCK_1_RD.output(self._crd_op_out_to_fifo, 1)
         BLOCK_1_RD.output(self._crd_ID_out_to_fifo, 0)
         BLOCK_1_RD.output(self._crd_req_push, (self._num_req_made_crd < self._ptr_reg) & ~self._block_rd_fifo.ports.full)
-        BLOCK_1_RD.output(self._crd_rd_rsp_fifo_pop, (self._num_req_rec_crd < self._ptr_reg))
+        BLOCK_1_RD.output(self._crd_rd_rsp_fifo_pop, (self._num_req_rec_crd < self._ptr_reg) & ~self._block_rd_fifo.ports.full)
         BLOCK_1_RD.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_1_RD.output(self._crd_pop_infifo, 0)
         BLOCK_1_RD.output(self._en_reg_data_in, 0)
@@ -1525,7 +1532,7 @@ class ScannerPipe(MemoryController):
         BLOCK_1_RD.output(self._inc_req_made_crd, (self._num_req_made_crd < self._ptr_reg) & self._any_crd_grant_push & ~self._block_rd_fifo.ports.full)
         BLOCK_1_RD.output(self._clr_req_made_crd, 0)
         # Block 1 RD always on read response port 0
-        BLOCK_1_RD.output(self._inc_req_rec_crd, (self._num_req_rec_crd < self._ptr_reg) & self._rd_rsp_fifo_valid[0])
+        BLOCK_1_RD.output(self._inc_req_rec_crd, (self._num_req_rec_crd < self._ptr_reg) & self._rd_rsp_fifo_valid[0] & ~self._block_rd_fifo.ports.full)
         BLOCK_1_RD.output(self._clr_req_rec_crd, 0)
         BLOCK_1_RD.output(self._crd_res_fifo_push_alloc, (self._num_req_made_crd < self._ptr_reg) & self._any_crd_grant_push & ~self._block_rd_fifo.ports.full)
         BLOCK_1_RD.output(self._crd_res_fifo_push_fill, 0)
@@ -1561,7 +1568,7 @@ class ScannerPipe(MemoryController):
         BLOCK_2_SIZE_REC.output(self._crd_op_out_to_fifo, 0)
         BLOCK_2_SIZE_REC.output(self._crd_ID_out_to_fifo, 0)
         BLOCK_2_SIZE_REC.output(self._crd_req_push, 0)
-        BLOCK_2_SIZE_REC.output(self._crd_rd_rsp_fifo_pop, 1)
+        BLOCK_2_SIZE_REC.output(self._crd_rd_rsp_fifo_pop, ~self._block_rd_fifo.ports.full)
         BLOCK_2_SIZE_REC.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_2_SIZE_REC.output(self._crd_pop_infifo, 0)
         BLOCK_2_SIZE_REC.output(self._en_reg_data_in, 0)
@@ -1583,7 +1590,7 @@ class ScannerPipe(MemoryController):
         BLOCK_2_RD.output(self._crd_op_out_to_fifo, 1)
         BLOCK_2_RD.output(self._crd_ID_out_to_fifo, 1)
         BLOCK_2_RD.output(self._crd_req_push, (self._num_req_made_crd < self._ptr_reg) & ~self._block_rd_fifo.ports.full)
-        BLOCK_2_RD.output(self._crd_rd_rsp_fifo_pop, (self._num_req_rec_crd < self._ptr_reg))
+        BLOCK_2_RD.output(self._crd_rd_rsp_fifo_pop, (self._num_req_rec_crd < self._ptr_reg) & ~self._block_rd_fifo.ports.full)
         BLOCK_2_RD.output(self._non_vr_pos_out_fifo_push, 0)
         BLOCK_2_RD.output(self._crd_pop_infifo, 0)
         BLOCK_2_RD.output(self._en_reg_data_in, 0)
@@ -1592,7 +1599,7 @@ class ScannerPipe(MemoryController):
         BLOCK_2_RD.output(self._inc_req_made_crd, (self._num_req_made_crd < self._ptr_reg) & self._any_crd_grant_push & ~self._block_rd_fifo.ports.full)
         BLOCK_2_RD.output(self._clr_req_made_crd, 0)
         # Block 2 RD always on read response port associated with crd_port_num
-        BLOCK_2_RD.output(self._inc_req_rec_crd, (self._num_req_rec_crd < self._ptr_reg) & self._rd_rsp_fifo_valid[crd_port_num])
+        BLOCK_2_RD.output(self._inc_req_rec_crd, (self._num_req_rec_crd < self._ptr_reg) & self._rd_rsp_fifo_valid[crd_port_num] & ~self._block_rd_fifo.ports.full)
         BLOCK_2_RD.output(self._clr_req_rec_crd, 0)
         BLOCK_2_RD.output(self._crd_res_fifo_push_alloc, (self._num_req_made_crd < self._ptr_reg) & self._any_crd_grant_push & ~self._block_rd_fifo.ports.full)
         BLOCK_2_RD.output(self._crd_res_fifo_push_fill, 0)
