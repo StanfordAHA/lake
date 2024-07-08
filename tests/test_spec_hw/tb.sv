@@ -76,7 +76,7 @@ module lake_static_tb;
         port_r3_data = 0;
 
     end
-    else if (NUMBER_PORTS == 2) begin
+    else if (NUMBER_PORTS == 4) begin
 
         lakespec dut (
             // inputs
@@ -97,7 +97,7 @@ module lake_static_tb;
         port_r3_data = 0;
 
     end
-    else if (NUMBER_PORTS == 4) begin
+    else if (NUMBER_PORTS == 8) begin
 
         lakespec dut (
             // inputs
