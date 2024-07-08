@@ -31,6 +31,7 @@ setup(
         "fault",
         "magma-lang",
         "pytest",
-        "matplotlib"
+        "matplotlib",
+        "networkx"
     ]
 )

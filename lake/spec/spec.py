@@ -315,6 +315,11 @@ class Spec():
                 p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width)
             elif port.get_direction() == Direction.OUT:
                 p_temp = self._final_gen.output(f"port_{i_}", width=ub_intf['data'].width)
+            if self.any_rv_sg:
+                p_temp_valid = ub_intf['valid']
+                p_temp_ready = ub_intf['ready']
+                self._final_gen.wire(p_temp_valid, ub_intf['valid'])
+                self._final_gen.wire(p_temp_ready, ub_intf['ready'])
             self._final_gen.wire(p_temp, ub_intf['data'])
 
         # Now can build all the muxing in between the memintf and the mps
