@@ -1,5 +1,5 @@
 import kratos as kts
-from lake.utils.spec_enum import Direction
+from lake.utils.spec_enum import Direction, Runtime
 from lake.spec.memory_port import MemoryPort
 from kratos import always_comb
 
@@ -7,7 +7,7 @@ from kratos import always_comb
 class MemoryInterfaceDecoder(kts.Generator):
 
     # def __init__(self, name: str, debug: bool = False, is_clone: bool = False, internal_generator=None):
-    def __init__(self, name: str = None, port_type: Direction = None, port_intf: dict = None, memports=None):
+    def __init__(self, name: str = None, port_type: Direction = None, port_intf: dict = None, memports=None, runtime=Runtime.STATIC):
         super().__init__(name=name, debug=True)
         # super().__init__(name, debug, is_clone, internal_generator)
         self.p_intf = None
@@ -16,6 +16,7 @@ class MemoryInterfaceDecoder(kts.Generator):
         self.port_intf = port_intf
         self.port_direction = port_type
         self.addr_ranges = None
+        self.runtime = runtime
 
     def gen_hardware(self):
 
@@ -27,10 +28,14 @@ class MemoryInterfaceDecoder(kts.Generator):
             self.p_intf['addr'] = self.input("addr", self.port_intf['addr'].width)
             self.p_intf['data'] = self.input("data", self.port_intf['data'].width)
             self.p_intf['en'] = self.input("en", 1)
+            if self.runtime == Runtime.DYNAMIC:
+                self.p_intf['grant'] = self.output("grant", 1)
         elif self.port_direction == Direction.OUT:
             self.p_intf['addr'] = self.input("addr", self.port_intf['addr'].width)
             self.p_intf['data'] = self.output("data", self.port_intf['data'].width)
             self.p_intf['en'] = self.input("en", 1)
+            if self.runtime == Runtime.DYNAMIC:
+                self.p_intf['grant'] = self.output("grant", 1)
         else:
             raise NotImplementedError
 
@@ -48,6 +53,8 @@ class MemoryInterfaceDecoder(kts.Generator):
             # Create the MemoryPort facing side
             self.mp_intf[i_]['addr'] = self.output(f"mp_addr_{i_}", kts.clog2(mp.get_num_addrs()))
             self.mp_intf[i_]['en'] = self.output(f"mp_en_{i_}", 1)
+            if self.runtime == Runtime.DYNAMIC:
+                self.mp_intf[i_]['grant'] = self.input(f"mp_grant_{i_}", 1)
             if self.port_direction == Direction.IN:
                 self.mp_intf[i_]['data'] = self.output(f"mp_data_{i_}", self.port_intf['data'].width)
             elif self.port_direction == Direction.OUT:
@@ -70,6 +77,11 @@ class MemoryInterfaceDecoder(kts.Generator):
 
             self.add_code(decode_en)
             base = base + addr_range
+
+        # Need to OR together all the grants...
+        if self.runtime == Runtime.DYNAMIC:
+            all_grants = [self.mp_intf[i_]['grant'] for i_ in range(len(self.memports))]
+            self.wire(self.p_intf['grant'], kts.concat(*all_grants).r_or())
 
     def get_p_intf(self):
         return self.p_intf

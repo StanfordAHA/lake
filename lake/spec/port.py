@@ -72,7 +72,11 @@ class Port(Component):
                 data_from_ub = self.rvinput(name=f"port_write_data_in", width=self._ext_data_width)
                 data_to_memport = self.rvoutput(name=f"port_write_data_out", width=self._int_data_width)
                 self._ub_intf['data'] = data_from_ub.get_port()
+                self._ub_intf['valid'] = data_from_ub.get_valid()
+                self._ub_intf['ready'] = data_from_ub.get_ready()
                 self._mp_intf['data'] = data_to_memport.get_port()
+                self._mp_intf['valid'] = data_to_memport.get_valid()
+                self._mp_intf['ready'] = data_to_memport.get_ready()
 
             if self._fw == 1:
                 # wire together
@@ -215,15 +219,31 @@ class Port(Component):
 
         elif self._direction == Direction.OUT:
 
-            # in set
-            data_from_memport = self.input(f"port_read_data_in", self._int_data_width)
-            data_to_ub = self.output(f"port_read_data_out", self._ext_data_width)
-            self._ub_intf['data'] = data_to_ub
-            self._mp_intf['data'] = data_from_memport
+            if self._runtime == Runtime.STATIC:
+                data_from_memport = self.input(f"port_read_data_in", self._int_data_width)
+                data_to_ub = self.output(f"port_read_data_out", self._ext_data_width)
+                self._ub_intf['data'] = data_to_ub
+                self._mp_intf['data'] = data_from_memport
+            else:
+                data_from_memport = self.rvinput(name=f"port_read_data_in", width=self._int_data_width)
+                data_to_ub = self.rvoutput(name=f"port_read_data_out", width=self._ext_data_width)
+                self._ub_intf['data'] = data_to_ub.get_port()
+                self._ub_intf['valid'] = data_to_ub.get_valid()
+                self._ub_intf['ready'] = data_to_ub.get_ready()
+                self._mp_intf['data'] = data_from_memport.get_port()
+                self._mp_intf['valid'] = data_from_memport.get_valid()
+                self._mp_intf['ready'] = data_from_memport.get_ready()
 
             if self._fw == 1:
                 # wire together
-                self.wire(data_from_memport, data_to_ub)
+                if self._runtime == Runtime.STATIC:
+                    self.wire(data_from_memport, data_to_ub)
+                else:
+                    data_from_pintf = data_to_ub.get_port_interface()
+                    data_to_pintf = data_from_memport.get_port_interface()
+                    self.wire(data_from_pintf['data'], data_to_pintf['data'])
+                    self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
+                    self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
             else:
 
                 assert self.dimensionality is not None

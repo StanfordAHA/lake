@@ -16,6 +16,8 @@ from lake.utils.spec_enum import Direction
 from lake.utils.util import connect_memoryport_storage, inline_multiplexer
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
+from lake.modules.ready_valid_interface import RVInterface
+from lake.modules.arbiter import Arbiter
 
 
 class Spec():
@@ -36,6 +38,7 @@ class Spec():
         self.total_config_size = None
         self.mp_to_mid = None
         self.any_rv_sg = False
+        self.runtime = Runtime.STATIC
         self.rv_comparison_network = None
         self.num_ports = 0
 
@@ -60,6 +63,7 @@ class Spec():
             # self.register_(comp=comp)
             if isinstance(comp, ScheduleGenerator) and comp.get_rv():
                 self.any_rv_sg = True
+                self.runtime = Runtime.DYNAMIC
             if isinstance(comp, Port):
                 self.num_ports += 1
 
@@ -253,30 +257,6 @@ class Spec():
             self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
-            quali_step = port_sg.ports.step
-            # Here we need to qualify the port sg's step before sending it into the memory port, ID, SG
-            if self.any_rv_sg:
-                # If it is an IN Port, we need to qualify the step with the incoming data being valid
-                # as well as the grant for the MemoryPort's arbitration
-                # In this case, the step is the req line to the arbiter and the ready line to the data
-                if port_direction == Direction.IN:
-                    # quali_step = self.qualify_step(port_sg, Direction.IN)
-                    quali_step = port_sg.ports.step
-                # If it is an OUT Port, we need to qualify the step with the grant line from the arbitration and the
-                # downstream ready (from the Port I guess)
-                elif port_direction == Direction.OUT:
-                    quali_step = port_sg.ports.step
-                    # quali_step = self.qualify_step(port_sg, Direction.OUT)
-                else:
-                    raise NotImplementedError(f"Only support {Direction.IN} and {Direction.OUT}")
-
-                # Now that we have the qualified steps to plug in everywhere, we also need to handle comparison hardware
-
-            # This is in the case of a ready/valid system
-            # step signal
-            self._final_gen.wire(quali_step, port_ag.ports.step)
-            self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
-
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
                 ext_intf = port.get_internal_ag_intf()
@@ -289,12 +269,13 @@ class Spec():
             assembled_port['dir'] = port.get_direction()
             assembled_port['data'] = port.get_mp_intf()['data']
             assembled_port['addr'] = port_ag.get_address()
-            assembled_port['en'] = quali_step
+            # assembled_port['en'] = quali_step
             # assembled_port['en'] = port_sg.get_step()
 
             # send signals through memintf decoder (one port to many memoryports, doing decoding based on address)
             memintf_dec = MemoryInterfaceDecoder(name=f"memintfdec_{i_}", port_type=port.get_direction(),
-                                                 port_intf=assembled_port, memports=memports_)
+                                                 port_intf=assembled_port, memports=memports_,
+                                                 runtime=self.runtime)
             memintf_dec.gen_hardware()
 
             self._final_gen.add_child(f"memintfdec_inst_{i_}", memintf_dec)
@@ -304,22 +285,79 @@ class Spec():
                 self.register_mid_w_mp(mid=mintf_ints[j_], mp=mp)
                 # self._connect_memintfdec_mp(mintf_ints[j_], mp)
 
+            # Have to qualify the step after the MID is created so we can get the grant from that
+            quali_step = port_sg.ports.step
+            # Here we need to qualify the port sg's step before sending it into the memory port, ID, SG
+            if self.any_rv_sg:
+                # If it is an IN Port, we need to qualify the step with the incoming data being valid
+                # as well as the grant for the MemoryPort's arbitration
+                # In this case, the step is the req line to the arbiter and the ready line to the data
+                if port_direction == Direction.IN:
+                    # quali_step = self.qualify_step(port_sg, Direction.IN)
+                    port_valid = port.get_mp_intf()['valid']
+                    sg_step = port_sg.ports.step
+                    mid_grant = memintf_dec.get_p_intf()['grant']
+                    # The enable to mid is valid + step
+                    quali_step = sg_step & port_valid
+                    # The grant is the ready/final step to ID, AG, ready
+                    self._final_gen.wire(port.get_mp_intf()['ready'], mid_grant)
+                    self._final_gen.wire(port_ag.ports.step, mid_grant)
+                    self._final_gen.wire(port_id.ports.step, mid_grant)
+                    # Wire the ID step
+                # If it is an OUT Port, we need to qualify the step with the grant line from the arbitration and the
+                # downstream ready (from the Port I guess)
+                elif port_direction == Direction.OUT:
+                    quali_step = port_sg.ports.step
+                    # quali_step = self.qualify_step(port_sg, Direction.OUT)
+
+                    port_ready = port.get_mp_intf()['ready']
+                    sg_step = port_sg.ports.step
+                    mid_grant = memintf_dec.get_p_intf()['grant']
+                    # The enable to mid is port ready + step
+                    quali_step = sg_step & port_ready
+                    # The grant is the ready/final step to ID, AG, ready
+                    self._final_gen.wire(port.get_mp_intf()['valid'], mid_grant)
+                    self._final_gen.wire(port_ag.ports.step, mid_grant)
+                    self._final_gen.wire(port_id.ports.step, mid_grant)
+
+                else:
+                    raise NotImplementedError(f"Only support {Direction.IN} and {Direction.OUT}")
+
+                # Now that we have the qualified steps to plug in everywhere, we also need to handle comparison hardware
+            else:
+                self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
+                # self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
+                self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
+
             memintf_dec_p_intf = memintf_dec.get_p_intf()
             self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])
             self._final_gen.wire(assembled_port['addr'], memintf_dec_p_intf['addr'])
-            self._final_gen.wire(assembled_port['en'], memintf_dec_p_intf['en'])
+            # self._final_gen.wire(assembled_port['en'], memintf_dec_p_intf['en'])
+            self._final_gen.wire(quali_step, memintf_dec_p_intf['en'])
 
             # Now add the port interfaces to the module
             ub_intf = port.get_ub_intf()
             if port.get_direction() == Direction.IN:
-                p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width)
+                if self.any_rv_sg:
+                    p_temp_rv = self._final_gen.rvinput(name=f"port_{i_}", width=ub_intf['data'].width)
+                    p_temp = p_temp_rv.get_port()
+                    p_temp_valid = p_temp_rv.get_valid()
+                    p_temp_ready = p_temp_rv.get_ready()
+                    self._final_gen.wire(p_temp_valid, ub_intf['valid'])
+                    self._final_gen.wire(p_temp_ready, ub_intf['ready'])
+                else:
+                    p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width)
             elif port.get_direction() == Direction.OUT:
-                p_temp = self._final_gen.output(f"port_{i_}", width=ub_intf['data'].width)
-            if self.any_rv_sg:
-                p_temp_valid = ub_intf['valid']
-                p_temp_ready = ub_intf['ready']
-                self._final_gen.wire(p_temp_valid, ub_intf['valid'])
-                self._final_gen.wire(p_temp_ready, ub_intf['ready'])
+                if self.any_rv_sg:
+                    p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width)
+                    p_temp = p_temp_rv.get_port()
+                    p_temp_valid = p_temp_rv.get_valid()
+                    p_temp_ready = p_temp_rv.get_ready()
+                    self._final_gen.wire(p_temp_valid, ub_intf['valid'])
+                    self._final_gen.wire(p_temp_ready, ub_intf['ready'])
+                else:
+                    p_temp = self._final_gen.output(f"port_{i_}", width=ub_intf['data'].width)
+
             self._final_gen.wire(p_temp, ub_intf['data'])
 
         # Now can build all the muxing in between the memintf and the mps
@@ -375,13 +413,35 @@ class Spec():
         else:
             self.mp_to_mid[mp].append(mid)
 
-    def build_mp_p(self, static=True):
+    def insert_arbiter(self, reqs, grants, arb_name):
+        '''This function adds an arbiter, just pass in the req lines and it will produce an object
+            with both a reqs and grants field
+        '''
+        tmp_arb = Arbiter(ins=len(reqs))
+        self._final_gen.add_child(arb_name, tmp_arb,
+                                  clk=self.hw_attr['clk'],
+                                  rst_n=self.hw_attr['rst_n'],
+                                  clk_en=kts.const(1, 1),
+                                  resource_ready=kts.const(1, 1))
+
+        tmp_arb_reqs = tmp_arb.get_reqs()
+        tmp_arb_grants = tmp_arb.get_grants()
+        for i in range(len(reqs)):
+            self._final_gen.wire(tmp_arb_reqs[i], reqs[i])
+            self._final_gen.wire(tmp_arb_grants[i], grants[i])
+
+        return tmp_arb
+
+    def build_mp_p(self):
         ''' We have to now build the arbitration and muxes between the Ports and
             their shared MemoryPorts - if `static` is `True`, arbitration will just be simple priority
             encoding as that won't matter since no two controllers will access the same
             resource on the same cycle
         '''
-        if static:
+
+        self._all_mp_arbiters = {}
+        if True:
+            # if not self.any_rv_sg:
             for mp, mid_intf_lst in self.mp_to_mid.items():
                 # We have a memory port and a set of connections to go to it - build a mux for
                 # addr, data, en
@@ -395,7 +455,23 @@ class Spec():
                 mp_port_intf = mp.get_port_intf()
                 # all_mux_pairs
                 if mp_type == MemoryPortType.R:
-                    sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+
+                    # Can just interpret sels here and treat them as reqs, then feed the grants back to the mux
+                    # arbiter per mp
+                    if self.any_rv_sg:
+                        sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                        # grants = self._final_gen.var(name=f"{mp.get_name()}_arbiter_grants", width=len(mid_intf_lst))
+                        grants = [mid_intf['grant'] for mid_intf in mid_intf_lst]
+                        tmp_arb = self.insert_arbiter(reqs=sels, grants=grants,
+                                                      arb_name=f"{mp.get_name()}_arbiter")
+                        self._all_mp_arbiters[mp] = {'arbiter': tmp_arb,
+                                                     'reqs': sels,
+                                                     'grants': grants}
+                        sels = tmp_arb.get_grants()
+                        # sels = grants
+                    else:
+                        sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+
                     ens = [mid_intf['en'] for mid_intf in mid_intf_lst]
                     addrs = [mid_intf['addr'] for mid_intf in mid_intf_lst]
                     datas = [mid_intf['data'] for mid_intf in mid_intf_lst]
@@ -406,7 +482,24 @@ class Spec():
                     [self._final_gen.wire(mp_port_intf['read_data'], datas[i]) for i in range(len(datas))]
 
                 elif mp_type == MemoryPortType.W:
-                    sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+
+                    # Can just interpret sels here and treat them as reqs, then feed the grants back to the mux
+                    # arbiter per mp
+                    if self.any_rv_sg:
+                        sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                        # grants = self._final_gen.var(name=f"{mp.get_name()}_arbiter_grants", width=len(mid_intf_lst))
+                        grants = [mid_intf['grant'] for mid_intf in mid_intf_lst]
+                        tmp_arb = self.insert_arbiter(reqs=sels, grants=grants,
+                                                      arb_name=f"{mp.get_name()}_arbiter")
+                        self._all_mp_arbiters[mp] = {'arbiter': tmp_arb,
+                                                     'reqs': sels,
+                                                     'grants': grants}
+                        sels = tmp_arb.get_grants()
+                        # sels = grants
+                    else:
+                        sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+
+                    # sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
                     ens = [mid_intf['en'] for mid_intf in mid_intf_lst]
                     addrs = [mid_intf['addr'] for mid_intf in mid_intf_lst]
                     datas = [mid_intf['data'] for mid_intf in mid_intf_lst]
@@ -415,11 +508,24 @@ class Spec():
                     inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_write_data", sel=sels, one=mp_port_intf['write_data'], many=datas)
 
                 elif mp_type == MemoryPortType.RW:
-                    sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                    # sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
                     # addrs = [mid_intf['addr'] for mid_intf in mid_intf_lst]
 
-                    print("ADDRESSES")
-                    print(addrs)
+                    # Can just interpret sels here and treat them as reqs, then feed the grants back to the mux
+                    # arbiter per mp
+                    if self.any_rv_sg:
+                        sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
+                        # grants = self._final_gen.var(name=f"{mp.get_name()}_arbiter_grants", width=len(mid_intf_lst))
+                        grants = [mid_intf['grant'] for mid_intf in mid_intf_lst]
+                        tmp_arb = self.insert_arbiter(reqs=sels, grants=grants,
+                                                      arb_name=f"{mp.get_name()}_arbiter")
+                        self._all_mp_arbiters[mp] = {'arbiter': tmp_arb,
+                                                     'reqs': sels,
+                                                     'grants': grants}
+                        # sels = grants
+                        sels = tmp_arb.get_grants()
+                    else:
+                        sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
 
                     # Can build a multiplexer for the address normally
                     # inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name}_mux_to_mps_rw_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
@@ -472,7 +578,7 @@ class Spec():
 
                 else:
                     raise NotImplementedError
-
+        # Now to build arbiter if dynamic - the ens are actually now the req, need to send back grant
         else:
             raise NotImplementedError
 

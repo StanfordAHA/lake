@@ -123,6 +123,12 @@ class Arbiter(Generator):
         # Finally, lift the config regs...
         # lift_config_reg(self.internal_generator)
 
+    def get_grants(self):
+        return self._grant_out
+
+    def get_reqs(self):
+        return self._request_in
+
     def get_bitstream(self):
 
         flattened = create_wrapper_flatten(self.internal_generator.clone(),
