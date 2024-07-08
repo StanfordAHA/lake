@@ -89,7 +89,7 @@ module lake_static_tb;
             .port_0(port_w0_data),
             .port_1(port_w1_data),
             // output ports
-            .port_2(port_r0_data)
+            .port_2(port_r0_data),
             .port_3(port_r1_data)
         );
 
@@ -112,9 +112,9 @@ module lake_static_tb;
             .port_2(port_w2_data),
             .port_3(port_w3_data),
             // output ports
-            .port_4(port_r0_data)
-            .port_5(port_r1_data)
-            .port_6(port_r2_data)
+            .port_4(port_r0_data),
+            .port_5(port_r1_data),
+            .port_6(port_r2_data),
             .port_7(port_r3_data)
         );
 
