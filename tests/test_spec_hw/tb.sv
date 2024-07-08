@@ -51,10 +51,10 @@ module lake_static_tb;
     logic [DATA_WIDTH - 1:0] port_w1_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_w2_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_w3_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r0_mem [0:NUM_CYCLES - 1] ;
-    logic [DATA_WIDTH - 1:0] port_r1_mem [0:NUM_CYCLES - 1] ;
-    logic [DATA_WIDTH - 1:0] port_r2_mem [0:NUM_CYCLES - 1] ;
-    logic [DATA_WIDTH - 1:0] port_r3_mem [0:NUM_CYCLES - 1] ;
+    logic [DATA_WIDTH - 1:0] port_r0_mem [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r1_mem [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r2_mem [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r3_mem [0:NUM_CYCLES - 1];
 
     if (NUMBER_PORTS == 2) begin
 
@@ -70,10 +70,6 @@ module lake_static_tb;
             // output ports
             .port_1(port_r0_data)
         );
-
-        port_r1_data = 0;
-        port_r2_data = 0;
-        port_r3_data = 0;
 
     end
     else if (NUMBER_PORTS == 4) begin
@@ -92,9 +88,6 @@ module lake_static_tb;
             .port_2(port_r0_data),
             .port_3(port_r1_data)
         );
-
-        port_r2_data = 0;
-        port_r3_data = 0;
 
     end
     else if (NUMBER_PORTS == 8) begin
