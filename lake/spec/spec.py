@@ -670,6 +670,9 @@ class Spec():
             ag_bs = port_ag.gen_bitstream(addr_map)
             if self.any_rv_sg:
                 sg_bs = port_sg.gen_bitstream(sched_map)
+                # Now also configure all rv comparison network
+                # comparisons = []
+                # self.rv_comparison_network.gen_bitstream()
             else:
                 sg_bs = port_sg.gen_bitstream(sched_map)
 

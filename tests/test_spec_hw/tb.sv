@@ -208,7 +208,8 @@ module lake_static_tb;
         port_w1_valid = 1'b1;
         port_w2_valid = 1'b1;
         port_w3_valid = 1'b1;
-        port_r0_ready = 1'b1;
+        // port_r0_ready = 1'b1;
+        port_r0_ready = 1'b0;
         port_r1_ready = 1'b1;
         port_r2_ready = 1'b1;
         port_r3_ready = 1'b1;
@@ -251,11 +252,12 @@ module lake_static_tb;
         #5 clk ^= 1;
 
         while (THIS_CYC_COUNT < NUM_CYCLES) begin
-            // if (dut.done) begin
-            //     $write("Test is done...\n");
-            //     $write("Cycle Count...%d\n", cycle_count);
-            //     $finish;
-            // end
+            // For LI, delay the first read to verify that the
+            // writes don't proceed too much
+            if (THIS_CYC_COUNT > 64) begin
+                port_r0_ready = 1'b1;
+            end
+
             // Input 2*i
             port_w0_data = THIS_CYC_COUNT * 2;
             port_w1_data = THIS_CYC_COUNT * 2;
