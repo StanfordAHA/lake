@@ -347,6 +347,9 @@ class Spec():
                     self._final_gen.wire(p_temp_ready, ub_intf['ready'])
                 else:
                     p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width)
+                    p_temp_valid = self._final_gen.input(f"port_{i_}_valid", width=ub_intf['data'].width)
+                    p_temp_ready = self._final_gen.output(f"port_{i_}_ready", width=ub_intf['data'].width)
+                    self._final_gen.wire(p_temp_ready, kts.const(1, 1))
             elif port.get_direction() == Direction.OUT:
                 if self.any_rv_sg:
                     p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width)
@@ -357,6 +360,9 @@ class Spec():
                     self._final_gen.wire(p_temp_ready, ub_intf['ready'])
                 else:
                     p_temp = self._final_gen.output(f"port_{i_}", width=ub_intf['data'].width)
+                    p_temp_valid = self._final_gen.output(f"port_{i_}_valid", width=ub_intf['data'].width)
+                    p_temp_ready = self._final_gen.input(f"port_{i_}_ready", width=ub_intf['data'].width)
+                    self._final_gen.wire(p_temp_valid, kts.const(1, 1))
 
             self._final_gen.wire(p_temp, ub_intf['data'])
 

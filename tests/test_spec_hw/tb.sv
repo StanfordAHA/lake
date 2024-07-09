@@ -40,13 +40,37 @@ module lake_static_tb;
     // logic [31:0] bitstream_data [0:BITSTREAM_MAX_SIZE - 1];
 
     logic [DATA_WIDTH - 1:0] port_w0_data;
+    logic                    port_w0_valid;
+    logic                    port_w0_ready;
+
     logic [DATA_WIDTH - 1:0] port_w1_data;
+    logic                    port_w1_valid;
+    logic                    port_w1_ready;
+
     logic [DATA_WIDTH - 1:0] port_w2_data;
+    logic                    port_w2_valid;
+    logic                    port_w2_ready;
+
     logic [DATA_WIDTH - 1:0] port_w3_data;
+    logic                    port_w3_valid;
+    logic                    port_w3_ready;
+
     logic [DATA_WIDTH - 1:0] port_r0_data;
+    logic                    port_r0_valid;
+    logic                    port_r0_ready;
+
     logic [DATA_WIDTH - 1:0] port_r1_data;
+    logic                    port_r1_valid;
+    logic                    port_r1_ready;
+
     logic [DATA_WIDTH - 1:0] port_r2_data;
+    logic                    port_r2_valid;
+    logic                    port_r2_ready;
+
     logic [DATA_WIDTH - 1:0] port_r3_data;
+    logic                    port_r3_valid;
+    logic                    port_r3_ready;
+
     logic [DATA_WIDTH - 1:0] port_w0_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_w1_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_w2_mem [0:NUM_CYCLES - 1];
@@ -67,8 +91,12 @@ module lake_static_tb;
             .config_memory(bitstream[0]),
             // input ports
             .port_0(port_w0_data),
+            .port_0_valid(port_w0_valid),
+            .port_0_ready(port_w0_ready),
             // output ports
-            .port_1(port_r0_data)
+            .port_1(port_r0_data),
+            .port_1_valid(port_r0_valid),
+            .port_1_ready(port_r0_ready)
         );
 
     end
@@ -83,10 +111,20 @@ module lake_static_tb;
             .config_memory(bitstream[0]),
             // input ports
             .port_0(port_w0_data),
+            .port_0_valid(port_w0_valid),
+            .port_0_ready(port_w0_ready),
+
             .port_1(port_w1_data),
+            .port_1_valid(port_w1_valid),
+            .port_1_ready(port_w1_ready),
             // output ports
             .port_2(port_r0_data),
-            .port_3(port_r1_data)
+            .port_2_valid(port_r0_valid),
+            .port_2_ready(port_r0_ready),
+
+            .port_3(port_r1_data),
+            .port_3_valid(port_r1_valid),
+            .port_3_ready(port_r1_ready)
         );
 
     end
@@ -101,14 +139,36 @@ module lake_static_tb;
             .config_memory(bitstream[0]),
             // input ports
             .port_0(port_w0_data),
+            .port_0_valid(port_w0_valid),
+            .port_0_ready(port_w0_ready),
+
             .port_1(port_w1_data),
+            .port_1_valid(port_w1_valid),
+            .port_1_ready(port_w1_ready),
+
             .port_2(port_w2_data),
+            .port_2_valid(port_w2_valid),
+            .port_2_ready(port_w2_ready),
+
             .port_3(port_w3_data),
+            .port_3_valid(port_w3_valid),
+            .port_3_ready(port_w3_ready),
             // output ports
             .port_4(port_r0_data),
+            .port_4_valid(port_r0_valid),
+            .port_4_ready(port_r0_ready),
+
             .port_5(port_r1_data),
+            .port_5_valid(port_r1_valid),
+            .port_5_ready(port_r1_ready),
+
             .port_6(port_r2_data),
-            .port_7(port_r3_data)
+            .port_6_valid(port_r2_valid),
+            .port_6_ready(port_r2_ready),
+
+            .port_7(port_r3_data),
+            .port_7_valid(port_r3_valid),
+            .port_7_ready(port_r3_ready)
         );
 
     end
