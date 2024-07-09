@@ -74,7 +74,7 @@ class Arbiter(Generator):
         self._grant_line_ready = self.var("grant_line_ready", self.ins)
 
         if self.ins == 1:
-            self.wire(self._grant_out[0], self._resource_ready)
+            self.wire(self._grant_out[0], self._resource_ready & self._request_in[0])
             return
 
         # Algorithmically set grant line...
