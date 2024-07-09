@@ -204,6 +204,15 @@ module lake_static_tb;
 
         THIS_CYC_COUNT = 0;
 
+        port_w0_valid = 1'b1;
+        port_w1_valid = 1'b1;
+        port_w2_valid = 1'b1;
+        port_w3_valid = 1'b1;
+        port_r0_ready = 1'b1;
+        port_r1_ready = 1'b1;
+        port_r2_ready = 1'b1;
+        port_r3_ready = 1'b1;
+
         clk <= 1'b0;
         clk <= 1'b0;
         rst_n <= 1'b1;
