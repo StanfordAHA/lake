@@ -257,13 +257,6 @@ class Spec():
             self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
-            # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
-            if port.get_fw() > 1:
-                ext_intf = port.get_internal_ag_intf()
-                self._final_gen.wire(ext_intf['step'], quali_step)
-                self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
-                self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
-
             # Gen the hardware for each, assemble the signals
             assembled_port = {}
             assembled_port['dir'] = port.get_direction()
@@ -328,6 +321,13 @@ class Spec():
                 self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
                 # self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
                 self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
+
+            # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
+            if port.get_fw() > 1:
+                ext_intf = port.get_internal_ag_intf()
+                self._final_gen.wire(ext_intf['step'], quali_step)
+                self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
+                self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
 
             memintf_dec_p_intf = memintf_dec.get_p_intf()
             self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])
