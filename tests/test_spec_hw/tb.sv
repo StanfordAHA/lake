@@ -42,34 +42,42 @@ module lake_static_tb;
     logic [DATA_WIDTH - 1:0] port_w0_data;
     logic                    port_w0_valid;
     logic                    port_w0_ready;
+    integer w0_tracker;
 
     logic [DATA_WIDTH - 1:0] port_w1_data;
     logic                    port_w1_valid;
     logic                    port_w1_ready;
+    integer w1_tracker;
 
     logic [DATA_WIDTH - 1:0] port_w2_data;
     logic                    port_w2_valid;
     logic                    port_w2_ready;
+    integer w2_tracker;
 
     logic [DATA_WIDTH - 1:0] port_w3_data;
     logic                    port_w3_valid;
     logic                    port_w3_ready;
+    integer w3_tracker;
 
     logic [DATA_WIDTH - 1:0] port_r0_data;
     logic                    port_r0_valid;
     logic                    port_r0_ready;
+    integer r0_tracker;
 
     logic [DATA_WIDTH - 1:0] port_r1_data;
     logic                    port_r1_valid;
     logic                    port_r1_ready;
+    integer r1_tracker;
 
     logic [DATA_WIDTH - 1:0] port_r2_data;
     logic                    port_r2_valid;
     logic                    port_r2_ready;
+    integer r2_tracker;
 
     logic [DATA_WIDTH - 1:0] port_r3_data;
     logic                    port_r3_valid;
     logic                    port_r3_ready;
+    integer r3_tracker;
 
     logic [DATA_WIDTH - 1:0] port_w0_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_w1_mem [0:NUM_CYCLES - 1];
@@ -204,6 +212,15 @@ module lake_static_tb;
 
         THIS_CYC_COUNT = 0;
 
+        w0_tracker = 0;
+        w1_tracker = 0;
+        w2_tracker = 0;
+        w3_tracker = 0;
+        r0_tracker = 0;
+        r1_tracker = 0;
+        r2_tracker = 0;
+        r3_tracker = 0;
+
         port_w0_valid = 1'b1;
         port_w1_valid = 1'b1;
         port_w2_valid = 1'b1;
@@ -259,17 +276,43 @@ module lake_static_tb;
             end
 
             // Input 2*i
-            port_w0_data = THIS_CYC_COUNT * 2;
-            port_w1_data = THIS_CYC_COUNT * 2;
-            port_w2_data = THIS_CYC_COUNT * 2;
-            port_w3_data = THIS_CYC_COUNT * 2;
+            port_w0_data = w0_tracker * 2;
+            port_w1_data = w1_tracker * 2;
+            port_w2_data = w2_tracker * 2;
+            port_w3_data = w3_tracker * 2;
             #5 clk ^= 1;
             #5 clk ^= 1;
             THIS_CYC_COUNT = THIS_CYC_COUNT + 1;
-            port_r0_mem[THIS_CYC_COUNT] = port_r0_data;
-            port_r1_mem[THIS_CYC_COUNT] = port_r1_data;
-            port_r2_mem[THIS_CYC_COUNT] = port_r2_data;
-            port_r3_mem[THIS_CYC_COUNT] = port_r3_data;
+            // Only increase rX/w/Y_tracker if r/v verified
+            if (port_w0_valid & port_w0_ready) begin
+                w0_tracker = w0_tracker + 1;
+            end
+            if (port_w1_valid & port_w1_ready) begin
+                w1_tracker = w1_tracker + 1;
+            end
+            if (port_w2_valid & port_w2_ready) begin
+                w2_tracker = w2_tracker + 1;
+            end
+            if (port_w3_valid & port_w3_ready) begin
+                w3_tracker = w3_tracker + 1;
+            end
+            if (port_r0_valid & port_r0_ready) begin
+                port_r0_mem[r0_tracker] = port_r0_data;
+                r0_tracker = r0_tracker + 1;
+            end
+            if (port_r1_valid & port_r1_ready) begin
+                port_r1_mem[r1_tracker] = port_r1_data;
+                r1_tracker = r1_tracker + 1;
+            end
+            if (port_r2_valid & port_r2_ready) begin
+                port_r2_mem[r2_tracker] = port_r2_data;
+                r2_tracker = r2_tracker + 1;
+            end
+            if (port_r3_valid & port_r3_ready) begin
+                port_r3_mem[r3_tracker] = port_r3_data;
+                r3_tracker = r3_tracker + 1;
+            end
+
         end
 
         OUTPUT_LOCATION = $sformatf("%s/outputs/port_r0_output.txt", TEST_DIRECTORY);
