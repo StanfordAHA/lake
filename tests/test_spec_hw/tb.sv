@@ -219,53 +219,53 @@ module lake_static_tb;
         // Load the bitstream as an int into the bitstream memory
         $readmemh(BITSTREAM_LOCATION, bitstream);
 
-        if ($value$plusargs("w0_num_data=%s", w0_num_data)) begin
-            $display("w0_num_data set to %s", w0_num_data);
+        if ($value$plusargs("w0_num_data=%d", w0_num_data)) begin
+            $display("w0_num_data set to %d", w0_num_data);
         end else begin
-            $display("w0_num_data not set, using default value %s", w0_num_data);
+            $display("w0_num_data not set, using default value %d", w0_num_data);
         end
-        if ($value$plusargs("w1_num_data=%s", w1_num_data)) begin
-            $display("w1_num_data set to %s", w1_num_data);
+        if ($value$plusargs("w1_num_data=%d", w1_num_data)) begin
+            $display("w1_num_data set to %d", w1_num_data);
         end else begin
-            $display("w1_num_data not set, using default value %s", w1_num_data);
+            $display("w1_num_data not set, using default value %d", w1_num_data);
         end
-        if ($value$plusargs("w2_num_data=%s", w2_num_data)) begin
-            $display("w2_num_data set to %s", w2_num_data);
+        if ($value$plusargs("w2_num_data=%d", w2_num_data)) begin
+            $display("w2_num_data set to %d", w2_num_data);
         end else begin
-            $display("w2_num_data not set, using default value %s", w2_num_data);
+            $display("w2_num_data not set, using default value %d", w2_num_data);
         end
-        if ($value$plusargs("w3_num_data=%s", w3_num_data)) begin
-            $display("w3_num_data set to %s", w3_num_data);
+        if ($value$plusargs("w3_num_data=%d", w3_num_data)) begin
+            $display("w3_num_data set to %d", w3_num_data);
         end else begin
-            $display("w3_num_data not set, using default value %s", w3_num_data);
+            $display("w3_num_data not set, using default value %d", w3_num_data);
         end
 
         // Do the same for the read data
-        if ($value$plusargs("r0_num_data=%s", r0_num_data)) begin
-            $display("r0_num_data set to %s", r0_num_data);
+        if ($value$plusargs("r0_num_data=%d", r0_num_data)) begin
+            $display("r0_num_data set to %d", r0_num_data);
         end else begin
-            $display("r0_num_data not set, using default value %s", r0_num_data);
+            $display("r0_num_data not set, using default value %d", r0_num_data);
         end
-        if ($value$plusargs("r1_num_data=%s", r1_num_data)) begin
-            $display("r1_num_data set to %s", r1_num_data);
+        if ($value$plusargs("r1_num_data=%d", r1_num_data)) begin
+            $display("r1_num_data set to %d", r1_num_data);
         end else begin
-            $display("r1_num_data not set, using default value %s", r1_num_data);
+            $display("r1_num_data not set, using default value %d", r1_num_data);
         end
-        if ($value$plusargs("r2_num_data=%s", r2_num_data)) begin
-            $display("r2_num_data set to %s", r2_num_data);
+        if ($value$plusargs("r2_num_data=%d", r2_num_data)) begin
+            $display("r2_num_data set to %d", r2_num_data);
         end else begin
-            $display("r2_num_data not set, using default value %s", r2_num_data);
+            $display("r2_num_data not set, using default value %d", r2_num_data);
         end
-        if ($value$plusargs("r3_num_data=%s", r3_num_data)) begin
-            $display("r3_num_data set to %s", r3_num_data);
+        if ($value$plusargs("r3_num_data=%d", r3_num_data)) begin
+            $display("r3_num_data set to %d", r3_num_data);
         end else begin
-            $display("r3_num_data not set, using default value %s", r3_num_data);
+            $display("r3_num_data not set, using default value %d", r3_num_data);
         end
 
-        if ($value$plusargs("static=%s", static_value)) begin
-            $display("static set to %s", static_value);
+        if ($value$plusargs("static=%d", static_value)) begin
+            $display("static set to %d", static_value);
         end else begin
-            $display("static not set, using default value %s", static_value);
+            $display("static not set, using default value %d", static_value);
         end
 
     end
