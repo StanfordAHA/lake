@@ -357,11 +357,6 @@ module lake_static_tb;
             port_r3_ready = 1'b1;
         end
 
-        port_r0_ready = 1'b0;
-        port_r1_ready = 1'b1;
-        port_r2_ready = 1'b1;
-        port_r3_ready = 1'b1;
-
         #5 clk ^= 1;
         #5 clk ^= 1;
         flush <= 1'b0;
