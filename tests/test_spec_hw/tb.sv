@@ -337,8 +337,6 @@ module lake_static_tb;
         #5 clk ^= 1;
         flush <= 1'b0;
         #1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
 
         while (THIS_CYC_COUNT < NUM_CYCLES) begin
             // For LI, delay the first read to verify that the
