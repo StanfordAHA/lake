@@ -462,21 +462,25 @@ module lake_static_tb;
         // Check that all inputs and outputs are at their maximum for validity (in ready/valid)
         if ((r0_tracker != r0_num_data) && (static_value == 0)) begin
             $display("Not enough data on port r0");
+            $display("Expected %d, but only received %d", r0_num_data, r0_tracker);
             $display("FAIL");
             $finish;
         end
         if ((r1_tracker != r1_num_data) && (static_value == 0)) begin
             $display("Not enough data on port r1");
+            $display("Expected %d, but only received %d", r1_num_data, r1_tracker);
             $display("FAIL");
             $finish;
         end
         if ((r2_tracker != r2_num_data) && (static_value == 0)) begin
             $display("Not enough data on port r2");
+            $display("Expected %d, but only received %d", r2_num_data, r2_tracker);
             $display("FAIL");
             $finish;
         end
         if ((r3_tracker != r3_num_data) && (static_value == 0)) begin
             $display("Not enough data on port r3");
+            $display("Expected %d, but only received %d", r3_num_data, r3_tracker);
             $display("FAIL");
             $finish;
         end
