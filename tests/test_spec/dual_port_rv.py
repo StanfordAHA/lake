@@ -170,6 +170,7 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     # Trying to use the test preparation tool
     assert tp is not None
     tp.add_pargs(data_sizes)
+    tp.add_pargs(('static', 0))
 
 
 if __name__ == "__main__":

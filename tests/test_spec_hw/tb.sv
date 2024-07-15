@@ -26,9 +26,9 @@ module lake_static_tb;
     // reg [0:0] config_read ;
     // reg [0:0] config_write ;
     // wire done;
-    wire [63:0] cycle_count ;
+    wire [63:0] cycle_count;
 
-    integer static0_rv1 = 0;
+    integer static_value = 1;
 
     // parameter BITSTREAM_MAX_SIZE = 4096 - 1;
     // integer BITSTREAM_MAX_SIZE;
@@ -45,45 +45,49 @@ module lake_static_tb;
     logic                    port_w0_valid;
     logic                    port_w0_ready;
     integer w0_tracker;
-    integer w0_num_data = 64;
+    integer w0_num_data = 0;
 
     logic [DATA_WIDTH - 1:0] port_w1_data;
     logic                    port_w1_valid;
     logic                    port_w1_ready;
     integer w1_tracker;
-    integer w1_num_data = 64;
+    integer w1_num_data = 0;
 
     logic [DATA_WIDTH - 1:0] port_w2_data;
     logic                    port_w2_valid;
     logic                    port_w2_ready;
     integer w2_tracker;
-    integer w2_num_data = 64;
+    integer w2_num_data = 0;
 
     logic [DATA_WIDTH - 1:0] port_w3_data;
     logic                    port_w3_valid;
     logic                    port_w3_ready;
     integer w3_tracker;
-    integer w3_num_data = 64;
+    integer w3_num_data = 0;
 
     logic [DATA_WIDTH - 1:0] port_r0_data;
     logic                    port_r0_valid;
     logic                    port_r0_ready;
     integer r0_tracker;
+    integer r0_num_data = 0;
 
     logic [DATA_WIDTH - 1:0] port_r1_data;
     logic                    port_r1_valid;
     logic                    port_r1_ready;
     integer r1_tracker;
+    integer r1_num_data = 0;
 
     logic [DATA_WIDTH - 1:0] port_r2_data;
     logic                    port_r2_valid;
     logic                    port_r2_ready;
     integer r2_tracker;
+    integer r2_num_data = 0;
 
     logic [DATA_WIDTH - 1:0] port_r3_data;
     logic                    port_r3_valid;
     logic                    port_r3_ready;
     integer r3_tracker;
+    integer r3_num_data = 0;
 
     logic [DATA_WIDTH - 1:0] port_w0_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_w1_mem [0:NUM_CYCLES - 1];
@@ -236,6 +240,34 @@ module lake_static_tb;
             $display("w3_num_data not set, using default value %s", w3_num_data);
         end
 
+        // Do the same for the read data
+        if ($value$plusargs("r0_num_data=%s", r0_num_data)) begin
+            $display("r0_num_data set to %s", r0_num_data);
+        end else begin
+            $display("r0_num_data not set, using default value %s", r0_num_data);
+        end
+        if ($value$plusargs("r1_num_data=%s", r1_num_data)) begin
+            $display("r1_num_data set to %s", r1_num_data);
+        end else begin
+            $display("r1_num_data not set, using default value %s", r1_num_data);
+        end
+        if ($value$plusargs("r2_num_data=%s", r2_num_data)) begin
+            $display("r2_num_data set to %s", r2_num_data);
+        end else begin
+            $display("r2_num_data not set, using default value %s", r2_num_data);
+        end
+        if ($value$plusargs("r3_num_data=%s", r3_num_data)) begin
+            $display("r3_num_data set to %s", r3_num_data);
+        end else begin
+            $display("r3_num_data not set, using default value %s", r3_num_data);
+        end
+
+        if ($value$plusargs("static=%s", static_value)) begin
+            $display("static set to %s", static_value);
+        end else begin
+            $display("static not set, using default value %s", static_value);
+        end
+
     end
 
     initial begin
@@ -320,17 +352,46 @@ module lake_static_tb;
             end
 
             // Kill the output readys once the data is done...
+            // And check that we don't get any valids after!!!
             if (r0_tracker >= r0_num_data) begin
                 port_r0_ready = 1'b0;
+                if (static_value == 0) begin
+                    if (port_r0_valid == 1'b1) begin
+                        $display("Still seeing data on port r0");
+                        $display("FAIL");
+                        $finish;
+                    end
+                end
             end
             if (r1_tracker >= r1_num_data) begin
                 port_r1_ready = 1'b0;
+                if (static_value == 0) begin
+                    if (port_r1_valid == 1'b1) begin
+                        $display("Still seeing data on port r1");
+                        $display("FAIL");
+                        $finish;
+                    end
+                end
             end
             if (r2_tracker >= r2_num_data) begin
                 port_r2_ready = 1'b0;
+                if (static_value == 0) begin
+                    if (port_r2_valid == 1'b1) begin
+                        $display("Still seeing data on port r2");
+                        $display("FAIL");
+                        $finish;
+                    end
+                end
             end
             if (r3_tracker >= r3_num_data) begin
                 port_r3_ready = 1'b0;
+                if (static_value == 0) begin
+                    if (port_r3_valid == 1'b1) begin
+                        $display("Still seeing data on port r3");
+                        $display("FAIL");
+                        $finish;
+                    end
+                end
             end
 
             // Input 2*i
@@ -382,6 +443,7 @@ module lake_static_tb;
         OUTPUT_LOCATION = $sformatf("%s/outputs/port_r3_output.txt", TEST_DIRECTORY);
         $writememh(OUTPUT_LOCATION, port_r3_mem);
 
+        $display("PASS");
         #20 $finish;
     end
 
