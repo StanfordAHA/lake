@@ -459,6 +459,28 @@ module lake_static_tb;
 
         end
 
+        // Check that all inputs and outputs are at their maximum for validity (in ready/valid)
+        if ((r0_tracker != r0_num_data) && (static_value == 0)) begin
+            $display("Not enough data on port r0");
+            $display("FAIL");
+            $finish;
+        end
+        if ((r1_tracker != r1_num_data) && (static_value == 0)) begin
+            $display("Not enough data on port r1");
+            $display("FAIL");
+            $finish;
+        end
+        if ((r2_tracker != r2_num_data) && (static_value == 0)) begin
+            $display("Not enough data on port r2");
+            $display("FAIL");
+            $finish;
+        end
+        if ((r3_tracker != r3_num_data) && (static_value == 0)) begin
+            $display("Not enough data on port r3");
+            $display("FAIL");
+            $finish;
+        end
+
         OUTPUT_LOCATION = $sformatf("%s/outputs/port_r0_output.txt", TEST_DIRECTORY);
         $writememh(OUTPUT_LOCATION, port_r0_mem);
         OUTPUT_LOCATION = $sformatf("%s/outputs/port_r1_output.txt", TEST_DIRECTORY);
