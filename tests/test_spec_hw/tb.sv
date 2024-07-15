@@ -98,7 +98,7 @@ module lake_static_tb;
     logic [DATA_WIDTH - 1:0] port_r2_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_r3_mem [0:NUM_CYCLES - 1];
 
-    if (NUMBER_PORTS == 2) begin
+    if (NUMBER_PORTS == 2) begin : two_port_dut
 
         lakespec dut (
             // inputs
@@ -118,7 +118,7 @@ module lake_static_tb;
         );
 
     end
-    else if (NUMBER_PORTS == 4) begin
+    else if (NUMBER_PORTS == 4) begin : four_port_dut
 
         lakespec dut (
             // inputs
@@ -146,7 +146,7 @@ module lake_static_tb;
         );
 
     end
-    else if (NUMBER_PORTS == 8) begin
+    else if (NUMBER_PORTS == 8) begin : eight_port_dut
 
         lakespec dut (
             // inputs
@@ -323,11 +323,35 @@ module lake_static_tb;
         #5 clk ^= 1;
         #5 clk ^= 1;
 
-        // Set all the valids high here
-        port_w0_valid = 1'b1;
-        port_w1_valid = 1'b1;
-        port_w2_valid = 1'b1;
-        port_w3_valid = 1'b1;
+        // Set all the valids high here if there will be
+        // data on them
+        if (w0_num_data > 0) begin
+            port_w0_valid = 1'b1;
+        end
+        if (w1_num_data > 0) begin
+            port_w1_valid = 1'b1;
+        end
+        if (w2_num_data > 0) begin
+            port_w2_valid = 1'b1;
+        end
+        if (w3_num_data > 0) begin
+            port_w3_valid = 1'b1;
+        end
+
+        // This is 0 for now as a testing condition...
+        if (r0_num_data > 0) begin
+            port_r0_ready = 1'b0;
+        end
+        if (r1_num_data > 0) begin
+            port_r1_ready = 1'b1;
+        end
+        if (r2_num_data > 0) begin
+            port_r2_ready = 1'b1;
+        end
+        if (r3_num_data > 0) begin
+            port_r3_ready = 1'b1;
+        end
+
         port_r0_ready = 1'b0;
         port_r1_ready = 1'b1;
         port_r2_ready = 1'b1;
