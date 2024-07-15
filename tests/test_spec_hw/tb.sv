@@ -28,10 +28,12 @@ module lake_static_tb;
     // wire done;
     wire [63:0] cycle_count ;
 
+    integer static0_rv1 = 0;
+
     // parameter BITSTREAM_MAX_SIZE = 4096 - 1;
     // integer BITSTREAM_MAX_SIZE;
     parameter BITSTREAM_MAX_SIZE = 4096;
-    parameter NUM_CYCLES = 1000;
+    parameter NUM_CYCLES = 200;
 
     // logic [63:0] bitstream [0:BITSTREAM_MAX_SIZE - 1];
     // logic [549:0] bitstream [0:0];
@@ -43,21 +45,25 @@ module lake_static_tb;
     logic                    port_w0_valid;
     logic                    port_w0_ready;
     integer w0_tracker;
+    integer w0_num_data = 64;
 
     logic [DATA_WIDTH - 1:0] port_w1_data;
     logic                    port_w1_valid;
     logic                    port_w1_ready;
     integer w1_tracker;
+    integer w1_num_data = 64;
 
     logic [DATA_WIDTH - 1:0] port_w2_data;
     logic                    port_w2_valid;
     logic                    port_w2_ready;
     integer w2_tracker;
+    integer w2_num_data = 64;
 
     logic [DATA_WIDTH - 1:0] port_w3_data;
     logic                    port_w3_valid;
     logic                    port_w3_ready;
     integer w3_tracker;
+    integer w3_num_data = 64;
 
     logic [DATA_WIDTH - 1:0] port_r0_data;
     logic                    port_r0_valid;
@@ -190,6 +196,9 @@ module lake_static_tb;
     string BITSTREAM_LOCATION; // = "/home/max/Documents/lake/number_in_hex.txt";
     string OUTPUT_LOCATION;
 
+    /*
+        Load all the different values from various files...
+    */
     initial begin
 
         TEST_DIRECTORY = "./";
@@ -205,6 +214,27 @@ module lake_static_tb;
         $display("BITSTREAM IS AT : %s", BITSTREAM_LOCATION);
         // Load the bitstream as an int into the bitstream memory
         $readmemh(BITSTREAM_LOCATION, bitstream);
+
+        if ($value$plusargs("w0_num_data=%s", w0_num_data)) begin
+            $display("w0_num_data set to %s", w0_num_data);
+        end else begin
+            $display("w0_num_data not set, using default value %s", w0_num_data);
+        end
+        if ($value$plusargs("w1_num_data=%s", w1_num_data)) begin
+            $display("w1_num_data set to %s", w1_num_data);
+        end else begin
+            $display("w1_num_data not set, using default value %s", w1_num_data);
+        end
+        if ($value$plusargs("w2_num_data=%s", w2_num_data)) begin
+            $display("w2_num_data set to %s", w2_num_data);
+        end else begin
+            $display("w2_num_data not set, using default value %s", w2_num_data);
+        end
+        if ($value$plusargs("w3_num_data=%s", w3_num_data)) begin
+            $display("w3_num_data set to %s", w3_num_data);
+        end else begin
+            $display("w3_num_data not set, using default value %s", w3_num_data);
+        end
 
     end
 
@@ -273,6 +303,34 @@ module lake_static_tb;
             // writes don't proceed too much
             if (THIS_CYC_COUNT > 64) begin
                 port_r0_ready = 1'b1;
+            end
+
+            // Kill the input valids once their transactions are finished...
+            if (w0_tracker >= w0_num_data) begin
+                port_w0_valid = 1'b0;
+            end
+            if (w1_tracker >= w1_num_data) begin
+                port_w1_valid = 1'b0;
+            end
+            if (w2_tracker >= w2_num_data) begin
+                port_w2_valid = 1'b0;
+            end
+            if (w3_tracker >= w3_num_data) begin
+                port_w3_valid = 1'b0;
+            end
+
+            // Kill the output readys once the data is done...
+            if (r0_tracker >= r0_num_data) begin
+                port_r0_ready = 1'b0;
+            end
+            if (r1_tracker >= r1_num_data) begin
+                port_r1_ready = 1'b0;
+            end
+            if (r2_tracker >= r2_num_data) begin
+                port_r2_ready = 1'b0;
+            end
+            if (r3_tracker >= r3_num_data) begin
+                port_r3_ready = 1'b0;
             end
 
             // Input 2*i

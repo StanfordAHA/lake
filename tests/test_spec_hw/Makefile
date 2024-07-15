@@ -157,7 +157,7 @@ compile:
 .PHONY: run
 # run: TEST_ARGS = $(TEST_DIR)/COLLAT_DIR/PARGS.txt
 run:
-	$(RUN) $(DUMP_ARGS) $(RUN_ARGS) $(APP_ARGS) +TEST_DIRECTORY=./
+	$(RUN) $(DUMP_ARGS) $(RUN_ARGS) $(APP_ARGS) +TEST_DIRECTORY=./ $(shell cat "./inputs/PARGS.txt")
 
 #	rm -f $(TEST_DIR)/OUTPUT_DIR/*
 #	$(RUN) $(DUMP_ARGS) $(TMP_PARGS)

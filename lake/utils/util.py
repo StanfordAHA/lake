@@ -12,6 +12,64 @@ import shutil as shutil
 lake_util_verbose_trim = False
 
 
+class TestPrepper():
+
+    def __init__(self, base_dir: str = None) -> None:
+        self.base_dir = base_dir
+        self.pargs_file = None
+
+    def prepare_hw_test(self):
+        # Put it at the lake directory
+        if self.base_dir is None:
+            self.base_dir = os.path.dirname(os.path.abspath(__file__))
+            final_dir = os.path.join(self.base_dir, "../../", "TEST")
+
+        else:
+            # Simpler to use absolute path here
+            final_dir = os.path.abspath(self.base_dir)
+
+        print(f" Prepare hw test at ...{final_dir}")
+
+        os.makedirs(final_dir, exist_ok=True)
+        os.makedirs(os.path.join(final_dir, "inputs"), exist_ok=True)
+        os.makedirs(os.path.join(final_dir, "outputs"), exist_ok=True)
+
+        # Now copy over the tests/test_hw_spec
+        tb_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../tests/test_spec_hw/")
+        for filename in os.listdir(tb_base_path):
+            src_file = os.path.join(tb_base_path, filename)
+            dst_file = os.path.join(final_dir, filename)
+            if os.path.isfile(src_file):  # Check if it's a file (not a directory)
+                shutil.copy2(src_file, dst_file)
+
+        # Create the PARGS file even if empty...
+        file_path = os.path.join(final_dir, "inputs", "PARGS.txt")
+        with open(file_path, 'w') as file:
+            pass
+        self.pargs_file = file_path
+
+        return final_dir
+
+    def add_pargs(self, pargs):
+        if type(pargs) is list:
+            self.__add_pargs_list(pargs)
+        elif type(pargs) is tuple:
+            self.__add_pargs_tuple(pargs)
+
+    def __add_pargs_list(self, pargs_list):
+        with open(self.pargs_file, 'a') as pargs_file_open:
+            for parg_tuple in pargs_list:
+                parg_name, parg_value = parg_tuple
+                parg_string = f"+{parg_name}={str(parg_value)}\n"
+                pargs_file_open.write(parg_string)
+
+    def __add_pargs_tuple(self, parg_tuple):
+        with open(self.pargs_file, 'a') as pargs_file_open:
+            parg_name, parg_value = parg_tuple
+            parg_string = f"+{parg_name}={str(parg_value)}\n"
+            pargs_file_open.write(parg_string)
+
+
 def prepare_hw_test(base_dir: str = None):
 
     # Put it at the lake directory
@@ -884,6 +942,29 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
         for i_ in range(len(many)):
             generator.wire(many[i_], mux_gen_many_in[i_])
         generator.wire(sel, mux_gen_sel_in)
+
+
+def get_data_sizes(schedule: dict = None):
+    # A schedule will have a bunch of ports - can always analyze the extens of the config to
+    # get the total sizes
+    assert schedule is not None
+    # sizes_map = {}
+    sizes_map = []
+    for port_num, port_schedule in schedule.items():
+        if port_num % 2 == 0:
+            new_port_num = port_num // 2
+            port_plus_arg = f"w{new_port_num}_num_data"
+        else:
+            new_port_num = (port_num - 1) // 2
+            port_plus_arg = f"r{new_port_num}_num_data"
+        dim_ = port_schedule['config']['dimensionality']
+        extents = port_schedule['config']['extents']
+        num_data = 1
+        for i_ in range(dim_):
+            num_data = num_data * extents[i_]
+        # Now have full extent data, add it to map
+        sizes_map.append((port_plus_arg, num_data))
+    return sizes_map
 
 
 if __name__ == "__main__":
