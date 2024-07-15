@@ -6,7 +6,7 @@ from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
-from lake.utils.util import prepare_hw_test
+from lake.utils.util import get_data_sizes, TestPrepper
 from lake.top.tech_maps import GF_Tech_Map
 import argparse
 import os
@@ -176,7 +176,10 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4):
+def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
+                                    tp: TestPrepper = None):
+
+    assert tp is not None
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -232,6 +235,10 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
         file.write(config_define_str)
         file.write(numports_define_str)
 
+    data_sizes = get_data_sizes(lt)
+    tp.add_pargs(data_sizes)
+    tp.add_pargs(('static', 0))
+
 
 if __name__ == "__main__":
 
@@ -249,8 +256,9 @@ if __name__ == "__main__":
 
     # argparser
 
-    hw_test_dir = prepare_hw_test(base_dir=args.outdir)
+    tp = TestPrepper(base_dir=args.outdir)
+    hw_test_dir = tp.prepare_hw_test()
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_qp_wf_rv(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                 physical=args.physical, vec_width=args.vec_width)
+                                 physical=args.physical, vec_width=args.vec_width, tp=tp)
