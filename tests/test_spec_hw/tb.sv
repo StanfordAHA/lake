@@ -340,7 +340,12 @@ module lake_static_tb;
 
         // This is 0 for now as a testing condition...
         if (r0_num_data > 0) begin
-            port_r0_ready = 1'b0;
+            if (static_value == 1) begin
+                port_r0_ready = 1'b1;
+            end
+            else begin
+                port_r0_ready = 1'b0;
+            end
         end
         if (r1_num_data > 0) begin
             port_r1_ready = 1'b1;
