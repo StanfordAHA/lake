@@ -283,15 +283,14 @@ module lake_static_tb;
         r2_tracker = 0;
         r3_tracker = 0;
 
-        port_w0_valid = 1'b1;
-        port_w1_valid = 1'b1;
-        port_w2_valid = 1'b1;
-        port_w3_valid = 1'b1;
-        // port_r0_ready = 1'b1;
+        port_w0_valid = 1'b0;
+        port_w1_valid = 1'b0;
+        port_w2_valid = 1'b0;
+        port_w3_valid = 1'b0;
         port_r0_ready = 1'b0;
-        port_r1_ready = 1'b1;
-        port_r2_ready = 1'b1;
-        port_r3_ready = 1'b1;
+        port_r1_ready = 1'b0;
+        port_r2_ready = 1'b0;
+        port_r3_ready = 1'b0;
 
         clk <= 1'b0;
         clk <= 1'b0;
@@ -323,6 +322,17 @@ module lake_static_tb;
         #1;
         #5 clk ^= 1;
         #5 clk ^= 1;
+
+        // Set all the valids high here
+        port_w0_valid = 1'b1;
+        port_w1_valid = 1'b1;
+        port_w2_valid = 1'b1;
+        port_w3_valid = 1'b1;
+        port_r0_ready = 1'b0;
+        port_r1_ready = 1'b1;
+        port_r2_ready = 1'b1;
+        port_r3_ready = 1'b1;
+
         #5 clk ^= 1;
         #5 clk ^= 1;
         flush <= 1'b0;
