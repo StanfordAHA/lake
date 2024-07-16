@@ -208,7 +208,8 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         # Everything else will be qualified outside the module to go to the AG, ID
 
         self.wire(self._iterators_out, self._ctrs)
-        self.wire(self._extents_out, self._extents)
+        for i in range(self.dimensionality_support):
+            self.wire(self._extents_out[i], self._extents[i] + 2)
         # self.add_code(self.calculate_cycle_count)
         # self.add_code(self.calculate_cycle_delta)
 

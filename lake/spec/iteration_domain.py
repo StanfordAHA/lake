@@ -29,7 +29,7 @@ class IterationDomain(Component):
         use_exts = [extent - 2 for extent in extents]
 
         if rv:
-            use_exts.append(4)
+            use_exts.append(4 - 2)
 
         self.configure(self._extents, use_exts)
         # This will return pairs of ranges with values w.r.t. the node's configuration
