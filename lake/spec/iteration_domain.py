@@ -16,12 +16,20 @@ class IterationDomain(Component):
     def get_dimensionality(self):
         return self.dimensionality_support
 
-    def gen_bitstream(self, dimensionality, extents):
-        # idk
-        self.configure(self._dimensionality, dimensionality)
+    def gen_bitstream(self, dimensionality, extents, rv=False):
+
+        # Actually add one if rv (to be safe) - only need to do this when
+        # the comparison is at the top level, but let's just do this for now
+        if rv:
+            self.configure(self._dimensionality, dimensionality + 1)
+        else:
+            self.configure(self._dimensionality, dimensionality)
 
         # Do a - 2 thing...
         use_exts = [extent - 2 for extent in extents]
+
+        if rv:
+            use_exts.append(4)
 
         self.configure(self._extents, use_exts)
         # This will return pairs of ranges with values w.r.t. the node's configuration

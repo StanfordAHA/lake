@@ -670,7 +670,8 @@ class Spec():
                 port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'], vec_out=maps['vec_out_config'])
                 self.configure(port, port_bs)
 
-            id_bs = port_id.gen_bitstream(port_config['dimensionality'], port_config['extents'])
+            # All components should be aware of RV/Static context
+            id_bs = port_id.gen_bitstream(port_config['dimensionality'], port_config['extents'], self.any_rv_sg)
             ag_bs = port_ag.gen_bitstream(addr_map)
             if self.any_rv_sg:
                 sg_bs = port_sg.gen_bitstream(sched_map)
