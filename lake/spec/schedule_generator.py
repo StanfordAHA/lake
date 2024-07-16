@@ -168,6 +168,9 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self._ctrs = self.input("iterators", id_ext_width,
                                    size=self.dimensionality_support,
                                    packed=True, explicit_array=True)
+        self._extents = self.input("extents", id_ext_width,
+                                   size=self.dimensionality_support,
+                                   packed=True, explicit_array=True)
 
         ### Outputs
         self._step_out = self.output("step", 1)
@@ -189,11 +192,15 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self._iterators_out = self.output("iterators_out_lcl", id_ext_width,
                                    size=self.dimensionality_support,
                                    packed=True, explicit_array=True)
+        self._extents_out = self.output("extents_out_lcl", id_ext_width,
+                                   size=self.dimensionality_support,
+                                   packed=True, explicit_array=True)
 
         self._comparisons_in = self.input("comparisons", self.num_comparisons)
 
         self.iterator_intf = {}
         self.iterator_intf['iterators'] = self._iterators_out
+        self.iterator_intf['extents'] = self._extents_out
         self.iterator_intf['comparisons'] = self._comparisons_in
 
         # We define the step to be the reduction-and of all the in comparisons
@@ -201,6 +208,7 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         # Everything else will be qualified outside the module to go to the AG, ID
 
         self.wire(self._iterators_out, self._ctrs)
+        self.wire(self._extents_out, self._extents)
         # self.add_code(self.calculate_cycle_count)
         # self.add_code(self.calculate_cycle_delta)
 

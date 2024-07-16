@@ -257,6 +257,10 @@ class Spec():
             self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
+            # Send through the extents to sg if there is RV
+            if self.any_rv_sg:
+                self._final_gen.wire(port_id.ports.extents_out, port_sg.ports.extents)
+
             # Gen the hardware for each, assemble the signals
             assembled_port = {}
             assembled_port['dir'] = port.get_direction()
