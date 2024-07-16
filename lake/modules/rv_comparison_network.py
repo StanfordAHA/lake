@@ -190,7 +190,8 @@ class RVComparisonNetwork(Component):
                                    one_hot_sel=False)
 
                 # Now mux in the proper counter and add to it the write extent if the outer layer is different
-                outer_level_different = p1_counter_w != p1_counter_r
+                outer_level_different = self.var(f"w_{i}_r_{j}_outer_level_different", 1)
+                self.wire(outer_level_different, p1_counter_w != p1_counter_r)
 
                 chosen_write_iter = self.var(f"write_{i}_read_{j}_chosen_write_iter", width=write_width)
                 # chosen_read_iter = self.var(f"write_{i}_read_{j}_chosen_read_iter", width=read_width)
@@ -267,7 +268,8 @@ class RVComparisonNetwork(Component):
                                    one_hot_sel=False)
 
                 # Now mux in the proper counter and add to it the write extent if the outer layer is different
-                outer_level_different = p1_counter_w != p1_counter_r
+                outer_level_different = self.var(f"r_{i}_w_{j}_outer_level_different", 1)
+                self.wire(outer_level_different, p1_counter_w != p1_counter_r)
 
                 chosen_write_iter = self.var(f"read_{i}_write_{j}_chosen_write_iter", width=write_width)
                 # chosen_read_iter = self.var(f"read_{i}_write_{j}_chosen_read_iter", width=write_width)
