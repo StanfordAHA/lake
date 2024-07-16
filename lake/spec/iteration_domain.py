@@ -11,16 +11,25 @@ class IterationDomain(Component):
         super().__init__(f"for_loop_{dimensionality}_{extent_width}")
         self.dimensionality_support = dimensionality
         self.extent_width = extent_width
+        self._interfaces = {}
 
     def get_dimensionality(self):
         return self.dimensionality_support
 
-    def gen_bitstream(self, dimensionality, extents):
-        # idk
-        self.configure(self._dimensionality, dimensionality)
+    def gen_bitstream(self, dimensionality, extents, rv=False):
+
+        # Actually add one if rv (to be safe) - only need to do this when
+        # the comparison is at the top level, but let's just do this for now
+        if rv:
+            self.configure(self._dimensionality, dimensionality + 1)
+        else:
+            self.configure(self._dimensionality, dimensionality)
 
         # Do a - 2 thing...
         use_exts = [extent - 2 for extent in extents]
+
+        if rv:
+            use_exts.append(4 - 2)
 
         self.configure(self._extents, use_exts)
         # This will return pairs of ranges with values w.r.t. the node's configuration
@@ -28,6 +37,9 @@ class IterationDomain(Component):
 
     def get_extent_width(self):
         return self.extent_width
+
+    def get_interfaces(self):
+        return self._interfaces
 
     def gen_hardware(self, pos_reset=False):
         # Internal step, so no inputs? just clock???
@@ -37,6 +49,13 @@ class IterationDomain(Component):
         self._extents = self.config_reg(name="extents", width=self.extent_width,
                                         size=self.dimensionality_support,
                                         packed=True, explicit_array=True)
+        self._extents_out = self.output(name="extents_out", width=self.extent_width,
+                                        size=self.dimensionality_support,
+                                        packed=True, explicit_array=True)
+
+        self.wire(self._extents_out, self._extents)
+
+        self._interfaces['extents'] = self._extents_out
 
         self._dimensionality = self.config_reg(name="dimensionality", width=1 + kts.clog2(self.dimensionality_support))
 

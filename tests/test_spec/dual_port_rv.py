@@ -6,7 +6,7 @@ from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
-from lake.utils.util import prepare_hw_test
+from lake.utils.util import prepare_hw_test, get_data_sizes, TestPrepper
 from lake.top.tech_maps import GF_Tech_Map
 import os as os
 import argparse
@@ -17,8 +17,8 @@ def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=data_width, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 
@@ -110,7 +110,8 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, clock_count_width=64, physical=False):
+def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, clock_count_width=64,
+                           physical=False, tp: TestPrepper = None):
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -165,10 +166,16 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
         file.write(config_define_str)
         file.write(numports_define_str)
 
+    data_sizes = get_data_sizes(lt)
+    # Trying to use the test preparation tool
+    assert tp is not None
+    tp.add_pargs(data_sizes)
+    tp.add_pargs(('static', 0))
+
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Simple Dual Port')
+    parser = argparse.ArgumentParser(description='Simple Dual Port RV')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
     parser.add_argument("--clock_count_width", type=int, default=64)
@@ -181,8 +188,12 @@ if __name__ == "__main__":
 
     # argparser
 
-    hw_test_dir = prepare_hw_test(base_dir=args.outdir)
+    tp = TestPrepper(base_dir=args.outdir)
+    hw_test_dir = tp.prepare_hw_test()
+
+    # hw_test_dir = prepare_hw_test(base_dir=args.outdir)
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                           clock_count_width=args.clock_count_width, physical=args.physical)
+                           clock_count_width=args.clock_count_width, physical=args.physical,
+                           tp=tp)
