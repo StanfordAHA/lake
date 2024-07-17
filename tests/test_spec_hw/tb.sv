@@ -378,6 +378,9 @@ module lake_static_tb;
             if (r0_tracker >= r0_num_data && static_value == 0) begin
                 port_r0_ready <= 1'b0;
                 if (port_r0_valid == 1'b1) begin
+                    @(posedge clk);
+                    @(posedge clk);
+                    @(posedge clk);
                     $display("Still seeing data on port r0");
                     $display("FAIL");
                     $finish;
@@ -386,6 +389,9 @@ module lake_static_tb;
             if (r1_tracker >= r1_num_data && static_value == 0) begin
                 port_r1_ready <= 1'b0;
                 if (port_r1_valid == 1'b1) begin
+                    @(posedge clk);
+                    @(posedge clk);
+                    @(posedge clk);
                     $display("Still seeing data on port r1");
                     $display("FAIL");
                     $finish;
@@ -394,6 +400,9 @@ module lake_static_tb;
             if (r2_tracker >= r2_num_data && static_value == 0) begin
                 port_r2_ready <= 1'b0;
                 if (port_r2_valid == 1'b1) begin
+                    @(posedge clk);
+                    @(posedge clk);
+                    @(posedge clk);
                     $display("Still seeing data on port r2");
                     $display("FAIL");
                     $finish;
@@ -402,6 +411,9 @@ module lake_static_tb;
             if (r3_tracker >= r3_num_data && static_value == 0) begin
                 port_r3_ready <= 1'b0;
                 if (port_r3_valid == 1'b1) begin
+                    @(posedge clk);
+                    @(posedge clk);
+                    @(posedge clk);
                     $display("Still seeing data on port r3");
                     $display("FAIL");
                     $finish;
