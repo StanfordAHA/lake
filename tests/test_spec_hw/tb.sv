@@ -15,29 +15,15 @@ module tb;
     parameter NUMBER_PORTS = 2;
 `endif
 
-    reg clk;
-    reg rst_n;
-    reg stall;
-    reg flush;
-    // reg [31:0] config_config_addr ;
-    // reg [31:0] config_config_data ;
-    // reg [0:0] config_read ;
-    // reg [0:0] config_write ;
-    // wire done;
-    wire [63:0] cycle_count;
-
-    integer static_value = 1;
-
-    // parameter BITSTREAM_MAX_SIZE = 4096 - 1;
-    // integer BITSTREAM_MAX_SIZE;
     parameter BITSTREAM_MAX_SIZE = 4096;
     parameter NUM_CYCLES = 200;
 
-    // logic [63:0] bitstream [0:BITSTREAM_MAX_SIZE - 1];
-    // logic [549:0] bitstream [0:0];
+    integer static_value = 1;
+    logic clk;
+    logic rst_n;
+    logic stall;
+    logic flush;
     logic [CONFIG_MEMORY_SIZE - 1:0] bitstream [0:0];
-    // logic [31:0] bitstream_addr [0:BITSTREAM_MAX_SIZE - 1];
-    // logic [31:0] bitstream_data [0:BITSTREAM_MAX_SIZE - 1];
 
     logic [DATA_WIDTH - 1:0] port_w0_data;
     logic                    port_w0_valid;
@@ -268,6 +254,17 @@ module tb;
 
     end
 
+    /*
+        Clock forever
+    */
+
+    initial begin
+        clk = 0;
+        forever begin : clock_4_ever
+            #5 clk = ~clk;
+        end
+    end
+
     initial begin
 
         THIS_CYC_COUNT = 0;
@@ -290,141 +287,141 @@ module tb;
         port_r2_ready = 1'b0;
         port_r3_ready = 1'b0;
 
-        clk <= 1'b0;
-        clk <= 1'b0;
-        rst_n <= 1'b1;
-        stall <= 1'b0;
-        flush <= 1'b0;
-        stall <= 1'b1;
-        rst_n <= 1'b1;
-        #1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        rst_n <= 1'b0;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        stall <= 1'b1;
-        #1;
+        // Hold flush high, rst_n low
+        rst_n = 1'b0;
+        flush = 1'b1;
+        //  Stall is clock enable
+        stall = 1'b1;
 
-        clk <= 1'b0;
-        rst_n <= 1'b1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        flush <= 1'b1;
-        #1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
-        stall <= 1'b0;
-        #1;
-        #5 clk ^= 1;
-        #5 clk ^= 1;
+        // Hold it for now
+        @(posedge clk);
+        @(posedge clk);
+        @(posedge clk);
 
+        // Deassert async reset
+        @(negedge clk);
+        rst_n <= 1'b1;
+
+        @(posedge clk);
         // Set all the valids high here if there will be
         // data on them
         if (w0_num_data > 0) begin
-            port_w0_valid = 1'b1;
+            port_w0_valid <= 1'b1;
         end
         if (w1_num_data > 0) begin
-            port_w1_valid = 1'b1;
+            port_w1_valid <= 1'b1;
         end
         if (w2_num_data > 0) begin
-            port_w2_valid = 1'b1;
+            port_w2_valid <= 1'b1;
         end
         if (w3_num_data > 0) begin
-            port_w3_valid = 1'b1;
+            port_w3_valid <= 1'b1;
         end
 
         // This is 0 for now as a testing condition...
         if (r0_num_data > 0) begin
             if (static_value == 1) begin
-                port_r0_ready = 1'b1;
+                port_r0_ready <= 1'b1;
             end
             else begin
-                port_r0_ready = 1'b0;
+                port_r0_ready <= 1'b0;
             end
         end
         if (r1_num_data > 0) begin
-            port_r1_ready = 1'b1;
+            port_r1_ready <= 1'b1;
         end
         if (r2_num_data > 0) begin
-            port_r2_ready = 1'b1;
+            port_r2_ready <= 1'b1;
         end
         if (r3_num_data > 0) begin
-            port_r3_ready = 1'b1;
+            port_r3_ready <= 1'b1;
         end
 
-        #5 clk ^= 1;
-        #5 clk ^= 1;
+        // Finally unstall and unflush
+        @(posedge clk);
+        stall <= 1'b0;
         flush <= 1'b0;
-        #1;
 
         while (THIS_CYC_COUNT < NUM_CYCLES) begin
+
+            // Input 2*i
+            port_w0_data <= w0_tracker * 2;
+            port_w1_data <= w1_tracker * 2;
+            port_w2_data <= w2_tracker * 2;
+            port_w3_data <= w3_tracker * 2;
+
             // For LI, delay the first read to verify that the
             // writes don't proceed too much
             if (THIS_CYC_COUNT > 64) begin
-                port_r0_ready = 1'b1;
+                port_r0_ready <= 1'b1;
             end
 
             // Kill the input valids once their transactions are finished...
             if (w0_tracker >= w0_num_data) begin
-                port_w0_valid = 1'b0;
+                port_w0_valid <= 1'b0;
             end
             if (w1_tracker >= w1_num_data) begin
-                port_w1_valid = 1'b0;
+                port_w1_valid <= 1'b0;
             end
             if (w2_tracker >= w2_num_data) begin
-                port_w2_valid = 1'b0;
+                port_w2_valid <= 1'b0;
             end
             if (w3_tracker >= w3_num_data) begin
-                port_w3_valid = 1'b0;
+                port_w3_valid <= 1'b0;
             end
+
+            if (r0_tracker >= r0_num_data) begin
+                port_r0_ready <= 1'b0;
+            end
+            if (r1_tracker >= r1_num_data) begin
+                port_r1_ready <= 1'b0;
+            end
+            if (r2_tracker >= r2_num_data) begin
+                port_r2_ready <= 1'b0;
+            end
+            if (r3_tracker >= r3_num_data) begin
+                port_r3_ready <= 1'b0;
+            end
+
+            @(posedge clk);
+            THIS_CYC_COUNT = THIS_CYC_COUNT + 1;
 
             // Kill the output readys once the data is done...
             // And check that we don't get any valids after!!!
             // Only for r/v
-            if (r0_tracker >= r0_num_data && static_value == 0) begin
-                port_r0_ready = 1'b0;
-                if (port_r0_valid == 1'b1) begin
-                    $display("Still seeing data on port r0");
-                    $display("FAIL");
-                    $finish;
-                end
+            if (r0_tracker >= r0_num_data && port_r0_valid == 1'b1 && static_value == 0) begin
+                @(posedge clk);
+                @(posedge clk);
+                @(posedge clk);
+                $display("Still seeing data on port r0");
+                $display("FAIL");
+                $finish;
             end
-            if (r1_tracker >= r1_num_data && static_value == 0) begin
-                port_r1_ready = 1'b0;
-                if (port_r1_valid == 1'b1) begin
-                    $display("Still seeing data on port r1");
-                    $display("FAIL");
-                    $finish;
-                end
+            if (r1_tracker >= r1_num_data && port_r1_valid == 1'b1 && static_value == 0) begin
+                @(posedge clk);
+                @(posedge clk);
+                @(posedge clk);
+                $display("Still seeing data on port r1");
+                $display("FAIL");
+                $finish;
             end
-            if (r2_tracker >= r2_num_data && static_value == 0) begin
-                port_r2_ready = 1'b0;
-                if (port_r2_valid == 1'b1) begin
-                    $display("Still seeing data on port r2");
-                    $display("FAIL");
-                    $finish;
-                end
+            if (r2_tracker >= r2_num_data && port_r2_valid == 1'b1 && static_value == 0) begin
+                @(posedge clk);
+                @(posedge clk);
+                @(posedge clk);
+                $display("Still seeing data on port r2");
+                $display("FAIL");
+                $finish;
             end
-            if (r3_tracker >= r3_num_data && static_value == 0) begin
-                port_r3_ready = 1'b0;
-                if (port_r3_valid == 1'b1) begin
-                    $display("Still seeing data on port r3");
-                    $display("FAIL");
-                    $finish;
-                end
+            if (r3_tracker >= r3_num_data && port_r3_valid == 1'b1 && static_value == 0) begin
+                @(posedge clk);
+                @(posedge clk);
+                @(posedge clk);
+                $display("Still seeing data on port r3");
+                $display("FAIL");
+                $finish;
             end
 
-            // Input 2*i
-            port_w0_data = w0_tracker * 2;
-            port_w1_data = w1_tracker * 2;
-            port_w2_data = w2_tracker * 2;
-            port_w3_data = w3_tracker * 2;
-            #5 clk ^= 1;
-            #5 clk ^= 1;
-            THIS_CYC_COUNT = THIS_CYC_COUNT + 1;
             // Only increase rX/w/Y_tracker if r/v verified
             if (port_w0_valid && port_w0_ready && ((w0_tracker < w0_num_data) || (static_value == 1))) begin
                 w0_tracker = w0_tracker + 1;
@@ -439,21 +436,22 @@ module tb;
                 w3_tracker = w3_tracker + 1;
             end
             if (port_r0_valid & port_r0_ready && ((r0_tracker < r0_num_data) || (static_value == 1))) begin
-                port_r0_mem[r0_tracker] = port_r0_data;
+                port_r0_mem[r0_tracker] <= port_r0_data;
                 r0_tracker = r0_tracker + 1;
             end
             if (port_r1_valid & port_r1_ready && ((r1_tracker < r1_num_data) || (static_value == 1))) begin
-                port_r1_mem[r1_tracker] = port_r1_data;
+                port_r1_mem[r1_tracker] <= port_r1_data;
                 r1_tracker = r1_tracker + 1;
             end
             if (port_r2_valid & port_r2_ready && ((r2_tracker < r2_num_data) || (static_value == 1))) begin
-                port_r2_mem[r2_tracker] = port_r2_data;
+                port_r2_mem[r2_tracker] <= port_r2_data;
                 r2_tracker = r2_tracker + 1;
             end
             if (port_r3_valid & port_r3_ready && ((r3_tracker < r3_num_data) || (static_value == 1))) begin
-                port_r3_mem[r3_tracker] = port_r3_data;
+                port_r3_mem[r3_tracker] <= port_r3_data;
                 r3_tracker = r3_tracker + 1;
             end
+
 
         end
 
