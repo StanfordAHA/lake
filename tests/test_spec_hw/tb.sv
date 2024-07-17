@@ -26,7 +26,7 @@ module lake_static_tb;
     logic stall;
     logic flush;
     logic [CONFIG_MEMORY_SIZE - 1:0] bitstream [0:0];
-    logic bitstrem_wen;
+    logic bitstream_wen;
 
     logic [DATA_WIDTH - 1:0] port_w0_data;
     logic                    port_w0_valid;
@@ -180,7 +180,6 @@ module lake_static_tb;
         );
 
     end
-
 
     integer THIS_CYC_COUNT;
     // integer BITSTREAM_CURR_SIZE;
