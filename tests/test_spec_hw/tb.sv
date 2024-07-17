@@ -94,7 +94,7 @@ module lake_static_tb;
             .flush(flush),
             // config
             .config_memory(bitstream[0]),
-            .config_memory_wen(bitstrem_wen),
+            .config_memory_wen(bitstream_wen),
             // input ports
             .port_0(port_w0_data),
             .port_0_valid(port_w0_valid),
@@ -115,7 +115,7 @@ module lake_static_tb;
             .flush(flush),
             // config
             .config_memory(bitstream[0]),
-            .config_memory_wen(bitstrem_wen),
+            .config_memory_wen(bitstream_wen),
             // input ports
             .port_0(port_w0_data),
             .port_0_valid(port_w0_valid),
@@ -144,7 +144,7 @@ module lake_static_tb;
             .flush(flush),
             // config
             .config_memory(bitstream[0]),
-            .config_memory_wen(bitstrem_wen),
+            .config_memory_wen(bitstream_wen),
             // input ports
             .port_0(port_w0_data),
             .port_0_valid(port_w0_valid),
