@@ -9,7 +9,6 @@ from kratos import always_ff, always_comb, posedge, negedge
 class ScheduleGenerator(Component):
 
     def __init__(self, dimensionality=6, stride_width=16, rv=False, name=None):
-        # super().__init__()
         self.mod_name = name
         if name is None:
             self.mod_name = f"sched_gen_{dimensionality}_{stride_width}"
@@ -39,8 +38,8 @@ class ScheduleGenerator(Component):
         # Using stride width instead of total cycle to keep config reg smaller
         self._starting_cycle = self.config_reg(name="starting_cycle", width=self.stride_width)
         ### Inputs
-        self._clk = self.clock("clk")
-        self._rst_n = self.reset("rst_n")
+        # self._clk = self.clock("clk")
+        # self._rst_n = self.reset("rst_n")
         self._clk_ctr = add_counter(self, "clk_ctr", bitwidth=self.total_cycle_width, increment=kts.const(1, 1))
 
         self._flush = self.input("flush", 1)
@@ -157,8 +156,8 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         ##########
         ### Config Regs
         ### Inputs
-        self._clk = self.clock("clk")
-        self._rst_n = self.reset("rst_n")
+        # self._clk = self.clock("clk")
+        # self._rst_n = self.reset("rst_n")
         self._flush = self.input("flush", 1)
         self.add_attribute("sync-reset=flush")
 

@@ -51,8 +51,8 @@ class Port(Component):
 
         all_to_lift = []
 
-        self._clk = self.clock('clk')
-        self._rst_n = self.reset('rst_n')
+        # self._clk = self.clock('clk')
+        # self._rst_n = self.reset('rst_n')
 
         # Going to always have a ready/valid in
 
@@ -116,9 +116,9 @@ class Port(Component):
 
                 strg_intfs = self._sipo_strg.get_memport_intfs()
 
-                self.add_child('vec_storage', self._sipo_strg, clk=self._clk)
-                self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in)
-                self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out)
+                self.add_child('vec_storage', self._sipo_strg, clk=self._clk, rst_n=self._rst_n)
+                self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in, clk=self._clk, rst_n=self._rst_n)
+                self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out, clk=self._clk, rst_n=self._rst_n)
 
                 connect_memoryport_storage(self, mptype=self._sipo_strg_mp_in.get_type(),
                                            memport_intf=self._sipo_strg_mp_in.get_storage_intf(),
@@ -267,9 +267,9 @@ class Port(Component):
 
                 strg_intfs = self._piso_strg.get_memport_intfs()
 
-                self.add_child('vec_storage', self._piso_strg, clk=self._clk)
-                self.add_child('vec_storage_mp_in', self._piso_strg_mp_in)
-                self.add_child('vec_storage_mp_out', self._piso_strg_mp_out)
+                self.add_child('vec_storage', self._piso_strg, clk=self._clk, rst_n=self._rst_n)
+                self.add_child('vec_storage_mp_in', self._piso_strg_mp_in, clk=self._clk, rst_n=self._rst_n)
+                self.add_child('vec_storage_mp_out', self._piso_strg_mp_out, clk=self._clk, rst_n=self._rst_n)
 
                 connect_memoryport_storage(self, mptype=self._piso_strg_mp_in.get_type(),
                                            memport_intf=self._piso_strg_mp_in.get_storage_intf(),

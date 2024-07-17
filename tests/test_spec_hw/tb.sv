@@ -24,6 +24,7 @@ module tb;
     logic stall;
     logic flush;
     logic [CONFIG_MEMORY_SIZE - 1:0] bitstream [0:0];
+    logic bitstream_wen;
 
     logic [DATA_WIDTH - 1:0] port_w0_data;
     logic                    port_w0_valid;
@@ -91,6 +92,7 @@ module tb;
             .flush(flush),
             // config
             .config_memory(bitstream[0]),
+            .config_memory_wen(bitstream_wen),
             // input ports
             .port_0(port_w0_data),
             .port_0_valid(port_w0_valid),
@@ -111,6 +113,7 @@ module tb;
             .flush(flush),
             // config
             .config_memory(bitstream[0]),
+            .config_memory_wen(bitstream_wen),
             // input ports
             .port_0(port_w0_data),
             .port_0_valid(port_w0_valid),
@@ -139,6 +142,7 @@ module tb;
             .flush(flush),
             // config
             .config_memory(bitstream[0]),
+            .config_memory_wen(bitstream_wen),
             // input ports
             .port_0(port_w0_data),
             .port_0_valid(port_w0_valid),
@@ -174,7 +178,6 @@ module tb;
         );
 
     end
-
 
     integer THIS_CYC_COUNT;
     // integer BITSTREAM_CURR_SIZE;
@@ -287,6 +290,8 @@ module tb;
         port_r2_ready = 1'b0;
         port_r3_ready = 1'b0;
 
+        bitstream_wen = 1'b0;
+
         // Hold flush high, rst_n low
         rst_n = 1'b0;
         flush = 1'b1;
@@ -337,8 +342,12 @@ module tb;
             port_r3_ready <= 1'b1;
         end
 
+        bitstream_wen = 1'b1;
+
         // Finally unstall and unflush
         @(posedge clk);
+
+        bitstream_wen = 1'b0;
         stall <= 1'b0;
         flush <= 1'b0;
 

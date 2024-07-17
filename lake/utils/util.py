@@ -951,6 +951,10 @@ def get_data_sizes(schedule: dict = None):
     # sizes_map = {}
     sizes_map = []
     for port_num, port_schedule in schedule.items():
+
+        if type(port_num) is not int:
+            continue
+
         if port_num % 2 == 0:
             new_port_num = port_num // 2
             port_plus_arg = f"w{new_port_num}_num_data"
