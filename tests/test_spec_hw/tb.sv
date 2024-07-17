@@ -434,31 +434,31 @@ module lake_static_tb;
             end
 
             // Only increase rX/w/Y_tracker if r/v verified
-            if (port_w0_valid && port_w0_ready && ((w0_tracker < w0_num_data) || (static_value == 1))) begin
+            if ((port_w0_valid && port_w0_ready && (w0_tracker < w0_num_data)) || (static_value == 1)) begin
                 w0_tracker = w0_tracker + 1;
             end
-            if (port_w1_valid & port_w1_ready && ((w1_tracker < w1_num_data) || (static_value == 1))) begin
+            if ((port_w1_valid & port_w1_ready && (w1_tracker < w1_num_data)) || (static_value == 1)) begin
                 w1_tracker = w1_tracker + 1;
             end
-            if (port_w2_valid & port_w2_ready && ((w2_tracker < w2_num_data) || (static_value == 1))) begin
+            if ((port_w2_valid & port_w2_ready && (w2_tracker < w2_num_data)) || (static_value == 1)) begin
                 w2_tracker = w2_tracker + 1;
             end
-            if (port_w3_valid & port_w3_ready && ((w3_tracker < w3_num_data) || (static_value == 1))) begin
+            if ((port_w3_valid & port_w3_ready && (w3_tracker < w3_num_data)) || (static_value == 1)) begin
                 w3_tracker = w3_tracker + 1;
             end
-            if (port_r0_valid & port_r0_ready && ((r0_tracker < r0_num_data) || (static_value == 1))) begin
+            if ((port_r0_valid & port_r0_ready && (r0_tracker < r0_num_data)) || (static_value == 1)) begin
                 port_r0_mem[r0_tracker] <= port_r0_data;
                 r0_tracker = r0_tracker + 1;
             end
-            if (port_r1_valid & port_r1_ready && ((r1_tracker < r1_num_data) || (static_value == 1))) begin
+            if ((port_r1_valid & port_r1_ready && (r1_tracker < r1_num_data)) || (static_value == 1)) begin
                 port_r1_mem[r1_tracker] <= port_r1_data;
                 r1_tracker = r1_tracker + 1;
             end
-            if (port_r2_valid & port_r2_ready && ((r2_tracker < r2_num_data) || (static_value == 1))) begin
+            if ((port_r2_valid & port_r2_ready && (r2_tracker < r2_num_data)) || (static_value == 1)) begin
                 port_r2_mem[r2_tracker] <= port_r2_data;
                 r2_tracker = r2_tracker + 1;
             end
-            if (port_r3_valid & port_r3_ready && ((r3_tracker < r3_num_data) || (static_value == 1))) begin
+            if ((port_r3_valid & port_r3_ready && (r3_tracker < r3_num_data)) || (static_value == 1)) begin
                 port_r3_mem[r3_tracker] <= port_r3_data;
                 r3_tracker = r3_tracker + 1;
             end
