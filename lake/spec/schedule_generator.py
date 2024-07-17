@@ -61,7 +61,7 @@ class ScheduleGenerator(Component):
 
         ### Logic
         self.wire(self._strt_cycle, kts.ext(self._starting_cycle, self.total_cycle_width))
-        self.wire(self._step_out, self._step)
+        self.wire(self._step_out, self._step & ~self._flush)
 
         # step is high when the current cycle matches the counter
         self.wire(self._step, self._clk_ctr == self._current_cycle)
@@ -182,8 +182,8 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self._step = self.var("step_lcl", 1)
 
         ### Logic
-        # self.wire(self._strt_cycle, kts.ext(self._starting_cycle, self.total_cycle_width))
-        self.wire(self._step_out, self._step)
+        # Gate the output step if flush is high.
+        self.wire(self._step_out, self._step & ~self._flush)
 
         # step is high when the current cycle matches the counter
         # self.wire(self._step, self._clk_ctr == self._current_cycle)
