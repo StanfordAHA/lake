@@ -157,8 +157,8 @@ class Spec():
             self.rv_comparison_network = RVComparisonNetwork(name='rv_comparison_network_this_spec')
 
         self.hw_attr = {}
-        self.hw_attr['clk'] = self._final_gen.clock("clk")
-        self.hw_attr['rst_n'] = self._final_gen.reset("rst_n")
+        self.hw_attr['clk'] = self._final_gen.get_clock()
+        self.hw_attr['rst_n'] = self._final_gen.get_reset()
 
         # First generate the storages based on the ports connected to them and their capacities
         storage_nodes = self.get_nodes(Storage)
@@ -178,7 +178,8 @@ class Spec():
                 print(memoryport.get_name())
             print('aftert storage')
             # Now generate a storage element based on all of these ports and add them to the final generator
-            self._final_gen.add_child("storage", storage_node, clk=self.hw_attr['clk'])
+            self._final_gen.add_child("storage", storage_node, clk=self.hw_attr['clk'],
+                                      rst_n=self.hw_attr['rst_n'])
 
             strg_intfs = storage_node.get_memport_intfs()
 
@@ -189,7 +190,9 @@ class Spec():
                 print('mek')
                 print(mp.get_name())
                 mp.gen_hardware(pos_reset=False, storage_node=storage_node)
-                self._final_gen.add_child(f"memoryport_{i_}_storage_{j_}", mp)
+                self._final_gen.add_child(f"memoryport_{i_}_storage_{j_}", mp,
+                                          clk=self.hw_attr['clk'],
+                                          rst_n=self.hw_attr['rst_n'])
                 # self._connect_memoryport_storage(mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
                 connect_memoryport_storage(self._final_gen, mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
                 # Connected the memory ports to the storage
@@ -376,7 +379,9 @@ class Spec():
         # Can now build the comparison network if it's there...
         if self.any_rv_sg:
             self.rv_comparison_network.gen_hardware()
-            self._final_gen.add_child('rv_comp_network_top_spec', self.rv_comparison_network)
+            self._final_gen.add_child('rv_comp_network_top_spec', self.rv_comparison_network,
+                                      clk=self.hw_attr['clk'],
+                                      rst_n=self.hw_attr['rst_n'])
             rv_comp_conns = self.rv_comparison_network.get_connections()
             for conn_tuple in rv_comp_conns:
                 p1, p2 = conn_tuple
@@ -384,7 +389,7 @@ class Spec():
 
         # self.lift_config_regs()
         print("building spec cfg memory input")
-        self._final_gen._assemble_cfg_memory_input()
+        self._final_gen._assemble_cfg_memory_input(harden_storage=True)
         self.add_flush()
 
     def get_verilog(self, output_dir):

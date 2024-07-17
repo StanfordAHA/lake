@@ -43,8 +43,8 @@ class IterationDomain(Component):
 
     def gen_hardware(self, pos_reset=False):
         # Internal step, so no inputs? just clock???
-        self._clock = self.clock("clk")
-        self._rst_n = self.reset("rst_n")
+        # self._clock = self.clock("clk")
+        # self._rst_n = self.reset("rst_n")
 
         self._extents = self.config_reg(name="extents", width=self.extent_width,
                                         size=self.dimensionality_support,

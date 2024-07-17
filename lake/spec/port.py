@@ -51,8 +51,8 @@ class Port(Component):
 
         all_to_lift = []
 
-        self._clk = self.clock('clk')
-        self._rst_n = self.reset('rst_n')
+        # self._clk = self.clock('clk')
+        # self._rst_n = self.reset('rst_n')
 
         # Going to always have a ready/valid in
 

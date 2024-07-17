@@ -191,7 +191,6 @@ class SingleBankStorage(Storage):
             self.memory_ports = list(memory_ports)
         else:
             self.memory_ports = memory_ports
-        self._clk = self.clock("clk")
 
         # For building this with tech map, guarantee that memory ports are all the same size
         if self.tech_map is not None:

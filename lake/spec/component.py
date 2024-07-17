@@ -1,7 +1,7 @@
 import kratos
 import random as rand
 from lake.attributes.config_reg_attr import ConfigRegAttr
-from kratos import PortDirection
+from kratos import PortDirection, always_ff, posedge, negedge
 from lake.modules.ready_valid_interface import RVInterface
 from lake.utils.spec_enum import Direction
 
@@ -33,7 +33,17 @@ class Component(kratos.Generator):
         self.child_cfg_bases = None
         self.config_space_fixed = False
         self._config_memory = None
+        self._config_memory_harden = None
+        self._config_memory_harden_en = None
         self._name_to_var_cfg = {}
+        self._clk = self.clock('clk')
+        self._rst_n = self.clock('rst_n')
+
+    def get_clock(self):
+        return self._clk
+
+    def get_reset(self):
+        return self._rst_n
 
     def get_config_space_fixed(self):
         return self.config_space_fixed
@@ -55,22 +65,37 @@ class Component(kratos.Generator):
     def populate_child_cfg_bases(self):
         pass
 
-    def _assemble_cfg_memory_input(self):
+    def _assemble_cfg_memory_input(self, harden_storage=False):
         # So this should be called at the end of a gen_hardware.
         # this will set the config_space_fixed as well
         # Calling this means the hardware consutrction for this Component and any children is
         # complete
+        # We can consider assembling it with the physical, hardened registers (in the spec or wherever)
         print(f"Making config space for {self.name}")
         if self.config_size == 0:
             # Early out in case there is no configuration
             return
         self._config_memory = self.input("config_memory", self.config_size, packed=True)
+        use_wire = self._config_memory
+
+        if harden_storage:
+            self._config_memory_harden = self.var("config_memory_harden", self.config_size, packed=True)
+            self._config_memory_harden_en = self.input("config_memory_wen", 1)
+            use_wire = self._config_memory_harden
+
+            @always_ff((posedge, "clk"), (negedge, "rst_n"))
+            def hardened_config_flop(self):
+                if ~self._rst_n:
+                    self._config_memory_harden = 0
+                elif self._config_memory_harden_en:
+                    self._config_memory_harden = self._config_memory
+            self.add_code(hardened_config_flop)
 
         # Now go through the config space
         for cfg_reg_name, range_tuple in self.cfg_reg_to_range.items():
             range_upper, range_lower = range_tuple
             cfg_reg_signal = self._name_to_var_cfg[cfg_reg_name]
-            self.wire(self._config_memory[range_upper, range_lower], cfg_reg_signal)
+            self.wire(cfg_reg_signal, use_wire[range_upper, range_lower])
 
     def add_child(self, instance_name, generator, comment="", python_only=False, **kwargs):
         print("Called this one...")

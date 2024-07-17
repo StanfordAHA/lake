@@ -42,8 +42,8 @@ class AddressGenerator(Component):
 
         self._starting_addr = self.config_reg(name="starting_addr", width=self.addr_width)
         ### Inputs
-        self._clk = self.clock("clk")
-        self._rst_n = self.reset("rst_n")
+        # self._clk = self.clock("clk")
+        # self._rst_n = self.reset("rst_n")
         self._flush = self.input("flush", 1)
         self.add_attribute("sync-reset=flush")
         self._step = self.input("step", 1)
