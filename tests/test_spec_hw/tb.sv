@@ -373,16 +373,16 @@ module lake_static_tb;
             end
 
             if (r0_tracker >= r0_num_data) begin
-                port_r0_valid <= 1'b0;
+                port_r0_ready <= 1'b0;
             end
             if (r1_tracker >= r1_num_data) begin
-                port_r1_valid <= 1'b0;
+                port_r1_ready <= 1'b0;
             end
             if (r2_tracker >= r2_num_data) begin
-                port_r2_valid <= 1'b0;
+                port_r2_ready <= 1'b0;
             end
             if (r3_tracker >= r3_num_data) begin
-                port_r3_valid <= 1'b0;
+                port_r3_ready <= 1'b0;
             end
 
             @(posedge clk);
