@@ -24,3 +24,13 @@ class MemoryPortType(Enum):
     READ = 0
     WRITE = 1
     READWRITE = 2
+
+
+###
+# LF Comparison Enum
+###
+class LFComparisonOperator(Enum):
+    LT = 0
+    GT = 1
+    EQ = 2
+    LTE = 3

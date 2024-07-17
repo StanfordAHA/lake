@@ -1,6 +1,6 @@
 from lake.spec.spec import Spec
 from lake.spec.port import Port
-from lake.utils.spec_enum import Runtime, Direction, MemoryPortType
+from lake.utils.spec_enum import Runtime, Direction, MemoryPortType, LFComparisonOperator
 from lake.spec.address_generator import AddressGenerator
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ReadyValidScheduleGenerator
@@ -106,6 +106,24 @@ def get_linear_test():
             }
         }
     }
+
+    pw = 0
+    pr = 1
+
+    pr_raw_idx = 0
+    pw_raw_idx = 0
+    raw_comp = LFComparisonOperator.LT.value
+    raw_scalar = 0
+    raw_constraint = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
+
+    pw_war_idx = 0
+    pr_war_idx = 0
+    war_comp = LFComparisonOperator.LT.value
+    war_scalar = 16
+    war_constraint = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
+
+    # Just have read follow write
+    linear_test['constraints'] = [raw_constraint, war_constraint]
 
     return linear_test
 

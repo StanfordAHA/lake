@@ -246,7 +246,7 @@ class Component(kratos.Generator):
         return self.cfg_reg_to_range
 
     def gen_bitstream(self):
-        raise NotImplementedError
+        return self.get_configuration()
 
     def get_name(self):
         return self.name

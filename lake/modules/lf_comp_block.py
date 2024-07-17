@@ -3,24 +3,20 @@ from kratos import always_comb
 from enum import Enum
 import operator
 from lake.spec.component import Component
-
-
-class LFComparisonOperator(Enum):
-    LT = 0
-    GT = 1
-    EQ = 2
-    LTE = 3
+from lake.utils.spec_enum import LFComparisonOperator
 
 
 class LFCompBlock(Component):
 
     def __init__(self, name: str, debug: bool = True, is_clone: bool = False, internal_generator=None,
-                 in_width: int = None, out_width: int = None, comparisonOp: LFComparisonOperator = None):
+                 in_width: int = None, out_width: int = None, comparisonOp: LFComparisonOperator = None,
+                 hard_scalar=None):
         # super().__init__(name, debug, is_clone, internal_generator)
         super().__init__(name=name)
         self.in_width = in_width
         self.out_width = out_width
         self.hard_op = comparisonOp
+        self.hard_scalar = hard_scalar
         self.interfaces = None
 
     def gen_hardware(self):
@@ -38,32 +34,24 @@ class LFCompBlock(Component):
         # Generate a reconfigurable block if no hard op given
         if self.hard_op is None:
             # Make it a configuration register
-            # self._comp_reg = kts.const(0, num_comps_bw)
-
-            # self._extents = self.config_reg(name="extents", width=self.extent_width,
-            #                                 size=self.dimensionality_support,
-            #                                 packed=True, explicit_array=True)
-
             self._comp_reg = self.config_reg(name="comparison_op", width=num_comps_bw)
+            self._scalar_reg = self.config_reg(name="comparison_scalar", width=16)
         else:
-            print(self.hard_op)
+            # Otherwise it is a hardened value...
             self._comp_reg = kts.const(self.hard_op.value, num_comps_bw)
+            self._scalar_reg = kts.const(self.hard_scalar, width=16)
 
         @always_comb
         def calculate_comparison():
             self._comparison = 0
             if self._comp_reg == LFComparisonOperator.LT.value:
-                self._comparison = self._input_counter < self._output_counter + 16
+                self._comparison = self._input_counter < self._output_counter + self._scalar_reg
             elif self._comp_reg == LFComparisonOperator.GT.value:
-                self._comparison = self._input_counter < self._output_counter
-            # if self._comp_reg == LFComparisonOperator.LT.value:
-            #     self._comparison = self._input_counter < self._output_counter
-            # elif self._comp_reg == LFComparisonOperator.GT.value:
-            #     self._comparison = self._input_counter > self._output_counter
+                self._comparison = self._input_counter > self._output_counter + self._scalar_reg
             elif self._comp_reg == LFComparisonOperator.EQ.value:
-                self._comparison = self._input_counter == self._output_counter
+                self._comparison = self._input_counter == self._output_counter + self._scalar_reg
             elif self._comp_reg == LFComparisonOperator.LTE.value:
-                self._comparison = self._input_counter <= self._output_counter
+                self._comparison = self._input_counter <= self._output_counter + self._scalar_reg
 
         self.add_code(calculate_comparison)
 
@@ -73,13 +61,15 @@ class LFCompBlock(Component):
         self.interfaces['comparison'] = self._comparison
 
         self.config_space_fixed = True
-        self._assemble_cfg_memory_input
+        self._assemble_cfg_memory_input()
 
     def get_interfaces(self):
         return self.interfaces
 
     def gen_bitstream(self, comparator, scalar):
         self.configure(self._comp_reg, comparator)
+        self.configure(self._scalar_reg, scalar)
+        return self.get_configuration()
 
 
 if __name__ == "__main__":

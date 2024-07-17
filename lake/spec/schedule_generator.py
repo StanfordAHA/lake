@@ -9,7 +9,6 @@ from kratos import always_ff, always_comb, posedge, negedge
 class ScheduleGenerator(Component):
 
     def __init__(self, dimensionality=6, stride_width=16, rv=False, name=None):
-        # super().__init__()
         self.mod_name = name
         if name is None:
             self.mod_name = f"sched_gen_{dimensionality}_{stride_width}"

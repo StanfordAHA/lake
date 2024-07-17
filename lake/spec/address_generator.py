@@ -9,6 +9,7 @@ from lake.spec.iteration_domain import IterationDomain
 class AddressGenerator(Component):
 
     def __init__(self, dimensionality=6):
+        super().__init__()
         self.dimensionality_support = dimensionality
         self.total_num_addrs = None
         self.addr_width = None
@@ -97,6 +98,7 @@ class AddressGenerator(Component):
         self.configure(self._starting_addr, address_map['offset'])
         # This will return pairs of ranges with values w.r.t. the node's configuration
         return self.get_configuration()
+        # return super().gen_bitstream()
 
         # return super().gen_bitstream()
 

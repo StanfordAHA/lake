@@ -156,7 +156,7 @@ class RVComparisonNetwork(Component):
                 out_sel = self.config_reg(name=f"write_{i}_to_read_{j}_sel_out", width=num_read_ctrs_bw)
 
                 # Instantiate LF block
-                lf_comp_block = LFCompBlock(name='lf_comp_block', in_width=write_width, out_width=read_width, comparisonOp=LFComparisonOperator.LT)
+                lf_comp_block = LFCompBlock(name='lf_comp_block', in_width=write_width, out_width=read_width)
                 self.lfcs[f"wr_to_rd_{i}_{j}"] = lf_comp_block
                 # Now have lf block, need to instantiate it, then wire up a mux based on the config
                 lf_comp_block.gen_hardware()
@@ -234,7 +234,7 @@ class RVComparisonNetwork(Component):
                 # out_sel = kts.const(0, num_read_ctrs_bw)
                 out_sel = self.config_reg(name=f"read_{i}_to_write_{j}_sel_out", width=num_read_ctrs_bw)
 
-                lf_comp_block = LFCompBlock(name='lf_comp_block', in_width=read_width, out_width=write_width, comparisonOp=LFComparisonOperator.GT)
+                lf_comp_block = LFCompBlock(name='lf_comp_block', in_width=read_width, out_width=write_width)
                 self.lfcs[f"rd_to_wr_{i}_{j}"] = lf_comp_block
                 # Now have lf block, need to instantiate it, then wire up a mux based on the config
                 lf_comp_block.gen_hardware()
@@ -301,4 +301,11 @@ class RVComparisonNetwork(Component):
             self.configure(p1reg, p1_ctr)
             self.configure(p2reg, p2_ctr)
             # Now configure the lfcompare blocks
-            lfc_ = self.get_lfc_from_indexes(p1, p2)
+            lfc_: LFCompBlock = self.get_lfc_from_indexes(p1, p2)
+            # TODO: make this automatic - when configuring a local reg it should be easy to grab it,
+            # otherwise automatically add the offsets and values
+            lfc_bs = lfc_.gen_bitstream(comparator=comparator, scalar=scalar)
+            lfc_bs = self._add_base_to_cfg_space(lfc_bs, self.child_cfg_bases[lfc_])
+            self._add_configuration_manual(config=lfc_bs)
+
+        return self.get_configuration()

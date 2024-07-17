@@ -657,6 +657,10 @@ class Spec():
 
         # Each piece in the application is a port
         for port_num, maps in application.items():
+
+            if type(port_num) is not int:
+                continue
+
             # Get the port and associated controllers
             port: Port = self.get_node_from_idx(port_num)
 
@@ -690,6 +694,13 @@ class Spec():
             self.configure(port_id, id_bs)
             self.configure(port_ag, ag_bs)
             self.configure(port_sg, sg_bs)
+
+        # Need to program the comparison network as well in ready/valid TODO: separate all the configs into individual SG
+        if self.any_rv_sg:
+            # get application constraints and pass them to rv_comparison_network
+            constraints = application['constraints']
+            rv_comp_bs = self.rv_comparison_network.gen_bitstream(constraints=constraints)
+            self.configure(self.rv_comparison_network, rv_comp_bs)
 
         self.create_config_int()
 
