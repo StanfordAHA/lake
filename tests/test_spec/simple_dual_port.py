@@ -13,7 +13,8 @@ import argparse
 
 
 def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
-                           dims: int = 6, clock_count_width=16, physical=False) -> Spec:
+                           dims: int = 6, clock_count_width=16, physical=False,
+                           recurrence=True) -> Spec:
 
     ls = Spec()
 
@@ -23,12 +24,12 @@ def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
     ls.register(in_port, out_port)
 
     in_id = IterationDomain(dimensionality=dims, extent_width=clock_count_width)
-    in_ag = AddressGenerator(dimensionality=dims)
-    in_sg = ScheduleGenerator(dimensionality=dims)
+    in_ag = AddressGenerator(dimensionality=dims, recurrence=recurrence)
+    in_sg = ScheduleGenerator(dimensionality=dims, recurrence=recurrence)
 
     out_id = IterationDomain(dimensionality=dims, extent_width=clock_count_width)
-    out_ag = AddressGenerator(dimensionality=dims)
-    out_sg = ScheduleGenerator(dimensionality=dims)
+    out_ag = AddressGenerator(dimensionality=dims, recurrence=recurrence)
+    out_sg = ScheduleGenerator(dimensionality=dims, recurrence=recurrence)
 
     ls.register(in_id, in_ag, in_sg)
     ls.register(out_id, out_ag, out_sg)

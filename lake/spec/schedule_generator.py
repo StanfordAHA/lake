@@ -8,7 +8,8 @@ from kratos import always_ff, always_comb, posedge, negedge
 
 class ScheduleGenerator(Component):
 
-    def __init__(self, dimensionality=6, stride_width=16, rv=False, name=None):
+    def __init__(self, dimensionality=6, stride_width=16, rv=False, name=None,
+                 recurrence=True):
         self.mod_name = name
         if name is None:
             self.mod_name = f"sched_gen_{dimensionality}_{stride_width}"
@@ -17,6 +18,7 @@ class ScheduleGenerator(Component):
         self.stride_width = stride_width
         self.rv = rv
         self.mod_name = name
+        self.exploit_recurrence = recurrence
 
     def get_rv(self):
         return self.rv
@@ -87,15 +89,24 @@ class ScheduleGenerator(Component):
         elif self._step:
             self._current_cycle = self._current_cycle + self._strides[self._mux_sel]
 
-    def gen_bitstream(self, schedule_map):
+    def gen_bitstream(self, schedule_map, extents, dimensionality):
         assert 'strides' in schedule_map
         assert 'offset' in schedule_map
-        self.configure(self._strides, schedule_map['strides'])
+
         self.configure(self._starting_cycle, schedule_map['offset'])
+        if self.exploit_recurrence:
+            extent_sub_1 = [extent_item - 1 for extent_item in extents]
+            tform_strides = [extents[0]]
+            offset = 0
+            for i in range(dimensionality - 1):
+                offset -= (extent_sub_1[i] * schedule_map['strides'][i])
+                tform_strides.append(schedule_map['strides'][i + 1] + offset)
+
+            self.configure(self._strides, schedule_map['strides'])
+        else:
+            self.configure(self._strides, schedule_map['strides'])
         # This will return pairs of ranges with values w.r.t. the node's configuration
         return self.get_configuration()
-
-        return super().gen_bitstream()
 
     def get_step(self):
         return self._step_out
@@ -130,11 +141,11 @@ class RecurrentScheduleGenerator(ScheduleGenerator):
 
 class ReadyValidScheduleGenerator(ScheduleGenerator):
 
-    def __init__(self, dimensionality=16, name=None):
+    def __init__(self, dimensionality=16, name=None, recurrence=True):
         use_name = name
         if name is None:
             use_name = f"schedulegenerator_rv_dim_{dimensionality}"
-        super().__init__(dimensionality=dimensionality, rv=True, name=use_name)
+        super().__init__(dimensionality=dimensionality, rv=True, name=use_name, recurrence=recurrence)
         self.num_comparisons = 1
 
     def get_num_comparisons(self):
@@ -219,6 +230,6 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
     def get_iterator_intf(self):
         return self.iterator_intf
 
-    def gen_bitstream(self, sched_map):
+    def gen_bitstream(self, sched_map, extents, dimensionality):
         return []
         # return super().gen_bitstream(schedule_map=sched_map)

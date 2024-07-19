@@ -681,14 +681,18 @@ class Spec():
 
             # All components should be aware of RV/Static context
             id_bs = port_id.gen_bitstream(port_config['dimensionality'], port_config['extents'], self.any_rv_sg)
-            ag_bs = port_ag.gen_bitstream(addr_map)
+            ag_bs = port_ag.gen_bitstream(addr_map, extents=port_config['extents'],
+                                          dimensionality=port_config['dimensionality'])
             if self.any_rv_sg:
-                sg_bs = port_sg.gen_bitstream(sched_map)
+                sg_bs = port_sg.gen_bitstream(sched_map, extents=port_config['extents'],
+                                              dimensionality=port_config['dimensionality'])
                 # Now also configure all rv comparison network
                 # comparisons = []
                 # self.rv_comparison_network.gen_bitstream()
             else:
-                sg_bs = port_sg.gen_bitstream(sched_map)
+                # sg_bs = port_sg.gen_bitstream(sched_map)
+                sg_bs = port_sg.gen_bitstream(sched_map, extents=port_config['extents'],
+                                              dimensionality=port_config['dimensionality'])
 
             # Create a clear configuration
             self.configure(port_id, id_bs)

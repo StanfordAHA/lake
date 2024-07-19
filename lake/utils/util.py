@@ -601,6 +601,14 @@ def observe_cfg(generator, port, other_gen, cfg_reg_port):
         cr_attr.add_observer(generator, port)
 
 
+def shift_reg(generator, signal, chain_depth, name=None):
+    '''Creates a shift register of depth `chain_depth` and returns the output of it
+    '''
+    to_use = signal
+    for i in range(chain_depth):
+        to_use = register(generator, signal)
+
+
 def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1),
              name=None, packed=False, reset_value=0):
     ''' Pass a generator and a signal to create a registered
