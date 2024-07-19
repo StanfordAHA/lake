@@ -50,6 +50,7 @@ class AddressGenerator(Component):
         self.add_attribute("sync-reset=flush")
         self._step = self.input("step", 1)
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._restart = self.input("restart", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
                                 size=self.dimensionality_support,
@@ -93,7 +94,10 @@ class AddressGenerator(Component):
         elif self._flush:
             self._current_addr = self._strt_addr
         elif self._step:
-            self._current_addr = self._current_addr + self._strides[self._mux_sel]
+            if self._restart:
+                self._current_addr = self._strt_addr
+            else:
+                self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
     def gen_bitstream(self, address_map, extents, dimensionality):
         assert 'strides' in address_map

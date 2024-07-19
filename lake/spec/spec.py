@@ -255,9 +255,11 @@ class Spec():
                                       rst_n=self.hw_attr['rst_n'])
 
             self._final_gen.wire(port_id.ports.mux_sel, port_ag.ports.mux_sel)
+            self._final_gen.wire(port_id.ports.restart, port_ag.ports.restart)
             self._final_gen.wire(port_id.ports.iterators, port_ag.ports.iterators)
 
             self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
+            self._final_gen.wire(port_id.ports.restart, port_sg.ports.restart)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
             # Send through the extents to sg if there is RV

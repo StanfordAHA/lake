@@ -48,6 +48,7 @@ class ScheduleGenerator(Component):
         self._clk_ctr = add_counter(self, "clk_ctr", bitwidth=self.total_cycle_width, increment=kts.const(1, 1),
                                     clear=self._flush)
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._restart = self.input("restart", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
                                    size=self.dimensionality_support,
@@ -89,7 +90,10 @@ class ScheduleGenerator(Component):
         elif self._flush:
             self._current_cycle = self._strt_cycle
         elif self._step:
-            self._current_cycle = self._current_cycle + self._strides[self._mux_sel]
+            if self._restart:
+                self._current_cycle = self._strt_cycle
+            else:
+                self._current_cycle = self._current_cycle + self._strides[self._mux_sel]
 
     def gen_bitstream(self, schedule_map, extents, dimensionality):
         assert 'strides' in schedule_map
@@ -177,6 +181,7 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
 
         # Still accept the iterators/mux_sel
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._restart = self.input("restart", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
                                    size=self.dimensionality_support,
