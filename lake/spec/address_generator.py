@@ -66,14 +66,17 @@ class AddressGenerator(Component):
         self.wire(self._strt_addr, self._starting_addr)
         self.wire(self._addr_out, self._current_addr)
 
-        self._tmp_addr_calc = []
-        for i in range(self.dimensionality_support):
-            tmp = self.var(f"tmp_addr_calc_{i}", self._ctrs[i].width + self._strides[i].width)
-            self.wire(tmp, kts.ext(self._ctrs[i] * self._strides[i], tmp.width))
-            self._tmp_addr_calc.append(tmp)
+        if self.exploit_recurrence:
+            self.add_code(self.calculate_address_delta)
+        else:
+            self._tmp_addr_calc = []
+            for i in range(self.dimensionality_support):
+                tmp = self.var(f"tmp_addr_calc_{i}", self._ctrs[i].width + self._strides[i].width)
+                self.wire(tmp, kts.ext(self._ctrs[i] * self._strides[i], tmp.width))
+                self._tmp_addr_calc.append(tmp)
 
-        self.add_code(self.calculate_address_count)
-        # self.add_code(self.calculate_address_delta)
+            self.add_code(self.calculate_address_count)
+
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 

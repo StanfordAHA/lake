@@ -68,8 +68,10 @@ class ScheduleGenerator(Component):
         # step is high when the current cycle matches the counter
         self.wire(self._step, self._clk_ctr == self._current_cycle)
 
-        self.add_code(self.calculate_cycle_count)
-        # self.add_code(self.calculate_cycle_delta)
+        if self.exploit_recurrence:
+            self.add_code(self.calculate_cycle_delta)
+        else:
+            self.add_code(self.calculate_cycle_count)
 
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
