@@ -8,11 +8,12 @@ from lake.spec.iteration_domain import IterationDomain
 
 class AddressGenerator(Component):
 
-    def __init__(self, dimensionality=6):
+    def __init__(self, dimensionality=6, recurrence=True):
         super().__init__()
         self.dimensionality_support = dimensionality
         self.total_num_addrs = None
         self.addr_width = None
+        self.exploit_recurrence = recurrence
 
     def gen_hardware(self, memports=None, id: IterationDomain = None, pos_reset=False):
         assert memports is not None
@@ -49,6 +50,7 @@ class AddressGenerator(Component):
         self.add_attribute("sync-reset=flush")
         self._step = self.input("step", 1)
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._restart = self.input("restart", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
                                 size=self.dimensionality_support,
@@ -65,14 +67,17 @@ class AddressGenerator(Component):
         self.wire(self._strt_addr, self._starting_addr)
         self.wire(self._addr_out, self._current_addr)
 
-        self._tmp_addr_calc = []
-        for i in range(self.dimensionality_support):
-            tmp = self.var(f"tmp_addr_calc_{i}", self._ctrs[i].width + self._strides[i].width)
-            self.wire(tmp, kts.ext(self._ctrs[i] * self._strides[i], tmp.width))
-            self._tmp_addr_calc.append(tmp)
+        if self.exploit_recurrence:
+            self.add_code(self.calculate_address_delta)
+        else:
+            self._tmp_addr_calc = []
+            for i in range(self.dimensionality_support):
+                tmp = self.var(f"tmp_addr_calc_{i}", self._ctrs[i].width + self._strides[i].width)
+                self.wire(tmp, kts.ext(self._ctrs[i] * self._strides[i], tmp.width))
+                self._tmp_addr_calc.append(tmp)
 
-        self.add_code(self.calculate_address_count)
-        # self.add_code(self.calculate_address_delta)
+            self.add_code(self.calculate_address_count)
+
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 
@@ -89,18 +94,29 @@ class AddressGenerator(Component):
         elif self._flush:
             self._current_addr = self._strt_addr
         elif self._step:
-            self._current_addr = self._current_addr + self._strides[self._mux_sel]
+            if self._restart:
+                self._current_addr = self._strt_addr
+            else:
+                self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
-    def gen_bitstream(self, address_map):
+    def gen_bitstream(self, address_map, extents, dimensionality):
         assert 'strides' in address_map
         assert 'offset' in address_map
-        self.configure(self._strides, address_map['strides'])
+
         self.configure(self._starting_addr, address_map['offset'])
+        if self.exploit_recurrence:
+            extent_sub_1 = [extent_item - 1 for extent_item in extents]
+            tform_strides = [extents[0]]
+            offset = 0
+            for i in range(dimensionality - 1):
+                offset -= (extent_sub_1[i] * address_map['strides'][i])
+                tform_strides.append(address_map['strides'][i + 1] + offset)
+
+            self.configure(self._strides, address_map['strides'])
+        else:
+            self.configure(self._strides, address_map['strides'])
         # This will return pairs of ranges with values w.r.t. the node's configuration
         return self.get_configuration()
-        # return super().gen_bitstream()
-
-        # return super().gen_bitstream()
 
     def get_address(self):
         return self._addr_out

@@ -1,6 +1,7 @@
 from lake.spec.component import Component
 from lake.utils.spec_enum import *
 from kratos import clog2
+from lake.spec.reg_fifo import RegFIFO
 import kratos as kts
 
 
@@ -11,7 +12,8 @@ class MemoryPortExclusionAttr(kts.Attribute):
 
 class MemoryPort(Component):
 
-    def __init__(self, data_width=16, mptype=MemoryPortType.R, delay=0, active_read=True):
+    def __init__(self, data_width=16, mptype=MemoryPortType.R, delay=0, active_read=True,
+                 runtime: Runtime = Runtime.STATIC):
         super().__init__()
         self.width = data_width
         self.mptype = mptype
@@ -20,6 +22,9 @@ class MemoryPort(Component):
         self.num_addrs = None
         self.addr_width = None
         self.hw_genned = False
+        # Need to know the runtime to handle
+        # ready/valid in the delay situation
+        self.runtime = runtime
         # This is this ^
         # self.port_interface_set = False
 
@@ -57,10 +62,30 @@ class MemoryPort(Component):
         self.num_addrs = storage_node.get_capacity() // (self.width // 8)
         self.addr_width = clog2(self.num_addrs)
 
+        # Memory port needs to output a resource ready to
+        self._resource_ready_w = self.output(name="resource_ready_w", width=1)
+        self._resource_ready_r = self.output(name="resource_ready_r", width=1)
+        self._resource_ready_r_lcl = self.var(name="resource_ready_r_lcl", width=1)
+
+        # Kratos won't let you use an output variable locally as of now
+        self.wire(self._resource_ready_r, self._resource_ready_r_lcl)
+
+        # For now, write is always ready on the memory port portion
+        self.wire(self._resource_ready_w, kts.const(1, 1))
+
+        data_to_port_rv = None
+
         if self.mptype == MemoryPortType.R:
             # in set
             addr_from_port = self.input(f"memory_port_read_addr_in", self.addr_width)
-            data_to_port = self.output(f"memory_port_read_data_out", self.width)
+
+            # Need to generate a ready/valid interface on the data of the memoryport
+            if self.runtime == Runtime.DYNAMIC:
+                data_to_port_rv = self.rvoutput(name=f"memory_port_read_data_out", width=self.width)
+                data_to_port = data_to_port_rv.get_port()
+            else:
+                data_to_port = self.output(f"memory_port_read_data_out", self.width)
+            # data_to_port = self.output(f"memory_port_read_data_out", self.width)
             en_from_port = self.input(f"memory_port_read_en_in", 1)
 
             # out set
@@ -68,10 +93,37 @@ class MemoryPort(Component):
             data_from_strg = self.input(f"memory_port_read_data_in", self.width)
             en_to_strg = self.output(f"memory_port_read_en_out", 1)
 
-            # wire together
+            # wire together the addresses
             self.wire(addr_from_port, addr_to_strg)
-            self.wire(data_to_port, data_from_strg)
-            self.wire(en_from_port, en_to_strg)
+
+            if self.runtime == Runtime.DYNAMIC:
+                # In this case, we need to instantiate a FIFO as a skid buffer to accomodate
+                # the latency of the physical storage in addition to a shift register chain
+                reg_fifo = RegFIFO(self.width, 1, self.delay + 4, almost_full_diff=self.delay + 1)
+                shift_reg_out = None
+                shift_register_chain = None
+
+                self.add_child(f"reg_fifo",
+                                reg_fifo,
+                                clk=self._clk,
+                                rst_n=self._rst_n,
+                                # clk_en=self._clk_en,
+                                clk_en=kts.const(1, 1),
+                                push=shift_reg_out,
+                                pop=data_to_port_rv.get_ready(),
+                                data_in=data_from_strg,
+                                data_out=data_to_port)
+
+                # Valid going out for the data is the not empty of the fifo
+                self.wire(data_to_port_rv.get_valid(), ~reg_fifo.ports.empty)
+                # The shift reg just captures if an actual even occured which is the enable in +
+                # it needs to be qualified on the almost_full from the fifo - since we sized this for appropriate
+                # amount of skid buffering, we don't need to worry about the FIFO's full signal
+                shift_reg_in = en_from_port & ~reg_fifo.ports.almost_full
+
+            else:
+                self.wire(data_to_port, data_from_strg)
+                self.wire(en_from_port, en_to_strg)
 
             self._port_intf['addr'] = addr_from_port
             self._port_intf['read_data'] = data_to_port
@@ -107,6 +159,9 @@ class MemoryPort(Component):
             self._strg_intf['addr'] = addr_to_strg
             self._strg_intf['write_data'] = data_to_strg
             self._strg_intf['write_en'] = en_to_strg
+
+            # Resource ready r is high here (and will be unused so it will be culled away in synthesis)
+            self.wire(self._resource_ready_r_lcl, kts.const(1, 1))
 
         elif self.mptype == MemoryPortType.RW:
 

@@ -255,9 +255,11 @@ class Spec():
                                       rst_n=self.hw_attr['rst_n'])
 
             self._final_gen.wire(port_id.ports.mux_sel, port_ag.ports.mux_sel)
+            self._final_gen.wire(port_id.ports.restart, port_ag.ports.restart)
             self._final_gen.wire(port_id.ports.iterators, port_ag.ports.iterators)
 
             self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
+            self._final_gen.wire(port_id.ports.restart, port_sg.ports.restart)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
             # Send through the extents to sg if there is RV
@@ -681,14 +683,18 @@ class Spec():
 
             # All components should be aware of RV/Static context
             id_bs = port_id.gen_bitstream(port_config['dimensionality'], port_config['extents'], self.any_rv_sg)
-            ag_bs = port_ag.gen_bitstream(addr_map)
+            ag_bs = port_ag.gen_bitstream(addr_map, extents=port_config['extents'],
+                                          dimensionality=port_config['dimensionality'])
             if self.any_rv_sg:
-                sg_bs = port_sg.gen_bitstream(sched_map)
+                sg_bs = port_sg.gen_bitstream(sched_map, extents=port_config['extents'],
+                                              dimensionality=port_config['dimensionality'])
                 # Now also configure all rv comparison network
                 # comparisons = []
                 # self.rv_comparison_network.gen_bitstream()
             else:
-                sg_bs = port_sg.gen_bitstream(sched_map)
+                # sg_bs = port_sg.gen_bitstream(sched_map)
+                sg_bs = port_sg.gen_bitstream(sched_map, extents=port_config['extents'],
+                                              dimensionality=port_config['dimensionality'])
 
             # Create a clear configuration
             self.configure(port_id, id_bs)
