@@ -74,7 +74,7 @@ if __name__ == "__main__":
                         rtl_configure.write("  - cd $CURR\n")
                         rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")
                         rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/tb.sv outputs/testbench.sv\n")
-                        rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt outputs/design.args\n")
+                        rtl_configure.write(f"  - cat $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/PARGS.txt > outputs/design.args\n")
                         rtl_configure.write("\n")
                         rtl_configure.write("  - echo $PWD\n")
 
