@@ -90,7 +90,7 @@ class AddressGenerator(Component):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def calculate_address_delta(self):
         if ~self._rst_n:
-            self._current_addr = self._strt_addr
+            self._current_addr = 0
         elif self._flush:
             self._current_addr = self._strt_addr
         elif self._step:

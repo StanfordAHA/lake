@@ -86,7 +86,7 @@ class ScheduleGenerator(Component):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def calculate_cycle_delta(self):
         if ~self._rst_n:
-            self._current_cycle = self._strt_cycle
+            self._current_cycle = 0
         elif self._flush:
             self._current_cycle = self._strt_cycle
         elif self._step:

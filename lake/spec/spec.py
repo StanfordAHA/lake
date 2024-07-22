@@ -280,7 +280,9 @@ class Spec():
                                                  runtime=self.runtime)
             memintf_dec.gen_hardware()
 
-            self._final_gen.add_child(f"memintfdec_inst_{i_}", memintf_dec)
+            self._final_gen.add_child(f"memintfdec_inst_{i_}", memintf_dec,
+                                      clk=self.hw_attr['clk'],
+                                      rst_n=self.hw_attr['rst_n'])
             # After this, need to connect the decoded ports to the actual memports
             mintf_ints = memintf_dec.get_mp_intf()
             for j_, mp in enumerate(memports_):
@@ -300,7 +302,7 @@ class Spec():
                     sg_step = port_sg.ports.step
                     mid_grant = memintf_dec.get_p_intf()['grant']
                     # The enable to mid is valid + step
-                    quali_step = sg_step & port_valid
+                    quali_step = sg_step & port_valid & memintf_dec.ports.resource_ready
                     # The grant is the ready/final step to ID, AG, ready
                     self._final_gen.wire(port.get_mp_intf()['ready'], mid_grant)
                     self._final_gen.wire(port_ag.ports.step, mid_grant)
@@ -315,10 +317,16 @@ class Spec():
                     port_ready = port.get_mp_intf()['ready']
                     sg_step = port_sg.ports.step
                     mid_grant = memintf_dec.get_p_intf()['grant']
-                    # The enable to mid is port ready + step
-                    quali_step = sg_step & port_ready
+                    # The enable to mid is memintf decoder resource available ready + step
+                    quali_step = sg_step & memintf_dec.ports.resource_ready
+                    # quali_step = sg_step & port_ready
                     # The grant is the ready/final step to ID, AG, ready
-                    self._final_gen.wire(port.get_mp_intf()['valid'], mid_grant)
+                    # self._final_gen.wire(port.get_mp_intf()['valid'], mid_grant)
+                    print("IDKDIDKDI")
+                    self._final_gen.wire(port.get_mp_intf()['valid'], memintf_dec.ports.data_valid)
+                    # The ready comes out of the memintf decoder
+                    self._final_gen.wire(memintf_dec.ports.data_ready, port_ready)
+
                     self._final_gen.wire(port_ag.ports.step, mid_grant)
                     self._final_gen.wire(port_id.ports.step, mid_grant)
 
@@ -330,6 +338,8 @@ class Spec():
                 self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
                 # self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
                 self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
+                if port_direction == Direction.OUT:
+                    self._final_gen.wire(memintf_dec.ports.data_ready, kts.const(1, 1))
 
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
