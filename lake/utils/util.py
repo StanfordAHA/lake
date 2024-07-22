@@ -884,6 +884,9 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
     if type(many) is list:
         assert len(many) > 0
         many_list = True
+        if len(many) == 1:
+            generator.wire(one, many[0])
+            return
 
     print(sel)
     print(many)
