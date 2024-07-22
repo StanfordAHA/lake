@@ -62,7 +62,7 @@ class MemoryInterfaceDecoder(Component):
 
             muxed_data_in = self.var("chosen_read", self.port_intf['data'].width, packed=True)
             # all_data_in = self.var("all_memports_in", self.port_intf['data'].width, size=len(self.memports))
-            all_data_in = [self.var(f"all_data_in_{i}", self.port_intf['data'].width) for i in range(len(self.memports))]
+            all_data_in = [self.var(f"all_data_in_{j}", self.port_intf['data'].width) for j in range(len(self.memports))]
             shift_reg_dec_en_in = self.var("shift_reg_dec_en_in", len(self.memports))
             shift_reg_dec_en_out = shift_reg(self, shift_reg_dec_en_in, chain_depth=self.delay)
             # shift_reg_dec_en_out = None
@@ -137,6 +137,7 @@ class MemoryInterfaceDecoder(Component):
 
             if self.runtime == Runtime.DYNAMIC:
                 self.mp_intf[i_]['grant'] = self.input(f"mp_grant_{i_}", 1)
+
             if self.port_direction == Direction.IN:
                 self.mp_intf[i_]['data'] = self.output(f"mp_data_{i_}", self.port_intf['data'].width)
                 self.wire(self.mp_intf[i_]['data'], self.p_intf['data'])
@@ -148,16 +149,28 @@ class MemoryInterfaceDecoder(Component):
             # # This actually needs to be based on the enable
             # self.wire(self.p_intf['data'], self.mp_intf[i_]['data'])
 
-            # Now decode
-            @always_comb
-            def decode_en():
-                # The address to send to a specific memory port just needs the base subtracted away
-                self.mp_intf[i_]['addr'] = self.p_intf['addr'] - base
-                # The enable will be high if the address is in the range of the memport
-                self.mp_intf[i_]['en_lcl'] = 0
-                if (self.p_intf['addr'] >= base) and (self.p_intf['addr'] <= (base + addr_range - 1)):
-                    # self.mp_intf[i_]['en'] = 1
-                    self.mp_intf[i_]['en_lcl'] = self.p_intf['en']
+            if self.port_direction == Direction.IN:
+                # Now decode
+                @always_comb
+                def decode_en():
+                    # The address to send to a specific memory port just needs the base subtracted away
+                    self.mp_intf[i_]['addr'] = self.p_intf['addr'] - base
+                    # The enable will be high if the address is in the range of the memport
+                    self.mp_intf[i_]['en_lcl'] = 0
+                    if (self.p_intf['addr'] >= base) and (self.p_intf['addr'] <= (base + addr_range - 1)):
+                        # self.mp_intf[i_]['en'] = 1
+                        self.mp_intf[i_]['en_lcl'] = self.p_intf['en']
+            elif self.port_direction == Direction.OUT:
+                @always_comb
+                def decode_en():
+                    # The address to send to a specific memory port just needs the base subtracted away
+                    self.mp_intf[i_]['addr'] = self.p_intf['addr'] - base
+                    all_data_in[i_] = self.mp_intf[i_]['data']
+                    # The enable will be high if the address is in the range of the memport
+                    self.mp_intf[i_]['en_lcl'] = 0
+                    if (self.p_intf['addr'] >= base) and (self.p_intf['addr'] <= (base + addr_range - 1)):
+                        # self.mp_intf[i_]['en'] = 1
+                        self.mp_intf[i_]['en_lcl'] = self.p_intf['en']
 
             self.add_code(decode_en)
             base = base + addr_range
@@ -165,7 +178,6 @@ class MemoryInterfaceDecoder(Component):
         if self.port_direction == Direction.OUT:
             # Now finally hook up the final decoded enable signal
             self.wire(shift_reg_dec_en_in, kts.concat(*[self.mp_intf[i_]['en_lcl'] for i_ in range(len(self.memports))]))
-            # self.wire(shift_reg_dec_en_in, kts.concat(*[self.mp_intf[i_]['en'] for i_ in range(len(self.memports))]))
 
         # Need to OR together all the grants...
         if self.runtime == Runtime.DYNAMIC:
