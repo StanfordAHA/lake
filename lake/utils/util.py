@@ -606,7 +606,8 @@ def shift_reg(generator, signal, chain_depth, name=None):
     '''
     to_use = signal
     for i in range(chain_depth):
-        to_use = register(generator, signal)
+        to_use = register(generator, to_use, name=f"{signal.name}_d{i + 1}")
+    return to_use
 
 
 def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1),
@@ -805,6 +806,12 @@ def decode(generator, sel, signals):
 
     generator.add_code(scan_lowest)
     return ret
+
+
+def round_up_to_power_of_2(x):
+    if x < 1:
+        return 1
+    return 1 << (x - 1).bit_length()
 
 
 def get_priority_encode(generator, signal):
