@@ -34,8 +34,11 @@ class ScheduleGenerator(Component):
         ##########
         ### Config Regs
         self._strides = self.config_reg(name="strides", width=self.stride_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                        size=self.dimensionality_support,
+                                        packed=True, explicit_array=True)
+
+        #  Need an enable otherwise a schedule that starts off at 0 can accidentally fire...
+        self._enable = self.config_reg(name="enable", width=1)
 
         # Using stride width instead of total cycle to keep config reg smaller
         self._starting_cycle = self.config_reg(name="starting_cycle", width=self.stride_width)
@@ -64,7 +67,7 @@ class ScheduleGenerator(Component):
 
         ### Logic
         self.wire(self._strt_cycle, kts.ext(self._starting_cycle, self.total_cycle_width))
-        self.wire(self._step_out, self._step & ~self._flush)
+        self.wire(self._step_out, self._step & ~self._flush & self._enable)
 
         # step is high when the current cycle matches the counter
         self.wire(self._step, self._clk_ctr == self._current_cycle)
@@ -98,6 +101,9 @@ class ScheduleGenerator(Component):
     def gen_bitstream(self, schedule_map, extents, dimensionality):
         assert 'strides' in schedule_map
         assert 'offset' in schedule_map
+
+        # Enable through the configuration
+        self.configure(self._enable, 1)
 
         self.configure(self._starting_cycle, schedule_map['offset'])
         if self.exploit_recurrence:
