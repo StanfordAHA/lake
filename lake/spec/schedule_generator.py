@@ -108,7 +108,7 @@ class ScheduleGenerator(Component):
         self.configure(self._starting_cycle, schedule_map['offset'])
         if self.exploit_recurrence:
             extent_sub_1 = [extent_item - 1 for extent_item in extents]
-            tform_strides = [extents[0]]
+            tform_strides = [schedule_map['strides'][0]]
             offset = 0
             for i in range(dimensionality - 1):
                 offset -= (extent_sub_1[i] * schedule_map['strides'][i])
