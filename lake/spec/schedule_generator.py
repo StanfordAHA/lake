@@ -12,7 +12,7 @@ class ScheduleGenerator(Component):
                  recurrence=True):
         self.mod_name = name
         if name is None:
-            self.mod_name = f"sched_gen_{dimensionality}_{stride_width}"
+            self.mod_name = f"sched_gen_{dimensionality}_{stride_width}_{recurrence}"
         super().__init__(name=self.mod_name)
         self.dimensionality_support = dimensionality
         self.stride_width = stride_width

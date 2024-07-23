@@ -155,7 +155,7 @@ class Port(Component):
                 self.add_child(f"port_ag_sipo_in", self._ag_sipo_in,
                                         clk=self._clk,
                                         rst_n=self._rst_n)
-                self.add_child(f"port_sg_piso_in", self._sg_sipo_in,
+                self.add_child(f"port_sg_sipo_in", self._sg_sipo_in,
                                         clk=self._clk,
                                         rst_n=self._rst_n)
 
