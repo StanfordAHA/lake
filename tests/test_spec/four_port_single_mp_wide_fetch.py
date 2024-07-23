@@ -137,7 +137,7 @@ def get_linear_test():
         }
     }
 
-    linear_test[1] = {
+    linear_test[2] = {
         'type': Direction.OUT,
         'name': 'read_port_0',
         'config': {
