@@ -92,6 +92,136 @@ def build_four_port_wide_fetch(storage_capacity=1024, data_width=16,
     return ls
 
 
+def get_two_read_test():
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'type': Direction.IN,
+        'name': 'write_port_0',
+        'config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 4
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 2,
+            'extents': [4, 64],
+            'address': {
+                'strides': [1, 4],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 0
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [4],
+                'offset': 4
+            }
+        }
+    }
+
+    linear_test[2] = {
+        'type': Direction.OUT,
+        'name': 'read_port_0',
+        'config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [8],
+                'offset': 17
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [8],
+                'offset': 18
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 2,
+            'extents': [4, 16],
+            'address': {
+                'strides': [0, 1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 19
+            }
+        }
+    }
+
+    linear_test[3] = {
+        'type': Direction.OUT,
+        'name': 'read_port_1',
+        'config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [8],
+                'offset': 18
+            }
+        },
+        'vec_in_config': {
+            'dimensionality': 1,
+            'extents': [64],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [8],
+                'offset': 19
+            }
+        },
+        'vec_out_config': {
+            'dimensionality': 2,
+            'extents': [4, 16],
+            'address': {
+                'strides': [0, 1],
+                'offset': 0
+            },
+            'schedule': {
+                'strides': [1, 4],
+                'offset': 20
+            }
+        }
+    }
+
+    return linear_test
+
+
 def get_linear_test():
 
     linear_test = {}
@@ -182,7 +312,7 @@ def get_linear_test():
 
 
 def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
-                                 tp: TestPrepper = None):
+                                 tp: TestPrepper = None, test='linear'):
 
     assert tp is not None
 
@@ -204,8 +334,16 @@ def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_wi
     # output this to simple_single_port_specthe inputs thing
     simple_four_port_spec.get_verilog(output_dir=output_dir_verilog)
 
+    lt = None
+    if test == 'linear':
+        lt = get_linear_test()
+    elif test == 'two_read':
+        lt = get_two_read_test()
+    else:
+        raise NotImplementedError(f"Cannot run test: {test}")
+
     # Define the test
-    lt = get_linear_test()
+    # lt = test()
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_four_port_spec.gen_bitstream(lt)
@@ -253,6 +391,7 @@ if __name__ == "__main__":
     parser.add_argument("--vec_width", type=int, default=4)
     parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
+    parser.add_argument("--test", type=str, default="linear")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--outdir", type=str, default=None)
     args = parser.parse_args()
@@ -266,4 +405,4 @@ if __name__ == "__main__":
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_qp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                 physical=args.physical, vec_width=args.vec_width, tp=tp)
+                                 physical=args.physical, vec_width=args.vec_width, tp=tp, test=args.test)
