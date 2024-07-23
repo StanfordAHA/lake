@@ -4,8 +4,9 @@ import random as rand
 from lake.spec.address_generator import AddressGenerator
 from lake.spec.memory_port import MemoryPort
 from lake.spec.iteration_domain import IterationDomain
-from lake.spec.schedule_generator import ScheduleGenerator
+from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage, Storage
+from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.utils.util import connect_memoryport_storage
 
 
@@ -34,6 +35,7 @@ class Port(Component):
         self._vec_capacity = vec_capacity
         self.dimensionality = None
         self._internal_step = None
+        self._rv_comp_nw = None
 
     def set_dimensionality(self, dim):
         self.dimensionality = dim
@@ -90,6 +92,11 @@ class Port(Component):
                     self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
 
             else:
+
+                # Need to create a n rv network here...
+                if self._runtime == Runtime.DYNAMIC:
+                    self._rv_comp_nw = RVComparisonNetwork(name=f"rv_comp_nw_{self.name}")
+
                 # Cannot build the hardware without this information
                 assert self.dimensionality is not None
                 assert external_id is not None
@@ -132,7 +139,11 @@ class Port(Component):
                 # to the memory ports
                 # Input side stuff
                 self._id_sipo_in = IterationDomain(dimensionality=self.dimensionality)
-                self._sg_sipo_in = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
+                if self._runtime == Runtime.DYNAMIC:
+                    self._sg_sipo_in = ReadyValidScheduleGenerator(dimensionality=self.dimensionality)
+                    self._sg_sipo_out = ReadyValidScheduleGenerator(dimensionality=self.dimensionality)
+                else:
+                    self._sg_sipo_in = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
                 self._ag_sipo_in = AddressGenerator(dimensionality=self.dimensionality)
                 # Output side stuff - don't actually need the ID, SG, can just use the ID, SG from the original spec which will be built to
                 # drive the Storage element anyway. Just need to accept a step/enable signal in from the outside anyway
@@ -146,6 +157,16 @@ class Port(Component):
                 # port.gen_hardware(dimensionality=id_dims)
                 self._id_sipo_in.gen_hardware()
                 self._sg_sipo_in.gen_hardware(self._id_sipo_in)
+
+                # Register all sgs with the rv comp network
+                if self._runtime == Runtime.DYNAMIC:
+                    self._sg_sipo_out.gen_hardware(external_id, num_comparisons=1)
+                    self.add_child('port_sg_sipo_out', self._sg_sipo_out,
+                                   clk=self._clk,
+                                   rst_n=self._rst_n)
+                    self._rv_comp_nw.add_reader_writer(direction=Direction.IN, sg=self._sg_sipo_in)
+                    self._rv_comp_nw.add_reader_writer(direction=Direction.OUT, sg=self._sg_sipo_out)
+
                 self._ag_sipo_in.gen_hardware(memports=[self._sipo_strg_mp_in], id=self._id_sipo_in)
 
                 # Connect the ag/sg/id together
@@ -170,10 +191,21 @@ class Port(Component):
                 self.wire(self._sg_sipo_in.ports.step, self._ag_sipo_in.ports.step)
                 self.wire(self._sg_sipo_in.ports.step, self._id_sipo_in.ports.step)
 
+                # Send through extents if RV
+                if self._runtime == Runtime.DYNAMIC:
+                    self.wire(self._id_sipo_in.ports.extents_out, self._sg_sipo_in.ports.extents)
+
                 assembled_port = {}
-                assembled_port['data'] = data_from_ub
+                assembled_port['data'] = self._ub_intf['data']
                 assembled_port['addr'] = self._ag_sipo_in.get_address()
-                assembled_port['en'] = self._sg_sipo_in.get_step()
+                # The data and addr to the SIPO can just be directly wired, but we need to qualify the write enable
+                # with the SG's step and input valid
+                if self._runtime == Runtime.DYNAMIC:
+                    assembled_port['en'] = self._sg_sipo_in.get_step() & self._ub_intf['valid']
+                    # Can also hook up the ub ready now - it's just the step since there's no arbitration on the MP
+                    self.wire(self._ub_intf['ready'], self._sg_sipo_in.get_step())
+                else:
+                    assembled_port['en'] = self._sg_sipo_in.get_step()
 
                 # Now hook up the input and output ports
                 in_intf = self._sipo_strg_mp_in.get_port_intf()
@@ -202,11 +234,27 @@ class Port(Component):
                 self.wire(self._internal_ag_intf['mux_sel'], self._ag_sipo_out.ports.mux_sel)
                 self.wire(self._internal_ag_intf['iterators'], self._ag_sipo_out.ports.iterators)
                 self.wire(self._internal_ag_intf['restart'], self._ag_sipo_out.ports.restart)
+                if self._runtime == Runtime.DYNAMIC:
+                    self._internal_ag_intf['extents'] = self.input("port_sipo_out_extents", external_id.get_extent_width(),
+                                                                size=external_id.get_dimensionality(), packed=True, explicit_array=True)
+                    self.wire(self._internal_ag_intf['extents'], self._sg_sipo_out.ports.extents)
+                    self.wire(self._internal_ag_intf['iterators'], self._sg_sipo_out.ports.iterators)
+                    self.wire(self._internal_ag_intf['mux_sel'], self._sg_sipo_out.ports.mux_sel)
+                    self.wire(self._internal_ag_intf['restart'], self._sg_sipo_out.ports.restart)
 
                 assembled_port = {}
-                assembled_port['data'] = data_to_memport
+                assembled_port['data'] = self._mp_intf['data']
                 assembled_port['addr'] = self._ag_sipo_out.get_address()
-                assembled_port['en'] = self._internal_ag_intf['step']
+
+                # The data and addr out of the SIPO can just be directly wired, but we need to qualify the read enable
+                # with the SG's step and output ready
+                if self._runtime == Runtime.DYNAMIC:
+                    assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step()
+                    # Valid is the same as en
+                    self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step())
+                else:
+                    # assembled_port['en'] = self._sg_sipo_in.get_step()
+                    assembled_port['en'] = self._internal_ag_intf['step']
 
                 out_intf = self._sipo_strg_mp_out.get_port_intf()
                 print(out_intf)
@@ -220,6 +268,17 @@ class Port(Component):
                 # Now lift the config spaces
                 all_to_lift = [self._sipo_strg, self._sipo_strg_mp_in, self._sipo_strg_mp_out,
                                self._id_sipo_in, self._sg_sipo_in, self._ag_sipo_in, self._ag_sipo_out]
+
+                # Instantiate and hook up local rv comp network
+                if self._runtime == Runtime.DYNAMIC:
+                    self._rv_comp_nw.gen_hardware()
+                    self.add_child('rv_comp_network_sipo', self._rv_comp_nw,
+                                            clk=self._clk,
+                                            rst_n=self._rst_n)
+                    rv_comp_conns = self._rv_comp_nw.get_connections()
+                    for conn_tuple in rv_comp_conns:
+                        p1, p2 = conn_tuple
+                        self.wire(p1, p2)
 
         elif self._direction == Direction.OUT:
 
@@ -249,6 +308,10 @@ class Port(Component):
                     self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
                     self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
             else:
+
+                # Need to create a n rv network here...
+                if self._runtime == Runtime.DYNAMIC:
+                    self._rv_comp_nw = RVComparisonNetwork(name=f"rv_comp_nw_{self.name}")
 
                 assert self.dimensionality is not None
                 assert external_id is not None
@@ -287,8 +350,14 @@ class Port(Component):
                 # to the memory ports
                 # Input side stuff
                 self._id_piso_out = IterationDomain(dimensionality=self.dimensionality)
-                self._sg_piso_out = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
+                # self._sg_piso_out = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
                 self._ag_piso_out = AddressGenerator(dimensionality=self.dimensionality)
+
+                if self._runtime == Runtime.DYNAMIC:
+                    self._sg_piso_in = ReadyValidScheduleGenerator(dimensionality=self.dimensionality)
+                    self._sg_piso_out = ReadyValidScheduleGenerator(dimensionality=self.dimensionality)
+                else:
+                    self._sg_piso_out = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
                 # Output side stuff - don't actually need the ID, SG, can just use the ID, SG from the original spec which will be built to
                 # drive the Storage element anyway. Just need to accept a step/enable signal in from the outside anyway
                 # self._id_int = IterationDomain(dimensionality=self.dimensionality)
@@ -302,6 +371,15 @@ class Port(Component):
                 self._id_piso_out.gen_hardware()
                 self._sg_piso_out.gen_hardware(self._id_piso_out)
                 self._ag_piso_out.gen_hardware(memports=[self._piso_strg_mp_out], id=self._id_piso_out)
+
+                # Register all sgs with the rv comp network
+                if self._runtime == Runtime.DYNAMIC:
+                    self._sg_piso_in.gen_hardware(external_id, num_comparisons=1)
+                    self.add_child('port_sg_piso_in', self._sg_piso_in,
+                                   clk=self._clk,
+                                   rst_n=self._rst_n)
+                    self._rv_comp_nw.add_reader_writer(direction=Direction.IN, sg=self._sg_piso_in)
+                    self._rv_comp_nw.add_reader_writer(direction=Direction.OUT, sg=self._sg_piso_out)
 
                 # Connect the ag/sg/id together
                 self.add_child(f"port_id_piso_out", self._id_piso_out,
@@ -323,14 +401,29 @@ class Port(Component):
                 self.wire(self._id_piso_out.ports.iterators, self._sg_piso_out.ports.iterators)
                 self.wire(self._id_piso_out.ports.restart, self._sg_piso_out.ports.restart)
 
+                # TODO: Qualify step with the valids + such - can just have them default to 1's in static mode instead
+                # of having separate logic blocks every time this happens
                 self.wire(self._sg_piso_out.ports.step, self._ag_piso_out.ports.step)
                 self.wire(self._sg_piso_out.ports.step, self._id_piso_out.ports.step)
 
+                # Send through extents if RV
+                if self._runtime == Runtime.DYNAMIC:
+                    self.wire(self._id_piso_out.ports.extents_out, self._sg_piso_out.ports.extents)
+
                 # Hook up the internal stuff to the memoryport internally
                 assembled_port = {}
-                assembled_port['data'] = data_to_ub
+                assembled_port['data'] = self._ub_intf['data']
                 assembled_port['addr'] = self._ag_piso_out.get_address()
-                assembled_port['en'] = self._sg_piso_out.get_step()
+                # assembled_port['en'] = self._sg_piso_out.get_step()
+
+                # The data and addr to the SIPO can just be directly wired, but we need to qualify the write enable
+                # with the SG's step and input valid
+                if self._runtime == Runtime.DYNAMIC:
+                    assembled_port['en'] = self._sg_piso_out.get_step() & self._ub_intf['ready']
+                    # Can also hook up the ub ready now - it's just the step since there's no arbitration on the MP
+                    self.wire(self._ub_intf['valid'], self._sg_piso_out.get_step())
+                else:
+                    assembled_port['en'] = self._sg_piso_out.get_step()
 
                 # Now hook up the input and output ports
                 piso_out_intf = self._piso_strg_mp_out.get_port_intf()
@@ -356,19 +449,37 @@ class Port(Component):
                 self._internal_ag_intf['mux_sel'] = self.input(f"port_vec_piso_in_mux_sel", self._ag_piso_in.ports.mux_sel.width)
                 self._internal_ag_intf['iterators'] = self.input(f"port_vec_piso_in_dim_ctrs2", self._ag_piso_in.ports.iterators.width,
                                                                  size=self.dimensionality, explicit_array=True, packed=True)
-
-                # Actually need to delay everything...
-
                 self.wire(self._internal_ag_intf['step'], self._ag_piso_in.ports.step)
                 self.wire(self._internal_ag_intf['restart'], self._ag_piso_in.ports.restart)
                 self.wire(self._internal_ag_intf['mux_sel'], self._ag_piso_in.ports.mux_sel)
                 self.wire(self._internal_ag_intf['iterators'], self._ag_piso_in.ports.iterators)
 
+                # Hook up the SG block in the case of dynamic runtime
+                if self._runtime == Runtime.DYNAMIC:
+                    self._internal_ag_intf['extents'] = self.input("port_piso_in_extents", external_id.get_extent_width(),
+                                                                   size=external_id.get_dimensionality(), packed=True, explicit_array=True)
+                    self.wire(self._internal_ag_intf['extents'], self._sg_piso_in.ports.extents)
+                    self.wire(self._internal_ag_intf['iterators'], self._sg_piso_in.ports.iterators)
+                    self.wire(self._internal_ag_intf['mux_sel'], self._sg_piso_in.ports.mux_sel)
+                    self.wire(self._internal_ag_intf['restart'], self._sg_piso_in.ports.restart)
+
+                # TODO: Actually need to delay everything...
+
                 # Wire up the external stuff to the PISO
                 assembled_port = {}
-                assembled_port['data'] = data_from_memport
+                assembled_port['data'] = self._mp_intf['data']
                 assembled_port['addr'] = self._ag_piso_in.get_address()
-                assembled_port['en'] = self._internal_ag_intf['step']
+                # assembled_port['en'] = self._internal_ag_intf['step']
+
+                # The data and addr out of the SIPO can just be directly wired, but we need to qualify the read enable
+                # with the SG's step and output ready
+                if self._runtime == Runtime.DYNAMIC:
+                    assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._sg_piso_in.get_step()
+                    # Valid is the same as en
+                    self.wire(self._mp_intf['ready'], self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._sg_piso_in.get_step())
+                else:
+                    # assembled_port['en'] = self._sg_sipo_in.get_step()
+                    assembled_port['en'] = self._internal_ag_intf['step']
 
                 piso_in_intf = self._piso_strg_mp_in.get_port_intf()
                 print(piso_in_intf)
@@ -379,6 +490,17 @@ class Port(Component):
                 # Now lift the config spaces
                 all_to_lift = [self._piso_strg, self._piso_strg_mp_in, self._piso_strg_mp_out,
                                self._id_piso_out, self._sg_piso_out, self._ag_piso_out, self._ag_piso_in]
+
+                # Instantiate and hook up local rv comp network
+                if self._runtime == Runtime.DYNAMIC:
+                    self._rv_comp_nw.gen_hardware()
+                    self.add_child('rv_comp_network_piso', self._rv_comp_nw,
+                                   clk=self._clk,
+                                   rst_n=self._rst_n)
+                    rv_comp_conns = self._rv_comp_nw.get_connections()
+                    for conn_tuple in rv_comp_conns:
+                        p1, p2 = conn_tuple
+                        self.wire(p1, p2)
 
         else:
             raise NotImplementedError

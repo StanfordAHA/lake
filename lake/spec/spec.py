@@ -41,6 +41,8 @@ class Spec():
         self.runtime = Runtime.STATIC
         self.rv_comparison_network = None
         self.num_ports = 0
+        self.num_in_ports = 0
+        self.num_out_ports = 0
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
@@ -51,9 +53,10 @@ class Spec():
     def get_num_ports(self):
         return self.num_ports
 
-    def get_node_from_idx(self, idx):
-        print(idx)
-        print(self._index_to_node)
+    def get_node_from_idx(self, idx, verbose=False):
+        if verbose:
+            print(idx)
+            print(self._index_to_node)
         assert idx in self._index_to_node
         return self._index_to_node[idx]
 
@@ -65,7 +68,15 @@ class Spec():
                 self.any_rv_sg = True
                 self.runtime = Runtime.DYNAMIC
             if isinstance(comp, Port):
+                comp: Port
                 self.num_ports += 1
+                pdir = comp.get_direction()
+                if pdir == Direction.IN:
+                    self.num_in_ports += 1
+                elif pdir == Direction.OUT:
+                    self.num_out_ports += 1
+                else:
+                    raise NotImplementedError(f"Port Direction {pdir} not supported...")
 
             self._hw_graph.add_node(comp)
             self._node_to_index[comp] = self._num_nodes
@@ -93,8 +104,6 @@ class Spec():
     def get_nodes(self, node_type) -> list:
         ret_list = list()
         for node in self._hw_graph.nodes():
-            # print(node)
-            # print(node_type)
             isinst = isinstance(node, node_type)
             if isinst:
                 # Then I should add to list
@@ -120,7 +129,7 @@ class Spec():
         total_config_size = 0
 
         for node in self._hw_graph.nodes:
-            print(node.get_name())
+            # print(node.get_name())
             # The config bases will contain a number for each node - should match?
             self._config_bases.append(total_config_size)
             total_config_size += node.get_config_size()
@@ -138,18 +147,10 @@ class Spec():
 
     def generate_hardware(self) -> None:
 
-        # self._final_gen = kts.Generator(name=self._name, debug=False)
         print(self._name)
         self._final_gen = Component(name=self._name)
-        # self._config_memory_size = self._final_gen.parameter('CFG_SIZE', initial_value=1)
-
-        # self._final_gen.clk = self._final_gen.clock("clk")
-
         # Before we go into the port loop, if any of the schedule generators is dynamic (vs. static), we need to know this and collect
         # information before genning the hardware
-        # any_rv_sg = True
-        num_writes = 1
-        num_reads = 1
 
         # Just instantiate one comparison thing for now...
         if self.any_rv_sg:
@@ -162,21 +163,15 @@ class Spec():
 
         # First generate the storages based on the ports connected to them and their capacities
         storage_nodes = self.get_nodes(Storage)
-        print(storage_nodes)
 
         for j_, storage_node in enumerate(storage_nodes):
             storage_node: Storage
-            print('in storage')
             # get MemoryPorts
             memoryports = list(nx.neighbors(self._hw_graph, storage_node))
             storage_node.gen_hardware(pos_reset=False, memory_ports=memoryports)
             # memoryports = nx.neighbors(self._hw_graph, storage_node)
             # Now we have the storage generated, want to generate the memoryports hardware which will be simply
             # passthru of the port currently...
-            for memoryport in memoryports:
-                print('going through memports')
-                print(memoryport.get_name())
-            print('aftert storage')
             # Now generate a storage element based on all of these ports and add them to the final generator
             self._final_gen.add_child("storage", storage_node, clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
@@ -187,8 +182,6 @@ class Spec():
             memoryports = nx.neighbors(self._hw_graph, storage_node)
             for i_, mp in enumerate(memoryports):
                 mp: MemoryPort
-                print('mek')
-                print(mp.get_name())
                 mp.gen_hardware(pos_reset=False, storage_node=storage_node)
                 self._final_gen.add_child(f"memoryport_{i_}_storage_{j_}", mp,
                                           clk=self.hw_attr['clk'],
@@ -226,9 +219,9 @@ class Spec():
             if self.any_rv_sg:
                 # We need to include some information about the other ports when building schedule generator
                 if port_direction == Direction.IN:
-                    port_sg.gen_hardware(id=port_id, num_comparisons=num_reads)
+                    port_sg.gen_hardware(id=port_id, num_comparisons=self.num_out_ports)
                 elif port_direction == Direction.OUT:
-                    port_sg.gen_hardware(id=port_id, num_comparisons=num_writes)
+                    port_sg.gen_hardware(id=port_id, num_comparisons=self.num_in_ports)
                 else:
                     raise NotImplementedError()
             else:
@@ -322,7 +315,6 @@ class Spec():
                     # quali_step = sg_step & port_ready
                     # The grant is the ready/final step to ID, AG, ready
                     # self._final_gen.wire(port.get_mp_intf()['valid'], mid_grant)
-                    print("IDKDIDKDI")
                     self._final_gen.wire(port.get_mp_intf()['valid'], memintf_dec.ports.data_valid)
                     # The ready comes out of the memintf decoder
                     self._final_gen.wire(memintf_dec.ports.data_ready, port_ready)
@@ -351,6 +343,9 @@ class Spec():
                     self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
                     self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
                     self._final_gen.wire(ext_intf['restart'], port_id.ports.restart)
+                    if self.any_rv_sg:
+                        self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
+
                 elif port_direction == Direction.OUT:
                     # For a read Port, slightly more complicated - need to actually have the delayed
                     # version of everything (but can handle that within the Port...)
@@ -366,6 +361,8 @@ class Spec():
                     self._final_gen.wire(ext_intf['mux_sel'], shreg_mux_sel)
                     self._final_gen.wire(ext_intf['iterators'], shreg_iterators)
                     self._final_gen.wire(ext_intf['restart'], shreg_restart)
+                    if self.any_rv_sg:
+                        self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
 
             memintf_dec_p_intf = memintf_dec.get_p_intf()
             self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])
@@ -653,10 +650,11 @@ class Spec():
         node_idx = self._node_to_index[node]
         return self._config_bases[node_idx]
 
-    def configure(self, node, bs):
+    def configure(self, node, bs, verbose=False):
         # node_config_base = self.get_config_base(node)
-        print("Showing all child bases...")
-        print(self._final_gen.child_cfg_bases)
+        if verbose:
+            print("Showing all child bases...")
+            print(self._final_gen.child_cfg_bases)
         node_config_base = self._final_gen.child_cfg_bases[node]
         for reg_bound, value in bs:
             upper, lower = reg_bound
@@ -682,8 +680,6 @@ class Spec():
 
         # Need to integrate all the bitstream information
         # into one single integer/string for the verilog harness
-
-        print(application)
         self.clear_configuration()
 
         # Each piece in the application is a port
@@ -738,7 +734,4 @@ class Spec():
             self.configure(self.rv_comparison_network, rv_comp_bs)
 
         self.create_config_int()
-
-        print(self.get_configuration())
-
         return self.get_config_int()

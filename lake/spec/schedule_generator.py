@@ -244,6 +244,6 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
     def get_iterator_intf(self):
         return self.iterator_intf
 
-    def gen_bitstream(self, sched_map, extents, dimensionality):
+    def gen_bitstream(self, schedule_map, extents, dimensionality):
         return []
         # return super().gen_bitstream(schedule_map=sched_map)
