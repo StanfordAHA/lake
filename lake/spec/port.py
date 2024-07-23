@@ -131,9 +131,9 @@ class Port(Component):
                 # Now that we have built the storage and MemoryPort interfaces, we can build the extra controllers and wire them
                 # to the memory ports
                 # Input side stuff
-                self._id_ext = IterationDomain(dimensionality=self.dimensionality)
-                self._sg_ext = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
-                self._ag_ext = AddressGenerator(dimensionality=self.dimensionality)
+                self._id_sipo_in = IterationDomain(dimensionality=self.dimensionality)
+                self._sg_sipo_in = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
+                self._ag_sipo_in = AddressGenerator(dimensionality=self.dimensionality)
                 # Output side stuff - don't actually need the ID, SG, can just use the ID, SG from the original spec which will be built to
                 # drive the Storage element anyway. Just need to accept a step/enable signal in from the outside anyway
                 # self._id_int = IterationDomain(dimensionality=self.dimensionality)
@@ -144,34 +144,36 @@ class Port(Component):
                 # Port needs to know about the dimensionality in case of a vectorized port to
                 # build the proper hardware within the port
                 # port.gen_hardware(dimensionality=id_dims)
-                self._id_ext.gen_hardware()
-                self._sg_ext.gen_hardware(self._id_ext)
-                self._ag_ext.gen_hardware(memports=[self._sipo_strg_mp_in], id=self._id_ext)
+                self._id_sipo_in.gen_hardware()
+                self._sg_sipo_in.gen_hardware(self._id_sipo_in)
+                self._ag_sipo_in.gen_hardware(memports=[self._sipo_strg_mp_in], id=self._id_sipo_in)
 
                 # Connect the ag/sg/id together
-                self.add_child(f"port_id_ext_in", self._id_ext,
+                self.add_child(f"port_id_sipo_in", self._id_sipo_in,
                                         clk=self._clk,
                                         rst_n=self._rst_n)
-                self.add_child(f"port_ag_ext_in", self._ag_ext,
+                self.add_child(f"port_ag_sipo_in", self._ag_sipo_in,
                                         clk=self._clk,
                                         rst_n=self._rst_n)
-                self.add_child(f"port_sg_ext_in", self._sg_ext,
+                self.add_child(f"port_sg_piso_in", self._sg_sipo_in,
                                         clk=self._clk,
                                         rst_n=self._rst_n)
 
-                self.wire(self._id_ext.ports.mux_sel, self._ag_ext.ports.mux_sel)
-                self.wire(self._id_ext.ports.iterators, self._ag_ext.ports.iterators)
+                self.wire(self._id_sipo_in.ports.mux_sel, self._ag_sipo_in.ports.mux_sel)
+                self.wire(self._id_sipo_in.ports.iterators, self._ag_sipo_in.ports.iterators)
+                self.wire(self._id_sipo_in.ports.restart, self._ag_sipo_in.ports.restart)
 
-                self.wire(self._id_ext.ports.mux_sel, self._sg_ext.ports.mux_sel)
-                self.wire(self._id_ext.ports.iterators, self._sg_ext.ports.iterators)
+                self.wire(self._id_sipo_in.ports.mux_sel, self._sg_sipo_in.ports.mux_sel)
+                self.wire(self._id_sipo_in.ports.iterators, self._sg_sipo_in.ports.iterators)
+                self.wire(self._id_sipo_in.ports.restart, self._sg_sipo_in.ports.restart)
 
-                self.wire(self._sg_ext.ports.step, self._ag_ext.ports.step)
-                self.wire(self._sg_ext.ports.step, self._id_ext.ports.step)
+                self.wire(self._sg_sipo_in.ports.step, self._ag_sipo_in.ports.step)
+                self.wire(self._sg_sipo_in.ports.step, self._id_sipo_in.ports.step)
 
                 assembled_port = {}
                 assembled_port['data'] = data_from_ub
-                assembled_port['addr'] = self._ag_ext.get_address()
-                assembled_port['en'] = self._sg_ext.get_step()
+                assembled_port['addr'] = self._ag_sipo_in.get_address()
+                assembled_port['en'] = self._sg_sipo_in.get_step()
 
                 # Now hook up the input and output ports
                 in_intf = self._sipo_strg_mp_in.get_port_intf()
@@ -181,27 +183,29 @@ class Port(Component):
                 self.wire(assembled_port['en'], in_intf['write_en'])
 
                 # Need to add the AG ports to the port interface to get connected later
-                self._ag_int = AddressGenerator(dimensionality=self.dimensionality)
-                self._ag_int.gen_hardware(memports=[self._sipo_strg_mp_out], id=external_id)
+                self._ag_sipo_out = AddressGenerator(dimensionality=self.dimensionality)
+                self._ag_sipo_out.gen_hardware(memports=[self._sipo_strg_mp_out], id=external_id)
                 self._internal_ag_intf = {}
 
-                self.add_child('internal_ag_with_ext_intf', self._ag_int, clk=self._clk,
+                self.add_child('internal_ag_with_ext_intf', self._ag_sipo_out, clk=self._clk,
                                rst_n=self._rst_n)
                 # step_tmp = self.input(f"port_vec_internal_step", 1)
                 # self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", 1)
                 # self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", 1)
 
-                self._internal_ag_intf['step'] = self.input(f"port_vec_internal_step", 1)
-                self._internal_ag_intf['mux_sel'] = self.input(f"port_vec_internal_mux_sel", self._ag_int.ports.mux_sel.width)
-                self._internal_ag_intf['iterators'] = self.input(f"port_vec_internal_dim_ctrs", self._ag_int.ports.iterators.width,
+                self._internal_ag_intf['step'] = self.input(f"port_sipo_out_step", 1)
+                self._internal_ag_intf['restart'] = self.input(f"port_sipo_out_restart", 1)
+                self._internal_ag_intf['mux_sel'] = self.input(f"port_sipo_out_mux_sel", self._ag_sipo_out.ports.mux_sel.width)
+                self._internal_ag_intf['iterators'] = self.input(f"port_sipo_out_dim_ctrs", self._ag_sipo_out.ports.iterators.width,
                                                                  size=self.dimensionality, packed=True, explicit_array=True)
-                self.wire(self._internal_ag_intf['step'], self._ag_int.ports.step)
-                self.wire(self._internal_ag_intf['mux_sel'], self._ag_int.ports.mux_sel)
-                self.wire(self._internal_ag_intf['iterators'], self._ag_int.ports.iterators)
+                self.wire(self._internal_ag_intf['step'], self._ag_sipo_out.ports.step)
+                self.wire(self._internal_ag_intf['mux_sel'], self._ag_sipo_out.ports.mux_sel)
+                self.wire(self._internal_ag_intf['iterators'], self._ag_sipo_out.ports.iterators)
+                self.wire(self._internal_ag_intf['restart'], self._ag_sipo_out.ports.restart)
 
                 assembled_port = {}
                 assembled_port['data'] = data_to_memport
-                assembled_port['addr'] = self._ag_int.get_address()
+                assembled_port['addr'] = self._ag_sipo_out.get_address()
                 assembled_port['en'] = self._internal_ag_intf['step']
 
                 out_intf = self._sipo_strg_mp_out.get_port_intf()
@@ -215,7 +219,7 @@ class Port(Component):
 
                 # Now lift the config spaces
                 all_to_lift = [self._sipo_strg, self._sipo_strg_mp_in, self._sipo_strg_mp_out,
-                               self._id_ext, self._sg_ext, self._ag_ext, self._ag_int]
+                               self._id_sipo_in, self._sg_sipo_in, self._ag_sipo_in, self._ag_sipo_out]
 
         elif self._direction == Direction.OUT:
 
@@ -282,9 +286,9 @@ class Port(Component):
                 # Now that we have built the storage and MemoryPort interfaces, we can build the extra controllers and wire them
                 # to the memory ports
                 # Input side stuff
-                self._id_int = IterationDomain(dimensionality=self.dimensionality)
-                self._sg_int = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
-                self._ag_int = AddressGenerator(dimensionality=self.dimensionality)
+                self._id_piso_out = IterationDomain(dimensionality=self.dimensionality)
+                self._sg_piso_out = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16)
+                self._ag_piso_out = AddressGenerator(dimensionality=self.dimensionality)
                 # Output side stuff - don't actually need the ID, SG, can just use the ID, SG from the original spec which will be built to
                 # drive the Storage element anyway. Just need to accept a step/enable signal in from the outside anyway
                 # self._id_int = IterationDomain(dimensionality=self.dimensionality)
@@ -295,90 +299,91 @@ class Port(Component):
                 # Port needs to know about the dimensionality in case of a vectorized port to
                 # build the proper hardware within the port
                 # port.gen_hardware(dimensionality=id_dims)
-                self._id_int.gen_hardware()
-                self._sg_int.gen_hardware(self._id_int)
-                self._ag_int.gen_hardware(memports=[self._piso_strg_mp_in], id=self._id_int)
+                self._id_piso_out.gen_hardware()
+                self._sg_piso_out.gen_hardware(self._id_piso_out)
+                self._ag_piso_out.gen_hardware(memports=[self._piso_strg_mp_out], id=self._id_piso_out)
 
                 # Connect the ag/sg/id together
-                self.add_child(f"port_id_int_in", self._id_int,
+                self.add_child(f"port_id_piso_out", self._id_piso_out,
                                         clk=self._clk,
                                         rst_n=self._rst_n)
-                self.add_child(f"port_ag_int_in", self._ag_int,
+                self.add_child(f"port_ag_piso_out", self._ag_piso_out,
                                         clk=self._clk,
                                         rst_n=self._rst_n)
-                self.add_child(f"port_sg_int_in", self._sg_int,
+                self.add_child(f"port_sg_piso_out", self._sg_piso_out,
                                         clk=self._clk,
                                         rst_n=self._rst_n)
 
                 # Hook up the ID, SG, AG that are generated internal to the Port
-                self.wire(self._id_int.ports.mux_sel, self._ag_int.ports.mux_sel)
-                self.wire(self._id_int.ports.iterators, self._ag_int.ports.iterators)
+                self.wire(self._id_piso_out.ports.mux_sel, self._ag_piso_out.ports.mux_sel)
+                self.wire(self._id_piso_out.ports.iterators, self._ag_piso_out.ports.iterators)
+                self.wire(self._id_piso_out.ports.restart, self._ag_piso_out.ports.restart)
 
-                self.wire(self._id_int.ports.mux_sel, self._sg_int.ports.mux_sel)
-                self.wire(self._id_int.ports.iterators, self._sg_int.ports.iterators)
+                self.wire(self._id_piso_out.ports.mux_sel, self._sg_piso_out.ports.mux_sel)
+                self.wire(self._id_piso_out.ports.iterators, self._sg_piso_out.ports.iterators)
+                self.wire(self._id_piso_out.ports.restart, self._sg_piso_out.ports.restart)
 
-                self.wire(self._sg_int.ports.step, self._ag_int.ports.step)
-                self.wire(self._sg_int.ports.step, self._id_int.ports.step)
+                self.wire(self._sg_piso_out.ports.step, self._ag_piso_out.ports.step)
+                self.wire(self._sg_piso_out.ports.step, self._id_piso_out.ports.step)
 
                 # Hook up the internal stuff to the memoryport internally
                 assembled_port = {}
-                assembled_port['data'] = data_from_memport
-                assembled_port['addr'] = self._ag_int.get_address()
-                assembled_port['en'] = self._sg_int.get_step()
+                assembled_port['data'] = data_to_ub
+                assembled_port['addr'] = self._ag_piso_out.get_address()
+                assembled_port['en'] = self._sg_piso_out.get_step()
 
                 # Now hook up the input and output ports
-                in_intf = self._piso_strg_mp_in.get_port_intf()
-                print(in_intf)
-                self.wire(assembled_port['data'], in_intf['write_data'])
-                self.wire(assembled_port['addr'], in_intf['addr'])
-                self.wire(assembled_port['en'], in_intf['write_en'])
+                piso_out_intf = self._piso_strg_mp_out.get_port_intf()
+                print(piso_out_intf)
+                self.wire(assembled_port['data'], piso_out_intf['read_data'])
+                self.wire(assembled_port['addr'], piso_out_intf['addr'])
+                self.wire(assembled_port['en'], piso_out_intf['read_en'])
 
                 # Need to add the AG ports to the port interface to get connected later
-                self._ag_ext = AddressGenerator(dimensionality=self.dimensionality)
-                self._ag_ext.gen_hardware(memports=[self._piso_strg_mp_out], id=external_id)
+                self._ag_piso_in = AddressGenerator(dimensionality=self.dimensionality)
+                self._ag_piso_in.gen_hardware(memports=[self._piso_strg_mp_in], id=external_id)
                 self._internal_ag_intf = {}
 
-                self.add_child('internal_ag_with_ext_intf', self._ag_ext, clk=self._clk,
+                self.add_child('internal_ag_piso_in_ext_intf', self._ag_piso_in,
+                               clk=self._clk,
                                rst_n=self._rst_n)
                 # step_tmp = self.input(f"port_vec_internal_step", 1)
                 # self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", 1)
                 # self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", 1)
 
-                self._internal_ag_intf['step'] = self.input(f"port_vec_internal_step", 1)
-                self._internal_ag_intf['mux_sel'] = self.input(f"port_vec_internal_mux_sel", self._ag_ext.ports.mux_sel.width)
-                self._internal_ag_intf['iterators'] = self.input(f"port_vec_internal_dim_ctrs2", self._ag_ext.ports.iterators.width,
+                self._internal_ag_intf['step'] = self.input(f"port_vec_piso_in_step", 1)
+                self._internal_ag_intf['restart'] = self.input(f"port_vec_piso_in_restart", 1)
+                self._internal_ag_intf['mux_sel'] = self.input(f"port_vec_piso_in_mux_sel", self._ag_piso_in.ports.mux_sel.width)
+                self._internal_ag_intf['iterators'] = self.input(f"port_vec_piso_in_dim_ctrs2", self._ag_piso_in.ports.iterators.width,
                                                                  size=self.dimensionality, explicit_array=True, packed=True)
-                self.wire(self._internal_ag_intf['step'], self._ag_ext.ports.step)
-                self.wire(self._internal_ag_intf['mux_sel'], self._ag_ext.ports.mux_sel)
-                self.wire(self._internal_ag_intf['iterators'], self._ag_ext.ports.iterators)
+
+                # Actually need to delay everything...
+
+                self.wire(self._internal_ag_intf['step'], self._ag_piso_in.ports.step)
+                self.wire(self._internal_ag_intf['restart'], self._ag_piso_in.ports.restart)
+                self.wire(self._internal_ag_intf['mux_sel'], self._ag_piso_in.ports.mux_sel)
+                self.wire(self._internal_ag_intf['iterators'], self._ag_piso_in.ports.iterators)
 
                 # Wire up the external stuff to the PISO
                 assembled_port = {}
-                assembled_port['data'] = data_to_ub
-                assembled_port['addr'] = self._ag_ext.get_address()
+                assembled_port['data'] = data_from_memport
+                assembled_port['addr'] = self._ag_piso_in.get_address()
                 assembled_port['en'] = self._internal_ag_intf['step']
 
-                out_intf = self._piso_strg_mp_out.get_port_intf()
-                print(out_intf)
-                self.wire(assembled_port['data'], out_intf['read_data'])
-                self.wire(assembled_port['addr'], out_intf['addr'])
-                self.wire(assembled_port['en'], out_intf['read_en'])
+                piso_in_intf = self._piso_strg_mp_in.get_port_intf()
+                print(piso_in_intf)
+                self.wire(assembled_port['data'], piso_in_intf['write_data'])
+                self.wire(assembled_port['addr'], piso_in_intf['addr'])
+                self.wire(assembled_port['en'], piso_in_intf['write_en'])
 
                 # Now lift the config spaces
                 all_to_lift = [self._piso_strg, self._piso_strg_mp_in, self._piso_strg_mp_out,
-                               self._id_int, self._sg_int, self._ag_int, self._ag_ext]
+                               self._id_piso_out, self._sg_piso_out, self._ag_piso_out, self._ag_piso_in]
 
         else:
             raise NotImplementedError
 
         # Now lift everything's config space up
-        # self.child_cfg_bases = {}
-        # running_config_size = 0
-        # for component_ in all_to_lift:
-        #     # component_: Component
-        #     lift_config_space(self, component_)
-        #     self.child_cfg_bases[component_] = running_config_size
-        #     running_config_size += component_.get_config_size()
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 
@@ -392,38 +397,51 @@ class Port(Component):
             if self.get_direction() == Direction.IN:
                 vec_in_addr_map = vec_in['address']
                 vec_in_sched_map = vec_in['schedule']
-                internal_id_bs = self._id_ext.gen_bitstream(dimensionality=vec_in['dimensionality'],
-                                                            extents=vec_in['extents'])
-                internal_ag_bs = self._ag_ext.gen_bitstream(address_map=vec_in_addr_map)
-                internal_sg_bs = self._sg_ext.gen_bitstream(schedule_map=vec_in_sched_map)
+                internal_id_bs = self._id_sipo_in.gen_bitstream(dimensionality=vec_in['dimensionality'],
+                                                                extents=vec_in['extents'])
+                internal_ag_bs = self._ag_sipo_in.gen_bitstream(address_map=vec_in_addr_map,
+                                                                extents=vec_in['extents'],
+                                                                dimensionality=vec_in['dimensionality'])
+                internal_sg_bs = self._sg_sipo_in.gen_bitstream(schedule_map=vec_in_sched_map,
+                                                                extents=vec_in['extents'],
+                                                                dimensionality=vec_in['dimensionality'])
 
-                internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_ext])
-                internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_ext])
-                internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_ext])
+                internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_sipo_in])
+                internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_sipo_in])
+                internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_sipo_in])
                 # add on the respective base
                 # Now get the output part
                 vec_out_addr_map = vec_out['address']
-                external_ag_bs = self._ag_int.gen_bitstream(address_map=vec_out_addr_map)
-                external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_int])
+                # vec_out_sched_map = vec_out['schedule']
+                external_ag_bs = self._ag_sipo_out.gen_bitstream(address_map=vec_out_addr_map,
+                                                                 extents=vec_out['extents'],
+                                                                 dimensionality=vec_out['dimensionality'])
+                external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_sipo_out])
 
                 all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
 
             elif self.get_direction() == Direction.OUT:
-                vec_in_addr_map = vec_in['address']
-                vec_in_sched_map = vec_in['schedule']
-                internal_id_bs = self._id_int.gen_bitstream(dimensionality=vec_in['dimensionality'],
-                                                            extents=vec_in['extents'])
-                internal_ag_bs = self._ag_int.gen_bitstream(address_map=vec_in_addr_map)
-                internal_sg_bs = self._sg_int.gen_bitstream(schedule_map=vec_in_sched_map)
+                vec_out_addr_map = vec_out['address']
+                vec_out_sched_map = vec_out['schedule']
+                internal_id_bs = self._id_piso_out.gen_bitstream(dimensionality=vec_out['dimensionality'],
+                                                                 extents=vec_out['extents'])
+                internal_ag_bs = self._ag_piso_out.gen_bitstream(address_map=vec_out_addr_map,
+                                                                 extents=vec_out['extents'],
+                                                                 dimensionality=vec_out['dimensionality'])
+                internal_sg_bs = self._sg_piso_out.gen_bitstream(schedule_map=vec_out_sched_map,
+                                                                 extents=vec_out['extents'],
+                                                                 dimensionality=vec_out['dimensionality'])
 
-                internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_int])
-                internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_int])
-                internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_int])
+                internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_piso_out])
+                internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_piso_out])
+                internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_piso_out])
 
                 # Now get the output part
-                vec_out_addr_map = vec_out['address']
-                external_ag_bs = self._ag_ext.gen_bitstream(address_map=vec_out_addr_map)
-                external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_ext])
+                vec_out_addr_map = vec_in['address']
+                external_ag_bs = self._ag_piso_in.gen_bitstream(address_map=vec_out_addr_map,
+                                                                extents=vec_in['extents'],
+                                                                dimensionality=vec_in['dimensionality'])
+                external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_piso_in])
                 all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
 
             else:

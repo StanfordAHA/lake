@@ -604,9 +604,14 @@ def observe_cfg(generator, port, other_gen, cfg_reg_port):
 def shift_reg(generator, signal, chain_depth, name=None):
     '''Creates a shift register of depth `chain_depth` and returns the output of it
     '''
+    name_use = signal.name
+    if name is not None:
+        name_use = name
+    #  Check for packed
+    packed_sig = signal.is_packed
     to_use = signal
     for i in range(chain_depth):
-        to_use = register(generator, to_use, name=f"{signal.name}_d{i + 1}")
+        to_use = register(generator, to_use, name=f"{name_use}_d{i + 1}", packed=packed_sig)
     return to_use
 
 

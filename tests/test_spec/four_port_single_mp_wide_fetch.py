@@ -12,14 +12,19 @@ import argparse
 import os
 
 
-def build_four_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
+def build_four_port_wide_fetch(storage_capacity=1024, data_width=16,
+                               dims: int = 6, vec_width=4, physical=False) -> Spec:
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
-    in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
-    out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
+                   vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+    in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
+                    vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
+                    vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+    out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
+                     vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, in_port2, out_port, out_port2)
 

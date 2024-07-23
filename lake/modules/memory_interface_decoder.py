@@ -31,6 +31,9 @@ class MemoryInterfaceDecoder(Component):
                 self.delay = new_delay
         print(f"Final delay is {self.delay}")
 
+    def get_delay(self):
+        return self.delay
+
     def gen_hardware(self):
 
         # Memory port needs to output a resource ready to
@@ -106,7 +109,12 @@ class MemoryInterfaceDecoder(Component):
                 self.wire(self._resource_ready_lcl, ~reg_fifo.ports.almost_full)
 
             else:
-                self.wire(data_to_port_rv.get_valid(), kts.const(1, 1))
+
+                shift_reg_en_in = self.var("shift_reg_en_in", 1)
+                self.wire(shift_reg_en_in, self.p_intf['en'])
+                shift_reg_en_out = shift_reg(self, shift_reg_en_in, chain_depth=self.delay)
+
+                self.wire(data_to_port_rv.get_valid(), shift_reg_en_out)
                 self.wire(self._resource_ready_lcl, kts.const(1, 1))
                 self.wire(data_to_port_rv.get_port(), muxed_data_in)
             # else:

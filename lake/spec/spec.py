@@ -13,7 +13,7 @@ from kratos import clog2
 from typing import Tuple
 import os as os
 from lake.utils.spec_enum import Direction
-from lake.utils.util import connect_memoryport_storage, inline_multiplexer
+from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
@@ -344,9 +344,28 @@ class Spec():
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
                 ext_intf = port.get_internal_ag_intf()
-                self._final_gen.wire(ext_intf['step'], quali_step)
-                self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
-                self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
+
+                if port_direction == Direction.IN:
+                    # For a write Port, just directly connect everything
+                    self._final_gen.wire(ext_intf['step'], quali_step)
+                    self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
+                    self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
+                    self._final_gen.wire(ext_intf['restart'], port_id.ports.restart)
+                elif port_direction == Direction.OUT:
+                    # For a read Port, slightly more complicated - need to actually have the delayed
+                    # version of everything (but can handle that within the Port...)
+
+                    delay = memintf_dec.get_delay()
+
+                    shreg_step = shift_reg(self._final_gen, quali_step, chain_depth=delay, name=f"shreg_step_port_{i_}")
+                    shreg_mux_sel = shift_reg(self._final_gen, port_id.ports.mux_sel, chain_depth=delay, name=f"shreg_mux_sel_port_{i_}")
+                    shreg_iterators = shift_reg(self._final_gen, port_id.ports.iterators, chain_depth=delay, name=f"shreg_iterators_port_{i_}")
+                    shreg_restart = shift_reg(self._final_gen, port_id.ports.restart, chain_depth=delay, name=f"shreg_restart_port_{i_}")
+
+                    self._final_gen.wire(ext_intf['step'], shreg_step)
+                    self._final_gen.wire(ext_intf['mux_sel'], shreg_mux_sel)
+                    self._final_gen.wire(ext_intf['iterators'], shreg_iterators)
+                    self._final_gen.wire(ext_intf['restart'], shreg_restart)
 
             memintf_dec_p_intf = memintf_dec.get_p_intf()
             self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])
