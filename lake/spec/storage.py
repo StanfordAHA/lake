@@ -1,6 +1,6 @@
 from lake.spec.component import Component
 from lake.utils.spec_enum import *
-from kratos import always_ff, posedge, clog2
+from kratos import always_ff, always_comb, posedge, clog2
 from lake.top.memory_interface import MemoryInterface
 from lake.utils.util import register
 import kratos as kts
@@ -99,7 +99,6 @@ class SingleBankStorage(Storage):
                 # tmp_intf = self.var(f"mem_intf_r_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
                 # self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=0)
-                print("herro")
                 print(addr_width)
                 addr = self.input(f"memory_port_{pnum}_read_addr", addr_width)
                 data = self.output(f"memory_port_{pnum}_read_data", mp_width)
@@ -244,6 +243,9 @@ class SingleBankStorage(Storage):
         # Give each memory port an interface into the memory
 
         for pnum, mem_port in enumerate(self.memory_ports):
+
+            mem_port: MemoryPort
+
             local_memport_set = self.memport_sets[pnum]
             # Get the memoryport information
             mp_width = mem_port.get_width()
@@ -268,11 +270,24 @@ class SingleBankStorage(Storage):
                 data = local_memport_set['read_data']
                 en = local_memport_set['read_en']
 
-                @always_ff((posedge, "clk"))
-                def materialize_r(self):
-                    if en:
-                        data = tmp_intf[addr]
-                self.add_code(materialize_r)
+                memport_delay = mem_port.get_port_delay()
+
+                if memport_delay == 0:
+
+                    @always_comb
+                    def materialize_r(self):
+                        data = 0
+                        if en:
+                            data = tmp_intf[addr]
+                    self.add_code(materialize_r)
+
+                else:
+
+                    @always_ff((posedge, "clk"))
+                    def materialize_r(self):
+                        if en:
+                            data = tmp_intf[addr]
+                    self.add_code(materialize_r)
 
             elif mp_type == MemoryPortType.W:
                 # For write, we just need addr, wen, write data
