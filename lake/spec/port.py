@@ -510,7 +510,7 @@ class Port(Component):
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 
-    def gen_bitstream(self, vec_in=None, vec_out=None):
+    def gen_bitstream(self, vec_in=None, vec_out=None, vec_constraints=None):
 
         all_bs = []
 
@@ -542,6 +542,11 @@ class Port(Component):
                 external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_sipo_out])
 
                 all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
+                # Need to configure the RV network
+                if self._runtime == Runtime.DYNAMIC:
+                    rv_comp_bs = self._rv_comp_nw.gen_bitstream(constraints=vec_constraints)
+                    rv_comp_bs = self._add_base_to_cfg_space(rv_comp_bs, self.child_cfg_bases[self._rv_comp_nw])
+                    all_bs.append(rv_comp_bs)
 
             elif self.get_direction() == Direction.OUT:
                 vec_out_addr_map = vec_out['address']
@@ -569,6 +574,12 @@ class Port(Component):
 
             else:
                 raise NotImplementedError
+
+            # Need to configure the RV network if rv mode
+            if self._runtime == Runtime.DYNAMIC:
+                rv_comp_bs = self._rv_comp_nw.gen_bitstream(constraints=vec_constraints)
+                rv_comp_bs = self._add_base_to_cfg_space(rv_comp_bs, self.child_cfg_bases[self._rv_comp_nw])
+                all_bs.append(rv_comp_bs)
 
         for cfg_ in all_bs:
             self._add_configuration_manual(config=cfg_)

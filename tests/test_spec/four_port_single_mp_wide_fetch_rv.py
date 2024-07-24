@@ -225,6 +225,23 @@ def get_linear_test():
 
     linear_test = {}
 
+    pw_vec_w = 0
+    pr_vec_w = 1
+
+    pr_raw_idx_vec_w = 0
+    pw_raw_idx_vec_w = 0
+    raw_comp_vec_w = LFComparisonOperator.LT.value
+    raw_scalar_vec_w = 0
+    raw_constraint_vec_w = (pr_vec_w, pr_raw_idx_vec_w,
+                            pw_vec_w, pw_raw_idx_vec_w, raw_comp_vec_w, raw_scalar_vec_w)
+
+    pw_war_idx_vec_w = 0
+    pr_war_idx_vec_w = 0
+    war_comp_vec_w = LFComparisonOperator.LT.value
+    war_scalar_vec_w = 2
+    war_constraint_vec_w = (pw_vec_w, pw_war_idx_vec_w, pr_vec_w,
+                            pr_war_idx_vec_w, war_comp_vec_w, war_scalar_vec_w)
+
     linear_test[0] = {
         'type': Direction.IN,
         'name': 'write_port_0',
@@ -263,8 +280,26 @@ def get_linear_test():
                 'strides': [4],
                 'offset': 4
             }
-        }
+        },
+        'vec_constraints': [raw_constraint_vec_w, war_constraint_vec_w]
     }
+
+    pw_vec_r = 0
+    pr_vec_r = 1
+
+    pr_raw_idx_vec_r = 0
+    pw_raw_idx_vec_r = 0
+    raw_comp_vec_r = LFComparisonOperator.LT.value
+    raw_scalar_vec_r = 0
+    raw_constraint_vec_r = (pr_vec_r, pr_raw_idx_vec_r,
+                            pw_vec_r, pw_raw_idx_vec_r, raw_comp_vec_r, raw_scalar_vec_r)
+
+    pw_war_idx_vec_r = 0
+    pr_war_idx_vec_r = 0
+    war_comp_vec_r = LFComparisonOperator.LT.value
+    war_scalar_vec_r = 2
+    war_constraint_vec_r = (pw_vec_r, pw_war_idx_vec_r, pr_vec_r,
+                            pr_war_idx_vec_r, war_comp_vec_r, war_scalar_vec_r)
 
     linear_test[2] = {
         'type': Direction.OUT,
@@ -304,7 +339,8 @@ def get_linear_test():
                 'strides': [1, 4],
                 'offset': 19
             }
-        }
+        },
+        'vec_constraints': [raw_constraint_vec_r, war_constraint_vec_r]
     }
 
     pw = 0

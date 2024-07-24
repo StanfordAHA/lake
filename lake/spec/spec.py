@@ -703,7 +703,12 @@ class Spec():
 
             # Get the configuration for the Port's internal controllers if vectorized
             if port_vec:
-                port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'], vec_out=maps['vec_out_config'])
+                vec_constraints = None
+                if self.any_rv_sg:
+                    vec_constraints = maps['vec_constraints']
+                port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'],
+                                             vec_out=maps['vec_out_config'],
+                                             vec_constraints=vec_constraints)
                 self.configure(port, port_bs)
 
             # All components should be aware of RV/Static context
