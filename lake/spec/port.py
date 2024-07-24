@@ -231,7 +231,7 @@ class Port(Component):
                 self._internal_ag_intf['mux_sel'] = self.input(f"port_sipo_out_mux_sel", self._ag_sipo_out.ports.mux_sel.width)
                 self._internal_ag_intf['iterators'] = self.input(f"port_sipo_out_dim_ctrs", self._ag_sipo_out.ports.iterators.width,
                                                                  size=self.dimensionality, packed=True, explicit_array=True)
-                self.wire(self._internal_ag_intf['step'], self._ag_sipo_out.ports.step)
+                # self.wire(self._internal_ag_intf['step'], self._ag_sipo_out.ports.step)
                 self.wire(self._internal_ag_intf['mux_sel'], self._ag_sipo_out.ports.mux_sel)
                 self.wire(self._internal_ag_intf['iterators'], self._ag_sipo_out.ports.iterators)
                 self.wire(self._internal_ag_intf['restart'], self._ag_sipo_out.ports.restart)
@@ -242,6 +242,10 @@ class Port(Component):
                     self.wire(self._internal_ag_intf['iterators'], self._sg_sipo_out.ports.iterators)
                     self.wire(self._internal_ag_intf['mux_sel'], self._sg_sipo_out.ports.mux_sel)
                     self.wire(self._internal_ag_intf['restart'], self._sg_sipo_out.ports.restart)
+                    # Only step the address generator if the output is valid and
+                    self.wire(self._internal_ag_intf['step'], self._ag_sipo_out.ports.step & self._mp_intf['valid'] & self._mp_intf['ready'])
+                else:
+                    self.wire(self._internal_ag_intf['step'], self._ag_sipo_out.ports.step)
 
                 assembled_port = {}
                 assembled_port['data'] = self._mp_intf['data']
@@ -250,10 +254,10 @@ class Port(Component):
                 # The data and addr out of the SIPO can just be directly wired, but we need to qualify the read enable
                 # with the SG's step and output ready
                 if self._runtime == Runtime.DYNAMIC:
-                    assembled_port['en'] = self._internal_ag_intf['step'] & self._sg_sipo_out.get_step()
+                    assembled_port['en'] = self._sg_sipo_out.get_step()
                     # assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step()
                     # Valid is the same as en
-                    self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'] & self._sg_sipo_out.get_step())
+                    self.wire(self._mp_intf['valid'], self._sg_sipo_out.get_step())
                     # self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step())
                 else:
                     # assembled_port['en'] = self._sg_sipo_in.get_step()
