@@ -196,7 +196,8 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self._extents = self.input("extents", id_ext_width,
                                    size=self.dimensionality_support,
                                    packed=True, explicit_array=True)
-
+        #  Need an enable otherwise a schedule that starts off at 0 can accidentally fire...
+        self._enable = self.config_reg(name="enable", width=1)
         ### Outputs
         self._step_out = self.output("step", 1)
         # self._step_ack = self.output("step_ack", 1)
@@ -208,7 +209,7 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
 
         ### Logic
         # Gate the output step if flush is high.
-        self.wire(self._step_out, self._step & ~self._flush)
+        self.wire(self._step_out, self._step & ~self._flush & self._enable)
 
         # step is high when the current cycle matches the counter
         # self.wire(self._step, self._clk_ctr == self._current_cycle)
@@ -240,10 +241,13 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
 
         # this is the valid out
         self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
 
     def get_iterator_intf(self):
         return self.iterator_intf
 
     def gen_bitstream(self, schedule_map, extents, dimensionality):
-        return []
+        # Enable through the configuration
+        self.configure(self._enable, 1)
+        return self.get_configuration()
         # return super().gen_bitstream(schedule_map=sched_map)
