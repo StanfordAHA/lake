@@ -250,9 +250,11 @@ class Port(Component):
                 # The data and addr out of the SIPO can just be directly wired, but we need to qualify the read enable
                 # with the SG's step and output ready
                 if self._runtime == Runtime.DYNAMIC:
-                    assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step()
+                    assembled_port['en'] = self._internal_ag_intf['step'] & self._sg_sipo_out.get_step()
+                    # assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step()
                     # Valid is the same as en
-                    self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step())
+                    self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'] & self._sg_sipo_out.get_step())
+                    # self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step())
                 else:
                     # assembled_port['en'] = self._sg_sipo_in.get_step()
                     assembled_port['en'] = self._internal_ag_intf['step']
