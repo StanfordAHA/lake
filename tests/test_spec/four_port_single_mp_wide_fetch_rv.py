@@ -229,14 +229,14 @@ def get_linear_test():
     pr_vec_w = 1
 
     pr_raw_idx_vec_w = 0
-    pw_raw_idx_vec_w = 0
+    pw_raw_idx_vec_w = 1
     raw_comp_vec_w = LFComparisonOperator.LT.value
     raw_scalar_vec_w = 0
     raw_constraint_vec_w = (pr_vec_w, pr_raw_idx_vec_w,
                             pw_vec_w, pw_raw_idx_vec_w, raw_comp_vec_w, raw_scalar_vec_w)
 
     pw_war_idx_vec_w = 0
-    pr_war_idx_vec_w = 0
+    pr_war_idx_vec_w = 1
     war_comp_vec_w = LFComparisonOperator.LT.value
     war_scalar_vec_w = 2
     war_constraint_vec_w = (pw_vec_w, pw_war_idx_vec_w, pr_vec_w,
