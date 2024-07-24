@@ -901,6 +901,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
     mux_gen = kts.Generator(name=name)
     mux_width = one.width
 
+    mux_gen_sel_in = None
     if one_hot_sel:
         mux_gen_sel_in = mux_gen.input("sel", len(many))
     else:
@@ -915,7 +916,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
     if one_hot_sel:
         print("Building one-hot mux...")
         tmp_done = mux_gen.var("tmp_done", 1)
-        len_sel = len(sel)
+        len_sel = mux_gen_sel_in.width
 
         @always_comb
         def set_outs():
