@@ -302,7 +302,7 @@ def get_linear_test():
         'name': 'write_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -314,7 +314,7 @@ def get_linear_test():
         },
         'vec_in_config': {
             'dimensionality': 2,
-            'extents': [4, 64],
+            'extents': [4, 16],
             'address': {
                 'strides': [1, 4],
                 'offset': 0
@@ -326,7 +326,7 @@ def get_linear_test():
         },
         'vec_out_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -361,25 +361,25 @@ def get_linear_test():
         'name': 'read_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [8],
+                'strides': [4],
                 'offset': 17
             }
         },
         'vec_in_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [66],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [8],
+                'strides': [4],
                 'offset': 18
             }
         },
@@ -387,7 +387,7 @@ def get_linear_test():
             'dimensionality': 2,
             'extents': [4, 16],
             'address': {
-                'strides': [0, 1],
+                'strides': [1, 4],
                 'offset': 0
             },
             'schedule': {
