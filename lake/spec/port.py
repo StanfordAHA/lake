@@ -549,6 +549,12 @@ class Port(Component):
 
                 all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
 
+                # Need to configure the rv sched generator at the output of the sipo
+                if self._runtime == Runtime.DYNAMIC:
+                    sg_sipo_out_bs = self._sg_sipo_out.gen_bitstream()
+                    sg_sipo_out_bs = self._add_base_to_cfg_space(sg_sipo_out_bs, self.child_cfg_bases[self._sg_sipo_out])
+                    all_bs.append(sg_sipo_out_bs)
+
             elif self.get_direction() == Direction.OUT:
                 vec_out_addr_map = vec_out['address']
                 vec_out_sched_map = vec_out['schedule']
@@ -572,6 +578,12 @@ class Port(Component):
                                                                 dimensionality=vec_in['dimensionality'])
                 external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_piso_in])
                 all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
+
+                # Need to configure the rv sched generator at the output of the sipo
+                if self._runtime == Runtime.DYNAMIC:
+                    sg_piso_in_bs = self._sg_piso_in.gen_bitstream()
+                    sg_piso_in_bs = self._add_base_to_cfg_space(sg_piso_in_bs, self.child_cfg_bases[self._sg_piso_in])
+                    all_bs.append(sg_piso_in_bs)
 
             else:
                 raise NotImplementedError
