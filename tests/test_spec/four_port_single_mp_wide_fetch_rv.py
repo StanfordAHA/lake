@@ -342,7 +342,7 @@ def get_linear_test():
     pw_vec_r = 0
     pr_vec_r = 1
 
-    pr_raw_idx_vec_r = 0
+    pr_raw_idx_vec_r = 1
     pw_raw_idx_vec_r = 0
     raw_comp_vec_r = LFComparisonOperator.LT.value
     raw_scalar_vec_r = 0
@@ -373,7 +373,7 @@ def get_linear_test():
         },
         'vec_in_config': {
             'dimensionality': 1,
-            'extents': [66],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
