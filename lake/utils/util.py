@@ -981,14 +981,21 @@ def get_data_sizes(schedule: dict = None, num_ports=2):
         if type(port_num) is not int:
             continue
 
+        use_port_schedule = port_schedule['config']
+
         if port_num < div:
             new_port_num = port_num
             port_plus_arg = f"w{new_port_num}_num_data"
+            if 'vec_in_config' in port_schedule:
+                use_port_schedule = port_schedule['vec_in_config']
         else:
             new_port_num = port_num - div
             port_plus_arg = f"r{new_port_num}_num_data"
-        dim_ = port_schedule['config']['dimensionality']
-        extents = port_schedule['config']['extents']
+            if 'vec_out_config' in port_schedule:
+                use_port_schedule = port_schedule['vec_out_config']
+
+        dim_ = use_port_schedule['dimensionality']
+        extents = use_port_schedule['extents']
         num_data = 1
         for i_ in range(dim_):
             num_data = num_data * extents[i_]
