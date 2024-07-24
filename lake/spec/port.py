@@ -243,7 +243,7 @@ class Port(Component):
                     self.wire(self._internal_ag_intf['mux_sel'], self._sg_sipo_out.ports.mux_sel)
                     self.wire(self._internal_ag_intf['restart'], self._sg_sipo_out.ports.restart)
                     # Only step the address generator if the output is valid and
-                    self.wire(self._internal_ag_intf['step'], self._ag_sipo_out.ports.step & self._mp_intf['valid'] & self._mp_intf['ready'])
+                    self.wire(self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_sipo_out.ports.step)
                 else:
                     self.wire(self._internal_ag_intf['step'], self._ag_sipo_out.ports.step)
 
