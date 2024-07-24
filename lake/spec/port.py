@@ -7,6 +7,7 @@ from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage, Storage
 from lake.modules.rv_comparison_network import RVComparisonNetwork
+from lake.spec.reg_fifo import RegFIFO
 from lake.utils.util import connect_memoryport_storage
 
 

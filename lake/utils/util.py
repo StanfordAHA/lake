@@ -967,10 +967,12 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
         generator.wire(sel, mux_gen_sel_in)
 
 
-def get_data_sizes(schedule: dict = None):
+def get_data_sizes(schedule: dict = None, num_ports=2):
     # A schedule will have a bunch of ports - can always analyze the extens of the config to
     # get the total sizes
     assert schedule is not None
+    div = num_ports // 2
+
     # sizes_map = {}
     sizes_map = []
     for port_num, port_schedule in schedule.items():
@@ -978,11 +980,11 @@ def get_data_sizes(schedule: dict = None):
         if type(port_num) is not int:
             continue
 
-        if port_num % 2 == 0:
-            new_port_num = port_num // 2
+        if port_num < div:
+            new_port_num = port_num
             port_plus_arg = f"w{new_port_num}_num_data"
         else:
-            new_port_num = (port_num - 1) // 2
+            new_port_num = port_num - div
             port_plus_arg = f"r{new_port_num}_num_data"
         dim_ = port_schedule['config']['dimensionality']
         extents = port_schedule['config']['extents']
