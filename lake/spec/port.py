@@ -189,8 +189,15 @@ class Port(Component):
                 self.wire(self._id_sipo_in.ports.iterators, self._sg_sipo_in.ports.iterators)
                 self.wire(self._id_sipo_in.ports.restart, self._sg_sipo_in.ports.restart)
 
-                self.wire(self._sg_sipo_in.ports.step, self._ag_sipo_in.ports.step)
-                self.wire(self._sg_sipo_in.ports.step, self._id_sipo_in.ports.step)
+                if self._runtime == Runtime.DYNAMIC:
+                    # The sipo in should only get stepped if the local step is high
+                    # and the input data is valid
+                    self.wire(self._sg_sipo_in.ports.step & self._ub_intf['valid'], self._ag_sipo_in.ports.step)
+                    self.wire(self._sg_sipo_in.ports.step & self._ub_intf['valid'], self._id_sipo_in.ports.step)
+                else:
+                    self.wire(self._sg_sipo_in.ports.step, self._ag_sipo_in.ports.step)
+                    self.wire(self._sg_sipo_in.ports.step, self._id_sipo_in.ports.step)
+
 
                 # Send through extents if RV
                 if self._runtime == Runtime.DYNAMIC:
@@ -410,8 +417,13 @@ class Port(Component):
 
                 # TODO: Qualify step with the valids + such - can just have them default to 1's in static mode instead
                 # of having separate logic blocks every time this happens
-                self.wire(self._sg_piso_out.ports.step, self._ag_piso_out.ports.step)
-                self.wire(self._sg_piso_out.ports.step, self._id_piso_out.ports.step)
+                if self._runtime == Runtime.DYNAMIC:
+                    # Only step if local step is high and the incoming ready is high
+                    self.wire(self._sg_piso_out.ports.step & self._ub_intf['ready'], self._ag_piso_out.ports.step)
+                    self.wire(self._sg_piso_out.ports.step & self._ub_intf['ready'], self._id_piso_out.ports.step)
+                else:
+                    self.wire(self._sg_piso_out.ports.step, self._ag_piso_out.ports.step)
+                    self.wire(self._sg_piso_out.ports.step, self._id_piso_out.ports.step)
 
                 # Send through extents if RV
                 if self._runtime == Runtime.DYNAMIC:
