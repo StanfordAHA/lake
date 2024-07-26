@@ -59,9 +59,9 @@ class IterationDomain(Component):
         # OUTPUTS
         self._mux_sel_out = self.output("mux_sel", max(kts.clog2(self.dimensionality_support), 1), packed=True)
         self._dim_counter_out = self.output("iterators", self.extent_width,
-                                         size=self.dimensionality_support,
-                                         packed=True,
-                                         explicit_array=True)
+                                            size=self.dimensionality_support,
+                                            packed=True,
+                                            explicit_array=True)
         self._restart = self.output("restart", 1, packed=True)
         # PORT DEFS: end
 
@@ -71,9 +71,9 @@ class IterationDomain(Component):
         self._interfaces['extents'] = self._extents_out
 
         self._dim_counter = self.var("dim_counter_", self.extent_width,
-                                         size=self.dimensionality_support,
-                                         packed=True,
-                                         explicit_array=True)
+                                     size=self.dimensionality_support,
+                                     packed=True,
+                                     explicit_array=True)
 
         # Alias the var to the output
         for i in range(self.dimensionality_support):
@@ -99,8 +99,7 @@ class IterationDomain(Component):
         # Next_max_value
         self._maxed_value = self.var("maxed_value", 1)
 
-        self.wire(self._maxed_value, (self._dim_counter[self._mux_sel] ==
-                                          self._extents[self._mux_sel]) & self._inc[self._mux_sel])
+        self.wire(self._maxed_value, (self._dim_counter[self._mux_sel] == self._extents[self._mux_sel]) & self._inc[self._mux_sel])
 
         self.add_code(self.set_mux_sel)
 

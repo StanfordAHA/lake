@@ -30,7 +30,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
         sram_model.append([])  # new set
         for j in range(data_words_per_set):
             sram_model[i].append([])  # new row
-            for x in range (num_words_per_row):
+            for x in range(num_words_per_row):
                 sram_model[i][j].append(0)  # new word
     ###
 
@@ -119,14 +119,14 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
         # simualte the actual AXI read which asserts config_en and config_rd/config_wr
         # for more than 1 cycles to meet timing
         if config_en > 0 and config_read == 1:
-            for i in range (axi_rd_timing - 1):
+            for i in range(axi_rd_timing - 1):
                 tester.eval()
                 tester.step(2)
 
         # update the model
         if config_en > 0 and config_write == 1:
             # decoding the set from 1-hot config_en
-            for i in range (sets_per_macro - 1, -1, -1):
+            for i in range(sets_per_macro - 1, -1, -1):
                 if config_en / (2**i) >= 1:
                     sram_model[i][config_addr_in][write_cnt] = config_data_in
                     break
@@ -144,7 +144,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
             last_read_en = 1
 
             # computes the enabled set from the 1-hot encoding
-            for i in range (sets_per_macro - 1, -1, -1):
+            for i in range(sets_per_macro - 1, -1, -1):
                 if config_en / (2 ** i) >= 1:
                     last_model_rd_reg = sram_model[i][config_addr_in][read_cnt]
                     break
@@ -187,7 +187,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
 
         set = 0
         # computes the enabled set from the 1-hot encoding
-        for i in range (sets_per_macro - 1, -1, -1):
+        for i in range(sets_per_macro - 1, -1, -1):
             if config_en / (2 ** i) >= 1:
                 set = i
                 break
@@ -201,7 +201,7 @@ def test_storage_config_seq(data_width=16,      # CGRA Params
 
             # simualte the actual AXI read which asserts cfg_en and cfg_rd
             # for more than 1 cycles to meet timing
-            for i in range (axi_rd_timing - 1):
+            for i in range(axi_rd_timing - 1):
                 tester.eval()
                 tester.step(2)
 

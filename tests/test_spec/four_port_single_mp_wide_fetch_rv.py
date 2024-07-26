@@ -434,7 +434,7 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_four_port_spec = build_four_port_wide_fetch_rv(storage_capacity=storage_capacity, data_width=data_width,
-                                                         physical=physical, vec_width=vec_width)
+                                                          physical=physical, vec_width=vec_width)
     simple_four_port_spec.visualize_graph()
     simple_four_port_spec.generate_hardware()
     simple_four_port_spec.extract_compiler_information()
@@ -511,4 +511,4 @@ if __name__ == "__main__":
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_qp_wf_rv(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                 physical=args.physical, vec_width=args.vec_width, tp=tp, test=args.test)
+                                    physical=args.physical, vec_width=args.vec_width, tp=tp, test=args.test)
