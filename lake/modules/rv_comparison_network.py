@@ -219,6 +219,7 @@ class RVComparisonNetwork(Component):
             read_sg = self.reads[i]
             read_iters = self._reader_iterators[i]
             read_width = read_iters.width
+            read_extents = self._reader_extents[i]
             num_read_ctrs = read_sg.get_dimensionality()
             num_read_ctrs_bw = max(1, kts.clog2(num_write_ctrs))
             # in_sel = kts.const(0, num_read_ctrs_bw)
@@ -229,6 +230,7 @@ class RVComparisonNetwork(Component):
                 # self.in_sels_rd_to_wr.append(in_sel)
                 write_sg = self.writes[j]
                 write_iters = self._writer_iterators[j]
+                write_extents = self._writer_extents[j]
                 # read_iters = read_sg.get_iterator_intf()['iterators']
                 write_width = write_iters.width
 
