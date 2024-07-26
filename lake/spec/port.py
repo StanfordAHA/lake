@@ -9,6 +9,7 @@ from lake.spec.storage import SingleBankStorage, Storage
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.reg_fifo import RegFIFO
 from lake.utils.util import connect_memoryport_storage
+import kratos as kts
 
 
 def print_class_hierarchy(obj):
@@ -66,25 +67,28 @@ class Port(Component):
 
             # This is the hardware for a single fetch width
             # in set
-            if self._runtime == Runtime.STATIC:
-                data_from_ub = self.input(f"port_write_data_in", self._ext_data_width)
-                data_to_memport = self.output(f"port_write_data_out", self._int_data_width)
-                self._ub_intf['data'] = data_from_ub
-                self._mp_intf['data'] = data_to_memport
-            else:
-                data_from_ub = self.rvinput(name=f"port_write_data_in", width=self._ext_data_width)
-                data_to_memport = self.rvoutput(name=f"port_write_data_out", width=self._int_data_width)
-                self._ub_intf['data'] = data_from_ub.get_port()
-                self._ub_intf['valid'] = data_from_ub.get_valid()
-                self._ub_intf['ready'] = data_from_ub.get_ready()
-                self._mp_intf['data'] = data_to_memport.get_port()
-                self._mp_intf['valid'] = data_to_memport.get_valid()
-                self._mp_intf['ready'] = data_to_memport.get_ready()
+            # if self._runtime == Runtime.STATIC:
+            #     data_from_ub = self.input(f"port_write_data_in", self._ext_data_width)
+            #     data_to_memport = self.output(f"port_write_data_out", self._int_data_width)
+            #     self._ub_intf['data'] = data_from_ub
+            #     self._mp_intf['data'] = data_to_memport
+            # else:
+            data_from_ub = self.rvinput(name=f"port_write_data_in", width=self._ext_data_width)
+            data_to_memport = self.rvoutput(name=f"port_write_data_out", width=self._int_data_width)
+            self._ub_intf['data'] = data_from_ub.get_port()
+            self._ub_intf['valid'] = data_from_ub.get_valid()
+            self._ub_intf['ready'] = data_from_ub.get_ready()
+            self._mp_intf['data'] = data_to_memport.get_port()
+            self._mp_intf['valid'] = data_to_memport.get_valid()
+            self._mp_intf['ready'] = data_to_memport.get_ready()
 
             if self._fw == 1:
                 # wire together
                 if self._runtime == Runtime.STATIC:
-                    self.wire(data_from_ub, data_to_memport)
+                    # self.wire(data_from_ub, data_to_memport)
+                    self.wire(data_from_pintf['data'], data_to_pintf['data'])
+                    self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
+                    self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
                 else:
                     data_from_pintf = data_from_ub.get_port_interface()
                     data_to_pintf = data_to_memport.get_port_interface()
@@ -198,7 +202,6 @@ class Port(Component):
                     self.wire(self._sg_sipo_in.ports.step, self._ag_sipo_in.ports.step)
                     self.wire(self._sg_sipo_in.ports.step, self._id_sipo_in.ports.step)
 
-
                 # Send through extents if RV
                 if self._runtime == Runtime.DYNAMIC:
                     self.wire(self._id_sipo_in.ports.extents_out, self._sg_sipo_in.ports.extents)
@@ -296,25 +299,30 @@ class Port(Component):
 
         elif self._direction == Direction.OUT:
 
-            if self._runtime == Runtime.STATIC:
-                data_from_memport = self.input(f"port_read_data_in", self._int_data_width)
-                data_to_ub = self.output(f"port_read_data_out", self._ext_data_width)
-                self._ub_intf['data'] = data_to_ub
-                self._mp_intf['data'] = data_from_memport
-            else:
-                data_from_memport = self.rvinput(name=f"port_read_data_in", width=self._int_data_width)
-                data_to_ub = self.rvoutput(name=f"port_read_data_out", width=self._ext_data_width)
-                self._ub_intf['data'] = data_to_ub.get_port()
-                self._ub_intf['valid'] = data_to_ub.get_valid()
-                self._ub_intf['ready'] = data_to_ub.get_ready()
-                self._mp_intf['data'] = data_from_memport.get_port()
-                self._mp_intf['valid'] = data_from_memport.get_valid()
-                self._mp_intf['ready'] = data_from_memport.get_ready()
+            # if self._runtime == Runtime.STATIC:
+            #     data_from_memport = self.input(f"port_read_data_in", self._int_data_width)
+            #     data_to_ub = self.output(f"port_read_data_out", self._ext_data_width)
+            #     self._ub_intf['data'] = data_to_ub
+            #     self._mp_intf['data'] = data_from_memport
+            # else:
+            data_from_memport = self.rvinput(name=f"port_read_data_in", width=self._int_data_width)
+            data_to_ub = self.rvoutput(name=f"port_read_data_out", width=self._ext_data_width)
+            self._ub_intf['data'] = data_to_ub.get_port()
+            self._ub_intf['valid'] = data_to_ub.get_valid()
+            self._ub_intf['ready'] = data_to_ub.get_ready()
+            self._mp_intf['data'] = data_from_memport.get_port()
+            self._mp_intf['valid'] = data_from_memport.get_valid()
+            self._mp_intf['ready'] = data_from_memport.get_ready()
 
             if self._fw == 1:
                 # wire together
                 if self._runtime == Runtime.STATIC:
-                    self.wire(data_from_memport, data_to_ub)
+                    # self.wire(data_from_memport, data_to_ub)
+                    data_from_pintf = data_to_ub.get_port_interface()
+                    data_to_pintf = data_from_memport.get_port_interface()
+                    self.wire(data_from_pintf['data'], data_to_pintf['data'])
+                    self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
+                    self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
                 else:
                     data_from_pintf = data_to_ub.get_port_interface()
                     data_to_pintf = data_from_memport.get_port_interface()
@@ -463,24 +471,46 @@ class Port(Component):
                 # self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", 1)
                 # self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", 1)
 
-                self._internal_ag_intf['step'] = self.input(f"port_vec_piso_in_step", 1)
-                self._internal_ag_intf['restart'] = self.input(f"port_vec_piso_in_restart", 1)
-                self._internal_ag_intf['mux_sel'] = self.input(f"port_vec_piso_in_mux_sel", self._ag_piso_in.ports.mux_sel.width)
-                self._internal_ag_intf['iterators'] = self.input(f"port_vec_piso_in_dim_ctrs2", self._ag_piso_in.ports.iterators.width,
-                                                                 size=self.dimensionality, explicit_array=True, packed=True)
-                self.wire(self._internal_ag_intf['step'], self._ag_piso_in.ports.step)
-                self.wire(self._internal_ag_intf['restart'], self._ag_piso_in.ports.restart)
-                self.wire(self._internal_ag_intf['mux_sel'], self._ag_piso_in.ports.mux_sel)
-                self.wire(self._internal_ag_intf['iterators'], self._ag_piso_in.ports.iterators)
+                # self._internal_ag_intf['step'] = self.input(f"port_piso_in_step", 1)
+                self._internal_ag_intf['restart'] = self.rvinput(name=f"port_piso_in_restart", width=1, packed=True)
+                self._internal_ag_intf['mux_sel'] = self.rvinput(name=f"port_piso_in_mux_sel", width=self._ag_piso_in.ports.mux_sel.width, packed=True)
+                self._internal_ag_intf['iterators'] = self.rvinput(name=f"port_piso_in_dim_ctrs2", width=self._ag_piso_in.ports.iterators.width,
+                                                                   size=self.dimensionality, explicit_array=True, packed=True)
+                # self._internal_ag_intf['restart'] = self.input(f"port_piso_in_restart", 1)
+                # self._internal_ag_intf['mux_sel'] = self.input(f"port_piso_in_mux_sel", self._ag_piso_in.ports.mux_sel.width)
+                # self._internal_ag_intf['iterators'] = self.input(f"port_piso_in_dim_ctrs2", self._ag_piso_in.ports.iterators.width,
+                #                                                  size=self.dimensionality, explicit_array=True, packed=True)
+                # self.wire(self._internal_ag_intf['step'], self._ag_piso_in.ports.step)
+                # self.wire(self._internal_ag_intf['restart'], self._ag_piso_in.ports.restart)
+                # self.wire(self._internal_ag_intf['mux_sel'], self._ag_piso_in.ports.mux_sel)
+                # self.wire(self._internal_ag_intf['iterators'], self._ag_piso_in.ports.iterators)
 
                 # Hook up the SG block in the case of dynamic runtime
+                self.wire(self._internal_ag_intf['restart'].get_port(), self._ag_piso_in.ports.restart)
+                self.wire(self._internal_ag_intf['mux_sel'].get_port(), self._ag_piso_in.ports.mux_sel)
+                self.wire(self._internal_ag_intf['iterators'].get_port(), self._ag_piso_in.ports.iterators)
+                # Only step the internal AG if the input is valid and we are asserting ready
+                self.wire(self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
+
                 if self._runtime == Runtime.DYNAMIC:
-                    self._internal_ag_intf['extents'] = self.input("port_piso_in_extents", external_id.get_extent_width(),
-                                                                   size=external_id.get_dimensionality(), packed=True, explicit_array=True)
-                    self.wire(self._internal_ag_intf['extents'], self._sg_piso_in.ports.extents)
-                    self.wire(self._internal_ag_intf['iterators'], self._sg_piso_in.ports.iterators)
-                    self.wire(self._internal_ag_intf['mux_sel'], self._sg_piso_in.ports.mux_sel)
-                    self.wire(self._internal_ag_intf['restart'], self._sg_piso_in.ports.restart)
+                    self._internal_ag_intf['extents'] = self.rvinput(name="port_piso_in_extents", width=external_id.get_extent_width(),
+                                                                     size=external_id.get_dimensionality(), packed=True, explicit_array=True)
+                    self.wire(self._internal_ag_intf['extents'].get_port(), self._sg_piso_in.ports.extents)
+                    self.wire(self._internal_ag_intf['extents'].get_ready(), self._mp_intf['ready'] & self._mp_intf['valid'])
+                    self.wire(self._internal_ag_intf['iterators'].get_port(), self._sg_piso_in.ports.iterators)
+                    self.wire(self._internal_ag_intf['iterators'].get_ready(), self._mp_intf['ready'] & self._mp_intf['valid'])
+                    self.wire(self._internal_ag_intf['mux_sel'].get_port(), self._sg_piso_in.ports.mux_sel)
+                    self.wire(self._internal_ag_intf['mux_sel'].get_ready(), self._mp_intf['ready'] & self._mp_intf['valid'])
+                    self.wire(self._internal_ag_intf['restart'].get_port(), self._sg_piso_in.ports.restart)
+                    self.wire(self._internal_ag_intf['restart'].get_ready(), self._mp_intf['ready'] & self._mp_intf['valid'])
+
+                else:
+                    self.wire(self._internal_ag_intf['iterators'].get_ready(), kts.const(1, 1))
+                    self.wire(self._internal_ag_intf['mux_sel'].get_ready(), kts.const(1, 1))
+                    self.wire(self._internal_ag_intf['restart'].get_ready(), kts.const(1, 1))
+                    # self.wire(self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
+                    # self.wire(self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
+                    # self.wire(self._internal_ag_intf['step'], self._ag_piso_in.ports.step)
 
                 # TODO: Actually need to delay everything...
 
@@ -493,9 +523,12 @@ class Port(Component):
                 # The data and addr out of the SIPO can just be directly wired, but we need to qualify the read enable
                 # with the SG's step and output ready
                 if self._runtime == Runtime.DYNAMIC:
-                    assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._sg_piso_in.get_step()
+                    assembled_port['en'] = self._mp_intf['valid'] & self._sg_piso_in.get_step()
+                    # assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._sg_piso_in.get_step()
                     # Valid is the same as en
-                    self.wire(self._mp_intf['ready'], self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._sg_piso_in.get_step())
+                    self.wire(self._mp_intf['ready'], self._sg_piso_in.get_step())
+                    # self.wire(self._mp_intf['ready'], self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._sg_piso_in.get_step())
+                    # self.wire(self._mp_intf['ready'], self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._sg_piso_in.get_step())
                 else:
                     # assembled_port['en'] = self._sg_sipo_in.get_step()
                     assembled_port['en'] = self._internal_ag_intf['step']
