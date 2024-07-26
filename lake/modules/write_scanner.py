@@ -975,15 +975,15 @@ class WriteScanner(MemoryController):
         # UL_EMIT
         #######
         UL_EMIT.output(self._data_to_fifo, kts.ternary(self._stop_in,
-                                                            self._seg_ctr,
-                                                            self._data_infifo_data_in))
+                                                       self._seg_ctr,
+                                                       self._data_infifo_data_in))
         UL_EMIT.output(self._op_to_fifo, 1)
         UL_EMIT.output(self._addr_to_fifo, kts.ternary(self._stop_in,
-                                                            self._seg_addr,
-                                                            self._coord_addr))
+                                                       self._seg_addr,
+                                                       self._coord_addr))
         UL_EMIT.output(self._ID_to_fifo, kts.ternary(self._stop_in,
-                                                        kts.const(0, 16),
-                                                        kts.const(1, 16)))
+                                                     kts.const(0, 16),
+                                                     kts.const(1, 16)))
         UL_EMIT.output(self._push_to_outs, self._data_infifo_valid_in & self._join_out_ready & ~self._data_done_in)
         UL_EMIT.output(self._inc_seg_addr, self._stop_in & self._join_out_ready & ~self._data_done_in)
         UL_EMIT.output(self._clr_seg_addr, 0)
