@@ -572,7 +572,8 @@ class Port(Component):
                 vec_in_addr_map = vec_in['address']
                 vec_in_sched_map = vec_in['schedule']
                 internal_id_bs = self._id_sipo_in.gen_bitstream(dimensionality=vec_in['dimensionality'],
-                                                                extents=vec_in['extents'])
+                                                                extents=vec_in['extents'],
+                                                                rv=self._runtime == Runtime.DYNAMIC)
                 internal_ag_bs = self._ag_sipo_in.gen_bitstream(address_map=vec_in_addr_map,
                                                                 extents=vec_in['extents'],
                                                                 dimensionality=vec_in['dimensionality'])
@@ -604,7 +605,8 @@ class Port(Component):
                 vec_out_addr_map = vec_out['address']
                 vec_out_sched_map = vec_out['schedule']
                 internal_id_bs = self._id_piso_out.gen_bitstream(dimensionality=vec_out['dimensionality'],
-                                                                 extents=vec_out['extents'])
+                                                                 extents=vec_out['extents'],
+                                                                 rv=self._runtime == Runtime.DYNAMIC)
                 internal_ag_bs = self._ag_piso_out.gen_bitstream(address_map=vec_out_addr_map,
                                                                  extents=vec_out['extents'],
                                                                  dimensionality=vec_out['dimensionality'])
