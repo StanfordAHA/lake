@@ -493,10 +493,10 @@ class Port(Component):
                 self.wire(self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
 
                 if self._runtime == Runtime.DYNAMIC:
-                    self._internal_ag_intf['extents'] = self.rvinput(name="port_piso_in_extents", width=external_id.get_extent_width(),
+                    self._internal_ag_intf['extents'] = self.input(name="port_piso_in_extents", width=external_id.get_extent_width(),
                                                                      size=external_id.get_dimensionality(), packed=True, explicit_array=True)
-                    self.wire(self._internal_ag_intf['extents'].get_port(), self._sg_piso_in.ports.extents)
-                    self.wire(self._internal_ag_intf['extents'].get_ready(), self._mp_intf['ready'] & self._mp_intf['valid'])
+                    self.wire(self._internal_ag_intf['extents'], self._sg_piso_in.ports.extents)
+                    # self.wire(self._internal_ag_intf['extents'].get_ready(), self._mp_intf['ready'] & self._mp_intf['valid'])
                     self.wire(self._internal_ag_intf['iterators'].get_port(), self._sg_piso_in.ports.iterators)
                     self.wire(self._internal_ag_intf['iterators'].get_ready(), self._mp_intf['ready'] & self._mp_intf['valid'])
                     self.wire(self._internal_ag_intf['mux_sel'].get_port(), self._sg_piso_in.ports.mux_sel)
