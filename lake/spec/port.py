@@ -86,6 +86,8 @@ class Port(Component):
                 # wire together
                 if self._runtime == Runtime.STATIC:
                     # self.wire(data_from_ub, data_to_memport)
+                    data_from_pintf = data_from_ub.get_port_interface()
+                    data_to_pintf = data_to_memport.get_port_interface()
                     self.wire(data_from_pintf['data'], data_to_pintf['data'])
                     self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
                     self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
@@ -212,11 +214,12 @@ class Port(Component):
                 # The data and addr to the SIPO can just be directly wired, but we need to qualify the write enable
                 # with the SG's step and input valid
                 if self._runtime == Runtime.DYNAMIC:
-                    assembled_port['en'] = self._sg_sipo_in.get_step() & self._ub_intf['valid']
                     # Can also hook up the ub ready now - it's just the step since there's no arbitration on the MP
+                    assembled_port['en'] = self._sg_sipo_in.get_step() & self._ub_intf['valid']
                     self.wire(self._ub_intf['ready'], self._sg_sipo_in.get_step())
                 else:
                     assembled_port['en'] = self._sg_sipo_in.get_step()
+                    self.wire(self._ub_intf['ready'], kts.const(1, 1))
 
                 # Now hook up the input and output ports
                 in_intf = self._sipo_strg_mp_in.get_port_intf()
@@ -264,14 +267,15 @@ class Port(Component):
                 # The data and addr out of the SIPO can just be directly wired, but we need to qualify the read enable
                 # with the SG's step and output ready
                 if self._runtime == Runtime.DYNAMIC:
-                    assembled_port['en'] = self._sg_sipo_out.get_step()
-                    # assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step()
                     # Valid is the same as en
+                    assembled_port['en'] = self._sg_sipo_out.get_step()
                     self.wire(self._mp_intf['valid'], self._sg_sipo_out.get_step())
+                    # assembled_port['en'] = self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step()
                     # self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'] & self._mp_intf['ready'] & self._sg_sipo_out.get_step())
                 else:
                     # assembled_port['en'] = self._sg_sipo_in.get_step()
                     assembled_port['en'] = self._internal_ag_intf['step']
+                    self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'])
 
                 out_intf = self._sipo_strg_mp_out.get_port_intf()
                 print(out_intf)
@@ -453,11 +457,12 @@ class Port(Component):
                 # The data and addr to the SIPO can just be directly wired, but we need to qualify the write enable
                 # with the SG's step and input valid
                 if self._runtime == Runtime.DYNAMIC:
-                    assembled_port['en'] = self._sg_piso_out.get_step() & self._ub_intf['ready']
                     # Can also hook up the ub ready now - it's just the step since there's no arbitration on the MP
+                    assembled_port['en'] = self._sg_piso_out.get_step() & self._ub_intf['ready']
                     self.wire(self._ub_intf['valid'], self._sg_piso_out.get_step())
                 else:
                     assembled_port['en'] = self._sg_piso_out.get_step()
+                    self.wire(self._ub_intf['valid'], self._sg_piso_out.get_step())
 
                 # Now hook up the input and output ports
                 piso_out_intf = self._piso_strg_mp_out.get_port_intf()
@@ -527,20 +532,25 @@ class Port(Component):
 
                 else:
 
-                    self._internal_ag_intf['restart'] = self.rvinput(name=f"port_piso_in_restart", width=1, packed=True)
-                    self._internal_ag_intf['mux_sel'] = self.rvinput(name=f"port_piso_in_mux_sel", width=self._ag_piso_in.ports.mux_sel.width, packed=True)
-                    self._internal_ag_intf['iterators'] = self.rvinput(name=f"port_piso_in_dim_ctrs2", width=self._ag_piso_in.ports.iterators.width,
-                                                                       size=self.dimensionality, explicit_array=True, packed=True)
+                    self._internal_ag_intf['step'] = self.input(name=f"port_piso_in_step", width=1, packed=True)
+                    self._internal_ag_intf['restart'] = self.input(name=f"port_piso_in_restart", width=1, packed=True)
+                    self._internal_ag_intf['mux_sel'] = self.input(name=f"port_piso_in_mux_sel", width=self._ag_piso_in.ports.mux_sel.width, packed=True)
+                    self._internal_ag_intf['iterators'] = self.input(name=f"port_piso_in_dim_ctrs2", width=self._ag_piso_in.ports.iterators.width,
+                                                                     size=self.dimensionality, explicit_array=True, packed=True)
 
-                    self.wire(self._internal_ag_intf['iterators'].get_ready(), kts.const(1, 1))
-                    self.wire(self._internal_ag_intf['mux_sel'].get_ready(), kts.const(1, 1))
-                    self.wire(self._internal_ag_intf['restart'].get_ready(), kts.const(1, 1))
+                    # self.wire(self._internal_ag_intf['iterators'].get_ready(), kts.const(1, 1))
+                    # self.wire(self._internal_ag_intf['mux_sel'].get_ready(), kts.const(1, 1))
+                    # self.wire(self._internal_ag_intf['restart'].get_ready(), kts.const(1, 1))
 
                     # Hook up the SG block in the case of dynamic runtime
-                    self.wire(self._internal_ag_intf['restart'].get_port(), self._ag_piso_in.ports.restart)
-                    self.wire(self._internal_ag_intf['mux_sel'].get_port(), self._ag_piso_in.ports.mux_sel)
-                    self.wire(self._internal_ag_intf['iterators'].get_port(), self._ag_piso_in.ports.iterators)
+                    self.wire(self._internal_ag_intf['restart'], self._ag_piso_in.ports.restart)
+                    self.wire(self._internal_ag_intf['mux_sel'], self._ag_piso_in.ports.mux_sel)
+                    self.wire(self._internal_ag_intf['iterators'], self._ag_piso_in.ports.iterators)
                     self.wire(self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
+                    # self.wire(self._internal_ag_intf['restart'].get_port(), self._ag_piso_in.ports.restart)
+                    # self.wire(self._internal_ag_intf['mux_sel'].get_port(), self._ag_piso_in.ports.mux_sel)
+                    # self.wire(self._internal_ag_intf['iterators'].get_port(), self._ag_piso_in.ports.iterators)
+                    # self.wire(self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
                     # self.wire(self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
                     # self.wire(self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
                     # self.wire(self._internal_ag_intf['step'], self._ag_piso_in.ports.step)
@@ -565,6 +575,8 @@ class Port(Component):
                 else:
                     # assembled_port['en'] = self._sg_sipo_in.get_step()
                     assembled_port['en'] = self._internal_ag_intf['step']
+                    # assembled_port['en'] = self._mp_intf['valid'] & self._mp_intf['ready']
+                    self.wire(self._mp_intf['ready'], self._internal_ag_intf['step'])
 
                 piso_in_intf = self._piso_strg_mp_in.get_port_intf()
                 print(piso_in_intf)

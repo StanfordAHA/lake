@@ -331,8 +331,13 @@ class Spec():
                 self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
                 # self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
                 self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
-                if port_direction == Direction.OUT:
+
+                # Need to also wire the readys
+                if port_direction == Direction.IN:
+                    self._final_gen.wire(port.get_mp_intf()['ready'], kts.const(1, 1))
+                elif port_direction == Direction.OUT:
                     self._final_gen.wire(memintf_dec.ports.data_ready, kts.const(1, 1))
+                    self._final_gen.wire(port.get_mp_intf()['valid'], kts.const(1, 1))
 
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
@@ -422,12 +427,12 @@ class Spec():
                         # self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
 
                     else:
-                        # shreg_step = shift_reg(self._final_gen, quali_step, chain_depth=delay, name=f"shreg_step_port_{i_}")
+                        shreg_step = shift_reg(self._final_gen, quali_step, chain_depth=delay, name=f"shreg_step_port_{i_}")
                         delay_mux_sel = shift_reg(self._final_gen, port_id.ports.mux_sel, chain_depth=delay, name=f"shreg_mux_sel_port_{i_}")
                         delay_iterators = shift_reg(self._final_gen, port_id.ports.iterators, chain_depth=delay, name=f"shreg_iterators_port_{i_}")
                         delay_restart = shift_reg(self._final_gen, port_id.ports.restart, chain_depth=delay, name=f"shreg_restart_port_{i_}")
 
-                        # self._final_gen.wire(ext_intf['step'], shreg_step)
+                        self._final_gen.wire(ext_intf['step'], shreg_step)
                         self._final_gen.wire(ext_intf['mux_sel'], delay_mux_sel)
                         self._final_gen.wire(ext_intf['iterators'], delay_iterators)
                         self._final_gen.wire(ext_intf['restart'], delay_restart)
@@ -455,6 +460,7 @@ class Spec():
                     p_temp_valid = self._final_gen.input(f"port_{i_}_valid", 1)
                     p_temp_ready = self._final_gen.output(f"port_{i_}_ready", 1)
                     self._final_gen.wire(p_temp_ready, kts.const(1, 1))
+                    self._final_gen.wire(ub_intf['valid'], p_temp_valid)
             elif port.get_direction() == Direction.OUT:
                 if self.any_rv_sg:
                     p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width)
@@ -468,6 +474,7 @@ class Spec():
                     p_temp_valid = self._final_gen.output(f"port_{i_}_valid", 1)
                     p_temp_ready = self._final_gen.input(f"port_{i_}_ready", 1)
                     self._final_gen.wire(p_temp_valid, kts.const(1, 1))
+                    self._final_gen.wire(ub_intf['ready'], p_temp_ready)
 
             self._final_gen.wire(p_temp, ub_intf['data'])
 
