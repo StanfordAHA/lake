@@ -20,13 +20,13 @@ def build_dual_port_wide_fetch_quad_rv(storage_capacity=1024, data_width=16, dim
     ls = Spec()
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                   vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+                   vec_capacity=8, runtime=Runtime.DYNAMIC, direction=Direction.IN)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+                    vec_capacity=8, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+                    vec_capacity=8, runtime=Runtime.DYNAMIC, direction=Direction.IN)
     out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                     vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+                     vec_capacity=8, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
 
     ls.register(in_port, in_port2, out_port, out_port2)
 
