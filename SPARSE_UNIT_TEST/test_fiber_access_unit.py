@@ -236,11 +236,15 @@ def load_test_module(test_name):
     elif test_name == "empty_root_seq_3":
         in_crd = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 'S0', 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 'S1', 'D']
         in_ref = ['S0', 5, 5, 0, 'S0', 3, 1, 'S1', 'D']
+        in_c_v = [i for i in in_crd if type(i) is int]
+        print("seq3", len(in_c_v))
         return create_gold(in_crd, in_ref)
 
     elif test_name == "empty_root_seq_4":
         in_crd = [20, 21, 22, 23, 24, 25, 26, 27, 29, 210, 211, 212, 214, 'S0', 20, 22, 23, 24, 25, 26, 27, 28, 29, 210, 212, 213, 214, 'S0', 0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 'S0', 0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 'S0', 0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 12, 13, 14, 'S1', 'D']
         in_ref = [ 0, 'S1', 'D']
+        in_c_v = [i for i in in_crd if type(i) is int]
+        print("seq4", len(in_c_v))
         return create_gold(in_crd, in_ref)
 
     elif test_name == "arr_1":
@@ -398,8 +402,12 @@ def module_iter_basic(test_name, add_test=""):
     print(lines[0])
     #print(lines[1])
 
-    coord_out = sparse_helper.read_txt("coord_out.txt", addit=add_test != "")
-    pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", addit=add_test != "")
+    tx_num = 1
+    if add_test != "":
+        tx_num = 2
+
+    coord_out = sparse_helper.read_txt("coord_out.txt", count=tx_num)
+    pos_out_0 = sparse_helper.read_txt("pos_out_0.txt", count=tx_num)
     # print(coord_out)
     # print(pos_out_0)
 

@@ -20,6 +20,7 @@ import os
 import random
 random.seed(15)
 import string
+import numpy as np
 
 
 def init_module():
@@ -174,7 +175,7 @@ def load_test_module(test_name):
     elif test_name[0:2] == "rd":
         args = test_name.split("_")
         single = args[1] == "single"
-        seg_mode = args[3] == "crd"
+        seg_mode = args[2] == "crd"
 
         # parameter
         total_st = 16
@@ -188,11 +189,13 @@ def load_test_module(test_name):
         else:
             f_type = "val"
 
-        rate_range = [0.8, 1.0]
-        dim = [1, 2]
-        size_range = [1, 8]
+        rate_range = [0.5, 1.0]
+        dim = [1, 2, 3]
+        size_range = [1, 5]
 
         allow_empty = False
+
+        ic = []
 
         mask_stream = [i for i in range(total_st)]
         mask_stream = random.sample(mask_stream, active_st)
@@ -228,8 +231,6 @@ def module_iter_basic(test_name):
     ic_s = []
     for i in ic:
         ic_s = ic_s + i
-    print(ic_s)
-    print(seg_mode)
 
     sparse_helper.write_txt("stream_in_0.txt", ic_s)
 
@@ -242,7 +243,7 @@ def module_iter_basic(test_name):
                             "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
 
     output = sim_result.stdout
-    # print(output)
+
     cycle_count_line = output[output.find("write cycle count:"):]
     lines = cycle_count_line.splitlines()
     print(lines[0])
@@ -257,18 +258,18 @@ def module_iter_basic(test_name):
     print(test_name, " passed\n")
 
 
-# def test_iter_crd_basic():
-#     init_module()
-#     test_list = ["1stream_1_crd", "2stream_1_crd", "4stream_1_crd"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_iter_crd_basic():
+    init_module()
+    test_list = ["1stream_1_crd", "2stream_1_crd", "4stream_1_crd"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
-# def test_iter_val_basic():
-#     init_module()
-#     test_list = ["1stream_1_val", "2stream_1_val", "4stream_1_val"]
-#     for test in test_list:
-#         module_iter_basic(test)
+def test_iter_val_basic():
+    init_module()
+    test_list = ["1stream_1_val", "2stream_1_val", "4stream_1_val"]
+    for test in test_list:
+        module_iter_basic(test)
 
 
 def test_single_stream_random_crd():
@@ -277,19 +278,19 @@ def test_single_stream_random_crd():
         module_iter_basic("rd_single_crd")
 
 
-# def test_single_stream_random_val():
-#     init_module()
-#     for test in range(30):
-#         module_iter_basic("rd_single_val")
+def test_single_stream_random_val():
+    init_module()
+    for test in range(30):
+        module_iter_basic("rd_single_val")
 
 
-# def test_multi_stream_random_crd():
-#     init_module()
-#     for test in range(30):
-#         module_iter_basic("rd_multi_crd")
+def test_multi_stream_random_crd():
+    init_module()
+    for test in range(30):
+        module_iter_basic("rd_multi_crd")
 
 
-# def test_multi_stream_random_val():
-#     init_module()
-#     for test in range(30):
-#         module_iter_basic("rd_multi_val")
+def test_multi_stream_random_val():
+    init_module()
+    for test in range(30):
+        module_iter_basic("rd_multi_val")

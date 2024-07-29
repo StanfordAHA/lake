@@ -3,7 +3,7 @@
 `define TX_NUM_GLB 1
 `endif
 
-module fiber_access_tb;
+module fiber_glb2fib_seg_tb;
 
     reg clk;
     reg clk_en;
@@ -48,8 +48,7 @@ module fiber_access_tb;
     wire rs_blk_valid;
     wire rs_blk_ready;
 
-    assign {ws_addr, ws_addr_valid, ws_blk, ws_blk_valid} = 35'b0;
-    assign {rs_blk, rs_blk_valid} = 17'b0;
+    assign {ws_addr, ws_addr_valid, rs_blk_ready} = 0;
 
     logic [1:0] [31:0] config_out;
 
@@ -63,7 +62,6 @@ module fiber_access_tb;
     logic start_read;
     logic read_input_in;
     integer read_count;
-    integer wait_gap = 0; // should pass with arb gap
     integer DONE_TOKEN = 17'h10100;
 
     fiber_access_16 dut 
@@ -78,6 +76,7 @@ module fiber_access_tb;
     .read_scanner_block_rd_out_ready(rs_blk_ready),
     .read_scanner_coord_out_ready(coord_out_ready),
     .read_scanner_dense(1'b0),
+    // .read_scanner_dim_size(16'b0),
     .read_scanner_do_repeat(1'b0),
     .read_scanner_inner_dim_offset(16'b0),
     .read_scanner_lookup(1'b0),
@@ -95,7 +94,7 @@ module fiber_access_tb;
     .tile_en(tile_en),
     .write_scanner_addr_in(ws_addr),
     .write_scanner_addr_in_valid(ws_addr_valid),
-    .write_scanner_block_mode(1'b0),
+    .write_scanner_block_mode(1'b1),
     .write_scanner_block_wr_in(ws_blk),
     .write_scanner_block_wr_in_valid(ws_blk_valid),
     .write_scanner_compressed(1'b1),
@@ -104,7 +103,7 @@ module fiber_access_tb;
     .write_scanner_init_blank(1'b0),
     .write_scanner_lowest_level(1'b0),
     // .write_scanner_spacc_mode(1'b0),
-    // .write_scanner_stop_lvl(16'b0),
+    .write_scanner_stop_lvl(16'b0),
     .write_scanner_tile_en(tile_en),
     .addr_to_mem(memory_addr_to_mem_p0),
     .data_to_mem(memory_0_data_in_p0),
@@ -123,16 +122,16 @@ module fiber_access_tb;
     .vector_reduce_mode(vector_reduce_mode)
     );
 
-    tile_write #(
+    glb_write #(
         .FILE_NAME("coord_in_0.txt"),
-        .TX_NUM(`TX_NUM_GLB),
+        .TX_NUM(`TX_NUM_GLB*2),
         .RAN_SHITF(0)
     ) coord_in_0_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .data(coord_in_0),
-        .ready(coord_in_0_ready),
-        .valid(coord_in_0_valid),
+        .data(ws_blk),
+        .ready(ws_blk_ready),
+        .valid(ws_blk_valid),
         .done(done[0]),
         .flush(flush)
     );
@@ -167,7 +166,7 @@ module fiber_access_tb;
     );
 
     tile_read #(
-        .FILE_NAME("pos_out_0.txt"),
+        .FILE_NAME("pos_out.txt"),
         .TX_NUM(`TX_NUM_GLB),
         .RAN_SHITF(3)
     ) pos_out_0_inst (
@@ -218,36 +217,25 @@ module fiber_access_tb;
         for(integer i = 0; i < NUM_CYCLES * 2; i = i + 1) begin
             #5 clk = ~clk;
             
-            if (clk && pos_in_0_valid) begin
+            if (clk && rs_blk_valid) begin
                 read_input_in = 1;
             end
 
             // FSM
-            if (clk && coord_in_0_valid && start_write == 0) begin
+            if (clk && ws_blk_valid && start_write == 0) begin
                 start_write = 1;
-            end
-            if (clk && start_write == 1 && coord_in_0 == DONE_TOKEN && coord_in_0_ready && coord_in_0_valid) begin
-                write_eos = 1;
-            end
-            if (clk && start_write == 1 && write_eos && |{coord_in_0 != DONE_TOKEN, coord_in_0_ready, coord_in_0_valid}) begin
-                write_eos = 0;
-                start_write = 2;
             end
 
             // DATA
-            if (clk && start_write == 1) begin
+            if (clk && start_write == 1 && ~done[0]) begin
                 write_count += 1;
             end
 
-            if (clk && start_write == 2 && wait_gap > 0) begin
-                wait_gap -= 1;
-            end
-
-            if (clk && start_write == 2 && wait_gap == 0 && start_read == 0 && read_input_in) begin
+            if (clk && start_read == 0 && read_input_in) begin
                 start_read = 1;
             end
 
-            if (clk && start_read == 1 && ~(done[2] & done[3])) begin
+            if (clk && start_read == 1 && ~done[1]) begin
                 read_count += 1;
             end
 
