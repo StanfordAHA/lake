@@ -297,7 +297,7 @@ def test_linear_read_write_dp_wf_q_rv(output_dir=None, storage_capacity=1024, da
 
     data_sizes = get_data_sizes(lt, num_ports=2)
     tp.add_pargs(data_sizes)
-    tp.add_pargs(('static', 1))
+    tp.add_pargs(('static', 0))
 
 
 if __name__ == "__main__":
