@@ -297,7 +297,7 @@ def test_linear_read_write_dp_wf_q_rv(output_dir=None, storage_capacity=1024, da
         file.write(config_define_str)
         file.write(numports_define_str)
 
-    data_sizes = get_data_sizes(lt, num_ports=2)
+    data_sizes = get_data_sizes(lt, num_ports=4)
     tp.add_pargs(data_sizes)
     tp.add_pargs(('static', 0))
 
