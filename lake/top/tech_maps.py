@@ -159,15 +159,19 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
         'cen': 'CEN_A',
         'write_en': 'WEN_A',
         'addr': 'A_A',
-        'write_data': 'D_A',
+        'write_data': 'D',
         'alt_sigs': {
             # value, width
-            'MA_WL0': (0, 1),
+            'T_LOGIC': (0, 1),
+            'T_Q_RST_A': (0, 1),
+            'MA_SAWL': (0, 1),
+            'MA_WL': (0, 1),
             'MA_WRAS1': (0, 1),
             'MA_WRAS0': (0, 1),
+            'MA_PRE': (0, 1),
+            'MA_WRT': (0, 1),
             'MA_VD1': (0, 1),
             'MA_VD0': (0, 1),
-            'MA_WRT': (0, 1),
         }
     }
 
@@ -176,20 +180,16 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
         # port RW
         'clk': 'CLK_B',
         'cen': 'CEN_B',
-        'read_en': 'RDEN_B',
-        'read_data': 'D_B',
+        # 'read_en': 'RDEN_B',
         'addr': 'A_B',
+        'read_data': 'Q',
         'alt_sigs': {
             # value, width
-            'MB_WL0': (0, 1),
-            'MB_WRAS1': (0, 1),
-            'MB_WRAS0': (0, 1),
-            'MB_VD1': (0, 1),
-            'MB_VD0': (0, 1),
-            'MB_WRT': (0, 1),
+            # Only a single pin unique to this port
+            'T_Q_RST_B': (0, 1),
         }
     }
-    if dual_port:
+    if dual_port and not reg_file:
         ports.append(dual_port_p0rw)
         ports.append(dual_port_p1r)
         name = f"IN12LP_SDPB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
