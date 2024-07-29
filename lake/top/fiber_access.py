@@ -212,7 +212,6 @@ class FiberAccess(MemoryController):
         # ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_DONE, self._rd_scan_us_pos_in_ready & (~self._output_matrix_fully_accumulated | (self._output_matrix_fully_accumulated & ~(self._highest_seen_stoken > self._S_level_1[2, 0]))))
         # ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_S0, self._rd_scan_us_pos_in_ready & self._output_matrix_fully_accumulated & (self._highest_seen_stoken > self._S_level_1[2, 0]))
 
-
         ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_S0, self._rd_scan_us_pos_in_ready & (self._highest_seen_stoken > self._S_level_1[2, 0]))
         ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_DONE, self._rd_scan_us_pos_in_ready)
         ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_REF_CNT, None)

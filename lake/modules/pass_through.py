@@ -87,14 +87,14 @@ class PassThrough(MemoryController):
         self._stream_in_fifo_in = self.var(f"stream_in_fifo_in", self.data_width + 1, packed=True)
 
         self.add_child(f"stream_in_fifo",
-                        self._stream_in_fifo,
-                        clk=self._gclk,
-                        rst_n=self._rst_n,
-                        clk_en=self._clk_en,
-                        push=self._stream_in_valid,
-                        pop=self._pop_fifo,
-                        data_in=self._stream_in,
-                        data_out=self._stream_in_fifo_in)
+                       self._stream_in_fifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._stream_in_valid,
+                       pop=self._pop_fifo,
+                       data_in=self._stream_in,
+                       data_out=self._stream_in_fifo_in)
 
         self.wire(self._stream_in_ready, ~self._stream_in_fifo.ports.full)
         self.wire(self._stream_in_valid_in, ~self._stream_in_fifo.ports.empty)  # Filter out unconfigured channels

@@ -53,7 +53,7 @@ class CrdDrop(MemoryController):
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
-        
+
         # mode selection configuration register
         # mode 0: dropping zeroes from the inner stream and their corresponding coordinates from the outer stream
         # mode 1: dropping empty fibers from the outer stream and their corresponding coordinates from the outer stream
@@ -72,7 +72,7 @@ class CrdDrop(MemoryController):
         # in the crddrop mode, this signal is used to push the inner stream token to the empty fiber drop logic
         self._inner_outfifo_push_crddrop_compress_fsm = self.var("inner_outfifo_push_crddrop_compress_fsm", 1)
         self._empty_fiber_drop_buffer_avail = self.var("empty_fiber_drop_buffer_avail", 1)
-        # inner stream output fifo push signal generated from the empty fiber drop logic 
+        # inner stream output fifo push signal generated from the empty fiber drop logic
         self._inner_outfifo_push_empty_fiber_drop = self.var("inner_outfifo_push_empty_fiber_drop", 1)
 
         self.add_crddrop_compression_fsm()
@@ -177,7 +177,7 @@ class CrdDrop(MemoryController):
                        pop=self._inner_infifo_pop,
                        data_in=self._coord_in[0],
                        data_out=self._inner_infifo_data_packed)
-        
+
         # Unpacked data and indicator signals from the fifo for ease of use
         self._inner_infifo_data = self.var("inner_infifo_data", 16)
         self._inner_infifo_is_eos = self.var("inner_infifo_is_eos", 1)
@@ -208,7 +208,7 @@ class CrdDrop(MemoryController):
                        pop=self._outer_infifo_pop,
                        data_in=self._coord_in[1],
                        data_out=self._outer_infifo_data_packed)
-        
+
         # Unpacked data and indicator signals from the fifo for ease of use
         self._outer_infifo_data = self.var("outer_infifo_data", 16)
         self._outer_infifo_is_eos = self.var("outer_infifo_is_eos", 1)
@@ -240,7 +240,7 @@ class CrdDrop(MemoryController):
                        pop=self._coord_out_ready_in[0],
                        data_in=self._inner_outfifo_data_packed,
                        data_out=self._coord_out[0])
-        
+
         # indicator signals from the fifo for ease of use
         self._inner_outfifo_full = self.var("inner_outfifo_full", 1)
 
@@ -264,7 +264,7 @@ class CrdDrop(MemoryController):
                        pop=self._coord_out_ready_in[1],
                        data_in=self._outer_infifo_data_packed,
                        data_out=self._coord_out[1])
-        
+
         # indicator signals from the fifo for ease of use
         self._outer_outfifo_full = self.var("outer_outfifo_full", 1)
 
@@ -286,7 +286,7 @@ class CrdDrop(MemoryController):
                                            self.name + "_W")
 
         # Trim the list
-        return trim_config_list(flattened, config)        
+        return trim_config_list(flattened, config)
 
     def add_crddrop_compression_fsm(self):
         ####################
@@ -313,11 +313,11 @@ class CrdDrop(MemoryController):
 
         # sticky flag that indicate that the current inner fiber is not empty
         self._clr_inner_fiber_not_empty = self.var("clr_inner_fiber_not_empty", 1)
-        self._inner_fiber_not_empty = sticky_flag(self, self._inner_is_data, 
-                                                  name="inner_fiber_not_empty", 
+        self._inner_fiber_not_empty = sticky_flag(self, self._inner_is_data,
+                                                  name="inner_fiber_not_empty",
                                                   clear=self._clr_inner_fiber_not_empty,
                                                   seq_only=True)
-            
+
         ######################################################################
         # State Machine For Outer Stream Coordinate Dropping And Compression #
         ######################################################################
@@ -342,9 +342,9 @@ class CrdDrop(MemoryController):
         ###########
         # CRDDROP #
         ###########
-        # In CRDDROP, the inner input is the lower fiber level coordinate stream, 
+        # In CRDDROP, the inner input is the lower fiber level coordinate stream,
         # and the outer is the higher level coordinate stream.
-        # The goal is to drop all empty fibers from the innner stream (the stop tokens) and 
+        # The goal is to drop all empty fibers from the innner stream (the stop tokens) and
         # their corresponding coordinates from the outer stream
         # TODO: when all the tokens are processed, should we go back to START state?
         # TODO: when all the tokens are processed, should we go back to START state?
@@ -353,8 +353,8 @@ class CrdDrop(MemoryController):
         ####################
         # DROPZERO #
         ####################
-        # In DROPZERO, the inner input stream is the value stream, 
-        # and the outer is its corresponding coordinate stream. 
+        # In DROPZERO, the inner input stream is the value stream,
+        # and the outer is its corresponding coordinate stream.
         # The goal is to drop all coordinates where its corresponding value entries are zero
         # TODO: when all the tokens are processed, should we go back to START state?
         COMPRESS.next(COMPRESS, None)
@@ -425,15 +425,15 @@ class CrdDrop(MemoryController):
                     if (self._empty_fiber_drop_buffer_avail):
                         self._inner_infifo_pop_crddrop = 1
                         self._inner_outfifo_push_crddrop = 1
-               
+
                 elif (self._inner_is_eos):
                     # the token is a S0 stop token, there's no corresponding stop token in the outer stream
                     if (self._inner_infifo_data == kts.const(0, self.data_width)):
-                        # the inner fiber is not empty, we are pushing both innner eos and outer coordinate 
-                        # check for fifo capacity and empty fiber drop buffer availability, pop both the 
-                        # inner and outer stream and push both of them. 
+                        # the inner fiber is not empty, we are pushing both innner eos and outer coordinate
+                        # check for fifo capacity and empty fiber drop buffer availability, pop both the
+                        # inner and outer stream and push both of them.
                         if (self._inner_fiber_not_empty):
-                            # TODO: fix this 
+                            # TODO: fix this
                             if (self._empty_fiber_drop_buffer_avail & ~self._outer_outfifo_full):
                                 self._inner_infifo_pop_crddrop = 1
                                 self._outer_infifo_pop_crddrop = 1
@@ -442,8 +442,8 @@ class CrdDrop(MemoryController):
                                 # end of inner fiber, clear empty flag
                                 self._clr_inner_fiber_not_empty_crddrop = 1
 
-                        # the inner fiber is empty, discard the outer coordinate by not 
-                        # pushing them into the output fifos, however, we still need to push the 
+                        # the inner fiber is empty, discard the outer coordinate by not
+                        # pushing them into the output fifos, however, we still need to push the
                         # inner eos to the empty fiber drop logic
                         else:
                             if (self._empty_fiber_drop_buffer_avail):
@@ -453,8 +453,8 @@ class CrdDrop(MemoryController):
                                 # end of inner fiber, clear empty flag
                                 self._clr_inner_fiber_not_empty_crddrop = 1
 
-                    # the inner stream is a stop token of higher dimension than S0, there must be a 
-                    # corresponding stop token comming up next in the outer fifo. We need to pop the outer 
+                    # the inner stream is a stop token of higher dimension than S0, there must be a
+                    # corresponding stop token comming up next in the outer fifo. We need to pop the outer
                     # coordinate and retain the inner eos to make the inner and outer eos aligned
                     else:
                         # the inner fiber is not empty, check for space in the outer output fifo and push the outer coordinate
@@ -462,8 +462,8 @@ class CrdDrop(MemoryController):
                             if (~self._outer_outfifo_full):
                                 self._outer_infifo_pop_crddrop = 1
                                 self._outer_outfifo_push_crddrop = 1
-                            
-                        # inner fiber is empty, discard the outer coordinate by not pushing it 
+
+                        # inner fiber is empty, discard the outer coordinate by not pushing it
                         else:
                             self._outer_infifo_pop_crddrop = 1
 
@@ -500,14 +500,14 @@ class CrdDrop(MemoryController):
                     self._outer_infifo_pop_compress = 1
 
                 else:
-                    # if the data value on the value stream is not zero, we need to check for space in the output fifos to push them 
+                    # if the data value on the value stream is not zero, we need to check for space in the output fifos to push them
                     if (~self._inner_outfifo_full & ~self._outer_outfifo_full):
                         # check for available space in both output fifos
                         self._inner_infifo_pop_compress = 1
                         self._inner_outfifo_push_compress = 1
                         self._outer_infifo_pop_compress = 1
                         self._outer_outfifo_push_compress = 1
-    
+
             # the inner and output are eos tokens or done tokens, pop and push both if there's space
             elif ((self._inner_is_eos & self._outer_is_eos) | (self._inner_is_done & self._outer_is_done)):
                 if (~self._inner_outfifo_full & ~self._outer_outfifo_full):
@@ -522,29 +522,29 @@ class CrdDrop(MemoryController):
         #############################
         # Helper Logic and Register #
         #############################
-        # registers for buffering the inner stream data and eos indicator 
+        # registers for buffering the inner stream data and eos indicator
         self._empty_fiber_drop_buffer_en = self.var("empty_fiber_drop_data_buffer_en", 1)
-        self._empty_fiber_drop_data_buffer = register(self, self._inner_infifo_data, 
+        self._empty_fiber_drop_data_buffer = register(self, self._inner_infifo_data,
                                                       enable=self._empty_fiber_drop_buffer_en,
                                                       name="empty_fiber_drop_data_buffer")
-        self._empty_fiber_drop_eos_buffer = register(self, self._inner_infifo_is_eos, 
+        self._empty_fiber_drop_eos_buffer = register(self, self._inner_infifo_is_eos,
                                                      enable=self._empty_fiber_drop_buffer_en,
                                                      name="empty_fiber_drop_eos_buffer")
         # indicator flag for indicating if the empty fiber drop buffer is occupied or not
-        # data is sucessfully pushed to the buffer (by setting the empty_fiber_drop_buffer_en singal), 
-        # it will be valid. the only situation where it is not going to be valid is when we are pushing 
+        # data is sucessfully pushed to the buffer (by setting the empty_fiber_drop_buffer_en singal),
+        # it will be valid. the only situation where it is not going to be valid is when we are pushing
         # the content in the buffer to the outpuf fifo and no data is coming up to replace it
         self._empty_fiber_drop_buffer_valid = sticky_flag(self, self._empty_fiber_drop_buffer_en,
-                                                          clear=self._inner_outfifo_push_empty_fiber_drop & ~self._empty_fiber_drop_buffer_en, 
+                                                          clear=self._inner_outfifo_push_empty_fiber_drop & ~self._empty_fiber_drop_buffer_en,
                                                           name="empty_fiber_drop_buffer_valid", seq_only=True)
         self._empty_fiber_drop_buffer_avail = self.var("empty_fiber_drop_buffer_avail", 1)
         # indicator flag for indicating if the empty fiber drop is not seeing leading stop tokens
         self._clr_not_leading_eos = self.var("clr_not_leading_eos", 1)
         # it's no longer possible to have a leading stop token as soon as we see a valid data or done token
-        self._not_leading_eos = sticky_flag(self, self._inner_is_data | self._inner_is_done, 
+        self._not_leading_eos = sticky_flag(self, self._inner_is_data | self._inner_is_done,
                                             clear=self._clr_not_leading_eos,
                                             name="leading_not_eos", seq_only=True)
-        
+
         # indicators showing whether the buffered data is a coordinate, stop token or done token
         self._empty_fiber_drop_buffer_is_data = self.var("empty_fiber_drop_buffer_is_data", 1)
         self.wire(self._empty_fiber_drop_buffer_is_data, self._empty_fiber_drop_buffer_valid & ~self._empty_fiber_drop_eos_buffer)
@@ -552,7 +552,7 @@ class CrdDrop(MemoryController):
         self.wire(self._empty_fiber_drop_buffer_is_eos, self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer & (self._empty_fiber_drop_data_buffer[9, 8] == kts.const(0, 2)))
         self._empty_fiber_drop_buffer_is_done = self.var("empty_fiber_drop_buffer_is_done", 1)
         self.wire(self._empty_fiber_drop_buffer_is_done, self._empty_fiber_drop_buffer_valid & self._empty_fiber_drop_eos_buffer & (self._empty_fiber_drop_data_buffer[9, 8] == kts.const(1, 2)))
-        
+
         @always_comb
         def empty_fiber_drop_buffer_logic(self):
             # default value, do nothing
@@ -588,7 +588,7 @@ class CrdDrop(MemoryController):
                 # if the buffered data is done token or coordinate, and there's space in the output fifo, push the data
                 if ((self._empty_fiber_drop_buffer_is_data | self._empty_fiber_drop_buffer_is_done) & ~self._inner_outfifo_full):
                     self._inner_outfifo_push_empty_fiber_drop = 1
-                # if the current buffered data is eos, and the data coming up is coordinate or done token 
+                # if the current buffered data is eos, and the data coming up is coordinate or done token
                 # check for space in the output fifo and push the eos
                 elif (self._empty_fiber_drop_buffer_is_eos & (self._inner_is_done | self._inner_is_data) & ~self._inner_outfifo_full):
                     self._inner_outfifo_push_empty_fiber_drop = 1
@@ -603,7 +603,7 @@ class CrdDrop(MemoryController):
             if (~self._empty_fiber_drop_buffer_valid):
                 self._empty_fiber_drop_buffer_avail = 1
             else:
-                # the buffer is not empty, but it is available if the current buffered data is getting 
+                # the buffer is not empty, but it is available if the current buffered data is getting
                 # pushed to the output fifo and can be replaced
                 if (self._inner_outfifo_push_empty_fiber_drop):
                     self._empty_fiber_drop_buffer_avail = 1
