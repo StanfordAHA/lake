@@ -117,7 +117,7 @@ def get_two_read_test():
         'name': 'write_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -129,7 +129,7 @@ def get_two_read_test():
         },
         'vec_in_config': {
             'dimensionality': 2,
-            'extents': [4, 64],
+            'extents': [4, 16],
             'address': {
                 'strides': [1, 4],
                 'offset': 0
@@ -141,7 +141,7 @@ def get_two_read_test():
         },
         'vec_out_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -157,15 +157,15 @@ def get_two_read_test():
     pw_vec_r = 0
     pr_vec_r = 1
 
-    pr_raw_idx_vec_r = 0
+    pr_raw_idx_vec_r = 1
     pw_raw_idx_vec_r = 0
     raw_comp_vec_r = LFComparisonOperator.LT.value
     raw_scalar_vec_r = 0
     raw_constraint_vec_r = (pr_vec_r, pr_raw_idx_vec_r,
                             pw_vec_r, pw_raw_idx_vec_r, raw_comp_vec_r, raw_scalar_vec_r)
 
+    pr_war_idx_vec_r = 1
     pw_war_idx_vec_r = 0
-    pr_war_idx_vec_r = 0
     war_comp_vec_r = LFComparisonOperator.LT.value
     war_scalar_vec_r = 2
     war_constraint_vec_r = (pw_vec_r, pw_war_idx_vec_r, pr_vec_r,
@@ -176,7 +176,7 @@ def get_two_read_test():
         'name': 'read_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -188,7 +188,7 @@ def get_two_read_test():
         },
         'vec_in_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -218,7 +218,7 @@ def get_two_read_test():
         'name': 'read_port_1',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -230,7 +230,7 @@ def get_two_read_test():
         },
         'vec_in_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -262,16 +262,32 @@ def get_two_read_test():
     pw_raw_idx = 0
     raw_comp = LFComparisonOperator.LT.value
     raw_scalar = 0
-    raw_constraint = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
+    raw_constraint1 = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
 
     pw_war_idx = 0
     pr_war_idx = 0
     war_comp = LFComparisonOperator.LT.value
-    war_scalar = 64
-    war_constraint = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
+    war_scalar = 16
+    war_constraint1 = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
+
+    pw = 0
+    pr = 3
+
+    pr_raw_idx = 0
+    pw_raw_idx = 0
+    raw_comp = LFComparisonOperator.LT.value
+    raw_scalar = 0
+    raw_constraint2 = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
+
+    pw_war_idx = 0
+    pr_war_idx = 0
+    war_comp = LFComparisonOperator.LT.value
+    war_scalar = 16
+    war_constraint2 = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
 
     # Just have read follow write
-    linear_test['constraints'] = [raw_constraint, war_constraint]
+    linear_test['constraints'] = [raw_constraint1, war_constraint1,
+                                  raw_constraint2, war_constraint2]
 
     return linear_test
 
@@ -434,7 +450,7 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_four_port_spec = build_four_port_wide_fetch_rv(storage_capacity=storage_capacity, data_width=data_width,
-                                                         physical=physical, vec_width=vec_width)
+                                                          physical=physical, vec_width=vec_width)
     simple_four_port_spec.visualize_graph()
     simple_four_port_spec.generate_hardware()
     simple_four_port_spec.extract_compiler_information()
@@ -511,4 +527,4 @@ if __name__ == "__main__":
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_qp_wf_rv(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                 physical=args.physical, vec_width=args.vec_width, tp=tp, test=args.test)
+                                    physical=args.physical, vec_width=args.vec_width, tp=tp, test=args.test)

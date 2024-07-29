@@ -46,13 +46,15 @@ class MemoryInterfaceDecoder(Component):
         self.p_intf = {}
         self.p_intf['direction'] = self.port_direction
 
+        if self.runtime == Runtime.DYNAMIC:
+            self.p_intf['grant'] = self.output("grant", 1)
+            self._grant_lcl = self.var("grant_lcl", 1)
+
         # Create the port facing side
         if self.port_direction == Direction.IN:
             self.p_intf['addr'] = self.input("addr", self.port_intf['addr'].width)
             self.p_intf['data'] = self.input("data", self.port_intf['data'].width)
             self.p_intf['en'] = self.input("en", 1)
-            if self.runtime == Runtime.DYNAMIC:
-                self.p_intf['grant'] = self.output("grant", 1)
             self.wire(self._resource_ready_lcl, kts.const(1, 1))
 
         elif self.port_direction == Direction.OUT:
@@ -85,7 +87,7 @@ class MemoryInterfaceDecoder(Component):
                 # shift_register_chain = None
                 # Shift register on the actual transaction
                 shift_reg_en_in = self.var("shift_reg_en_in", 1)
-                shift_reg_en_out = shift_reg(self, shift_reg_en_in, chain_depth=self.delay)
+                shift_reg_en_out = shift_reg(self, shift_reg_en_in & self._grant_lcl, chain_depth=self.delay)
                 # Shift register on the decoded enable so we know which to use (one-hot mux sel)
 
                 self.add_child(f"reg_fifo",
@@ -94,7 +96,9 @@ class MemoryInterfaceDecoder(Component):
                                 rst_n=self._rst_n,
                                 # clk_en=self._clk_en,
                                 clk_en=kts.const(1, 1),
+                                # Only push the request if enable is high and the grant is high
                                 push=shift_reg_en_out,
+                                # push=shift_reg_en_out,
                                 pop=data_to_port_rv.get_ready(),
                                 data_in=muxed_data_in,
                                 data_out=data_to_port_rv.get_port())
@@ -119,9 +123,6 @@ class MemoryInterfaceDecoder(Component):
                 self.wire(data_to_port_rv.get_port(), muxed_data_in)
             # else:
                 # self.p_intf['data'] = self.output("data", self.port_intf['data'].width)
-
-            if self.runtime == Runtime.DYNAMIC:
-                self.p_intf['grant'] = self.output("grant", 1)
         else:
             raise NotImplementedError
 
@@ -190,7 +191,9 @@ class MemoryInterfaceDecoder(Component):
         # Need to OR together all the grants...
         if self.runtime == Runtime.DYNAMIC:
             all_grants = [self.mp_intf[i_]['grant'] for i_ in range(len(self.memports))]
-            self.wire(self.p_intf['grant'], kts.concat(*all_grants).r_or())
+            self.wire(self._grant_lcl, kts.concat(*all_grants).r_or())
+            self.wire(self.p_intf['grant'], self._grant_lcl)
+            # self.wire(self.p_intf['grant'], kts.concat(*all_grants).r_or())
 
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()

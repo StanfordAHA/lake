@@ -54,8 +54,8 @@ class ScheduleGenerator(Component):
         self._restart = self.input("restart", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                size=self.dimensionality_support,
+                                packed=True, explicit_array=True)
 
         ### Outputs
         self._step_out = self.output("step", 1)
@@ -191,8 +191,8 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self._restart = self.input("restart", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                size=self.dimensionality_support,
+                                packed=True, explicit_array=True)
         self._extents = self.input("extents", id_ext_width,
                                    size=self.dimensionality_support,
                                    packed=True, explicit_array=True)
@@ -216,11 +216,11 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
 
         # Now we need to output the iterators and take in the comparisons
         self._iterators_out = self.output("iterators_out_lcl", id_ext_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                          size=self.dimensionality_support,
+                                          packed=True, explicit_array=True)
         self._extents_out = self.output("extents_out_lcl", id_ext_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                        size=self.dimensionality_support,
+                                        packed=True, explicit_array=True)
 
         self._comparisons_in = self.input("comparisons", self.num_comparisons)
 

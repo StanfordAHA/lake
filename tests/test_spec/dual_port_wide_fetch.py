@@ -136,7 +136,7 @@ def get_linear_test():
             },
             'schedule': {
                 'strides': [8],
-                'offset': 16
+                'offset': 17
             }
         },
         'vec_out_config': {
@@ -148,7 +148,7 @@ def get_linear_test():
             },
             'schedule': {
                 'strides': [1, 4],
-                'offset': 17
+                'offset': 18
             }
         }
     }

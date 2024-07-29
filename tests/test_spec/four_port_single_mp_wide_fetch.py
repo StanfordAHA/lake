@@ -326,7 +326,7 @@ def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_wi
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_four_port_spec = build_four_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
-                                                         physical=physical, vec_width=vec_width)
+                                                       physical=physical, vec_width=vec_width)
     simple_four_port_spec.visualize_graph()
     simple_four_port_spec.generate_hardware()
     simple_four_port_spec.extract_compiler_information()
