@@ -43,153 +43,204 @@ def init_module():
 
     k.verilog(fiber_access, filename=f"./modules/Fiber_access.sv", optimize_if=False)
 
-    sparse_helper.update_tcl("fiber_glb_crd_tb")
+    sparse_helper.update_tcl("fiber_glb_tb")
 
 
-def create_gold(in_crd, in_ref):
-    i_c_cpy = in_crd[:]
-    i_r_cpy = in_ref[:]
+def create_random_stream(rate, size, dim, f_type="seg", allow_empty=False):
+    assert rate >= 0 and rate <= 1, "Rate should be between 0 and 1"
+    num_elem = size ** dim
+    mat_1d = np.random.randint(-1024, 1024, size=num_elem)
+    zero_index = random.sample(range(num_elem), int(num_elem * rate))
+    for i in zero_index:
+        mat_1d[i] = 0
+    mat_nd = mat_1d.reshape((-1, size))
+    mat_nd = mat_nd.tolist()
+    # print(mat_nd)
+    # print(mat_1d)
 
-    # print(in_crd)
-    # print(in_ref)
-    # print("============")
-    # process write
-    buf_size = 1000
-    fill = 0
-    done = False
-    time = 0
+    if f_type == "seg":
+        if allow_empty:
+            seg = [0]
+            cur_seg = 0
+            crd = []
+            for fiber in mat_nd:
+                sub_crd = [e for e in fiber if e != 0]
+                cur_seg += len(sub_crd)
+                seg.append(cur_seg)
+                crd += sub_crd
+        else:
+            seg = [0]
+            for i in range(len(mat_nd)):
+                seg.append((i+1)*size)
+            crd = [i for i in range(len(mat_1d))]
+        seg.insert(0, len(seg))
+        crd.insert(0, len(crd))
+        # print(seg)
+        # print(crd)
+        out_stream = seg + crd
+    else:
+        if allow_empty:
+            val = mat_1d.tolist()
+        else:
+            val = [e for e in mat_1d if e != 0]
+        val.insert(0, len(val))
+        out_stream = val
+    # print(out_stream)
+    return out_stream
 
-    wrscan = CompressWrScan(size=buf_size, seg_size=buf_size, fill=fill)
+def create_gold(ic, FA_ID, base, stride):
+    gc = []
+    cur_addr = base
+    for i in ic:
+        if i[0] == FA_ID:
+            o_s = i[:]
+            o_s[0] = cur_addr
+            cur_addr += stride
+            gc.append(o_s)
+    return gc
 
-    while not done and time < TIMEOUT:
-        if len(in_crd) > 0:
-            wrscan.set_input(in_crd.pop(0))
-
-        wrscan.update()
-
-        # print("Timestep", time, "\t WrScan:", wrscan.out_done())
-
-        done = wrscan.out_done()
-        time += 1
-
-    print("sam write cycle count: ", time)
-    # print(wrscan.get_seg_arr())
-    # print(wrscan.get_arr())
-    crdscan = CompressedCrdRdScan(seg_arr=wrscan.get_seg_arr(), crd_arr=wrscan.get_arr())
-    done = False
-    time = 0
-    out_crd = []
-    out_ref = []
-
-    while not done and time < TIMEOUT:
-        if len(in_ref) > 0:
-            crdscan.set_in_ref(in_ref.pop(0))
-
-        crdscan.update()
-
-        out_crd.append(crdscan.out_crd())
-        out_ref.append(crdscan.out_ref())
-
-        # print("Timestep", time, "\t Crd:", crdscan.out_crd(), "\t Ref:", crdscan.out_ref())
-
-        done = crdscan.done
-        time += 1
-
-    print("sam read cycle count: ", time)
-    
-    out_crd = remove_emptystr(out_crd)
-    out_ref = remove_emptystr(out_ref)
-
-    # print(out_crd)
-    # print(out_ref)
-
-    out_c = []
-    out_r = []
-    for i in range(len(out_crd)):
-        if out_crd[i] != 'N':
-            out_c.append(out_crd[i])
-            out_r.append(out_ref[i])
-    st = [i_c_cpy, i_r_cpy, out_c, out_r]
-    tr_st = [convert_stream_to_onyx_interp(i) for i in st]
-
-    return tr_st
-
+def check_streams(stream_out, gold):
+    assert len(stream_out) == len(gold), "Output length didn't match gold length"
+    for i in range(len(stream_out)):
+        assert stream_out[i] == gold[i], f"Output value {stream_out[i]} didn't match gold value {gold[i]}"
 
 def load_test_module(test_name):
-    if test_name == "direct_l0":
-        in_crd = [2, 0, 4, 4, 0, 1, 2, 3]
-        return in_crd
+    FA_ID = 1885
+    base = 800
+    stride = 100
 
-    if test_name == "direct_l1":
-        in_crd = [5, 0, 4, 7, 9, 12, 12, 0, 1, 2, 3, 0, 1, 3, 0, 2, 0, 1, 3]
-        return in_crd
+    if test_name == "1stream_1_crd":
+        in_crd = [[1885, 5, 0, 4, 7, 9, 12, 12, 0, 1, 2, 3, 0, 1, 3, 0, 2, 0, 1, 3]]
+        gc = create_gold(in_crd, FA_ID, base, stride)
+        seg_mode = 1
+        return in_crd, gc, seg_mode
 
-    if test_name == "direct_l2":
-        in_crd = [19, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,\
-                    19, 2, 4, 1, 4, 5, 9, 1, 0, 2, 7, 8, 2, 0, 8, 2, 0, 7, 1, 9]
-        return in_crd
+    if test_name == "1stream_1_val":
+        in_crd = [[1885, 5, 0, 4, 7, 9, 12]]
+        gc = create_gold(in_crd, FA_ID, base, stride)
+        seg_mode = 0
+        return in_crd, gc, seg_mode
+    
+    if test_name == "2stream_1_crd":
+        in_crd1 = [1, 3, 0, 1, 2, 2, 5, 6]
+        in_crd2 = [1885, 5, 0, 1, 2, 5, 6, 6, 5, 6, 7, 8, 9, 10]
+        ic = [in_crd1, in_crd2]
 
-    if test_name == "diag":
-        in_crd = [7, 0, 1, 2, 3, 4, 5, 6, 6, 1, 2, 3, 4, 5, 6]
-        return in_crd
+        # gc = [[800, 5, 0, 1, 2, 5, 6, 6, 5, 6, 7, 8, 9, 10]]
+        gc = create_gold(ic, FA_ID, base, stride)
+        seg_mode = 1
+
+        return ic, gc, seg_mode
+
+
+    if test_name == "2stream_1_val":
+        in_crd1 = [1, 3, 0, 1, 2]
+        in_crd2 = [1885, 5, 0, 1, 2, 5, 6]
+        ic = [in_crd1, in_crd2]
+
+        # gc = [[800, 5, 0, 1, 2, 5, 6, 6, 5, 6, 7, 8, 9, 10]]
+        gc = create_gold(ic, FA_ID, base, stride)
+        seg_mode = 0
+
+        return ic, gc, seg_mode
+
+    if test_name == "4stream_1_crd":
+        in_crd1 = [1, 3, 0, 1, 2, 2, 5, 6]
+        in_crd2 = [1885, 5, 0, 1, 2, 5, 6, 6, 5, 6, 7, 8, 9, 10]
+        in_crd3 = [1, 3, 0, 1, 2, 2, 5, 6]
+        in_crd4 = [1885, 3, 0, 1, 2, 2, 5, 6]
+        ic = [in_crd1, in_crd2, in_crd3, in_crd4]
+
+        # gc = [[800, 5, 0, 1, 2, 5, 6, 6, 5, 6, 7, 8, 9, 10], [900, 3, 0, 1, 2, 2, 5, 6]]
+        gc = create_gold(ic, FA_ID, base, stride)
+        seg_mode = 1
+
+        return ic, gc, seg_mode
+
+
+    if test_name == "4stream_1_val":
+        in_crd1 = [1, 3, 0, 1, 2]
+        in_crd2 = [1885, 5, 0, 1, 2, 5, 6]
+        in_crd3 = [1, 3, 0, 1, 2]
+        in_crd4 = [1885, 3, 0, 1, 2]
+        ic = [in_crd1, in_crd2, in_crd3, in_crd4]
+
+        # gc = [[800, 5, 0, 1, 2, 5, 6, 6, 5, 6, 7, 8, 9, 10], [900, 3, 0, 1, 2, 2, 5, 6]]
+        gc = create_gold(ic, FA_ID, base, stride)
+        seg_mode = 0
+
+        return ic, gc, seg_mode
 
     elif test_name[0:2] == "rd":
-        size = int(test_name.split("_")[2])
-        f_n = random.randint(1, 64)
-        if test_name[3] == "1":
-            f = random.sample(range(int(size * 1.5)), size)
-            f.sort()
-            f = [2, 0, size, size] + f
-            return f
-        fibers =[]
-        size = size // f_n
-        if size == 0:
-            size = 1 #ensure there is something
-        for i in range(f_n):
-            crd = random.sample(range(int(size * 1.5)), size)
-            crd.sort()
-            fibers.append(crd)
-        seg = []
-        seg.append(len(fibers) + 1)
-        seg.append(0)
-        cur_ptr = 0
-        for f in fibers:
-            cur_ptr += len(f)
-            seg.append(cur_ptr)
-            assert len(f) > 0, "Fiber length is 0"
-            assert len(f) == seg[-1] - seg[-2], "Fiber length is not consistent"
-        crd = [seg[-1]]
-        for f in fibers:
-            crd += f
-        return seg + crd
+        args = test_name.split("_")
+        single = args[1] == "single"
+        seg_mode = args[3] == "crd"
+
+        # parameter
+        total_st = 16
+        if single:
+            active_st = total_st
+        else:
+            active_st = random.randint(1, total_st)
+        
+        if seg_mode:
+            f_type = "seg"
+        else:
+            f_type = "val"
+
+        rate_range = [0.8, 1.0]
+        dim = [1, 2]
+        size_range = [1, 8]
+
+        allow_empty = False
+
+        mask_stream = [i for i in range(total_st)]
+        mask_stream = random.sample(mask_stream, active_st)
+        for i in range(total_st):
+            f = create_random_stream(random.uniform(rate_range[0], rate_range[1]), random.randint(size_range[0], size_range[1]), random.choice(dim), f_type, allow_empty)
+            if i in mask_stream:
+                f.insert(0, FA_ID)
+                ic.append(f)
+            else:
+                id = random.randint(0, 4095)
+                while id == FA_ID:
+                    id = random.randint(0, 4095)
+                f.insert(0, id)
+                ic.append(f)
+        
+        gc = create_gold(ic, FA_ID, base, stride)
+        if seg_mode:
+            seg_mode = 1
+        else:
+            seg_mode = 0
+        return ic, gc, seg_mode
+
         
     else:
-        in_crd = [2, 0, 1, 1, 0]
-        return in_crd
+        raise Exception("Invalid test name")
 
 
-def module_iter_basic(test_name, add_test=""):
-    ic = load_test_module(test_name)
-
-    if add_test != "" and add_test != "void":
-        additional_t = load_test_module(add_test)
-        ic = ic + additional_t
+def module_iter_basic(test_name):
+    ic, gc, seg_mode = load_test_module(test_name)
 
     print(ic)
-    gc = ic[:]
+    print(gc)
+    ic_s = []
+    for i in ic:
+        ic_s = ic_s + i
+    print(ic_s)
+    print(seg_mode)
 
-    sparse_helper.write_txt("coord_in_0.txt", ic)
+    sparse_helper.write_txt("stream_in_0.txt", ic_s)
 
-    sparse_helper.clear_txt("coord_out.txt")
+    sparse_helper.clear_txt("stream_out.txt")
 
+    #crd mode and seg mode are the same. seg mode and val mode are different
     #run command "make sim" to run the simulation
-    if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_crd_tb.sv", "TOP=fiber_glb_crd_tb",\
-                              "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
-    else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_crd_tb.sv",\
-                             "TOP=fiber_glb_crd_tb", "TX_NUM_GLB=4", "TEST_UNIT=Fiber_access.sv"\
-                             ], capture_output=True, text=True)
+    sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_tb.sv", "TOP=fiber_glb_tb",\
+                            f"TX_NUM_0={len(ic)}", f"TX_NUM_1={len(gc)}", f"SEG_MODE={seg_mode}",\
+                            "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
+
     output = sim_result.stdout
     # print(output)
     cycle_count_line = output[output.find("write cycle count:"):]
@@ -197,54 +248,48 @@ def module_iter_basic(test_name, add_test=""):
     print(lines[0])
     print(lines[1])
 
-    coord_out = sparse_helper.read_glb("coord_out.txt")
-    # print(coord_out)
+    stream_out = sparse_helper.read_glb_stream("stream_out.txt", len(gc), seg_mode)
+    print(stream_out)
 
     #compare each element in the output from coord_out.txt with the gold output
-    assert len(coord_out) == len(gc), \
-        f"Output length {len(coord_out)} didn't match gold length {len(gc)}"
-    for i in range(len(coord_out)):
-        assert coord_out[i] == gc[i], \
-            f"Output {coord_out[i]} didn't match gold {gc[i]} at index {i}"
+    check_streams(stream_out, gc)
     
     print(test_name, " passed\n")
 
 
-def test_iter_basic():
+# def test_iter_crd_basic():
+#     init_module()
+#     test_list = ["1stream_1_crd", "2stream_1_crd", "4stream_1_crd"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+# def test_iter_val_basic():
+#     init_module()
+#     test_list = ["1stream_1_val", "2stream_1_val", "4stream_1_val"]
+#     for test in test_list:
+#         module_iter_basic(test)
+
+
+def test_single_stream_random_crd():
     init_module()
-    test_list = ["direct_l0", "direct_l1", "direct_l2", "diag", "xxx"]
-    for test in test_list:
-        module_iter_basic(test)
+    for test in range(30):
+        module_iter_basic("rd_single_crd")
 
 
-def test_iter_random():
-    init_module()
-    for i in range(30):
-        size = random.randint(1, 200)
-        module_iter_basic(f"rd_1d_{size}")
+# def test_single_stream_random_val():
+#     init_module()
+#     for test in range(30):
+#         module_iter_basic("rd_single_val")
 
 
-def test_iter_random():
-    init_module()
-    for i in range(30):
-        size = random.randint(1, 200)
-        module_iter_basic(f"rd_Nd_{size}")
+# def test_multi_stream_random_crd():
+#     init_module()
+#     for test in range(30):
+#         module_iter_basic("rd_multi_crd")
 
 
-def test_iter_seq():
-    init_module()
-    module_iter_basic("direct_l0", "direct_l1")
-    module_iter_basic("direct_l2", "diag")
-
-
-def test_iter_seq_random():
-    init_module()
-    test_list = ["direct_l0", "direct_l1", "direct_l2", "diag"]
-    for i in range(100):
-        if i % 2 == 0:
-            test_list.append(f"rd_1d_{random.randint(1, 400)}")
-        else:
-            test_list.append(f"rd_Nd_{random.randint(1, 400)}")
-    for i in range(30):
-        rand = random.sample(test_list, 2)
-        module_iter_basic(rand[0], rand[1])
+# def test_multi_stream_random_val():
+#     init_module()
+#     for test in range(30):
+#         module_iter_basic("rd_multi_val")

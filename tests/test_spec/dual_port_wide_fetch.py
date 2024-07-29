@@ -12,12 +12,17 @@ import argparse
 import os
 
 
-def build_dual_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
+def build_dual_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6,
+                               vec_width=4, physical=False, reg_file=False) -> Spec:
+
+    read_delay = 0 if reg_file else 1
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
+                   vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
+                    vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, out_port)
 
@@ -35,12 +40,13 @@ def build_dual_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int =
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
     if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=True)
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width,
+                               dual_port=True, reg_file=reg_file)
 
     # 1024 Bytes
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
     wr_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.W, delay=1)
-    rd_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=1)
+    rd_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.R, delay=read_delay)
     ls.register(stg, wr_mem_port, rd_mem_port)
 
     # All cores are registered at this point
@@ -136,7 +142,7 @@ def get_linear_test():
             },
             'schedule': {
                 'strides': [8],
-                'offset': 16
+                'offset': 17
             }
         },
         'vec_out_config': {
@@ -148,7 +154,7 @@ def get_linear_test():
             },
             'schedule': {
                 'strides': [1, 4],
-                'offset': 17
+                'offset': 18
             }
         }
     }
@@ -157,7 +163,7 @@ def get_linear_test():
 
 
 def test_linear_read_write_dp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
-                                 tp: TestPrepper = None):
+                                 tp: TestPrepper = None, reg_file=False):
 
     assert tp is not None
 
@@ -171,7 +177,7 @@ def test_linear_read_write_dp_wf(output_dir=None, storage_capacity=1024, data_wi
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_single_port_spec = build_dual_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
-                                                         physical=physical, vec_width=vec_width)
+                                                         physical=physical, vec_width=vec_width, reg_file=reg_file)
     simple_single_port_spec.visualize_graph()
     simple_single_port_spec.generate_hardware()
     simple_single_port_spec.extract_compiler_information()
@@ -215,7 +221,7 @@ def test_linear_read_write_dp_wf(output_dir=None, storage_capacity=1024, data_wi
         file.write(config_define_str)
         file.write(numports_define_str)
 
-    data_sizes = get_data_sizes(lt)
+    data_sizes = get_data_sizes(lt, num_ports=2)
     tp.add_pargs(data_sizes)
     tp.add_pargs(('static', 1))
 
@@ -226,6 +232,7 @@ if __name__ == "__main__":
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
     parser.add_argument("--vec_width", type=int, default=4)
+    parser.add_argument("--reg_file", action="store_true")
     parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
@@ -241,4 +248,4 @@ if __name__ == "__main__":
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_dp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                 physical=args.physical, vec_width=args.vec_width, tp=tp)
+                                 physical=args.physical, vec_width=args.vec_width, tp=tp, reg_file=args.reg_file)

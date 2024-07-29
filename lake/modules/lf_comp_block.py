@@ -24,8 +24,11 @@ class LFCompBlock(Component):
         self._input_counter = self.input("leader_count", self.in_width)
         self._output_counter = self.input("follower_count", self.out_width)
 
+        # The comparison will always be 1 if not enabled - for reduction and in ScheduleGenerator
+        self._enable_comparison = self.config_reg(name="enable_comparison", width=1)
         # Output a single comparison
         self._comparison = self.output("comparison", 1)
+        self._comparison_lcl = self.var("comparison_lcl", 1)
 
         # Get number of entries in comparison for doing bit width
         num_comps = len(LFComparisonOperator)
@@ -43,17 +46,19 @@ class LFCompBlock(Component):
 
         @always_comb
         def calculate_comparison():
-            self._comparison = 0
+            self._comparison_lcl = 0
             if self._comp_reg == LFComparisonOperator.LT.value:
-                self._comparison = self._input_counter < self._output_counter + self._scalar_reg
+                self._comparison_lcl = self._input_counter < self._output_counter + self._scalar_reg
             elif self._comp_reg == LFComparisonOperator.GT.value:
-                self._comparison = self._input_counter > self._output_counter + self._scalar_reg
+                self._comparison_lcl = self._input_counter > self._output_counter + self._scalar_reg
             elif self._comp_reg == LFComparisonOperator.EQ.value:
-                self._comparison = self._input_counter == self._output_counter + self._scalar_reg
+                self._comparison_lcl = self._input_counter == self._output_counter + self._scalar_reg
             elif self._comp_reg == LFComparisonOperator.LTE.value:
-                self._comparison = self._input_counter <= self._output_counter + self._scalar_reg
+                self._comparison_lcl = self._input_counter <= self._output_counter + self._scalar_reg
 
         self.add_code(calculate_comparison)
+
+        self.wire(self._comparison, self._comparison_lcl | ~self._enable_comparison)
 
         self.interfaces = {}
         self.interfaces['in_counter'] = self._input_counter
@@ -67,6 +72,7 @@ class LFCompBlock(Component):
         return self.interfaces
 
     def gen_bitstream(self, comparator, scalar):
+        self.configure(self._enable_comparison, 1)
         self.configure(self._comp_reg, comparator)
         self.configure(self._scalar_reg, scalar)
         return self.get_configuration()

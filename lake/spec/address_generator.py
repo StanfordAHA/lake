@@ -106,13 +106,13 @@ class AddressGenerator(Component):
         self.configure(self._starting_addr, address_map['offset'])
         if self.exploit_recurrence:
             extent_sub_1 = [extent_item - 1 for extent_item in extents]
-            tform_strides = [extents[0]]
+            tform_strides = [address_map['strides'][0]]
             offset = 0
             for i in range(dimensionality - 1):
                 offset -= (extent_sub_1[i] * address_map['strides'][i])
                 tform_strides.append(address_map['strides'][i + 1] + offset)
 
-            self.configure(self._strides, address_map['strides'])
+            self.configure(self._strides, tform_strides)
         else:
             self.configure(self._strides, address_map['strides'])
         # This will return pairs of ranges with values w.r.t. the node's configuration

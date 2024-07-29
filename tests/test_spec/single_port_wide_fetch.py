@@ -169,7 +169,7 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_single_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
-                                                         physical=physical, vec_width=vec_width)
+                                                           physical=physical, vec_width=vec_width)
     simple_single_port_spec.visualize_graph()
     simple_single_port_spec.generate_hardware()
     simple_single_port_spec.extract_compiler_information()
@@ -213,7 +213,7 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
         file.write(config_define_str)
         file.write(numports_define_str)
 
-    data_sizes = get_data_sizes(lt)
+    data_sizes = get_data_sizes(lt, num_ports=2)
     tp.add_pargs(data_sizes)
     tp.add_pargs(('static', 1))
 

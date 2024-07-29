@@ -351,30 +351,24 @@ class BuffetLike(MemoryController):
         self._joined_in_fifo = self.var("joined_in_fifo", 1)
 
         self._en_curr_bounds = self.var("en_curr_bounds", self.num_ID)
-        # self._curr_bounds = self.var("curr_bounds", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
-        self._curr_bounds = [register(self, self._wr_addr_fifo_out_data, enable=self._en_curr_bounds[i],
-                                      name=f"curr_bounds_{i}", packed=True, reset_value=kts.const(int(2**self._wr_addr_fifo_out_data.width) - 1,
-                                                                                                  self._wr_addr_fifo_out_data.width)) for i in range(self.num_ID)]
+        self._clr_curr_bounds = self.var("clr_curr_bounds", self.num_ID)
+        self._curr_bounds = [register(self, self._wr_addr_fifo_out_data + 1, enable=self._en_curr_bounds[i], clear=self._clr_curr_bounds[i],
+                                      name=f"curr_bounds_{i}", packed=True) for i in range(self.num_ID)]
 
         self._en_curr_base = self.var("en_curr_base", self.num_ID)
         self._first_base_set = [sticky_flag(self, self._en_curr_base[idx_], name=f"first_base_set_{idx_}", seq_only=True) for idx_ in range(self.num_ID)]
-        # self._curr_base = [register(self, self._wr_addr, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
-        # self._curr_base = [register(self, self._curr_bounds[i] + 1, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
-        # self._curr_base = [register(self, (self._curr_bounds[i] >> self.subword_addr_bits) + 1, enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
         self._curr_base_pre = [self.var(f"curr_base_pre_{i}", self.data_width) for i in range(self.num_ID)]
-        # self._curr_base = [register(self, kts.ternary(self._first_base_set[i],
-        #                                               (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i],
-        #                                               0), enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
         self._curr_base = [register(self, self._curr_base_pre[i], enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
 
-        [self.wire(self._curr_base_pre[i], kts.ternary(kts.const(1, 1),
-        # [self.wire(self._curr_base_pre[i], kts.ternary(self._first_base_set[i],
-                                                       (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i],
-                                                       0)) for i in range(self.num_ID)]
+        [self.wire(self._curr_base_pre[i], kts.ternary(self._curr_bounds[i][self.subword_addr_bits-1,0] == kts.const(0, self.subword_addr_bits),
+                                                       (self._curr_bounds[i] >> self.subword_addr_bits) + self._curr_base[i],
+                                                       (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i])) for i in range(self.num_ID)]
 
+        self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]
         self._read_pop_full = self.var("read_pop_full", self.num_ID)
         self._read_pop = [self.var(f"read_pop_{i}", 1) for i in range(self.num_read_ports)]
-        self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=kts.const(1, 1), name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
+        # self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=kts.const(1, 1), name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
+        self._read_joined_d1 = [register(self, self._read_joined[idx] & self._read_pop[idx], enable=~self._rd_rsp_fifo_full[idx], name=f"read_joined_d1_{idx}") for idx in range(self.num_read_ports)]
 
         if self.optimize_wide and self.mem_width > self.data_width:
 
@@ -874,7 +868,7 @@ class BuffetLike(MemoryController):
         self._size_request_full = self.var("size_request_full", self.num_ID)
 
         self._rd_rsp_fifo_push = [self.var(f"rd_rsp_fifo_{i}_push", 1) for i in range(self.num_read_ports)]
-        self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]
+        # self._rd_rsp_fifo_full = [self.var(f"rd_rsp_fifo_{i}_full", 1) for i in range(self.num_read_ports)]  # move to the declaration of _read_joined_d1
         self._rd_rsp_fifo_almost_full = [self.var(f"rd_rsp_fifo_{i}_almost_full", 1) for i in range(self.num_read_ports)]
 
         self._rd_rsp_fifo_in_data = [self.var(f"rd_rsp_fifo_{i}_in_data", self.data_width + 1, packed=True) for i in range(self.num_read_ports)]
@@ -901,7 +895,7 @@ class BuffetLike(MemoryController):
         [self.wire(self._rd_rsp_fifo_almost_full[i], self._rd_rsp_out_fifo[i].ports.almost_full) for i in range(self.num_read_ports)]
         [self.wire(self._rd_rsp_valid[i], ~self._rd_rsp_out_fifo[i].ports.empty) for i in range(self.num_read_ports)]
 
-        chosen_size_block = decode(self, self._size_request_full, self._blk_bounds) + 1
+        chosen_size_block = decode(self, self._size_request_full, self._blk_bounds)  # Changing the base to 0
 
         if self.optimize_wide and self.mem_width > self.data_width:
             # self.wire(self._rd_rsp_fifo_in_data[self.data_width - 1, 0], kts.ternary(self._use_cached_read[0] & self._read_wide_word_valid[0] & (self._rd_ID_fifo_out_data[0] == kts.const(0, 1)),
@@ -946,7 +940,8 @@ class BuffetLike(MemoryController):
             # [self.wire(self._rd_rsp_fifo_push[i], self._valid_from_mem | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
             if self.num_read_ports == 2:
                 # [self.wire(self._rd_rsp_fifo_push[i], self._ren_full_d1[i] | self._use_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
-                [self.wire(self._rd_rsp_fifo_push[i], self._from_cached_read[i] | self._size_request_full[i]) for i in range(self.num_read_ports)]
+                # The rd_rsp_fifo space of size request is guaranteed by ren_full_d1
+                [self.wire(self._rd_rsp_fifo_push[i], (self._from_cached_read[i] & ~self._rd_rsp_fifo_full[i]) | self._size_request_full[i]) for i in range(self.num_read_ports)]
             else:
                 [self.wire(self._rd_rsp_fifo_push[i], self._valid_from_mem | (kts.concat(*self._use_cached_read)).r_or() | self._size_request_full.r_or()) for i in range(self.num_read_ports)]
 
@@ -997,21 +992,6 @@ class BuffetLike(MemoryController):
         self._blk_valid = self.var("blk_valid", self.num_ID)
         self._blk_full = self.var("blk_full", self.num_ID)
 
-        self._blk_count = [self.var(f"blk_count_{i}", 8) for i in range(self.num_ID)]  # Log 512, approximately the maximum num of blk storage
-
-        @always_ff((posedge, "clk"), (negedge, "rst_n"))
-        def blk_lock(self, idx):
-            if ~self._rst_n:
-                self._blk_count[idx] = 0
-            elif self._push_blk[idx]:
-                self._blk_count[idx] = self._blk_count[idx] + 1
-            elif self._pop_blk[idx]:
-                self._blk_count[idx] = self._blk_count[idx] - 1
-            else:
-                self._blk_count[idx] = self._blk_count[idx]
-
-        [self.add_code(blk_lock, idx=i) for i in range(self.num_ID)]
-
         self._curr_capacity_pre = self.var("curr_capacity_pre", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
         # self._curr_capacity = self.var("curr_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
 
@@ -1057,6 +1037,7 @@ class BuffetLike(MemoryController):
                 self.write_fsm[ID_idx].output(self._set_wide_word_addr[ID_idx])
                 self.write_fsm[ID_idx].output(self._sram_lock[ID_idx])
                 self.write_fsm[ID_idx].output(self._read_from_sram_write_side[ID_idx])
+                self.write_fsm[ID_idx].output(self._clr_curr_bounds[ID_idx], default=kts.const(0, 1))
                 # self.write_fsm.output(self._en_curr_bounds)
 
                 ####################
@@ -1128,6 +1109,7 @@ class BuffetLike(MemoryController):
                 WR_START[ID_idx].output(self._set_wide_word_addr[ID_idx], 0)
                 WR_START[ID_idx].output(self._sram_lock[ID_idx], 0)
                 WR_START[ID_idx].output(self._read_from_sram_write_side[ID_idx], 0)
+                WR_START[ID_idx].output(self._clr_curr_bounds[ID_idx], 1)
 
                 ####################
                 # WRITING #
@@ -1148,7 +1130,7 @@ class BuffetLike(MemoryController):
                                                                   (self._wr_data_fifo_out_op == 0) &
                                                                   ~self._blk_full[ID_idx] &
                                                                   ((self._write_full_word[ID_idx] & self._mem_acq[2 * ID_idx + 0]) | (self._num_bits_valid_mask[ID_idx] == 0)) &
-                                                                  (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))
+                                                                  (self._wr_ID_fifo_out_data == kts.const(ID_idx, self._wr_ID_fifo_out_data.width)))  # We do allocate a word for empty to void RW hazards
 
                 WRITING[ID_idx].output(self._set_write_wide_word[ID_idx], ((self._tmp_wr_addr[ID_idx] == self._write_word_addr[ID_idx]) &
                                                                                 self._write_word_addr_valid[ID_idx]) &
@@ -1272,7 +1254,7 @@ class BuffetLike(MemoryController):
                 # RD_START
                 ####################
                 # Get the first block size...
-                RD_START[ID_idx].next(RD_PAUSE[ID_idx], (self._blk_count[ID_idx] == 0) & (op_fifo_use == 0) &
+                RD_START[ID_idx].next(RD_PAUSE[ID_idx], ~self._blk_valid[ID_idx] & (op_fifo_use == 0) &
                                                         read_joined_use & self._rd_ID_fifo_check)
                 RD_START[ID_idx].next(RD_START[ID_idx], None)
 
@@ -1340,7 +1322,7 @@ class BuffetLike(MemoryController):
                 RD_START[ID_idx].output(self._pop_blk[ID_idx], (op_fifo_use == 0) &
                                                                read_joined_use &
                                                             #    self._rd_ID_fifo_check)
-                                                               self._rd_ID_fifo_check & (self._blk_count[ID_idx] > 0))
+                                                               self._rd_ID_fifo_check & self._blk_valid[ID_idx])
                 # Guarantee there's room for the read to land (need to use almost full, not full...)
                 # RD_START[ID_idx].output(self._ren_full[ID_idx], (self._rd_op_fifo_out_op == 1) & self._read_joined & ~self._rd_rsp_fifo_full & self._blk_valid[ID_idx] & (self._rd_ID_fifo_out_data == kts.const(ID_idx, self._rd_ID_fifo_out_data.width)))
                 RD_START[ID_idx].output(self._ren_full[ID_idx], (op_fifo_use == 1) &
@@ -1405,7 +1387,7 @@ class BuffetLike(MemoryController):
                             push=self._push_blk[i],
                             pop=self._pop_blk[i],
                             data_in=blk_fifo_in,
-                            data_out=kts.concat(self._blk_base[i], self._blk_bounds[i]))
+                            data_out=kts.concat(self._blk_base[i], self._blk_bounds[i]))  # added empty control signal
 
                 self.wire(self._blk_full[i], blk_fifo.ports.full)
                 self.wire(self._blk_valid[i], ~blk_fifo.ports.empty)

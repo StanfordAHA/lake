@@ -78,7 +78,8 @@ def SKY_Tech_Map() -> dict:
     return tech_map
 
 
-def GF_Tech_Map(depth, width, dual_port=False) -> dict:
+def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
+                mux_val=8, s_val=2, hl_feat="H") -> dict:
     '''
     Currently returns the tech map for the single port SRAM
     or the dual port SRAM (1rw1r) mux 8 ("M08" in in the inst name)
@@ -151,13 +152,53 @@ def GF_Tech_Map(depth, width, dual_port=False) -> dict:
         }
     }
 
-    if dual_port:
+    # TODO: Have Kavya populate this
+    rf_dual_port_p0w = {
+        # port RW
+        'clk': 'CLK_A',
+        'cen': 'CEN_A',
+        'write_en': 'WEN_A',
+        'addr': 'A_A',
+        'write_data': 'D',
+        'alt_sigs': {
+            # value, width
+            'T_LOGIC': (0, 1),
+            'T_Q_RST_A': (0, 1),
+            'MA_SAWL': (0, 1),
+            'MA_WL': (0, 1),
+            'MA_WRAS1': (0, 1),
+            'MA_WRAS0': (0, 1),
+            'MA_PRE': (0, 1),
+            'MA_WRT': (0, 1),
+            'MA_VD1': (0, 1),
+            'MA_VD0': (0, 1),
+        }
+    }
+
+    # TODO: Have Kavya populate this
+    rf_dual_port_p0r = {
+        # port RW
+        'clk': 'CLK_B',
+        'cen': 'CEN_B',
+        # 'read_en': 'RDEN_B',
+        'addr': 'A_B',
+        'read_data': 'Q',
+        'alt_sigs': {
+            # value, width
+            # Only a single pin unique to this port
+            'T_Q_RST_B': (0, 1),
+        }
+    }
+    if dual_port and not reg_file:
         ports.append(dual_port_p0rw)
         ports.append(dual_port_p1r)
-        name = f"IN12LP_SDPB_W{depth:05}B{width:03}M08S2_H"
+        name = f"IN12LP_SDPB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
+    elif reg_file:
+        ports.extend([rf_dual_port_p0w, rf_dual_port_p0r])
+        name = f"IN12LP_R2PB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
     else:
         ports.append(single_port)
-        name = f"IN12LP_S1DB_W{depth:05}B{width:03}M04S2_H"
+        name = f"IN12LP_S1DB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
 
     tech_map = {
         'name': name,

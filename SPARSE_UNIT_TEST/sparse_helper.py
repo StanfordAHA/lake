@@ -1,5 +1,6 @@
 import enum
 import os
+import csv
 
 
 class ControlCodeOnyx(enum.Enum):
@@ -46,6 +47,15 @@ def is_STOP_sam(s_, level = -1):
         return False
 
 
+def is_MAYBE_sam(s_):
+    if type(s_) is int:
+        return False
+    if s_ == 'N':
+        return True
+    else:
+        return False
+
+
 def convert_stream_to_onyx_interp(stream):
 
     ctrl_op_offset = 8
@@ -84,11 +94,8 @@ def convert_stream_to_onyx_interp(stream):
     return converted_stream
 
 
-def read_txt(file_name, addit=False):
+def read_txt(file_name, count=1):
     r = []
-    count = 1
-    if addit:
-        count = 2
     with open(file_name, "r") as f:
         for line in f:
             r.append(int(line, 16))
@@ -100,19 +107,79 @@ def read_txt(file_name, addit=False):
     return r
 
 
-def read_glb(file_name):
+def read_glb(file_name, tx_num=1):
     r = []
-    count = 0
+    has_length = 0
+    total_count = tx_num
+    length_count = 0
+    stream_count = 0
     with open(file_name, "r") as f:
+        r_sub = []
         for line in f:
             v = int(line, 16)
-            if count == 0 and v == 0:
-                break
-            if count == 0:
-                count = v
+            if v > 0x7FFF:  # assuming everything is signed 16-bit
+                v -= 0x10000
+            if has_length == 0:
+                r_sub = []
+                length_count = v
+                r_sub.append(v)
+                has_length = 1
+                # print("get length")
+                # print(r)
             else:
-                count -= 1
-            r.append(v)
+                length_count -= 1
+                r_sub.append(v)
+                
+            if length_count == 0:
+                total_count -= 1
+                has_length = 0
+                r.append(r_sub)
+            if total_count == 0:
+                break
+        f.close()
+    return r
+
+
+def read_glb_stream(file_name, total_num, seg_mode):
+    r = []
+    has_id = 0
+    has_length = 0
+    total_count = total_num
+    length_count = 0
+    stream_count = 0
+    with open(file_name, "r") as f:
+        r_sub = []
+        for line in f:
+            v = int(line, 16)
+            if v > 0x7FFF:  # assuming everything is signed 16-bit
+                v -= 0x10000
+            if has_id == 0:
+                has_id = 1
+                stream_count = seg_mode + 1
+                # print(stream_count)
+                r_sub = [v]
+                # print("TX: ", total_count)
+                # print(r)
+            else:
+                if has_length == 0:
+                    length_count = v
+                    r_sub.append(v)
+                    has_length = 1
+                    # print("get length")
+                    # print(r)
+                else:
+                    length_count -= 1
+                    r_sub.append(v)
+                    
+                if length_count == 0:
+                    stream_count -= 1
+                    has_length = 0
+                if stream_count == 0:
+                    r.append(r_sub)
+                    total_count -= 1
+                    has_id = 0
+                if total_count == 0:
+                    break
         f.close()
     return r
 
@@ -167,3 +234,17 @@ def coord_drop(coord):
             pre_s = False
             cleaned.append(i)
     return cleaned
+
+def write_csv(module_name, test_name, hw_cycs, sam_cycs):
+    
+    if not os.path.isfile('./tables/' + module_name + "_perf.csv"):
+        # csv file doesn't exists, clear it and write content
+        with open('./tables/' + module_name + '_perf.csv', 'w') as file:
+            writer = csv.writer(file)
+            writer.writerow(["test name", "hw_cycs", "sam_cycs"])
+            writer.writerow([test_name, hw_cycs, sam_cycs])
+    else:
+        # csv file already exists, append content
+        with open('./tables/' + module_name + "_perf.csv", 'a') as file:
+            writer = csv.writer(file)
+            writer.writerow([test_name, hw_cycs, sam_cycs])

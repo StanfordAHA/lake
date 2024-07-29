@@ -53,27 +53,27 @@ class IterationDomain(Component):
                                         size=self.dimensionality_support,
                                         packed=True, explicit_array=True)
 
-        self.wire(self._extents_out, self._extents)
-
-        self._interfaces['extents'] = self._extents_out
-
         self._dimensionality = self.config_reg(name="dimensionality", width=1 + kts.clog2(self.dimensionality_support))
 
         self._step = self.input("step", 1)
         # OUTPUTS
-        self._mux_sel_out = self.output("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
+        self._mux_sel_out = self.output("mux_sel", max(kts.clog2(self.dimensionality_support), 1), packed=True)
         self._dim_counter_out = self.output("iterators", self.extent_width,
-                                         size=self.dimensionality_support,
-                                         packed=True,
-                                         explicit_array=True)
-
+                                            size=self.dimensionality_support,
+                                            packed=True,
+                                            explicit_array=True)
+        self._restart = self.output("restart", 1, packed=True)
         # PORT DEFS: end
 
         # LOCAL VARIABLES: begin
+
+        self.wire(self._extents_out, self._extents)
+        self._interfaces['extents'] = self._extents_out
+
         self._dim_counter = self.var("dim_counter_", self.extent_width,
-                                         size=self.dimensionality_support,
-                                         packed=True,
-                                         explicit_array=True)
+                                     size=self.dimensionality_support,
+                                     packed=True,
+                                     explicit_array=True)
 
         # Alias the var to the output
         for i in range(self.dimensionality_support):
@@ -99,8 +99,7 @@ class IterationDomain(Component):
         # Next_max_value
         self._maxed_value = self.var("maxed_value", 1)
 
-        self.wire(self._maxed_value, (self._dim_counter[self._mux_sel] ==
-                                          self._extents[self._mux_sel]) & self._inc[self._mux_sel])
+        self.wire(self._maxed_value, (self._dim_counter[self._mux_sel] == self._extents[self._mux_sel]) & self._inc[self._mux_sel])
 
         self.add_code(self.set_mux_sel)
 
@@ -110,8 +109,6 @@ class IterationDomain(Component):
             self.add_code(self.dim_counter_update, idx=i)
             self.add_code(self.max_value_update, idx=i)
         # GENERATION LOGIC: end
-
-        self._restart = self.output("restart", 1)
 
         self.wire(self._restart, self._step & (~self._done))
 

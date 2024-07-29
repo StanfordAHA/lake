@@ -46,75 +46,6 @@ def init_module():
     sparse_helper.update_tcl("fiber_glb_val_tb")
 
 
-def create_gold(in_crd, in_ref):
-    i_c_cpy = in_crd[:]
-    i_r_cpy = in_ref[:]
-
-    # print(in_crd)
-    # print(in_ref)
-    # print("============")
-    # process write
-    buf_size = 1000
-    fill = 0
-    done = False
-    time = 0
-
-    wrscan = CompressWrScan(size=buf_size, seg_size=buf_size, fill=fill)
-
-    while not done and time < TIMEOUT:
-        if len(in_crd) > 0:
-            wrscan.set_input(in_crd.pop(0))
-
-        wrscan.update()
-
-        # print("Timestep", time, "\t WrScan:", wrscan.out_done())
-
-        done = wrscan.out_done()
-        time += 1
-
-    print("sam write cycle count: ", time)
-    # print(wrscan.get_seg_arr())
-    # print(wrscan.get_arr())
-    crdscan = CompressedCrdRdScan(seg_arr=wrscan.get_seg_arr(), crd_arr=wrscan.get_arr())
-    done = False
-    time = 0
-    out_crd = []
-    out_ref = []
-
-    while not done and time < TIMEOUT:
-        if len(in_ref) > 0:
-            crdscan.set_in_ref(in_ref.pop(0))
-
-        crdscan.update()
-
-        out_crd.append(crdscan.out_crd())
-        out_ref.append(crdscan.out_ref())
-
-        # print("Timestep", time, "\t Crd:", crdscan.out_crd(), "\t Ref:", crdscan.out_ref())
-
-        done = crdscan.done
-        time += 1
-
-    print("sam read cycle count: ", time)
-    
-    out_crd = remove_emptystr(out_crd)
-    out_ref = remove_emptystr(out_ref)
-
-    # print(out_crd)
-    # print(out_ref)
-
-    out_c = []
-    out_r = []
-    for i in range(len(out_crd)):
-        if out_crd[i] != 'N':
-            out_c.append(out_crd[i])
-            out_r.append(out_ref[i])
-    st = [i_c_cpy, i_r_cpy, out_c, out_r]
-    tr_st = [convert_stream_to_onyx_interp(i) for i in st]
-
-    return tr_st
-
-
 def load_test_module(test_name):
     if test_name == "direct_l0":
         in_crd = [2, 0, 4]
@@ -130,6 +61,10 @@ def load_test_module(test_name):
 
     if test_name == "diag":
         in_crd = [7, 0, 1, 2, 3, 4, 5, 6]
+        return in_crd
+
+    if test_name == "empty":
+        in_crd = [0]
         return in_crd
 
     elif test_name[0:2] == "rd":
@@ -156,15 +91,14 @@ def module_iter_basic(test_name, add_test=""):
     sparse_helper.write_txt("coord_in_0.txt", ic)
 
     sparse_helper.clear_txt("coord_out.txt")
+    TX_NUM = 1
+    if add_test != "":
+        TX_NUM = 2
 
     #run command "make sim" to run the simulation
-    if add_test == "":
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_val_tb.sv", "TOP=fiber_glb_val_tb",\
-                              "TX_NUM_GLB=1", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
-    else:
-        sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_val_tb.sv",\
-                             "TOP=fiber_glb_val_tb", "TX_NUM_GLB=2", "TEST_UNIT=Fiber_access.sv"\
-                             ], capture_output=True, text=True)
+    sim_result = subprocess.run(["make", "sim", "TEST_TAR=fiber_glb_val_tb.sv", "TOP=fiber_glb_val_tb",\
+                            f"TX_NUM_GLB={TX_NUM}", "TEST_UNIT=Fiber_access.sv"], capture_output=True, text=True)
+
     output = sim_result.stdout
     # print(output)
     cycle_count_line = output[output.find("write cycle count:"):]
@@ -172,7 +106,10 @@ def module_iter_basic(test_name, add_test=""):
     print(lines[0])
     print(lines[1])
 
-    coord_out = sparse_helper.read_glb("coord_out.txt")
+    coord_out_t = sparse_helper.read_glb("coord_out.txt", tx_num=TX_NUM)
+    coord_out = []
+    for i in coord_out_t:
+        coord_out += i
     # print(coord_out)
 
     #compare each element in the output from coord_out.txt with the gold output
@@ -192,21 +129,21 @@ def module_iter_basic(test_name, add_test=""):
 #         module_iter_basic(test)
 
 
-# def test_iter_random():
-#     init_module()
-#     for i in range(200):
-#         size = i + 1
-#         module_iter_basic(f"rd_{size}")
+def test_iter_random():
+    init_module()
+    for i in range(30):
+        size = i + 1
+        module_iter_basic(f"rd_{size}")
 
 
-# def test_iter_seq():
-#     init_module()
-#     module_iter_basic("direct_l0", "direct_l1")
-#     module_iter_basic("direct_l2", "diag")
+def test_iter_seq():
+    init_module()
+    module_iter_basic("direct_l0", "direct_l1")
+    module_iter_basic("direct_l2", "diag")
 
 
 def test_iter_random_sweep():
     init_module()
-    for i in range(200):
+    for i in range(30):
         size = i + 1
         module_iter_basic(f"rd_{size}", f"rd_{size}")

@@ -604,9 +604,14 @@ def observe_cfg(generator, port, other_gen, cfg_reg_port):
 def shift_reg(generator, signal, chain_depth, name=None):
     '''Creates a shift register of depth `chain_depth` and returns the output of it
     '''
+    name_use = signal.name
+    if name is not None:
+        name_use = name
+    #  Check for packed
+    packed_sig = signal.is_packed
     to_use = signal
     for i in range(chain_depth):
-        to_use = register(generator, to_use, name=f"{signal.name}_d{i + 1}")
+        to_use = register(generator, to_use, name=f"{name_use}_d{i + 1}", packed=packed_sig)
     return to_use
 
 
@@ -896,6 +901,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
     mux_gen = kts.Generator(name=name)
     mux_width = one.width
 
+    mux_gen_sel_in = None
     if one_hot_sel:
         mux_gen_sel_in = mux_gen.input("sel", len(many))
     else:
@@ -910,7 +916,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
     if one_hot_sel:
         print("Building one-hot mux...")
         tmp_done = mux_gen.var("tmp_done", 1)
-        len_sel = len(sel)
+        len_sel = mux_gen_sel_in.width
 
         @always_comb
         def set_outs():
@@ -962,10 +968,12 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
         generator.wire(sel, mux_gen_sel_in)
 
 
-def get_data_sizes(schedule: dict = None):
+def get_data_sizes(schedule: dict = None, num_ports=2):
     # A schedule will have a bunch of ports - can always analyze the extens of the config to
     # get the total sizes
     assert schedule is not None
+    div = num_ports // 2
+
     # sizes_map = {}
     sizes_map = []
     for port_num, port_schedule in schedule.items():
@@ -973,14 +981,21 @@ def get_data_sizes(schedule: dict = None):
         if type(port_num) is not int:
             continue
 
-        if port_num % 2 == 0:
-            new_port_num = port_num // 2
+        use_port_schedule = port_schedule['config']
+
+        if port_num < div:
+            new_port_num = port_num
             port_plus_arg = f"w{new_port_num}_num_data"
+            if 'vec_in_config' in port_schedule:
+                use_port_schedule = port_schedule['vec_in_config']
         else:
-            new_port_num = (port_num - 1) // 2
+            new_port_num = port_num - div
             port_plus_arg = f"r{new_port_num}_num_data"
-        dim_ = port_schedule['config']['dimensionality']
-        extents = port_schedule['config']['extents']
+            if 'vec_out_config' in port_schedule:
+                use_port_schedule = port_schedule['vec_out_config']
+
+        dim_ = use_port_schedule['dimensionality']
+        extents = use_port_schedule['extents']
         num_data = 1
         for i_ in range(dim_):
             num_data = num_data * extents[i_]

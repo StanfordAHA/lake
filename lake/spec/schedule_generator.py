@@ -12,7 +12,7 @@ class ScheduleGenerator(Component):
                  recurrence=True):
         self.mod_name = name
         if name is None:
-            self.mod_name = f"sched_gen_{dimensionality}_{stride_width}"
+            self.mod_name = f"sched_gen_{dimensionality}_{stride_width}_{recurrence}"
         super().__init__(name=self.mod_name)
         self.dimensionality_support = dimensionality
         self.stride_width = stride_width
@@ -34,8 +34,11 @@ class ScheduleGenerator(Component):
         ##########
         ### Config Regs
         self._strides = self.config_reg(name="strides", width=self.stride_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                        size=self.dimensionality_support,
+                                        packed=True, explicit_array=True)
+
+        #  Need an enable otherwise a schedule that starts off at 0 can accidentally fire...
+        self._enable = self.config_reg(name="enable", width=1)
 
         # Using stride width instead of total cycle to keep config reg smaller
         self._starting_cycle = self.config_reg(name="starting_cycle", width=self.stride_width)
@@ -51,8 +54,8 @@ class ScheduleGenerator(Component):
         self._restart = self.input("restart", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                size=self.dimensionality_support,
+                                packed=True, explicit_array=True)
 
         ### Outputs
         self._step_out = self.output("step", 1)
@@ -64,7 +67,7 @@ class ScheduleGenerator(Component):
 
         ### Logic
         self.wire(self._strt_cycle, kts.ext(self._starting_cycle, self.total_cycle_width))
-        self.wire(self._step_out, self._step & ~self._flush)
+        self.wire(self._step_out, self._step & ~self._flush & self._enable)
 
         # step is high when the current cycle matches the counter
         self.wire(self._step, self._clk_ctr == self._current_cycle)
@@ -99,16 +102,20 @@ class ScheduleGenerator(Component):
         assert 'strides' in schedule_map
         assert 'offset' in schedule_map
 
+        # Enable through the configuration
+        self.configure(self._enable, 1)
+
         self.configure(self._starting_cycle, schedule_map['offset'])
         if self.exploit_recurrence:
             extent_sub_1 = [extent_item - 1 for extent_item in extents]
-            tform_strides = [extents[0]]
+            tform_strides = [schedule_map['strides'][0]]
             offset = 0
             for i in range(dimensionality - 1):
                 offset -= (extent_sub_1[i] * schedule_map['strides'][i])
                 tform_strides.append(schedule_map['strides'][i + 1] + offset)
 
-            self.configure(self._strides, schedule_map['strides'])
+            # self.configure(self._strides, schedule_map['strides'])
+            self.configure(self._strides, tform_strides)
         else:
             self.configure(self._strides, schedule_map['strides'])
         # This will return pairs of ranges with values w.r.t. the node's configuration
@@ -184,12 +191,13 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         self._restart = self.input("restart", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                size=self.dimensionality_support,
+                                packed=True, explicit_array=True)
         self._extents = self.input("extents", id_ext_width,
                                    size=self.dimensionality_support,
                                    packed=True, explicit_array=True)
-
+        #  Need an enable otherwise a schedule that starts off at 0 can accidentally fire...
+        self._enable = self.config_reg(name="enable", width=1)
         ### Outputs
         self._step_out = self.output("step", 1)
         # self._step_ack = self.output("step_ack", 1)
@@ -201,18 +209,18 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
 
         ### Logic
         # Gate the output step if flush is high.
-        self.wire(self._step_out, self._step & ~self._flush)
+        self.wire(self._step_out, self._step & ~self._flush & self._enable)
 
         # step is high when the current cycle matches the counter
         # self.wire(self._step, self._clk_ctr == self._current_cycle)
 
         # Now we need to output the iterators and take in the comparisons
         self._iterators_out = self.output("iterators_out_lcl", id_ext_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                          size=self.dimensionality_support,
+                                          packed=True, explicit_array=True)
         self._extents_out = self.output("extents_out_lcl", id_ext_width,
-                                   size=self.dimensionality_support,
-                                   packed=True, explicit_array=True)
+                                        size=self.dimensionality_support,
+                                        packed=True, explicit_array=True)
 
         self._comparisons_in = self.input("comparisons", self.num_comparisons)
 
@@ -233,10 +241,13 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
 
         # this is the valid out
         self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
 
     def get_iterator_intf(self):
         return self.iterator_intf
 
-    def gen_bitstream(self, sched_map, extents, dimensionality):
-        return []
+    def gen_bitstream(self, schedule_map=None, extents=None, dimensionality=None):
+        # Enable through the configuration
+        self.configure(self._enable, 1)
+        return self.get_configuration()
         # return super().gen_bitstream(schedule_map=sched_map)

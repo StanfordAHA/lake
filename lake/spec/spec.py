@@ -13,11 +13,12 @@ from kratos import clog2
 from typing import Tuple
 import os as os
 from lake.utils.spec_enum import Direction
-from lake.utils.util import connect_memoryport_storage, inline_multiplexer
+from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg, round_up_to_power_of_2
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
 from lake.modules.arbiter import Arbiter
+from lake.spec.reg_fifo import RegFIFO
 
 
 class Spec():
@@ -41,6 +42,8 @@ class Spec():
         self.runtime = Runtime.STATIC
         self.rv_comparison_network = None
         self.num_ports = 0
+        self.num_in_ports = 0
+        self.num_out_ports = 0
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
@@ -51,9 +54,10 @@ class Spec():
     def get_num_ports(self):
         return self.num_ports
 
-    def get_node_from_idx(self, idx):
-        print(idx)
-        print(self._index_to_node)
+    def get_node_from_idx(self, idx, verbose=False):
+        if verbose:
+            print(idx)
+            print(self._index_to_node)
         assert idx in self._index_to_node
         return self._index_to_node[idx]
 
@@ -65,7 +69,15 @@ class Spec():
                 self.any_rv_sg = True
                 self.runtime = Runtime.DYNAMIC
             if isinstance(comp, Port):
+                comp: Port
                 self.num_ports += 1
+                pdir = comp.get_direction()
+                if pdir == Direction.IN:
+                    self.num_in_ports += 1
+                elif pdir == Direction.OUT:
+                    self.num_out_ports += 1
+                else:
+                    raise NotImplementedError(f"Port Direction {pdir} not supported...")
 
             self._hw_graph.add_node(comp)
             self._node_to_index[comp] = self._num_nodes
@@ -93,8 +105,6 @@ class Spec():
     def get_nodes(self, node_type) -> list:
         ret_list = list()
         for node in self._hw_graph.nodes():
-            # print(node)
-            # print(node_type)
             isinst = isinstance(node, node_type)
             if isinst:
                 # Then I should add to list
@@ -120,7 +130,7 @@ class Spec():
         total_config_size = 0
 
         for node in self._hw_graph.nodes:
-            print(node.get_name())
+            # print(node.get_name())
             # The config bases will contain a number for each node - should match?
             self._config_bases.append(total_config_size)
             total_config_size += node.get_config_size()
@@ -138,18 +148,10 @@ class Spec():
 
     def generate_hardware(self) -> None:
 
-        # self._final_gen = kts.Generator(name=self._name, debug=False)
         print(self._name)
         self._final_gen = Component(name=self._name)
-        # self._config_memory_size = self._final_gen.parameter('CFG_SIZE', initial_value=1)
-
-        # self._final_gen.clk = self._final_gen.clock("clk")
-
         # Before we go into the port loop, if any of the schedule generators is dynamic (vs. static), we need to know this and collect
         # information before genning the hardware
-        # any_rv_sg = True
-        num_writes = 1
-        num_reads = 1
 
         # Just instantiate one comparison thing for now...
         if self.any_rv_sg:
@@ -162,21 +164,15 @@ class Spec():
 
         # First generate the storages based on the ports connected to them and their capacities
         storage_nodes = self.get_nodes(Storage)
-        print(storage_nodes)
 
         for j_, storage_node in enumerate(storage_nodes):
             storage_node: Storage
-            print('in storage')
             # get MemoryPorts
             memoryports = list(nx.neighbors(self._hw_graph, storage_node))
             storage_node.gen_hardware(pos_reset=False, memory_ports=memoryports)
             # memoryports = nx.neighbors(self._hw_graph, storage_node)
             # Now we have the storage generated, want to generate the memoryports hardware which will be simply
             # passthru of the port currently...
-            for memoryport in memoryports:
-                print('going through memports')
-                print(memoryport.get_name())
-            print('aftert storage')
             # Now generate a storage element based on all of these ports and add them to the final generator
             self._final_gen.add_child("storage", storage_node, clk=self.hw_attr['clk'],
                                       rst_n=self.hw_attr['rst_n'])
@@ -187,8 +183,6 @@ class Spec():
             memoryports = nx.neighbors(self._hw_graph, storage_node)
             for i_, mp in enumerate(memoryports):
                 mp: MemoryPort
-                print('mek')
-                print(mp.get_name())
                 mp.gen_hardware(pos_reset=False, storage_node=storage_node)
                 self._final_gen.add_child(f"memoryport_{i_}_storage_{j_}", mp,
                                           clk=self.hw_attr['clk'],
@@ -226,9 +220,9 @@ class Spec():
             if self.any_rv_sg:
                 # We need to include some information about the other ports when building schedule generator
                 if port_direction == Direction.IN:
-                    port_sg.gen_hardware(id=port_id, num_comparisons=num_reads)
+                    port_sg.gen_hardware(id=port_id, num_comparisons=self.num_out_ports)
                 elif port_direction == Direction.OUT:
-                    port_sg.gen_hardware(id=port_id, num_comparisons=num_writes)
+                    port_sg.gen_hardware(id=port_id, num_comparisons=self.num_in_ports)
                 else:
                     raise NotImplementedError()
             else:
@@ -322,7 +316,6 @@ class Spec():
                     # quali_step = sg_step & port_ready
                     # The grant is the ready/final step to ID, AG, ready
                     # self._final_gen.wire(port.get_mp_intf()['valid'], mid_grant)
-                    print("IDKDIDKDI")
                     self._final_gen.wire(port.get_mp_intf()['valid'], memintf_dec.ports.data_valid)
                     # The ready comes out of the memintf decoder
                     self._final_gen.wire(memintf_dec.ports.data_ready, port_ready)
@@ -338,15 +331,113 @@ class Spec():
                 self._final_gen.wire(port_sg.ports.step, port_ag.ports.step)
                 # self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
                 self._final_gen.wire(port_sg.ports.step, port_id.ports.step)
-                if port_direction == Direction.OUT:
+
+                # Need to also wire the readys
+                if port_direction == Direction.IN:
+                    self._final_gen.wire(port.get_mp_intf()['ready'], kts.const(1, 1))
+                elif port_direction == Direction.OUT:
                     self._final_gen.wire(memintf_dec.ports.data_ready, kts.const(1, 1))
+                    self._final_gen.wire(port.get_mp_intf()['valid'], kts.const(1, 1))
 
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
                 ext_intf = port.get_internal_ag_intf()
-                self._final_gen.wire(ext_intf['step'], quali_step)
-                self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
-                self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
+
+                if port_direction == Direction.IN:
+                    # For a write Port, just directly connect everything
+                    self._final_gen.wire(ext_intf['step'], quali_step)
+                    self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
+                    self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
+                    self._final_gen.wire(ext_intf['restart'], port_id.ports.restart)
+                    if self.any_rv_sg:
+                        self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
+
+                elif port_direction == Direction.OUT:
+                    # For a read Port, slightly more complicated - need to actually have the delayed
+                    # version of everything (but can handle that within the Port...)
+
+                    delay = memintf_dec.get_delay()
+
+                    # These should be shift regs in static, fifo in ready/valid
+                    if self.any_rv_sg:
+
+                        # pass
+                        rupp2 = round_up_to_power_of_2(2 + delay)
+                        # reg_fifo = RegFIFO(port_id.ports.mux_sel.width, port_id.ports.mux_sel.size[0], rupp2, almost_full_diff=delay + 1)
+                        # self._final_gen.add_child(f"reg_fifo_port_{i_}_mux_sel",
+                        #                 reg_fifo,
+                        #                 clk=self.hw_attr['clk'],
+                        #                 rst_n=self.hw_attr['rst_n'],
+                        #                 # clk_en=self._clk_en,
+                        #                 clk_en=kts.const(1, 1),
+                        #                 push=quali_step,
+                        #                 pop=ext_intf['mux_sel'].get_ready(),
+                        #                 data_in=port_id.ports.mux_sel,
+                        #                 data_out=ext_intf['mux_sel'].get_port())
+                        # self._final_gen.wire(ext_intf['mux_sel'].get_valid(), ~reg_fifo.ports.empty)
+
+                        # reg_fifo = RegFIFO(port_id.ports.iterators.width, port_id.ports.iterators.size[0], rupp2, almost_full_diff=delay + 1)
+                        # self._final_gen.add_child(f"reg_fifo_port_{i_}_iterators",
+                        #                 reg_fifo,
+                        #                 clk=self.hw_attr['clk'],
+                        #                 rst_n=self.hw_attr['rst_n'],
+                        #                 # clk_en=self._clk_en,
+                        #                 clk_en=kts.const(1, 1),
+                        #                 push=quali_step,
+                        #                 pop=ext_intf['iterators'].get_ready(),
+                        #                 data_in=port_id.ports.iterators,
+                        #                 data_out=ext_intf['iterators'].get_port())
+                        # self._final_gen.wire(ext_intf['iterators'].get_valid(), ~reg_fifo.ports.empty)
+
+                        # reg_fifo = RegFIFO(port_id.ports.restart.width, port_id.ports.restart.size[0], rupp2, almost_full_diff=delay + 1)
+                        # self._final_gen.add_child(f"reg_fifo_port_{i_}_restart",
+                        #                 reg_fifo,
+                        #                 clk=self.hw_attr['clk'],
+                        #                 rst_n=self.hw_attr['rst_n'],
+                        #                 # clk_en=self._clk_en,
+                        #                 clk_en=kts.const(1, 1),
+                        #                 push=quali_step,
+                        #                 pop=ext_intf['restart'].get_ready(),
+                        #                 data_in=port_id.ports.restart,
+                        #                 data_out=ext_intf['restart'].get_port())
+                        # self._final_gen.wire(ext_intf['restart'].get_valid(), ~reg_fifo.ports.empty)
+
+                        # reg_fifo = RegFIFO(port_id.ports.extents_out.width, port_id.ports.extents_out.size[0], rupp2, almost_full_diff=delay + 1)
+                        # self._final_gen.add_child(f"reg_fifo_port_{i_}_extents",
+                        #                 reg_fifo,
+                        #                 clk=self.hw_attr['clk'],
+                        #                 rst_n=self.hw_attr['rst_n'],
+                        #                 # clk_en=self._clk_en,
+                        #                 clk_en=kts.const(1, 1),
+                        #                 push=quali_step,
+                        #                 pop=ext_intf['extents'].get_ready(),
+                        #                 data_in=port_id.ports.extents_out,
+                        #                 data_out=ext_intf['extents'].get_port())
+                        # self._final_gen.wire(ext_intf['extents'].get_valid(), ~reg_fifo.ports.empty)
+                        # self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
+
+                        # delay_mux_sel = shift_reg(self._final_gen, port_id.ports.mux_sel, chain_depth=delay, name=f"shreg_mux_sel_port_{i_}")
+                        # delay_iterators = shift_reg(self._final_gen, port_id.ports.iterators, chain_depth=delay, name=f"shreg_iterators_port_{i_}")
+                        # delay_restart = shift_reg(self._final_gen, port_id.ports.restart, chain_depth=delay, name=f"shreg_restart_port_{i_}")
+
+                        # self._final_gen.wire(ext_intf['step'], shreg_step)
+                        # self._final_gen.wire(ext_intf['mux_sel'], delay_mux_sel)
+                        # self._final_gen.wire(ext_intf['iterators'], delay_iterators)
+                        # self._final_gen.wire(ext_intf['restart'], delay_restart)
+                        # self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
+
+                    else:
+                        shreg_step = shift_reg(self._final_gen, quali_step, chain_depth=delay, name=f"shreg_step_port_{i_}")
+                        delay_mux_sel = shift_reg(self._final_gen, port_id.ports.mux_sel, chain_depth=delay, name=f"shreg_mux_sel_port_{i_}")
+                        delay_iterators = shift_reg(self._final_gen, port_id.ports.iterators, chain_depth=delay, name=f"shreg_iterators_port_{i_}")
+                        delay_restart = shift_reg(self._final_gen, port_id.ports.restart, chain_depth=delay, name=f"shreg_restart_port_{i_}")
+
+                        self._final_gen.wire(ext_intf['step'], shreg_step)
+                        self._final_gen.wire(ext_intf['mux_sel'], delay_mux_sel)
+                        self._final_gen.wire(ext_intf['iterators'], delay_iterators)
+                        self._final_gen.wire(ext_intf['restart'], delay_restart)
+
+                    # if self.any_rv_sg:
 
             memintf_dec_p_intf = memintf_dec.get_p_intf()
             self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])
@@ -369,6 +460,7 @@ class Spec():
                     p_temp_valid = self._final_gen.input(f"port_{i_}_valid", 1)
                     p_temp_ready = self._final_gen.output(f"port_{i_}_ready", 1)
                     self._final_gen.wire(p_temp_ready, kts.const(1, 1))
+                    self._final_gen.wire(ub_intf['valid'], p_temp_valid)
             elif port.get_direction() == Direction.OUT:
                 if self.any_rv_sg:
                     p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width)
@@ -382,6 +474,7 @@ class Spec():
                     p_temp_valid = self._final_gen.output(f"port_{i_}_valid", 1)
                     p_temp_ready = self._final_gen.input(f"port_{i_}_ready", 1)
                     self._final_gen.wire(p_temp_valid, kts.const(1, 1))
+                    self._final_gen.wire(ub_intf['ready'], p_temp_ready)
 
             self._final_gen.wire(p_temp, ub_intf['data'])
 
@@ -634,10 +727,11 @@ class Spec():
         node_idx = self._node_to_index[node]
         return self._config_bases[node_idx]
 
-    def configure(self, node, bs):
+    def configure(self, node, bs, verbose=False):
         # node_config_base = self.get_config_base(node)
-        print("Showing all child bases...")
-        print(self._final_gen.child_cfg_bases)
+        if verbose:
+            print("Showing all child bases...")
+            print(self._final_gen.child_cfg_bases)
         node_config_base = self._final_gen.child_cfg_bases[node]
         for reg_bound, value in bs:
             upper, lower = reg_bound
@@ -663,8 +757,6 @@ class Spec():
 
         # Need to integrate all the bitstream information
         # into one single integer/string for the verilog harness
-
-        print(application)
         self.clear_configuration()
 
         # Each piece in the application is a port
@@ -688,7 +780,12 @@ class Spec():
 
             # Get the configuration for the Port's internal controllers if vectorized
             if port_vec:
-                port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'], vec_out=maps['vec_out_config'])
+                vec_constraints = None
+                if self.any_rv_sg:
+                    vec_constraints = maps['vec_constraints']
+                port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'],
+                                             vec_out=maps['vec_out_config'],
+                                             vec_constraints=vec_constraints)
                 self.configure(port, port_bs)
 
             # All components should be aware of RV/Static context
@@ -719,7 +816,4 @@ class Spec():
             self.configure(self.rv_comparison_network, rv_comp_bs)
 
         self.create_config_int()
-
-        print(self.get_configuration())
-
         return self.get_config_int()
