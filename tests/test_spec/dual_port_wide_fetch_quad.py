@@ -28,8 +28,7 @@ def build_dual_port_wide_fetch_quad(storage_capacity=1024, data_width=16, dims: 
     out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                      vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
 
-    ls.register(in_port, out_port)
-    ls.register(in_port2, out_port2)
+    ls.register(in_port, in_port2, out_port, out_port2)
 
     in_id = IterationDomain(dimensionality=dims, extent_width=16)
     in_ag = AddressGenerator(dimensionality=dims)
