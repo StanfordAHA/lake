@@ -398,7 +398,7 @@ module lake_static_tb;
             THIS_CYC_COUNT = THIS_CYC_COUNT + 1;
 
             // Kill the output readys once the data is done...
-            // And check that we don't get any valids after!!!
+            // And check that we don't get any valids after!
             // Only for r/v
             if (r0_tracker >= r0_num_data && port_r0_valid == 1'b1 && static_value == 0) begin
                 @(posedge clk);
