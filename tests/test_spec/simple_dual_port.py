@@ -14,7 +14,9 @@ import argparse
 
 def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
                            dims: int = 6, clock_count_width=16, physical=False,
-                           recurrence=True) -> Spec:
+                           recurrence=True, reg_file=False) -> Spec:
+
+    read_delay = 0 if reg_file else 1
 
     ls = Spec()
 
@@ -39,11 +41,12 @@ def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
 
     tech_map = None
     if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True)
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True,
+                               reg_file=reg_file)
 
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
     wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
-    rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=1)
+    rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
     ls.register(stg, wr_mem_port, rd_mem_port, stg)
 
     # All cores are registered at this point
@@ -112,7 +115,7 @@ def get_linear_test():
 
 
 def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, clock_count_width=64, physical=False,
-                           tp: TestPrepper = None):
+                           tp: TestPrepper = None, reg_file=False):
 
     assert tp is not None
 
@@ -125,7 +128,8 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
 
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
-    simple_dual_port_spec = build_simple_dual_port(storage_capacity=storage_capacity, data_width=data_width, physical=physical)
+    simple_dual_port_spec = build_simple_dual_port(storage_capacity=storage_capacity, data_width=data_width,
+                                                   physical=physical, reg_file=reg_file)
     simple_dual_port_spec.visualize_graph()
     simple_dual_port_spec.generate_hardware()
     simple_dual_port_spec.extract_compiler_information()
@@ -179,6 +183,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple Dual Port')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
+    parser.add_argument("--reg_file", action="store_true")
     parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
@@ -195,4 +200,5 @@ if __name__ == "__main__":
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                           clock_count_width=args.clock_count_width, physical=args.physical, tp=tp)
+                           clock_count_width=args.clock_count_width, physical=args.physical, tp=tp,
+                           reg_file=args.reg_file)
