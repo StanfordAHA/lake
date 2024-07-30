@@ -340,7 +340,8 @@ class Spec():
                     self._final_gen.wire(memintf_dec.ports.data_ready, kts.const(1, 1))
                     # Actually pipe the sg's step through in
                     # self._final_gen.wire(port.get_mp_intf()['valid'], kts.const(1, 1))
-                    self._final_gen.wire(port.get_mp_intf()['valid'], port_sg.ports.step)
+                    # self._final_gen.wire(port.get_mp_intf()['valid'], port_sg.ports.step)
+                    self._final_gen.wire(port.get_mp_intf()['valid'], memintf_dec.ports.data_valid)
 
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
