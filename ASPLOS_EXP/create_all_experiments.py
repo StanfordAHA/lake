@@ -46,7 +46,14 @@ if __name__ == "__main__":
                     result = subprocess.run(execution_str, capture_output=True, text=True)
 
                     if run_sim:
+                        print(f"Running sim at...{outdir}")
                         os.chdir(outdir)
                         result = subprocess.run("make sim", capture_output=True, text=True)
-                        print(result)
+                        outdir_basename = os.path.basename(outdir)
+                        if "PASS" in result.stdout:
+                            print(f"Test {outdir_basename} PASS")
+                            print(f":)")
+                        else:
+                            print(f"Test {outdir_basename} FAIL")
+                            print(f":(")
                         os.chdir(curr_dir)
