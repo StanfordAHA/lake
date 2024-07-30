@@ -862,9 +862,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                                                                                                 new_input_valid_fifo))
                             # The ready out for this selection should also be ternary
                             tmp_ready_choose = (kts.ternary(hybrid_bypass,
-                                                        #    self.controllers_flat_dict[ctrl_name].ports[port_ready_name],
-                                                           kts.const(1, 1),
-                                                           ~new_reg_fifo.ports.full), mode_num)
+                                                            #  self.controllers_flat_dict[ctrl_name].ports[port_ready_name],
+                                                            kts.const(1, 1),
+                                                            ~new_reg_fifo.ports.full), mode_num)
                         else:
                             # Otherwise, we can simply directly wire them
                             self.wire(new_input_fifo, self.controllers_flat_dict[ctrl_name].ports[port])
@@ -1028,8 +1028,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                                             kts.const(1, 1),
                                                             ~new_reg_fifo.ports.empty), mode_num)
                             tmp_data_choose = (kts.ternary(hybrid_bypass,
-                                                            self.controllers_flat_dict[ctrl_name].ports[port],
-                                                            new_reg_fifo.ports.data_out), mode_num)
+                                                           self.controllers_flat_dict[ctrl_name].ports[port],
+                                                           new_reg_fifo.ports.data_out), mode_num)
 
                         else:
                             self.wire(new_output_ready_fifo, self.controllers_flat_dict[ctrl_name].ports[port_ready_name])

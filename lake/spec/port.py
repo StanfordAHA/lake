@@ -219,7 +219,8 @@ class Port(Component):
                     self.wire(self._ub_intf['ready'], self._sg_sipo_in.get_step())
                 else:
                     assembled_port['en'] = self._sg_sipo_in.get_step()
-                    self.wire(self._ub_intf['ready'], kts.const(1, 1))
+                    self.wire(self._ub_intf['ready'], self._sg_sipo_in.get_step())
+                    # self.wire(self._ub_intf['ready'], kts.const(1, 1))
 
                 # Now hook up the input and output ports
                 in_intf = self._sipo_strg_mp_in.get_port_intf()
