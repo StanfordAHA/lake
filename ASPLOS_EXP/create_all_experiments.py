@@ -7,10 +7,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Generating experiments')
     parser.add_argument("--physical", action="store_true")
-
+    parser.add_argument("--run_sim", action="store_true")
     args = parser.parse_args()
-
     physical_arg = args.physical
+    run_sim = args.run_sim
+
+    curr_dir = os.getcwd()
 
     # all test files...
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -42,3 +44,9 @@ if __name__ == "__main__":
                         execution_str.append("--physical")
 
                     result = subprocess.run(execution_str, capture_output=True, text=True)
+
+                    if run_sim:
+                        os.chdir(outdir)
+                        result = subprocess.run("make sim", capture_output=True, text=True)
+                        print(result)
+                        os.chdir(curr_dir)
