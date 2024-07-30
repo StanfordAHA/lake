@@ -455,10 +455,15 @@ class SingleBankStorage(Storage):
         self.wire(l_pint['write_data'], p_pint['write_data'])
         self.wire(l_pint['addr'], p_pint['addr'])
         if physical.get_active_low():
-            self.wire(~l_pint['write_en'], p_pint['write_en'])
+            print(l_pint)
+            print(p_pint)
+            if p_pint['write_en'] is not None:
+                self.wire(~l_pint['write_en'], p_pint['write_en'])
             self.wire(~l_pint['write_en'], p_pint['cen'])
         else:
-            self.wire(l_pint['write_en'], p_pint['write_en'])
+            if p_pint['write_en'] is not None:
+                self.wire(l_pint['write_en'], p_pint['write_en'])
+            # self.wire(l_pint['write_en'], p_pint['write_en'])
             self.wire(l_pint['write_en'], p_pint['cen'])
 
     def create_physical_memory(self):
@@ -576,7 +581,9 @@ class PhysicalMemoryStub(kts.Generator):
             elif port_type == MemoryPortType.WRITE:
                 port_intf['write_data'] = self.input(port_intf['write_data'], self.mem_width, packed=True)
                 port_intf['addr'] = self.input(port_intf['addr'], kts.clog2(self.mem_depth), packed=True)
-                port_intf['write_en'] = self.input(port_intf['write_en'], 1)
+                print(port_intf)
+                if port_intf['write_en'] is not None:
+                    port_intf['write_en'] = self.input(port_intf['write_en'], 1)
                 port_intf['cen'] = self.input(port_intf['cen'], 1)
                 port_intf['clk'] = self.clock(port_intf['clk'])
             elif port_type == MemoryPortType.READWRITE:
