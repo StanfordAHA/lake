@@ -51,7 +51,7 @@ class CoreCombiner(Generator):
                  name="CoreCombiner",
                  do_config_lift=True,
                  controllers=None,
-                #  tech_map=,
+                 #  tech_map=,
                  tech_map_name='TSMC',
                  io_prefix="",
                  fifo_depth=2,
@@ -402,14 +402,14 @@ if __name__ == "__main__":
     #                     optimize_wide=True,
     #                     add_flush=False)
     strg_ram = StrgRAM(data_width=16,
-                        banks=1,
-                        memory_width=mem_width,
-                        memory_depth=mem_depth,
-                        rw_same_cycle=False,
-                        read_delay=1,
-                        addr_width=16,
-                        prioritize_write=True,
-                        comply_with_17=True)
+                       banks=1,
+                       memory_width=mem_width,
+                       memory_depth=mem_depth,
+                       rw_same_cycle=False,
+                       read_delay=1,
+                       addr_width=16,
+                       prioritize_write=True,
+                       comply_with_17=True)
 
     stencil_valid = StencilValid()
 
