@@ -121,38 +121,38 @@ def get_linear_test():
         'name': 'write_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [16],
+            'extents': [32],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
-                'offset': 4
+                'strides': [2],
+                'offset': 2
             }
         },
         'vec_in_config': {
             'dimensionality': 2,
-            'extents': [4, 16],
+            'extents': [2, 32],
             'address': {
-                'strides': [1, 4],
+                'strides': [1, 2],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, 4],
+                'strides': [1, 2],
                 'offset': 0
             }
         },
         'vec_out_config': {
             'dimensionality': 1,
-            'extents': [16],
+            'extents': [32],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
-                'offset': 4
+                'strides': [2],
+                'offset': 2
             }
         },
         'vec_constraints': [raw_constraint_vec_w, war_constraint_vec_w]
@@ -180,37 +180,37 @@ def get_linear_test():
         'name': 'read_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [16],
+            'extents': [32],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [4],
+                'strides': [2],
                 'offset': 17
             }
         },
         'vec_in_config': {
             'dimensionality': 1,
-            'extents': [16],
+            'extents': [32],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [8],
+                'strides': [2],
                 'offset': 18
             }
         },
         'vec_out_config': {
             'dimensionality': 2,
-            'extents': [4, 16],
+            'extents': [2, 32],
             'address': {
-                'strides': [1, 4],
+                'strides': [1, 2],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, 4],
+                'strides': [1, 2],
                 'offset': 19
             }
         },
