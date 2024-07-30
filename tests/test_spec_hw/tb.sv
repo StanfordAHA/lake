@@ -363,7 +363,7 @@ module lake_static_tb;
 
             // For LI, delay the first read to verify that the
             // writes don't proceed too much
-            if (THIS_CYC_COUNT > 64) begin
+            if (THIS_CYC_COUNT > 64 && static_value == 0) begin
                 port_r0_ready <= 1'b1;
             end
 
@@ -400,7 +400,7 @@ module lake_static_tb;
             // Kill the output readys once the data is done...
             // And check that we don't get any valids after!
             // Only for r/v
-            if (r0_tracker >= r0_num_data && port_r0_valid == 1'b1 && static_value == 0) begin
+            if (r0_tracker >= r0_num_data && port_r0_valid == 1'b1) begin
                 @(posedge clk);
                 @(posedge clk);
                 @(posedge clk);
@@ -408,7 +408,7 @@ module lake_static_tb;
                 $display("FAIL");
                 $finish;
             end
-            if (r1_tracker >= r1_num_data && port_r1_valid == 1'b1 && static_value == 0) begin
+            if (r1_tracker >= r1_num_data && port_r1_valid == 1'b1) begin
                 @(posedge clk);
                 @(posedge clk);
                 @(posedge clk);
@@ -416,7 +416,7 @@ module lake_static_tb;
                 $display("FAIL");
                 $finish;
             end
-            if (r2_tracker >= r2_num_data && port_r2_valid == 1'b1 && static_value == 0) begin
+            if (r2_tracker >= r2_num_data && port_r2_valid == 1'b1) begin
                 @(posedge clk);
                 @(posedge clk);
                 @(posedge clk);
@@ -424,7 +424,7 @@ module lake_static_tb;
                 $display("FAIL");
                 $finish;
             end
-            if (r3_tracker >= r3_num_data && port_r3_valid == 1'b1 && static_value == 0) begin
+            if (r3_tracker >= r3_num_data && port_r3_valid == 1'b1) begin
                 @(posedge clk);
                 @(posedge clk);
                 @(posedge clk);
@@ -434,31 +434,39 @@ module lake_static_tb;
             end
 
             // Only increase rX/w/Y_tracker if r/v verified
-            if ((port_w0_valid && port_w0_ready && (w0_tracker < w0_num_data)) || (static_value == 1)) begin
+            // if ((port_w0_valid && port_w0_ready && (w0_tracker < w0_num_data)) || (static_value == 1)) begin
+            if (port_w0_valid && port_w0_ready && (w0_tracker < w0_num_data)) begin
                 w0_tracker = w0_tracker + 1;
             end
-            if ((port_w1_valid && port_w1_ready && (w1_tracker < w1_num_data)) || (static_value == 1)) begin
+            // if ((port_w1_valid && port_w1_ready && (w1_tracker < w1_num_data)) || (static_value == 1)) begin
+            if (port_w1_valid && port_w1_ready && (w1_tracker < w1_num_data)) begin
                 w1_tracker = w1_tracker + 1;
             end
-            if ((port_w2_valid && port_w2_ready && (w2_tracker < w2_num_data)) || (static_value == 1)) begin
+            // if ((port_w2_valid && port_w2_ready && (w2_tracker < w2_num_data)) || (static_value == 1)) begin
+            if (port_w2_valid && port_w2_ready && (w2_tracker < w2_num_data)) begin
                 w2_tracker = w2_tracker + 1;
             end
-            if ((port_w3_valid && port_w3_ready && (w3_tracker < w3_num_data)) || (static_value == 1)) begin
+            // if ((port_w3_valid && port_w3_ready && (w3_tracker < w3_num_data)) || (static_value == 1)) begin
+            if (port_w3_valid && port_w3_ready && (w3_tracker < w3_num_data)) begin
                 w3_tracker = w3_tracker + 1;
             end
-            if ((port_r0_valid && port_r0_ready && (r0_tracker < r0_num_data)) || (static_value == 1)) begin
+            // if ((port_r0_valid && port_r0_ready && (r0_tracker < r0_num_data)) || (static_value == 1)) begin
+            if (port_r0_valid && port_r0_ready && (r0_tracker < r0_num_data)) begin
                 port_r0_mem[r0_tracker] <= port_r0_data;
                 r0_tracker = r0_tracker + 1;
             end
-            if ((port_r1_valid && port_r1_ready && (r1_tracker < r1_num_data)) || (static_value == 1)) begin
+            // if ((port_r1_valid && port_r1_ready && (r1_tracker < r1_num_data)) || (static_value == 1)) begin
+            if (port_r1_valid && port_r1_ready && (r1_tracker < r1_num_data)) begin
                 port_r1_mem[r1_tracker] <= port_r1_data;
                 r1_tracker = r1_tracker + 1;
             end
-            if ((port_r2_valid && port_r2_ready && (r2_tracker < r2_num_data)) || (static_value == 1)) begin
+            // if ((port_r2_valid && port_r2_ready && (r2_tracker < r2_num_data)) || (static_value == 1)) begin
+            if (port_r2_valid && port_r2_ready && (r2_tracker < r2_num_data)) begin
                 port_r2_mem[r2_tracker] <= port_r2_data;
                 r2_tracker = r2_tracker + 1;
             end
-            if ((port_r3_valid && port_r3_ready && (r3_tracker < r3_num_data)) || (static_value == 1)) begin
+            // if ((port_r3_valid && port_r3_ready && (r3_tracker < r3_num_data)) || (static_value == 1)) begin
+            if (port_r3_valid && port_r3_ready && (r3_tracker < r3_num_data)) begin
                 port_r3_mem[r3_tracker] <= port_r3_data;
                 r3_tracker = r3_tracker + 1;
             end
@@ -466,25 +474,29 @@ module lake_static_tb;
         end
 
         // Check that all inputs and outputs are at their maximum for validity (in ready/valid)
-        if ((r0_tracker != r0_num_data) && (static_value == 0)) begin
+        // if ((r0_tracker != r0_num_data) && (static_value == 0)) begin
+        if (r0_tracker != r0_num_data) begin
             $display("Not enough data on port r0");
             $display("Expected %d, but only received %d", r0_num_data, r0_tracker);
             $display("FAIL");
             $finish;
         end
-        if ((r1_tracker != r1_num_data) && (static_value == 0)) begin
+        // if ((r1_tracker != r1_num_data) && (static_value == 0)) begin
+        if (r1_tracker != r1_num_data) begin
             $display("Not enough data on port r1");
             $display("Expected %d, but only received %d", r1_num_data, r1_tracker);
             $display("FAIL");
             $finish;
         end
-        if ((r2_tracker != r2_num_data) && (static_value == 0)) begin
+        // if ((r2_tracker != r2_num_data) && (static_value == 0)) begin
+        if (r2_tracker != r2_num_data) begin
             $display("Not enough data on port r2");
             $display("Expected %d, but only received %d", r2_num_data, r2_tracker);
             $display("FAIL");
             $finish;
         end
-        if ((r3_tracker != r3_num_data) && (static_value == 0)) begin
+        // if ((r3_tracker != r3_num_data) && (static_value == 0)) begin
+        if (r3_tracker != r3_num_data) begin
             $display("Not enough data on port r3");
             $display("Expected %d, but only received %d", r3_num_data, r3_tracker);
             $display("FAIL");
