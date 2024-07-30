@@ -194,6 +194,7 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
         ports.append(dual_port_p1r)
         name = f"IN12LP_SDPB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
     elif reg_file:
+        mux_val = 4
         ports.extend([rf_dual_port_p0w, rf_dual_port_p0r])
         name = f"IN12LP_R2PB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
     else:
