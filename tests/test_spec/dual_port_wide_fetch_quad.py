@@ -1,6 +1,6 @@
 from lake.spec.spec import Spec
 from lake.spec.port import Port
-from lake.utils.spec_enum import Runtime, Direction, MemoryPortType
+from lake.utils.spec_enum import Runtime, Direction, MemoryPortType, LFComparisonOperator
 from lake.spec.address_generator import AddressGenerator
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator
@@ -97,12 +97,29 @@ def get_linear_test():
 
     linear_test = {}
 
+    pw_vec_w = 0
+    pr_vec_w = 1
+
+    pr_raw_idx_vec_w = 0
+    pw_raw_idx_vec_w = 1
+    raw_comp_vec_w = LFComparisonOperator.LT.value
+    raw_scalar_vec_w = 0
+    raw_constraint_vec_w = (pr_vec_w, pr_raw_idx_vec_w,
+                            pw_vec_w, pw_raw_idx_vec_w, raw_comp_vec_w, raw_scalar_vec_w)
+
+    pr_war_idx_vec_w = 0
+    pw_war_idx_vec_w = 1
+    war_comp_vec_w = LFComparisonOperator.LT.value
+    war_scalar_vec_w = 2
+    war_constraint_vec_w = (pw_vec_w, pw_war_idx_vec_w, pr_vec_w,
+                            pr_war_idx_vec_w, war_comp_vec_w, war_scalar_vec_w)
+
     linear_test[0] = {
         'type': Direction.IN,
         'name': 'write_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -114,7 +131,7 @@ def get_linear_test():
         },
         'vec_in_config': {
             'dimensionality': 2,
-            'extents': [4, 64],
+            'extents': [4, 16],
             'address': {
                 'strides': [1, 4],
                 'offset': 0
@@ -126,7 +143,7 @@ def get_linear_test():
         },
         'vec_out_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -135,49 +152,86 @@ def get_linear_test():
                 'strides': [4],
                 'offset': 4
             }
-        }
+        },
+        'vec_constraints': [raw_constraint_vec_w, war_constraint_vec_w]
     }
+
+    pw_vec_r = 0
+    pr_vec_r = 1
+
+    pr_raw_idx_vec_r = 1
+    pw_raw_idx_vec_r = 0
+    raw_comp_vec_r = LFComparisonOperator.LT.value
+    raw_scalar_vec_r = 0
+    raw_constraint_vec_r = (pr_vec_r, pr_raw_idx_vec_r,
+                            pw_vec_r, pw_raw_idx_vec_r, raw_comp_vec_r, raw_scalar_vec_r)
+
+    pr_war_idx_vec_r = 1
+    pw_war_idx_vec_r = 0
+    war_comp_vec_r = LFComparisonOperator.LT.value
+    war_scalar_vec_r = 2
+    war_constraint_vec_r = (pw_vec_r, pw_war_idx_vec_r, pr_vec_r,
+                            pr_war_idx_vec_r, war_comp_vec_r, war_scalar_vec_r)
 
     linear_test[2] = {
         'type': Direction.OUT,
         'name': 'read_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [8],
-                'offset': 16
+                'strides': [4],
+                'offset': 17
             }
         },
         'vec_in_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [16],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
                 'strides': [8],
-                'offset': 17
+                'offset': 18
             }
         },
         'vec_out_config': {
             'dimensionality': 2,
             'extents': [4, 16],
             'address': {
-                'strides': [0, 1],
+                'strides': [1, 4],
                 'offset': 0
             },
             'schedule': {
                 'strides': [1, 4],
-                'offset': 18
+                'offset': 19
             }
-        }
+        },
+        'vec_constraints': [raw_constraint_vec_r, war_constraint_vec_r]
     }
+
+    pw = 0
+    pr = 2
+
+    pr_raw_idx = 0
+    pw_raw_idx = 0
+    raw_comp = LFComparisonOperator.LT.value
+    raw_scalar = 0
+    raw_constraint = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
+
+    pw_war_idx = 0
+    pr_war_idx = 0
+    war_comp = LFComparisonOperator.LT.value
+    war_scalar = 16
+    war_constraint = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
+
+    # Just have read follow write
+    linear_test['constraints'] = [raw_constraint, war_constraint]
 
     return linear_test
 
