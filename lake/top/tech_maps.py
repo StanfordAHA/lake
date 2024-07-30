@@ -157,7 +157,7 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
         # port RW
         'clk': 'CLK_A',
         'cen': 'CEN_A',
-        'write_en': 'WEN_A',
+        # 'write_en': 'WEN_A',
         'addr': 'A_A',
         'write_data': 'D',
         'alt_sigs': {

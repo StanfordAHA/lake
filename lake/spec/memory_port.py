@@ -289,7 +289,11 @@ class PhysicalMemoryPort(MemoryPort):
         elif self.mptype == MemoryPortType.W:
             self.port_interface['write_data'] = self.port_map['write_data']
             self.port_interface['addr'] = self.port_map['addr']
-            self.port_interface['write_en'] = self.port_map['write_en']
+            # In some cases we have found that on a standalone write port (RF), there is no WEN
+            if 'write_en' in self.port_map:
+                self.port_interface['write_en'] = self.port_map['write_en']
+            else:
+                self.port_interface['write_en'] = None
             self.port_interface['cen'] = self.port_map['cen']
             self.port_interface['clk'] = self.port_map['clk']
             self.port_interface_set = True
