@@ -133,7 +133,7 @@ def get_linear_test():
 
 
 def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, clock_count_width=64,
-                           physical=False, tp: TestPrepper = None, reg_file=False):
+                           physical=False, tp: TestPrepper = None, reg_file=False, dimensionality=6):
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -145,7 +145,7 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_dual_port_spec = build_simple_dual_port(storage_capacity=storage_capacity, data_width=data_width,
-                                                   physical=physical, reg_file=reg_file)
+                                                   physical=physical, reg_file=reg_file, dims=dimensionality)
     simple_dual_port_spec.visualize_graph()
     simple_dual_port_spec.generate_hardware()
     simple_dual_port_spec.extract_compiler_information()
@@ -201,7 +201,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple Dual Port RV')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
-    parser.add_argument("--clock_count_width", type=int, default=64)
+    parser.add_argument("--clock_count_width", type=int, default=32)
+    parser.add_argument("--dimensionality", type=int, default=6)
     parser.add_argument("--reg_file", action="store_true")
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
@@ -220,4 +221,4 @@ if __name__ == "__main__":
 
     test_linear_read_write(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
                            clock_count_width=args.clock_count_width, physical=args.physical,
-                           tp=tp, reg_file=args.reg_file)
+                           tp=tp, reg_file=args.reg_file, dimensionality=args.dimensionality)
