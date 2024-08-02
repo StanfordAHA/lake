@@ -163,7 +163,8 @@ run:
 #	$(RUN) $(DUMP_ARGS) $(TMP_PARGS)
 #	python $(COMPARISON_SCRIPT) --do_comparison --gold_mat_dir=$(TEST_DIR)/GLB_DIR --sim_mat_dir=$(TEST_DIR)/OUTPUT_DIR/ --unroll $(UNROLL)
 .PHONY: compare
-compare: python test_comparison.py --dir)./
+compare:
+	python test_comparison.py --dir ./
 
 .PHONY: sim
 # sim: libcgra.so compile run

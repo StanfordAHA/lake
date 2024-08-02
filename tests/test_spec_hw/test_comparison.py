@@ -8,4 +8,7 @@ if __name__ == "__main__":
     parser.add_argument("--dir", type=str, default=None)
     args = parser.parse_args()
     ret_val = verify_gold(args.dir)
-    print(ret_val)
+    if ret_val is True:
+        print("Test PASSED!")
+    else:
+        print("Test FAILED...")
