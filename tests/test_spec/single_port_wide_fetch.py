@@ -71,7 +71,7 @@ def get_linear_test():
 
     linear_test[0] = {
         'type': Direction.IN,
-        'name': 'write_port_0',
+        'name': 'port_w0',
         'config': {
             'dimensionality': 1,
             'extents': [64],
@@ -112,7 +112,7 @@ def get_linear_test():
 
     linear_test[1] = {
         'type': Direction.OUT,
-        'name': 'read_port_0',
+        'name': 'port_r0',
         'config': {
             'dimensionality': 1,
             'extents': [64],
