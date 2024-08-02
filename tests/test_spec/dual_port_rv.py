@@ -6,7 +6,7 @@ from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
-from lake.utils.util import prepare_hw_test, get_data_sizes, TestPrepper
+from lake.utils.util import calculate_read_out, prepare_hw_test, get_data_sizes, TestPrepper
 from lake.top.tech_maps import GF_Tech_Map
 import os as os
 import argparse
@@ -83,7 +83,7 @@ def get_linear_test(depth=512):
 
     linear_test[0] = {
         'type': Direction.IN,
-        'name': 'write_port_0',
+        'name': 'port_w0',
         'config': {
             'dimensionality': 1,
             'extents': [use_depth],
@@ -100,7 +100,7 @@ def get_linear_test(depth=512):
 
     linear_test[1] = {
         'type': Direction.OUT,
-        'name': 'read_port_0',
+        'name': 'port_r0',
         'config': {
             'dimensionality': 1,
             'extents': [use_depth],
@@ -162,6 +162,24 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     # Define the test
     lt = get_linear_test(depth=mem_depth)
 
+    read_outs = calculate_read_out(lt)
+    # Now we have the output sequences
+    # Need to write them out
+    for pnum, sequences in read_outs.items():
+        port_name = lt[pnum]['name']
+        times = sequences['time']
+        datas = sequences['data']
+        # Need to add a cycle delay if using SRAM
+        if reg_file is False:
+            times = [time + 1 for time in times]
+        gold_output_path_data = os.path.join(output_dir, "gold", f"{port_name}_data.txt")
+        gold_output_path_time = os.path.join(output_dir, "gold", f"{port_name}_time.txt")
+        with open(gold_output_path_data, 'w') as file:
+            for data_ in datas:
+                file.write(f"{data_}\n")
+        with open(gold_output_path_time, 'w') as file:
+            for time_ in times:
+                file.write(f"{time_}\n")
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_dual_port_spec.gen_bitstream(lt)
 

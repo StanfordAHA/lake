@@ -1010,6 +1010,10 @@ def calculate_read_out(schedule):
 
     for port_num, port_sched in schedule.items():
 
+        # Ignore the dynamic portion for these purposes...
+        if not isinstance(port_sched, dict):
+            continue
+
         config = port_sched['config']
 
         port_addr_seq = generate_affine_sequence(dimensionality=config['dimensionality'],
@@ -1126,6 +1130,7 @@ def get_data_sizes(schedule: dict = None, num_ports=2):
         sizes_map.append((port_plus_arg, num_data))
     return sizes_map
 
+
 def read_dump_sw(sw):
     sw_list = None
     with open(sw, 'r') as sw_file:
@@ -1134,6 +1139,7 @@ def read_dump_sw(sw):
     for line in sw_list:
         sw_list_final.append(int(line.strip()))
     return sw_list_final
+
 
 def read_dump_hw(hw, hex=True):
     hw_list_pre = None
@@ -1149,13 +1155,31 @@ def read_dump_hw(hw, hex=True):
         hw_list_final.append(int(line_strip, base=16))
     return hw_list_final
 
+
 def verify_gold(dir):
     # Read in both...
     outdir = os.path.join(dir, "outputs")
     golddir = os.path.join(dir, "gold")
+    indir = os.path.join(dir, "inputs")
+
+    static = False
+    # Check if this is a static or dynamic test
+    # by checking the PARGS
+    pargs_file = os.path.join(indir, "PARGS.txt")
+    pargs_lines = None
+    with open(pargs_file, 'r') as pargs_file_handle:
+        pargs_lines = pargs_file_handle.readlines()
+    for line_ in pargs_lines:
+        if 'static=1' in line_:
+            static = True
+
+    print(f"Test is static: {static}")
+
     # Iterate through the files in the gold dir
     for filename in os.listdir(golddir):
         # Get both version and compare them...
+        if 'time' in filename and static is False:
+            continue
         sw_path = os.path.join(golddir, filename)
         hw_path = os.path.join(outdir, filename)
         sw_version = read_dump_sw(sw_path)

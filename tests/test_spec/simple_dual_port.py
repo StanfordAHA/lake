@@ -147,8 +147,6 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     lt = get_linear_test(depth=mem_depth)
 
     read_outs = calculate_read_out(lt)
-    print(read_outs)
-
     # Now we have the output sequences
     # Need to write them out
     for pnum, sequences in read_outs.items():
