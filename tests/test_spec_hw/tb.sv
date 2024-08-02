@@ -400,7 +400,8 @@ module lake_static_tb;
             end
 
             @(posedge clk);
-            THIS_CYC_COUNT = THIS_CYC_COUNT + 1;
+            // THIS_CYC_COUNT = THIS_CYC_COUNT + 1;
+            THIS_CYC_COUNT <= THIS_CYC_COUNT + 1;
 
             // Kill the output readys once the data is done...
             // And check that we don't get any valids after!
