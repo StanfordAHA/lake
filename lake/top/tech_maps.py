@@ -152,18 +152,29 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
         }
     }
 
-    # TODO: Have Kavya populate this
-    rf_dual_port_p0w = {
-        # port RW
+    rf_dual_port_p0r = {
         'clk': 'CLK_A',
         'cen': 'CEN_A',
-        # 'write_en': 'WEN_A',
+        # 'read_en': 'RDEN_B',
         'addr': 'A_A',
+        'read_data': 'Q',
+        'alt_sigs': {
+            # value, width
+            # Only a single pin unique to this port
+            'T_Q_RST_A': (0, 1),
+        }
+    }
+
+    rf_dual_port_p0w = {
+        'clk': 'CLK_B',
+        'cen': 'CEN_B',
+        # 'write_en': 'WEN_A',
+        'addr': 'A_B',
         'write_data': 'D',
         'alt_sigs': {
             # value, width
             'T_LOGIC': (0, 1),
-            'T_Q_RST_A': (0, 1),
+            'T_Q_RST_B': (0, 1),
             'MA_SAWL': (0, 1),
             'MA_WL': (0, 1),
             'MA_WRAS1': (0, 1),
@@ -175,20 +186,6 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
         }
     }
 
-    # TODO: Have Kavya populate this
-    rf_dual_port_p0r = {
-        # port RW
-        'clk': 'CLK_B',
-        'cen': 'CEN_B',
-        # 'read_en': 'RDEN_B',
-        'addr': 'A_B',
-        'read_data': 'Q',
-        'alt_sigs': {
-            # value, width
-            # Only a single pin unique to this port
-            'T_Q_RST_B': (0, 1),
-        }
-    }
     if dual_port and not reg_file:
         ports.append(dual_port_p0rw)
         ports.append(dual_port_p1r)
@@ -205,6 +202,7 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
             mux_val = 4
             s_val = 2
 
+        # ports.extend([rf_dual_port_p0r, rf_dual_port_p0w])
         ports.extend([rf_dual_port_p0w, rf_dual_port_p0r])
         name = f"IN12LP_R2PB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
     else:
