@@ -3,7 +3,7 @@ import kratos as kts
 from kratos import *
 import math
 import os as os
-from lake.utils.spec_enum import MemoryPortType
+from lake.utils.spec_enum import MemoryPortType, Direction
 from lake.attributes.formal_attr import *
 import shutil as shutil
 # from lake.spec.component import Component
@@ -33,6 +33,7 @@ class TestPrepper():
         os.makedirs(final_dir, exist_ok=True)
         os.makedirs(os.path.join(final_dir, "inputs"), exist_ok=True)
         os.makedirs(os.path.join(final_dir, "outputs"), exist_ok=True)
+        os.makedirs(os.path.join(final_dir, "gold"), exist_ok=True)
 
         # Now copy over the tests/test_hw_spec
         tb_base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../tests/test_spec_hw/")
@@ -862,18 +863,18 @@ def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType 
                                memport_intf=None, strg_intf=None):
     if mptype == MemoryPortType.R:
         signals = ['addr',
-                    'read_data',
-                    'read_en']
+                   'read_data',
+                   'read_en']
     elif mptype == MemoryPortType.W:
         signals = ['addr',
-                    'write_data',
-                    'write_en']
+                   'write_data',
+                   'write_en']
     elif mptype == MemoryPortType.RW:
         signals = ['addr',
-                    'read_data',
-                    'write_data',
-                    'read_en',
-                    'write_en']
+                   'read_data',
+                   'write_data',
+                   'read_en',
+                   'write_en']
     else:
         raise NotImplementedError
 
@@ -968,11 +969,133 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
         generator.wire(sel, mux_gen_sel_in)
 
 
+def generate_affine_sequence(dimensionality, extents, strides, offset):
+
+    seq_size = 1
+    for i in range(dimensionality):
+        seq_size = seq_size * extents[i]
+    final_seq = [0 for i in range(seq_size)]
+    it_domain = [0 for i in range(dimensionality)]
+    # done = False
+    for i in range(seq_size):
+        # Add the new value
+        new_val = offset
+        for j in range(dimensionality):
+            new_val += it_domain[j] * strides[j]
+        final_seq[i] = new_val
+        # Update the iterators
+        for j in range(dimensionality):
+            it_domain[j] += 1
+            # if it is equal to the extent, set it back to 0 and
+            # keep going up the chain
+            if it_domain[j] == extents[j]:
+                it_domain[j] = 0
+            # Otherwise we are done
+            else:
+                break
+
+    return final_seq
+
+
 def calculate_read_out(schedule):
     '''Use this function to create a list of
         (data, timestamp)
     '''
+    # Start with two port
+    memory = [0 for i in range(2048)]
 
+    data_ins = {}
+    data_outs = {}
+    all_sequences = {}
+
+    for port_num, port_sched in schedule.items():
+
+        config = port_sched['config']
+
+        port_addr_seq = generate_affine_sequence(dimensionality=config['dimensionality'],
+                                                 extents=config['extents'],
+                                                 strides=config['address']['strides'],
+                                                 offset=config['address']['offset'])
+
+        port_sched_seq = generate_affine_sequence(dimensionality=config['dimensionality'],
+                                                  extents=config['extents'],
+                                                  strides=config['schedule']['strides'],
+                                                  offset=config['schedule']['offset'])
+
+        print(port_addr_seq)
+        print(port_sched_seq)
+
+        if port_sched['type'] == Direction.IN:
+            data_ins[port_num] = iter([i for i in range(2048)])
+        else:
+            data_outs[port_num] = {'time': [],
+                                   'data': []}
+
+        # Use iters so we can just call next very easily
+        all_sequences[port_num] = {'addr': iter(port_addr_seq),
+                                   'sched': iter(port_sched_seq)}
+
+    # Now we have the sequences of all ports
+    # Just need to find the smallest current schedule sequence value, advance
+    # the time step to then, and then perform all actions at the timestep
+    timestep = -1
+    curr_seqs = {}
+    seqs_done = {}
+    for pnum, seqs in all_sequences.items():
+        curr_seqs[pnum] = (next(seqs['sched']), next(seqs['addr']))
+        seqs_done[pnum] = False
+    more_events = True
+    while more_events:
+        new_timestep = 10000000
+        # Get smallest timestep
+        for pnum, seqs in curr_seqs.items():
+            if seqs_done[pnum] is True:
+                continue
+            sched, addr = seqs
+            print(sched)
+            print(timestep)
+            print(new_timestep)
+            if sched < new_timestep:
+                new_timestep = sched
+        print("OLD")
+        print(timestep)
+        print("NEW")
+        print(new_timestep)
+        assert new_timestep > timestep
+        timestep = new_timestep
+        # Now perform all actions at the timestep
+        new_curr_seqs = {}
+        for pnum, seqs in curr_seqs.items():
+            if seqs_done[pnum] is True:
+                continue
+            sched, addr = seqs
+            # If this should happen, perform either read or write
+            this_seqs = all_sequences[pnum]
+            if sched == timestep:
+                print(f"Triggered timestep match on {pnum} with sched {sched}")
+                if schedule[pnum]['type'] == Direction.IN:
+                    memory[addr] = next(data_ins[pnum])
+                    # new_curr_seqs[pnum] = (next(this_seqs['sched']), next(this_seqs['addr']))
+                    print("Mek")
+                else:
+                    # data_outs[pnum].append((sched, memory[addr]))
+                    data_outs[pnum]['time'].append(sched)
+                    data_outs[pnum]['data'].append(memory[addr])
+                try:
+                    new_curr_seqs[pnum] = (next(this_seqs['sched']), next(this_seqs['addr']))
+                    print(new_curr_seqs[pnum])
+                except StopIteration:
+                    seqs_done[pnum] = True
+            else:
+                new_curr_seqs[pnum] = seqs
+        curr_seqs = new_curr_seqs
+        # Now calcualte if we are done based on all dones
+        more_events = False
+        for p_, sd_ in seqs_done.items():
+            if sd_ is False:
+                more_events = True
+
+    return data_outs
 
 
 def get_data_sizes(schedule: dict = None, num_ports=2):

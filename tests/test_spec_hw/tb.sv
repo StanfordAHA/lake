@@ -80,10 +80,15 @@ module lake_static_tb;
     logic [DATA_WIDTH - 1:0] port_w1_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_w2_mem [0:NUM_CYCLES - 1];
     logic [DATA_WIDTH - 1:0] port_w3_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r0_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r1_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r2_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r3_mem [0:NUM_CYCLES - 1];
+
+    logic [DATA_WIDTH - 1:0] port_r0_mem  [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r0_time [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r1_mem  [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r1_time [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r2_mem  [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r2_time [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r3_mem  [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r3_time [0:NUM_CYCLES - 1];
 
     if (NUMBER_PORTS == 2) begin : two_port_dut
 
@@ -453,21 +458,25 @@ module lake_static_tb;
             // if ((port_r0_valid && port_r0_ready && (r0_tracker < r0_num_data)) || (static_value == 1)) begin
             if (port_r0_valid && port_r0_ready && (r0_tracker < r0_num_data)) begin
                 port_r0_mem[r0_tracker] <= port_r0_data;
+                port_r0_time[r0_tracker] <= THIS_CYC_COUNT;
                 r0_tracker = r0_tracker + 1;
             end
             // if ((port_r1_valid && port_r1_ready && (r1_tracker < r1_num_data)) || (static_value == 1)) begin
             if (port_r1_valid && port_r1_ready && (r1_tracker < r1_num_data)) begin
                 port_r1_mem[r1_tracker] <= port_r1_data;
+                port_r1_time[r1_tracker] <= THIS_CYC_COUNT;
                 r1_tracker = r1_tracker + 1;
             end
             // if ((port_r2_valid && port_r2_ready && (r2_tracker < r2_num_data)) || (static_value == 1)) begin
             if (port_r2_valid && port_r2_ready && (r2_tracker < r2_num_data)) begin
                 port_r2_mem[r2_tracker] <= port_r2_data;
+                port_r2_time[r2_tracker] <= THIS_CYC_COUNT;
                 r2_tracker = r2_tracker + 1;
             end
             // if ((port_r3_valid && port_r3_ready && (r3_tracker < r3_num_data)) || (static_value == 1)) begin
             if (port_r3_valid && port_r3_ready && (r3_tracker < r3_num_data)) begin
                 port_r3_mem[r3_tracker] <= port_r3_data;
+                port_r3_time[r3_tracker] <= THIS_CYC_COUNT;
                 r3_tracker = r3_tracker + 1;
             end
 
@@ -503,14 +512,25 @@ module lake_static_tb;
             $finish;
         end
 
-        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r0_output.txt", TEST_DIRECTORY);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r0_data.txt", TEST_DIRECTORY);
         $writememh(OUTPUT_LOCATION, port_r0_mem);
-        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r1_output.txt", TEST_DIRECTORY);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r0_time.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_r0_time);
+
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r1_data.txt", TEST_DIRECTORY);
         $writememh(OUTPUT_LOCATION, port_r1_mem);
-        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r2_output.txt", TEST_DIRECTORY);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r1_time.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_r1_time);
+
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r2_data.txt", TEST_DIRECTORY);
         $writememh(OUTPUT_LOCATION, port_r2_mem);
-        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r3_output.txt", TEST_DIRECTORY);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r2_time.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_r2_time);
+
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r3_data.txt", TEST_DIRECTORY);
         $writememh(OUTPUT_LOCATION, port_r3_mem);
+        OUTPUT_LOCATION = $sformatf("%s/outputs/port_r3_time.txt", TEST_DIRECTORY);
+        $writememh(OUTPUT_LOCATION, port_r3_time);
 
         $display("PASS");
         #20 $finish;
