@@ -360,11 +360,11 @@ module lake_static_tb;
 
         while (THIS_CYC_COUNT < NUM_CYCLES) begin
 
-            // Input 2*i
-            port_w0_data <= w0_tracker * 2;
-            port_w1_data <= w1_tracker * 2;
-            port_w2_data <= w2_tracker * 2;
-            port_w3_data <= w3_tracker * 2;
+            // Input i
+            port_w0_data <= w0_tracker;
+            port_w1_data <= w1_tracker;
+            port_w2_data <= w2_tracker;
+            port_w3_data <= w3_tracker;
 
             // For LI, delay the first read to verify that the
             // writes don't proceed too much

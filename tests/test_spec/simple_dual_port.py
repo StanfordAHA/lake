@@ -155,9 +155,9 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
         port_name = lt[pnum]['name']
         times = sequences['time']
         datas = sequences['data']
-        print(f"Mek")
-        print(times)
-        print(datas)
+        # Need to add a cycle delay if using SRAM
+        if reg_file is False:
+            times = [time + 1 for time in times]
         gold_output_path_data = os.path.join(output_dir, "gold", f"{port_name}_data.txt")
         gold_output_path_time = os.path.join(output_dir, "gold", f"{port_name}_time.txt")
         with open(gold_output_path_data, 'w') as file:
@@ -166,8 +166,6 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
         with open(gold_output_path_time, 'w') as file:
             for time_ in times:
                 file.write(f"{time_}\n")
-
-    # quit()
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_dual_port_spec.gen_bitstream(lt)

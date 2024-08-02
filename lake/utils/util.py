@@ -1046,21 +1046,14 @@ def calculate_read_out(schedule):
         seqs_done[pnum] = False
     more_events = True
     while more_events:
-        new_timestep = 10000000
+        new_timestep = None
         # Get smallest timestep
         for pnum, seqs in curr_seqs.items():
             if seqs_done[pnum] is True:
                 continue
             sched, addr = seqs
-            print(sched)
-            print(timestep)
-            print(new_timestep)
-            if sched < new_timestep:
+            if new_timestep is None or sched < new_timestep:
                 new_timestep = sched
-        print("OLD")
-        print(timestep)
-        print("NEW")
-        print(new_timestep)
         assert new_timestep > timestep
         timestep = new_timestep
         # Now perform all actions at the timestep
