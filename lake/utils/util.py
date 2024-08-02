@@ -1126,6 +1126,47 @@ def get_data_sizes(schedule: dict = None, num_ports=2):
         sizes_map.append((port_plus_arg, num_data))
     return sizes_map
 
+def read_dump_sw(sw):
+    sw_list = None
+    with open(sw, 'r') as sw_file:
+        sw_list = sw_file.readlines()
+    sw_list_final = []
+    for line in sw_list:
+        sw_list_final.append(int(line.strip()))
+    return sw_list_final
+
+def read_dump_hw(hw, hex=True):
+    hw_list_pre = None
+    hw_list_final = []
+    with open(hw, 'r') as hw_file:
+        hw_list_pre = hw_file.readlines()
+    # Now we need to trim stuff with x or X
+    # and write the hex into integers
+    for line in hw_list_pre:
+        line_strip = line.strip()
+        if 'x' in line_strip or 'X' in line_strip:
+            break
+        hw_list_final.append(int(line_strip, base=16))
+    return hw_list_final
+
+def verify_gold(dir):
+    # Read in both...
+    outdir = os.path.join(dir, "outputs")
+    golddir = os.path.join(dir, "gold")
+    # Iterate through the files in the gold dir
+    for filename in os.listdir(golddir):
+        # Get both version and compare them...
+        sw_path = os.path.join(golddir, filename)
+        hw_path = os.path.join(outdir, filename)
+        sw_version = read_dump_sw(sw_path)
+        hw_version = read_dump_hw(hw_path)
+        if len(sw_version) != len(hw_version):
+            return False
+        for i in range(len(sw_version)):
+            if sw_version[i] != hw_version[i]:
+                return False
+    return True
+
 
 if __name__ == "__main__":
     increment_csv("sequence.csv", "inced_csv.csv", [])
