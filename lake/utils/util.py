@@ -968,6 +968,13 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
         generator.wire(sel, mux_gen_sel_in)
 
 
+def calculate_read_out(schedule):
+    '''Use this function to create a list of
+        (data, timestamp)
+    '''
+
+
+
 def get_data_sizes(schedule: dict = None, num_ports=2):
     # A schedule will have a bunch of ports - can always analyze the extens of the config to
     # get the total sizes

@@ -73,16 +73,20 @@ def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
     return ls
 
 
-def get_linear_test():
+def get_linear_test(depth=512):
 
     linear_test = {}
+
+    use_depth = 64
+    if depth < 64:
+        use_depth = depth
 
     linear_test[0] = {
         'type': Direction.IN,
         'name': 'write_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [use_depth],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -99,7 +103,7 @@ def get_linear_test():
         'name': 'read_port_0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [use_depth],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -137,8 +141,10 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     # output this to the inputs thing
     simple_dual_port_spec.get_verilog(output_dir=output_dir_verilog)
 
+    mem_depth = storage_capacity // (data_width // 8)
+
     # Define the test
-    lt = get_linear_test()
+    lt = get_linear_test(depth=mem_depth)
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_dual_port_spec.gen_bitstream(lt)
