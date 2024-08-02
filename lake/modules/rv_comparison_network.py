@@ -53,9 +53,6 @@ class RVComparisonNetwork(Component):
 
     def get_mux_sel_reg_from_indexes(self, p1, p2):
 
-        print(p1)
-        print(p2)
-
         adj_p1_idx = None
         adj_p2_idx = None
         rd_to_wr = None
@@ -299,7 +296,7 @@ class RVComparisonNetwork(Component):
         # Every constraint in constraints is between a port,port,comparator,offset
         # We make all input ports come before outputs ports so we can simply define the space
         # by an integer (self.rw_div)
-        print(constraints)
+        # print(constraints)
         for constraint in constraints:
             p1, p1_ctr, p2, p2_ctr, comparator, scalar = constraint
             p1reg, p2reg = self.get_mux_sel_reg_from_indexes(p1, p2)

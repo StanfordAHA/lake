@@ -18,16 +18,12 @@ class AddressGenerator(Component):
     def gen_hardware(self, memports=None, id: IterationDomain = None, pos_reset=False):
         assert memports is not None
         assert id is not None
-        print(id.get_name())
         id_ext_width = id.get_extent_width()
-        for memport in memports:
-            print(memport.get_name())
+
         # Strides and addr width will be clog2 of the stacked address space
         self.total_num_addrs = 0
         for memport in memports:
             memport: MemoryPort
-            print(memport)
-            print(memport.get_hw_genned())
             self.total_num_addrs += memport.get_num_addrs()
 
         self.addr_width = kts.clog2(self.total_num_addrs)

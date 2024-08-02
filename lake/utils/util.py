@@ -740,7 +740,7 @@ def process_line(item):
     item = item.strip()
     item_nobrack = item.rstrip("]").lstrip("[")
     individ = item_nobrack.split(" ")
-    print(f"individ: {individ}")
+    # print(f"individ: {individ}")
     inced = []
     for i in range(len(individ)):
         inced.append(int(individ[i]) + 1)
@@ -894,8 +894,8 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
             generator.wire(one, many[0])
             return
 
-    print(sel)
-    print(many)
+    # print(sel)
+    # print(many)
     # assert type(many) is list
     # assert len(many) > 0
 
@@ -997,7 +997,99 @@ def generate_affine_sequence(dimensionality, extents, strides, offset):
     return final_seq
 
 
-def calculate_read_out(schedule):
+def calculate_read_out_vec(schedule, vec=4):
+    '''Handle vectorized - three phases
+    '''
+    # Phase one - calculate all inputs to SIPO
+    # Get all input ports
+    # in_ports = {port_num: port_sched for port_num, port_sched in schedule.items() if port_sched['type'] == Direction.IN}
+
+    in_ports = {}
+    for port_num, port_sched in schedule.items():
+        # Need to ignore vec constraints as well
+        if not isinstance(port_num, int):
+            continue
+        if port_sched['type'] == Direction.IN:
+            in_ports[port_num] = port_sched
+    # quit()
+    # Go through the ports and calculate their SIPO output/schedules
+    sipo_outs = {}
+    sipo_outs_data = {}
+
+    # Simply generate a new app and use other function to get the outputs...
+    for pnum, port_sched in in_ports.items():
+        sipo_outs[pnum] = {'time': [],
+                           'data': []}
+
+        vec_in_config = port_sched['vec_in_config']
+        vec_out_config = port_sched['vec_out_config']
+
+        sub_test = {
+            0: {
+                'type': Direction.IN,
+                'name': f"port_{pnum}_sub_in",
+                'config': vec_in_config
+            },
+            1: {
+                'type': Direction.OUT,
+                'name': f"port_{pnum}_sub_out",
+                'config': vec_out_config
+            }
+
+        }
+        sub_in_test_out = calculate_read_out(sub_test, vec=(1, vec), sanitize=False)
+        sipo_outs[pnum] = sub_in_test_out[1]
+        sipo_outs_data[pnum] = sub_in_test_out[1]['data']
+
+    # Now that we have these, we just need to feed the normal schedule, except we need
+    # to send this data instead
+    mid_result = calculate_read_out(schedule=schedule, vec=(vec, vec), data_in=sipo_outs_data, sanitize=False)
+    mid_result_data = {}
+    for pnum, info in mid_result.items():
+        mid_result_data[pnum] = info['data']
+
+    # Time for the last part
+    # out_ports = {port_num: port_sched for port_num, port_sched in schedule.items() if port_sched['type'] == Direction.OUT}
+    out_ports = {}
+    for port_num, port_sched in schedule.items():
+        # Need to ignore vec constraints as well
+        if not isinstance(port_num, int):
+            continue
+        if port_sched['type'] == Direction.OUT:
+            out_ports[port_num] = port_sched
+    piso_outs = {}
+    piso_outs_data = {}
+
+    for pnum, port_sched in out_ports.items():
+        piso_outs[pnum] = {'time': [],
+                           'data': []}
+
+        vec_in_config = port_sched['vec_in_config']
+        vec_out_config = port_sched['vec_out_config']
+        sub_test = {
+            0: {
+                'type': Direction.IN,
+                'name': f"port_{pnum}_sub_in",
+                'config': vec_in_config
+            },
+            1: {
+                'type': Direction.OUT,
+                'name': f"port_{pnum}_sub_out",
+                'config': vec_out_config
+            }
+        }
+
+        send_data = {0: mid_result_data[pnum]}
+
+        sub_in_test_out = calculate_read_out(sub_test, vec=(vec, 1),
+                                             data_in=send_data)
+        piso_outs[pnum] = sub_in_test_out[1]
+        piso_outs_data[pnum] = sub_in_test_out[1]['data']
+
+    return piso_outs
+
+
+def calculate_read_out(schedule, vec=(1, 1), data_in=None, sanitize=True):
     '''Use this function to create a list of
         (data, timestamp)
     '''
@@ -1007,6 +1099,8 @@ def calculate_read_out(schedule):
     data_ins = {}
     data_outs = {}
     all_sequences = {}
+
+    vec_in, vec_out = vec
 
     for port_num, port_sched in schedule.items():
 
@@ -1026,11 +1120,12 @@ def calculate_read_out(schedule):
                                                   strides=config['schedule']['strides'],
                                                   offset=config['schedule']['offset'])
 
-        print(port_addr_seq)
-        print(port_sched_seq)
-
         if port_sched['type'] == Direction.IN:
-            data_ins[port_num] = iter([i for i in range(2048)])
+            # check if data in is None first...
+            if data_in is None:
+                data_ins[port_num] = iter([list(range(z_ * vec_in, z_ * vec_in + vec_in)) for z_ in range(2048 // vec_in)])
+            else:
+                data_ins[port_num] = iter(data_in[port_num])
         else:
             data_outs[port_num] = {'time': [],
                                    'data': []}
@@ -1069,18 +1164,21 @@ def calculate_read_out(schedule):
             # If this should happen, perform either read or write
             this_seqs = all_sequences[pnum]
             if sched == timestep:
-                print(f"Triggered timestep match on {pnum} with sched {sched}")
+                # print(f"Triggered timestep match on {pnum} with sched {sched}")
                 if schedule[pnum]['type'] == Direction.IN:
-                    memory[addr] = next(data_ins[pnum])
-                    # new_curr_seqs[pnum] = (next(this_seqs['sched']), next(this_seqs['addr']))
-                    print("Mek")
+                    data_to_write = next(data_ins[pnum])
+                    for z_ in range(vec_in):
+                        memory[addr * vec_in + z_] = data_to_write[z_]
                 else:
                     # data_outs[pnum].append((sched, memory[addr]))
                     data_outs[pnum]['time'].append(sched)
-                    data_outs[pnum]['data'].append(memory[addr])
+                    # data_outs[pnum]['data'].append(memory[addr])
+                    new_data = []
+                    for z_ in range(vec_out):
+                        new_data.append(memory[addr * vec_out + z_])
+                    data_outs[pnum]['data'].append(new_data)
                 try:
                     new_curr_seqs[pnum] = (next(this_seqs['sched']), next(this_seqs['addr']))
-                    print(new_curr_seqs[pnum])
                 except StopIteration:
                     seqs_done[pnum] = True
             else:
@@ -1091,6 +1189,11 @@ def calculate_read_out(schedule):
         for p_, sd_ in seqs_done.items():
             if sd_ is False:
                 more_events = True
+
+    if sanitize is True:
+        assert vec_out == 1, f"vec_out is not 1, cannot sanitize"
+        for pnum, info in data_outs.items():
+            data_outs[pnum]['data'] = [sl[0] for sl in data_outs[pnum]['data']]
 
     return data_outs
 

@@ -99,7 +99,7 @@ class SingleBankStorage(Storage):
                 # tmp_intf = self.var(f"mem_intf_r_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
                 # self._map_array_to_intf(tmp_intf=tmp_intf, mp_width=mp_width, num_addrs=num_addrs, rw=0)
-                print(addr_width)
+                # print(addr_width)
                 addr = self.input(f"memory_port_{pnum}_read_addr", addr_width)
                 data = self.output(f"memory_port_{pnum}_read_data", mp_width)
                 en = self.input(f"memory_port_{pnum}_read_en", 1)
@@ -412,9 +412,9 @@ class SingleBankStorage(Storage):
         l_pint = self.memport_sets[port_idx]
         p_pint = physical.get_port_interface()
         # Just wire things through for this...
-        print("Printing logical interface")
-        print(l_pint)
-        print(p_pint)
+        # print("Printing logical interface")
+        # print(l_pint)
+        # print(p_pint)
         self.wire(self._clk, p_pint['clk'])
         self.wire(l_pint['read_data'], p_pint['read_data'])
         self.wire(l_pint['write_data'], p_pint['write_data'])
@@ -455,8 +455,8 @@ class SingleBankStorage(Storage):
         self.wire(l_pint['write_data'], p_pint['write_data'])
         self.wire(l_pint['addr'], p_pint['addr'])
         if physical.get_active_low():
-            print(l_pint)
-            print(p_pint)
+            # print(l_pint)
+            # print(p_pint)
             if p_pint['write_en'] is not None:
                 self.wire(~l_pint['write_en'], p_pint['write_en'])
             self.wire(~l_pint['write_en'], p_pint['cen'])
@@ -486,7 +486,7 @@ class SingleBankStorage(Storage):
         port_maps = self.tech_map['ports']
         self.physical_ports = []
 
-        print(self.get_ports)
+        # print(self.get_ports)
 
         # Create physical ports to map the logical ports into
         for (idx, port) in enumerate(self.get_ports()):
@@ -581,7 +581,7 @@ class PhysicalMemoryStub(kts.Generator):
             elif port_type == MemoryPortType.WRITE:
                 port_intf['write_data'] = self.input(port_intf['write_data'], self.mem_width, packed=True)
                 port_intf['addr'] = self.input(port_intf['addr'], kts.clog2(self.mem_depth), packed=True)
-                print(port_intf)
+                # print(port_intf)
                 if port_intf['write_en'] is not None:
                     port_intf['write_en'] = self.input(port_intf['write_en'], 1)
                 port_intf['cen'] = self.input(port_intf['cen'], 1)

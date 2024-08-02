@@ -6,7 +6,7 @@ from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
-from lake.utils.util import get_data_sizes, TestPrepper
+from lake.utils.util import get_data_sizes, TestPrepper, calculate_read_out_vec
 from lake.top.tech_maps import GF_Tech_Map
 import argparse
 import os
@@ -312,7 +312,7 @@ def get_linear_test():
 
 
 def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
-                                 tp: TestPrepper = None, test='linear'):
+                                 tp: TestPrepper = None, test='linear', reg_file=False):
 
     assert tp is not None
 
@@ -342,18 +342,30 @@ def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_wi
     else:
         raise NotImplementedError(f"Cannot run test: {test}")
 
+    read_outs = calculate_read_out_vec(lt, vec=vec_width)
+    # Now we have the output sequences
+    # Need to write them out
+    for pnum, sequences in read_outs.items():
+        port_name = lt[pnum]['name']
+        times = sequences['time']
+        datas = sequences['data']
+        # Need to add a cycle delay if using SRAM
+        if reg_file is False:
+            times = [time + 1 for time in times]
+        gold_output_path_data = os.path.join(output_dir, "gold", f"{port_name}_data.txt")
+        gold_output_path_time = os.path.join(output_dir, "gold", f"{port_name}_time.txt")
+        with open(gold_output_path_data, 'w') as file:
+            for data_ in datas:
+                file.write(f"{data_}\n")
+        with open(gold_output_path_time, 'w') as file:
+            for time_ in times:
+                file.write(f"{time_}\n")
+
     # Define the test
     # lt = test()
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_four_port_spec.gen_bitstream(lt)
-
-    print('final bs')
-    print(bs)
-
-    bin_rep = bin(bs)
-    print(bin_rep)
-    print(f"'b{bin_rep[2:]}")
 
     # Convert the number to a hexadecimal string
     hex_string = hex(bs)[2:]  # Remove the '0x' prefix

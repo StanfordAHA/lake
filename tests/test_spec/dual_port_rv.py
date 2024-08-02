@@ -183,13 +183,6 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_dual_port_spec.gen_bitstream(lt)
 
-    print('final bs')
-    print(bs)
-
-    bin_rep = bin(bs)
-    print(bin_rep)
-    print(f"'b{bin_rep[2:]}")
-
     # Convert the number to a hexadecimal string
     hex_string = hex(bs)[2:]  # Remove the '0x' prefix
 

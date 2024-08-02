@@ -29,7 +29,7 @@ class MemoryInterfaceDecoder(Component):
             new_delay = memport.get_port_delay()
             if new_delay > self.delay:
                 self.delay = new_delay
-        print(f"Final delay is {self.delay}")
+        # print(f"Final delay is {self.delay}")
 
     def get_delay(self):
         return self.delay
