@@ -6,7 +6,7 @@ from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
-from lake.utils.util import TestPrepper, get_data_sizes
+from lake.utils.util import TestPrepper, get_data_sizes, calculate_read_out_vec
 from lake.top.tech_maps import GF_Tech_Map
 import argparse
 import os
@@ -116,7 +116,7 @@ def get_linear_test():
 
     linear_test[0] = {
         'type': Direction.IN,
-        'name': 'write_port_0',
+        'name': 'port_w0',
         'config': {
             'dimensionality': 1,
             'extents': [32],
@@ -175,7 +175,7 @@ def get_linear_test():
 
     linear_test[2] = {
         'type': Direction.OUT,
-        'name': 'read_port_0',
+        'name': 'port_r0',
         'config': {
             'dimensionality': 1,
             'extents': [32],
@@ -262,15 +262,27 @@ def test_linear_read_write_dp_wf_q(output_dir=None, storage_capacity=1024, data_
     # Define the test
     lt = get_linear_test()
 
+    read_outs = calculate_read_out_vec(lt, vec=vec_width)
+    # Now we have the output sequences
+    # Need to write them out
+    for pnum, sequences in read_outs.items():
+        port_name = lt[pnum]['name']
+        times = sequences['time']
+        datas = sequences['data']
+        # Need to add a cycle delay if using SRAM
+        # if reg_file is False:
+        #     times = [time + 1 for time in times]
+        gold_output_path_data = os.path.join(output_dir, "gold", f"{port_name}_data.txt")
+        gold_output_path_time = os.path.join(output_dir, "gold", f"{port_name}_time.txt")
+        with open(gold_output_path_data, 'w') as file:
+            for data_ in datas:
+                file.write(f"{data_}\n")
+        with open(gold_output_path_time, 'w') as file:
+            for time_ in times:
+                file.write(f"{time_}\n")
+
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_single_port_spec.gen_bitstream(lt)
-
-    print('final bs')
-    print(bs)
-
-    bin_rep = bin(bs)
-    print(bin_rep)
-    print(f"'b{bin_rep[2:]}")
 
     # Convert the number to a hexadecimal string
     hex_string = hex(bs)[2:]  # Remove the '0x' prefix

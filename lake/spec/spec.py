@@ -148,7 +148,6 @@ class Spec():
 
     def generate_hardware(self) -> None:
 
-        print(self._name)
         self._final_gen = Component(name=self._name)
         # Before we go into the port loop, if any of the schedule generators is dynamic (vs. static), we need to know this and collect
         # information before genning the hardware

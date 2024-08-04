@@ -98,7 +98,6 @@ class Component(kratos.Generator):
             self.wire(cfg_reg_signal, use_wire[range_upper, range_lower])
 
     def add_child(self, instance_name, generator, comment="", python_only=False, **kwargs):
-        print("Called this one...")
         super().add_child(instance_name=instance_name, generator=generator,
                           comment=comment, python_only=python_only, **kwargs)
         if self.child_cfg_bases is None:
@@ -108,7 +107,7 @@ class Component(kratos.Generator):
         # to guarantee this additional functionality.
         # assert isinstance(generator, Component)
         if isinstance(generator, Component):
-            print("actually lifting...")
+            print("lifting...")
             assert generator.get_config_space_fixed()
             child_size = generator.get_config_size()
 
@@ -171,7 +170,7 @@ class Component(kratos.Generator):
             cfg_reg = cfg_reg.name
 
         # Now use the string to locate the map and add the value to the current configuration
-        print(self.cfg_reg_to_range)
+        # print(self.cfg_reg_to_range)
         # If it's not in the map, check if it was flattened and renamed...
         if cfg_reg not in self.cfg_reg_to_range:
             # If not in here, check if it was flattened and handed a list, else bad

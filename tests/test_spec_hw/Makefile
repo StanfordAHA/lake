@@ -40,7 +40,7 @@ DESIGN_FILES += tb.sv \
 # glc_axi_ctrl.sv
 # flop_unq2.sv
 # flop_unq1.sv
-# global_controller.sv 
+# global_controller.sv
 # jtag.sv
 # tap_unq1.sv
 # glc_axi_addrmap.sv
@@ -49,7 +49,7 @@ DESIGN_FILES += tb.sv \
 
 # IP_FILES += -y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CW/ \
 # 			-y /cad/cadence/GENUS_19.10.000_lnx86/share/synth/lib/chipware/sim/verilog/CWTECH/ \
-# 			+libext+.v+.sv 
+# 			+libext+.v+.sv
 
 # -------------------------------------------------------------------
 # GLS Parameters
@@ -108,8 +108,8 @@ XRUN = xrun \
 	   $(COMPILE_ARGS) \
 	   $(INPUT_ARGS)
 
-#    -initmem0 
-#    -initreg0 
+#    -initmem0
+#    -initreg0
 # -------------------------------------------------------------------
 # C API
 # -------------------------------------------------------------------
@@ -162,10 +162,14 @@ run:
 #	rm -f $(TEST_DIR)/OUTPUT_DIR/*
 #	$(RUN) $(DUMP_ARGS) $(TMP_PARGS)
 #	python $(COMPARISON_SCRIPT) --do_comparison --gold_mat_dir=$(TEST_DIR)/GLB_DIR --sim_mat_dir=$(TEST_DIR)/OUTPUT_DIR/ --unroll $(UNROLL)
+.PHONY: compare
+compare:
+	python test_comparison.py --dir ./
 
 .PHONY: sim
 # sim: libcgra.so compile run
-sim: compile run
+sim: compile run compare
+
 
 # -------------------------------------------------------------------
 # GLS Compile

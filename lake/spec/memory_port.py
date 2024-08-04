@@ -124,7 +124,7 @@ class MemoryPort(Component):
 
         elif self.mptype == MemoryPortType.W:
 
-            print('mek')
+            # print('mek')
 
             # in set
             addr_from_port = self.input(f"memory_port_write_addr_in", self.addr_width)
@@ -276,8 +276,8 @@ class PhysicalMemoryPort(MemoryPort):
         # between the "logical" view of the physical ports and the actual names.
         assert self.port_map is not None, f"Need to provide port map first..."
 
-        print("Printing self port map")
-        print(self.port_map)
+        # print("Printing self port map")
+        # print(self.port_map)
 
         if self.mptype == MemoryPortType.R:
             self.port_interface['read_data'] = self.port_map['read_data']
