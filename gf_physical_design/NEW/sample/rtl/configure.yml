@@ -25,7 +25,7 @@ commands:
   - cd $CURR
   - cp $TOP/TEST/inputs/lakespec.sv outputs/design.v
   - cp $TOP/tests/test_spec_hw/tb.sv outputs/testbench.sv
-  - cp $TOP/TEST/inputs/comp_args.txt outputs/design.args
+  - cat $TOP/TEST/inputs/comp_args.txt $TOP/TEST/inputs/PARGS.txt > outputs/design.args
   
   - echo $PWD
   

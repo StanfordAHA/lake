@@ -55,7 +55,8 @@ commands:
   - ln -sf ../results/*.virtuoso.v        design.virtuoso.v
   - ln -sf ../results/*.def.gz            design.def.gz
 
-  - cp design.pt.sdc original_design.pt.sdc
+  - cp design.pt.sdc og_design.pt.sdc
+  - python remove_design_pt_sdc_append.py
 
 #-------------------------------------------------------------------------
 # Parameters
