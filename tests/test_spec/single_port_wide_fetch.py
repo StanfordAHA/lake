@@ -118,11 +118,11 @@ def get_linear_test():
             'extents': [64],
             'address': {
                 'strides': [1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [8],
-                'offset': 16 + 1
+                'offset': 17
             }
         },
         'vec_in_config': {
@@ -130,11 +130,11 @@ def get_linear_test():
             'extents': [64],
             'address': {
                 'strides': [1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [8],
-                'offset': 17 + 1
+                'offset': 18
             }
         },
         'vec_out_config': {
@@ -142,11 +142,11 @@ def get_linear_test():
             'extents': [4, 16],
             'address': {
                 'strides': [0, 1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [1, 4],
-                'offset': 18 + 1
+                'offset': 19
             }
         }
     }
