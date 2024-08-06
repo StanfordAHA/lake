@@ -18,7 +18,8 @@ from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
 from lake.modules.arbiter import Arbiter
-from lake.spec.reg_fifo import RegFIFOimport math
+from lake.spec.reg_fifo import RegFIFO
+import math
 
 
 class Spec():
@@ -130,7 +131,6 @@ class Spec():
         total_config_size = 0
 
         for node in self._hw_graph.nodes:
-            # print(node.get_name())
             # The config bases will contain a number for each node - should match?
             self._config_bases.append(total_config_size)
             total_config_size += node.get_config_size()
@@ -738,7 +738,7 @@ class Spec():
             print("Showing all child bases...")
             print(self._final_gen.child_cfg_bases)
         node_config_base = self._final_gen.child_cfg_bases[node]
-        print(node_config_base)
+        # print(node_config_base)
         for reg_bound, value in bs:
             upper, lower = reg_bound
             if verbose:

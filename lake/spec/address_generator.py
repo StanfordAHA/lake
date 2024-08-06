@@ -108,14 +108,10 @@ class AddressGenerator(Component):
                 offset -= (extent_sub_1[i] * address_map['strides'][i])
                 tform_strides.append(address_map['strides'][i + 1] + offset)
 
-            print("MEK: Configuring AG")
             self.configure(self._strides, tform_strides)
         else:
             self.configure(self._strides, address_map['strides'])
         # This will return pairs of ranges with values w.r.t. the node's configuration
-
-        print(self.get_configuration())
-
         return self.get_configuration()
 
     def get_address(self):

@@ -170,7 +170,6 @@ class Component(kratos.Generator):
             cfg_reg = cfg_reg.name
 
         # Now use the string to locate the map and add the value to the current configuration
-        # print(self.cfg_reg_to_range)
         # If it's not in the map, check if it was flattened and renamed...
         if cfg_reg not in self.cfg_reg_to_range:
             # If not in here, check if it was flattened and handed a list, else bad
