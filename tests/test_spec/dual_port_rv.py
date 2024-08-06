@@ -81,7 +81,7 @@ def get_linear_test(depth=512):
     if depth < 64:
         use_depth = depth
 
-    outer = 64
+    outer = 32
 
     linear_test[0] = {
         'type': Direction.IN,
