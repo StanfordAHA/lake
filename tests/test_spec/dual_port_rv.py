@@ -81,18 +81,20 @@ def get_linear_test(depth=512):
     if depth < 64:
         use_depth = depth
 
+    outer = 128
+
     linear_test[0] = {
         'type': Direction.IN,
         'name': 'port_w0',
         'config': {
-            'dimensionality': 1,
-            'extents': [use_depth],
+            'dimensionality': 2,
+            'extents': [use_depth, outer],
             'address': {
-                'strides': [1],
+                'strides': [1, 0],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
+                'strides': [1, outer],
                 'offset': 0
             }
         }
@@ -102,14 +104,14 @@ def get_linear_test(depth=512):
         'type': Direction.OUT,
         'name': 'port_r0',
         'config': {
-            'dimensionality': 1,
-            'extents': [use_depth],
+            'dimensionality': 2,
+            'extents': [use_depth, outer],
             'address': {
-                'strides': [1],
+                'strides': [1, 0],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
+                'strides': [1, outer],
                 'offset': 16
             }
         }
@@ -214,7 +216,8 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     # Trying to use the test preparation tool
     assert tp is not None
     tp.add_pargs(data_sizes)
-    tp.add_pargs(('max_time', max_time + int((max_time / 10))))
+    # tp.add_pargs(('max_time', max_time + int((max_time / 10))))
+    tp.add_pargs(('max_time', max_time + 15))
     tp.add_pargs(('static', 0))
 
 

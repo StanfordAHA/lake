@@ -395,7 +395,8 @@ def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_wi
 
     data_sizes = get_data_sizes(lt, num_ports=4)
     tp.add_pargs(data_sizes)
-    tp.add_pargs(('max_time', max_time + int((max_time / 10))))
+    # tp.add_pargs(('max_time', max_time + int((max_time / 10))))
+    tp.add_pargs(('max_time', max_time + 15))
     tp.add_pargs(('static', 1))
 
 
