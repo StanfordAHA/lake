@@ -179,12 +179,20 @@ class Component(kratos.Generator):
                 # for i_, remapped_name in enumerate(self.remap_flatten_config[cfg_reg]):
                 for i_ in range(len(value)):
                     range_ = self.cfg_reg_to_range[self.remap_flatten_config[cfg_reg][i_]]
-                    self.configuration.append((range_, value[i_]))
+                    upper, lower = range_
+                    diff = upper - lower + 1
+                    # trim the value
+                    use_value = int(bin(value[i_])[-1 * diff:], 2)
+                    self.configuration.append((range_, use_value))
             else:
                 raise NotImplementedError
         else:
             range_ = self.cfg_reg_to_range[cfg_reg]
-            self.configuration.append((range_, value))
+            upper, lower = range_
+            diff = upper - lower + 1
+            # trim the value
+            use_value = int(bin(value)[-1 * diff:], 2)
+            self.configuration.append((range_, use_value))
 
     def config_reg(self, **kwargs):
         assert 'name' in kwargs

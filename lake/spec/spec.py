@@ -738,8 +738,10 @@ class Spec():
             print("Showing all child bases...")
             print(self._final_gen.child_cfg_bases)
         node_config_base = self._final_gen.child_cfg_bases[node]
+        print(node_config_base)
         for reg_bound, value in bs:
             upper, lower = reg_bound
+            print(f"{upper},{lower} = {value}")
             self.configuration.append(((upper + node_config_base, lower + node_config_base), value))
 
     def create_config_int(self):
@@ -807,6 +809,10 @@ class Spec():
                 # sg_bs = port_sg.gen_bitstream(sched_map)
                 sg_bs = port_sg.gen_bitstream(sched_map, extents=port_config['extents'],
                                               dimensionality=port_config['dimensionality'])
+                print(f"MEKEKEMKE")
+                print(f"{port_config}")
+                print(sg_bs)
+                print(self._final_gen.child_cfg_bases)
 
             # Create a clear configuration
             self.configure(port_id, id_bs)

@@ -114,11 +114,15 @@ class ScheduleGenerator(Component):
                 offset -= (extent_sub_1[i] * schedule_map['strides'][i])
                 tform_strides.append(schedule_map['strides'][i + 1] + offset)
 
+            print("MEK: Configuring SG")
             # self.configure(self._strides, schedule_map['strides'])
             self.configure(self._strides, tform_strides)
         else:
             self.configure(self._strides, schedule_map['strides'])
         # This will return pairs of ranges with values w.r.t. the node's configuration
+
+        print(self.get_configuration())
+
         return self.get_configuration()
 
     def get_step(self):
