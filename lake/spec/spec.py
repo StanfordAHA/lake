@@ -749,7 +749,11 @@ class Spec():
         self.config_int = 0
         for bounds, value in self.configuration:
             upper, lower = bounds
-            self.config_int = self.config_int + (value << lower)
+            # Create binary number
+            size_mask = upper - lower + 1
+            masked_value = int(bin(value)[-1 * size_mask:], 2)
+            # self.config_int = self.config_int + (value << lower)
+            self.config_int = self.config_int + (masked_value << lower)
 
     def get_config_int(self):
         return self.config_int
