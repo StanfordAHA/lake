@@ -18,7 +18,7 @@ from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
 from lake.modules.arbiter import Arbiter
-from lake.spec.reg_fifo import RegFIFO
+from lake.spec.reg_fifo import RegFIFOimport math
 
 
 class Spec():
@@ -741,7 +741,9 @@ class Spec():
         print(node_config_base)
         for reg_bound, value in bs:
             upper, lower = reg_bound
-            print(f"{upper},{lower} = {value}")
+            if verbose:
+                print(f"{upper},{lower} = {value}")
+                print(f"{upper + node_config_base},{lower + node_config_base} = {value}")
             self.configuration.append(((upper + node_config_base, lower + node_config_base), value))
 
     def create_config_int(self):
@@ -751,9 +753,9 @@ class Spec():
             upper, lower = bounds
             # Create binary number
             size_mask = upper - lower + 1
-            masked_value = int(bin(value)[-1 * size_mask:], 2)
-            # self.config_int = self.config_int + (value << lower)
-            self.config_int = self.config_int + (masked_value << lower)
+            # Make sure to trim it!
+            bmask = int(math.pow(2, size_mask)) - 1
+            self.config_int |= (value & bmask) << lower
 
     def get_config_int(self):
         return self.config_int
@@ -813,10 +815,6 @@ class Spec():
                 # sg_bs = port_sg.gen_bitstream(sched_map)
                 sg_bs = port_sg.gen_bitstream(sched_map, extents=port_config['extents'],
                                               dimensionality=port_config['dimensionality'])
-                print(f"MEKEKEMKE")
-                print(f"{port_config}")
-                print(sg_bs)
-                print(self._final_gen.child_cfg_bases)
 
             # Create a clear configuration
             self.configure(port_id, id_bs)
