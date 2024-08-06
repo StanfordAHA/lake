@@ -94,7 +94,7 @@ def get_linear_test(depth=512):
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, outer],
+                'strides': [1, use_depth],
                 'offset': 0
             }
         }
@@ -111,7 +111,7 @@ def get_linear_test(depth=512):
                 'offset': 0
             },
             'schedule': {
-                'strides': [1, outer],
+                'strides': [1, use_depth],
                 'offset': 16
             }
         }
