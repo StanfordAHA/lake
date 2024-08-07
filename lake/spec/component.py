@@ -181,7 +181,8 @@ class Component(kratos.Generator):
                     upper, lower = range_
                     diff = upper - lower + 1
                     # trim the value
-                    use_value = int(bin(value[i_])[-1 * diff:], 2)
+                    # use_value = int(bin(value[i_])[-1 * diff:], 2)
+                    use_value = value[i_]
                     self.configuration.append((range_, use_value))
             else:
                 raise NotImplementedError
@@ -190,7 +191,8 @@ class Component(kratos.Generator):
             upper, lower = range_
             diff = upper - lower + 1
             # trim the value
-            use_value = int(bin(value)[-1 * diff:], 2)
+            # use_value = int(bin(value)[-1 * diff:], 2)
+            use_value = value
             self.configuration.append((range_, use_value))
 
     def config_reg(self, **kwargs):
