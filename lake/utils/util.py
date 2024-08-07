@@ -1123,7 +1123,9 @@ def calculate_read_out(schedule, vec=(1, 1), data_in=None, sanitize=True):
         if port_sched['type'] == Direction.IN:
             # check if data in is None first...
             if data_in is None:
-                data_ins[port_num] = iter([list(range(z_ * vec_in, z_ * vec_in + vec_in)) for z_ in range(2048 // vec_in)])
+                data_size_ = get_data_sizes_alone(port_sched)
+                # data_ins[port_num] = iter([list(range(z_ * vec_in, z_ * vec_in + vec_in)) for z_ in range(2048 // vec_in)])
+                data_ins[port_num] = iter([list(range(z_ * vec_in, z_ * vec_in + vec_in)) for z_ in range(data_size_ // vec_in)])
             else:
                 data_ins[port_num] = iter(data_in[port_num])
         else:
@@ -1176,7 +1178,9 @@ def calculate_read_out(schedule, vec=(1, 1), data_in=None, sanitize=True):
                     new_data = []
                     for z_ in range(vec_out):
                         new_data.append(memory[addr * vec_out + z_])
+                    # print(f"TIMESTEP: {timestep}\tADDR:{addr}\tDATA:{new_data}")
                     data_outs[pnum]['data'].append(new_data)
+                    # quit()
                 try:
                     new_curr_seqs[pnum] = (next(this_seqs['sched']), next(this_seqs['addr']))
                 except StopIteration:
@@ -1196,6 +1200,30 @@ def calculate_read_out(schedule, vec=(1, 1), data_in=None, sanitize=True):
             data_outs[pnum]['data'] = [sl[0] for sl in data_outs[pnum]['data']]
 
     return data_outs
+
+
+def get_data_sizes_alone(schedule: dict = None):
+    # A schedule will have a bunch of ports - can always analyze the extens of the config to
+    # get the total sizes
+    assert schedule is not None
+
+    use_port_schedule = schedule['config']
+
+    # Get direction
+    if schedule['type'] == Direction.IN:
+        if 'vec_in_config' in schedule:
+            use_port_schedule = schedule['vec_in_config']
+    else:
+        if 'vec_out_config' in schedule:
+            use_port_schedule = schedule['vec_out_config']
+
+    dim_ = use_port_schedule['dimensionality']
+    extents = use_port_schedule['extents']
+    num_data = 1
+    for i_ in range(dim_):
+        # Now have full extent data, add it to map
+        num_data = num_data * extents[i_]
+    return num_data
 
 
 def get_data_sizes(schedule: dict = None, num_ports=2):

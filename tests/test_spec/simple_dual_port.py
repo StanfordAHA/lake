@@ -81,18 +81,20 @@ def get_linear_test(depth=512):
     if depth < 64:
         use_depth = depth
 
+    outer = 32
+
     linear_test[0] = {
         'type': Direction.IN,
         'name': 'port_w0',
         'config': {
-            'dimensionality': 1,
-            'extents': [use_depth],
+            'dimensionality': 2,
+            'extents': [use_depth, outer],
             'address': {
-                'strides': [1],
+                'strides': [1, 0],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
+                'strides': [1, use_depth],
                 'offset': 0
             }
         }
@@ -102,15 +104,15 @@ def get_linear_test(depth=512):
         'type': Direction.OUT,
         'name': 'port_r0',
         'config': {
-            'dimensionality': 1,
-            'extents': [use_depth],
+            'dimensionality': 2,
+            'extents': [use_depth, outer],
             'address': {
-                'strides': [1],
+                'strides': [1, 0],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
-                'offset': 16
+                'strides': [1, use_depth],
+                'offset': 1
             }
         }
     }
@@ -146,6 +148,7 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     # Define the test
     lt = get_linear_test(depth=mem_depth)
 
+    max_time = 0
     read_outs = calculate_read_out(lt)
     # Now we have the output sequences
     # Need to write them out
@@ -153,6 +156,8 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
         port_name = lt[pnum]['name']
         times = sequences['time']
         datas = sequences['data']
+        if times[-1] > max_time:
+            max_time = times[-1]
         # Need to add a cycle delay if using SRAM
         if reg_file is False:
             times = [time + 1 for time in times]
@@ -193,6 +198,8 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
 
     data_sizes = get_data_sizes(lt, num_ports=2)
     tp.add_pargs(data_sizes)
+    # tp.add_pargs(('max_time', max_time + int((max_time / 10))))
+    tp.add_pargs(('max_time', max_time + 15))
     tp.add_pargs(('static', 1))
 
 

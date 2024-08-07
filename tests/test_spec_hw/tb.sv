@@ -16,7 +16,7 @@ module tb;
 `endif
 
     parameter BITSTREAM_MAX_SIZE = 4096;
-    parameter NUM_CYCLES = 200;
+    parameter MAX_DATA_SIZE = 512;
 
     integer static_value = 1;
     logic clk;
@@ -74,19 +74,19 @@ module tb;
     integer r3_tracker;
     integer r3_num_data = 0;
 
-    logic [DATA_WIDTH - 1:0] port_w0_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_w1_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_w2_mem [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_w3_mem [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_w0_mem [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_w1_mem [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_w2_mem [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_w3_mem [0:MAX_DATA_SIZE - 1];
 
-    logic [DATA_WIDTH - 1:0] port_r0_mem  [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r0_time [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r1_mem  [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r1_time [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r2_mem  [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r2_time [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r3_mem  [0:NUM_CYCLES - 1];
-    logic [DATA_WIDTH - 1:0] port_r3_time [0:NUM_CYCLES - 1];
+    logic [DATA_WIDTH - 1:0] port_r0_mem  [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_r0_time [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_r1_mem  [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_r1_time [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_r2_mem  [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_r2_time [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_r3_mem  [0:MAX_DATA_SIZE - 1];
+    logic [DATA_WIDTH - 1:0] port_r3_time [0:MAX_DATA_SIZE - 1];
 
     if (NUMBER_PORTS == 2) begin : two_port_dut
 
@@ -185,6 +185,7 @@ module tb;
     end
 
     integer THIS_CYC_COUNT;
+    integer MAX_TIME = 200;
     // integer BITSTREAM_CURR_SIZE;
     // integer BITSTREAM_CURR_SIZE_CNT;
 
@@ -258,6 +259,12 @@ module tb;
             $display("static set to %d", static_value);
         end else begin
             $display("static not set, using default value %d", static_value);
+        end
+
+        if ($value$plusargs("max_time=%d", MAX_TIME)) begin
+            $display("max_time set to %d", MAX_TIME);
+        end else begin
+            $display("max_time not set, using default value %d", MAX_TIME);
         end
 
     end
@@ -356,7 +363,7 @@ module tb;
         stall <= 1'b0;
         flush <= 1'b0;
 
-        while (THIS_CYC_COUNT < NUM_CYCLES) begin
+        while (THIS_CYC_COUNT < MAX_TIME) begin
 
             // Input i
             port_w0_data <= w0_tracker;

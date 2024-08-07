@@ -118,11 +118,11 @@ def get_linear_test():
             'extents': [64],
             'address': {
                 'strides': [1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [8],
-                'offset': 16 + 1
+                'offset': 17
             }
         },
         'vec_in_config': {
@@ -130,11 +130,11 @@ def get_linear_test():
             'extents': [64],
             'address': {
                 'strides': [1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [8],
-                'offset': 16 + 1
+                'offset': 18
             }
         },
         'vec_out_config': {
@@ -142,11 +142,11 @@ def get_linear_test():
             'extents': [4, 16],
             'address': {
                 'strides': [0, 1],
-                'offset': 0 + 1
+                'offset': 0
             },
             'schedule': {
                 'strides': [1, 4],
-                'offset': 17 + 1
+                'offset': 19
             }
         }
     }
@@ -180,6 +180,7 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
     # Define the test
     lt = get_linear_test()
 
+    max_time = 0
     read_outs = calculate_read_out_vec(lt, vec=vec_width)
     # Now we have the output sequences
     # Need to write them out
@@ -187,6 +188,8 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
         port_name = lt[pnum]['name']
         times = sequences['time']
         datas = sequences['data']
+        if times[-1] > max_time:
+            max_time = times[-1]
         # Need to add a cycle delay if using SRAM
         # if reg_file is False:
         #     times = [time + 1 for time in times]
@@ -227,6 +230,8 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
 
     data_sizes = get_data_sizes(lt, num_ports=2)
     tp.add_pargs(data_sizes)
+    # tp.add_pargs(('max_time', max_time + int((max_time / 10))))
+    tp.add_pargs(('max_time', max_time + 15))
     tp.add_pargs(('static', 1))
 
 

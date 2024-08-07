@@ -19,6 +19,7 @@ from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
 from lake.modules.arbiter import Arbiter
 from lake.spec.reg_fifo import RegFIFO
+import math
 
 
 class Spec():
@@ -130,7 +131,6 @@ class Spec():
         total_config_size = 0
 
         for node in self._hw_graph.nodes:
-            # print(node.get_name())
             # The config bases will contain a number for each node - should match?
             self._config_bases.append(total_config_size)
             total_config_size += node.get_config_size()
@@ -738,8 +738,12 @@ class Spec():
             print("Showing all child bases...")
             print(self._final_gen.child_cfg_bases)
         node_config_base = self._final_gen.child_cfg_bases[node]
+        # print(node_config_base)
         for reg_bound, value in bs:
             upper, lower = reg_bound
+            if verbose:
+                print(f"{upper},{lower} = {value}")
+                print(f"{upper + node_config_base},{lower + node_config_base} = {value}")
             self.configuration.append(((upper + node_config_base, lower + node_config_base), value))
 
     def create_config_int(self):
@@ -747,7 +751,11 @@ class Spec():
         self.config_int = 0
         for bounds, value in self.configuration:
             upper, lower = bounds
-            self.config_int = self.config_int + (value << lower)
+            # Create binary number
+            size_mask = upper - lower + 1
+            # Make sure to trim it!
+            bmask = int(math.pow(2, size_mask)) - 1
+            self.config_int |= (value & bmask) << lower
 
     def get_config_int(self):
         return self.config_int

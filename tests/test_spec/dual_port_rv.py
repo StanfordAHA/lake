@@ -81,18 +81,20 @@ def get_linear_test(depth=512):
     if depth < 64:
         use_depth = depth
 
+    outer = 32
+
     linear_test[0] = {
         'type': Direction.IN,
         'name': 'port_w0',
         'config': {
-            'dimensionality': 1,
-            'extents': [use_depth],
+            'dimensionality': 2,
+            'extents': [use_depth, outer],
             'address': {
-                'strides': [1],
+                'strides': [1, 0],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
+                'strides': [1, outer],
                 'offset': 0
             }
         }
@@ -102,15 +104,15 @@ def get_linear_test(depth=512):
         'type': Direction.OUT,
         'name': 'port_r0',
         'config': {
-            'dimensionality': 1,
-            'extents': [use_depth],
+            'dimensionality': 2,
+            'extents': [use_depth, outer],
             'address': {
-                'strides': [1],
+                'strides': [1, 0],
                 'offset': 0
             },
             'schedule': {
-                'strides': [1],
-                'offset': 16
+                'strides': [1, outer],
+                'offset': 1
             }
         }
     }
@@ -165,10 +167,13 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     read_outs = calculate_read_out(lt)
     # Now we have the output sequences
     # Need to write them out
+    max_time = 0
     for pnum, sequences in read_outs.items():
         port_name = lt[pnum]['name']
         times = sequences['time']
         datas = sequences['data']
+        if times[-1] > max_time:
+            max_time = times[-1]
         # Need to add a cycle delay if using SRAM
         if reg_file is False:
             times = [time + 1 for time in times]
@@ -180,6 +185,7 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
         with open(gold_output_path_time, 'w') as file:
             for time_ in times:
                 file.write(f"{time_}\n")
+
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_dual_port_spec.gen_bitstream(lt)
 
@@ -210,6 +216,8 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     # Trying to use the test preparation tool
     assert tp is not None
     tp.add_pargs(data_sizes)
+    # tp.add_pargs(('max_time', max_time + int((max_time / 10))))
+    tp.add_pargs(('max_time', max_time + 15))
     tp.add_pargs(('static', 0))
 
 

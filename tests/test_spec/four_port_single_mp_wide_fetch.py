@@ -345,10 +345,13 @@ def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_wi
     read_outs = calculate_read_out_vec(lt, vec=vec_width)
     # Now we have the output sequences
     # Need to write them out
+    max_time = 0
     for pnum, sequences in read_outs.items():
         port_name = lt[pnum]['name']
         times = sequences['time']
         datas = sequences['data']
+        if times[-1] > max_time:
+            max_time = times[-1]
         # Need to add a cycle delay if using SRAM
         # if reg_file is False:
         #     times = [time + 1 for time in times]
@@ -392,6 +395,8 @@ def test_linear_read_write_qp_wf(output_dir=None, storage_capacity=1024, data_wi
 
     data_sizes = get_data_sizes(lt, num_ports=4)
     tp.add_pargs(data_sizes)
+    # tp.add_pargs(('max_time', max_time + int((max_time / 10))))
+    tp.add_pargs(('max_time', max_time + 15))
     tp.add_pargs(('static', 1))
 
 
