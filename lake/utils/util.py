@@ -1178,7 +1178,9 @@ def calculate_read_out(schedule, vec=(1, 1), data_in=None, sanitize=True):
                     new_data = []
                     for z_ in range(vec_out):
                         new_data.append(memory[addr * vec_out + z_])
+                    # print(f"TIMESTEP: {timestep}\tADDR:{addr}\tDATA:{new_data}")
                     data_outs[pnum]['data'].append(new_data)
+                    # quit()
                 try:
                     new_curr_seqs[pnum] = (next(this_seqs['sched']), next(this_seqs['addr']))
                 except StopIteration:

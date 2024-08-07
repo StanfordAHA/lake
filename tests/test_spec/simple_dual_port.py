@@ -112,7 +112,7 @@ def get_linear_test(depth=512):
             },
             'schedule': {
                 'strides': [1, use_depth],
-                'offset': 16
+                'offset': 1
             }
         }
     }
