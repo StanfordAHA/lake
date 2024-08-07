@@ -16,7 +16,7 @@ def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
                            dims: int = 6, clock_count_width=16, physical=False,
                            recurrence=True, reg_file=False) -> Spec:
 
-    read_delay = 0 if reg_file else 1
+    read_delay = 1 if reg_file else 1
 
     ls = Spec()
 
@@ -158,9 +158,8 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
         datas = sequences['data']
         if times[-1] > max_time:
             max_time = times[-1]
-        # Need to add a cycle delay if using SRAM
-        if reg_file is False:
-            times = [time + 1 for time in times]
+        # Need to add a cycle delay if using SRAM or reg file
+        times = [time + 1 for time in times]
         gold_output_path_data = os.path.join(output_dir, "gold", f"{port_name}_data.txt")
         gold_output_path_time = os.path.join(output_dir, "gold", f"{port_name}_time.txt")
         with open(gold_output_path_data, 'w') as file:

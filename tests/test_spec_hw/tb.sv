@@ -341,7 +341,7 @@ module tb;
                 port_r0_ready <= 1'b1;
             end
             else begin
-                port_r0_ready <= 1'b0;
+                port_r0_ready <= 1'b1;
             end
         end
         if (r1_num_data > 0) begin
@@ -373,7 +373,7 @@ module tb;
 
             // For LI, delay the first read to verify that the
             // writes don't proceed too much
-            if (THIS_CYC_COUNT > 64 && static_value == 0) begin
+            if (THIS_CYC_COUNT >= 0 && static_value == 0) begin
                 port_r0_ready <= 1'b1;
             end
 
