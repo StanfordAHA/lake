@@ -60,7 +60,7 @@ def remove_appends(filename):
 
             index += 1
 
-    with open("outputs/new.pt.sdc", 'w') as f:
+    with open(filename, 'w') as f:
         for line in all_lines:
             f.write(line)
 
