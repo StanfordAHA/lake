@@ -56,6 +56,7 @@ commands:
   - ln -sf ../results/*.def.gz            design.def.gz
 
   - cp design.pt.sdc og_design.pt.sdc
+  - cd ..
   - python remove_design_pt_sdc_append.py
 
 #-------------------------------------------------------------------------
