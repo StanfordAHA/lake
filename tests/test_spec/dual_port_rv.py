@@ -129,7 +129,8 @@ def get_linear_test(depth=512):
     pw_war_idx = 0
     pr_war_idx = 0
     war_comp = LFComparisonOperator.LT.value
-    war_scalar = use_depth
+    # war_scalar = use_depth
+    war_scalar = 4
     war_constraint = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
 
     # Just have read follow write
