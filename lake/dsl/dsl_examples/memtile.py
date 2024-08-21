@@ -43,5 +43,4 @@ for i in range(num_tbs):
                   dim=6,
                   max_range=65536)
 
-tile.construct_lake("memtile")
-# tile.get_compiler_json(filename='mekcollat')
+# tile.construct_lake("memtile")
