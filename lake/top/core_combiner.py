@@ -51,7 +51,7 @@ class CoreCombiner(Generator):
                  name="CoreCombiner",
                  do_config_lift=True,
                  controllers=None,
-                #  tech_map=,
+                 #  tech_map=,
                  tech_map_name='TSMC',
                  io_prefix="",
                  fifo_depth=2,

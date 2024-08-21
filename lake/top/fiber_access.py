@@ -83,10 +83,10 @@ class FiberAccess(MemoryController):
                                    fifo_depth=self.fifo_depth)
 
         self.add_child(self.rd_scan_pre,
-                self.rd_scan,
-                clk=self._gclk,
-                rst_n=self._rst_n,
-                clk_en=self._clk_en)
+                       self.rd_scan,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en)
 
         self._wr_scan_data_in = self.input(f"{self.wr_scan_pre}_data_in", self.data_width + 1, packed=True)
         self._wr_scan_data_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -275,15 +275,15 @@ class FiberAccess(MemoryController):
 
         # Sticky flags used for FSM logic
         input_row_fully_processed_sticky = sticky_flag(self, ((self._wr_scan_data_in == self._S_level_0) | (self._wr_scan_data_in == self._S_level_1) | (self._wr_scan_data_in == self._S_level_2)) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
-                                    clear=(vr_fsm_current_state == vr_fsm_state_enum.ISSUE_READ_SEND_DONE), name="input_row_fully_processed_sticky")
+                                                       clear=(vr_fsm_current_state == vr_fsm_state_enum.ISSUE_READ_SEND_DONE), name="input_row_fully_processed_sticky")
         self.wire(self._input_row_fully_processed, input_row_fully_processed_sticky)
 
         output_row_fully_accumulated_sticky = sticky_flag(self, ((self._wr_scan_data_in == self._S_level_1) | (self._wr_scan_data_in == self._S_level_2)) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
-                                    clear=(vr_fsm_current_state == vr_fsm_state_enum.INIT_BLANK_SEND_S0), name="output_row_fully_accumulated_sticky")
+                                                          clear=(vr_fsm_current_state == vr_fsm_state_enum.INIT_BLANK_SEND_S0), name="output_row_fully_accumulated_sticky")
         self.wire(self._output_row_fully_accumulated, output_row_fully_accumulated_sticky)
 
         output_matrix_fully_accumulated_sticky = sticky_flag(self, (self._wr_scan_data_in == self._done_token) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready,
-                                    clear=self._done_sent_to_ds_d1, name="output_matrix_fully_accumulated_sticky")
+                                                             clear=self._done_sent_to_ds_d1, name="output_matrix_fully_accumulated_sticky")
         self.wire(self._output_matrix_fully_accumulated, output_matrix_fully_accumulated_sticky)
 
         # Realize FSM once more

@@ -369,8 +369,8 @@ class Repeat(MemoryController):
         PASS_REPEAT.output(self._proc_fifo_pop, kts.ternary(self._proc_done,
                                                             self._repsig_done & ~self._ref_fifo_full,
                                                             kts.ternary(self._proc_stop,
-                                                                       self._last_pushed_data | (self._repsig_stop & ~self._ref_fifo_full & ~self._last_pushed_data),
-                                                                       self._repsig_stop & ~self._ref_fifo_full)))
+                                                                        self._last_pushed_data | (self._repsig_stop & ~self._ref_fifo_full & ~self._last_pushed_data),
+                                                                        self._repsig_stop & ~self._ref_fifo_full)))
         # Only pop the repsig fifo if there's room in the output fifo and join of input fifos (and not EOS)
         # PASS_REPEAT.output(self._repsig_fifo_pop, ~self._ref_fifo_full & (((self._repsig_fifo_valid & ~self._repsig_fifo_out_eos) & self._proc_fifo_valid & ~self._proc_done) | self._blank_repeat_stop))
         PASS_REPEAT.output(self._repsig_fifo_pop, kts.ternary(self._repsig_done,

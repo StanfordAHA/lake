@@ -12,6 +12,16 @@ def port_to_info(mem_params):
 
     port_types = ["write", "read", "read_write"]
     all_ports = []
+    # print(mem_params)
+    # if 'num_write_ports' in mem_params:
+    #     # for z_ in range(mem_params['num_write_ports']):
+    #     all_ports.extend(mem_params['write_info'])
+    # if 'num_read_ports' in mem_params:
+    #     # for z_ in range(mem_params['num_read_ports']):
+    #     all_ports.extend(mem_params['read_info'])
+    # if 'num_readwrite_ports' in mem_params:
+    #     # for z_ in range(mem_params['num_readwrite_ports']):
+    #     all_ports.extend(mem_params['readwrite_info'])
     for s_ in port_types:
         all_ports += mem_params[s_ + "_ports"]
 
