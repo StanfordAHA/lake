@@ -1,4 +1,4 @@
- sample/construct-commercial-full.py#=========================================================================
+#=========================================================================
 # construct.py
 #=========================================================================
 # Demo with 16-bit GcdUnit
@@ -197,7 +197,7 @@ def construct():
   g.connect_by_name( postroute_hold, signoff        )
 
   g.connect_by_name( signoff,        pt_signoff     )
-  
+
   g.connect_by_name( signoff,        genlibdb       )
   g.connect_by_name( adk,            genlibdb       )
 
@@ -217,7 +217,7 @@ def construct():
 
   g.connect_by_name( adk,            vcs_sim        )
   # g.connect_by_name( signoff,        vcs_sim        )
-  
+
 
   g.connect_by_name( adk,            power_est      )
   g.connect_by_name( signoff,        power_est      )
@@ -259,7 +259,7 @@ def construct():
   g.connect( signoff.o('design.lvs.v'), verif_post_layout.i('design.impl.v') )
 
 
-  
+
   #-----------------------------------------------------------------------
   # Parameterize
   #-----------------------------------------------------------------------
