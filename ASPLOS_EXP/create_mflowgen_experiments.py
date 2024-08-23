@@ -5,53 +5,57 @@ import argparse
 
 if __name__ == "__main__":
 
-    for freq in [500, 1000]:
+    parser = argparse.ArgumentParser(description='Generating experiments')
+    parser.add_argument("--physical", action="store_true")
+    parser.add_argument("--run_sim", action="store_true")
+    parser.add_argument("--build_dir", type=str, default=None, required=True)
+    args = parser.parse_args()
+    physical_arg = args.physical
+    run_sim = args.run_sim
+    pd_build_dir = args.build_dir
 
-        # all test files...
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        lake_base_dir = os.path.join(base_dir, "../")
-        test_files_dir = os.path.join(lake_base_dir, "tests/test_spec/")
-        pd_files_dir = os.path.join(lake_base_dir, "gf_physical_design/NEW/")
-        pd_build_dir = "/sim/skavya/lake/NEW/"
+    # all test files...
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    lake_base_dir = os.path.join(base_dir, "../")
+    test_files_dir = os.path.join(lake_base_dir, "tests/test_spec/")
+    pd_files_dir = os.path.join(lake_base_dir, "gf_physical_design/NEW/")
+
+    for freq in [500, 1000]:
 
         for filename in os.listdir(test_files_dir):
             filename_no_ext = os.path.splitext(filename)[0]
             if filename_no_ext not in ["dual_port_rv", "simple_dual_port"]:
                 continue
-            filename_no_ext_f = filename_no_ext + f"_{freq}"
+            filename_no_ext_f = f"{filename_no_ext}_{freq}"
 
-            head_folder = f"{pd_files_dir}{filename_no_ext_f}/"
+            head_folder = os.path.join(pd_files_dir, filename_no_ext_f)
+            subprocess.run(["rm", "-rf", head_folder])
+            subprocess.run(["mkdir", "-p", head_folder])
 
-            subprocess.run(["rm", "-rf", f"{head_folder}"])
-            subprocess.run(["mkdir", f"{head_folder}"])
-
-            subprocess.run(["mkdir", "-p", f"{pd_build_dir}{filename_no_ext_f}"])
+            other_folder = os.path.join(pd_build_dir, filename_no_ext_f)
+            subprocess.run(["mkdir", "-p", other_folder])
 
             # Now go through the different data points
             for storage_capacity in [1024, 2048]:
                 for data_width in [16]:
                     for clock_count_width in [64]:
                         design_folder = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}"
+                        full_design_path = os.path.join(head_folder, f"{design_folder}_{freq}")
 
-                        full_design_path = f"{head_folder}{design_folder}_{freq}/"
-                        
-                        subprocess.run(["rm", "-rf", f"{full_design_path}"])
-                        subprocess.run(["cp", "-r", f"{pd_files_dir}sample_{freq}", f"{full_design_path}"])
+                        subprocess.run(["rm", "-rf", full_design_path])
+                        sample_folder = os.path.join(pd_files_dir, "sample")
+                        subprocess.run(["cp", "-r", sample_folder, full_design_path])
+                        print(f"Made design folder at {full_design_path}")
 
-                        # print(f"Made design folder at {full_design_path}")
-
-                        pd_build_path = f"{pd_build_dir}{filename_no_ext_f}/{design_folder}"
-
-                        subprocess.run(["mkdir", "-p", f"{pd_build_path}"])
-                        subprocess.run(["cd", f"{pd_build_path}"])
-                        # subprocess.run(["mflowgen", "run", "--design", f"{full_design_path}"])
+                        pd_build_path = os.path.join(pd_build_dir, filename_no_ext_f, design_folder)
+                        subprocess.run(["mkdir", "-p", pd_build_path])
+                        subprocess.run(["cd", pd_build_path])
 
                         print(f"cd {pd_build_path}")
                         print(f"mflowgen run --design {full_design_path}")
+                        print(f"Made PD build folder at {pd_build_path}")
 
-                        # print(f"Made PD build folder at {pd_build_path}")
-
-                        with open(f"{full_design_path}rtl/configure.yml", "w") as rtl_configure:
+                        with open(f"{full_design_path}/rtl/configure.yml", 'w+') as rtl_configure:
                             rtl_configure.write("name: rtl\n")
                             rtl_configure.write("\n")
                             rtl_configure.write("outputs:\n")
@@ -83,5 +87,3 @@ if __name__ == "__main__":
                             rtl_configure.write("\n")
                             rtl_configure.write("  - python set_test_dir.py\n")
                             rtl_configure.write("  - echo $PWD\n")
-
-                        
