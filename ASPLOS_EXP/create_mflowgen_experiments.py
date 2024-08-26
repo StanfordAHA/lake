@@ -37,11 +37,13 @@ if __name__ == "__main__":
             other_folder = os.path.join(pd_build_dir, filename_no_ext_f)
             subprocess.run(["mkdir", "-p", other_folder])
 
+            dimensionality = 6
+
             # Now go through the different data points
             for storage_capacity in [1024, 2048]:
                 for data_width in [16]:
                     for clock_count_width in [64]:
-                        design_folder = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}"
+                        design_folder = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}"
                         full_design_path = os.path.join(head_folder, f"{design_folder}_{freq}")
 
                         subprocess.run(["rm", "-rf", full_design_path])
@@ -68,7 +70,7 @@ if __name__ == "__main__":
                             rtl_configure.write("\n")
                             rtl_configure.write("  - export TOP=$PWD\n")
                             rtl_configure.write("\n")
-                            rtl_configure.write(f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width}\n")
+                            rtl_configure.write(f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --outdir $TOP/TEST/\n")
                             rtl_configure.write("\n")
                             rtl_configure.write("  - cd $CURR\n")
                             rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")
