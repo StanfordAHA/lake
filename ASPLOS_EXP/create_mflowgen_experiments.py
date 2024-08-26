@@ -20,6 +20,8 @@ if __name__ == "__main__":
     test_files_dir = os.path.join(lake_base_dir, "tests/test_spec/")
     pd_files_dir = os.path.join(lake_base_dir, "gf_physical_design/NEW/")
 
+    create_curr_dir = os.path.dirname(os.path.abspath(__file__))
+
     for freq in [500, 1000]:
 
         for filename in os.listdir(test_files_dir):
@@ -52,8 +54,12 @@ if __name__ == "__main__":
                         subprocess.run(["cd", pd_build_path])
 
                         print(f"cd {pd_build_path}")
+                        # subprocess.run(["pushd", pd_build_path], executable="/bin/bash")
+                        subprocess.run(["cd", pd_build_path])
                         print(f"mflowgen run --design {full_design_path}")
+                        subprocess.run(["mflowgen", "run", "--design", full_design_path])
                         print(f"Made PD build folder at {pd_build_path}")
+                        # subprocess.run(["popd"], executable="/bin/bash")
 
                         with open(f"{full_design_path}/rtl/configure.yml", 'w+') as rtl_configure:
                             rtl_configure.write("name: rtl\n")
@@ -68,17 +74,12 @@ if __name__ == "__main__":
                             rtl_configure.write("  - export CURR=$PWD\n")
                             rtl_configure.write("  - echo $CURR\n")
                             rtl_configure.write("\n")
-                            rtl_configure.write("  - git clone https://github.com/StanfordAHA/lake/\n")
-                            rtl_configure.write("  - cd lake\n")
-                            rtl_configure.write("  - git checkout new_asplos\n")
+                            # rtl_configure.write("  - git clone https://github.com/StanfordAHA/lake/\n")
+                            # rtl_configure.write("  - cd lake\n")
+                            # rtl_configure.write("  - git checkout new_asplos\n")
                             rtl_configure.write("  - export TOP=$PWD\n")
                             rtl_configure.write("\n")
-                            # rtl_configure.write("  - python3.7 -m venv lake_env\n")
-                            # rtl_configure.write("  - source lake_env/bin/activate\n")
-                            # rtl_configure.write("  - python -m pip install --upgrade pip\n")
-                            # rtl_configure.write("  - pip install -e .\n")
-                            # rtl_configure.write("\n")
-                            rtl_configure.write("  - python ASPLOS_EXP/create_all_experiments.py --physical\n")
+                            rtl_configure.write(f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width}\n")
                             rtl_configure.write("\n")
                             rtl_configure.write("  - cd $CURR\n")
                             rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")

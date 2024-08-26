@@ -77,17 +77,13 @@ if __name__ == "__main__":
         all_test_pts = ((sc, dataw, ccw, dimw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use)
 
         for (storage_capacity, data_width, clock_count_width, dimensionality) in all_test_pts:
-        # for storage_capacity in storage_capacity_use:
-        #     for data_width in data_width_use:
-        #         # for clock_count_width in [32, 48, 64]:
-        #         for clock_count_width in ccw_use:
             outdir = os.path.join(exp_base_dir, f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}")
             print(f"Generating exp at...{outdir}")
             execution_str = ["python", f"{total_path_of_file}", "--storage_capacity", f"{storage_capacity}",
-                                "--data_width", f"{data_width}",
-                                "--clock_count_width", f"{clock_count_width}",
-                                "--outdir", f"{outdir}",
-                                "--dimensionality", f"{dimensionality}"]
+                             "--data_width", f"{data_width}",
+                             "--clock_count_width", f"{clock_count_width}",
+                             "--outdir", f"{outdir}",
+                             "--dimensionality", f"{dimensionality}"]
 
             if physical_arg:
                 execution_str.append("--physical")
