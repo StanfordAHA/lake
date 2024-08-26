@@ -198,7 +198,7 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
                 s_val = 4
             else:
                 s_val = 8
-        elif width < 16:
+        elif width <= 16:
             mux_val = 8
             if depth < 1024:
                 s_val = 2
