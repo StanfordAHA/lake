@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
                         print(f"cd {pd_build_path}; mflowgen run --design {full_design_path}")
                         # subprocess.run(["pushd", pd_build_path], executable="/bin/bash")
-                        subprocess.run(["cd", pd_build_path, ";", "mflowgen", "run", "--design", full_design_path])
+                        subprocess.run(["cd", f"{pd_build_path};", "mflowgen", "run", "--design", full_design_path])
                         # subprocess.run(["mflowgen", "run", "--design", full_design_path])
                         # print(f"Made PD build folder at {pd_build_path}")
                         # subprocess.run(["popd"], executable="/bin/bash")
