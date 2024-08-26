@@ -31,7 +31,7 @@ if __name__ == "__main__":
     physical_arg = args.physical
     run_sim = args.run_sim
     reg_file = args.reg_file
-    exp_base_dir = args.outdir
+    exp_base_dir_arg = args.outdir
 
     dimensionalities_use = [6]
     storage_capacity_use = [1024]
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         # Now we want to execute each with the physical flags and a specific name
         total_path_of_file = os.path.join(test_files_dir, filename)
 
-        # exp_base_dir = os.path.join(test_base, filename_no_ext)
+        exp_base_dir = os.path.join(exp_base_dir_arg, filename_no_ext)
 
         print(f"Generating...{total_path_of_file}")
         # Now go through the different data points
