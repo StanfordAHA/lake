@@ -53,14 +53,6 @@ if __name__ == "__main__":
                         subprocess.run(["mkdir", "-p", pd_build_path])
                         subprocess.run(["cd", pd_build_path])
 
-                        print(f"cd {pd_build_path}; mflowgen run --design {full_design_path}")
-                        # subprocess.run(["pushd", pd_build_path], executable="/bin/bash")
-                        # subprocess.run(["cd", f"{pd_build_path};", "mflowgen", "run", "--design", full_design_path])
-                        subprocess.run(["mflowgen", "run", "--design", full_design_path], cwd=pd_build_path)
-                        # subprocess.run(["mflowgen", "run", "--design", full_design_path])
-                        # print(f"Made PD build folder at {pd_build_path}")
-                        # subprocess.run(["popd"], executable="/bin/bash")
-
                         with open(f"{full_design_path}/rtl/configure.yml", 'w+') as rtl_configure:
                             rtl_configure.write("name: rtl\n")
                             rtl_configure.write("\n")
@@ -74,9 +66,6 @@ if __name__ == "__main__":
                             rtl_configure.write("  - export CURR=$PWD\n")
                             rtl_configure.write("  - echo $CURR\n")
                             rtl_configure.write("\n")
-                            # rtl_configure.write("  - git clone https://github.com/StanfordAHA/lake/\n")
-                            # rtl_configure.write("  - cd lake\n")
-                            # rtl_configure.write("  - git checkout new_asplos\n")
                             rtl_configure.write("  - export TOP=$PWD\n")
                             rtl_configure.write("\n")
                             rtl_configure.write(f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width}\n")
@@ -88,3 +77,7 @@ if __name__ == "__main__":
                             rtl_configure.write("\n")
                             rtl_configure.write("  - python set_test_dir.py\n")
                             rtl_configure.write("  - echo $PWD\n")
+
+                        print(f"cd {pd_build_path}; mflowgen run --design {full_design_path}")
+                        subprocess.run(["mflowgen", "run", "--design", full_design_path], cwd=pd_build_path)
+                        # print(f"Made PD build folder at {pd_build_path}")
