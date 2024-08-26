@@ -223,7 +223,7 @@ class Intersect(MemoryController):
             # tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i], clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             # Need to join the coord and pos
             tmp_sticky = sticky_flag(self, self._coord_in_fifo_eos_in[i] & self._coord_in_fifo_valid_in[i] & self._pos_in_fifo_eos_in[i] & self._pos_in_fifo_valid_in[i],
-                                    clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
+                                     clear=self._clr_eos_sticky[i], name=f"eos_sticky_{i}")
             self.wire(self._eos_in_sticky[i], tmp_sticky)
 
         if self.perf_debug:
@@ -237,9 +237,8 @@ class Intersect(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output ref signal
-            self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) &
-                                                    self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
-                                                    name='done_indicator')
+            self._done_signal = sticky_flag(self, (self._coord_out == MemoryController.DONE_PROXY) & self._coord_out[MemoryController.EOS_BIT] & self._coord_out_valid_out,
+                                            name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
         """
         # Intermediates

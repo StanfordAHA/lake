@@ -360,7 +360,7 @@ class BuffetLike(MemoryController):
         self._curr_base_pre = [self.var(f"curr_base_pre_{i}", self.data_width) for i in range(self.num_ID)]
         self._curr_base = [register(self, self._curr_base_pre[i], enable=self._en_curr_base[i], name=f"curr_base_{i}", packed=True) for i in range(self.num_ID)]
 
-        [self.wire(self._curr_base_pre[i], kts.ternary(self._curr_bounds[i][self.subword_addr_bits-1,0] == kts.const(0, self.subword_addr_bits),
+        [self.wire(self._curr_base_pre[i], kts.ternary(self._curr_bounds[i][self.subword_addr_bits - 1, 0] == kts.const(0, self.subword_addr_bits),
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + self._curr_base[i],
                                                        (self._curr_bounds[i] >> self.subword_addr_bits) + 1 + self._curr_base[i])) for i in range(self.num_ID)]
 
