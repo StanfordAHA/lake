@@ -70,7 +70,7 @@ if __name__ == "__main__":
                             rtl_configure.write("\n")
                             rtl_configure.write("  - git clone https://github.com/StanfordAHA/lake/\n")
                             rtl_configure.write("  - cd lake\n")
-                            rtl_configure.write("  - git checkout new_asplos_max\n")
+                            rtl_configure.write("  - git checkout new_asplos\n")
                             rtl_configure.write("  - export TOP=$PWD\n")
                             rtl_configure.write("\n")
                             # rtl_configure.write("  - python3.7 -m venv lake_env\n")
