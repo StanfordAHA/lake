@@ -155,7 +155,7 @@ def get_linear_test():
 
 
 def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
-                                 tp: TestPrepper = None, reg_file=False):
+                                 tp: TestPrepper = None, reg_file=False, dimensionality=6):
 
     assert tp is not None
 
@@ -169,7 +169,7 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_single_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
-                                                           physical=physical, vec_width=vec_width)
+                                                           physical=physical, vec_width=vec_width, dims=dimensionality)
     simple_single_port_spec.visualize_graph()
     simple_single_port_spec.generate_hardware()
     simple_single_port_spec.extract_compiler_information()
@@ -241,6 +241,7 @@ if __name__ == "__main__":
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
     parser.add_argument("--vec_width", type=int, default=4)
+    parser.add_argument("--dimensionality", type=int, default=6)
     parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
@@ -256,4 +257,5 @@ if __name__ == "__main__":
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_sp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                 physical=args.physical, vec_width=args.vec_width, tp=tp)
+                                 physical=args.physical, vec_width=args.vec_width, tp=tp,
+                                 dimensionality=args.dimensionality)
