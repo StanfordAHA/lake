@@ -79,7 +79,7 @@ def SKY_Tech_Map() -> dict:
 
 
 def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
-                mux_val=8, s_val=2, hl_feat="H") -> dict:
+                mux_val=8, s_val=2, hl_feat="H", pd="D") -> dict:
     '''
     Currently returns the tech map for the single port SRAM
     or the dual port SRAM (1rw1r) mux 8 ("M08" in in the inst name)
@@ -189,8 +189,43 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
     if dual_port and not reg_file:
         ports.append(dual_port_p0rw)
         ports.append(dual_port_p1r)
+
+        if width < 8:
+            mux_val = 16
+            if depth < 2048:
+                s_val = 2
+            elif depth < 4096:
+                s_val = 4
+            else:
+                s_val = 8
+        elif width < 16:
+            mux_val = 8
+            if depth < 1024:
+                s_val = 2
+            elif depth < 2048:
+                s_val = 4
+            else:
+                s_val = 8
+        elif width < 32:
+            mux_val = 4
+            if depth < 512:
+                s_val = 2
+            elif depth < 1024:
+                s_val = 4
+            else:
+                s_val = 8
+        else:
+            mux_val = 2
+            if depth < 256:
+                s_val = 2
+            elif depth < 512:
+                s_val = 4
+            else:
+                s_val = 8
+
         name = f"IN12LP_SDPB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
     elif reg_file:
+
         mux_val = 4
         if depth < 128:
             mux_val = 2
@@ -206,8 +241,34 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
         ports.extend([rf_dual_port_p0w, rf_dual_port_p0r])
         name = f"IN12LP_R2PB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
     else:
+
+        if width < 16:
+            mux_val = 16
+            if depth < 4096:
+                s_val = 2
+            elif depth < 8192:
+                s_val = 4
+            else:
+                s_val = 8
+        elif width < 32:
+            mux_val = 8
+            if depth < 2048:
+                s_val = 2
+            elif depth < 4096:
+                s_val = 4
+            else:
+                s_val = 8
+        else:
+            mux_val = 4
+            if depth < 1024:
+                s_val = 2
+            elif depth < 2048:
+                s_val = 4
+            else:
+                s_val = 8
+
         ports.append(single_port)
-        name = f"IN12LP_S1DB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
+        name = f"IN12LP_S1{pd}B_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
 
     tech_map = {
         'name': name,
