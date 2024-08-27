@@ -91,8 +91,9 @@ if __name__ == "__main__":
                         if run_builds is True:
                             print(f"Starting build at {pd_build_path}")
                             # execute_str = ["source", make_script]
-                            execute_str = ["make", "6", "&&", "make", "-t", "6", "&&", "make", "17"]
-                            newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path)
+                            # execute_str = ["make", "6", "&&", "make", "-t", "6", "&&", "make", "17"]
+                            execute_str = "make 6; make -t 6; make 17"
+                            newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path, shell=True)
                             all_procs.append(newp)
 
                         # print(f"Made PD build folder at {pd_build_path}")
