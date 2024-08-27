@@ -1,17 +1,18 @@
 import os
 import subprocess
 import argparse
+import time
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Generating experiments')
     parser.add_argument("--physical", action="store_true")
-    parser.add_argument("--run_sim", action="store_true")
+    parser.add_argument("--run_builds", action="store_true")
     parser.add_argument("--build_dir", type=str, default=None, required=True)
     args = parser.parse_args()
     physical_arg = args.physical
-    run_sim = args.run_sim
+    run_builds = args.run_builds
     pd_build_dir = args.build_dir
 
     # all test files...
@@ -19,10 +20,13 @@ if __name__ == "__main__":
     lake_base_dir = os.path.join(base_dir, "../")
     test_files_dir = os.path.join(lake_base_dir, "tests/test_spec/")
     pd_files_dir = os.path.join(lake_base_dir, "gf_physical_design/NEW/")
+    make_script = os.path.join(lake_base_dir, "gf_physical_design/", "make_all.sh")
 
     create_curr_dir = os.path.dirname(os.path.abspath(__file__))
 
-    for freq in [500, 1000]:
+    all_procs = []
+
+    for freq in [1000]:
 
         for filename in os.listdir(test_files_dir):
             filename_no_ext = os.path.splitext(filename)[0]
@@ -82,4 +86,26 @@ if __name__ == "__main__":
 
                         print(f"cd {pd_build_path}; mflowgen run --design {full_design_path}")
                         subprocess.run(["mflowgen", "run", "--design", full_design_path], cwd=pd_build_path)
+
+                        # If the builds should go, start it here...
+                        if run_builds is True:
+                            print(f"Starting build at {pd_build_path}")
+                            execute_str = ["source", make_script]
+                            newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path)
+                            all_procs.append(newp)
+
                         # print(f"Made PD build folder at {pd_build_path}")
+
+    # Wait for all to be done.
+    done = False
+    while not done:
+        done = True
+        num_procs_alive = 0
+        for proc_ in all_procs:
+            # Still an alive process...
+            if proc_.poll() is None:
+                num_procs_alive += 1
+        if num_procs_alive > 0:
+            print(f"{num_procs_alive} processes still running...")
+            time.sleep(10)
+            done = False
