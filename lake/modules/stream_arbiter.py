@@ -150,7 +150,7 @@ class StreamArbiter(MemoryController):
 
         self._set_stream_length = self.var("set_stream_length", 1)
         self._clr_stream_length = self.var("clr_stream_length", 1)
-        self._max_stream_length = register(self, self._stream_to_fifo[self.data_width-1, 0], enable=self._set_stream_length, clear=self._clr_stream_length, name="max_stream_length", packed=True)
+        self._max_stream_length = register(self, self._stream_to_fifo[self.data_width - 1, 0], enable=self._set_stream_length, clear=self._clr_stream_length, name="max_stream_length", packed=True)
         # by seq_only = True, we have 1 cycle delay. Function as a valid signal here, for case of str length = 0
         self._stream_max_sticky = sticky_flag(self, self._set_stream_length, self._clr_stream_length, "max_stream_length_sticky", seq_only=True)
 
@@ -348,8 +348,8 @@ class StreamArbiter(MemoryController):
 
 if __name__ == "__main__":
     stream_arbiter_dut = StreamArbiter(data_width=16,
-                              use_merger=False,
-                              defer_fifos=False)
+                                       use_merger=False,
+                                       defer_fifos=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)
