@@ -59,8 +59,7 @@ class PassThrough(MemoryController):
         self._stream_in_ready = self.output(f"stream_in_ready", 1)
         self._stream_in_ready.add_attribute(ControlSignalAttr(is_control=False))
 
-
-        # STRAM OUT.
+        # STREAM OUT.
         self._stream_out = self.output("stream_out", self.data_width + 1, packed=True)
         self._stream_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
@@ -74,9 +73,7 @@ class PassThrough(MemoryController):
 # FIFO inputs
 # ==========================================
 
-
         self._pop_fifo = self.var("pop_fifo", 1)
-
 
         # STREAM IN FIFOS
         self._stream_in_fifo = RegFIFO(data_width=self._stream_in.width, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=True)
@@ -87,14 +84,14 @@ class PassThrough(MemoryController):
         self._stream_in_fifo_in = self.var(f"stream_in_fifo_in", self.data_width + 1, packed=True)
 
         self.add_child(f"stream_in_fifo",
-                        self._stream_in_fifo,
-                        clk=self._gclk,
-                        rst_n=self._rst_n,
-                        clk_en=self._clk_en,
-                        push=self._stream_in_valid,
-                        pop=self._pop_fifo,
-                        data_in=self._stream_in,
-                        data_out=self._stream_in_fifo_in)
+                       self._stream_in_fifo,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._stream_in_valid,
+                       pop=self._pop_fifo,
+                       data_in=self._stream_in,
+                       data_out=self._stream_in_fifo_in)
 
         self.wire(self._stream_in_ready, ~self._stream_in_fifo.ports.full)
         self.wire(self._stream_in_valid_in, ~self._stream_in_fifo.ports.empty)  # Filter out unconfigured channels
@@ -115,7 +112,7 @@ class PassThrough(MemoryController):
 # ==========================================
 
         self._fifo_full = self.var("fifo_full", 1)
-        self.wire(self._pop_fifo, (self._stream_out_fifo_ready | self._stream_out_ready_in)  & self._stream_in_valid_in) # Not the most performantive
+        self.wire(self._pop_fifo, (self._stream_out_fifo_ready | self._stream_out_ready_in) & self._stream_in_valid_in) # Not the most performantive
 # ===================================
 # FIFO output instantiate
 # ===================================
@@ -133,7 +130,6 @@ class PassThrough(MemoryController):
 
         self.wire(self._stream_out_valid_out, ~self._stream_out_fifo.ports.empty)
         self.wire(self._stream_out_fifo_ready, ~self._stream_out_fifo.ports.full)
-
 
         if self.defer_fifos is False:
             all_fifos = self.get_fifos()
@@ -180,8 +176,8 @@ class PassThrough(MemoryController):
 
 if __name__ == "__main__":
     pass_through_dut = PassThrough(data_width=16,
-                              use_merger=False,
-                              defer_fifos=False)
+                                   use_merger=False,
+                                   defer_fifos=False)
 
     # Lift config regs and generate annotation
     # lift_config_reg(pond_dut.internal_generator)

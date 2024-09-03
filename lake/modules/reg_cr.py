@@ -368,9 +368,8 @@ class Reg(MemoryController):
             self.add_performance_indicator(self._start_signal, edge='posedge', label='start', cycle_count=cyc_count)
 
             # End when we see DONE on the output coord
-            self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) &
-                                                    self._valid_out,
-                                                    name='done_indicator')
+            self._done_signal = sticky_flag(self, (self._data_out == MemoryController.DONE_PROXY) & self._valid_out,
+                                            name='done_indicator')
             self.add_performance_indicator(self._done_signal, edge='posedge', label='done', cycle_count=cyc_count)
 
         # Finally, lift the config regs...
