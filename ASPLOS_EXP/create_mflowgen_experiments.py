@@ -30,8 +30,8 @@ if __name__ == "__main__":
 
         for filename in os.listdir(test_files_dir):
             filename_no_ext = os.path.splitext(filename)[0]
-            if filename_no_ext not in ["dual_port_rv", "simple_dual_port"]:
-                continue
+            # if filename_no_ext not in ["dual_port_rv", "simple_dual_port"]:
+                # continue
             filename_no_ext_f = f"{filename_no_ext}_{freq}"
 
             head_folder = os.path.join(pd_files_dir, filename_no_ext_f)
@@ -44,7 +44,7 @@ if __name__ == "__main__":
             dimensionality = 6
 
             # Now go through the different data points
-            for storage_capacity in [1024, 2048]:
+            for storage_capacity in [512, 1024, 2048]:
                 for data_width in [16]:
                     for clock_count_width in [64]:
                         design_folder = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}"
