@@ -118,9 +118,10 @@ if __name__ == "__main__":
                         if run_builds is True:
                             num_alive = get_num_live_procs(all_procs)
                             print(f"This many running...{num_alive}...")
-                            if num_alive >= x_or_more:
+                            while num_alive >= x_or_more:
                                 print(f"At limit of {x_or_more} procs...sleeping")
                                 time.sleep(15)
+                                num_alive = get_num_live_procs(all_procs)
 
     # Wait for all to be done.
     done = False
