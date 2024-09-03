@@ -4,6 +4,20 @@ import argparse
 import time
 
 
+def get_num_live_procs(proc_list):
+    # Wait for all to be done.
+    num_procs_alive = 0
+    done = False
+    while not done:
+        done = True
+        num_procs_alive = 0
+        for proc_ in proc_list:
+            # Still an alive process...
+            if proc_.poll() is None:
+                num_procs_alive += 1
+    return num_procs_alive
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Generating experiments')
@@ -14,6 +28,8 @@ if __name__ == "__main__":
     physical_arg = args.physical
     run_builds = args.run_builds
     pd_build_dir = args.build_dir
+
+    x_or_more = 4
 
     # all test files...
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -97,6 +113,14 @@ if __name__ == "__main__":
                             all_procs.append(newp)
 
                         # print(f"Made PD build folder at {pd_build_path}")
+
+                        # Check if there are 4 or more current builds...
+                        if run_builds is True:
+                            num_alive = get_num_live_procs(all_procs)
+                            print(f"This many running...{num_alive}...")
+                            if num_alive >= x_or_more:
+                                print(f"At limit of {x_or_more} procs...sleeping")
+                                time.sleep(15)
 
     # Wait for all to be done.
     done = False
