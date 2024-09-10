@@ -2,18 +2,7 @@ import os
 import subprocess
 import argparse
 import time
-
-
-def check_file_exists_and_has_content(file_path):
-    # Check if the file exists
-    if os.path.exists(file_path):
-        # Check if the file is not empty
-        if os.path.getsize(file_path) > 0:
-            return True
-        else:
-            return False
-    else:
-        return False
+from lake.utils.util import check_file_exists_and_has_content
 
 
 if __name__ == "__main__":

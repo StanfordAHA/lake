@@ -12,6 +12,29 @@ import shutil as shutil
 lake_util_verbose_trim = False
 
 
+def check_file_exists_and_has_content(file_path):
+    # Check if the file exists
+    if os.path.exists(file_path):
+        # Check if the file is not empty
+        if os.path.getsize(file_path) > 0:
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def get_file_contents(file_path):
+    good_file = check_file_exists_and_has_content(file_path=file_path)
+    if good_file is True:
+        contents = None
+        with open(file_path, 'r') as open_file:
+            contents = open_file.readlines()
+        return contents
+    else:
+        return None
+
+
 class TestPrepper():
 
     def __init__(self, base_dir: str = None) -> None:
