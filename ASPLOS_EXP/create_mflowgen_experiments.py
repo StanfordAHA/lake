@@ -207,6 +207,7 @@ if __name__ == "__main__":
             print(f"Data collection enabled at build dir {pd_build_dir}...")
             all_breakdowns = get_area_breakdown_dir(pd_build_dir)
             # Now emit this information to excel
+            assert collect_data_csv_path is not None
             write_area_csv(all_breakdowns, collect_data_csv_path)
         exit()
 
