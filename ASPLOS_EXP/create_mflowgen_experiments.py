@@ -55,6 +55,17 @@ def get_area_breakdown_dir(directory):
 def get_area_breakdown_file(file_path):
     print(f"Getting the area at {file_path}")
     all_file_content = get_file_contents(file_path=file_path)
+    if all_file_content is None:
+        print(f"No signoff area report for {file_path}")
+        return {
+        'total': 0.0,
+        'AG': 0.0,
+        'SG': 0.0,
+        'ID': 0.0,
+        'Port': 0.0,
+        'Storage': 0.0,
+        'Config': 0.0
+    }
     print(all_file_content)
     num_lines = len(all_file_content)
     num_data_lines = num_lines - 3
