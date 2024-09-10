@@ -24,7 +24,6 @@ def get_manifest_info(design):
         # Load JSON from a file
         with open(manifest_file_path, 'r') as file:
             data = json.load(file)
-        print(data)
     return data
 
 
@@ -66,28 +65,20 @@ def get_area_breakdown_file(file_path):
         'Storage': 0.0,
         'Config': 0.0
     }
-    print(all_file_content)
     num_lines = len(all_file_content)
     num_data_lines = num_lines - 3
     header = all_file_content[0]
     dashes = all_file_content[1]
     top_line = all_file_content[2]
     rest_of_file = all_file_content[3:]
-    print(header)
-    for line in rest_of_file:
-        print(line)
     # Do breakdowns by AG/SG/ID/Macro/Config
     ag_match = ['port_ag_',]
     sg_match = ['port_sg_',]
     id_match = ['port_id_',]
     port_match = ['port_inst_',]
     storage_match = ['storage',]
-    print("Mek")
     # Everything should be only 2 spaces in - so delete any line with more spaces
     all_modules = [x for x in rest_of_file if x[0] == ' ' and x[1] == ' ' and x[2] != ' ']
-    for mod in all_modules:
-        print(mod)
-    print(top_line)
     top_line_breakdown = top_line.strip().split()
     total_area = float(top_line_breakdown[2])
     total_macro = float(top_line_breakdown[-2])
@@ -139,7 +130,6 @@ def get_area_breakdown_file(file_path):
         'Config': config_area
     }
 
-    print(area_dict)
     return area_dict
 
 
@@ -168,6 +158,7 @@ if __name__ == "__main__":
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--run_builds", action="store_true")
     parser.add_argument("--build_dir", type=str, default=None, required=True)
+    parser.add_argument("--csv_out", type=str, default=None, required=False)
     args = parser.parse_args()
     physical_arg = args.physical
     run_builds = args.run_builds
@@ -175,6 +166,7 @@ if __name__ == "__main__":
     collect_data = args.collect_data
     collect_override = args.collect_override
     collect_override_path = pd_build_dir
+    collect_data_csv_path = args.csv_out
 
     if collect_data is False:
         assert pd_build_dir is not None, f"If not collecting data, must provide a build dir!!!"
@@ -208,8 +200,6 @@ if __name__ == "__main__":
 
             with open(params_file, 'r') as file:
                 data = json.load(file)
-            print(data)
-
             area_report = os.path.join(collect_override_path, "signoff.area.rpt")
             area_dict = get_area_breakdown_file(file_path=area_report)
 
@@ -217,7 +207,7 @@ if __name__ == "__main__":
             print(f"Data collection enabled at build dir {pd_build_dir}...")
             all_breakdowns = get_area_breakdown_dir(pd_build_dir)
             # Now emit this information to excel
-            write_area_csv(all_breakdowns)
+            write_area_csv(all_breakdowns, collect_data_csv_path)
         exit()
 
 
