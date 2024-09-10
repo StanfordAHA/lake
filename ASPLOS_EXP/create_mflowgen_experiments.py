@@ -3,7 +3,7 @@ import subprocess
 import argparse
 import time
 import json
-from lake.utils.util import get_file_contents
+from lake.utils.util import get_file_contents, check_file_exists_and_has_content
 
 
 def write_area_csv(area_breakdowns, fp):
@@ -20,10 +20,11 @@ def write_area_csv(area_breakdowns, fp):
 def get_manifest_info(design):
     data = None
     manifest_file_path = os.path.join(design, "params.json")
-    # Load JSON from a file
-    with open(manifest_file_path, 'r') as file:
-        data = json.load(file)
-    print(data)
+    if check_file_exists_and_has_content(manifest_file_path):
+        # Load JSON from a file
+        with open(manifest_file_path, 'r') as file:
+            data = json.load(file)
+        print(data)
     return data
 
 
