@@ -32,13 +32,15 @@ def get_area_breakdown_dir(directory):
     all_designs = os.listdir(directory)
     all_area_breakdowns = []
     for design in all_designs:
-        design_points = os.listdir(design)
+        design_path = os.path.join(directory, design)
+        design_points = os.listdir(design_path)
         for design_point in design_points:
-            man_info = get_manifest_info(design_point)
+            design_point_path = os.path.join(design_path, design_point)
+            man_info = get_manifest_info(design_point_path)
             relative_area_file = os.path.join("17-cadence-innovus-signoff",
-                                            "reports",
-                                            "signoff.area.rpt")
-            full_area_file = os.path.join(design, design_point, relative_area_file)
+                                              "reports",
+                                              "signoff.area.rpt")
+            full_area_file = os.path.join(design_point_path, relative_area_file)
             area_breakdown = get_area_breakdown_file(file_path=full_area_file)
             if man_info is not None:
                 area_breakdown['design'] = man_info['design']
