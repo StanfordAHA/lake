@@ -43,7 +43,9 @@ def get_area_breakdown_dir(directory):
             full_area_file = os.path.join(design_point_path, relative_area_file)
             area_breakdown = get_area_breakdown_file(file_path=full_area_file)
             if man_info is not None:
-                area_breakdown['design'] = man_info['design']
+                # Copy over the keys for the csv
+                for k, v in man_info.items():
+                    area_breakdown[k] = v
             else:
                 area_breakdown['design'] = f"{design}_{design_point}"
             # Now we have the parameter info and the area breakdown...add to list
