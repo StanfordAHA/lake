@@ -82,6 +82,23 @@ def SKY_Tech_Map() -> dict:
 
     return tech_map
 
+def get_gf_macro_options(valid_options, depth, width):
+    options_ = []
+    for macro_spec, macro_vals in valid_options.items():
+        word_range, word_granularity, bit_range, bit_granularity = macro_spec
+        mv_, sv_ = macro_vals
+        word_start, word_stop = word_range
+        bit_start, bit_stop = bit_range
+        # Need to go one beyond to include the end (range is exclusive end by default)
+        word_opts = range(word_start, word_stop + 1, word_granularity)
+        bit_opts = range(bit_start, bit_stop + 1, bit_granularity)
+
+        if depth in word_opts and width in bit_opts:
+            options_.append(macro_vals)
+
+    print(options_)
+    return options_
+
 
 def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
                 mux_val=8, s_val=2, hl_feat="H", pd="D") -> dict:
@@ -195,95 +212,104 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
         ports.append(dual_port_p0rw)
         ports.append(dual_port_p1r)
 
-        if width < 8:
-            mux_val = 16
-            if depth < 2048:
-                s_val = 2
-            elif depth < 4096:
-                s_val = 4
-            else:
-                s_val = 8
-        elif width <= 16:
-            mux_val = 8
-            if depth < 1024:
-                s_val = 2
-            elif depth < 2048:
-                s_val = 4
-            else:
-                s_val = 8
-        elif width < 32:
-            mux_val = 4
-            if depth < 512:
-                s_val = 2
-            elif depth < 1024:
-                s_val = 4
-            else:
-                s_val = 8
-        else:
-            mux_val = 2
-            if depth < 256:
-                s_val = 2
-            elif depth < 512:
-                s_val = 4
-            else:
-                s_val = 8
+        # Opt for ranges instead...
+        # Define everything with (bit range) (word range) -> mux, subarray
+        valid_macros = {
+            # word range, word granularity, bit range, bit granularity -> mux, subarray
+            # MUX 2
+            ((32, 512), 8, (32, 80), 2): (2, 2),
+            ((256, 1024), 8, (32, 80), 2): (2, 4),
+            ((512, 2048), 8, (32, 80), 2): (2, 8),
+
+            # MUX 4
+            ((64, 1024), 16, (16, 40), 2): (4, 2),
+            ((512, 2048), 16, (16, 40), 2): (4, 4),
+            ((1024, 4096), 16, (16, 40), 2): (4, 8),
+
+            # MUX 8
+            ((128, 2048), 32, (8, 20), 1): (8, 2),
+            ((1024, 4096), 32, (8, 20), 1): (8, 4),
+            ((2048, 8192), 32, (8, 20), 1): (8, 8),
+
+            # MUX 16
+            ((256, 4096), 64, (4, 10), 1): (16, 2),
+            ((2048, 8192), 64, (4, 10), 1): (16, 4),
+            ((4096, 16384), 64, (4, 10), 1): (16, 8),
+        }
+
+        options_ = get_gf_macro_options(valid_macros, depth, width)
+        assert len(options_) > 0, f"No valid macros..."
+        # Choose first for now...
+        mux_val, s_val = options_[0]
 
         name = f"IN12LP_SDPB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
     elif reg_file:
 
-        mux_val = 4
-        if depth < 128:
-            mux_val = 2
-            s_val = 1
-        elif depth < 512:
-            mux_val = 2
-            s_val = 2
-        else:
-            mux_val = 4
-            s_val = 2
+        # Define everything with (bit range) (word range) -> mux, subarray
+        valid_macros = {
+            # word range, word granularity, bit range, bit granularity -> mux, subarray
+            # MUX 2
+            ((8, 256), 8, (4, 144), 1): (2, 1),
+            ((128, 512), 8, (4, 144), 1): (2, 2),
+
+            # MUX 4
+            ((16, 512), 16, (4, 72), 1): (4, 1),
+            ((256, 1024), 16, (4, 72), 1): (4, 2),
+
+        }
+
+        options_ = get_gf_macro_options(valid_macros, depth, width)
+        assert len(options_) > 0, f"No valid macros..."
+        # Choose first for now...
+        mux_val, s_val = options_[0]
 
         # ports.extend([rf_dual_port_p0r, rf_dual_port_p0w])
         ports.extend([rf_dual_port_p0w, rf_dual_port_p0r])
         name = f"IN12LP_R2PB_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"
     else:
 
-        if width < 16:
+        if pd == "D":
+            # Define everything with (bit range) (word range) -> mux, subarray
+            valid_macros = {
+                # word range, word granularity, bit range, bit granularity -> mux, subarray
+                # MUX 4
+                ((512, 2048), 16, (32, 256), 2): (4, 2),
+                ((1024, 4096), 16, (32, 256), 2): (4, 4),
+                ((2048, 8192), 16, (32, 256), 2): (4, 8),
 
-            mux_val = 16
-            # Minimum depth for this SRAM is 2048
-            if depth < 2048:
-                raise NoValidMacroException
-            elif depth < 4096:
-                s_val = 2
-            elif depth < 8192:
-                s_val = 4
-            else:
-                s_val = 8
-        elif width < 32:
+                # MUX 8
+                ((1024, 4096), 32, (16, 128), 1): (8, 2),
+                ((2048, 8192), 32, (16, 128), 1): (8, 4),
+                ((4096, 16384), 32, (16, 128), 1): (8, 8),
 
-            mux_val = 8
-            # Minimum depth for this SRAM is 1024
-            if depth < 1024:
-                raise NoValidMacroException
-            elif depth < 2048:
-                s_val = 2
-            elif depth < 4096:
-                s_val = 4
-            else:
-                s_val = 8
+                # MUX 16
+                ((2048, 8192), 64, (8, 64), 1): (16, 2),
+                ((4096, 16384), 64, (8, 64), 1): (16, 4),
+                ((8192, 32768), 64, (8, 64), 1): (16, 8),
+            }
         else:
+            valid_macros = {
+                # word range, word granularity, bit range, bit granularity -> mux, subarray
+                # MUX 4
+                ((512, 2048), 16, (32, 192), 2): (4, 2),
+                ((1024, 4096), 16, (32, 192), 2): (4, 4),
+                ((2048, 8192), 16, (32, 192), 2): (4, 8),
 
-            mux_val = 4
-            # Minimum depth for this SRAM is 512
-            print("HELLO")
-            if depth < 512:
-                raise NoValidMacroException
-            elif depth < 1024:
-                s_val = 2
-            elif depth < 2048:
-                s_val = 4
-            else:
-                s_val = 8
+                # MUX 8
+                ((1024, 4096), 32, (16, 96), 1): (8, 2),
+                ((2048, 8192), 32, (16, 96), 1): (8, 4),
+                ((4096, 16384), 32, (16, 96), 1): (8, 8),
+
+                # MUX 16
+                ((2048, 8192), 64, (8, 48), 1): (16, 2),
+                ((4096, 16384), 64, (8, 48), 1): (16, 4),
+                ((8192, 32768), 64, (8, 48), 1): (16, 8),
+            }
+
+        options_ = get_gf_macro_options(valid_macros, depth, width)
+        assert len(options_) > 0, f"No valid macros..."
+        # Choose first for now...
+        mux_val, s_val = options_[0]
 
         ports.append(single_port)
         name = f"IN12LP_S1{pd}B_W{depth:05}B{width:03}M{mux_val:02}S{s_val:01}_{hl_feat}"

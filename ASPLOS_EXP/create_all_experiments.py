@@ -130,6 +130,6 @@ if __name__ == "__main__":
     print("Now checking for output verilog...")
 
     for proc_, vlfp in all_procs:
-        assert proc_.returncode == 0, f"Proc returned bad value..."
         assert check_file_exists_and_has_content(vlfp) is True, f"Verilog file at {vlfp} was not created..."
+        assert proc_.returncode == 0, f"Proc returned bad value..."
     print("All test collateral verified!")
