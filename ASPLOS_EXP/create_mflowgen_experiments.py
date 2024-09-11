@@ -233,8 +233,10 @@ if __name__ == "__main__":
 
             dimensionality = 6
 
+            cap_scale = 8
+
             # Now go through the different data points
-            for storage_capacity in [512, 1024, 2048]:
+            for storage_capacity in [512 * cap_scale, 1024 * cap_scale, 2048 * cap_scale]:
                 for data_width in [16]:
                     for clock_count_width in [64]:
 

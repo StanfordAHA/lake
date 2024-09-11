@@ -1,3 +1,8 @@
+class NoValidMacroException(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+
 def TSMC_Tech_Map(depth, width) -> dict:
     '''
     Currently returns the tech map for the single port SRAM, but we can
@@ -243,24 +248,37 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
     else:
 
         if width < 16:
+
             mux_val = 16
-            if depth < 4096:
+            # Minimum depth for this SRAM is 2048
+            if depth < 2048:
+                raise NoValidMacroException
+            elif depth < 4096:
                 s_val = 2
             elif depth < 8192:
                 s_val = 4
             else:
                 s_val = 8
         elif width < 32:
+
             mux_val = 8
-            if depth < 2048:
+            # Minimum depth for this SRAM is 1024
+            if depth < 1024:
+                raise NoValidMacroException
+            elif depth < 2048:
                 s_val = 2
             elif depth < 4096:
                 s_val = 4
             else:
                 s_val = 8
         else:
+
             mux_val = 4
-            if depth < 1024:
+            # Minimum depth for this SRAM is 512
+            print("HELLO")
+            if depth < 512:
+                raise NoValidMacroException
+            elif depth < 1024:
                 s_val = 2
             elif depth < 2048:
                 s_val = 4

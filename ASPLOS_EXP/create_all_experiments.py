@@ -23,9 +23,10 @@ if __name__ == "__main__":
     exp_base_dir_arg = args.outdir
 
     dimensionalities_use = [6]
-    storage_capacity_use = [1024]
+    scale_value = 8
+    storage_capacity_use = [512 * scale_value, 1024 * scale_value, 2048 * scale_value]
     data_width_use = [16]
-    ccw_use = [32, 48, 64]
+    ccw_use = [64]
 
     storage_capacity_arg = args.storage_capacity
     if (storage_capacity_arg is not None) and len(storage_capacity_arg) > 0:
@@ -129,5 +130,6 @@ if __name__ == "__main__":
     print("Now checking for output verilog...")
 
     for proc_, vlfp in all_procs:
-        assert check_file_exists_and_has_content(vlog_filepath), f"Verilog file at {vlog_filepath} was not created..."
+        assert proc_.returncode == 0, f"Proc returned bad value..."
+        assert check_file_exists_and_has_content(vlfp) is True, f"Verilog file at {vlfp} was not created..."
     print("All test collateral verified!")
