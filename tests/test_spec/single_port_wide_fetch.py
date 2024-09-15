@@ -12,25 +12,53 @@ import argparse
 import os
 
 
-def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False) -> Spec:
+def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4,
+                                 physical=False, in_ports=1, out_ports=1, vec_capacity=2) -> Spec:
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+    # Need to build a number of input and output ports
+    all_ins = []
+    all_ins_id = []
+    all_ins_ag = []
+    all_ins_sg = []
+    all_outs = []
+    all_outs_id = []
+    all_outs_ag = []
+    all_outs_sg = []
+    #  Create input ports and register them
+    for inp in range(in_ports):
+        in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.IN)
+        ls.register(in_port)
+        all_ins.append(in_port)
 
-    ls.register(in_port, out_port)
+    # Create outputs ports and register them
+    for outp in range(out_ports):
+        out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width, vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.OUT)
+        ls.register(out_port)
+        all_outs.append(out_port)
 
-    in_id = IterationDomain(dimensionality=dims, extent_width=16)
-    in_ag = AddressGenerator(dimensionality=dims)
-    in_sg = ScheduleGenerator(dimensionality=dims)
+    # Create input port controllers and register them
+    for inp in range(in_ports):
+        in_id = IterationDomain(dimensionality=dims, extent_width=16)
+        in_ag = AddressGenerator(dimensionality=dims)
+        in_sg = ScheduleGenerator(dimensionality=dims)
+        ls.register(in_id, in_ag, in_sg)
 
-    out_id = IterationDomain(dimensionality=dims, extent_width=16)
-    out_ag = AddressGenerator(dimensionality=dims)
-    out_sg = ScheduleGenerator(dimensionality=dims)
+        all_ins_id.append(in_id)
+        all_ins_ag.append(in_ag)
+        all_ins_sg.append(in_sg)
 
-    ls.register(in_id, in_ag, in_sg)
-    ls.register(out_id, out_ag, out_sg)
+    # Same for output
+    for outp in range(out_ports):
+        out_id = IterationDomain(dimensionality=dims, extent_width=16)
+        out_ag = AddressGenerator(dimensionality=dims)
+        out_sg = ScheduleGenerator(dimensionality=dims)
+        ls.register(out_id, out_ag, out_sg)
+        all_outs_id.append(out_id)
+        all_outs_ag.append(out_ag)
+        all_outs_sg.append(out_sg)
+
 
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
@@ -44,20 +72,40 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
 
     # All cores are registered at this point
     # Now connect them
+        # Out to out
+    for inp in range(in_ports):
+        ls.connect(all_ins[inp], all_ins_id[inp])
+        ls.connect(all_ins[inp], all_ins_ag[inp])
+        ls.connect(all_ins[inp], all_ins_sg[inp])
+        # ls.connect(in_port, in_ag)
+        # ls.connect(in_port, in_sg)
 
+    for outp in range(out_ports):
+        ls.connect(all_outs[outp], all_outs_id[outp])
+        ls.connect(all_outs[outp], all_outs_ag[outp])
+        ls.connect(all_outs[outp], all_outs_sg[outp])
+        # ls.connect(out_port, out_id)
+        # ls.connect(out_port, out_ag)
+        # ls.connect(out_port, out_sg)
+
+    # for inp in range(in_ports):
     # In to in
-    ls.connect(in_port, in_id)
-    ls.connect(in_port, in_ag)
-    ls.connect(in_port, in_sg)
+    # ls.connect(in_port, in_id)
+    # ls.connect(in_port, in_ag)
+    # ls.connect(in_port, in_sg)
 
-    # Out to out
-    ls.connect(out_port, out_id)
-    ls.connect(out_port, out_ag)
-    ls.connect(out_port, out_sg)
+    # # Out to out
+    # ls.connect(out_port, out_id)
+    # ls.connect(out_port, out_ag)
+    # ls.connect(out_port, out_sg)
 
+    for inp in range(in_ports):
     # In and Out to shared memory port
-    ls.connect(in_port, shared_rw_mem_port)
-    ls.connect(out_port, shared_rw_mem_port)
+        ls.connect(all_ins[inp], shared_rw_mem_port)
+    for outp in range(out_ports):
+        ls.connect(all_outs[outp], shared_rw_mem_port)
+    # ls.connect(in_port, shared_rw_mem_port)
+    # ls.connect(out_port, shared_rw_mem_port)
 
     # Memory Ports to storage
     ls.connect(shared_rw_mem_port, stg)
@@ -155,7 +203,7 @@ def get_linear_test():
 
 
 def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
-                                 tp: TestPrepper = None, reg_file=False, dimensionality=6):
+                                 tp: TestPrepper = None, reg_file=False, dimensionality=6, in_ports=1, out_ports=1):
 
     assert tp is not None
 
@@ -169,7 +217,8 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_single_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
-                                                           physical=physical, vec_width=vec_width, dims=dimensionality)
+                                                           physical=physical, vec_width=vec_width, dims=dimensionality,
+                                                           in_ports=in_ports, out_ports=out_ports)
     simple_single_port_spec.visualize_graph()
     simple_single_port_spec.generate_hardware()
     simple_single_port_spec.extract_compiler_information()
@@ -240,7 +289,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple Dual Port')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
-    parser.add_argument("--vec_width", type=int, default=4)
+    parser.add_argument("--fetch_width", type=int, default=4)
+    parser.add_argument("--in_ports", type=int, default=1)
+    parser.add_argument("--out_ports", type=int, default=1)
     parser.add_argument("--dimensionality", type=int, default=6)
     parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
@@ -251,11 +302,15 @@ if __name__ == "__main__":
     print("Preparing hardware test")
 
     # argparser
+    fw = args.fetch_width
+    if fw < 2:
+        print(f"Not parameterized for fetch width of {fw} --- exiting early!")
+        exit()
 
     tp = TestPrepper(base_dir=args.outdir)
     hw_test_dir = tp.prepare_hw_test()
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_sp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                 physical=args.physical, vec_width=args.vec_width, tp=tp,
+                                 physical=args.physical, vec_width=fw, tp=tp, in_ports=args.in_ports, out_ports=args.out_ports,
                                  dimensionality=args.dimensionality)

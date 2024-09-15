@@ -82,6 +82,7 @@ def SKY_Tech_Map() -> dict:
 
     return tech_map
 
+
 def get_gf_macro_options(valid_options, depth, width):
     options_ = []
     for macro_spec, macro_vals in valid_options.items():

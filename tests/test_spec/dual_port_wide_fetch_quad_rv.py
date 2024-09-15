@@ -13,20 +13,21 @@ import os
 
 
 def build_dual_port_wide_fetch_quad_rv(storage_capacity=1024, data_width=16, dims: int = 6,
-                                       vec_width=2, physical=False, reg_file=False) -> Spec:
+                                       vec_width=2, physical=False, reg_file=False,
+                                       vec_capacity=2) -> Spec:
 
     read_delay = 0 if reg_file else 1
 
     ls = Spec()
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                   vec_capacity=8, runtime=Runtime.DYNAMIC, direction=Direction.IN)
+                   vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=8, runtime=Runtime.DYNAMIC, direction=Direction.IN)
+                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=8, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
+                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
     out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                     vec_capacity=8, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
+                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
 
     ls.register(in_port, in_port2, out_port, out_port2)
 
@@ -325,7 +326,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple Dual Port')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
-    parser.add_argument("--vec_width", type=int, default=2)
+    parser.add_argument("--fetch_width", type=int, default=2)
     parser.add_argument("--reg_file", action="store_true")
     parser.add_argument("--dimensionality", type=int, default=6)
     parser.add_argument("--clock_count_width", type=int, default=64)
@@ -338,10 +339,15 @@ if __name__ == "__main__":
 
     # argparser
 
+    fw = args.fetch_width
+    if fw < 2:
+        print(f"Not parameterized for fetch width of {fw} --- exiting early!")
+        exit()
+
     tp = TestPrepper(base_dir=args.outdir)
     hw_test_dir = tp.prepare_hw_test()
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_dp_wf_q_rv(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                      physical=args.physical, vec_width=args.vec_width, tp=tp, reg_file=args.reg_file,
+                                      physical=args.physical, vec_width=fw, tp=tp, reg_file=args.reg_file,
                                       dimensionality=args.dimensionality)

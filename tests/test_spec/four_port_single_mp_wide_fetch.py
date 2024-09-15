@@ -13,18 +13,19 @@ import os
 
 
 def build_four_port_wide_fetch(storage_capacity=1024, data_width=16,
-                               dims: int = 6, vec_width=4, physical=False) -> Spec:
+                               dims: int = 6, vec_width=4, physical=False,
+                               vec_capacity=2) -> Spec:
 
     ls = Spec()
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                   vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+                   vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.IN)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.IN)
+                    vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.IN)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+                    vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.OUT)
     out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                     vec_capacity=8, runtime=Runtime.STATIC, direction=Direction.OUT)
+                     vec_capacity=vec_capacity, runtime=Runtime.STATIC, direction=Direction.OUT)
 
     ls.register(in_port, in_port2, out_port, out_port2)
 
@@ -405,7 +406,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple Dual Port')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
-    parser.add_argument("--vec_width", type=int, default=4)
+    parser.add_argument("--fetch_width", type=int, default=4)
     parser.add_argument("--dimensionality", type=int, default=6)
     parser.add_argument("--clock_count_width", type=int, default=64)
     parser.add_argument("--tech", type=str, default="GF")
@@ -417,11 +418,15 @@ if __name__ == "__main__":
     print("Preparing hardware test")
 
     # argparser
+    fw = args.fetch_width
+    if fw < 4:
+        print(f"Not parameterized for fetch width of {fw} --- exiting early!")
+        exit()
 
     tp = TestPrepper(base_dir=args.outdir)
     hw_test_dir = tp.prepare_hw_test()
     print(f"Put hw test at {hw_test_dir}")
 
     test_linear_read_write_qp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
-                                 physical=args.physical, vec_width=args.vec_width, tp=tp, test=args.test,
+                                 physical=args.physical, vec_width=fw, tp=tp, test=args.test,
                                  dimensionality=args.dimensionality)

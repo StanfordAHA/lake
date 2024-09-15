@@ -3,12 +3,14 @@ import subprocess
 import argparse
 import time
 from lake.utils.util import check_file_exists_and_has_content
+import re
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Generating experiments')
     parser.add_argument("--physical", action="store_true")
+    parser.add_argument("--serial", action="store_true")
     parser.add_argument("--reg_file", action="store_true")
     parser.add_argument("--run_sim", action="store_true")
     parser.add_argument('--storage_capacity', nargs='*', type=int)
@@ -16,17 +18,25 @@ if __name__ == "__main__":
     parser.add_argument('--data_width', nargs='*', type=int)
     parser.add_argument('--clock_count_width', nargs='*', type=int)
     parser.add_argument("--outdir", type=str, default=None, required=True)
+    parser.add_argument('--fetch_width', nargs='*', type=int)
+    parser.add_argument("--design_filter", type=str, default=None, required=False)
     args = parser.parse_args()
     physical_arg = args.physical
     run_sim = args.run_sim
     reg_file = args.reg_file
     exp_base_dir_arg = args.outdir
+    design_filter = args.design_filter
+    serial_processing = args.serial
+
+    if design_filter is None:
+        design_filter = ""
 
     dimensionalities_use = [6]
     scale_value = 8
     storage_capacity_use = [512 * scale_value, 1024 * scale_value, 2048 * scale_value]
     data_width_use = [16]
     ccw_use = [64]
+    fetch_width_use = [4]
 
     storage_capacity_arg = args.storage_capacity
     if (storage_capacity_arg is not None) and len(storage_capacity_arg) > 0:
@@ -44,6 +54,10 @@ if __name__ == "__main__":
     if (dim_arg is not None) and len(dim_arg) > 0:
         print(f"Overriding used dimensionality of {dimensionalities_use} with {dim_arg}")
         dimensionalities_use = dim_arg
+    fetch_width_arg = args.fetch_width
+    if (fetch_width_arg is not None) and len(fetch_width_arg) > 0:
+        print(f"Overriding used storage_cap of {fetch_width_use} with {fetch_width_arg}")
+        fetch_width_use = fetch_width_arg
 
     curr_dir = os.getcwd()
 
@@ -56,7 +70,14 @@ if __name__ == "__main__":
 
     all_procs = []
 
-    for filename in os.listdir(test_files_dir):
+    all_test_files = os.listdir(test_files_dir)
+
+    filtered_files = [f for f in all_test_files if design_filter in f]
+
+    print("All files...")
+    print(filtered_files)
+
+    for filename in filtered_files:
 
         filename_no_ext = os.path.splitext(filename)[0]
         # Now we want to execute each with the physical flags and a specific name
@@ -66,16 +87,17 @@ if __name__ == "__main__":
 
         print(f"Generating...{total_path_of_file}")
         # Now go through the different data points
-        all_test_pts = ((sc, dataw, ccw, dimw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use)
+        all_test_pts = ((sc, dataw, ccw, dimw, fw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use for fw in fetch_width_use)
 
-        for (storage_capacity, data_width, clock_count_width, dimensionality) in all_test_pts:
-            outdir = os.path.join(exp_base_dir, f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}")
-            print(f"Generating exp at...{outdir}")
+        for (storage_capacity, data_width, clock_count_width, dimensionality, fw) in all_test_pts:
+            outdir = os.path.join(exp_base_dir, f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}_fw_{fw}")
+            print(f"Generating exp at ... {outdir}")
             execution_str = ["python", f"{total_path_of_file}", "--storage_capacity", f"{storage_capacity}",
                              "--data_width", f"{data_width}",
                              "--clock_count_width", f"{clock_count_width}",
                              "--outdir", f"{outdir}",
-                             "--dimensionality", f"{dimensionality}"]
+                             "--dimensionality", f"{dimensionality}",
+                             "--fetch_width", f"{fw}"]
 
             if physical_arg:
                 execution_str.append("--physical")
@@ -84,9 +106,13 @@ if __name__ == "__main__":
                 execution_str
 
             vlog_filepath = os.path.join(outdir, "inputs", "lakespec.sv")
-            # result = subprocess.run(execution_str, capture_output=True, text=True)
-            newp = subprocess.Popen(execution_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            all_procs.append((newp, vlog_filepath))
+            if serial_processing is True:
+                result = subprocess.run(execution_str, capture_output=True, text=True)
+                print(result.stdout)
+            else:
+                newp = subprocess.Popen(execution_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # newp = subprocess.Popen(execution_str)
+                all_procs.append((newp, vlog_filepath))
 
             if run_sim:
 
@@ -112,24 +138,25 @@ if __name__ == "__main__":
             #     vlog_file = os.path.join(outdir, "inputs", "lakespec.sv")
             #     assert check_file_exists_and_has_content(vlog_file), f"Verilog file at {vlog_file} was not created..."
 
-    # Wait for all to be done.
-    done = False
-    while not done:
-        done = True
-        num_procs_alive = 0
+    if serial_processing is False:
+        # Wait for all to be done.
+        done = False
+        while not done:
+            done = True
+            num_procs_alive = 0
+            for proc_, vlfp in all_procs:
+                # Still an alive process...
+                if proc_.poll() is None:
+                    num_procs_alive += 1
+            if num_procs_alive > 0:
+                print(f"{num_procs_alive} processes still running...")
+                time.sleep(3)
+                done = False
+
+        print("Done generating all tests...")
+        print("Now checking for output verilog...")
+
         for proc_, vlfp in all_procs:
-            # Still an alive process...
-            if proc_.poll() is None:
-                num_procs_alive += 1
-        if num_procs_alive > 0:
-            print(f"{num_procs_alive} processes still running...")
-            time.sleep(3)
-            done = False
-
-    print("Done generating all tests...")
-    print("Now checking for output verilog...")
-
-    for proc_, vlfp in all_procs:
-        assert check_file_exists_and_has_content(vlfp) is True, f"Verilog file at {vlfp} was not created..."
-        assert proc_.returncode == 0, f"Proc returned bad value..."
-    print("All test collateral verified!")
+            assert check_file_exists_and_has_content(vlfp) is True, f"Verilog file at {vlfp} was not created..."
+            assert proc_.returncode == 0, f"Proc returned bad value..."
+        print("All test collateral verified!")

@@ -4,6 +4,7 @@ import argparse
 import time
 import json
 from lake.utils.util import get_file_contents, check_file_exists_and_has_content
+import re
 
 
 def write_area_csv(area_breakdowns, fp):
@@ -161,6 +162,12 @@ if __name__ == "__main__":
     parser.add_argument("--run_builds", action="store_true")
     parser.add_argument("--build_dir", type=str, default=None, required=True)
     parser.add_argument("--csv_out", type=str, default=None, required=False)
+    parser.add_argument("--design_filter", type=str, default=None, required=False)
+    parser.add_argument('--storage_capacity', nargs='*', type=int)
+    parser.add_argument('--dimensionality', nargs='*', type=int)
+    parser.add_argument('--data_width', nargs='*', type=int)
+    parser.add_argument('--fetch_width', nargs='*', type=int)
+    parser.add_argument('--clock_count_width', nargs='*', type=int)
     args = parser.parse_args()
     physical_arg = args.physical
     run_builds = args.run_builds
@@ -169,6 +176,7 @@ if __name__ == "__main__":
     collect_override = args.collect_override
     collect_override_path = pd_build_dir
     collect_data_csv_path = args.csv_out
+    design_filter = args.design_filter
 
     if collect_data is False:
         assert pd_build_dir is not None, f"If not collecting data, must provide a build dir!!!"
@@ -213,6 +221,33 @@ if __name__ == "__main__":
             write_area_csv(all_breakdowns, collect_data_csv_path)
         exit()
 
+    dimensionalities_use = [6]
+    scale_value = 8
+    storage_capacity_use = [512 * scale_value, 1024 * scale_value, 2048 * scale_value]
+    data_width_use = [16]
+    ccw_use = [64]
+    fetch_width_use = [4]
+
+    storage_capacity_arg = args.storage_capacity
+    if (storage_capacity_arg is not None) and len(storage_capacity_arg) > 0:
+        print(f"Overriding used storage_cap of {storage_capacity_use} with {storage_capacity_arg}")
+        storage_capacity_use = storage_capacity_arg
+    data_width_arg = args.data_width
+    if (data_width_arg is not None) and len(data_width_arg) > 0:
+        print(f"Overriding used data_width of {data_width_use} with {data_width_arg}")
+        data_width_use = data_width_arg
+    ccw_arg = args.clock_count_width
+    if (ccw_arg is not None) and len(ccw_arg) > 0:
+        print(f"Overriding used ccw of {ccw_use} with {ccw_arg}")
+        ccw_use = ccw_arg
+    dim_arg = args.dimensionality
+    if (dim_arg is not None) and len(dim_arg) > 0:
+        print(f"Overriding used dimensionality of {dimensionalities_use} with {dim_arg}")
+        dimensionalities_use = dim_arg
+    fetch_width_arg = args.fetch_width
+    if (fetch_width_arg is not None) and len(fetch_width_arg) > 0:
+        print(f"Overriding used storage_cap of {fetch_width_use} with {fetch_width_arg}")
+        fetch_width_use = fetch_width_arg
 
     create_curr_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -220,7 +255,11 @@ if __name__ == "__main__":
 
     for freq in [1000]:
 
-        for filename in os.listdir(test_files_dir):
+        all_test_files = os.listdir(test_files_dir)
+
+        filtered_files = [f for f in all_test_files if design_filter in f]
+
+        for filename in filtered_files:
             filename_no_ext = os.path.splitext(filename)[0]
             # if filename_no_ext not in ["dual_port_rv", "simple_dual_port"]:
                 # continue
@@ -236,6 +275,11 @@ if __name__ == "__main__":
             dimensionality = 6
 
             cap_scale = 8
+
+            storage_capacity_use = [512 * cap_scale, ]
+
+            all_test_pts = ((sc, dataw, ccw, dimw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use)
+
 
             # Now go through the different data points
             for storage_capacity in [512 * cap_scale, 1024 * cap_scale, 2048 * cap_scale]:
