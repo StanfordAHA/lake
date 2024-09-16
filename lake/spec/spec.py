@@ -20,6 +20,7 @@ from lake.modules.ready_valid_interface import RVInterface
 from lake.modules.arbiter import Arbiter
 from lake.spec.reg_fifo import RegFIFO
 import math
+import json
 
 
 class Spec():
@@ -45,6 +46,8 @@ class Spec():
         self.num_ports = 0
         self.num_in_ports = 0
         self.num_out_ports = 0
+        self.num_mem_ports = 0
+        self.fw_max = 1
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
@@ -69,9 +72,14 @@ class Spec():
             if isinstance(comp, ScheduleGenerator) and comp.get_rv():
                 self.any_rv_sg = True
                 self.runtime = Runtime.DYNAMIC
-            if isinstance(comp, Port):
+            elif isinstance(comp, MemoryPort):
+                comp: MemoryPort
+                self.num_mem_ports += 1
+            elif isinstance(comp, Port):
                 comp: Port
                 self.num_ports += 1
+                if comp.get_fw() > self.fw_max:
+                    self.fw_max = comp.get_fw()
                 pdir = comp.get_direction()
                 if pdir == Direction.IN:
                     self.num_in_ports += 1
@@ -502,12 +510,29 @@ class Spec():
         self._final_gen._assemble_cfg_memory_input(harden_storage=True)
         self.add_flush()
 
-    def get_verilog(self, output_dir):
+    def get_information(self, output_dir):
+        # Need to emit # config bits, # input ports, # output ports
+        all_info = {
+            "config_size": self.get_total_config_size(),
+            "input_ports": self.num_in_ports,
+            "output_ports": self.num_out_ports,
+            "fw": self.fw_max,
+            "memory_ports": self.num_mem_ports
+        }
+
+        outfile = os.path.join(output_dir, "info.json")
+        with open(outfile, 'w') as json_file:
+            json.dump(all_info, json_file, indent=4)
+
+    def get_verilog(self, output_dir, get_info=True):
         # kts.verilog(self._final_gen, filename=f"{self._name}.sv",
         fn_ = f"{self._name}.sv"
         full_path = os.path.join(output_dir, fn_)
         kts.verilog(self._final_gen, filename=full_path,
                     optimize_if=False)
+
+        if get_info is True:
+            self.get_information(output_dir=output_dir)
 
     def add_flush(self):
         self._final_gen.add_attribute("sync-reset=flush")

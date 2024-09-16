@@ -279,7 +279,7 @@ if __name__ == "__main__":
             filename_no_ext_f = f"{filename_no_ext}_{freq}"
 
             head_folder = os.path.join(pd_files_dir, filename_no_ext_f)
-            subprocess.run(["rm", "-rf", head_folder])
+            # subprocess.run(["rm", "-rf", head_folder])
             subprocess.run(["mkdir", "-p", head_folder])
 
             other_folder = os.path.join(pd_build_dir, filename_no_ext_f)
