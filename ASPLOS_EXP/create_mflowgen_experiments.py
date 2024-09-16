@@ -59,7 +59,7 @@ def get_area_breakdown_dir(directory):
 
             if other_info is not None:
                 # Copy over the keys for the csv
-                for k, v in man_info.items():
+                for k, v in other_info.items():
                     area_breakdown[k] = v
 
             # Now we have the parameter info and the area breakdown...add to list
