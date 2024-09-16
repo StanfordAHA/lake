@@ -5,6 +5,61 @@ import time
 import json
 from lake.utils.util import get_file_contents, check_file_exists_and_has_content
 import re
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+
+def create_stacked_bar_area_summary(data, filename="stacked_bar_chart"):
+    print("HERE")
+    print(data)
+        # 'total': 0.0,
+        # 'AG': 0.0,
+        # 'SG': 0.0,
+        # 'ID': 0.0,
+        # 'Port': 0.0,
+        # 'Storage': 0.0,
+        # 'Config': 0.0,
+        # 'MemintfDec': 0.0,
+        # 'MemoryPort': 0.0
+    # x axis is designs
+    design = ['this_design']
+    AG = data['AG']
+    SG = data['SG']
+    ID = data['ID']
+    Ports = data['Port']
+    Storage = data['Storage']
+    Config = data['Config']
+    Other = data['MemintfDec'] + data['MemoryPort']
+
+    fig, ax = plt.subplots()
+
+    x = np.arange(len(design))
+    # Stacking the bars
+    ax.bar(x, AG, label='AG')
+    ax.bar(x, SG, bottom=AG, label='SG')
+    ax.bar(x, ID, bottom=np.array(AG) + np.array(SG), label='ID')
+    ax.bar(x, Ports, bottom=np.array(AG) + np.array(SG) + np.array(ID), label='Ports')
+    ax.bar(x, Storage, bottom=np.array(AG) + np.array(SG) + np.array(ID) + np.array(Ports), label='Storage')
+    ax.bar(x, Config, bottom=np.array(AG) + np.array(SG) + np.array(ID) + np.array(Ports) + np.array(Storage), label='Config')
+    ax.bar(x, Other, bottom=np.array(AG) + np.array(SG) + np.array(ID) + np.array(Ports) + np.array(Storage) + np.array(Config), label='Other')
+
+    # Adding labels and title
+    ax.set_xlabel('Design')
+    ax.set_ylabel('Areas')
+    ax.set_title('Area Summary')
+    ax.set_xticks(x)
+    ax.set_xticklabels(design)
+    # Adding legend
+    ax.legend()
+
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+    # Show plot (optional)
+    plt.show()
+
 
 
 def get_config_bits_verilog(all_lines):
@@ -378,8 +433,9 @@ if __name__ == "__main__":
             # area_report = os.path.join(collect_override_path, "signoff.area.rpt")
             area_report = report_path
             area_dict, all_ports_bd = get_area_breakdown_file(file_path=area_report)
-            print(area_dict)
-            print(all_ports_bd)
+            # print(area_dict)
+            # print(all_ports_bd)
+            create_stacked_bar_area_summary(area_dict)
 
         else:
             print(f"Data collection enabled at build dir {pd_build_dir}...")
@@ -391,6 +447,8 @@ if __name__ == "__main__":
             for summary_bd, port_db_list in all_breakdowns:
                 all_summaries.append(summary_bd)
             write_area_csv(all_summaries, collect_data_csv_path)
+            create_stacked_bar_area_summary(all_summaries, filename="summary")
+
         exit()
 
     dimensionalities_use = [6]
