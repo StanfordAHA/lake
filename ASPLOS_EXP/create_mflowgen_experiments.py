@@ -7,6 +7,21 @@ from lake.utils.util import get_file_contents, check_file_exists_and_has_content
 import re
 
 
+def get_config_bits_verilog(all_lines):
+    look_for_config_mem = False
+    for i_, l_ in enumerate(all_lines):
+        if look_for_config_mem:
+            if " config_memory," in l_:
+                # Have a hit - return the number
+                cm_line_tk = l_.split()[2]
+                # Have a verilog definition like [X:0] - return X + 1
+                num_min1_w_brkt = cm_line_tk.split(':')[0]
+                num_min1 = int(num_min1_w_brkt[1:])
+
+        if "module lakespec" in l_:
+            look_for_config_mem = True
+
+
 def write_area_csv(area_breakdowns, fp):
     assert len(area_breakdowns) > 0
     fp_use = "./area_breakdown.csv"
@@ -49,7 +64,15 @@ def get_area_breakdown_dir(directory):
                 with open(other_info_file, 'r') as oif:
                     other_info = json.load(oif)
 
-            area_breakdown = get_area_breakdown_file(file_path=full_area_file)
+            rtl_design_file = os.path.join(design_point_path, "3-rtl", "outputs", "design.v")
+            rtl_lines = None
+            if check_file_exists_and_has_content(rtl_design_file):
+                with open(rtl_design_file, 'r') as rdf:
+                    rtl_lines = rdf.readlines()
+            num_cfg_bits = get_config_bits_verilog(rtl_lines)
+            print(num_cfg_bits)
+
+            area_breakdown, ports_bds = get_area_breakdown_file(file_path=full_area_file)
             if man_info is not None:
                 # Copy over the keys for the csv
                 for k, v in man_info.items():
@@ -63,8 +86,82 @@ def get_area_breakdown_dir(directory):
                     area_breakdown[k] = v
 
             # Now we have the parameter info and the area breakdown...add to list
-            all_area_breakdowns.append(area_breakdown)
+            all_area_breakdowns.append((area_breakdown, ports_bds))
     return all_area_breakdowns
+
+
+def get_port_breakdown(port_lines):
+
+    # print("Port lines")
+    # print(port_lines[0])
+    # for l in port_lines:
+    #     print(l)
+
+    port_lines = port_lines[1:]
+
+    port_lines = [x for x in port_lines if x[0] == ' ' and x[1] == ' ' and x[2] == ' ' and x[3] == ' ' and x[4] != ' ']
+
+    # Match on module type
+    ag_area = 0.0
+    sg_area = 0.0
+    id_area = 0.0
+    storage_area = 0.0
+    memoryport_area = 0.0
+
+    ag_match = ['lakespec_addr_gen',]
+    sg_match = ['lakespec_schedulegenerator', 'lakespec_rv_comp_nw', 'lakespec_sched_gen']
+    id_match = ['lakespec_for_loop',]
+    storage_match = ['Storage',]
+    memoryport_match = ['lakespec_MemoryPort',]
+
+    port_breakdown = {}
+
+    token_idx_match = 1
+
+    # Now go through and accumulate matches
+    for i_, mod in enumerate(port_lines):
+        mod_tokens = mod.strip().split()
+        num_matches = 0
+        for _ in ag_match:
+            if _ in mod_tokens[token_idx_match]:
+                num_matches += 1
+                ag_area += float(mod_tokens[3])
+        for _ in sg_match:
+            if _ in mod_tokens[token_idx_match]:
+                num_matches += 1
+                sg_area += float(mod_tokens[3])
+        for _ in id_match:
+            if _ in mod_tokens[token_idx_match]:
+                num_matches += 1
+                id_area += float(mod_tokens[3])
+        # Port is special because we want to produce a breakdown for each as well
+        for _ in storage_match:
+            if _ in mod_tokens[token_idx_match]:
+                num_matches += 1
+                storage_area += float(mod_tokens[3])
+        for _ in memoryport_match:
+            if _ in mod_tokens[token_idx_match]:
+                num_matches += 1
+                memoryport_area += float(mod_tokens[3])
+
+        assert num_matches <= 1, f"Line ({mod}) matched too many items...{num_matches}"
+
+    port_breakdown = {
+        'AG': ag_area,
+        'SG': sg_area,
+        'ID': id_area,
+        'Storage': storage_area,
+        'MemoryPort': memoryport_area
+    }
+
+    return port_breakdown
+
+
+def get_match_index(all_lines, line):
+    for i, l in enumerate(all_lines):
+        if line == l:
+            return i
+    return None
 
 
 def get_area_breakdown_file(file_path):
@@ -79,7 +176,9 @@ def get_area_breakdown_file(file_path):
         'ID': 0.0,
         'Port': 0.0,
         'Storage': 0.0,
-        'Config': 0.0
+        'Config': 0.0,
+        'MemintfDec': 0.0,
+        'MemoryPort': 0.0
     }
     num_lines = len(all_file_content)
     num_data_lines = num_lines - 3
@@ -93,6 +192,8 @@ def get_area_breakdown_file(file_path):
     id_match = ['port_id_',]
     port_match = ['port_inst_',]
     storage_match = ['storage',]
+    memintfdec_match = ['memintfdec_inst_',]
+    memoryport_match = ['memoryport_',]
     # Everything should be only 2 spaces in - so delete any line with more spaces
     all_modules = [x for x in rest_of_file if x[0] == ' ' and x[1] == ' ' and x[2] != ' ']
     top_line_breakdown = top_line.strip().split()
@@ -106,31 +207,60 @@ def get_area_breakdown_file(file_path):
     port_area = 0.0
     storage_area = 0.0
     config_area = 0.0
+    memintf_dec_area = 0.0
+    memoryport_area = 0.0
+
+    all_ports = {}
+
+    match_idx = 0
 
     # Now go through and accumulate matches
-    for mod in all_modules:
+    for i_, mod in enumerate(all_modules):
         mod_tokens = mod.strip().split()
         num_matches = 0
         for _ in ag_match:
-            if _ in mod_tokens[0]:
+            if _ in mod_tokens[match_idx]:
                 num_matches += 1
                 ag_area += float(mod_tokens[3])
         for _ in sg_match:
-            if _ in mod_tokens[0]:
+            if _ in mod_tokens[match_idx]:
                 num_matches += 1
                 sg_area += float(mod_tokens[3])
         for _ in id_match:
-            if _ in mod_tokens[0]:
+            if _ in mod_tokens[match_idx]:
                 num_matches += 1
                 id_area += float(mod_tokens[3])
+        # Port is special because we want to produce a breakdown for each as well
         for _ in port_match:
-            if _ in mod_tokens[0]:
+            if _ in mod_tokens[match_idx]:
                 num_matches += 1
                 port_area += float(mod_tokens[3])
+                # If we have a match and need a breakdown of the port,
+                # we should pass the lines up to other breakdown func
+                # print(mod)
+                # print(all_modules[i_ + 1])
+                start_idx = get_match_index(rest_of_file, mod)
+                end_idx = get_match_index(rest_of_file, all_modules[i_ + 1])
+                # print(start_idx)
+                # print(end_idx)
+                port_breakdown = get_port_breakdown(rest_of_file[start_idx:end_idx])
+                # print(port_breakdown)
+                all_ports[mod_tokens[0]] = port_breakdown
+        memport_match = False
+        for _ in memoryport_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                memoryport_area += float(mod_tokens[3])
+                # Both memport and storage have 'storage' in them
+                memport_match = True
         for _ in storage_match:
-            if _ in mod_tokens[0]:
+            if _ in mod_tokens[match_idx] and memoryport_match is False:
                 num_matches += 1
                 storage_area += float(mod_tokens[3])
+        for _ in memintfdec_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                memintf_dec_area += float(mod_tokens[3])
 
         assert num_matches <= 1, f"Line ({mod}) matched too many items...{num_matches}"
 
@@ -143,10 +273,12 @@ def get_area_breakdown_file(file_path):
         'ID': id_area,
         'Port': port_area,
         'Storage': storage_area,
-        'Config': config_area
+        'Config': config_area,
+        'MemintfDec': memintf_dec_area,
+        'MemoryPort': memoryport_area
     }
 
-    return area_dict
+    return area_dict, all_ports
 
 
 def get_num_live_procs(proc_list):
@@ -176,6 +308,7 @@ if __name__ == "__main__":
     parser.add_argument("--build_dir", type=str, default=None, required=True)
     parser.add_argument("--csv_out", type=str, default=None, required=False)
     parser.add_argument("--design_filter", type=str, default=None, required=False)
+    parser.add_argument("--report_path", type=str, default=None, required=False)
     parser.add_argument('--storage_capacity', nargs='*', type=int)
     parser.add_argument('--dimensionality', nargs='*', type=int)
     parser.add_argument('--data_width', nargs='*', type=int)
@@ -198,6 +331,7 @@ if __name__ == "__main__":
     inp = args.in_ports
     outp = args.out_ports
     use_ports = args.use_ports
+    report_path = args.report_path
 
     spst = args.spst
 
@@ -237,8 +371,11 @@ if __name__ == "__main__":
 
             with open(params_file, 'r') as file:
                 data = json.load(file)
-            area_report = os.path.join(collect_override_path, "signoff.area.rpt")
-            area_dict = get_area_breakdown_file(file_path=area_report)
+            # area_report = os.path.join(collect_override_path, "signoff.area.rpt")
+            area_report = report_path
+            area_dict, all_ports_bd = get_area_breakdown_file(file_path=area_report)
+            print(area_dict)
+            print(all_ports_bd)
 
         else:
             print(f"Data collection enabled at build dir {pd_build_dir}...")

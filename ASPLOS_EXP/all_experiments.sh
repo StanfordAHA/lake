@@ -13,8 +13,8 @@ python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 4 --build_dir /si
 python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 8 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP/ --physical --design_filter single_port_wide_fetch --in_ports 4 --out_ports 4 --storage_capacity 16384 --use_ports --run_builds
 
 # Just create two different builds with the performance and density switch for the SRAM so we can compare (only for the single port!!!!)
-python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP/ --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --run_builds --spst dense
-python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP/ --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --run_builds --spst perf
+python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_SPST/ --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --run_builds --spst dense
+python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 --build_dir /sim/mstrange/ASPLOS_FW_SWEEP_SPST/ --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --run_builds --spst perf
 
 python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 --outdir MEK_fwspst --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --spst dense
 python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 --outdir MEK_fwspst --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --spst perf
