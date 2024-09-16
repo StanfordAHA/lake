@@ -304,6 +304,11 @@ if __name__ == "__main__":
                 }
 
                 design_folder = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}"
+
+                if add_fw_arg:
+                    design_folder += f"_fw_{fw}"
+                if add_port_arg:
+                    design_folder += f"_inp_{inp}_outp_{outp}"
                 full_design_path = os.path.join(head_folder, f"{design_folder}_{freq}")
 
                 subprocess.run(["rm", "-rf", full_design_path])
