@@ -13,7 +13,8 @@ import os
 
 
 def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4,
-                                 physical=False, in_ports=1, out_ports=1, vec_capacity=2) -> Spec:
+                                 physical=False, in_ports=1, out_ports=1, vec_capacity=2,
+                                 spst="dense") -> Spec:
 
     ls = Spec()
 
@@ -62,8 +63,13 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
 
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
+
+    pd_arg = "D"
+    if spst == "perf":
+        pd_arg = "P"
+
     if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False)
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False, pd=pd_arg)
 
     # 1024 Bytes
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
@@ -203,7 +209,8 @@ def get_linear_test():
 
 
 def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
-                                 tp: TestPrepper = None, reg_file=False, dimensionality=6, in_ports=1, out_ports=1):
+                                 tp: TestPrepper = None, reg_file=False, dimensionality=6, in_ports=1, out_ports=1,
+                                 spst="dense"):
 
     assert tp is not None
 
@@ -218,7 +225,7 @@ def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_wi
     # Build the spec
     simple_single_port_spec = build_single_port_wide_fetch(storage_capacity=storage_capacity, data_width=data_width,
                                                            physical=physical, vec_width=vec_width, dims=dimensionality,
-                                                           in_ports=in_ports, out_ports=out_ports)
+                                                           in_ports=in_ports, out_ports=out_ports, spst=spst)
     simple_single_port_spec.visualize_graph()
     simple_single_port_spec.generate_hardware()
     simple_single_port_spec.extract_compiler_information()
@@ -297,6 +304,7 @@ if __name__ == "__main__":
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--outdir", type=str, default=None)
+    parser.add_argument("--spst", type=str, default="dense")
     args = parser.parse_args()
 
     print("Preparing hardware test")
@@ -313,4 +321,4 @@ if __name__ == "__main__":
 
     test_linear_read_write_sp_wf(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
                                  physical=args.physical, vec_width=fw, tp=tp, in_ports=args.in_ports, out_ports=args.out_ports,
-                                 dimensionality=args.dimensionality)
+                                 dimensionality=args.dimensionality, spst=args.spst)

@@ -184,6 +184,8 @@ if __name__ == "__main__":
     parser.add_argument("--use_ports", action="store_true")
     parser.add_argument('--fetch_width', nargs='*', type=int)
     parser.add_argument('--clock_count_width', nargs='*', type=int)
+    # Single port sram type (where relevant)
+    parser.add_argument("--spst", type=str, default=None, required=False)
     args = parser.parse_args()
     physical_arg = args.physical
     run_builds = args.run_builds
@@ -196,6 +198,8 @@ if __name__ == "__main__":
     inp = args.in_ports
     outp = args.out_ports
     use_ports = args.use_ports
+
+    spst = args.spst
 
     # Matches everything
     if design_filter is None:
@@ -313,7 +317,8 @@ if __name__ == "__main__":
                     "capacity": storage_capacity,
                     "data_width": data_width,
                     "clock_count_width": clock_count_width,
-                    "dimensionality": dimensionality
+                    "dimensionality": dimensionality,
+                    "spst": spst
                 }
 
                 design_folder = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}"
@@ -322,6 +327,8 @@ if __name__ == "__main__":
                     design_folder += f"_fw_{fw}"
                 if add_port_arg:
                     design_folder += f"_inp_{inp}_outp_{outp}"
+                if spst is not None:
+                    design_folder += f"_spst_{spst}"
                 full_design_path = os.path.join(head_folder, f"{design_folder}_{freq}")
 
                 subprocess.run(["rm", "-rf", full_design_path])
@@ -364,6 +371,9 @@ if __name__ == "__main__":
                         python_command = " ".join([python_command, "--in_ports", f"{inp}"])
                         python_command = " ".join([python_command, "--out_ports", f"{outp}"])
                         python_command = " ".join([python_command, "--use_ports"])
+
+                    if spst is not None:
+                        python_command = " ".join([python_command, "--spst", f"{spst}"])
 
                     rtl_configure.write(f"{python_command}\n")
                     rtl_configure.write("\n")

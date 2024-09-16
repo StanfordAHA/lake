@@ -23,6 +23,8 @@ if __name__ == "__main__":
     parser.add_argument("--outdir", type=str, default=None, required=True)
     parser.add_argument('--fetch_width', nargs='*', type=int)
     parser.add_argument("--design_filter", type=str, default=None, required=False)
+    # Single port sram type (where relevant)
+    parser.add_argument("--spst", type=str, default=None, required=False)
     args = parser.parse_args()
     physical_arg = args.physical
     run_sim = args.run_sim
@@ -33,6 +35,8 @@ if __name__ == "__main__":
     inp = args.in_ports
     outp = args.out_ports
     use_ports = args.use_ports
+
+    spst = args.spst
 
     # Matches everything
     if design_filter is None:
@@ -105,6 +109,8 @@ if __name__ == "__main__":
                 big_name_string += f"_fw_{fw}"
             if add_port_arg:
                 big_name_string += f"_inp_{inp}_outp_{outp}"
+            if spst is not None:
+                big_name_string += f"_spst_{spst}"
             outdir = os.path.join(exp_base_dir, big_name_string)
             print(f"Generating exp at ... {outdir}")
             execution_str = ["python", f"{total_path_of_file}", "--storage_capacity", f"{storage_capacity}",
@@ -119,6 +125,9 @@ if __name__ == "__main__":
             if add_port_arg:
                 execution_str.extend(["--in_ports", f"{inp}"])
                 execution_str.extend(["--out_ports", f"{outp}"])
+
+            if spst is not None:
+                execution_str.extend(["--spst", f"{spst}"])
 
             if physical_arg:
                 execution_str.append("--physical")
