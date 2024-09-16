@@ -17,6 +17,7 @@ def get_config_bits_verilog(all_lines):
                 # Have a verilog definition like [X:0] - return X + 1
                 num_min1_w_brkt = cm_line_tk.split(':')[0]
                 num_min1 = int(num_min1_w_brkt[1:])
+                return num_min1
 
         if "module lakespec" in l_:
             look_for_config_mem = True
@@ -379,10 +380,14 @@ if __name__ == "__main__":
 
         else:
             print(f"Data collection enabled at build dir {pd_build_dir}...")
+            # Consists of (summary, [ports])
             all_breakdowns = get_area_breakdown_dir(pd_build_dir)
             # Now emit this information to excel
             assert collect_data_csv_path is not None
-            write_area_csv(all_breakdowns, collect_data_csv_path)
+            all_summaries = []
+            for summary_bd, port_db_list in all_breakdowns:
+                all_summaries.append(summary_bd)
+            write_area_csv(all_summaries, collect_data_csv_path)
         exit()
 
     dimensionalities_use = [6]
