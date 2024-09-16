@@ -342,7 +342,7 @@ if __name__ == "__main__":
                     rtl_configure.write("  - export TOP=$PWD\n")
                     rtl_configure.write("\n")
 
-                    python_command = f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --outdir $TOP/TEST/"
+                    python_command = f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --outdir $TOP/TEST/ --design_filter {design_filter}"
 
                     if add_fw_arg:
                         python_command = " ".join([python_command, "--fetch_width", f"{fw}"])
