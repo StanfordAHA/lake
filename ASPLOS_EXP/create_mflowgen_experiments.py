@@ -45,8 +45,9 @@ def get_area_breakdown_dir(directory):
             full_area_file = os.path.join(design_point_path, relative_area_file)
             other_info_file = os.path.join(design_point_path, "3-rtl", "outputs", "info.json")
             other_info = None
-            with open(other_info_file, 'r') as oif:
-                other_info = json.load(oif)
+            if check_file_exists_and_has_content(other_info_file):
+                with open(other_info_file, 'r') as oif:
+                    other_info = json.load(oif)
 
             area_breakdown = get_area_breakdown_file(file_path=full_area_file)
             if man_info is not None:
