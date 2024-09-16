@@ -41,7 +41,13 @@ def get_area_breakdown_dir(directory):
             relative_area_file = os.path.join("17-cadence-innovus-signoff",
                                               "reports",
                                               "signoff.area.rpt")
+
             full_area_file = os.path.join(design_point_path, relative_area_file)
+            other_info_file = os.path.join(design_point_path, "3-rtl", "outputs", "info.json")
+            other_info = None
+            with open(other_info_file, 'r') as oif:
+                other_info = json.load(oif)
+
             area_breakdown = get_area_breakdown_file(file_path=full_area_file)
             if man_info is not None:
                 # Copy over the keys for the csv
@@ -49,6 +55,12 @@ def get_area_breakdown_dir(directory):
                     area_breakdown[k] = v
             else:
                 area_breakdown['design'] = f"{design}_{design_point}"
+
+            if other_info is not None:
+                # Copy over the keys for the csv
+                for k, v in man_info.items():
+                    area_breakdown[k] = v
+
             # Now we have the parameter info and the area breakdown...add to list
             all_area_breakdowns.append(area_breakdown)
     return all_area_breakdowns
@@ -356,6 +368,7 @@ if __name__ == "__main__":
                     rtl_configure.write("\n")
                     rtl_configure.write("  - cd $CURR\n")
                     rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")
+                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/info.json outputs/info.json\n")
                     rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/tb.sv outputs/testbench.sv\n")
                     rtl_configure.write(f"  - cat $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/PARGS.txt > outputs/design.args\n")
                     rtl_configure.write("\n")
