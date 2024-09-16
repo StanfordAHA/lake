@@ -71,7 +71,7 @@ def get_area_breakdown_dir(directory):
                 with open(rtl_design_file, 'r') as rdf:
                     rtl_lines = rdf.readlines()
             num_cfg_bits = get_config_bits_verilog(rtl_lines)
-            print(num_cfg_bits)
+            # print(num_cfg_bits)
 
             area_breakdown, ports_bds = get_area_breakdown_file(file_path=full_area_file)
             if man_info is not None:
