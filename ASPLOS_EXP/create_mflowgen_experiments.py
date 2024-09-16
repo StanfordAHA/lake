@@ -86,6 +86,9 @@ def get_area_breakdown_dir(directory):
                 for k, v in other_info.items():
                     area_breakdown[k] = v
 
+            if 'config_size' not in area_breakdown and num_cfg_bits is not None:
+                area_breakdown['config_size'] = num_cfg_bits
+
             # Now we have the parameter info and the area breakdown...add to list
             all_area_breakdowns.append((area_breakdown, ports_bds))
     return all_area_breakdowns
@@ -255,7 +258,7 @@ def get_area_breakdown_file(file_path):
                 # Both memport and storage have 'storage' in them
                 memport_match = True
         for _ in storage_match:
-            if _ in mod_tokens[match_idx] and memoryport_match is False:
+            if _ in mod_tokens[match_idx] and memport_match is False:
                 num_matches += 1
                 storage_area += float(mod_tokens[3])
         for _ in memintfdec_match:
@@ -265,7 +268,7 @@ def get_area_breakdown_file(file_path):
 
         assert num_matches <= 1, f"Line ({mod}) matched too many items...{num_matches}"
 
-    config_area = total_area - (ag_area + sg_area + id_area + storage_area)
+    config_area = total_area - (ag_area + sg_area + id_area + storage_area + port_area + memintf_dec_area + memoryport_area)
 
     area_dict = {
         'total': total_area,
