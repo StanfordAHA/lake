@@ -166,6 +166,9 @@ if __name__ == "__main__":
     parser.add_argument('--storage_capacity', nargs='*', type=int)
     parser.add_argument('--dimensionality', nargs='*', type=int)
     parser.add_argument('--data_width', nargs='*', type=int)
+    parser.add_argument('--in_ports', type=int, default=1)
+    parser.add_argument('--out_ports', type=int, default=1)
+    parser.add_argument("--use_ports", action="store_true")
     parser.add_argument('--fetch_width', nargs='*', type=int)
     parser.add_argument('--clock_count_width', nargs='*', type=int)
     args = parser.parse_args()
@@ -177,6 +180,13 @@ if __name__ == "__main__":
     collect_override_path = pd_build_dir
     collect_data_csv_path = args.csv_out
     design_filter = args.design_filter
+    inp = args.in_ports
+    outp = args.out_ports
+    use_ports = args.use_ports
+
+    # Matches everything
+    if design_filter is None:
+        design_filter = ""
 
     if collect_data is False:
         assert pd_build_dir is not None, f"If not collecting data, must provide a build dir!!!"
@@ -249,6 +259,9 @@ if __name__ == "__main__":
         print(f"Overriding used storage_cap of {fetch_width_use} with {fetch_width_arg}")
         fetch_width_use = fetch_width_arg
 
+    add_fw_arg = fetch_width_arg is not None
+    add_port_arg = use_ports
+
     create_curr_dir = os.path.dirname(os.path.abspath(__file__))
 
     all_procs = []
@@ -272,94 +285,102 @@ if __name__ == "__main__":
             other_folder = os.path.join(pd_build_dir, filename_no_ext_f)
             subprocess.run(["mkdir", "-p", other_folder])
 
-            dimensionality = 6
+            all_test_pts = ((sc, dataw, ccw, dimw, fw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use for fw in fetch_width_use)
 
-            cap_scale = 8
-
-            storage_capacity_use = [512 * cap_scale, ]
-
-            all_test_pts = ((sc, dataw, ccw, dimw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use)
-
+            for (storage_capacity, data_width, clock_count_width, dimensionality, fw) in all_test_pts:
 
             # Now go through the different data points
-            for storage_capacity in [512 * cap_scale, 1024 * cap_scale, 2048 * cap_scale]:
-                for data_width in [16]:
-                    for clock_count_width in [64]:
+            # for storage_capacity in [512 * cap_scale, 1024 * cap_scale, 2048 * cap_scale]:
+            #     for data_width in [16]:
+            #         for clock_count_width in [64]:
 
-                        params_dict = {
-                            "design": filename_no_ext,
-                            "frequency": freq,
-                            "capacity": storage_capacity,
-                            "data_width": data_width,
-                            "clock_count_width": clock_count_width,
-                            "dimensionality": dimensionality
-                        }
+                params_dict = {
+                    "design": filename_no_ext,
+                    "frequency": freq,
+                    "capacity": storage_capacity,
+                    "data_width": data_width,
+                    "clock_count_width": clock_count_width,
+                    "dimensionality": dimensionality
+                }
 
-                        design_folder = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}"
-                        full_design_path = os.path.join(head_folder, f"{design_folder}_{freq}")
+                design_folder = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}"
+                full_design_path = os.path.join(head_folder, f"{design_folder}_{freq}")
 
-                        subprocess.run(["rm", "-rf", full_design_path])
-                        sample_folder = os.path.join(pd_files_dir, "sample")
-                        subprocess.run(["cp", "-r", sample_folder, full_design_path])
-                        print(f"Made design folder at {full_design_path}")
+                subprocess.run(["rm", "-rf", full_design_path])
+                sample_folder = os.path.join(pd_files_dir, "sample")
+                subprocess.run(["cp", "-r", sample_folder, full_design_path])
+                print(f"Made design folder at {full_design_path}")
 
-                        pd_build_path = os.path.join(pd_build_dir, filename_no_ext_f, design_folder)
-                        subprocess.run(["mkdir", "-p", pd_build_path])
-                        subprocess.run(["cd", pd_build_path])
+                pd_build_path = os.path.join(pd_build_dir, filename_no_ext_f, design_folder)
+                subprocess.run(["mkdir", "-p", pd_build_path])
+                subprocess.run(["cd", pd_build_path])
 
-                        # Dump a parameter file so that we can understand what
-                        # the design looks like
-                        params_file = os.path.join(pd_build_path, "params.json")
-                        with open(params_file, 'w') as json_file:
-                            json.dump(params_dict, json_file, indent=4)
+                # Dump a parameter file so that we can understand what
+                # the design looks like
+                params_file = os.path.join(pd_build_path, "params.json")
+                with open(params_file, 'w') as json_file:
+                    json.dump(params_dict, json_file, indent=4)
 
-                        with open(f"{full_design_path}/rtl/configure.yml", 'w+') as rtl_configure:
-                            rtl_configure.write("name: rtl\n")
-                            rtl_configure.write("\n")
-                            rtl_configure.write("outputs:\n")
-                            rtl_configure.write("  - design.v\n")
-                            rtl_configure.write("  - testbench.sv\n")
-                            rtl_configure.write("  - design.args\n")
-                            rtl_configure.write("\n")
-                            rtl_configure.write("commands:\n")
-                            rtl_configure.write("\n")
-                            rtl_configure.write("  - export CURR=$PWD\n")
-                            rtl_configure.write("  - echo $CURR\n")
-                            rtl_configure.write("\n")
-                            rtl_configure.write("  - export TOP=$PWD\n")
-                            rtl_configure.write("\n")
-                            rtl_configure.write(f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --outdir $TOP/TEST/\n")
-                            rtl_configure.write("\n")
-                            rtl_configure.write("  - cd $CURR\n")
-                            rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")
-                            rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/tb.sv outputs/testbench.sv\n")
-                            rtl_configure.write(f"  - cat $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/PARGS.txt > outputs/design.args\n")
-                            rtl_configure.write("\n")
-                            rtl_configure.write("  - python set_test_dir.py\n")
-                            rtl_configure.write("  - echo $PWD\n")
+                with open(f"{full_design_path}/rtl/configure.yml", 'w+') as rtl_configure:
+                    rtl_configure.write("name: rtl\n")
+                    rtl_configure.write("\n")
+                    rtl_configure.write("outputs:\n")
+                    rtl_configure.write("  - design.v\n")
+                    rtl_configure.write("  - testbench.sv\n")
+                    rtl_configure.write("  - design.args\n")
+                    rtl_configure.write("\n")
+                    rtl_configure.write("commands:\n")
+                    rtl_configure.write("\n")
+                    rtl_configure.write("  - export CURR=$PWD\n")
+                    rtl_configure.write("  - echo $CURR\n")
+                    rtl_configure.write("\n")
+                    rtl_configure.write("  - export TOP=$PWD\n")
+                    rtl_configure.write("\n")
 
-                        print(f"cd {pd_build_path}; mflowgen run --design {full_design_path}")
-                        subprocess.run(["mflowgen", "run", "--design", full_design_path], cwd=pd_build_path)
+                    python_command = f"  - python {os.path.join(create_curr_dir, 'create_all_experiments.py')} --physical --storage_capacity {storage_capacity} --clock_count_width {clock_count_width} --data_width {data_width} --outdir $TOP/TEST/"
 
-                        # If the builds should go, start it here...
-                        if run_builds is True:
-                            print(f"Starting build at {pd_build_path}")
-                            # execute_str = ["source", make_script]
-                            # execute_str = ["make", "6", "&&", "make", "-t", "6", "&&", "make", "17"]
-                            execute_str = "make 6; make -t 6; make 17"
-                            newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path, shell=True)
-                            all_procs.append(newp)
+                    if add_fw_arg:
+                        python_command = " ".join([python_command, "--fetch_width", f"{fw}"])
+                        # " ".extend(["--fetch_width", f"{fw}"])
 
-                        # print(f"Made PD build folder at {pd_build_path}")
+                    if add_port_arg:
+                        python_command = " ".join([python_command, "--in_ports", f"{inp}"])
+                        python_command = " ".join([python_command, "--out_ports", f"{outp}"])
+                        # execution_str.extend(["--in_ports", f"{inp}"])
+                        # execution_str.extend(["--out_ports", f"{outp}"])
 
-                        # Check if there are 4 or more current builds...
-                        if run_builds is True:
-                            num_alive = get_num_live_procs(all_procs)
-                            print(f"This many running...{num_alive}...")
-                            while num_alive >= x_or_more:
-                                print(f"At limit of {x_or_more} procs...sleeping")
-                                time.sleep(15)
-                                num_alive = get_num_live_procs(all_procs)
+                    rtl_configure.write(f"{python_command}\n")
+                    rtl_configure.write("\n")
+                    rtl_configure.write("  - cd $CURR\n")
+                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/lakespec.sv outputs/design.v\n")
+                    rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/tb.sv outputs/testbench.sv\n")
+                    rtl_configure.write(f"  - cat $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/PARGS.txt > outputs/design.args\n")
+                    rtl_configure.write("\n")
+                    rtl_configure.write("  - python set_test_dir.py\n")
+                    rtl_configure.write("  - echo $PWD\n")
+
+                print(f"cd {pd_build_path}; mflowgen run --design {full_design_path}")
+                subprocess.run(["mflowgen", "run", "--design", full_design_path], cwd=pd_build_path)
+
+                # If the builds should go, start it here...
+                if run_builds is True:
+                    print(f"Starting build at {pd_build_path}")
+                    # execute_str = ["source", make_script]
+                    # execute_str = ["make", "6", "&&", "make", "-t", "6", "&&", "make", "17"]
+                    execute_str = "make 6; make -t 6; make 17"
+                    newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path, shell=True)
+                    all_procs.append(newp)
+
+                # print(f"Made PD build folder at {pd_build_path}")
+
+                # Check if there are 4 or more current builds...
+                if run_builds is True:
+                    num_alive = get_num_live_procs(all_procs)
+                    print(f"This many running...{num_alive}...")
+                    while num_alive >= x_or_more:
+                        print(f"At limit of {x_or_more} procs...sleeping")
+                        time.sleep(15)
+                        num_alive = get_num_live_procs(all_procs)
 
     # Wait for all to be done.
     done = False

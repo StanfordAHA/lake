@@ -12,11 +12,14 @@ if __name__ == "__main__":
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--serial", action="store_true")
     parser.add_argument("--reg_file", action="store_true")
+    parser.add_argument("--use_ports", action="store_true")
     parser.add_argument("--run_sim", action="store_true")
     parser.add_argument('--storage_capacity', nargs='*', type=int)
     parser.add_argument('--dimensionality', nargs='*', type=int)
     parser.add_argument('--data_width', nargs='*', type=int)
     parser.add_argument('--clock_count_width', nargs='*', type=int)
+    parser.add_argument('--in_ports', type=int, default=1)
+    parser.add_argument('--out_ports', type=int, default=1)
     parser.add_argument("--outdir", type=str, default=None, required=True)
     parser.add_argument('--fetch_width', nargs='*', type=int)
     parser.add_argument("--design_filter", type=str, default=None, required=False)
@@ -27,7 +30,11 @@ if __name__ == "__main__":
     exp_base_dir_arg = args.outdir
     design_filter = args.design_filter
     serial_processing = args.serial
+    inp = args.in_ports
+    outp = args.out_ports
+    use_ports = args.use_ports
 
+    # Matches everything
     if design_filter is None:
         design_filter = ""
 
@@ -58,6 +65,9 @@ if __name__ == "__main__":
     if (fetch_width_arg is not None) and len(fetch_width_arg) > 0:
         print(f"Overriding used storage_cap of {fetch_width_use} with {fetch_width_arg}")
         fetch_width_use = fetch_width_arg
+
+    add_fw_arg = fetch_width_arg is not None
+    add_port_arg = use_ports
 
     curr_dir = os.getcwd()
 
@@ -90,14 +100,25 @@ if __name__ == "__main__":
         all_test_pts = ((sc, dataw, ccw, dimw, fw) for sc in storage_capacity_use for dataw in data_width_use for ccw in ccw_use for dimw in dimensionalities_use for fw in fetch_width_use)
 
         for (storage_capacity, data_width, clock_count_width, dimensionality, fw) in all_test_pts:
-            outdir = os.path.join(exp_base_dir, f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}_fw_{fw}")
+            big_name_string = f"storage_cap_{storage_capacity}_data_width_{data_width}_ccw_{clock_count_width}_dim_{dimensionality}"
+            if add_fw_arg:
+                big_name_string += f"_fw_{fw}"
+            if add_port_arg:
+                big_name_string += f"_inp_{inp}_outp_{outp}"
+            outdir = os.path.join(exp_base_dir, big_name_string)
             print(f"Generating exp at ... {outdir}")
             execution_str = ["python", f"{total_path_of_file}", "--storage_capacity", f"{storage_capacity}",
                              "--data_width", f"{data_width}",
                              "--clock_count_width", f"{clock_count_width}",
                              "--outdir", f"{outdir}",
-                             "--dimensionality", f"{dimensionality}",
-                             "--fetch_width", f"{fw}"]
+                             "--dimensionality", f"{dimensionality}"]
+
+            if add_fw_arg:
+                execution_str.extend(["--fetch_width", f"{fw}"])
+
+            if add_port_arg:
+                execution_str.extend(["--in_ports", f"{inp}"])
+                execution_str.extend(["--out_ports", f"{outp}"])
 
             if physical_arg:
                 execution_str.append("--physical")
