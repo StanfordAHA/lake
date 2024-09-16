@@ -76,7 +76,7 @@ def get_area_breakdown_file(file_path):
     rest_of_file = all_file_content[3:]
     # Do breakdowns by AG/SG/ID/Macro/Config
     ag_match = ['port_ag_',]
-    sg_match = ['port_sg_',]
+    sg_match = ['port_sg_', 'rv_comp_network']
     id_match = ['port_id_',]
     port_match = ['port_inst_',]
     storage_match = ['storage',]
@@ -346,13 +346,11 @@ if __name__ == "__main__":
 
                     if add_fw_arg:
                         python_command = " ".join([python_command, "--fetch_width", f"{fw}"])
-                        # " ".extend(["--fetch_width", f"{fw}"])
 
                     if add_port_arg:
                         python_command = " ".join([python_command, "--in_ports", f"{inp}"])
                         python_command = " ".join([python_command, "--out_ports", f"{outp}"])
-                        # execution_str.extend(["--in_ports", f"{inp}"])
-                        # execution_str.extend(["--out_ports", f"{outp}"])
+                        python_command = " ".join([python_command, "--use_ports"])
 
                     rtl_configure.write(f"{python_command}\n")
                     rtl_configure.write("\n")
