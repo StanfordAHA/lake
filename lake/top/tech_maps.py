@@ -112,30 +112,60 @@ def GF_Tech_Map(depth, width, dual_port=False, reg_file=False,
     '''
     ports = []
 
-    single_port = {
-        'write_data': 'D',
-        'addr': 'A',
-        'write_en': 'RDWEN',
-        'cen': 'CEN',
-        'clk': 'CLK',
-        'read_data': 'Q',
-        'alt_sigs': {
-            # value, width
-            'T_LOGIC': (0, 1),
-            'T_Q_RST': (0, 1),
-            'MA_SAWL1': (0, 1),
-            'MA_SAWL0': (0, 1),
-            'MA_WL1': (0, 1),
-            'MA_WL0': (0, 1),
-            'MA_WRAS1': (0, 1),
-            'MA_WRAS0': (0, 1),
-            'MA_VD1': (0, 1),
-            'MA_VD0': (0, 1),
-            'MA_WRT': (0, 1),
-            'MA_STABAS1': (0, 1),
-            'MA_STABAS0': (0, 1),
+    # Density single-port SRAM
+    if pd == "D":
+
+        single_port = {
+            'write_data': 'D',
+            'addr': 'A',
+            'write_en': 'RDWEN',
+            'cen': 'CEN',
+            'clk': 'CLK',
+            'read_data': 'Q',
+            'alt_sigs': {
+                # value, width
+                'T_LOGIC': (0, 1),
+                'T_Q_RST': (0, 1),
+                'MA_SAWL1': (0, 1),
+                'MA_SAWL0': (0, 1),
+                'MA_WL1': (0, 1),
+                'MA_WL0': (0, 1),
+                'MA_WRAS1': (0, 1),
+                'MA_WRAS0': (0, 1),
+                'MA_VD1': (0, 1),
+                'MA_VD0': (0, 1),
+                'MA_WRT': (0, 1),
+                'MA_STABAS1': (0, 1),
+                'MA_STABAS0': (0, 1),
+            }
         }
-    }
+
+    # Performance single-port SRAM
+    else:
+        single_port = {
+            'write_data': 'D',
+            'addr': 'A',
+            'write_en': 'RDWEN',
+            'cen': 'CEN',
+            'clk': 'CLK',
+            'read_data': 'Q',
+            'alt_sigs': {
+                # value, width
+                'T_LOGIC': (0, 1),
+                'T_Q_RST': (0, 1),
+                'MA_SAWL1': (0, 1),
+                'MA_SAWL0': (0, 1),
+                'MA_WL1': (0, 1),
+                'MA_WL0': (0, 1),
+                # 'MA_WRAS1': (0, 1),
+                # 'MA_WRAS0': (0, 1),
+                'MA_VD1': (0, 1),
+                'MA_VD0': (0, 1),
+                'MA_WRT': (0, 1),
+                # 'MA_STABAS1': (0, 1),
+                # 'MA_STABAS0': (0, 1),
+            }
+        }
 
     dual_port_p0rw = {
         # port RW
