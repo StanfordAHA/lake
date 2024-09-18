@@ -18,3 +18,5 @@ python ASPLOS_EXP/create_mflowgen_experiments.py --fetch_width 2 --build_dir /si
 
 python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 --outdir MEK_fwspst --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --spst dense
 python ASPLOS_EXP/create_all_experiments.py --fetch_width 2 --outdir MEK_fwspst --physical --design_filter single_port_wide_fetch --in_ports 1 --out_ports 1 --storage_capacity 16384 --use_ports --spst perf
+
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ALL_SWEEP_9_17 --physical  --run_builds
