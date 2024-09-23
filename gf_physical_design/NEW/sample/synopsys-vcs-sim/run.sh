@@ -30,7 +30,7 @@ for f in inputs/*.sv; do
 done
 
 if [ -a "inputs/design.sdf" ]; then
-  ARGS="$ARGS +sdfverbose -sdf typ:${testbench_name}.${dut_name}:inputs/design.sdf"
+  ARGS="$ARGS +sdfverbose -sdf typ:${testbench_name}.dut_gen.${dut_name}:inputs/design.sdf"
 fi
 
 

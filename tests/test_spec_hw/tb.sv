@@ -88,7 +88,8 @@ module tb;
     logic [DATA_WIDTH - 1:0] port_r3_mem  [0:MAX_DATA_SIZE - 1];
     logic [DATA_WIDTH - 1:0] port_r3_time [0:MAX_DATA_SIZE - 1];
 
-    if (NUMBER_PORTS == 2) begin : two_port_dut
+    if (NUMBER_PORTS == 2) begin : dut_gen
+    // if (NUMBER_PORTS == 2) begin : two_port_dut
 
         lakespec dut (
             // inputs
@@ -109,7 +110,8 @@ module tb;
         );
 
     end
-    else if (NUMBER_PORTS == 4) begin : four_port_dut
+    else if (NUMBER_PORTS == 4) begin : dut_gen
+    // else if (NUMBER_PORTS == 4) begin : four_port_dut
 
         lakespec dut (
             // inputs
@@ -138,7 +140,8 @@ module tb;
         );
 
     end
-    else if (NUMBER_PORTS == 8) begin : eight_port_dut
+    else if (NUMBER_PORTS == 8) begin : dut_gen
+    // else if (NUMBER_PORTS == 8) begin : eight_port_dut
 
         lakespec dut (
             // inputs

@@ -12,7 +12,7 @@ import argparse
 import os
 
 
-def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4,
+def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=2,
                                  physical=False, in_ports=1, out_ports=1, vec_capacity=2,
                                  spst="dense") -> Spec:
 
@@ -208,7 +208,7 @@ def get_linear_test():
     return linear_test
 
 
-def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
+def test_linear_read_write_sp_wf(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=2,
                                  tp: TestPrepper = None, reg_file=False, dimensionality=6, in_ports=1, out_ports=1,
                                  spst="dense"):
 
@@ -296,7 +296,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple Dual Port')
     parser.add_argument("--storage_capacity", type=int, default=1024)
     parser.add_argument("--data_width", type=int, default=16)
-    parser.add_argument("--fetch_width", type=int, default=4)
+    parser.add_argument("--fetch_width", type=int, default=2)
     parser.add_argument("--in_ports", type=int, default=1)
     parser.add_argument("--out_ports", type=int, default=1)
     parser.add_argument("--dimensionality", type=int, default=6)

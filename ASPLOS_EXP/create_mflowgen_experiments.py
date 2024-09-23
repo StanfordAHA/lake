@@ -681,27 +681,58 @@ def create_dual_quad_summary(data, filename="stacked_bar_chart"):
     ax.set_xticklabels(design, rotation=45, fontsize=20)
     # Adding legend
     ax.legend(fontsize=20)
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
 
-    # plt.tight_layout()
 
+def create_stacked_bar_power_summary(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+    df = df.sort_values('capacity')
+    print(df)
+    design = df['design']
+
+    all_datas = [
+        'Storage',
+        'ID',
+        'AG',
+        'Config',
+        'SG',
+        'Ports',
+        'Other',
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+    x = np.arange(len(design))
+    bottom = np.zeros(len(design))
+    # Stacking the bars
+    for category in all_datas:
+        print(df[category])
+        p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        bottom += df[category]
+
+    # Adding labels and title
+    ax.set_xlabel('Design', fontsize=24)
+    ax.set_ylabel('Areas', fontsize=24)
+    ax.set_title('Area Summary - 4 Port dual MemoryPort 2 input 2 output', fontsize=36)
+    ax.set_xticks(x)
+    ax.set_xticklabels(design, rotation=45, fontsize=20)
+    # Adding legend
+    ax.legend(fontsize=20)
     # Save the plot as a PNG file
     outfile = os.path.join(".", "figs", f"{filename}.png")
     plt.savefig(outfile)
 
 
 def create_stacked_bar_area_summary(data, filename="stacked_bar_chart"):
-    print("HERE")
-    print(data)
-
     # Create dataframe from dicts...
-
     df = pd.DataFrame(data=data)
 
-    print(df)
-    print(df['design'])
-
     # Filter to capacity 8192
-    df = df.query('capacity == 8192')
+    df = df[(df.capacity == 8192) & (df.design != 'dual_port_wide_fetch')]
+    df = df.sort_values(['memory_ports', 'input_ports', 'fw'])
+    print(df)
     design = df['design']
     AG = df['AG']
     SG = df['SG']
@@ -722,15 +753,12 @@ def create_stacked_bar_area_summary(data, filename="stacked_bar_chart"):
     }
 
     fig, ax = plt.subplots(figsize=(20, 25))
-
     x = np.arange(len(design))
-
     bottom = np.zeros(len(design))
     # Stacking the bars
     for area_type, area in all_datas.items():
         p = ax.bar(x, area, width=0.5, label=area_type, bottom=bottom)
         bottom += area
-
     # Adding labels and title
     ax.set_xlabel('Design', fontsize=24)
     ax.set_ylabel('Areas', fontsize=24)
@@ -739,8 +767,6 @@ def create_stacked_bar_area_summary(data, filename="stacked_bar_chart"):
     ax.set_xticklabels(design, rotation=45, fontsize=20)
     # Adding legend
     ax.legend(fontsize=20)
-
-    # plt.tight_layout()
 
     # Save the plot as a PNG file
     outfile = os.path.join(".", "figs", f"{filename}.png")
@@ -774,6 +800,17 @@ def write_area_csv(area_breakdowns, fp):
             f_use.write('\n')
 
 
+def write_power_csv(power_breakdowns, fp):
+    assert len(power_breakdowns) > 0
+    fp_use = "./area_breakdown.csv"
+    with open(fp_use, 'w') as f_use:
+        f_use.write(','.join(power_breakdowns[0].keys()))
+        f_use.write('\n')
+        for power_breakdown in power_breakdowns:
+            f_use.write(','.join(str(x) for x in power_breakdown.values()))
+            f_use.write('\n')
+
+
 def get_manifest_info(design):
     data = None
     manifest_file_path = os.path.join(design, "params.json")
@@ -782,6 +819,232 @@ def get_manifest_info(design):
         with open(manifest_file_path, 'r') as file:
             data = json.load(file)
     return data
+
+
+def get_power_breakdown_dir(directory, run_power):
+    # First get all designs
+    all_designs = os.listdir(directory)
+    all_power_breakdowns = []
+    for design in all_designs:
+        design_path = os.path.join(directory, design)
+        design_points = os.listdir(design_path)
+        for design_point in design_points:
+            design_point_path = os.path.join(design_path, design_point)
+
+            if run_power:
+                subprocess.run(["make", "28"], cwd=design_point_path)
+
+            man_info = get_manifest_info(design_point_path)
+            relative_power_file_hier = os.path.join("28-synopsys-ptpx-gl",
+                                                    "reports",
+                                                    "lakespec.power.hier.rpt")
+            relative_power_file = os.path.join("28-synopsys-ptpx-gl",
+                                               "reports",
+                                               "lakespec.power.rpt")
+
+            full_power_file_hier = os.path.join(design_point_path, relative_power_file_hier)
+            full_power_file = os.path.join(design_point_path, relative_power_file)
+            other_info_file = os.path.join(design_point_path, "3-rtl", "outputs", "info.json")
+            other_info = None
+            if check_file_exists_and_has_content(other_info_file):
+                with open(other_info_file, 'r') as oif:
+                    other_info = json.load(oif)
+
+            rtl_design_file = os.path.join(design_point_path, "3-rtl", "outputs", "design.v")
+            rtl_lines = None
+            if check_file_exists_and_has_content(rtl_design_file):
+                with open(rtl_design_file, 'r') as rdf:
+                    rtl_lines = rdf.readlines()
+            num_cfg_bits = get_config_bits_verilog(rtl_lines)
+            # print(num_cfg_bits)
+
+            power_breakdown = get_power_breakdown_file(file_path=full_power_file_hier)
+            # power_breakdown, ports_bds = get_power_breakdown_file(file_path=full_power_file_hier)
+            if man_info is not None:
+                # Copy over the keys for the csv
+                for k, v in man_info.items():
+                    power_breakdown[k] = v
+            else:
+                power_breakdown['design'] = f"{design}_{design_point}"
+
+            if other_info is not None:
+                # Copy over the keys for the csv
+                for k, v in other_info.items():
+                    power_breakdown[k] = v
+
+            if 'config_size' not in power_breakdown and num_cfg_bits is not None:
+                power_breakdown['config_size'] = num_cfg_bits
+
+            # Now we have the parameter info and the area breakdown...add to list
+            # all_power_breakdowns.append((power_breakdown, ports_bds))
+            all_power_breakdowns.append(power_breakdown)
+    return all_power_breakdowns
+
+
+def get_power_breakdown_file(file_path):
+    print(f"Getting the power at {file_path}")
+    all_file_content = get_file_contents(file_path=file_path)
+    print(all_file_content)
+    # quit()
+
+    # For each category, we want internal, leakage, switching, total
+
+    if all_file_content is None:
+        print(f"No signoff area report for {file_path}")
+        return {
+        'total': [0.0, 0.0, 0.0, 0.0, 0,0],
+        'AG': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'SG': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'ID': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'Port': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'Storage': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'Config': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'MemintfDec': [0.0, 0.0, 0.0, 0.0, 0.0],
+        'MemoryPort': [0.0, 0.0, 0.0, 0.0, 0.0]
+    }
+
+    top_idx = 0
+    for i_, line in enumerate(all_file_content):
+        if line.startswith('lakespec'):
+        # if 'lakespec' in line:
+            top_idx = i_
+            break
+
+    num_lines = len(all_file_content)
+    # Know where it starts now...
+    top_line = all_file_content[top_idx]
+    rest_of_file = all_file_content[top_idx + 1:]
+
+    # num_data_lines = num_lines - 3
+    # header = all_file_content[0]
+    # dashes = all_file_content[1]
+    print('\n\n\n\n\n')
+    # print(top_idx)
+    # print(rest_of_file)
+    # Do breakdowns by AG/SG/ID/Macro/Config
+    ag_match = ['port_ag_',]
+    sg_match = ['port_sg_', 'rv_comp_network']
+    id_match = ['port_id_',]
+    port_match = ['port_inst_',]
+    storage_match = ['storage',]
+    memintfdec_match = ['memintfdec_inst_',]
+    memoryport_match = ['memoryport_',]
+    # Everything should be only 2 spaces in - so delete any line with more spaces
+    all_modules = [x for x in rest_of_file if x[0] == ' ' and x[1] == ' ' and x[2] != ' ']
+    top_line_breakdown = top_line.strip().split()
+    print(all_modules)
+    # total_macro = float(top_line_breakdown[-2])
+
+    ag_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+    sg_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+    id_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+    port_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+    storage_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+    config_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+    memintf_dec_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+    memoryport_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+
+    all_ports = {}
+
+    # int, switch, leak, total, percent
+    data_idx = [1, 2, 3, 4, 5]
+    total_power = [float(top_line_breakdown[x]) for x in data_idx]
+    print(f"Design has total power {total_power}")
+
+    data_idx = [2, 3, 4, 5, 6]
+    match_idx = 0
+
+    # Now go through and accumulate matches
+    for i_, mod in enumerate(all_modules):
+        mod_tokens = mod.strip().split()
+        num_matches = 0
+
+        # Happens for 0% - just set the line to all 0s
+        if 'N/A' in mod:
+            line_data = [0.0, 0.0, 0.0, 0.0, 0,0]
+        else:
+            line_data = [float(mod_tokens[x]) for x in data_idx]
+        print(line_data)
+
+        for _ in ag_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                for z_ in range(len(data_idx)):
+                    ag_power[z_] += line_data[z_]
+        for _ in sg_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                for z_ in range(len(data_idx)):
+                    sg_power[z_] += line_data[z_]
+        for _ in id_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                # id_power += float(mod_tokens[3])
+                for z_ in range(len(data_idx)):
+                    id_power[z_] += line_data[z_]
+        # Port is special because we want to produce a breakdown for each as well
+        for _ in port_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                # port_power += float(mod_tokens[3])
+                for z_ in range(len(data_idx)):
+                    port_power[z_] += line_data[z_]
+
+                # If we have a match and need a breakdown of the port,
+                # we should pass the lines up to other breakdown func
+                # print(mod)
+                # print(all_modules[i_ + 1])
+                # start_idx = get_match_index(rest_of_file, mod)
+                # end_idx = get_match_index(rest_of_file, all_modules[i_ + 1])
+                # print(start_idx)
+                # print(end_idx)
+                # port_breakdown = get_port_breakdown(rest_of_file[start_idx:end_idx])
+                # print(port_breakdown)
+                # all_ports[mod_tokens[0]] = port_breakdown
+        memport_match = False
+        for _ in memoryport_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                # memoryport_power += float(mod_tokens[3])
+                for z_ in range(len(data_idx)):
+                    memoryport_power[z_] += line_data[z_]
+
+                # Both memport and storage have 'storage' in them
+                memport_match = True
+        for _ in storage_match:
+            if _ in mod_tokens[match_idx] and memport_match is False:
+                num_matches += 1
+                # storage_power += float(mod_tokens[3])
+                for z_ in range(len(data_idx)):
+                    storage_power[z_] += line_data[z_]
+
+        for _ in memintfdec_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                # memintf_dec_power += float(mod_tokens[3])
+                for z_ in range(len(data_idx)):
+                    memintf_dec_power[z_] += line_data[z_]
+
+
+        assert num_matches <= 1, f"Line ({mod}) matched too many items...{num_matches}"
+
+    config_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    for z_ in range(len(data_idx)):
+        config_power = total_power[z_] - (ag_power[z_] + sg_power[z_] + id_power[z_] + storage_power[z_] + port_power[z_] + memintf_dec_power[z_] + memoryport_power[z_])
+
+    power_dict = {
+        'total': total_power,
+        'AG': ag_power,
+        'SG': sg_power,
+        'ID': id_power,
+        'Port': port_power,
+        'Storage': storage_power,
+        'Config': config_power,
+        'MemintfDec': memintf_dec_power,
+        'MemoryPort': memoryport_power
+    }
+
+    return power_dict
 
 
 def get_area_breakdown_dir(directory):
@@ -1049,6 +1312,8 @@ if __name__ == "__main__":
     parser.add_argument("--collect_override", action="store_true")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--run_builds", action="store_true")
+    parser.add_argument("--collect_power", action="store_true")
+    parser.add_argument("--run_power", action="store_true")
     parser.add_argument("--build_dir", type=str, default=None, required=True)
     parser.add_argument("--csv_out", type=str, default=None, required=False)
     parser.add_argument("--design_filter", type=str, default=None, required=False)
@@ -1080,6 +1345,8 @@ if __name__ == "__main__":
     report_path = args.report_path
     figure_name = args.figure_name
     experiment = args.experiment
+    run_power = args.run_power
+    collect_power = args.collect_power
 
     spst = args.spst
 
@@ -1140,7 +1407,7 @@ if __name__ == "__main__":
             write_area_csv(all_summaries, collect_data_csv_path)
             # Do different experiments here...
             if experiment == "summary":
-                print("Creating summary at 8192 size...")
+                print("Creating area summary at 8192 size...")
                 create_stacked_bar_area_summary(all_summaries, filename=figure_name)
             elif experiment == "dual_quad_summary":
                 create_dual_quad_summary(data=all_summaries, filename=figure_name)
@@ -1162,6 +1429,20 @@ if __name__ == "__main__":
                 create_control_v_runtime(data=all_summaries, filename=figure_name)
             else:
                 raise NotImplementedError(f"Doesn't support experiment: {experiment}")
+
+        exit()
+
+    if collect_power:
+        all_breakdowns = get_power_breakdown_dir(pd_build_dir, run_power)
+        print("Getting power!")
+        print(all_breakdowns)
+        assert collect_data_csv_path is not None
+        write_area_csv(all_breakdowns, collect_data_csv_path)
+        if experiment == "summary":
+            print("Creating power summary at 8192 size...")
+            create_stacked_bar_power_summary(all_breakdowns, filename=figure_name)
+        else:
+            raise NotImplementedError(f"Doesn't support experiment: {experiment}")
 
         exit()
 
@@ -1301,7 +1582,9 @@ if __name__ == "__main__":
                     rtl_configure.write(f"  - cp $TOP/TEST/{filename_no_ext}/{design_folder}/tb.sv outputs/testbench.sv\n")
                     rtl_configure.write(f"  - cat $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/comp_args.txt $TOP/TEST/{filename_no_ext}/{design_folder}/inputs/PARGS.txt > outputs/design.args\n")
                     rtl_configure.write("\n")
-                    rtl_configure.write("  - python set_test_dir.py\n")
+                    # Make sure the test dir is set to the proper directory!!!!
+                    test_dir_arg = os.path.join("TEST", filename_no_ext, design_folder)
+                    rtl_configure.write(f"  - python set_test_dir.py --test_dir {test_dir_arg}\n")
                     rtl_configure.write("  - echo $PWD\n")
 
                 print(f"cd {pd_build_path}; mflowgen run --design {full_design_path}")
@@ -1312,7 +1595,7 @@ if __name__ == "__main__":
                     print(f"Starting build at {pd_build_path}")
                     # execute_str = ["source", make_script]
                     # execute_str = ["make", "6", "&&", "make", "-t", "6", "&&", "make", "17"]
-                    execute_str = "make 6; make -t 6; make 17"
+                    execute_str = "make 6; make -t 6; make 17; make 28;"
                     newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path, shell=True)
                     all_procs.append(newp)
 
