@@ -1,6 +1,6 @@
 from kratos import clog2
 from math import ceil
-import random
+import argparse
 
 
 class MainMemoryModel():
@@ -83,16 +83,15 @@ class MainMemoryModel():
         outer_index_tag = self.get_outer_address(curr_addr)
         # Get inner index
         inner_index = self.get_inner_address(curr_addr)
-        print(f"Current addr: {curr_addr}")
-        print(f"Current outer index: {outer_index_tag}")
-        print(f"Current inner index: {inner_index}")
-        # print(self.addr_q)
-        print(f"Addr queue: {self.addr_q}")
+        # print(f"Current addr: {curr_addr}")
+        # print(f"Current outer index: {outer_index_tag}")
+        # print(f"Current inner index: {inner_index}")
+        # print(f"Addr queue: {self.addr_q}")
         # Now go through the wcb until we find a tag that matches, then read from that one
         found_match = False
         search_idx = 0
         while found_match is False:
-            print(self.wcb_tags)
+            # print(self.wcb_tags)
             if self.wcb_tags[search_idx] == outer_index_tag:
                 found_match = True
                 ret_data_wide = self.wcb[search_idx]
@@ -104,7 +103,7 @@ class MainMemoryModel():
 
     def read(self, ready=False):
 
-        print(f"On cycle...{self.cycle}")
+        # print(f"On cycle...{self.cycle}")
         self.cycle += 1
 
         # Address is held internally
@@ -130,7 +129,7 @@ class MainMemoryModel():
         return_val = (0, False)
         # If there is anything in the address queue, we have valid data at the out.
         if len(self.addr_q) > 0 and len(self.wcb) > 0:
-            print(self.wcb)
+            # print(self.wcb)
             # print(f"Number outstanding requests...{len(self.addr_q)}")
             # return_val = (self.wcb[self.addr_q[0]], True)
             return_val = (self.read_wcb(), True)
@@ -154,7 +153,7 @@ class MainMemoryModel():
         # If the main memory hasn't been read yet, make sure to read it now
         # Can't return any data this cycle...
             if self.already_read is False:
-                print("Haven't read yet...")
+                # print("Haven't read yet...")
                 self.already_read = True
                 self.last_read_addr = self.get_curr_addr()
                 self.next_addr()
@@ -172,7 +171,7 @@ class MainMemoryModel():
 
             # If it has been read, want to know if the current address goes to a new word in main memory
             elif (self.last_read_addr >> self.fw_log_2) != (self.get_curr_addr() >> self.fw_log_2):
-                print("Outer address mismatch...")
+                # print("Outer address mismatch...")
 
                 # This means that this address will go to a new word, but we only want to make the read
                 # if there is room enough (num items < 3)
@@ -276,11 +275,15 @@ def convert_to_wide(thin, fw):
 
 if __name__ == "__main__":
 
-    print("Trying model...")
+    parser = argparse.ArgumentParser(description='Push cache model...')
+    parser.add_argument('--address_space', type=int, default=64)
+    parser.add_argument('--fetch_width', type=int, default=4)
+    parser.add_argument("--verbose", action="store_true")
+    args = parser.parse_args()
 
-    fw = 4
-
-    address_space = 16
+    fw = args.fetch_width
+    address_space = args.address_space
+    verbose = args.verbose
 
     write_data_thin = [i for i in range(address_space)]
 
@@ -304,18 +307,30 @@ if __name__ == "__main__":
 
     main_memory.set_addr_seq(addr_seq=addr_seq_list)
 
+    gold_data = [write_data_thin[x] for x in addr_seq_list]
+
     # Need to do cycle-approximate simulation here...
     num_reads = 0
     while num_reads < address_space:
-    # for i_ in range(len(addr_seq_list)):
-        # ready_choice = random.choice([True, False])
         ready_choice = True
         read_result_data, read_result_valid = main_memory.read(ready_choice)
-        # read_data_wide.append(main_memory.read(ready_choice))\
-        print(f"Ready: {ready_choice}\tValid: {read_result_valid}\tData: {read_result_data}")
+        if verbose:
+            print(f"Ready: {ready_choice}\tValid: {read_result_valid}\tData: {read_result_data}")
         if ready_choice is True and read_result_valid is True:
             read_data.append(read_result_data)
             num_reads += 1
 
+    if verbose:
+        print(f"Gold data: {gold_data}")
+        print(f"Read data: {read_data}")
 
-    print(f"Read data: {read_data}")
+    if gold_data == read_data:
+        print(f"SUCCESS: Simulation result matches gold")
+    elif len(gold_data) != len(read_data):
+        print(f"Data length mismatch --- Gold length: {len(gold_data)}\tSimulation length: {len(read_data)}")
+    else:
+        for i in range(len(read_data)):
+            if gold_data[i] != read_data[i]:
+                print(f"MISMATCH\tINDEX: {i}\tGOLD: {gold_data[i]}\tSIM: {read_data[i]}")
+
+
