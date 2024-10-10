@@ -524,12 +524,38 @@ class Spec():
         with open(outfile, 'w') as json_file:
             json.dump(all_info, json_file, indent=4)
 
+    def remove_config_memory_flush(self, filename):
+
+        all_contents = None
+        with open(filename, 'r') as f_:
+            all_contents = f_.readlines()
+
+        print(all_contents)
+
+        at_cfg_mod = False
+        for idx, line in enumerate(all_contents):
+
+            if at_cfg_mod is True and "else if (flush)" in line:
+                all_contents.pop(idx)
+                all_contents.pop(idx)
+                all_contents.pop(idx)
+                break
+
+            if 'module config_memory_' in line:
+                at_cfg_mod = True
+
+        with open(filename, 'w+') as f_:
+            f_.writelines(all_contents)
+
     def get_verilog(self, output_dir, get_info=True):
         # kts.verilog(self._final_gen, filename=f"{self._name}.sv",
         fn_ = f"{self._name}.sv"
         full_path = os.path.join(output_dir, fn_)
+
         kts.verilog(self._final_gen, filename=full_path,
                     optimize_if=False)
+        # print(f"remove flush use in config memory")
+        # self.remove_config_memory_flush(filename=full_path)
 
         if get_info is True:
             self.get_information(output_dir=output_dir)

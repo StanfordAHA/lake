@@ -239,9 +239,9 @@ def construct():
   g.connect_by_name(gen_sram, pt_power_gl)
   # g.connect_by_name( gen_sram,      genlibdb       )
   # g.connect_by_name( gen_sram,      pt_signoff     )
-  # g.connect_by_name( gen_sram,      drc            )
+  g.connect_by_name( gen_sram,      drc            )
   # g.connect_by_name( gen_sram,      drc_pm         )
-  # g.connect_by_name( gen_sram,      lvs            )
+  g.connect_by_name( gen_sram,      lvs            )
 
   g.connect_by_name(signoff, pt_power_gl)
 

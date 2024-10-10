@@ -13,16 +13,54 @@ import numpy as np
 matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
+def create_spst_power(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+    df['Other_total'] = df['MemintfDec_total'] + df['MemoryPort_total']
+    print(df)
+    df = df[(df.input_ports != 1) | ((df.input_ports == 1) & (df.fw == 2))]
+    df = df.drop_duplicates()
+
+    all_categories = [
+        'Storage_total',
+        'ID_total',
+        'AG_total',
+        'Config_total',
+        'SG_total',
+        'Port_total',
+        'Other_total',
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+
+    x = np.arange(len(df['design']))
+
+    bottom = np.zeros(len(df['design']))
+    # Stacking the bars
+    for category in all_categories:
+        p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        bottom += df[category]
+
+    # Adding labels and title
+    ax.set_xlabel('Design', fontsize=24)
+    ax.set_ylabel('Power', fontsize=24)
+    ax.set_title('FW/2 input FW/2 output single memory port FW sweep', fontsize=36)
+    ax.set_xticks(x)
+    ax.set_xticklabels(df['fw'], rotation=45, fontsize=20)
+    # Adding legend
+    ax.legend(fontsize=20)
+
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
 def create_spst(data, filename="stacked_bar_chart"):
     # Create dataframe from dicts...
     df = pd.DataFrame(data=data)
     df['Other'] = df['MemintfDec'] + df['MemoryPort']
     df = df[(df.input_ports != 1) | ((df.input_ports == 1) & (df.fw == 2))]
     df = df.drop_duplicates()
-    print(df)
-    # quit()
-    # Filter to capacity 8192
-    # df = df.sort_values('capacity')
 
     all_categories = [
         'Storage',
@@ -58,6 +96,76 @@ def create_spst(data, filename="stacked_bar_chart"):
     plt.savefig(outfile)
 
 
+def create_control_v_runtime_power(data, filename="grouped_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+
+    # get both of these designs.
+    df['all_total'] = df['AG_total'] + df['SG_total'] + df['ID_total'] + df['Port_total'] + df['Config_total']
+    df = df[(df.design == 'simple_dual_port') | (df.design == 'dual_port_rv')]
+    df = df.sort_values('capacity')
+    df['Other_total'] = df['MemintfDec_total'] + df['MemoryPort_total']
+
+    df_static = df[(df.design == 'simple_dual_port')]
+    df_rv = df[(df.design == 'dual_port_rv')]
+
+    all_categories = [
+        'AG_total',
+        'SG_total',
+        'ID_total',
+        'Port_total',
+        'Config_total',
+    ]
+
+    fig, ax = plt.subplots(1, 2, figsize=(20, 25))
+
+    x = np.arange(len(df_static['design']))
+    width = 0.2
+
+    total_ylim = 0.00012
+
+    # Do it for the static data
+    multiplier = 0
+    # Grouped
+    for category in all_categories:
+        offset = width * multiplier
+        rects = ax[0].bar(x + offset, df_static[category], width, label=category)
+        ax[0].bar_label(rects, padding=2, fontsize=16)
+        multiplier += 1
+
+    # Adding labels and title
+    ax[0].set_xlabel('Capacity', fontsize=24)
+    ax[0].set_ylabel('Power', fontsize=24)
+    ax[0].set_title('Control v Capacity (static)', fontsize=36)
+    ax[0].set_xticks(x + width, df_static['capacity'])
+    ax[0].set_xticklabels(df_static['capacity'], rotation=45, fontsize=20)
+    # ax[0].set_ylim([0, total_ylim])
+
+    multiplier = 0
+    # Grouped
+    for category in all_categories:
+        offset = width * multiplier
+        rects = ax[1].bar(x + offset, df_rv[category], width, label=category)
+        ax[1].bar_label(rects, padding=2, fontsize=16)
+        multiplier += 1
+
+    # Adding labels and title
+    ax[1].set_xlabel('Capacity', fontsize=24)
+    ax[1].set_ylabel('Power', fontsize=24)
+    ax[1].set_title('Control v Capacity (rv)', fontsize=36)
+    ax[1].set_xticks(x + width, df_rv['capacity'])
+    ax[1].set_xticklabels(df_rv['capacity'], rotation=45, fontsize=20)
+    # ax[1].set_ylim([0, total_ylim])
+
+    plt.yticks(fontsize=20)
+    # Adding legend
+    plt.legend(fontsize=20)
+
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
 def create_control_v_runtime(data, filename="grouped_bar_chart"):
     # Create dataframe from dicts...
     df = pd.DataFrame(data=data)
@@ -66,14 +174,7 @@ def create_control_v_runtime(data, filename="grouped_bar_chart"):
     df['all'] = df['AG'] + df['SG'] + df['ID'] + df['Port'] + df['Config']
     df = df[(df.design == 'simple_dual_port') | (df.design == 'dual_port_rv')]
     df = df.sort_values('capacity')
-    print(df)
-    design = df['design']
     df['Other'] = df['MemintfDec'] + df['MemoryPort']
-
-    print(df)
-    # quit()
-    # Filter to capacity 8192
-    # df = df.sort_values('capacity')
 
     df_static = df[(df.design == 'simple_dual_port')]
     df_rv = df[(df.design == 'dual_port_rv')]
@@ -84,10 +185,7 @@ def create_control_v_runtime(data, filename="grouped_bar_chart"):
         'ID',
         'Port',
         'Config',
-        # 'all'
     ]
-
-    # fig, ax = plt.subplots(figsize=(20, 25))
 
     fig, ax = plt.subplots(1, 2, figsize=(20, 25))
 
@@ -130,9 +228,77 @@ def create_control_v_runtime(data, filename="grouped_bar_chart"):
     ax[1].set_ylim([0, total_ylim])
 
     plt.yticks(fontsize=20)
-    plt.legend(fontsize=20)
     # Adding legend
-    # plt.tight_layout()
+    plt.legend(fontsize=20)
+
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
+def create_control_v_capacity_power(data, filename="grouped_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+    df['all_total'] = df['AG_total'] + df['SG_total'] + df['ID_total'] + df['Port_total'] + df['Config_total']
+    # get both of these designs.
+    df = df[(df.design == 'dual_port_wide_fetch_quad') | (df.design == 'dual_port_wide_fetch_quad_rv')]
+    df = df.sort_values('capacity')
+    df['Other_total'] = df['MemintfDec_total'] + df['MemoryPort_total']
+
+    df_static = df[(df.design == 'dual_port_wide_fetch_quad')]
+    df_rv = df[(df.design == 'dual_port_wide_fetch_quad_rv')]
+
+    all_categories = [
+        'AG_total',
+        'SG_total',
+        'ID_total',
+        'Port_total',
+        'Config_total',
+    ]
+
+    fig, ax = plt.subplots(1, 2, figsize=(20, 25))
+
+    x = np.arange(len(df_static['design']))
+    width = 0.2
+
+    total_ylim = 0.0005
+
+    # Do it for the static data
+    multiplier = 0
+    # Grouped
+    for category in all_categories:
+        offset = width * multiplier
+        rects = ax[0].bar(x + offset, df_static[category], width, label=category)
+        ax[0].bar_label(rects, padding=2, fontsize=16)
+        multiplier += 1
+
+    # Adding labels and title
+    ax[0].set_xlabel('Capacity', fontsize=24)
+    ax[0].set_ylabel('Power', fontsize=24)
+    ax[0].set_title('Control v Capacity (static)', fontsize=36)
+    ax[0].set_xticks(x + width, df_static['capacity'])
+    ax[0].set_xticklabels(df_static['capacity'], rotation=45, fontsize=20)
+    # ax[0].set_ylim([0, total_ylim])
+
+    multiplier = 0
+    # Grouped
+    for category in all_categories:
+        offset = width * multiplier
+        rects = ax[1].bar(x + offset, df_rv[category], width, label=category)
+        ax[1].bar_label(rects, padding=2, fontsize=16)
+        multiplier += 1
+
+    # Adding labels and title
+    ax[1].set_xlabel('Capacity', fontsize=24)
+    ax[1].set_ylabel('Power', fontsize=24)
+    ax[1].set_title('Control v Capacity (rv)', fontsize=36)
+    ax[1].set_xticks(x + width, df_rv['capacity'])
+    ax[1].set_xticklabels(df_rv['capacity'], rotation=45, fontsize=20)
+    # ax[1].set_ylim([0, total_ylim])
+
+    plt.yticks(fontsize=20)
+    # Adding legend
+    plt.legend(fontsize=20)
 
     # Save the plot as a PNG file
     outfile = os.path.join(".", "figs", f"{filename}.png")
@@ -146,14 +312,7 @@ def create_control_v_capacity(data, filename="grouped_bar_chart"):
     # get both of these designs.
     df = df[(df.design == 'dual_port_wide_fetch_quad') | (df.design == 'dual_port_wide_fetch_quad_rv')]
     df = df.sort_values('capacity')
-    print(df)
-    design = df['design']
     df['Other'] = df['MemintfDec'] + df['MemoryPort']
-
-    print(df)
-    # quit()
-    # Filter to capacity 8192
-    # df = df.sort_values('capacity')
 
     df_static = df[(df.design == 'dual_port_wide_fetch_quad')]
     df_rv = df[(df.design == 'dual_port_wide_fetch_quad_rv')]
@@ -164,10 +323,7 @@ def create_control_v_capacity(data, filename="grouped_bar_chart"):
         'ID',
         'Port',
         'Config',
-        # 'all'
     ]
-
-    # fig, ax = plt.subplots(figsize=(20, 25))
 
     fig, ax = plt.subplots(1, 2, figsize=(20, 25))
 
@@ -210,9 +366,52 @@ def create_control_v_capacity(data, filename="grouped_bar_chart"):
     ax[1].set_ylim([0, total_ylim])
 
     plt.yticks(fontsize=20)
-    plt.legend(fontsize=20)
     # Adding legend
-    # plt.tight_layout()
+    plt.legend(fontsize=20)
+
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
+def create_fw_sweep_grow_ports_per_port_power(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+    df['Other_total'] = df['MemintfDec_total'] + df['MemoryPort_total']
+    df['logic_total'] = df['AG_total'] + df['SG_total'] + df['ID_total']
+    df['all_total'] = df['AG_total'] + df['SG_total'] + df['ID_total'] + df['Port_total'] + df['Config_total']
+    df = df[(df.input_ports != 1) | ((df.input_ports == 1) & (df.fw == 2))]
+    df = df.drop_duplicates()
+
+    all_categories = [
+        'Port_total',
+        'logic_total',
+        'Config_total',
+        'all_total'
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+
+    x = np.arange(len(df['design']))
+    width = 0.2
+    multiplier = 0
+
+    # Stacking the bars
+    for category in all_categories:
+        offset = width * multiplier
+        rects = ax.bar(x + offset, df[category] / df['fw'], width, label=category)
+        ax.bar_label(rects, padding=2, fontsize=16)
+        multiplier += 1
+
+    # Adding labels and title
+    ax.set_xlabel('Fetch Width', fontsize=24)
+    ax.set_ylabel('Power', fontsize=24)
+    ax.set_title('Measurements per FW', fontsize=36)
+    ax.set_xticks(x + width, df['fw'])
+    ax.set_xticklabels(df['fw'], rotation=45, fontsize=20)
+    plt.yticks(fontsize=20)
+    # Adding legend
+    plt.legend(fontsize=20)
 
     # Save the plot as a PNG file
     outfile = os.path.join(".", "figs", f"{filename}.png")
@@ -227,10 +426,6 @@ def create_fw_sweep_grow_ports_per_port(data, filename="stacked_bar_chart"):
     df['all'] = df['AG'] + df['SG'] + df['ID'] + df['Port'] + df['Config']
     df = df[(df.input_ports != 1) | ((df.input_ports == 1) & (df.fw == 2))]
     df = df.drop_duplicates()
-    print(df)
-    # quit()
-    # Filter to capacity 8192
-    # df = df.sort_values('capacity')
 
     all_categories = [
         'Port',
@@ -259,9 +454,51 @@ def create_fw_sweep_grow_ports_per_port(data, filename="stacked_bar_chart"):
     ax.set_xticks(x + width, df['fw'])
     ax.set_xticklabels(df['fw'], rotation=45, fontsize=20)
     plt.yticks(fontsize=20)
-    plt.legend(fontsize=20)
     # Adding legend
-    # plt.tight_layout()
+    plt.legend(fontsize=20)
+
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
+def create_fw_sweep_grow_ports_power(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+    df['Other_total'] = df['MemintfDec_total'] + df['MemoryPort_total']
+    df = df[(df.input_ports != 1) | ((df.input_ports == 1) & (df.fw == 2))]
+    df = df.drop_duplicates()
+    # Filter to capacity 8192
+    # df = df.sort_values('capacity')
+
+    all_categories = [
+        'Storage_total',
+        'ID_total',
+        'AG_total',
+        'Config_total',
+        'SG_total',
+        'Port_total',
+        'Other_total',
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+
+    x = np.arange(len(df['design']))
+
+    bottom = np.zeros(len(df['design']))
+    # Stacking the bars
+    for category in all_categories:
+        p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        bottom += df[category]
+
+    # Adding labels and title
+    ax.set_xlabel('Design', fontsize=24)
+    ax.set_ylabel('Power', fontsize=24)
+    ax.set_title('FW/2 input FW/2 output single memory port FW sweep', fontsize=36)
+    ax.set_xticks(x)
+    ax.set_xticklabels(df['fw'], rotation=45, fontsize=20)
+    # Adding legend
+    ax.legend(fontsize=20)
 
     # Save the plot as a PNG file
     outfile = os.path.join(".", "figs", f"{filename}.png")
@@ -274,8 +511,6 @@ def create_fw_sweep_grow_ports(data, filename="stacked_bar_chart"):
     df['Other'] = df['MemintfDec'] + df['MemoryPort']
     df = df[(df.input_ports != 1) | ((df.input_ports == 1) & (df.fw == 2))]
     df = df.drop_duplicates()
-    print(df)
-    # quit()
     # Filter to capacity 8192
     # df = df.sort_values('capacity')
 
@@ -313,16 +548,53 @@ def create_fw_sweep_grow_ports(data, filename="stacked_bar_chart"):
     plt.savefig(outfile)
 
 
+def create_fw_sweep_iso_ports_power(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+    df['Other_total'] = df['MemintfDec_total'] + df['MemoryPort_total']
+    df = df[(df.input_ports == 1) & (df.output_ports == 1)]
+    df = df.drop_duplicates()
+
+    all_categories = [
+        'Storage_total',
+        'ID_total',
+        'AG_total',
+        'Config_total',
+        'SG_total',
+        'Port_total',
+        'Other_total',
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+
+    x = np.arange(len(df['design']))
+
+    bottom = np.zeros(len(df['design']))
+    # Stacking the bars
+    for category in all_categories:
+        p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        bottom += df[category]
+
+    # Adding labels and title
+    ax.set_xlabel('Design', fontsize=24)
+    ax.set_ylabel('Power', fontsize=24)
+    ax.set_title('1 input 1 output single memory port FW sweep', fontsize=36)
+    ax.set_xticks(x)
+    ax.set_xticklabels(df['fw'], rotation=45, fontsize=20)
+    # Adding legend
+    ax.legend(fontsize=20)
+
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
 def create_fw_sweep_iso_ports(data, filename="stacked_bar_chart"):
     # Create dataframe from dicts...
     df = pd.DataFrame(data=data)
     df['Other'] = df['MemintfDec'] + df['MemoryPort']
     df = df[(df.input_ports == 1) & (df.output_ports == 1)]
     df = df.drop_duplicates()
-    print(df)
-    # quit()
-    # Filter to capacity 8192
-    # df = df.sort_values('capacity')
 
     all_categories = [
         'Storage',
@@ -635,6 +907,47 @@ def create_dual_quad_ports(data, all_port_lists, filename="stacked_bar_chart"):
     plt.savefig(outfile)
 
 
+def create_dual_quad_summary_power(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+
+    # Filter to capacity 8192
+    df = df[(df.design == 'dual_port_wide_fetch_quad') | (df.design == 'dual_port_wide_fetch_quad_rv')]
+    df = df.sort_values('capacity')
+
+    design = df['design']
+
+    all_datas = [
+        'Storage_total',
+        'ID_total',
+        'AG_total',
+        'Config_total',
+        'SG_total',
+        'Port_total',
+        # 'Other',
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+    x = np.arange(len(design))
+    bottom = np.zeros(len(design))
+    # Stacking the bars
+    for category in all_datas:
+        p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        bottom += df[category]
+
+    # Adding labels and title
+    ax.set_xlabel('Design', fontsize=24)
+    ax.set_ylabel('Power', fontsize=24)
+    ax.set_title('Power Summary - 4 Port dual MemoryPort 2 input 2 output', fontsize=36)
+    ax.set_xticks(x)
+    ax.set_xticklabels(design, rotation=45, fontsize=20)
+    # Adding legend
+    ax.legend(fontsize=20)
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
 def create_dual_quad_summary(data, filename="stacked_bar_chart"):
     # Create dataframe from dicts...
     df = pd.DataFrame(data=data)
@@ -690,17 +1003,19 @@ def create_stacked_bar_power_summary(data, filename="stacked_bar_chart"):
     # Create dataframe from dicts...
     df = pd.DataFrame(data=data)
     df = df.sort_values('capacity')
-    print(df)
+    # df['Other'] = df['MemintfDec'] + df['MemoryPort']
+    df = df[(df.design == 'simple_dual_port')]
+    # print(df)
     design = df['design']
 
     all_datas = [
-        'Storage',
-        'ID',
-        'AG',
-        'Config',
-        'SG',
-        'Ports',
-        'Other',
+        'Storage_total',
+        'ID_total',
+        'AG_total',
+        'Config_total',
+        'SG_total',
+        'Port_total',
+        # 'Other',
     ]
 
     fig, ax = plt.subplots(figsize=(20, 25))
@@ -708,18 +1023,21 @@ def create_stacked_bar_power_summary(data, filename="stacked_bar_chart"):
     bottom = np.zeros(len(design))
     # Stacking the bars
     for category in all_datas:
-        print(df[category])
         p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        # p2 = ax.bar(x + 0.5, df[category], width=0.5, label=category, bottom=bottom, color='None')
+        # ax.bar_label(p, padding=5, fontsize=24, label_type='center')
+        ax.bar_label(p, padding=5, fontsize=24)
         bottom += df[category]
 
     # Adding labels and title
     ax.set_xlabel('Design', fontsize=24)
     ax.set_ylabel('Areas', fontsize=24)
-    ax.set_title('Area Summary - 4 Port dual MemoryPort 2 input 2 output', fontsize=36)
+    ax.set_title('Power Summary - 1 input 1 output 2 memory port (dual port)', fontsize=36)
     ax.set_xticks(x)
     ax.set_xticklabels(design, rotation=45, fontsize=20)
     # Adding legend
     ax.legend(fontsize=20)
+    plt.tight_layout()
     # Save the plot as a PNG file
     outfile = os.path.join(".", "figs", f"{filename}.png")
     plt.savefig(outfile)
@@ -884,7 +1202,7 @@ def get_power_breakdown_dir(directory, run_power):
 def get_power_breakdown_file(file_path):
     print(f"Getting the power at {file_path}")
     all_file_content = get_file_contents(file_path=file_path)
-    print(all_file_content)
+    # print(all_file_content)
     # quit()
 
     # For each category, we want internal, leakage, switching, total
@@ -892,16 +1210,16 @@ def get_power_breakdown_file(file_path):
     if all_file_content is None:
         print(f"No signoff area report for {file_path}")
         return {
-        'total': [0.0, 0.0, 0.0, 0.0, 0,0],
-        'AG': [0.0, 0.0, 0.0, 0.0, 0.0],
-        'SG': [0.0, 0.0, 0.0, 0.0, 0.0],
-        'ID': [0.0, 0.0, 0.0, 0.0, 0.0],
-        'Port': [0.0, 0.0, 0.0, 0.0, 0.0],
-        'Storage': [0.0, 0.0, 0.0, 0.0, 0.0],
-        'Config': [0.0, 0.0, 0.0, 0.0, 0.0],
-        'MemintfDec': [0.0, 0.0, 0.0, 0.0, 0.0],
-        'MemoryPort': [0.0, 0.0, 0.0, 0.0, 0.0]
-    }
+            'total': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'AG': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'SG': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'ID': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'Port': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'Storage': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'Config': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'MemintfDec': [0.0, 0.0, 0.0, 0.0, 0.0],
+            'MemoryPort': [0.0, 0.0, 0.0, 0.0, 0.0]
+        }
 
     top_idx = 0
     for i_, line in enumerate(all_file_content):
@@ -932,21 +1250,22 @@ def get_power_breakdown_file(file_path):
     # Everything should be only 2 spaces in - so delete any line with more spaces
     all_modules = [x for x in rest_of_file if x[0] == ' ' and x[1] == ' ' and x[2] != ' ']
     top_line_breakdown = top_line.strip().split()
-    print(all_modules)
+    # print(all_modules)
     # total_macro = float(top_line_breakdown[-2])
 
-    ag_power = [0.0, 0.0, 0.0, 0.0, 0,0]
-    sg_power = [0.0, 0.0, 0.0, 0.0, 0,0]
-    id_power = [0.0, 0.0, 0.0, 0.0, 0,0]
-    port_power = [0.0, 0.0, 0.0, 0.0, 0,0]
-    storage_power = [0.0, 0.0, 0.0, 0.0, 0,0]
-    config_power = [0.0, 0.0, 0.0, 0.0, 0,0]
-    memintf_dec_power = [0.0, 0.0, 0.0, 0.0, 0,0]
-    memoryport_power = [0.0, 0.0, 0.0, 0.0, 0,0]
+    ag_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    sg_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    id_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    port_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    storage_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    config_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    memintf_dec_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    memoryport_power = [0.0, 0.0, 0.0, 0.0, 0.0]
 
     all_ports = {}
 
     # int, switch, leak, total, percent
+    data_header = ['int', 'switch', 'leak', 'total', 'percent']
     data_idx = [1, 2, 3, 4, 5]
     total_power = [float(top_line_breakdown[x]) for x in data_idx]
     print(f"Design has total power {total_power}")
@@ -961,10 +1280,10 @@ def get_power_breakdown_file(file_path):
 
         # Happens for 0% - just set the line to all 0s
         if 'N/A' in mod:
-            line_data = [0.0, 0.0, 0.0, 0.0, 0,0]
+            line_data = [0.0, 0.0, 0.0, 0.0, 0.0]
         else:
             line_data = [float(mod_tokens[x]) for x in data_idx]
-        print(line_data)
+        # print(line_data)
 
         for _ in ag_match:
             if _ in mod_tokens[match_idx]:
@@ -1030,7 +1349,7 @@ def get_power_breakdown_file(file_path):
 
     config_power = [0.0, 0.0, 0.0, 0.0, 0.0]
     for z_ in range(len(data_idx)):
-        config_power = total_power[z_] - (ag_power[z_] + sg_power[z_] + id_power[z_] + storage_power[z_] + port_power[z_] + memintf_dec_power[z_] + memoryport_power[z_])
+        config_power[z_] = total_power[z_] - (ag_power[z_] + sg_power[z_] + id_power[z_] + storage_power[z_] + port_power[z_] + memintf_dec_power[z_] + memoryport_power[z_])
 
     power_dict = {
         'total': total_power,
@@ -1044,7 +1363,15 @@ def get_power_breakdown_file(file_path):
         'MemoryPort': memoryport_power
     }
 
-    return power_dict
+    # Expand all the names for the data frame usage later
+    final_power_dict = {}
+
+    for component_category, cc_pwr_brkdwn in power_dict.items():
+        for zz_, brkdwn_it in enumerate(cc_pwr_brkdwn):
+            final_power_dict[f"{component_category}_{data_header[zz_]}"] = brkdwn_it
+
+    # return power_dict
+    return final_power_dict
 
 
 def get_area_breakdown_dir(directory):
@@ -1312,7 +1639,7 @@ if __name__ == "__main__":
     parser.add_argument("--collect_override", action="store_true")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--run_builds", action="store_true")
-    parser.add_argument("--collect_power", action="store_true")
+    # parser.add_argument("--collect_power", action="store_true")
     parser.add_argument("--run_power", action="store_true")
     parser.add_argument("--build_dir", type=str, default=None, required=True)
     parser.add_argument("--csv_out", type=str, default=None, required=False)
@@ -1346,7 +1673,7 @@ if __name__ == "__main__":
     figure_name = args.figure_name
     experiment = args.experiment
     run_power = args.run_power
-    collect_power = args.collect_power
+    # collect_power = args.collect_power
 
     spst = args.spst
 
@@ -1397,6 +1724,7 @@ if __name__ == "__main__":
             print(f"Data collection enabled at build dir {pd_build_dir}...")
             # Consists of (summary, [ports])
             all_breakdowns = get_area_breakdown_dir(pd_build_dir)
+            all_breakdowns_power = get_power_breakdown_dir(pd_build_dir, run_power)
             # Now emit this information to excel
             assert collect_data_csv_path is not None
             all_summaries = []
@@ -1427,22 +1755,27 @@ if __name__ == "__main__":
                 create_control_v_capacity(data=all_summaries, filename=figure_name)
             elif experiment == "control_v_runtime":
                 create_control_v_runtime(data=all_summaries, filename=figure_name)
+            elif experiment == "summary_power":
+                print("Creating power summary size...")
+                create_stacked_bar_power_summary(data=all_breakdowns_power, filename=figure_name)
+            elif experiment == "dual_quad_summary_power":
+                create_dual_quad_summary_power(data=all_breakdowns_power, filename=figure_name)
+            # elif experiment == "dual_quad_ports_power":
+                # create_dual_quad_ports_power(data=all_breakdowns, all_port_lists=all_port_lists, filename=figure_name)
+            elif experiment == "fw_sweep_iso_ports_power":
+                create_fw_sweep_iso_ports_power(data=all_breakdowns_power, filename=figure_name)
+            elif experiment == "fw_sweep_grow_ports_power":
+                create_fw_sweep_grow_ports_power(data=all_breakdowns_power, filename=figure_name)
+            elif experiment == "fw_sweep_grow_ports_per_port_power":
+                create_fw_sweep_grow_ports_per_port_power(data=all_breakdowns_power, filename=figure_name)
+            elif experiment == "spst_power":
+                create_spst_power(data=all_breakdowns_power, filename=figure_name)
+            elif experiment == "control_v_capacity_power":
+                create_control_v_capacity_power(data=all_breakdowns_power, filename=figure_name)
+            elif experiment == "control_v_runtime_power":
+                create_control_v_runtime_power(data=all_breakdowns_power, filename=figure_name)
             else:
-                raise NotImplementedError(f"Doesn't support experiment: {experiment}")
-
-        exit()
-
-    if collect_power:
-        all_breakdowns = get_power_breakdown_dir(pd_build_dir, run_power)
-        print("Getting power!")
-        print(all_breakdowns)
-        assert collect_data_csv_path is not None
-        write_area_csv(all_breakdowns, collect_data_csv_path)
-        if experiment == "summary":
-            print("Creating power summary at 8192 size...")
-            create_stacked_bar_power_summary(all_breakdowns, filename=figure_name)
-        else:
-            raise NotImplementedError(f"Doesn't support experiment: {experiment}")
+                raise ValueError(f"Doesn't support experiment: {experiment}")
 
         exit()
 

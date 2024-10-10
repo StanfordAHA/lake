@@ -3,6 +3,7 @@ import random as rand
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from kratos import PortDirection, always_ff, posedge, negedge
 from lake.modules.ready_valid_interface import RVInterface
+from lake.spec.config_memory import ConfigMemory
 from lake.utils.spec_enum import Direction
 
 
@@ -79,17 +80,22 @@ class Component(kratos.Generator):
         use_wire = self._config_memory
 
         if harden_storage:
+
+            harden_config_mem = ConfigMemory(width=self.config_size)
             self._config_memory_harden = self.var("config_memory_harden", self.config_size, packed=True)
             self._config_memory_harden_en = self.input("config_memory_wen", 1)
-            use_wire = self._config_memory_harden
 
-            @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            def hardened_config_flop(self):
-                if ~self._rst_n:
-                    self._config_memory_harden = 0
-                elif self._config_memory_harden_en:
-                    self._config_memory_harden = self._config_memory
-            self.add_code(hardened_config_flop)
+            # Do normal add child...
+            super().add_child(instance_name="config_memory_instance", generator=harden_config_mem,
+                              clk=self._clk,
+                              rst_n=self._rst_n,
+                              flush=kratos.const(0, 1),
+                              config_memory_wen=self._config_memory_harden_en,
+                              config_memory=self._config_memory,
+                              config_memory_out=self._config_memory_harden)
+
+            # Wrap it in a module
+            use_wire = self._config_memory_harden
 
         # Now go through the config space
         for cfg_reg_name, range_tuple in self.cfg_reg_to_range.items():
