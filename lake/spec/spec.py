@@ -554,8 +554,8 @@ class Spec():
 
         kts.verilog(self._final_gen, filename=full_path,
                     optimize_if=False)
-        # print(f"remove flush use in config memory")
-        # self.remove_config_memory_flush(filename=full_path)
+        print(f"remove flush use in config memory")
+        self.remove_config_memory_flush(filename=full_path)
 
         if get_info is True:
             self.get_information(output_dir=output_dir)

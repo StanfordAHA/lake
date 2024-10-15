@@ -21,6 +21,14 @@
 # just normal simple dual port
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
 
+# Simple dual port placeholder...
+# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_LVS_VLOG_FIX_10_14_SPI/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
+# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_LVS_VLOG_FIX_10_14_RTL_SIM/ --physical --design_filter simple_dual_port --storage_capacity 16384
+
+# Amber quad static + rv
+# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_VLOG_FIX/ --physical --design_filter dual_port_wide_fetch_quad_rv --storage_capacity 16384 --run_builds
+# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_VLOG_FIX/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
+
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_VLOG_FIX/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_NO_FIX/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_DONTUSE_FIX/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds

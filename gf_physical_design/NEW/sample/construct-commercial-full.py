@@ -74,12 +74,15 @@ def construct():
   lvs            = Step( 'mentor-calibre-lvs',             default=True )
   debugcalibre   = Step( 'cadence-innovus-debug-calibre',  default=True )
   vcs_sim        = Step( this_dir + '/synopsys-vcs-sim')
+  vcs_sim_rtl        = Step( this_dir + '/synopsys-vcs-sim-rtl')
   power_est      = Step( 'synopsys-pt-power',              default=True )
   formal_verif   = Step( 'synopsys-formality-verification', default=True )
   gen_saif       = Step('synopsys-vcd2saif-convert', default=True)
   pt_power_synth    = Step( this_dir + '/synopsys-ptpx-synth')
   pt_power_gl = Step(this_dir + '/synopsys-ptpx-gl')
 
+  print(f"Extending LVS inputs...")
+  lvs.extend_inputs(['sram.spi'])
 
   #-----------------------------------------------------------------------
   # Modify Nodes
@@ -117,6 +120,7 @@ def construct():
   g.add_step( debugcalibre   )
   g.add_step( testbench      )
   g.add_step( vcs_sim        )
+  g.add_step( vcs_sim_rtl    )
   g.add_step( power_est      )
   g.add_step( verif_post_synth )
   g.add_step( verif_post_layout )
@@ -132,6 +136,7 @@ def construct():
 
   # vcs_sim.extend_inputs(['sram.v', 'design.v'])
   vcs_sim.extend_inputs(['sram.v'])
+  vcs_sim_rtl.extend_inputs(['sram.v'])
 
   pt_power_synth.extend_inputs(['sram_tt.db'])
   pt_power_gl.extend_inputs(['sram_tt.db'])
@@ -216,13 +221,15 @@ def construct():
   g.connect_by_name( lvs,            debugcalibre   )
 
   g.connect_by_name( adk,            vcs_sim        )
+  g.connect_by_name( adk,            vcs_sim_rtl    )
   # g.connect_by_name( signoff,        vcs_sim        )
 
 
   g.connect_by_name( adk,            power_est      )
   g.connect_by_name( signoff,        power_est      )
   g.connect_by_name( vcs_sim,        power_est      )
-  g.connect_by_name( gen_sram,        vcs_sim      )
+  g.connect_by_name( gen_sram,        vcs_sim       )
+  g.connect_by_name( gen_sram,        vcs_sim_rtl   )
 
   g.connect_by_name( gen_sram,      dc          )
   g.connect_by_name( gen_sram,      iflow          )
@@ -255,9 +262,9 @@ def construct():
   # g.connect( dc.o('design.v'), vcs_sim.i('design.v') )
   g.connect_by_name( signoff,        vcs_sim      )
   g.connect_by_name( rtl,        vcs_sim      )
+  g.connect_by_name( rtl,        vcs_sim_rtl  )
   # g.connect( rtl.o('testbench.sv'), vcs_sim.i('testbench.sv') )
   g.connect( signoff.o('design.lvs.v'), verif_post_layout.i('design.impl.v') )
-
 
 
   #-----------------------------------------------------------------------

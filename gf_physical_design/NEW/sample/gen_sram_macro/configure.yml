@@ -16,6 +16,7 @@ outputs:
   - sram_tt.db  # Need this back for power on ptpx
   - sram.gds
   - sram.spi
+  - sram.cdl
 
 parameters:
   # SRAM Families:

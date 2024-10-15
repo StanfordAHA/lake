@@ -1310,10 +1310,13 @@ def read_dump_hw(hw, hex=True):
     return hw_list_final
 
 
-def verify_gold(dir):
+def verify_gold(dir, mflowgen=False):
     # Read in both...
     outdir = os.path.join(dir, "outputs")
-    golddir = os.path.join(dir, "gold")
+    if mflowgen is True:
+        golddir = os.path.join(dir, "inputs", "gold")
+    else:
+        golddir = os.path.join(dir, "gold")
     indir = os.path.join(dir, "inputs")
 
     static = False
