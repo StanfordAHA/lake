@@ -1,4 +1,5 @@
 import kratos
+import kratos as kts
 import random as rand
 from lake.attributes.config_reg_attr import ConfigRegAttr
 from kratos import PortDirection, always_ff, posedge, negedge
@@ -85,9 +86,14 @@ class Component(kratos.Generator):
             self._config_memory_harden = self.var("config_memory_harden", self.config_size, packed=True)
             self._config_memory_harden_en = self.input("config_memory_wen", 1)
 
+            # Clock gate here to the memory...
+            config_mem_clk = self.var("config_mem_clk", 1)
+            self._config_mem_clk = kts.util.clock(config_mem_clk)
+            self.wire(config_mem_clk, kts.util.clock(self._clk & self._config_memory_harden_en))
+
             # Do normal add child...
             super().add_child(instance_name="config_memory_instance", generator=harden_config_mem,
-                              clk=self._clk,
+                              clk=self._config_mem_clk,
                               rst_n=self._rst_n,
                               flush=kratos.const(0, 1),
                               config_memory_wen=self._config_memory_harden_en,

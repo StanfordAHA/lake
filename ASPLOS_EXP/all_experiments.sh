@@ -39,7 +39,7 @@
 # Good cell - SC7P5T_INVX0P5_SSC14R
 # Bad cell - SC7P5T_INVX2_SSC14R
 
-# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_CLK_GATE1/ --physical --design_filter simple_dual_port --storage_capacity 16384
+# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_CLK_GATE/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
 
 
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ALL_SWEEP_9_17 --physical --run_builds
