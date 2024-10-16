@@ -28,6 +28,7 @@
 # Amber quad static + rv
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_VLOG_FIX/ --physical --design_filter dual_port_wide_fetch_quad_rv --storage_capacity 16384 --run_builds
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_VLOG_FIX/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
+# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_LONG_TEST/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
 
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_VLOG_FIX/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_NO_FIX/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
@@ -37,6 +38,8 @@
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ASPLOS_SIMPLE_DUAL_PORT_CONFIG_MEM_NO_FIX_LVS/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
 # Good cell - SC7P5T_INVX0P5_SSC14R
 # Bad cell - SC7P5T_INVX2_SSC14R
+
+# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_CLK_GATE1/ --physical --design_filter simple_dual_port --storage_capacity 16384
 
 
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ALL_SWEEP_9_17 --physical --run_builds
@@ -81,3 +84,8 @@ python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim
 # control v runtime area + power
 python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment control_v_runtime --figure_name control_v_runtime_area
 python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/ASPLOS_SWEEP_9_23/ --csv_out . --experiment control_v_runtime_power --figure_name control_v_runtime_power
+
+# Simple dual port, quad port power comparison
+python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/DUAL_PORT_POWER_CLEAN_10_14/ --csv_out . --experiment dual_port_power --figure_name dual_port_power
+python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_POWER/ --csv_out . --experiment dual_port_power --figure_name quad_port_power
+

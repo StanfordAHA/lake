@@ -13,6 +13,128 @@ import numpy as np
 matplotlib.rc('xtick', labelsize=20)
 matplotlib.rc('ytick', labelsize=20)
 
+
+def create_dual_port_power_summary(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+    print(df)
+
+    design = df['design']
+
+    all_datas = [
+        'memory_total',
+        'clock_network_total',
+        'register_total',
+        'combinational_total',
+        'sequential_total',
+        # 'Port_total',
+        # 'Other_total',
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+    x = np.arange(len(design))
+    bottom = np.zeros(len(design))
+    # Stacking the bars
+    for category in all_datas:
+        p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        ax.bar_label(p, padding=2, fontsize=16)
+        bottom += df[category]
+
+    # Adding labels and title
+    ax.set_xlabel('Design', fontsize=24)
+    ax.set_ylabel('Power', fontsize=24)
+    ax.set_title('Power Summary - Dual Port (Static + RV)', fontsize=36)
+    ax.set_xticks(x)
+    ax.set_xticklabels(design, rotation=45, fontsize=20)
+    # Adding legend
+    ax.legend(fontsize=20)
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
+def create_dual_port_power_summary_pct(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+    print(df)
+
+    design = df['design']
+
+    all_datas = [
+        'memory_percent',
+        'clock_network_percent',
+        'register_percent',
+        'combinational_percent',
+        'sequential_percent',
+        # 'Port_total',
+        # 'Other_total',
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+    x = np.arange(len(design))
+    bottom = np.zeros(len(design))
+    # Stacking the bars
+    for category in all_datas:
+        p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        ax.bar_label(p, padding=2, fontsize=16)
+        bottom += df[category]
+
+    # Adding labels and title
+    ax.set_xlabel('Design', fontsize=24)
+    ax.set_ylabel('Power', fontsize=24)
+    ax.set_title('Power Summary - Dual Port (Static + RV)', fontsize=36)
+    ax.set_xticks(x)
+    ax.set_xticklabels(design, rotation=45, fontsize=20)
+    # Adding legend
+    ax.legend(fontsize=20)
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
+def create_dual_port_power(data, filename="stacked_bar_chart"):
+    # Create dataframe from dicts...
+    df = pd.DataFrame(data=data)
+
+    # Filter to capacity 8192
+    # df = df[(df.design == 'dual_port_wide_fetch_quad') | (df.design == 'dual_port_wide_fetch_quad_rv')]
+    df = df.sort_values('capacity')
+
+    design = df['design']
+
+    all_datas = [
+        'Storage_total',
+        'ID_total',
+        'AG_total',
+        'Config_total',
+        'SG_total',
+        'Port_total',
+        'MemintfDec_total',
+        'MemoryPort_total',
+        'Other_total',
+    ]
+
+    fig, ax = plt.subplots(figsize=(20, 25))
+    x = np.arange(len(design))
+    bottom = np.zeros(len(design))
+    # Stacking the bars
+    for category in all_datas:
+        p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        bottom += df[category]
+
+    # Adding labels and title
+    ax.set_xlabel('Design', fontsize=24)
+    ax.set_ylabel('Power', fontsize=24)
+    ax.set_title('Power Summary - Dual Port (Static + RV)', fontsize=36)
+    ax.set_xticks(x)
+    ax.set_xticklabels(design, rotation=45, fontsize=20)
+    # Adding legend
+    ax.legend(fontsize=20)
+    # Save the plot as a PNG file
+    outfile = os.path.join(".", "figs", f"{filename}.png")
+    plt.savefig(outfile)
+
+
 def create_spst_power(data, filename="stacked_bar_chart"):
     # Create dataframe from dicts...
     df = pd.DataFrame(data=data)
@@ -1120,7 +1242,7 @@ def write_area_csv(area_breakdowns, fp):
 
 def write_power_csv(power_breakdowns, fp):
     assert len(power_breakdowns) > 0
-    fp_use = "./area_breakdown.csv"
+    fp_use = "./power_breakdown.csv"
     with open(fp_use, 'w') as f_use:
         f_use.write(','.join(power_breakdowns[0].keys()))
         f_use.write('\n')
@@ -1152,11 +1274,14 @@ def get_power_breakdown_dir(directory, run_power):
             if run_power:
                 subprocess.run(["make", "28"], cwd=design_point_path)
 
+            ptpx_step = find_step(design_point_path, 'synopsys-ptpx-gl')
+            print(f"Found ptpx step: {ptpx_step}")
+
             man_info = get_manifest_info(design_point_path)
-            relative_power_file_hier = os.path.join("28-synopsys-ptpx-gl",
+            relative_power_file_hier = os.path.join(ptpx_step,
                                                     "reports",
                                                     "lakespec.power.hier.rpt")
-            relative_power_file = os.path.join("28-synopsys-ptpx-gl",
+            relative_power_file = os.path.join(ptpx_step,
                                                "reports",
                                                "lakespec.power.rpt")
 
@@ -1177,6 +1302,8 @@ def get_power_breakdown_dir(directory, run_power):
             # print(num_cfg_bits)
 
             power_breakdown = get_power_breakdown_file(file_path=full_power_file_hier)
+            # This is a dict, need to add in the design
+            power_breakdown_summary = get_power_breakdown_summary_file(file_path=full_power_file)
             # power_breakdown, ports_bds = get_power_breakdown_file(file_path=full_power_file_hier)
             if man_info is not None:
                 # Copy over the keys for the csv
@@ -1184,6 +1311,13 @@ def get_power_breakdown_dir(directory, run_power):
                     power_breakdown[k] = v
             else:
                 power_breakdown['design'] = f"{design}_{design_point}"
+
+            if power_breakdown_summary is not None:
+                # Copy over the summary as well...
+                for k, v in power_breakdown_summary.items():
+                    power_breakdown[k] = v
+
+            print(power_breakdown)
 
             if other_info is not None:
                 # Copy over the keys for the csv
@@ -1196,7 +1330,53 @@ def get_power_breakdown_dir(directory, run_power):
             # Now we have the parameter info and the area breakdown...add to list
             # all_power_breakdowns.append((power_breakdown, ports_bds))
             all_power_breakdowns.append(power_breakdown)
+
     return all_power_breakdowns
+
+
+def get_power_breakdown_summary_file(file_path):
+    print(f"Getting the power SUMMARY at {file_path}")
+    all_file_content = get_file_contents(file_path=file_path)
+    all_power_cats = ['clock_network',
+                      'register',
+                      'combinational',
+                      'sequential',
+                      'memory',
+                      'io_pad',
+                      'black_box']
+
+    # First clip until Power Group is found
+    top_idx = 0
+    for i_, line in enumerate(all_file_content):
+        if line.startswith('Power Group'):
+            top_idx = i_ + 2
+            break
+
+    col_labels = ['Power Group', 'Internal Power', 'Switching Power', 'Leakage Power', 'Total Power', '%']
+
+    power_types = ['int', 'switch', 'leak', 'total', 'percent']
+
+    all_summaries = {}
+
+    num_cats = len(all_power_cats)
+    for i in range(num_cats):
+        line_to_use = all_file_content[i + top_idx]
+        line_tokenized = line_to_use.strip().split()
+        percent_token = None
+        for token in line_tokenized:
+            if '%' in token:
+                percent_token = token
+        assert percent_token is not None
+        percent_strip = percent_token
+        percent_strip = percent_strip.strip("()%")
+
+        tmp_powers = [float(line_tokenized[1]), float(line_tokenized[2]), float(line_tokenized[3]), float(line_tokenized[4]), float(percent_strip)]
+
+        for j in range(len(power_types)):
+            # Here we need to expand the set of columns
+            all_summaries[f"{all_power_cats[i]}_{power_types[j]}"] = tmp_powers[j]
+
+    return all_summaries
 
 
 def get_power_breakdown_file(file_path):
@@ -1208,7 +1388,7 @@ def get_power_breakdown_file(file_path):
     # For each category, we want internal, leakage, switching, total
 
     if all_file_content is None:
-        print(f"No signoff area report for {file_path}")
+        print(f"No signoff power report for {file_path}")
         return {
             'total': [0.0, 0.0, 0.0, 0.0, 0.0],
             'AG': [0.0, 0.0, 0.0, 0.0, 0.0],
@@ -1247,6 +1427,7 @@ def get_power_breakdown_file(file_path):
     storage_match = ['storage',]
     memintfdec_match = ['memintfdec_inst_',]
     memoryport_match = ['memoryport_',]
+    config_match = ['config_memory_instance']
     # Everything should be only 2 spaces in - so delete any line with more spaces
     all_modules = [x for x in rest_of_file if x[0] == ' ' and x[1] == ' ' and x[2] != ' ']
     top_line_breakdown = top_line.strip().split()
@@ -1261,6 +1442,7 @@ def get_power_breakdown_file(file_path):
     config_power = [0.0, 0.0, 0.0, 0.0, 0.0]
     memintf_dec_power = [0.0, 0.0, 0.0, 0.0, 0.0]
     memoryport_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    config_power = [0.0, 0.0, 0.0, 0.0, 0.0]
 
     all_ports = {}
 
@@ -1290,6 +1472,11 @@ def get_power_breakdown_file(file_path):
                 num_matches += 1
                 for z_ in range(len(data_idx)):
                     ag_power[z_] += line_data[z_]
+        for _ in config_match:
+            if _ in mod_tokens[match_idx]:
+                num_matches += 1
+                for z_ in range(len(data_idx)):
+                    config_power[z_] += line_data[z_]
         for _ in sg_match:
             if _ in mod_tokens[match_idx]:
                 num_matches += 1
@@ -1347,9 +1534,9 @@ def get_power_breakdown_file(file_path):
 
         assert num_matches <= 1, f"Line ({mod}) matched too many items...{num_matches}"
 
-    config_power = [0.0, 0.0, 0.0, 0.0, 0.0]
+    other_power = [0.0, 0.0, 0.0, 0.0, 0.0]
     for z_ in range(len(data_idx)):
-        config_power[z_] = total_power[z_] - (ag_power[z_] + sg_power[z_] + id_power[z_] + storage_power[z_] + port_power[z_] + memintf_dec_power[z_] + memoryport_power[z_])
+        other_power[z_] = total_power[z_] - (ag_power[z_] + sg_power[z_] + id_power[z_] + storage_power[z_] + port_power[z_] + memintf_dec_power[z_] + memoryport_power[z_] + config_power[z_])
 
     power_dict = {
         'total': total_power,
@@ -1360,7 +1547,8 @@ def get_power_breakdown_file(file_path):
         'Storage': storage_power,
         'Config': config_power,
         'MemintfDec': memintf_dec_power,
-        'MemoryPort': memoryport_power
+        'MemoryPort': memoryport_power,
+        'Other': other_power
     }
 
     # Expand all the names for the data frame usage later
@@ -1374,6 +1562,17 @@ def get_power_breakdown_file(file_path):
     return final_power_dict
 
 
+def find_step(design_dir, step):
+
+    all_steps = os.listdir(design_dir)
+    print(f"Showing all steps...")
+    print(all_steps)
+    match_steps = [s for s in all_steps if step in s]
+    print(match_steps)
+    assert len(match_steps) == 1
+    return match_steps[0]
+
+
 def get_area_breakdown_dir(directory):
     # First get all designs
     all_designs = os.listdir(directory)
@@ -1384,7 +1583,10 @@ def get_area_breakdown_dir(directory):
         for design_point in design_points:
             design_point_path = os.path.join(design_path, design_point)
             man_info = get_manifest_info(design_point_path)
-            relative_area_file = os.path.join("17-cadence-innovus-signoff",
+
+            signoff_step  = find_step(design_point_path, 'cadence-innovus-signoff')
+            print(f"Found signoff step: {signoff_step}")
+            relative_area_file = os.path.join(signoff_step,
                                               "reports",
                                               "signoff.area.rpt")
 
@@ -1729,9 +1931,15 @@ if __name__ == "__main__":
             assert collect_data_csv_path is not None
             all_summaries = []
             all_port_lists = []
+            all_power = []
+            # all_power_summary = []
             for summary_bd, port_db_list in all_breakdowns:
                 all_summaries.append(summary_bd)
                 all_port_lists.append(port_db_list)
+
+            for power in all_breakdowns_power:
+                all_power.append(power)
+                # all_power_summary.append(power_summary)
             write_area_csv(all_summaries, collect_data_csv_path)
             # Do different experiments here...
             if experiment == "summary":
@@ -1757,23 +1965,28 @@ if __name__ == "__main__":
                 create_control_v_runtime(data=all_summaries, filename=figure_name)
             elif experiment == "summary_power":
                 print("Creating power summary size...")
-                create_stacked_bar_power_summary(data=all_breakdowns_power, filename=figure_name)
+                create_stacked_bar_power_summary(data=all_power, filename=figure_name)
+            elif experiment == "dual_port_power":
+                print("Creating power summary size...")
+                create_dual_port_power(data=all_power, filename=figure_name)
+                create_dual_port_power_summary(data=all_power, filename=f"{figure_name}_summary")
+                create_dual_port_power_summary_pct(data=all_power, filename=f"{figure_name}_summary_pct")
             elif experiment == "dual_quad_summary_power":
-                create_dual_quad_summary_power(data=all_breakdowns_power, filename=figure_name)
+                create_dual_quad_summary_power(data=all_power, filename=figure_name)
             # elif experiment == "dual_quad_ports_power":
                 # create_dual_quad_ports_power(data=all_breakdowns, all_port_lists=all_port_lists, filename=figure_name)
             elif experiment == "fw_sweep_iso_ports_power":
-                create_fw_sweep_iso_ports_power(data=all_breakdowns_power, filename=figure_name)
+                create_fw_sweep_iso_ports_power(data=all_power, filename=figure_name)
             elif experiment == "fw_sweep_grow_ports_power":
-                create_fw_sweep_grow_ports_power(data=all_breakdowns_power, filename=figure_name)
+                create_fw_sweep_grow_ports_power(data=all_power, filename=figure_name)
             elif experiment == "fw_sweep_grow_ports_per_port_power":
-                create_fw_sweep_grow_ports_per_port_power(data=all_breakdowns_power, filename=figure_name)
+                create_fw_sweep_grow_ports_per_port_power(data=all_power, filename=figure_name)
             elif experiment == "spst_power":
-                create_spst_power(data=all_breakdowns_power, filename=figure_name)
+                create_spst_power(data=all_power, filename=figure_name)
             elif experiment == "control_v_capacity_power":
-                create_control_v_capacity_power(data=all_breakdowns_power, filename=figure_name)
+                create_control_v_capacity_power(data=all_power, filename=figure_name)
             elif experiment == "control_v_runtime_power":
-                create_control_v_runtime_power(data=all_breakdowns_power, filename=figure_name)
+                create_control_v_runtime_power(data=all_power, filename=figure_name)
             else:
                 raise ValueError(f"Doesn't support experiment: {experiment}")
 
@@ -1936,7 +2149,7 @@ if __name__ == "__main__":
                     print(f"Starting build at {pd_build_path}")
                     # execute_str = ["source", make_script]
                     # execute_str = ["make", "6", "&&", "make", "-t", "6", "&&", "make", "17"]
-                    execute_str = "make 6; make -t 6; make 17; make 28;"
+                    execute_str = "make 6; make -t 6; make 18; make 29; make -t 29"
                     newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path, shell=True)
                     all_procs.append(newp)
 

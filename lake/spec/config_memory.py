@@ -5,6 +5,7 @@ from kratos import PortDirection, always_ff, posedge, negedge
 from lake.modules.ready_valid_interface import RVInterface
 from lake.utils.spec_enum import Direction
 
+
 class ConfigMemory(kratos.Generator):
 
     """

@@ -117,12 +117,14 @@ def get_linear_test():
     war_constraint_vec_w = (pw_vec_w, pw_war_idx_vec_w, pr_vec_w,
                             pr_war_idx_vec_w, war_comp_vec_w, war_scalar_vec_w)
 
+    length_scale = 32
+
     linear_test[0] = {
         'type': Direction.IN,
         'name': 'port_w0',
         'config': {
             'dimensionality': 1,
-            'extents': [32],
+            'extents': [32 * length_scale],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -134,7 +136,7 @@ def get_linear_test():
         },
         'vec_in_config': {
             'dimensionality': 2,
-            'extents': [2, 32],
+            'extents': [2, 32 * length_scale],
             'address': {
                 'strides': [1, 2],
                 'offset': 0
@@ -146,7 +148,7 @@ def get_linear_test():
         },
         'vec_out_config': {
             'dimensionality': 1,
-            'extents': [32],
+            'extents': [32 * length_scale],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -181,7 +183,7 @@ def get_linear_test():
         'name': 'port_r0',
         'config': {
             'dimensionality': 1,
-            'extents': [32],
+            'extents': [32 * length_scale],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -193,7 +195,7 @@ def get_linear_test():
         },
         'vec_in_config': {
             'dimensionality': 1,
-            'extents': [32],
+            'extents': [32 * length_scale],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -205,7 +207,7 @@ def get_linear_test():
         },
         'vec_out_config': {
             'dimensionality': 2,
-            'extents': [2, 32],
+            'extents': [2, 32 * length_scale],
             'address': {
                 'strides': [1, 2],
                 'offset': 0
