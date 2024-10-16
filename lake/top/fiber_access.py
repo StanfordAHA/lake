@@ -483,8 +483,6 @@ class FiberAccess(MemoryController):
 
     def get_bitstream(self, config_kwargs):
 
-        print("IN FLAVOR TOWN!!!")
-
         assert 'flavor' in config_kwargs
         flavor = config_kwargs['flavor']
         vr_mode = config_kwargs['vr_mode']
