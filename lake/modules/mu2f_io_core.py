@@ -18,7 +18,7 @@ class IOCore_mu2f(Generator):
                  tile_array_data_width=17,
                  num_ios=2,
                  fifo_depth=2,
-                 allow_bypass=True,
+                 allow_bypass=False,
                  use_almost_full=False,
                  add_flush=False,
                  add_clk_en=True):
@@ -33,6 +33,8 @@ class IOCore_mu2f(Generator):
         self.fifo_name_suffix = "_mu2f_iocore_nof"
         self.use_almost_full = use_almost_full
 
+        self.total_sets = 0
+
         # inputs
         self._clk = self.clock("clk")
         self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
@@ -42,7 +44,7 @@ class IOCore_mu2f(Generator):
 
         # Enable/Disable tile
         self._tile_en = self.input("tile_en", 1)
-        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
+        self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate. MU active controls this too."))
 
         if self.allow_bypass:
             self._dense_bypass = self.input("dense_bypass", 1)
@@ -55,22 +57,29 @@ class IOCore_mu2f(Generator):
         
         mu_data_width = matrix_unit_data_width
 
-        for io_num in range(num_ios):
+        # Valid in from matrix unit 
+        tmp_mu2io_v = self.input(f"mu2io_{mu_data_width}_valid", 1)
+        tmp_mu2io_v.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-            tmp_mu2io = self.input(f"mu2io_{mu_data_width}_{io_num}", mu_data_width, packed=True)
-            tmp_mu2io.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+      
+
+        for io_num in range(num_ios):
+            # Ready out to matrix unit 
             tmp_mu2io_r = self.output(f"mu2io_{mu_data_width}_{io_num}_ready", 1)
             tmp_mu2io_r.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-            tmp_mu2io_v = self.input(f"mu2io_{mu_data_width}_{io_num}_valid", 1)
-            tmp_mu2io_v.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-            tmp_io2f = self.output(f"io2f_{tile_array_data_width}_{io_num}", tile_array_data_width, packed=True)
-            tmp_io2f.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+            # R-V interface with fabric 
             tmp_io2f_r = self.input(f"io2f_{tile_array_data_width}_{io_num}_ready", 1)
             tmp_io2f_r.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
             tmp_io2f_v = self.output(f"io2f_{tile_array_data_width}_{io_num}_valid", 1)
             tmp_io2f_v.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
+            tmp_mu2io = self.input(f"mu2io_{mu_data_width}_{io_num}", mu_data_width, packed=True)
+            tmp_mu2io.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        
+            tmp_io2f = self.output(f"io2f_{tile_array_data_width}_{io_num}", tile_array_data_width, packed=True)
+            tmp_io2f.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+      
             # mu2io -> io2f fifo
             mu2io_2_io2f_fifo = RegFIFO(data_width=tile_array_data_width,
                                             width_mult=1,
@@ -88,12 +97,21 @@ class IOCore_mu2f(Generator):
 
             
             
-            self.wire(mu2io_2_io2f_fifo.ports.data_in, kts.concat(kts.const(0, 1), tmp_mu2io))
+            mu_tile_array_datawidth_difference = tile_array_data_width - mu_data_width
+            assert mu_tile_array_datawidth_difference >=0, "Error: Matrix unit bus cannot drive CGRA bus because MU datawidth > CGRA datawidth"
 
+            # Append 0s at MSBs if CGRA bitwidth exceeds Matrix unit bitwidth
+            if mu_tile_array_datawidth_difference > 0: 
+                self.wire(mu2io_2_io2f_fifo.ports.data_in, kts.concat(kts.const(0, mu_tile_array_datawidth_difference), tmp_mu2io))
+            else:
+                self.wire(mu2io_2_io2f_fifo.ports.data_in, tmp_mu2io)
+
+            # If tile_en (matrix unit inactive) false, send 0 to fabric.
+            # If dense bypass, send data straight through, bypassing FIFOs
             if self.allow_bypass:
-                self.wire(tmp_io2f, kts.ternary(self._dense_bypass,
+                self.wire(tmp_io2f, kts.ternary(self._tile_en, kts.const(0, tile_array_data_width), kts.ternary(self._dense_bypass,
                                                 tmp_mu2io,
-                                                mu2io_2_io2f_fifo.ports.data_out))
+                                                mu2io_2_io2f_fifo.ports.data_out)))
 
                 if self.use_almost_full:
                     self.wire(tmp_mu2io_r, kts.ternary(self._dense_bypass,
@@ -104,17 +122,16 @@ class IOCore_mu2f(Generator):
                                                         tmp_io2f_r,
                                                         ~mu2io_2_io2f_fifo.ports.full))
 
-                # self.wire(tmp_io2f_v, ~mu2io_2_io2f_fifo.ports.empty)
-                self.wire(tmp_io2f_v, kts.ternary(self._dense_bypass,
+                self.wire(tmp_io2f_v, kts.ternary(self._tile_en, kts.const(0, 1), kts.ternary(self._dense_bypass,
                                                     tmp_mu2io_v,
-                                                    ~mu2io_2_io2f_fifo.ports.empty))
+                                                    ~mu2io_2_io2f_fifo.ports.empty)))
             else:
-                self.wire(tmp_io2f, mu2io_2_io2f_fifo.ports.data_out)
+                self.wire(tmp_io2f, kts.ternary(self._tile_en, kts.const(0, tile_array_data_width), mu2io_2_io2f_fifo.ports.data_out))
                 if self.use_almost_full:
                     self.wire(tmp_mu2io_r, ~mu2io_2_io2f_fifo.ports.almost_full)
                 else:
                     self.wire(tmp_mu2io_r, ~mu2io_2_io2f_fifo.ports.full)
-                self.wire(tmp_io2f_v, ~mu2io_2_io2f_fifo.ports.empty)
+                self.wire(tmp_io2f_v, kts.ternary(self._tile_en, kts.const(0, 1), ~mu2io_2_io2f_fifo.ports.empty))
 
         if self.add_clk_enable:
             kts.passes.auto_insert_clock_enable(self.internal_generator)
