@@ -508,7 +508,8 @@ class Spec():
 
         # self.lift_config_regs()
         print("building spec cfg memory input")
-        self._final_gen._assemble_cfg_memory_input(harden_storage=True)
+        # Can also choose to clock gate the config memory...
+        self._final_gen._assemble_cfg_memory_input(harden_storage=True, clkgate=self.clk_gate)
         self.add_flush()
         # Optionally add clock gate automatically
         # if self.clk_gate:
@@ -533,8 +534,6 @@ class Spec():
         with open(filename, 'r') as f_:
             all_contents = f_.readlines()
 
-        print(all_contents)
-
         at_cfg_mod = False
         for idx, line in enumerate(all_contents):
 
@@ -550,14 +549,14 @@ class Spec():
         with open(filename, 'w+') as f_:
             f_.writelines(all_contents)
 
-    def get_verilog(self, output_dir, get_info=True):
-        # kts.verilog(self._final_gen, filename=f"{self._name}.sv",
+    def get_verilog(self, output_dir, get_info=True, verbose=False):
         fn_ = f"{self._name}.sv"
         full_path = os.path.join(output_dir, fn_)
 
         kts.verilog(self._final_gen, filename=full_path,
                     optimize_if=False)
-        print(f"remove flush use in config memory")
+        if verbose:
+            print(f"remove flush use in config memory")
         self.remove_config_memory_flush(filename=full_path)
 
         if get_info is True:
@@ -792,7 +791,6 @@ class Spec():
             print("Showing all child bases...")
             print(self._final_gen.child_cfg_bases)
         node_config_base = self._final_gen.child_cfg_bases[node]
-        # print(node_config_base)
         for reg_bound, value in bs:
             upper, lower = reg_bound
             if verbose:

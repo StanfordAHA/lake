@@ -67,7 +67,7 @@ class Component(kratos.Generator):
     def populate_child_cfg_bases(self):
         pass
 
-    def _assemble_cfg_memory_input(self, harden_storage=False):
+    def _assemble_cfg_memory_input(self, harden_storage=False, clkgate=False):
         # So this should be called at the end of a gen_hardware.
         # this will set the config_space_fixed as well
         # Calling this means the hardware consutrction for this Component and any children is
@@ -86,10 +86,16 @@ class Component(kratos.Generator):
             self._config_memory_harden = self.var("config_memory_harden", self.config_size, packed=True)
             self._config_memory_harden_en = self.input("config_memory_wen", 1)
 
-            # Clock gate here to the memory...
-            config_mem_clk = self.var("config_mem_clk", 1)
-            self._config_mem_clk = kts.util.clock(config_mem_clk)
-            self.wire(config_mem_clk, kts.util.clock(self._clk & self._config_memory_harden_en))
+            if clkgate:
+                # Clock gate here to the memory...
+                print("Gating config memory clock...")
+                config_mem_clk = self.var("config_mem_clk", 1)
+                self._config_mem_clk = kts.util.clock(config_mem_clk)
+                self.wire(config_mem_clk, kts.util.clock(self._clk & self._config_memory_harden_en))
+
+            else:
+                print("Not gating config memory clock...")
+                self._config_mem_clk = self._clk
 
             # Do normal add child...
             super().add_child(instance_name="config_memory_instance", generator=harden_config_mem,

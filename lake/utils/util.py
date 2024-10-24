@@ -1020,7 +1020,7 @@ def generate_affine_sequence(dimensionality, extents, strides, offset):
     return final_seq
 
 
-def calculate_read_out_vec(schedule, vec=4):
+def calculate_read_out_vec(schedule, vec=4, mem_depth=2048):
     '''Handle vectorized - three phases
     '''
     # Phase one - calculate all inputs to SIPO
@@ -1066,7 +1066,7 @@ def calculate_read_out_vec(schedule, vec=4):
 
     # Now that we have these, we just need to feed the normal schedule, except we need
     # to send this data instead
-    mid_result = calculate_read_out(schedule=schedule, vec=(vec, vec), data_in=sipo_outs_data, sanitize=False)
+    mid_result = calculate_read_out(schedule=schedule, vec=(vec, vec), data_in=sipo_outs_data, sanitize=False, mem_depth=mem_depth)
     mid_result_data = {}
     for pnum, info in mid_result.items():
         mid_result_data[pnum] = info['data']
@@ -1112,12 +1112,12 @@ def calculate_read_out_vec(schedule, vec=4):
     return piso_outs
 
 
-def calculate_read_out(schedule, vec=(1, 1), data_in=None, sanitize=True):
+def calculate_read_out(schedule, vec=(1, 1), data_in=None, sanitize=True, mem_depth=2048):
     '''Use this function to create a list of
         (data, timestamp)
     '''
     # Start with two port
-    memory = [0 for i in range(2048)]
+    memory = [0 for i in range(mem_depth)]
 
     data_ins = {}
     data_outs = {}

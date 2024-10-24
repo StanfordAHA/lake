@@ -31,6 +31,10 @@ def create_dual_port_power_summary(data, filename="stacked_bar_chart"):
         # 'Other_total',
     ]
 
+    clock_df = df[['design', 'clock_network_total']]
+    print("clock df...")
+    print(clock_df)
+
     fig, ax = plt.subplots(figsize=(20, 25))
     x = np.arange(len(design))
     bottom = np.zeros(len(design))
@@ -120,6 +124,7 @@ def create_dual_port_power(data, filename="stacked_bar_chart"):
     # Stacking the bars
     for category in all_datas:
         p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        ax.bar_label(p, padding=2, fontsize=24)
         bottom += df[category]
 
     # Adding labels and title
@@ -161,6 +166,7 @@ def create_spst_power(data, filename="stacked_bar_chart"):
     # Stacking the bars
     for category in all_categories:
         p = ax.bar(x, df[category], width=0.5, label=category, bottom=bottom)
+        ax.bar_label(p, padding=2, fontsize=16)
         bottom += df[category]
 
     # Adding labels and title

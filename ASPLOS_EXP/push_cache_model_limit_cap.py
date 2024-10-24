@@ -219,6 +219,8 @@ class MainMemoryModel():
                     to_push_pop_q = False
 
         # If there was a read last cycle, need to push the data into the WCB
+        # --- In the capacity-limited version, this is actually not true. This just means that we had a read, so there
+        # will be data on the output register of the SRAM
         if read_last_cycle_tmp:
             # self.wcb.append(self.data_array[last_read_addr_tmp * self.fw: last_read_addr_tmp * self.fw + self.fw])
             self.wcb.append(self.data_array[(last_read_addr_tmp >> self.fw_log_2) * self.fw: (last_read_addr_tmp >> self.fw_log_2) * self.fw + self.fw])
