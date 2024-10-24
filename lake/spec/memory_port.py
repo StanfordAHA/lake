@@ -35,13 +35,20 @@ class MemoryPort(Component):
         self.port_interface_set = False
 
     def __str__(self):
-        conn_str = ""
-        for (name, conn) in self._port_intf.items():
-            if conn is None:
-                conn_str += f"conn: {name}, DISCONNECTED\n"
-            else:
-                conn_str += f"conn: {name}, {conn.name}\n"
-        return f"Port: Type: {self.get_type()}, conns:\n{conn_str}"
+        type_str = 'Read'
+        if self.mptype == MemoryPortType.WRITE:
+            type_str = 'Write'
+        elif self.mptype == MemoryPortType.READWRITE:
+            type_str = 'ReadWrite'
+
+        return f"MemoryPort: {type_str}"
+    #     conn_str = ""
+    #     for (name, conn) in self._port_intf.items():
+    #         if conn is None:
+    #             conn_str += f"conn: {name}, DISCONNECTED\n"
+    #         else:
+    #             conn_str += f"conn: {name}, {conn.name}\n"
+    #     return f"Port: Type: {self.get_type()}, conns:\n{conn_str}"
 
     def set_num_addrs(self, num_addrs):
         self.num_addrs = num_addrs

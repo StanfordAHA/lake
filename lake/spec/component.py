@@ -283,6 +283,9 @@ class Component(kratos.Generator):
     def get_config_size(self):
         return self.config_size
 
+    def __str__(self):
+        return self.__class__.__name__
+
     # def get_liftable_ports(self):
     #     '''
     #     Use this method to return all other ports that can be safely lifted

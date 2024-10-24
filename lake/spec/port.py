@@ -39,6 +39,12 @@ class Port(Component):
         self._internal_step = None
         self._rv_comp_nw = None
 
+    def __str__(self):
+        type_str = "Write"
+        if self._direction == Direction.OUT:
+            type_str = "Read"
+        return f"Port: {type_str}"
+
     def set_dimensionality(self, dim):
         self.dimensionality = dim
 

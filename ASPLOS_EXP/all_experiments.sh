@@ -111,3 +111,11 @@ python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim
 
 # All ports
 python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_POWER_ALL_PORTS_RV/ --csv_out . --experiment dual_port_power --figure_name allports_power
+
+cd $LAKE_TOP
+python MICRO24_WS/demo_driver.py --outdir LAKE_TEST --verilog --visualize
+
+cd LAKE_TEST
+# optionally set WAVEFORM
+export WAVEFORM=1
+make sim

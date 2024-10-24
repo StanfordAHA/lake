@@ -16,7 +16,7 @@ module tb;
 `endif
 
     parameter BITSTREAM_MAX_SIZE = 4096;
-    parameter MAX_DATA_SIZE = 512;
+    parameter MAX_DATA_SIZE = 4096;
 
     integer static_value = 1;
     logic clk;

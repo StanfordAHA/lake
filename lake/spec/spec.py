@@ -108,9 +108,11 @@ class Spec():
                 self._memport_map[node_] = []
             self._memport_map[node_].append(node_other)
 
-    def visualize_graph(self) -> None:
-        nx.draw(self._hw_graph, with_labels=False, font_weight='bold')
-        plt.savefig('graph_mek.png', dpi=300)
+    def visualize_graph(self, gname="spec", outdir=".") -> None:
+        plt.figure(figsize=(8, 8))
+        nx.draw(self._hw_graph, with_labels=True, font_weight='bold')
+        outpath = os.path.join(outdir, f"{gname}.png")
+        plt.savefig(outpath, dpi=300)
 
     def get_nodes(self, node_type) -> list:
         ret_list = list()
