@@ -119,3 +119,9 @@ cd LAKE_TEST
 # optionally set WAVEFORM
 export WAVEFORM=1
 make sim
+
+# Dual port, quad port w/ clk gate
+python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/DUAL_PORT_NO_CG_10_23/ --csv_out . --experiment dual_port_power --figure_name dp_no_cg_10_23
+python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/DUAL_PORT_CG_10_23/ --csv_out . --experiment dual_port_power --figure_name dp_yes_cg_10_23
+python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_NO_CG_10_23/ --csv_out . --experiment dual_port_power --figure_name qp_no_cg_10_23
+python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_CG_10_23/ --csv_out . --experiment dual_port_power --figure_name qp_yes_cg_10_23
