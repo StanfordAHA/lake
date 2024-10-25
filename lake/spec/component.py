@@ -67,7 +67,7 @@ class Component(kratos.Generator):
     def populate_child_cfg_bases(self):
         pass
 
-    def _assemble_cfg_memory_input(self, harden_storage=False, clkgate=False):
+    def _assemble_cfg_memory_input(self, harden_storage=False, clkgate=False, config_passthru=False):
         # So this should be called at the end of a gen_hardware.
         # this will set the config_space_fixed as well
         # Calling this means the hardware consutrction for this Component and any children is
@@ -80,7 +80,7 @@ class Component(kratos.Generator):
         self._config_memory = self.input("config_memory", self.config_size, packed=True)
         use_wire = self._config_memory
 
-        if harden_storage:
+        if harden_storage is True and config_passthru is False:
 
             harden_config_mem = ConfigMemory(width=self.config_size)
             self._config_memory_harden = self.var("config_memory_harden", self.config_size, packed=True)
@@ -99,12 +99,12 @@ class Component(kratos.Generator):
 
             # Do normal add child...
             super().add_child(instance_name="config_memory_instance", generator=harden_config_mem,
-                              clk=self._config_mem_clk,
-                              rst_n=self._rst_n,
-                              flush=kratos.const(0, 1),
-                              config_memory_wen=self._config_memory_harden_en,
-                              config_memory=self._config_memory,
-                              config_memory_out=self._config_memory_harden)
+                            clk=self._config_mem_clk,
+                            rst_n=self._rst_n,
+                            flush=kratos.const(0, 1),
+                            config_memory_wen=self._config_memory_harden_en,
+                            config_memory=self._config_memory,
+                            config_memory_out=self._config_memory_harden)
 
             # Wrap it in a module
             use_wire = self._config_memory_harden

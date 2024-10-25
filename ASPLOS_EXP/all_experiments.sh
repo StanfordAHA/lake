@@ -53,6 +53,10 @@
 
 # # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_POWER_ALL_PORTS_RV/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
 
+# Testing removing the config register entirely...
+# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_WO_HARD_CFG_REG/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
+# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_WO_HARD_CFG_REG/ --physical --design_filter dual_port_rv --storage_capacity 16384 --run_builds
+# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_WO_HARD_CFG_REG/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
 
 # # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/ALL_SWEEP_9_17 --physical --run_builds
 

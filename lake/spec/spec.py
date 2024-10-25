@@ -26,7 +26,8 @@ import json
 class Spec():
     """Harness for lake primitives
     """
-    def __init__(self, name="lakespec", clkgate=True) -> None:
+    def __init__(self, name="lakespec", clkgate=True,
+                 config_passthru=True) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
         self._name = name
@@ -49,6 +50,7 @@ class Spec():
         self.num_mem_ports = 0
         self.fw_max = 1
         self.clk_gate = clkgate
+        self.config_passthru = config_passthru
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
@@ -511,7 +513,9 @@ class Spec():
         # self.lift_config_regs()
         print("building spec cfg memory input")
         # Can also choose to clock gate the config memory...
-        self._final_gen._assemble_cfg_memory_input(harden_storage=True, clkgate=self.clk_gate)
+        # self._final_gen._assemble_cfg_memory_input(harden_storage=True, clkgate=self.clk_gate)
+        self._final_gen._assemble_cfg_memory_input(harden_storage=True, clkgate=self.clk_gate,
+                                                   config_passthru=self.config_passthru)
         self.add_flush()
         # Optionally add clock gate automatically
         # if self.clk_gate:
