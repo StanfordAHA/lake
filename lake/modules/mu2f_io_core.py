@@ -40,7 +40,9 @@ class IOCore_mu2f(Generator):
         self._clk.add_attribute(FormalAttr(f"{self._clk.name}", FormalSignalConstraint.CLK))
         self._rst_n = self.reset("rst_n")
         self._rst_n.add_attribute(FormalAttr(f"{self._rst_n.name}", FormalSignalConstraint.RSTN))
-        self._clk_en = self.clock_en("clk_en", 1)
+
+        if self.add_clk_enable:
+            self._clk_en = self.clock_en("clk_en", 1)
 
         # Enable/Disable tile
         self._tile_en = self.input("tile_en", 1)
@@ -57,13 +59,17 @@ class IOCore_mu2f(Generator):
         
         mu_data_width = matrix_unit_data_width
 
-        # Valid in from matrix unit 
-        tmp_mu2io_v = self.input(f"mu2io_{mu_data_width}_valid", 1)
-        tmp_mu2io_v.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+        # # Valid in from matrix unit 
+        # tmp_mu2io_v = self.input(f"mu2io_{mu_data_width}_valid", 1)
+        # tmp_mu2io_v.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
       
 
         for io_num in range(num_ios):
+            # Valid in from matrix unit 
+            tmp_mu2io_v = self.input(f"mu2io_{mu_data_width}_{io_num}_valid", 1)
+            tmp_mu2io_v.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+
             # Ready out to matrix unit 
             tmp_mu2io_r = self.output(f"mu2io_{mu_data_width}_{io_num}_ready", 1)
             tmp_mu2io_r.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
@@ -92,6 +98,7 @@ class IOCore_mu2f(Generator):
                             clk=self._gclk,
                             rst_n=self._rst_n,
                             clk_en=self._clk_en,
+                            #clk_en=kts.const(1, 1),
                             push=tmp_mu2io_v,
                             pop=tmp_io2f_r)
 
