@@ -32,6 +32,7 @@ setup(
         "magma-lang",
         "pytest",
         "matplotlib",
-        "networkx"
+        "networkx",
+        "pydot"
     ]
 )
