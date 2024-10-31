@@ -7,7 +7,7 @@ from lake.spec.schedule_generator import ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
 from lake.utils.util import calculate_read_out, prepare_hw_test, get_data_sizes, TestPrepper
-from lake.top.tech_maps import GF_Tech_Map
+from lake.spec.tech_maps import GF_Tech_Map
 import os as os
 import argparse
 
