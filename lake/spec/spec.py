@@ -30,7 +30,8 @@ class Spec():
     def __init__(self, name="lakespec", clkgate=True) -> None:
         self._hw_graph = nx.Graph()
         self._hw_graph_pd = pydot.Dot("Lake Specification Graph",
-                                      graph_type="graph", bgcolor="white")
+                                      graph_type="graph", bgcolor="white",
+                                       ratio="auto")
         self._final_gen = None
         self._name = name
         self._memport_map = {}
@@ -116,8 +117,67 @@ class Spec():
 
     def visualize_graph(self, gname="spec", outdir=".") -> None:
 
+        # Get the input ports
+        input_ports = self.get_nodes(Port)
+        input_ports = [p for p in input_ports if p.get_direction() == Direction.IN]
+
+        S = pydot.Subgraph()
+
+        for input_port in input_ports:
+            # Get its associated ID,SG,AG
+            port_id, port_ag, port_sg = self.get_port_controllers(port=input_port)
+
+            input_port_node = self._hw_graph_pd.get_node(input_port)[0]
+            port_id_node = self._hw_graph_pd.get_node(port_id)[0]
+            port_ag_node = self._hw_graph_pd.get_node(port_ag)[0]
+            port_sg_node = self._hw_graph_pd.get_node(port_sg)[0]
+            S.add_node(input_port_node)
+            S.add_node(port_id_node)
+            S.add_node(port_ag_node)
+            S.add_node(port_sg_node)
+
+        self._hw_graph_pd.add_subgraph(S)
+
+        storage_nodes = self.get_nodes(Storage)
+        storage_node = storage_nodes[0]
+        # Collect all in ports, associated ID,SG,AG and set to rank same
+        memoryports = nx.neighbors(self._hw_graph, storage_node)
+
+        storage_node = self._hw_graph_pd.get_node(storage_node)[0]
+        memoryports_nodes = [self._hw_graph_pd.get_node(x)[0] for x in memoryports]
+
+        S = pydot.Subgraph()
+        S.add_node(storage_node)
+        for memoryports_node in memoryports_nodes:
+            S.add_node(memoryports_node)
+
+        self._hw_graph_pd.add_subgraph(S)
+
+        # Get the output ports
+        output_ports = self.get_nodes(Port)
+        print(output_ports)
+        output_ports = [p for p in output_ports if p.get_direction() == Direction.OUT]
+
+        S = pydot.Subgraph()
+        for output_port in output_ports:
+            # Get its associated ID,SG,AG
+            port_id, port_ag, port_sg = self.get_port_controllers(port=output_port)
+
+            output_port_node = self._hw_graph_pd.get_node(output_port)[0]
+            port_id_node = self._hw_graph_pd.get_node(port_id)[0]
+            port_ag_node = self._hw_graph_pd.get_node(port_ag)[0]
+            port_sg_node = self._hw_graph_pd.get_node(port_sg)[0]
+            S.add_node(output_port_node)
+            S.add_node(port_id_node)
+            S.add_node(port_ag_node)
+            S.add_node(port_sg_node)
+
+        self._hw_graph_pd.add_subgraph(S)
+
         outpath = os.path.join(outdir, f"{gname}.png")
+        outpath_dot = os.path.join(outdir, f"{gname}.dot")
         self._hw_graph_pd.write_png(outpath)
+        self._hw_graph_pd.write_dot(outpath_dot)
 
     def get_nodes(self, node_type) -> list:
         ret_list = list()
