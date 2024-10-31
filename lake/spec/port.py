@@ -41,9 +41,9 @@ class Port(Component):
         self._color = "#D9E7D6"
 
     def __str__(self):
-        type_str = "Write"
+        type_str = "IN"
         if self._direction == Direction.OUT:
-            type_str = "Read"
+            type_str = "OUT"
         return f"Port_{self._component_num}: {type_str}"
 
     def set_dimensionality(self, dim):

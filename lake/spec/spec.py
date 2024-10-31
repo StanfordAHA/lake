@@ -30,8 +30,7 @@ class Spec():
     def __init__(self, name="lakespec", clkgate=True) -> None:
         self._hw_graph = nx.Graph()
         self._hw_graph_pd = pydot.Dot("Lake Specification Graph",
-                                      graph_type="graph", bgcolor="white",
-                                       ratio="auto")
+                                      graph_type="graph", bgcolor="white")
         self._final_gen = None
         self._name = name
         self._memport_map = {}
@@ -155,7 +154,6 @@ class Spec():
 
         # Get the output ports
         output_ports = self.get_nodes(Port)
-        print(output_ports)
         output_ports = [p for p in output_ports if p.get_direction() == Direction.OUT]
 
         S = pydot.Subgraph()
@@ -176,8 +174,10 @@ class Spec():
 
         outpath = os.path.join(outdir, f"{gname}.png")
         outpath_dot = os.path.join(outdir, f"{gname}.dot")
+        outpath_pdf = os.path.join(outdir, f"{gname}.pdf")
         self._hw_graph_pd.write_png(outpath)
         self._hw_graph_pd.write_dot(outpath_dot)
+        self._hw_graph_pd.write_pdf(outpath_pdf)
 
     def get_nodes(self, node_type) -> list:
         ret_list = list()
