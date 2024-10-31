@@ -14,6 +14,7 @@ class AddressGenerator(Component):
         self.total_num_addrs = None
         self.addr_width = None
         self.exploit_recurrence = recurrence
+        self._color = "#DDE7FA"
 
     def gen_hardware(self, memports=None, id: IterationDomain = None, pos_reset=False):
         assert memports is not None

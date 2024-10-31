@@ -33,6 +33,7 @@ class MemoryPort(Component):
 
         self.port_interface = {}
         self.port_interface_set = False
+        self._color = "#FBE7CF"
 
     def __str__(self):
         type_str = 'Read'
@@ -41,7 +42,7 @@ class MemoryPort(Component):
         elif self.mptype == MemoryPortType.READWRITE:
             type_str = 'ReadWrite'
 
-        return f"MemoryPort: {type_str}"
+        return f"MemoryPort_{self._component_num}: {type_str}"
     #     conn_str = ""
     #     for (name, conn) in self._port_intf.items():
     #         if conn is None:

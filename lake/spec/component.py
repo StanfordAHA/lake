@@ -24,6 +24,7 @@ class Component(kratos.Generator):
         else:
             use_name = name
         super().__init__(name=use_name, debug=True)
+        self._component_num = Component.component_num
         Component.component_num += 1
         # super().__init__(name=f"{rand.randint(0, 10000)}", debug=True)
         self.config_space = []
@@ -40,6 +41,10 @@ class Component(kratos.Generator):
         self._name_to_var_cfg = {}
         self._clk = self.clock('clk')
         self._rst_n = self.clock('rst_n')
+        self._color = "#000000"
+
+    def get_color(self):
+        return self._color
 
     def get_clock(self):
         return self._clk
@@ -263,9 +268,6 @@ class Component(kratos.Generator):
             self._name_to_var_cfg[kwargs['name']] = ret_
             self.config_size += total_config_size_
 
-        # ret_.add_attribute(ConfigRegAttr("Default Description"))
-
-        # return lcl_var
         return ret_
 
     def get_cfg_map(self):
@@ -284,7 +286,7 @@ class Component(kratos.Generator):
         return self.config_size
 
     def __str__(self):
-        return self.__class__.__name__
+        return f"{self.__class__.__name__}_{self._component_num}"
 
     # def get_liftable_ports(self):
     #     '''

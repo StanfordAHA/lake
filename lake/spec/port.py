@@ -38,12 +38,13 @@ class Port(Component):
         self.dimensionality = None
         self._internal_step = None
         self._rv_comp_nw = None
+        self._color = "#D9E7D6"
 
     def __str__(self):
         type_str = "Write"
         if self._direction == Direction.OUT:
             type_str = "Read"
-        return f"Port: {type_str}"
+        return f"Port_{self._component_num}: {type_str}"
 
     def set_dimensionality(self, dim):
         self.dimensionality = dim

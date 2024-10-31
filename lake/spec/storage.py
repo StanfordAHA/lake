@@ -18,6 +18,7 @@ class Storage(Component):
         self.memport_sets = {}
         self.tech_map = tech_map
         self.memory_ports = None
+        self._color = "#FDF3D0"
 
     def gen_hardware(self, pos_reset=False):
         return super().gen_hardware(pos_reset)

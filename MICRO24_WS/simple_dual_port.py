@@ -34,7 +34,7 @@ def build_simple_dual_port_demo(storage_capacity: int = 1024, data_width=16,
     stg = SingleBankStorage(capacity=storage_capacity)
     wr_mem_port = MemoryPort(data_width=data_width, mptype=MemoryPortType.W, delay=1)
     rd_mem_port = MemoryPort(data_width=data_width, mptype=MemoryPortType.R, delay=1)
-    ls.register(stg, wr_mem_port, rd_mem_port, stg)
+    ls.register(stg, wr_mem_port, rd_mem_port)
 
     # 5. Now connect registered components
     # In to In

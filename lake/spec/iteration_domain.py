@@ -12,6 +12,7 @@ class IterationDomain(Component):
         self.dimensionality_support = dimensionality
         self.extent_width = extent_width
         self._interfaces = {}
+        self._color = "#F1D0CD"
 
     def get_dimensionality(self):
         return self.dimensionality_support

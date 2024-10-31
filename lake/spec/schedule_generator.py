@@ -19,6 +19,7 @@ class ScheduleGenerator(Component):
         self.rv = rv
         self.mod_name = name
         self.exploit_recurrence = recurrence
+        self._color = "#DFD5E6"
 
     def get_rv(self):
         return self.rv

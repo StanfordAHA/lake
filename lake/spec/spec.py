@@ -1,4 +1,5 @@
 import networkx as nx
+import pydot
 import matplotlib.pyplot as plt
 from lake.spec.storage import Storage
 from lake.spec.memory_port import MemoryPort
@@ -28,6 +29,8 @@ class Spec():
     """
     def __init__(self, name="lakespec", clkgate=True) -> None:
         self._hw_graph = nx.Graph()
+        self._hw_graph_pd = pydot.Dot("Lake Specification Graph",
+                                      graph_type="graph", bgcolor="white")
         self._final_gen = None
         self._name = name
         self._memport_map = {}
@@ -52,6 +55,8 @@ class Spec():
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
+        fill_color = comp.get_color()
+        self._hw_graph_pd.add_node(pydot.Node(comp, label=f"{str(comp)}", style="filled", fillcolor=fill_color))
         self._hw_graph[comp]['index'] = self._num_nodes
         self._index_to_node[self._num_nodes] = comp
         self._num_nodes += 1
@@ -67,9 +72,7 @@ class Spec():
         return self._index_to_node[idx]
 
     def register(self, *comps):
-        # self._hw_graph.add_nodes_from(comps)
         for comp in comps:
-            # self.register_(comp=comp)
             if isinstance(comp, ScheduleGenerator) and comp.get_rv():
                 self.any_rv_sg = True
                 self.runtime = Runtime.DYNAMIC
@@ -90,12 +93,15 @@ class Spec():
                     raise NotImplementedError(f"Port Direction {pdir} not supported...")
 
             self._hw_graph.add_node(comp)
+            fill_color = comp.get_color()
+            self._hw_graph_pd.add_node(pydot.Node(comp, label=f"{str(comp)}", style="filled", fillcolor=fill_color))
             self._node_to_index[comp] = self._num_nodes
             self._index_to_node[self._num_nodes] = comp
             self._num_nodes += 1
 
     def connect(self, node1, node2):
         self._hw_graph.add_edge(node1, node2)
+        self._hw_graph_pd.add_edge(pydot.Edge(f"{str(node1)}", f"{str(node2)}", color="black"))
         # If this is connecting a memoryport and a port then we need to add it to the map
         if (isinstance(node1, MemoryPort) and isinstance(node2, Port)) or (isinstance(node1, Port) and isinstance(node2, MemoryPort)):
             if isinstance(node1, MemoryPort):
@@ -109,10 +115,9 @@ class Spec():
             self._memport_map[node_].append(node_other)
 
     def visualize_graph(self, gname="spec", outdir=".") -> None:
-        plt.figure(figsize=(8, 8))
-        nx.draw(self._hw_graph, with_labels=True, font_weight='bold')
+
         outpath = os.path.join(outdir, f"{gname}.png")
-        plt.savefig(outpath, dpi=300)
+        self._hw_graph_pd.write_png(outpath)
 
     def get_nodes(self, node_type) -> list:
         ret_list = list()
