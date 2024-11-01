@@ -44,7 +44,7 @@ class Port(Component):
         type_str = "IN"
         if self._direction == Direction.OUT:
             type_str = "OUT"
-        return f"Port_{self._component_num}: {type_str}"
+        return f"Port_{self._component_num}_{type_str}"
 
     def set_dimensionality(self, dim):
         self.dimensionality = dim

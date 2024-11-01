@@ -42,7 +42,7 @@ class MemoryPort(Component):
         elif self.mptype == MemoryPortType.READWRITE:
             type_str = 'ReadWrite'
 
-        return f"MemoryPort_{self._component_num}: {type_str}"
+        return f"MemoryPort_{self._component_num}_{type_str}"
     #     conn_str = ""
     #     for (name, conn) in self._port_intf.items():
     #         if conn is None:

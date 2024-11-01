@@ -31,6 +31,7 @@ class Spec():
         self._hw_graph = nx.Graph()
         self._hw_graph_pd = pydot.Dot("Lake Specification Graph",
                                       graph_type="graph", bgcolor="white")
+        self._name_to_node = {}
         self._final_gen = None
         self._name = name
         self._memport_map = {}
@@ -56,7 +57,9 @@ class Spec():
     def register_(self, comp):
         self._hw_graph.add_node(comp)
         fill_color = comp.get_color()
-        self._hw_graph_pd.add_node(pydot.Node(comp, label=f"{str(comp)}", style="filled", fillcolor=fill_color))
+        pn = pydot.Node(str(comp), label=f"{str(comp)}", style="filled", fillcolor=fill_color)
+        self._hw_graph_pd.add_node(pn)
+        self._name_to_node[str(comp)] = pn
         self._hw_graph[comp]['index'] = self._num_nodes
         self._index_to_node[self._num_nodes] = comp
         self._num_nodes += 1
@@ -94,7 +97,9 @@ class Spec():
 
             self._hw_graph.add_node(comp)
             fill_color = comp.get_color()
-            self._hw_graph_pd.add_node(pydot.Node(comp, label=f"{str(comp)}", style="filled", fillcolor=fill_color))
+            pn = pydot.Node(str(comp), label=f"{str(comp)}", style="filled", fillcolor=fill_color)
+            self._hw_graph_pd.add_node(pn)
+            self._name_to_node[str(comp)] = pn
             self._node_to_index[comp] = self._num_nodes
             self._index_to_node[self._num_nodes] = comp
             self._num_nodes += 1
@@ -126,25 +131,22 @@ class Spec():
             # Get its associated ID,SG,AG
             port_id, port_ag, port_sg = self.get_port_controllers(port=input_port)
 
-            input_port_node = self._hw_graph_pd.get_node(input_port)[0]
-            port_id_node = self._hw_graph_pd.get_node(port_id)[0]
-            port_ag_node = self._hw_graph_pd.get_node(port_ag)[0]
-            port_sg_node = self._hw_graph_pd.get_node(port_sg)[0]
+            input_port_node = self._name_to_node[str(input_port)]
+            port_id_node = self._name_to_node[str(port_id)]
+            port_ag_node = self._name_to_node[str(port_ag)]
+            port_sg_node = self._name_to_node[str(port_sg)]
             S.add_node(input_port_node)
             S.add_node(port_id_node)
             S.add_node(port_ag_node)
             S.add_node(port_sg_node)
-
         self._hw_graph_pd.add_subgraph(S)
 
+        # Collect Storage and its MemoryPorts
         storage_nodes = self.get_nodes(Storage)
         storage_node = storage_nodes[0]
-        # Collect all in ports, associated ID,SG,AG and set to rank same
         memoryports = nx.neighbors(self._hw_graph, storage_node)
-
-        storage_node = self._hw_graph_pd.get_node(storage_node)[0]
-        memoryports_nodes = [self._hw_graph_pd.get_node(x)[0] for x in memoryports]
-
+        storage_node = self._name_to_node[str(storage_node)]
+        memoryports_nodes = [self._name_to_node[str(x)] for x in memoryports]
         S = pydot.Subgraph()
         S.add_node(storage_node)
         for memoryports_node in memoryports_nodes:
@@ -161,10 +163,10 @@ class Spec():
             # Get its associated ID,SG,AG
             port_id, port_ag, port_sg = self.get_port_controllers(port=output_port)
 
-            output_port_node = self._hw_graph_pd.get_node(output_port)[0]
-            port_id_node = self._hw_graph_pd.get_node(port_id)[0]
-            port_ag_node = self._hw_graph_pd.get_node(port_ag)[0]
-            port_sg_node = self._hw_graph_pd.get_node(port_sg)[0]
+            output_port_node = self._name_to_node[str(output_port)]
+            port_id_node = self._name_to_node[str(port_id)]
+            port_ag_node = self._name_to_node[str(port_ag)]
+            port_sg_node = self._name_to_node[str(port_sg)]
             S.add_node(output_port_node)
             S.add_node(port_id_node)
             S.add_node(port_ag_node)
