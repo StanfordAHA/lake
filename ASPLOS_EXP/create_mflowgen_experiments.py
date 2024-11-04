@@ -771,7 +771,7 @@ def create_config_graph(data, filename="scatterplot"):
 
     }
     plt.figure(figsize=(10, 10))
-    plt.scatter(config_size, Config, c = "blue")
+    plt.scatter(config_size, Config, c="blue")
 
     # Adding labels and title
     plt.xlabel('# Config Bits', fontsize=12)
@@ -1410,7 +1410,6 @@ def get_power_breakdown_file(file_path):
     top_idx = 0
     for i_, line in enumerate(all_file_content):
         if line.startswith('lakespec'):
-        # if 'lakespec' in line:
             top_idx = i_
             break
 
@@ -1537,7 +1536,6 @@ def get_power_breakdown_file(file_path):
                 for z_ in range(len(data_idx)):
                     memintf_dec_power[z_] += line_data[z_]
 
-
         assert num_matches <= 1, f"Line ({mod}) matched too many items...{num_matches}"
 
     other_power = [0.0, 0.0, 0.0, 0.0, 0.0]
@@ -1590,7 +1588,7 @@ def get_area_breakdown_dir(directory):
             design_point_path = os.path.join(design_path, design_point)
             man_info = get_manifest_info(design_point_path)
 
-            signoff_step  = find_step(design_point_path, 'cadence-innovus-signoff')
+            signoff_step = find_step(design_point_path, 'cadence-innovus-signoff')
             print(f"Found signoff step: {signoff_step}")
             relative_area_file = os.path.join(signoff_step,
                                               "reports",
@@ -1712,16 +1710,16 @@ def get_area_breakdown_file(file_path):
     if all_file_content is None:
         print(f"No signoff area report for {file_path}")
         return {
-        'total': 0.0,
-        'AG': 0.0,
-        'SG': 0.0,
-        'ID': 0.0,
-        'Port': 0.0,
-        'Storage': 0.0,
-        'Config': 0.0,
-        'MemintfDec': 0.0,
-        'MemoryPort': 0.0
-    }
+            'total': 0.0,
+            'AG': 0.0,
+            'SG': 0.0,
+            'ID': 0.0,
+            'Port': 0.0,
+            'Storage': 0.0,
+            'Config': 0.0,
+            'MemintfDec': 0.0,
+            'MemoryPort': 0.0
+        }
     num_lines = len(all_file_content)
     num_data_lines = num_lines - 3
     header = all_file_content[0]
@@ -1912,7 +1910,7 @@ if __name__ == "__main__":
                 "data_width": 16,
                 "clock_count_width": 64,
                 "dimensionality": 6
-                }
+            }
 
             # Dump a parameter file so that we can understand what the design has in it
             params_file = os.path.join(collect_override_path, "params.json")
@@ -2042,8 +2040,6 @@ if __name__ == "__main__":
 
         for filename in filtered_files:
             filename_no_ext = os.path.splitext(filename)[0]
-            # if filename_no_ext not in ["dual_port_rv", "simple_dual_port"]:
-                # continue
             filename_no_ext_f = f"{filename_no_ext}_{freq}"
 
             head_folder = os.path.join(pd_files_dir, filename_no_ext_f)
@@ -2057,11 +2053,7 @@ if __name__ == "__main__":
 
             for (storage_capacity, data_width, clock_count_width, dimensionality, fw) in all_test_pts:
 
-            # Now go through the different data points
-            # for storage_capacity in [512 * cap_scale, 1024 * cap_scale, 2048 * cap_scale]:
-            #     for data_width in [16]:
-            #         for clock_count_width in [64]:
-
+                # Now go through the different data points
                 params_dict = {
                     "design": filename_no_ext,
                     "frequency": freq,

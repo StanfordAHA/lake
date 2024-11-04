@@ -123,7 +123,7 @@ class MainMemoryModel():
 
         data_on_sram_output_tmp = self.data_on_sram_output
 
-        end_of_stream = self.get_curr_addr() == None
+        end_of_stream = self.get_curr_addr() is None
 
         # Data, valid
         return_val = (0, False)
@@ -150,8 +150,8 @@ class MainMemoryModel():
         # print(f"Next read address...{self.get_curr_addr()}")
 
         if end_of_stream is False:
-        # If the main memory hasn't been read yet, make sure to read it now
-        # Can't return any data this cycle...
+            # If the main memory hasn't been read yet, make sure to read it now
+            # Can't return any data this cycle...
             if self.already_read is False:
                 # print("Haven't read yet...")
                 self.already_read = True
@@ -332,5 +332,3 @@ if __name__ == "__main__":
         for i in range(len(read_data)):
             if gold_data[i] != read_data[i]:
                 print(f"MISMATCH\tINDEX: {i}\tGOLD: {gold_data[i]}\tSIM: {read_data[i]}")
-
-
