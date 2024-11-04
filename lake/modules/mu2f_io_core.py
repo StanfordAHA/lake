@@ -121,13 +121,13 @@ class IOCore_mu2f(Generator):
                                                 mu2io_2_io2f_fifo.ports.data_out)))
 
                 if self.use_almost_full:
-                    self.wire(tmp_mu2io_r, kts.ternary(self._dense_bypass,
+                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.const(0, 1), kts.ternary(self._dense_bypass,
                                                         tmp_io2f_r,
-                                                        ~mu2io_2_io2f_fifo.ports.almost_full))
+                                                        ~mu2io_2_io2f_fifo.ports.almost_full)))
                 else:
-                    self.wire(tmp_mu2io_r, kts.ternary(self._dense_bypass,
+                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.const(0, 1), kts.ternary(self._dense_bypass,
                                                         tmp_io2f_r,
-                                                        ~mu2io_2_io2f_fifo.ports.full))
+                                                        ~mu2io_2_io2f_fifo.ports.full)))
 
                 self.wire(tmp_io2f_v, kts.ternary(self._tile_en, kts.const(0, 1), kts.ternary(self._dense_bypass,
                                                     tmp_mu2io_v,
@@ -135,9 +135,9 @@ class IOCore_mu2f(Generator):
             else:
                 self.wire(tmp_io2f, kts.ternary(self._tile_en, kts.const(0, tile_array_data_width), mu2io_2_io2f_fifo.ports.data_out))
                 if self.use_almost_full:
-                    self.wire(tmp_mu2io_r, ~mu2io_2_io2f_fifo.ports.almost_full)
+                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.const(0, 1), ~mu2io_2_io2f_fifo.ports.almost_full))
                 else:
-                    self.wire(tmp_mu2io_r, ~mu2io_2_io2f_fifo.ports.full)
+                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.const(0, 1), ~mu2io_2_io2f_fifo.ports.full))
                 self.wire(tmp_io2f_v, kts.ternary(self._tile_en, kts.const(0, 1), ~mu2io_2_io2f_fifo.ports.empty))
 
         if self.add_clk_enable:
