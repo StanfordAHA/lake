@@ -116,29 +116,29 @@ class IOCore_mu2f(Generator):
             # If tile_en (matrix unit inactive) false, send 0 to fabric.
             # If dense bypass, send data straight through, bypassing FIFOs
             if self.allow_bypass:
-                self.wire(tmp_io2f, kts.ternary(self._tile_en, kts.const(0, tile_array_data_width), kts.ternary(self._dense_bypass,
+                self.wire(tmp_io2f, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass,
                                                 tmp_mu2io,
-                                                mu2io_2_io2f_fifo.ports.data_out)))
+                                                mu2io_2_io2f_fifo.ports.data_out)), kts.const(0, tile_array_data_width))
 
                 if self.use_almost_full:
-                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.const(0, 1), kts.ternary(self._dense_bypass,
+                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass,
                                                         tmp_io2f_r,
-                                                        ~mu2io_2_io2f_fifo.ports.almost_full)))
+                                                        ~mu2io_2_io2f_fifo.ports.almost_full)), kts.const(0, 1))
                 else:
-                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.const(0, 1), kts.ternary(self._dense_bypass,
+                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass,
                                                         tmp_io2f_r,
-                                                        ~mu2io_2_io2f_fifo.ports.full)))
+                                                        ~mu2io_2_io2f_fifo.ports.full)), kts.const(0, 1))
 
-                self.wire(tmp_io2f_v, kts.ternary(self._tile_en, kts.const(0, 1), kts.ternary(self._dense_bypass,
+                self.wire(tmp_io2f_v, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass,
                                                     tmp_mu2io_v,
-                                                    ~mu2io_2_io2f_fifo.ports.empty)))
+                                                    ~mu2io_2_io2f_fifo.ports.empty)), kts.const(0, 1))
             else:
-                self.wire(tmp_io2f, kts.ternary(self._tile_en, kts.const(0, tile_array_data_width), mu2io_2_io2f_fifo.ports.data_out))
+                self.wire(tmp_io2f, kts.ternary(self._tile_en, mu2io_2_io2f_fifo.ports.data_out, kts.const(0, tile_array_data_width)))
                 if self.use_almost_full:
-                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.const(0, 1), ~mu2io_2_io2f_fifo.ports.almost_full))
+                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, ~mu2io_2_io2f_fifo.ports.almost_full, kts.const(0, 1)))
                 else:
-                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, kts.const(0, 1), ~mu2io_2_io2f_fifo.ports.full))
-                self.wire(tmp_io2f_v, kts.ternary(self._tile_en, kts.const(0, 1), ~mu2io_2_io2f_fifo.ports.empty))
+                    self.wire(tmp_mu2io_r, kts.ternary(self._tile_en, ~mu2io_2_io2f_fifo.ports.full, kts.const(0, 1)))
+                self.wire(tmp_io2f_v, kts.ternary(self._tile_en, ~mu2io_2_io2f_fifo.ports.empty, kts.const(0, 1)))
 
         if self.add_clk_enable:
             kts.passes.auto_insert_clock_enable(self.internal_generator)
