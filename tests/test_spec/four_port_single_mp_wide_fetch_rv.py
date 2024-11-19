@@ -13,20 +13,22 @@ import os
 
 
 def build_four_port_wide_fetch_rv(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False,
-                                  reg_file=False, vec_capacity=2) -> Spec:
+                                  reg_file=False, vec_capacity=2, opt_rv=False) -> Spec:
 
     # a reg file can't be used to build this...
 
-    ls = Spec()
+    ls = Spec(opt_rv=opt_rv)
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
+                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
+                    opt_rv=opt_rv)
     out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
+                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
+                     opt_rv=opt_rv)
 
     ls.register(in_port, in_port2, out_port, out_port2)
 
@@ -439,7 +441,7 @@ def get_linear_test():
 
 
 def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=4,
-                                    tp: TestPrepper = None, test='linear', reg_file=False, dimensionality=6):
+                                    tp: TestPrepper = None, test='linear', reg_file=False, dimensionality=6, opt_rv=False):
 
     assert tp is not None
 
@@ -454,7 +456,7 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
     # Build the spec
     simple_four_port_spec = build_four_port_wide_fetch_rv(storage_capacity=storage_capacity, data_width=data_width,
                                                           physical=physical, vec_width=vec_width, reg_file=reg_file,
-                                                          dims=dimensionality)
+                                                          dims=dimensionality, opt_rv=opt_rv)
     simple_four_port_spec.visualize_graph()
     simple_four_port_spec.generate_hardware()
     simple_four_port_spec.extract_compiler_information()
@@ -539,6 +541,7 @@ if __name__ == "__main__":
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--outdir", type=str, default=None)
+    parser.add_argument("--opt_rv", action="store_true")
     args = parser.parse_args()
 
     print("Preparing hardware test")
@@ -555,4 +558,5 @@ if __name__ == "__main__":
 
     test_linear_read_write_qp_wf_rv(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
                                     physical=args.physical, vec_width=fw, tp=tp, test=args.test,
-                                    reg_file=args.reg_file, dimensionality=args.dimensionality)
+                                    reg_file=args.reg_file, dimensionality=args.dimensionality,
+                                    opt_rv=args.opt_rv)

@@ -27,7 +27,8 @@ class Spec():
     """Harness for lake primitives
     """
     def __init__(self, name="lakespec", clkgate=True,
-                 config_passthru=True) -> None:
+                 config_passthru=True,
+                 opt_rv=False) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
         self._name = name
@@ -51,6 +52,7 @@ class Spec():
         self.fw_max = 1
         self.clk_gate = clkgate
         self.config_passthru = config_passthru
+        self.opt_rv = opt_rv
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
@@ -357,103 +359,112 @@ class Spec():
 
             # If the port is wide fetch, we can wire the SG's step and IDs signals to the port
             if port.get_fw() > 1:
-                ext_intf = port.get_internal_ag_intf()
 
-                if port_direction == Direction.IN:
-                    # For a write Port, just directly connect everything
-                    self._final_gen.wire(ext_intf['step'], quali_step)
-                    self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
-                    self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
-                    self._final_gen.wire(ext_intf['restart'], port_id.ports.restart)
-                    if self.any_rv_sg:
-                        self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
+                # Fill in the optimization here...
+                if self.opt_rv and port_direction == Direction.OUT:
 
-                elif port_direction == Direction.OUT:
-                    # For a read Port, slightly more complicated - need to actually have the delayed
-                    # version of everything (but can handle that within the Port...)
+                    # For this port, we want to give it the step from the SG and the addr from the AG
+                    self._final_gen.wire(quali_step, port.ports.sg_step_in)
+                    self._final_gen.wire(port_ag.get_address(), port.ports.addr_in)
 
-                    delay = memintf_dec.get_delay()
+                else:
+                    ext_intf = port.get_internal_ag_intf()
 
-                    # These should be shift regs in static, fifo in ready/valid
-                    if self.any_rv_sg:
+                    if port_direction == Direction.IN:
+                        # For a write Port, just directly connect everything
+                        self._final_gen.wire(ext_intf['step'], quali_step)
+                        self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
+                        self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
+                        self._final_gen.wire(ext_intf['restart'], port_id.ports.restart)
+                        if self.any_rv_sg:
+                            self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
 
-                        # pass
-                        rupp2 = round_up_to_power_of_2(2 + delay)
-                        # reg_fifo = RegFIFO(port_id.ports.mux_sel.width, port_id.ports.mux_sel.size[0], rupp2, almost_full_diff=delay + 1)
-                        # self._final_gen.add_child(f"reg_fifo_port_{i_}_mux_sel",
-                        #                 reg_fifo,
-                        #                 clk=self.hw_attr['clk'],
-                        #                 rst_n=self.hw_attr['rst_n'],
-                        #                 # clk_en=self._clk_en,
-                        #                 clk_en=kts.const(1, 1),
-                        #                 push=quali_step,
-                        #                 pop=ext_intf['mux_sel'].get_ready(),
-                        #                 data_in=port_id.ports.mux_sel,
-                        #                 data_out=ext_intf['mux_sel'].get_port())
-                        # self._final_gen.wire(ext_intf['mux_sel'].get_valid(), ~reg_fifo.ports.empty)
+                    elif port_direction == Direction.OUT:
+                        # For a read Port, slightly more complicated - need to actually have the delayed
+                        # version of everything (but can handle that within the Port...)
 
-                        # reg_fifo = RegFIFO(port_id.ports.iterators.width, port_id.ports.iterators.size[0], rupp2, almost_full_diff=delay + 1)
-                        # self._final_gen.add_child(f"reg_fifo_port_{i_}_iterators",
-                        #                 reg_fifo,
-                        #                 clk=self.hw_attr['clk'],
-                        #                 rst_n=self.hw_attr['rst_n'],
-                        #                 # clk_en=self._clk_en,
-                        #                 clk_en=kts.const(1, 1),
-                        #                 push=quali_step,
-                        #                 pop=ext_intf['iterators'].get_ready(),
-                        #                 data_in=port_id.ports.iterators,
-                        #                 data_out=ext_intf['iterators'].get_port())
-                        # self._final_gen.wire(ext_intf['iterators'].get_valid(), ~reg_fifo.ports.empty)
+                        delay = memintf_dec.get_delay()
 
-                        # reg_fifo = RegFIFO(port_id.ports.restart.width, port_id.ports.restart.size[0], rupp2, almost_full_diff=delay + 1)
-                        # self._final_gen.add_child(f"reg_fifo_port_{i_}_restart",
-                        #                 reg_fifo,
-                        #                 clk=self.hw_attr['clk'],
-                        #                 rst_n=self.hw_attr['rst_n'],
-                        #                 # clk_en=self._clk_en,
-                        #                 clk_en=kts.const(1, 1),
-                        #                 push=quali_step,
-                        #                 pop=ext_intf['restart'].get_ready(),
-                        #                 data_in=port_id.ports.restart,
-                        #                 data_out=ext_intf['restart'].get_port())
-                        # self._final_gen.wire(ext_intf['restart'].get_valid(), ~reg_fifo.ports.empty)
+                        # These should be shift regs in static, fifo in ready/valid
+                        if self.any_rv_sg:
 
-                        # reg_fifo = RegFIFO(port_id.ports.extents_out.width, port_id.ports.extents_out.size[0], rupp2, almost_full_diff=delay + 1)
-                        # self._final_gen.add_child(f"reg_fifo_port_{i_}_extents",
-                        #                 reg_fifo,
-                        #                 clk=self.hw_attr['clk'],
-                        #                 rst_n=self.hw_attr['rst_n'],
-                        #                 # clk_en=self._clk_en,
-                        #                 clk_en=kts.const(1, 1),
-                        #                 push=quali_step,
-                        #                 pop=ext_intf['extents'].get_ready(),
-                        #                 data_in=port_id.ports.extents_out,
-                        #                 data_out=ext_intf['extents'].get_port())
-                        # self._final_gen.wire(ext_intf['extents'].get_valid(), ~reg_fifo.ports.empty)
-                        # self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
+                            # pass
+                            rupp2 = round_up_to_power_of_2(2 + delay)
+                            # reg_fifo = RegFIFO(port_id.ports.mux_sel.width, port_id.ports.mux_sel.size[0], rupp2, almost_full_diff=delay + 1)
+                            # self._final_gen.add_child(f"reg_fifo_port_{i_}_mux_sel",
+                            #                 reg_fifo,
+                            #                 clk=self.hw_attr['clk'],
+                            #                 rst_n=self.hw_attr['rst_n'],
+                            #                 # clk_en=self._clk_en,
+                            #                 clk_en=kts.const(1, 1),
+                            #                 push=quali_step,
+                            #                 pop=ext_intf['mux_sel'].get_ready(),
+                            #                 data_in=port_id.ports.mux_sel,
+                            #                 data_out=ext_intf['mux_sel'].get_port())
+                            # self._final_gen.wire(ext_intf['mux_sel'].get_valid(), ~reg_fifo.ports.empty)
 
-                        # delay_mux_sel = shift_reg(self._final_gen, port_id.ports.mux_sel, chain_depth=delay, name=f"shreg_mux_sel_port_{i_}")
-                        # delay_iterators = shift_reg(self._final_gen, port_id.ports.iterators, chain_depth=delay, name=f"shreg_iterators_port_{i_}")
-                        # delay_restart = shift_reg(self._final_gen, port_id.ports.restart, chain_depth=delay, name=f"shreg_restart_port_{i_}")
+                            # reg_fifo = RegFIFO(port_id.ports.iterators.width, port_id.ports.iterators.size[0], rupp2, almost_full_diff=delay + 1)
+                            # self._final_gen.add_child(f"reg_fifo_port_{i_}_iterators",
+                            #                 reg_fifo,
+                            #                 clk=self.hw_attr['clk'],
+                            #                 rst_n=self.hw_attr['rst_n'],
+                            #                 # clk_en=self._clk_en,
+                            #                 clk_en=kts.const(1, 1),
+                            #                 push=quali_step,
+                            #                 pop=ext_intf['iterators'].get_ready(),
+                            #                 data_in=port_id.ports.iterators,
+                            #                 data_out=ext_intf['iterators'].get_port())
+                            # self._final_gen.wire(ext_intf['iterators'].get_valid(), ~reg_fifo.ports.empty)
 
-                        # self._final_gen.wire(ext_intf['step'], shreg_step)
-                        # self._final_gen.wire(ext_intf['mux_sel'], delay_mux_sel)
-                        # self._final_gen.wire(ext_intf['iterators'], delay_iterators)
-                        # self._final_gen.wire(ext_intf['restart'], delay_restart)
-                        # self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
+                            # reg_fifo = RegFIFO(port_id.ports.restart.width, port_id.ports.restart.size[0], rupp2, almost_full_diff=delay + 1)
+                            # self._final_gen.add_child(f"reg_fifo_port_{i_}_restart",
+                            #                 reg_fifo,
+                            #                 clk=self.hw_attr['clk'],
+                            #                 rst_n=self.hw_attr['rst_n'],
+                            #                 # clk_en=self._clk_en,
+                            #                 clk_en=kts.const(1, 1),
+                            #                 push=quali_step,
+                            #                 pop=ext_intf['restart'].get_ready(),
+                            #                 data_in=port_id.ports.restart,
+                            #                 data_out=ext_intf['restart'].get_port())
+                            # self._final_gen.wire(ext_intf['restart'].get_valid(), ~reg_fifo.ports.empty)
 
-                    else:
-                        shreg_step = shift_reg(self._final_gen, quali_step, chain_depth=delay, name=f"shreg_step_port_{i_}")
-                        delay_mux_sel = shift_reg(self._final_gen, port_id.ports.mux_sel, chain_depth=delay, name=f"shreg_mux_sel_port_{i_}")
-                        delay_iterators = shift_reg(self._final_gen, port_id.ports.iterators, chain_depth=delay, name=f"shreg_iterators_port_{i_}")
-                        delay_restart = shift_reg(self._final_gen, port_id.ports.restart, chain_depth=delay, name=f"shreg_restart_port_{i_}")
+                            # reg_fifo = RegFIFO(port_id.ports.extents_out.width, port_id.ports.extents_out.size[0], rupp2, almost_full_diff=delay + 1)
+                            # self._final_gen.add_child(f"reg_fifo_port_{i_}_extents",
+                            #                 reg_fifo,
+                            #                 clk=self.hw_attr['clk'],
+                            #                 rst_n=self.hw_attr['rst_n'],
+                            #                 # clk_en=self._clk_en,
+                            #                 clk_en=kts.const(1, 1),
+                            #                 push=quali_step,
+                            #                 pop=ext_intf['extents'].get_ready(),
+                            #                 data_in=port_id.ports.extents_out,
+                            #                 data_out=ext_intf['extents'].get_port())
+                            # self._final_gen.wire(ext_intf['extents'].get_valid(), ~reg_fifo.ports.empty)
+                            # self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
 
-                        self._final_gen.wire(ext_intf['step'], shreg_step)
-                        self._final_gen.wire(ext_intf['mux_sel'], delay_mux_sel)
-                        self._final_gen.wire(ext_intf['iterators'], delay_iterators)
-                        self._final_gen.wire(ext_intf['restart'], delay_restart)
+                            # delay_mux_sel = shift_reg(self._final_gen, port_id.ports.mux_sel, chain_depth=delay, name=f"shreg_mux_sel_port_{i_}")
+                            # delay_iterators = shift_reg(self._final_gen, port_id.ports.iterators, chain_depth=delay, name=f"shreg_iterators_port_{i_}")
+                            # delay_restart = shift_reg(self._final_gen, port_id.ports.restart, chain_depth=delay, name=f"shreg_restart_port_{i_}")
 
-                    # if self.any_rv_sg:
+                            # self._final_gen.wire(ext_intf['step'], shreg_step)
+                            # self._final_gen.wire(ext_intf['mux_sel'], delay_mux_sel)
+                            # self._final_gen.wire(ext_intf['iterators'], delay_iterators)
+                            # self._final_gen.wire(ext_intf['restart'], delay_restart)
+                            # self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)
+
+                        else:
+                            shreg_step = shift_reg(self._final_gen, quali_step, chain_depth=delay, name=f"shreg_step_port_{i_}")
+                            delay_mux_sel = shift_reg(self._final_gen, port_id.ports.mux_sel, chain_depth=delay, name=f"shreg_mux_sel_port_{i_}")
+                            delay_iterators = shift_reg(self._final_gen, port_id.ports.iterators, chain_depth=delay, name=f"shreg_iterators_port_{i_}")
+                            delay_restart = shift_reg(self._final_gen, port_id.ports.restart, chain_depth=delay, name=f"shreg_restart_port_{i_}")
+
+                            self._final_gen.wire(ext_intf['step'], shreg_step)
+                            self._final_gen.wire(ext_intf['mux_sel'], delay_mux_sel)
+                            self._final_gen.wire(ext_intf['iterators'], delay_iterators)
+                            self._final_gen.wire(ext_intf['restart'], delay_restart)
+
+                        # if self.any_rv_sg:
 
             memintf_dec_p_intf = memintf_dec.get_p_intf()
             self._final_gen.wire(assembled_port['data'], memintf_dec_p_intf['data'])

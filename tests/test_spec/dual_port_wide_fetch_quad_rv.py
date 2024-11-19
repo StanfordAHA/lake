@@ -14,20 +14,24 @@ import os
 
 def build_dual_port_wide_fetch_quad_rv(storage_capacity=1024, data_width=16, dims: int = 6,
                                        vec_width=2, physical=False, reg_file=False,
-                                       vec_capacity=2) -> Spec:
+                                       vec_capacity=2, opt_rv=False) -> Spec:
 
     read_delay = 0 if reg_file else 1
 
-    ls = Spec()
+    ls = Spec(opt_rv=opt_rv)
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                   vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN)
+                   vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
+                   opt_rv=opt_rv)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN)
+                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
+                    opt_rv=opt_rv)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
+                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
+                    opt_rv=opt_rv)
     out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
+                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
+                     opt_rv=opt_rv)
 
     ls.register(in_port, in_port2, out_port, out_port2)
 
@@ -94,6 +98,7 @@ def build_dual_port_wide_fetch_quad_rv(storage_capacity=1024, data_width=16, dim
     ls.connect(rd_mem_port, stg)
 
     return ls
+
 
 def get_all_ports_test():
 
@@ -234,10 +239,6 @@ def get_all_ports_test():
     war_scalar = 16
     war_constraint = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
 
-
-
-
-
     pw_vec_w = 0
     pr_vec_w = 1
 
@@ -374,9 +375,6 @@ def get_all_ports_test():
     war_comp = LFComparisonOperator.LT.value
     war_scalar = 16
     war_constraint2 = (pw, pw_war_idx, pr, pr_war_idx, war_comp, war_scalar)
-
-
-
 
     # Just have read follow write
     linear_test['constraints'] = [raw_constraint, war_constraint, raw_constraint2, war_constraint2]
@@ -530,7 +528,7 @@ def get_linear_test():
 
 
 def test_linear_read_write_dp_wf_q_rv(output_dir=None, storage_capacity=1024, data_width=16, physical=False, vec_width=2,
-                                      tp: TestPrepper = None, reg_file=False, dimensionality=6):
+                                      tp: TestPrepper = None, reg_file=False, dimensionality=6, opt_rv=False):
 
     assert tp is not None
 
@@ -545,7 +543,7 @@ def test_linear_read_write_dp_wf_q_rv(output_dir=None, storage_capacity=1024, da
     # Build the spec
     simple_single_port_spec = build_dual_port_wide_fetch_quad_rv(storage_capacity=storage_capacity, data_width=data_width,
                                                                  physical=physical, vec_width=vec_width, reg_file=reg_file,
-                                                                 dims=dimensionality)
+                                                                 dims=dimensionality, opt_rv=opt_rv)
     simple_single_port_spec.visualize_graph()
     simple_single_port_spec.generate_hardware()
     simple_single_port_spec.extract_compiler_information()
@@ -617,7 +615,7 @@ def test_linear_read_write_dp_wf_q_rv(output_dir=None, storage_capacity=1024, da
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Simple Dual Port')
-    parser.add_argument("--storage_capacity", type=int, default=1024)
+    parser.add_argument("--storage_capacity", type=int, default=2048)
     parser.add_argument("--data_width", type=int, default=16)
     parser.add_argument("--fetch_width", type=int, default=2)
     parser.add_argument("--reg_file", action="store_true")
@@ -626,6 +624,7 @@ if __name__ == "__main__":
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--outdir", type=str, default=None)
+    parser.add_argument("--opt_rv", action="store_true")
     args = parser.parse_args()
 
     print("Preparing hardware test")
@@ -643,4 +642,4 @@ if __name__ == "__main__":
 
     test_linear_read_write_dp_wf_q_rv(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
                                       physical=args.physical, vec_width=fw, tp=tp, reg_file=args.reg_file,
-                                      dimensionality=args.dimensionality)
+                                      dimensionality=args.dimensionality, opt_rv=args.opt_rv)

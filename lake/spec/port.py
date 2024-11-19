@@ -8,8 +8,9 @@ from lake.spec.schedule_generator import ScheduleGenerator, ReadyValidScheduleGe
 from lake.spec.storage import SingleBankStorage, Storage
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.reg_fifo import RegFIFO
-from lake.utils.util import connect_memoryport_storage
+from lake.utils.util import connect_memoryport_storage, add_counter, register, sticky_flag
 import kratos as kts
+from kratos import *
 
 
 def print_class_hierarchy(obj):
@@ -22,7 +23,7 @@ class Port(Component):
 
     def __init__(self, ext_data_width=16, int_data_width=16,
                  runtime=Runtime.STATIC, direction=Direction.IN,
-                 vec_capacity=None):
+                 vec_capacity=None, opt_rv=False):
         super().__init__()
         self._mp_intf = {}
         self._ub_intf = {}
@@ -38,6 +39,7 @@ class Port(Component):
         self.dimensionality = None
         self._internal_step = None
         self._rv_comp_nw = None
+        self.opt_rv = opt_rv
 
     def __str__(self):
         type_str = "Write"
@@ -342,7 +344,246 @@ class Port(Component):
                     self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
             else:
 
-                # Need to create a n rv network here...
+                # Here we are going to implement the monolithic output path
+                if self._runtime == Runtime.DYNAMIC and self.opt_rv:
+
+                    # Will need the address and enable/step from the external AG/SG/ID
+                    self._full_addr_in = self.input("addr_in", width=7)
+                    self._sg_step_in = self.input("sg_step_in", width=1)
+                    # This will be used to send out to the AG/ID, etc.
+                    # This is also telling us if we are making a memory read this cycle
+                    self._sg_step_out = self.output("sg_step_out", width=1)
+                    self._data_being_written = self.var("data_being_written", 1)
+                    # self._inc_linear_wcb_write = self.var("inc_linear_wcb_write", 1)
+
+                    # self._last_read_addr = self.var("last_read_addr", 1)
+                    # self._read_last_cycle = self.var("read_last_cycle", 1)
+                    # self._already_read = self.var("already_read", 1)
+                    addr_bits_range = [self._full_addr_in.width - 1, kts.clog2(self._fw)]
+
+                    self._already_read = sticky_flag(self, self._sg_step_out, name="already_read", seq_only=True)
+                    self._read_last_cycle = register(self, self._sg_step_out, enable=kts.const(1, 1), name="read_last_cycle")
+                    self._last_read_addr = register(self, self._full_addr_in, enable=self._sg_step_out, name="last_read_addr")
+
+                    # Define all the relevant signals/vars
+                    addr_q_width = kts.clog2(self.get_fw())
+                    pop_q_width = 1
+                    # tag_width = kts.clog2(self._vec_capacity // 8)
+                    tag_width = 1
+                    print(f"Tag width: {tag_width}")
+                    # exit()
+
+                    # In and out of addr queue
+                    self._addr_q_sub_addr_in = self.var("addr_q_sub_addr_in", addr_q_width)
+                    self._addr_q_sub_addr_out = self.var("addr_q_sub_addr_out", addr_q_width)
+                    self._addr_q_pop_wcb_in = self.var("addr_q_pop_wcb_in", pop_q_width)
+                    self._addr_q_pop_wcb_out = self.var("addr_q_pop_wcb_out", pop_q_width)
+                    self._addr_q_tag_in = self.var("addr_q_tag_in", tag_width)
+                    self._addr_q_tag_out = self.var("addr_q_tag_out", tag_width)
+
+                    # Can pop the address queue and wcb separately - will only push a 1 once there are two items in the queue
+                    self._pop_addr_q = self.var("pop_addr_q", 1)
+                    self._push_addr_q = self.var("push_addr_q", 1)
+                    self._pop_wcb = self.var("pop_wcb", 1)
+
+                    # This tells us if there is still valid data in the skid buffer waiting to be written into the PISO
+                    self._data_on_bus = self.var("data_on_bus", 1)
+                    self._next_data_on_bus = self.var("next_data_on_bus", 1)
+
+                    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+                    def data_on_bus_ff():
+                        if ~self._rst_n:
+                            self._data_on_bus = 0
+                        else:
+                            self._data_on_bus = self._next_data_on_bus
+                    self.add_code(data_on_bus_ff)
+
+                    max_num_items_wcb = 2
+
+                    total_values = max_num_items_wcb + 1
+                    wcb_items_bits = kts.clog2(total_values)
+
+                    # Calculate number of items in the wcb
+                    self._num_items_wcb = self.var("num_items_wcb", wcb_items_bits)
+                    self._next_num_items_wcb = self.var("next_num_items_wcb", wcb_items_bits)
+
+                    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+                    def num_items_wcb_ff():
+                        if ~self._rst_n:
+                            self._num_items_wcb = 0
+                        else:
+                            self._num_items_wcb = self._next_num_items_wcb
+                    self.add_code(num_items_wcb_ff)
+
+                    self._valid_out_lcl = self.var("valid_out_lcl", 1)
+                    self._data_out_lcl = self.var("data_out_lcl", self._ext_data_width)
+
+                    # We will need an extra register to hold the data from the SRAM in the case
+                    # that there is another Port attached to the same memory port - we can read from it
+                    # directly if we made a read the previous cycle, but we will still register it for
+                    # future cycles
+
+                    # Signal to hold the data from the SRAM
+                    self._register_data_from_mp = self.var("register_data_from_mp", 1)
+                    # Get interface to MemoryPort
+                    mp_intf = data_from_memport.get_port_interface()
+
+                    # We can set the ready on the mp_intf to 1 since we can always accept data in the monolithic case
+                    self.wire(mp_intf['ready'], kts.const(1, 1))
+
+                    # Register the data from the MP
+                    self._data_from_mp_reg = register(self, mp_intf['data'], enable=self._register_data_from_mp, name="data_from_mp_reg")
+                    # If we read from SRAM last cycle, can use the data from the SRAM, otherwise we need to grab it from the local register
+                    self._pick_input_data = kts.ternary(self._read_last_cycle, self._data_from_mp_reg, mp_intf['data'])
+
+                    # Port interface's valid is the local valid
+                    # The data is from the WCB
+                    ub_interface = data_to_ub.get_port_interface()
+                    self.wire(self._valid_out_lcl, ub_interface['valid'])
+                    self.wire(self._data_out_lcl, ub_interface['data'])
+
+                    # Linear write address to the WCB
+                    # self._linear_wcb_write = self.var("linear_wcb_write", kts.clog2(self._vec_capacity))
+                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity),
+                                                         increment=self._data_being_written)
+
+                    ###############################################################
+                    # This section creates the actual hardware for the PISO storage
+                    ###############################################################
+                    if self._ext_data_width > self._int_data_width:
+                        storage_vec_cap = self._ext_data_width * self._vec_capacity // 8
+                    else:
+                        storage_vec_cap = self._int_data_width * self._vec_capacity // 8
+
+                    # Create PISO storage and then tie it to the relevant memoryports
+                    self._piso_strg = SingleBankStorage(capacity=storage_vec_cap)
+                    self._piso_strg_mp_in = MemoryPort(data_width=self._int_data_width, mptype=MemoryPortType.W)
+                    self._piso_strg_mp_out = MemoryPort(data_width=self._ext_data_width, mptype=MemoryPortType.R, delay=0, active_read=False)
+
+                    memports = [self._piso_strg_mp_in, self._piso_strg_mp_out]
+
+                    self._piso_strg.gen_hardware(memory_ports=memports)
+                    self._piso_strg_mp_in.gen_hardware(storage_node=self._piso_strg)
+                    self._piso_strg_mp_out.gen_hardware(storage_node=self._piso_strg)
+
+                    strg_intfs = self._piso_strg.get_memport_intfs()
+
+                    self.add_child('vec_storage', self._piso_strg, clk=self._clk, rst_n=self._rst_n)
+                    self.add_child('vec_storage_mp_in', self._piso_strg_mp_in, clk=self._clk, rst_n=self._rst_n)
+                    self.add_child('vec_storage_mp_out', self._piso_strg_mp_out, clk=self._clk, rst_n=self._rst_n)
+
+                    connect_memoryport_storage(self, mptype=self._piso_strg_mp_in.get_type(),
+                                               memport_intf=self._piso_strg_mp_in.get_storage_intf(),
+                                               strg_intf=strg_intfs[0])
+                    connect_memoryport_storage(self, mptype=self._piso_strg_mp_out.get_type(),
+                                               memport_intf=self._piso_strg_mp_out.get_storage_intf(),
+                                               strg_intf=strg_intfs[1])
+
+                    wp_intf = self._piso_strg_mp_in.get_port_intf()
+                    rp_intf = self._piso_strg_mp_out.get_port_intf()
+
+                    # Wire in the inputs and outputs...
+                    self.wire(self._pick_input_data, wp_intf['write_data'])
+                    self.wire(self._data_being_written, wp_intf['write_en'])
+                    self.wire(self._linear_wcb_write, wp_intf['addr'])
+
+                    self.wire(rp_intf['read_data'], self._data_out_lcl)
+                    self.wire(self._valid_out_lcl, rp_intf['read_en'])
+                    # Also handle address
+                    self.wire(kts.concat(kts.const(0, 1), self._addr_q_sub_addr_out), rp_intf['addr'])
+
+                    ###############################################################
+
+                    q_in = kts.concat(self._addr_q_sub_addr_in, self._addr_q_pop_wcb_in, self._addr_q_tag_in)
+                    q_out = kts.concat(self._addr_q_sub_addr_out, self._addr_q_pop_wcb_out, self._addr_q_tag_out)
+
+                    # Need a sub address FIFO
+                    # Need a pop signal FIFO (1 bit)
+                    # Lastly need storage for the tag
+                    reg_fifo = RegFIFO(data_width=addr_q_width + pop_q_width + tag_width, width_mult=1, depth=8)
+                    self.add_child(f"reg_fifo_addr_q_pop_q_tag_q",
+                                    reg_fifo,
+                                    clk=self._clk,
+                                    rst_n=self._rst_n,
+                                    # clk_en=self._clk_en,
+                                    clk_en=kts.const(1, 1),
+                                    push=self._push_addr_q,
+                                    pop=self._pop_addr_q,
+                                    data_in=q_in,
+                                    data_out=q_out)
+                    # The local valid is if there are entries in the queue
+                    self.wire(self._valid_out_lcl, ~reg_fifo.ports.empty)
+
+                    @always_comb
+                    def data_being_written_comb():
+                        self._data_being_written = 0
+                        if self._data_on_bus and (self._pop_wcb | (self._num_items_wcb < 2)):
+                            self._data_being_written = 1
+                    self.add_code(data_being_written_comb)
+
+                    sub_addr_range = [kts.clog2(self._fw) - 1, 0]
+                    tag_addr_range = [kts.clog2(self._fw) + tag_width - 1, kts.clog2(self._fw)]
+
+                    @always_comb
+                    def addr_q_in_comb():
+
+                        # Push the addr queue if data
+                        self._push_addr_q = self._data_being_written | (self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]])
+
+                        # Easy - just take the sub address from the full address
+                        self._addr_q_sub_addr_in = self._last_read_addr[sub_addr_range[0], sub_addr_range[1]]
+
+                        # We only push a pop in when there is a read to a new address
+                        self._addr_q_pop_wcb_in = self._sg_step_out
+                        # The tag is just another set of bits
+                        self._addr_q_tag_in = self._last_read_addr[tag_addr_range[0], tag_addr_range[1]]
+
+                    self.add_code(addr_q_in_comb)
+
+                    @always_comb
+                    def output_port_comb():
+
+                        self._sg_step_out = 0
+                        # Only time we should make a read is if the input step is high, and there's never been a read, or the read address is new, plus there is
+                        # either room on the current bus or the current bus is being written
+                        if self._sg_step_in & (~self._already_read | ((self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~self._data_on_bus | self._data_being_written))):
+                            self._sg_step_out = 1
+
+                        # We should pop the address queue if there are items in it and the downstream is ready
+                        self._pop_addr_q = 0
+                        self._pop_wcb = 0
+                        if self._valid_out_lcl & ub_interface['ready']:
+                            self._pop_addr_q = 1
+                            # We should only pop the wcb if there is pop and 2 items
+                            if self._addr_q_pop_wcb_out & (self._num_items_wcb == 2):
+                                self._pop_wcb = 1
+
+                        # Calculate next if there is data on sram
+                        self._next_data_on_bus = self._data_on_bus
+                        # This becomes true any time we read...
+                        if self._sg_step_out:
+                            self._next_data_on_bus = 1
+                        # It only becomes false in the case that we push to the wcb
+                        elif self._data_being_written:
+                            self._next_data_on_bus = 0
+
+                        self._next_num_items_wcb = self._num_items_wcb
+                        # If we are writing the wcb and not popping, increment the number of items
+                        if self._data_being_written and ~self._pop_wcb:
+                            self._next_num_items_wcb = self._num_items_wcb + 1
+                        # If we are popping the wcb, decrement the number of items
+                        elif ~self._data_being_written and self._pop_wcb:
+                            self._next_num_items_wcb = self._num_items_wcb - 1
+
+                    self.add_code(output_port_comb)
+
+                    # Now lift everything's config space up
+                    self.config_space_fixed = True
+                    self._assemble_cfg_memory_input()
+
+                    return
+
+                # Need to create an rv network here...
                 if self._runtime == Runtime.DYNAMIC:
                     self._rv_comp_nw = RVComparisonNetwork(name=f"rv_comp_nw_{self.name}")
 
@@ -654,47 +895,52 @@ class Port(Component):
                     all_bs.append(sg_sipo_out_bs)
 
             elif self.get_direction() == Direction.OUT:
-                vec_out_addr_map = vec_out['address']
-                vec_out_sched_map = vec_out['schedule']
-                internal_id_bs = self._id_piso_out.gen_bitstream(dimensionality=vec_out['dimensionality'],
-                                                                 extents=vec_out['extents'],
-                                                                 rv=self._runtime == Runtime.DYNAMIC)
-                internal_ag_bs = self._ag_piso_out.gen_bitstream(address_map=vec_out_addr_map,
-                                                                 extents=vec_out['extents'],
-                                                                 dimensionality=vec_out['dimensionality'])
-                internal_sg_bs = self._sg_piso_out.gen_bitstream(schedule_map=vec_out_sched_map,
-                                                                 extents=vec_out['extents'],
-                                                                 dimensionality=vec_out['dimensionality'])
 
-                internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_piso_out])
-                internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_piso_out])
-                internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_piso_out])
+                if self.opt_rv:
+                    pass
 
-                # Now get the output part
-                vec_out_addr_map = vec_in['address']
-                external_ag_bs = self._ag_piso_in.gen_bitstream(address_map=vec_out_addr_map,
-                                                                extents=vec_in['extents'],
-                                                                dimensionality=vec_in['dimensionality'])
-                external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_piso_in])
-                all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
+                else:
+                    vec_out_addr_map = vec_out['address']
+                    vec_out_sched_map = vec_out['schedule']
+                    internal_id_bs = self._id_piso_out.gen_bitstream(dimensionality=vec_out['dimensionality'],
+                                                                    extents=vec_out['extents'],
+                                                                    rv=self._runtime == Runtime.DYNAMIC)
+                    internal_ag_bs = self._ag_piso_out.gen_bitstream(address_map=vec_out_addr_map,
+                                                                    extents=vec_out['extents'],
+                                                                    dimensionality=vec_out['dimensionality'])
+                    internal_sg_bs = self._sg_piso_out.gen_bitstream(schedule_map=vec_out_sched_map,
+                                                                    extents=vec_out['extents'],
+                                                                    dimensionality=vec_out['dimensionality'])
 
-                # Need to configure the rv sched generator at the output of the sipo
-                if self._runtime == Runtime.DYNAMIC:
-                    sg_piso_in_bs = self._sg_piso_in.gen_bitstream()
-                    sg_piso_in_bs = self._add_base_to_cfg_space(sg_piso_in_bs, self.child_cfg_bases[self._sg_piso_in])
-                    all_bs.append(sg_piso_in_bs)
+                    internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_piso_out])
+                    internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_piso_out])
+                    internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_piso_out])
 
-                    id_piso_in_bs = self._id_piso_in.gen_bitstream(dimensionality=vec_in['dimensionality'],
-                                                                   extents=vec_in['extents'],
-                                                                   rv=self._runtime == Runtime.DYNAMIC)
-                    id_piso_in_bs = self._add_base_to_cfg_space(id_piso_in_bs, self.child_cfg_bases[self._id_piso_in])
-                    all_bs.append(id_piso_in_bs)
+                    # Now get the output part
+                    vec_out_addr_map = vec_in['address']
+                    external_ag_bs = self._ag_piso_in.gen_bitstream(address_map=vec_out_addr_map,
+                                                                    extents=vec_in['extents'],
+                                                                    dimensionality=vec_in['dimensionality'])
+                    external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_piso_in])
+                    all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
+
+                    # Need to configure the rv sched generator at the output of the sipo
+                    if self._runtime == Runtime.DYNAMIC:
+                        sg_piso_in_bs = self._sg_piso_in.gen_bitstream()
+                        sg_piso_in_bs = self._add_base_to_cfg_space(sg_piso_in_bs, self.child_cfg_bases[self._sg_piso_in])
+                        all_bs.append(sg_piso_in_bs)
+
+                        id_piso_in_bs = self._id_piso_in.gen_bitstream(dimensionality=vec_in['dimensionality'],
+                                                                    extents=vec_in['extents'],
+                                                                    rv=self._runtime == Runtime.DYNAMIC)
+                        id_piso_in_bs = self._add_base_to_cfg_space(id_piso_in_bs, self.child_cfg_bases[self._id_piso_in])
+                        all_bs.append(id_piso_in_bs)
 
             else:
                 raise NotImplementedError
 
             # Need to configure the RV network if rv mode
-            if self._runtime == Runtime.DYNAMIC:
+            if self._runtime == Runtime.DYNAMIC and self.opt_rv is False:
                 rv_comp_bs = self._rv_comp_nw.gen_bitstream(constraints=vec_constraints)
                 rv_comp_bs = self._add_base_to_cfg_space(rv_comp_bs, self.child_cfg_bases[self._rv_comp_nw])
                 all_bs.append(rv_comp_bs)

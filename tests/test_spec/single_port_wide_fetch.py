@@ -60,7 +60,6 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
         all_outs_ag.append(out_ag)
         all_outs_sg.append(out_sg)
 
-
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
 
@@ -78,7 +77,7 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
 
     # All cores are registered at this point
     # Now connect them
-        # Out to out
+    # Out to out
     for inp in range(in_ports):
         ls.connect(all_ins[inp], all_ins_id[inp])
         ls.connect(all_ins[inp], all_ins_ag[inp])
@@ -106,7 +105,7 @@ def build_single_port_wide_fetch(storage_capacity=1024, data_width=16, dims: int
     # ls.connect(out_port, out_sg)
 
     for inp in range(in_ports):
-    # In and Out to shared memory port
+        # In and Out to shared memory port
         ls.connect(all_ins[inp], shared_rw_mem_port)
     for outp in range(out_ports):
         ls.connect(all_outs[outp], shared_rw_mem_port)

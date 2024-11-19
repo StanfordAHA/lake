@@ -192,7 +192,6 @@ class MainMemoryModel():
                 else:
                     # If not enough room, can't do anything here...
                     self.read_last_cycle = False
-
                     # Will push the addr to the queue (which also means stepping the addr sequence)
                     push_addr_q = False
                     to_push_addr_q = 0
@@ -244,8 +243,8 @@ class MainMemoryModel():
         # End of cycle need to do popping
         if pop_wcb:
             self.wcb.pop(0)
-            self.wcb_num_items -= 1
             self.wcb_tags.pop(0)
+            self.wcb_num_items -= 1
 
         if pop_addr_q:
             self.addr_q.pop(0)

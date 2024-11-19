@@ -14,14 +14,16 @@ import argparse
 
 def build_simple_dual_port(storage_capacity: int = 1024, data_width=16,
                            dims: int = 6, clock_count_width=16, physical=False,
-                           recurrence=True, reg_file=False) -> Spec:
+                           recurrence=True, reg_file=False, opt_rv=False) -> Spec:
 
     read_delay = 1 if reg_file else 1
 
     ls = Spec()
 
-    in_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC, direction=Direction.IN)
-    out_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC, direction=Direction.OUT)
+    in_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                   direction=Direction.IN, opt_rv=opt_rv)
+    out_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                    direction=Direction.OUT, opt_rv=opt_rv)
 
     ls.register(in_port, out_port)
 
@@ -140,7 +142,8 @@ def get_linear_test(depth=512):
 
 
 def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16, clock_count_width=64,
-                           physical=False, tp: TestPrepper = None, reg_file=False, dimensionality=6):
+                           physical=False, tp: TestPrepper = None, reg_file=False, dimensionality=6,
+                           opt_rv=False):
 
     # Put it at the lake directory by default
     if output_dir is None:
@@ -152,7 +155,8 @@ def test_linear_read_write(output_dir=None, storage_capacity=1024, data_width=16
     print(f"putting verilog at {output_dir_verilog}")
     # Build the spec
     simple_dual_port_spec = build_simple_dual_port(storage_capacity=storage_capacity, data_width=data_width,
-                                                   physical=physical, reg_file=reg_file, dims=dimensionality)
+                                                   physical=physical, reg_file=reg_file, dims=dimensionality,
+                                                   opt_rv=opt_rv)
     simple_dual_port_spec.visualize_graph()
     simple_dual_port_spec.generate_hardware()
     simple_dual_port_spec.extract_compiler_information()
@@ -232,6 +236,7 @@ if __name__ == "__main__":
     parser.add_argument("--tech", type=str, default="GF")
     parser.add_argument("--physical", action="store_true")
     parser.add_argument("--outdir", type=str, default=None)
+    parser.add_argument("--opt_rv", action="store_true")
     args = parser.parse_args()
 
     print("Preparing hardware test")
@@ -246,4 +251,5 @@ if __name__ == "__main__":
 
     test_linear_read_write(output_dir=hw_test_dir, storage_capacity=args.storage_capacity, data_width=args.data_width,
                            clock_count_width=args.clock_count_width, physical=args.physical,
-                           tp=tp, reg_file=args.reg_file, dimensionality=args.dimensionality)
+                           tp=tp, reg_file=args.reg_file, dimensionality=args.dimensionality,
+                           opt_rv=args.opt_rv)
