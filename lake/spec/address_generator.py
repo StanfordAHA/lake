@@ -114,6 +114,9 @@ class AddressGenerator(Component):
         # This will return pairs of ranges with values w.r.t. the node's configuration
         return self.get_configuration()
 
+    def get_address_width(self):
+        return self.addr_width
+
     def get_address(self):
         return self._addr_out
 

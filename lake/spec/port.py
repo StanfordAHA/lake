@@ -40,12 +40,16 @@ class Port(Component):
         self._internal_step = None
         self._rv_comp_nw = None
         self.opt_rv = opt_rv
+        self.port_ag_width = None
 
     def __str__(self):
         type_str = "Write"
         if self._direction == Direction.OUT:
             type_str = "Read"
         return f"Port: {type_str}"
+
+    def set_port_ag_width(self, width):
+        self.port_ag_width = width
 
     def set_dimensionality(self, dim):
         self.dimensionality = dim
@@ -348,7 +352,8 @@ class Port(Component):
                 if self._runtime == Runtime.DYNAMIC and self.opt_rv:
 
                     # Will need the address and enable/step from the external AG/SG/ID
-                    self._full_addr_in = self.input("addr_in", width=7)
+                    assert self.port_ag_width is not None
+                    self._full_addr_in = self.input("addr_in", width=self.port_ag_width)
                     self._sg_step_in = self.input("sg_step_in", width=1)
                     # This will be used to send out to the AG/ID, etc.
                     # This is also telling us if we are making a memory read this cycle

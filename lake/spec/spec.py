@@ -222,7 +222,6 @@ class Spec():
             # assert port_ag is not None
             # port_sg: ScheduleGenerator = self.get_associated_controller(ScheduleGenerator, port)
             # assert port_sg is not None
-
             # Connect port's data to all of the memoryports
             id_dims = port_id.get_dimensionality()
             memports_ = self.get_memory_ports(port=port)
@@ -230,6 +229,7 @@ class Spec():
             # build the proper hardware within the port
             port_id.gen_hardware()
             port_ag.gen_hardware(memports_, port_id)
+            port.set_port_ag_width(port_ag.get_address_width())
 
             if self.any_rv_sg:
                 # We need to include some information about the other ports when building schedule generator
