@@ -75,6 +75,7 @@ class LFCompBlock(Component):
         self.configure(self._enable_comparison, 1)
         self.configure(self._comp_reg, comparator)
         self.configure(self._scalar_reg, scalar)
+        print(f"SCALAR_REG: {scalar}")
         return self.get_configuration()
 
 

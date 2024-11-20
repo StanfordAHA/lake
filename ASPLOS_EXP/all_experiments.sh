@@ -58,6 +58,8 @@
 # # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_WO_HARD_CFG_REG/ --physical --design_filter dual_port_rv --storage_capacity 16384 --run_builds
 # # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_WO_HARD_CFG_REG/ --physical --design_filter dual_port_wide_fetch_quad --storage_capacity 16384 --run_builds
 
+# # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_MONOLITHIC_CLK_GATE/ --physical --design_filter dual_port_wide_fetch_quad_rv --storage_capacity 16384
+
 # # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_CONSTRAINT_WITH_CFG_REG/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
 # # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/DUAL_PORT_CONSTRAINT_WO_CFG_REG/ --physical --design_filter simple_dual_port --storage_capacity 16384 --run_builds
 

@@ -132,8 +132,13 @@ if __name__ == "__main__":
             if physical_arg:
                 execution_str.append("--physical")
 
+            execution_str.append("--opt_rv")
+
             if reg_file:
                 execution_str
+
+            print(execution_str)
+            print(" ".join(execution_str))
 
             vlog_filepath = os.path.join(outdir, "inputs", "lakespec.sv")
             if serial_processing is True:

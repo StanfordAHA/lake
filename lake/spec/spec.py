@@ -27,7 +27,7 @@ class Spec():
     """Harness for lake primitives
     """
     def __init__(self, name="lakespec", clkgate=True,
-                 config_passthru=True,
+                 config_passthru=False,
                  opt_rv=False) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
@@ -334,8 +334,13 @@ class Spec():
                     # The ready comes out of the memintf decoder
                     self._final_gen.wire(memintf_dec.ports.data_ready, port_ready)
 
-                    self._final_gen.wire(port_ag.ports.step, mid_grant)
-                    self._final_gen.wire(port_id.ports.step, mid_grant)
+                    # If wide and optimizing rv, we should just give them the port's step out
+                    if port.get_fw() > 1 and self.opt_rv:
+                        self._final_gen.wire(port_ag.ports.step, port.ports.sg_step_out)
+                        self._final_gen.wire(port_id.ports.step, port.ports.sg_step_out)
+                    else:
+                        self._final_gen.wire(port_ag.ports.step, mid_grant)
+                        self._final_gen.wire(port_id.ports.step, mid_grant)
 
                 else:
                     raise NotImplementedError(f"Only support {Direction.IN} and {Direction.OUT}")
@@ -361,11 +366,17 @@ class Spec():
             if port.get_fw() > 1:
 
                 # Fill in the optimization here...
-                if self.opt_rv and port_direction == Direction.OUT:
+                if self.any_rv_sg and self.opt_rv and port_direction == Direction.OUT:
 
                     # For this port, we want to give it the step from the SG and the addr from the AG
-                    self._final_gen.wire(quali_step, port.ports.sg_step_in)
+                    # quali_step = sg_step &memintf_dec.ports.resource_ready
+                    # quali_step = sg_step & memintf_dec.ports.resource_ready
+
+                    self._final_gen.wire(port_sg.ports.step, port.ports.sg_step_in)
                     self._final_gen.wire(port_ag.get_address(), port.ports.addr_in)
+                    assembled_port['addr'] = port.ports.addr_out
+                    # quali_step is now the ready of the memintf_dec with the output step of the Port
+                    quali_step = port.ports.read_memory_out & memintf_dec.ports.resource_ready
 
                 else:
                     ext_intf = port.get_internal_ag_intf()

@@ -354,10 +354,12 @@ class Port(Component):
                     # Will need the address and enable/step from the external AG/SG/ID
                     assert self.port_ag_width is not None
                     self._full_addr_in = self.input("addr_in", width=self.port_ag_width)
+                    self._addr_out = self.output("addr_out", width=self.port_ag_width)
                     self._sg_step_in = self.input("sg_step_in", width=1)
                     # This will be used to send out to the AG/ID, etc.
                     # This is also telling us if we are making a memory read this cycle
                     self._sg_step_out = self.output("sg_step_out", width=1)
+                    self._read_memory_out = self.output("read_memory_out", width=1)
                     self._data_being_written = self.var("data_being_written", 1)
                     # self._inc_linear_wcb_write = self.var("inc_linear_wcb_write", 1)
 
@@ -366,9 +368,9 @@ class Port(Component):
                     # self._already_read = self.var("already_read", 1)
                     addr_bits_range = [self._full_addr_in.width - 1, kts.clog2(self._fw)]
 
-                    self._already_read = sticky_flag(self, self._sg_step_out, name="already_read", seq_only=True)
-                    self._read_last_cycle = register(self, self._sg_step_out, enable=kts.const(1, 1), name="read_last_cycle")
-                    self._last_read_addr = register(self, self._full_addr_in, enable=self._sg_step_out, name="last_read_addr")
+                    self._already_read = sticky_flag(self, self._read_memory_out, name="already_read", seq_only=True)
+                    self._read_last_cycle = register(self, self._read_memory_out, enable=kts.const(1, 1), name="read_last_cycle")
+                    self._last_read_addr = register(self, self._full_addr_in, enable=self._read_memory_out, name="last_read_addr")
 
                     # Define all the relevant signals/vars
                     addr_q_width = kts.clog2(self.get_fw())
@@ -377,6 +379,8 @@ class Port(Component):
                     tag_width = 1
                     print(f"Tag width: {tag_width}")
                     # exit()
+
+                    self.wire(self._addr_out, kts.concat(self._full_addr_in >> addr_q_width))
 
                     # In and out of addr queue
                     self._addr_q_sub_addr_in = self.var("addr_q_sub_addr_in", addr_q_width)
@@ -517,7 +521,8 @@ class Port(Component):
                                     data_in=q_in,
                                     data_out=q_out)
                     # The local valid is if there are entries in the queue
-                    self.wire(self._valid_out_lcl, ~reg_fifo.ports.empty)
+                    # Also need to deal with startup - make sure there are items in wcb as well
+                    self.wire(self._valid_out_lcl, ~reg_fifo.ports.empty & (self._num_items_wcb > 0))
 
                     @always_comb
                     def data_being_written_comb():
@@ -533,13 +538,24 @@ class Port(Component):
                     def addr_q_in_comb():
 
                         # Push the addr queue if data
-                        self._push_addr_q = self._data_being_written | (self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]])
+                        # self._push_addr_q = self._data_being_written | (self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]])
+                        self._push_addr_q = 0
+                        # If it hasn't been read and we are reading, we should push this address...
+                        if ~self._already_read:
+                            # If we are making the read...
+                            self._push_addr_q = self._read_memory_out
+                        # If the upper portion of the address is different...
+                        elif (self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~reg_fifo.ports.full):
+                            self._push_addr_q = self._read_memory_out
+                        # If the upper portion is the same, we can push if there is room in the queue
+                        elif (~reg_fifo.ports.full):
+                            self._push_addr_q = 1
 
                         # Easy - just take the sub address from the full address
                         self._addr_q_sub_addr_in = self._last_read_addr[sub_addr_range[0], sub_addr_range[1]]
 
                         # We only push a pop in when there is a read to a new address
-                        self._addr_q_pop_wcb_in = self._sg_step_out
+                        self._addr_q_pop_wcb_in = self._read_memory_out
                         # The tag is just another set of bits
                         self._addr_q_tag_in = self._last_read_addr[tag_addr_range[0], tag_addr_range[1]]
 
@@ -548,11 +564,15 @@ class Port(Component):
                     @always_comb
                     def output_port_comb():
 
-                        self._sg_step_out = 0
+                        self._read_memory_out = 0
                         # Only time we should make a read is if the input step is high, and there's never been a read, or the read address is new, plus there is
                         # either room on the current bus or the current bus is being written
                         if self._sg_step_in & (~self._already_read | ((self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~self._data_on_bus | self._data_being_written))):
-                            self._sg_step_out = 1
+                            self._read_memory_out = 1
+
+                        # self._sg_step_out = 0
+                        # This signal is actually just the push address queue signal
+                        self._sg_step_out = self._push_addr_q
 
                         # We should pop the address queue if there are items in it and the downstream is ready
                         self._pop_addr_q = 0
@@ -566,7 +586,7 @@ class Port(Component):
                         # Calculate next if there is data on sram
                         self._next_data_on_bus = self._data_on_bus
                         # This becomes true any time we read...
-                        if self._sg_step_out:
+                        if self._read_memory_out:
                             self._next_data_on_bus = 1
                         # It only becomes false in the case that we push to the wcb
                         elif self._data_being_written:
@@ -574,10 +594,10 @@ class Port(Component):
 
                         self._next_num_items_wcb = self._num_items_wcb
                         # If we are writing the wcb and not popping, increment the number of items
-                        if self._data_being_written and ~self._pop_wcb:
+                        if (self._data_being_written) and (~self._pop_wcb):
                             self._next_num_items_wcb = self._num_items_wcb + 1
                         # If we are popping the wcb, decrement the number of items
-                        elif ~self._data_being_written and self._pop_wcb:
+                        elif (self._pop_wcb) and (~self._data_being_written):
                             self._next_num_items_wcb = self._num_items_wcb - 1
 
                     self.add_code(output_port_comb)
@@ -945,7 +965,7 @@ class Port(Component):
                 raise NotImplementedError
 
             # Need to configure the RV network if rv mode
-            if self._runtime == Runtime.DYNAMIC and self.opt_rv is False:
+            if self._runtime == Runtime.DYNAMIC and (self.opt_rv is False or (self.get_direction() == Direction.IN)):
                 rv_comp_bs = self._rv_comp_nw.gen_bitstream(constraints=vec_constraints)
                 rv_comp_bs = self._add_base_to_cfg_space(rv_comp_bs, self.child_cfg_bases[self._rv_comp_nw])
                 all_bs.append(rv_comp_bs)
