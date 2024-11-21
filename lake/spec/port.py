@@ -377,6 +377,9 @@ class Port(Component):
                     pop_q_width = 1
                     # tag_width = kts.clog2(self._vec_capacity // 8)
                     tag_width = 1
+                    sub_addr_range = [kts.clog2(self._fw) - 1, 0]
+                    tag_addr_range = [kts.clog2(self._fw) + tag_width - 1, kts.clog2(self._fw)]
+
                     print(f"Tag width: {tag_width}")
                     # exit()
 
@@ -443,7 +446,7 @@ class Port(Component):
                     # Register the data from the MP
                     self._data_from_mp_reg = register(self, mp_intf['data'], enable=self._register_data_from_mp, name="data_from_mp_reg")
                     # If we read from SRAM last cycle, can use the data from the SRAM, otherwise we need to grab it from the local register
-                    self._pick_input_data = kts.ternary(self._read_last_cycle, self._data_from_mp_reg, mp_intf['data'])
+                    self._pick_input_data = kts.ternary(self._read_last_cycle, mp_intf['data'], self._data_from_mp_reg)
 
                     # Port interface's valid is the local valid
                     # The data is from the WCB
@@ -453,9 +456,11 @@ class Port(Component):
 
                     # Linear write address to the WCB
                     # self._linear_wcb_write = self.var("linear_wcb_write", kts.clog2(self._vec_capacity))
-                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity),
-                                                         increment=self._data_being_written)
+                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._data_being_written)
+                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._pop_wcb)
 
+                    ###############################################################
+                    ###############################################################
                     ###############################################################
                     # This section creates the actual hardware for the PISO storage
                     ###############################################################
@@ -488,6 +493,60 @@ class Port(Component):
                                                memport_intf=self._piso_strg_mp_out.get_storage_intf(),
                                                strg_intf=strg_intfs[1])
 
+                    # We also need a set of regs that are going to hold the tags and a valid bit, basically a CAM
+                    # | Tag | Valid |
+                    tag_valid_cam = self.var("tag_valid_cam", tag_width + 1,
+                                               size=max_num_items_wcb, packed=True, explicit_array=True)
+                    next_tag_valid_cam = self.var("next_tag_valid_cam", tag_width + 1,
+                                               size=max_num_items_wcb, packed=True, explicit_array=True)
+
+                    # FF defined for tag valid cam
+                    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+                    def tag_valid_cam_ff():
+                        if ~self._rst_n:
+                            for i in range(max_num_items_wcb):
+                                tag_valid_cam[i] = 0
+                        else:
+                            for i in range(max_num_items_wcb):
+                                tag_valid_cam[i] = next_tag_valid_cam[i]
+
+                    # Get tag bits from last_read_addr
+                    tag_bits_last_read_addr = self._last_read_addr[tag_addr_range[0], tag_addr_range[1]]
+
+                    @always_comb
+                    # Create the combinational logic for the next_tag_valid_cam signals - should match the linear_wcb_write for the address
+                    def next_tag_valid_cam_comb():
+                        for i in range(max_num_items_wcb):
+                            next_tag_valid_cam[i] = tag_valid_cam[i]
+                            if self._data_being_written & (self._linear_wcb_write == i):
+                                next_tag_valid_cam[i] = kts.concat(kts.const(1, 1), tag_bits_last_read_addr)
+                            elif self._pop_wcb & (self._linear_wcb_read == i):
+                                next_tag_valid_cam[i] = kts.concat(kts.const(0, 1), tag_valid_cam[i][tag_valid_cam[i].width - 2, 0])
+                        # if self._data_being_written:
+                        #     next_tag_valid_cam[self._linear_wcb_write] = kts.concat(kts.const(1, 1), tag_bits_last_read_addr)
+
+                    # Invalidate
+
+                    # Now, need to search the tag_valid_cam for the entry that matches the tag from the output of the tag queue
+                    done_tmp = self.var("done_tmp_match_cam", 1)
+                    match_addr = self.var("match_addr", kts.clog2(max_num_items_wcb))
+                    match_addr_valid = self.var("match_addr_valid", 1)
+
+                    @always_comb
+                    def tag_valid_cam_search():
+                        done_tmp = 0
+                        match_addr = 0
+                        match_addr_valid = 0
+                        for i in range(max_num_items_wcb):
+                            if (tag_valid_cam[i][tag_width - 1, 0] == self._addr_q_tag_out) and ~done_tmp:
+                                done_tmp = 1
+                                match_addr = i
+                                match_addr_valid = tag_valid_cam[i][tag_width]
+                    self.add_code(tag_valid_cam_search)
+
+                    self.add_code(tag_valid_cam_ff)
+                    self.add_code(next_tag_valid_cam_comb)
+
                     wp_intf = self._piso_strg_mp_in.get_port_intf()
                     rp_intf = self._piso_strg_mp_out.get_port_intf()
 
@@ -499,8 +558,9 @@ class Port(Component):
                     self.wire(rp_intf['read_data'], self._data_out_lcl)
                     self.wire(self._valid_out_lcl, rp_intf['read_en'])
                     # Also handle address
-                    self.wire(kts.concat(kts.const(0, 1), self._addr_q_sub_addr_out), rp_intf['addr'])
-
+                    self.wire(kts.concat(match_addr, self._addr_q_sub_addr_out), rp_intf['addr'])
+                    ###############################################################
+                    ###############################################################
                     ###############################################################
 
                     q_in = kts.concat(self._addr_q_sub_addr_in, self._addr_q_pop_wcb_in, self._addr_q_tag_in)
@@ -522,7 +582,7 @@ class Port(Component):
                                     data_out=q_out)
                     # The local valid is if there are entries in the queue
                     # Also need to deal with startup - make sure there are items in wcb as well
-                    self.wire(self._valid_out_lcl, ~reg_fifo.ports.empty & (self._num_items_wcb > 0))
+                    self.wire(self._valid_out_lcl, ~reg_fifo.ports.empty & (self._num_items_wcb > 0) & match_addr_valid)
 
                     @always_comb
                     def data_being_written_comb():
@@ -530,9 +590,6 @@ class Port(Component):
                         if self._data_on_bus and (self._pop_wcb | (self._num_items_wcb < 2)):
                             self._data_being_written = 1
                     self.add_code(data_being_written_comb)
-
-                    sub_addr_range = [kts.clog2(self._fw) - 1, 0]
-                    tag_addr_range = [kts.clog2(self._fw) + tag_width - 1, kts.clog2(self._fw)]
 
                     @always_comb
                     def addr_q_in_comb():
@@ -552,12 +609,14 @@ class Port(Component):
                             self._push_addr_q = 1
 
                         # Easy - just take the sub address from the full address
-                        self._addr_q_sub_addr_in = self._last_read_addr[sub_addr_range[0], sub_addr_range[1]]
+                        # self._addr_q_sub_addr_in = self._last_read_addr[sub_addr_range[0], sub_addr_range[1]]
+                        self._addr_q_sub_addr_in = self._full_addr_in[sub_addr_range[0], sub_addr_range[1]]
 
                         # We only push a pop in when there is a read to a new address
                         self._addr_q_pop_wcb_in = self._read_memory_out
                         # The tag is just another set of bits
-                        self._addr_q_tag_in = self._last_read_addr[tag_addr_range[0], tag_addr_range[1]]
+                        # self._addr_q_tag_in = self._last_read_addr[tag_addr_range[0], tag_addr_range[1]]
+                        self._addr_q_tag_in = self._full_addr_in[tag_addr_range[0], tag_addr_range[1]]
 
                     self.add_code(addr_q_in_comb)
 
@@ -575,9 +634,10 @@ class Port(Component):
                         self._sg_step_out = self._push_addr_q
 
                         # We should pop the address queue if there are items in it and the downstream is ready
+                        # and the match_addr_valid is 1 - to make sure we are not reading too early.
                         self._pop_addr_q = 0
                         self._pop_wcb = 0
-                        if self._valid_out_lcl & ub_interface['ready']:
+                        if self._valid_out_lcl and ub_interface['ready'] and match_addr_valid:
                             self._pop_addr_q = 1
                             # We should only pop the wcb if there is pop and 2 items
                             if self._addr_q_pop_wcb_out & (self._num_items_wcb == 2):

@@ -11,7 +11,7 @@ class MemoryInterfaceDecoder(Component):
 
     # def __init__(self, name: str, debug: bool = False, is_clone: bool = False, internal_generator=None):
     def __init__(self, name: str = None, port_type: Direction = None, port_intf: dict = None,
-                 memports=None, runtime=Runtime.STATIC):
+                 memports=None, runtime=Runtime.STATIC, opt_rv=False):
         super().__init__(name=name)
         # super().__init__(name, debug, is_clone, internal_generator)
         assert memports is not None
@@ -22,6 +22,7 @@ class MemoryInterfaceDecoder(Component):
         self.port_direction = port_type
         self.addr_ranges = None
         self.runtime = runtime
+        self.opt_rv = opt_rv
         # Set the delay to be the worst case delay over all memports
         # For now they are always all the same...
         self.delay = 0
@@ -80,37 +81,51 @@ class MemoryInterfaceDecoder(Component):
                 # In this case, we need to instantiate a FIFO as a skid buffer to accomodate
                 # the latency of the physical storage in addition to a shift register chain
 
-                rupp2 = round_up_to_power_of_2(2 + self.delay)
+                if self.opt_rv:
+                    # In the optimized case, just send everything through...
+                    shift_reg_en_in = self.var("shift_reg_en_in", 1)
+                    shift_reg_en_out = shift_reg(self, shift_reg_en_in & self._grant_lcl, chain_depth=self.delay)
 
-                reg_fifo = RegFIFO(self.port_intf['data'].width, 1, rupp2, almost_full_diff=self.delay + 1)
-                # shift_reg_out = None
-                # shift_register_chain = None
-                # Shift register on the actual transaction
-                shift_reg_en_in = self.var("shift_reg_en_in", 1)
-                shift_reg_en_out = shift_reg(self, shift_reg_en_in & self._grant_lcl, chain_depth=self.delay)
-                # Shift register on the decoded enable so we know which to use (one-hot mux sel)
+                    self.wire(data_to_port_rv.get_valid(), shift_reg_en_out)
+                    # Wire the port's output data to the muxed data
+                    self.wire(data_to_port_rv.get_port(), muxed_data_in)
+                    # print("HERE opt")
+                    self.wire(shift_reg_en_in, self.p_intf['en'])
+                    self.wire(self._resource_ready_lcl, kts.const(1, 1))
+                    # exit()
 
-                self.add_child(f"reg_fifo",
-                                reg_fifo,
-                                clk=self._clk,
-                                rst_n=self._rst_n,
-                                # clk_en=self._clk_en,
-                                clk_en=kts.const(1, 1),
-                                # Only push the request if enable is high and the grant is high
-                                push=shift_reg_en_out,
-                                # push=shift_reg_en_out,
-                                pop=data_to_port_rv.get_ready(),
-                                data_in=muxed_data_in,
-                                data_out=data_to_port_rv.get_port())
+                else:
 
-                # Valid going out for the data is the not empty of the fifo
-                self.wire(data_to_port_rv.get_valid(), ~reg_fifo.ports.empty)
-                # # The shift reg just captures if an actual even occured which is the enable in +
-                # # it needs to be qualified on the almost_full from the fifo - since we sized this for appropriate
-                # # amount of skid buffering, we don't need to worry about the FIFO's full signal
-                # shift_reg_in = en_from_port & ~reg_fifo.ports.almost_full
-                self.wire(shift_reg_en_in, self.p_intf['en'] & ~reg_fifo.ports.almost_full)
-                self.wire(self._resource_ready_lcl, ~reg_fifo.ports.almost_full)
+                    rupp2 = round_up_to_power_of_2(2 + self.delay)
+                    reg_fifo = RegFIFO(self.port_intf['data'].width, 1, rupp2, almost_full_diff=self.delay + 1)
+                    # shift_reg_out = None
+                    # shift_register_chain = None
+                    # Shift register on the actual transaction
+                    shift_reg_en_in = self.var("shift_reg_en_in", 1)
+                    shift_reg_en_out = shift_reg(self, shift_reg_en_in & self._grant_lcl, chain_depth=self.delay)
+                    # Shift register on the decoded enable so we know which to use (one-hot mux sel)
+
+                    self.add_child(f"reg_fifo",
+                                    reg_fifo,
+                                    clk=self._clk,
+                                    rst_n=self._rst_n,
+                                    # clk_en=self._clk_en,
+                                    clk_en=kts.const(1, 1),
+                                    # Only push the request if enable is high and the grant is high
+                                    push=shift_reg_en_out,
+                                    # push=shift_reg_en_out,
+                                    pop=data_to_port_rv.get_ready(),
+                                    data_in=muxed_data_in,
+                                    data_out=data_to_port_rv.get_port())
+
+                    # Valid going out for the data is the not empty of the fifo
+                    self.wire(data_to_port_rv.get_valid(), ~reg_fifo.ports.empty)
+                    # # The shift reg just captures if an actual even occured which is the enable in +
+                    # # it needs to be qualified on the almost_full from the fifo - since we sized this for appropriate
+                    # # amount of skid buffering, we don't need to worry about the FIFO's full signal
+                    # shift_reg_in = en_from_port & ~reg_fifo.ports.almost_full
+                    self.wire(shift_reg_en_in, self.p_intf['en'] & ~reg_fifo.ports.almost_full)
+                    self.wire(self._resource_ready_lcl, ~reg_fifo.ports.almost_full)
 
             else:
 

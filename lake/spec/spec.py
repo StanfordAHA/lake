@@ -285,7 +285,7 @@ class Spec():
             # send signals through memintf decoder (one port to many memoryports, doing decoding based on address)
             memintf_dec = MemoryInterfaceDecoder(name=f"memintfdec_{i_}", port_type=port.get_direction(),
                                                  port_intf=assembled_port, memports=memports_,
-                                                 runtime=self.runtime)
+                                                 runtime=self.runtime, opt_rv=self.opt_rv)
             memintf_dec.gen_hardware()
 
             self._final_gen.add_child(f"memintfdec_inst_{i_}", memintf_dec,

@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser.add_argument("--reg_file", action="store_true")
     parser.add_argument("--use_ports", action="store_true")
     parser.add_argument("--run_sim", action="store_true")
+    parser.add_argument("--opt_rv", action="store_true")
     parser.add_argument('--storage_capacity', nargs='*', type=int)
     parser.add_argument('--dimensionality', nargs='*', type=int)
     parser.add_argument('--data_width', nargs='*', type=int)
@@ -35,6 +36,7 @@ if __name__ == "__main__":
     inp = args.in_ports
     outp = args.out_ports
     use_ports = args.use_ports
+    opt_rv = args.opt_rv
 
     spst = args.spst
 
@@ -132,7 +134,8 @@ if __name__ == "__main__":
             if physical_arg:
                 execution_str.append("--physical")
 
-            execution_str.append("--opt_rv")
+            if opt_rv:
+                execution_str.append("--opt_rv")
 
             if reg_file:
                 execution_str

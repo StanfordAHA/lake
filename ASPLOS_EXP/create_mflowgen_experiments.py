@@ -1847,6 +1847,7 @@ if __name__ == "__main__":
     parser.add_argument("--run_builds", action="store_true")
     # parser.add_argument("--collect_power", action="store_true")
     parser.add_argument("--run_power", action="store_true")
+    parser.add_argument("--opt_rv", action="store_true")
     parser.add_argument("--build_dir", type=str, default=None, required=True)
     parser.add_argument("--csv_out", type=str, default=None, required=False)
     parser.add_argument("--design_filter", type=str, default=None, required=False)
@@ -1879,6 +1880,7 @@ if __name__ == "__main__":
     figure_name = args.figure_name
     experiment = args.experiment
     run_power = args.run_power
+    opt_rv = args.opt_rv
     # collect_power = args.collect_power
 
     spst = args.spst
@@ -2121,6 +2123,9 @@ if __name__ == "__main__":
 
                     if spst is not None:
                         python_command = " ".join([python_command, "--spst", f"{spst}"])
+
+                    if opt_rv:
+                        python_command = " ".join([python_command, "--opt_rv"])
 
                     rtl_configure.write(f"{python_command}\n")
                     rtl_configure.write("\n")
