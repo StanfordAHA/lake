@@ -80,6 +80,7 @@ module value_tb;
     .read_scanner_do_repeat(1'b0),
     .read_scanner_inner_dim_offset(16'b0),
     .read_scanner_lookup(1'b1),
+    .read_scanner_enable_locator_filter(1'b0),
     .read_scanner_pos_out_ready(pos_out_0_ready),
     .read_scanner_repeat_factor(16'b0),
     .read_scanner_repeat_outer_inner_n(1'b0),
