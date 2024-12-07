@@ -21,6 +21,8 @@ import random
 random.seed(15)
 import string
 
+base = 800
+stride = 100
 
 def init_module():
     data_width = 16
@@ -122,6 +124,10 @@ def check_output(gd, coord_out):
         for j in range(len(gd[i])):
             assert gd[i][j] == coord_out[i][j], f"Gold {gd[i][j]} didn't match output {coord_out[i][j]}"
 
+def check_streams(stream_out, gold):
+    assert len(stream_out) == len(gold), "Output length didn't match gold length"
+    for i in range(len(stream_out)):
+        assert stream_out[i] == gold[i], f"Output value {stream_out[i]} didn't match gold value {gold[i]}"
 
 def load_test_module(test_name):
     if test_name == "direct_l0":
@@ -189,8 +195,14 @@ def module_iter_basic(test_name, add_test=""):
     iv, blk_gold = load_test_module(test_name)
 
     print(iv)
-    print(blk_gold)
+    # print(blk_gold)
     TX_NUM = len(blk_gold)
+    gc = []
+    for i in range(TX_NUM):
+        gc.append([])
+        gc[i].append(i*stride + base)
+        gc[i] += blk_gold[i]
+    print(gc)
     iv_c = []
     for i in iv:
         iv_c += i
@@ -212,11 +224,12 @@ def module_iter_basic(test_name, add_test=""):
     print(lines[0])
     print(lines[1])
 
-    coord_out = sparse_helper.read_glb("coord_out.txt", tx_num=TX_NUM)
+    # coord_out = sparse_helper.read_glb("coord_out.txt", tx_num=TX_NUM)
+    coord_out = sparse_helper.read_glb_stream("coord_out.txt", len(gc), 0)
     print(coord_out)
 
     #compare each element in the output from coord_out.txt with the gold output
-    check_output(blk_gold, coord_out)
+    check_streams(coord_out, gc)
     
     print(test_name, " passed\n")
 
