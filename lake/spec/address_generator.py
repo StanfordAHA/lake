@@ -47,6 +47,7 @@ class AddressGenerator(Component):
         self._step = self.input("step", 1)
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
         self._restart = self.input("restart", 1)
+        self._finished = self.input("finished", 1)
         # Use signals directly for now
         self._ctrs = self.input("iterators", id_ext_width,
                                 size=self.dimensionality_support,
@@ -89,7 +90,7 @@ class AddressGenerator(Component):
             self._current_addr = 0
         elif self._flush:
             self._current_addr = self._strt_addr
-        elif self._step:
+        elif self._step & ~self._finished:
             if self._restart:
                 self._current_addr = self._strt_addr
             else:

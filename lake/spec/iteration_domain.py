@@ -1,5 +1,6 @@
 from lake.spec.component import Component
 from lake.utils.spec_enum import *
+from lake.utils.util import sticky_flag
 import kratos as kts
 from lake.modules.for_loop import ForLoop
 from kratos import *
@@ -21,15 +22,16 @@ class IterationDomain(Component):
         # Actually add one if rv (to be safe) - only need to do this when
         # the comparison is at the top level, but let's just do this for now
         if rv:
-            self.configure(self._dimensionality, dimensionality + 1)
+            # self.configure(self._dimensionality, dimensionality + 1)
+            self.configure(self._dimensionality, dimensionality)
         else:
             self.configure(self._dimensionality, dimensionality)
 
         # Do a - 2 thing...
         use_exts = [extent - 2 for extent in extents]
 
-        if rv:
-            use_exts.append(4 - 2)
+        # if rv:
+        #   use_exts.append(4 - 2)
 
         self.configure(self._extents, use_exts)
         # This will return pairs of ranges with values w.r.t. the node's configuration
@@ -63,6 +65,14 @@ class IterationDomain(Component):
                                             packed=True,
                                             explicit_array=True)
         self._restart = self.output("restart", 1, packed=True)
+
+        self._last_iter = self.output("last_iter", 1)
+        self._last_iter_lcl = self.var("last_iter_lcl", 1)
+        self.wire(self._last_iter, self._last_iter_lcl)
+
+        # self._finished_lcl = self.var("finished_lcl", 1)
+        self._finished = self.output("finished", 1)
+
         # PORT DEFS: end
 
         # LOCAL VARIABLES: begin
@@ -94,6 +104,10 @@ class IterationDomain(Component):
         self._clear = self.var("clear", self.dimensionality_support)
         self._inc = self.var("inc", self.dimensionality_support)
 
+        # We go to a finished state once the last iter is done
+        self._finished_lcl = sticky_flag(self, self._last_iter_lcl & self._step, name="finished_lcl_sticky", seq_only=True, verbose=True)
+        self.wire(self._finished, self._finished_lcl)
+
         self._inced_cnt = self.var("inced_cnt", self._dim_counter.width)
         self.wire(self._inced_cnt, self._dim_counter[self._mux_sel] + 1)
         # Next_max_value
@@ -112,6 +126,9 @@ class IterationDomain(Component):
 
         self.wire(self._restart, self._step & (~self._done))
 
+        # The last iter is if done doesn't turn 1
+        self.wire(self._last_iter_lcl, ~self._done)
+
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 
@@ -121,7 +138,7 @@ class IterationDomain(Component):
         self._mux_sel = 0
         self._done = 0
         for i in range(self.dimensionality_support):
-            if ~self._done:
+            if ~self._done & ~self._finished_lcl:
                 if ~self._max_value[i] & (i < self._dimensionality):
                     self._mux_sel = i
                     self._done = 1

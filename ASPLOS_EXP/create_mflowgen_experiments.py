@@ -1851,15 +1851,18 @@ if __name__ == "__main__":
     parser.add_argument("--build_dir", type=str, default=None, required=True)
     parser.add_argument("--csv_out", type=str, default=None, required=False)
     parser.add_argument("--design_filter", type=str, default=None, required=False)
+    parser.add_argument("--strict_filter", action="store_true")
     parser.add_argument("--experiment", type=str, default="summary", required=False)
     parser.add_argument("--report_path", type=str, default=None, required=False)
     parser.add_argument("--figure_name", type=str, default=None, required=False)
     parser.add_argument('--storage_capacity', nargs='*', type=int)
+    parser.add_argument('--frequency', nargs='*', type=int, help="Frequency in MHz")
     parser.add_argument('--dimensionality', nargs='*', type=int)
     parser.add_argument('--data_width', nargs='*', type=int)
     parser.add_argument('--in_ports', type=int, default=1)
     parser.add_argument('--out_ports', type=int, default=1)
     parser.add_argument("--use_ports", action="store_true")
+    parser.add_argument("--synth_only", action="store_true")
     parser.add_argument('--fetch_width', nargs='*', type=int)
     parser.add_argument('--clock_count_width', nargs='*', type=int)
     # Single port sram type (where relevant)
@@ -1881,6 +1884,8 @@ if __name__ == "__main__":
     experiment = args.experiment
     run_power = args.run_power
     opt_rv = args.opt_rv
+    strict_filter = args.strict_filter
+    synth_only = args.synth_only
     # collect_power = args.collect_power
 
     spst = args.spst
@@ -2005,6 +2010,7 @@ if __name__ == "__main__":
     data_width_use = [16]
     ccw_use = [64]
     fetch_width_use = [4]
+    freqs_use = [1000]
 
     storage_capacity_arg = args.storage_capacity
     if (storage_capacity_arg is not None) and len(storage_capacity_arg) > 0:
@@ -2024,8 +2030,12 @@ if __name__ == "__main__":
         dimensionalities_use = dim_arg
     fetch_width_arg = args.fetch_width
     if (fetch_width_arg is not None) and len(fetch_width_arg) > 0:
-        print(f"Overriding used storage_cap of {fetch_width_use} with {fetch_width_arg}")
+        print(f"Overriding used fetch width of {fetch_width_use} with {fetch_width_arg}")
         fetch_width_use = fetch_width_arg
+    freqs_arg = args.frequency
+    if (freqs_arg is not None) and len(freqs_arg) > 0:
+        print(f"Overriding used frequency of {freqs_use} with {freqs_arg}")
+        freqs_use = freqs_arg
 
     add_fw_arg = fetch_width_arg is not None
     add_port_arg = use_ports
@@ -2034,11 +2044,20 @@ if __name__ == "__main__":
 
     all_procs = []
 
-    for freq in [1000]:
+    for freq in freqs_use:
+
+        # frequency in MHz, convert to a period in picoseconds
+        period_ps = int(1.0 / (freq * 1e6) * 1e12)
 
         all_test_files = os.listdir(test_files_dir)
+        # Remove file extensions...
+        all_test_files = [os.path.splitext(f)[0] for f in all_test_files]
 
-        filtered_files = [f for f in all_test_files if design_filter in f]
+        if strict_filter:
+            print("Using strict filter")
+            filtered_files = [f for f in all_test_files if design_filter == f]
+        else:
+            filtered_files = [f for f in all_test_files if design_filter in f]
 
         for filename in filtered_files:
             filename_no_ext = os.path.splitext(filename)[0]
@@ -2144,15 +2163,19 @@ if __name__ == "__main__":
                     rtl_configure.write(f"  - python set_test_dir.py --test_dir {test_dir_arg}\n")
                     rtl_configure.write("  - echo $PWD\n")
 
-                print(f"cd {pd_build_path}; mflowgen run --design {full_design_path}")
-                subprocess.run(["mflowgen", "run", "--design", full_design_path], cwd=pd_build_path)
+                graph_dict = {'clock_period': period_ps}
+                print(f"cd {pd_build_path}; mflowgen run --design {full_design_path} --graph-kwargs {graph_dict}")
+                subprocess.run(["mflowgen", "run", "--design", full_design_path, "--graph-kwargs", str(graph_dict)], cwd=pd_build_path)
 
                 # If the builds should go, start it here...
                 if run_builds is True:
                     print(f"Starting build at {pd_build_path}")
                     # execute_str = ["source", make_script]
                     # execute_str = ["make", "6", "&&", "make", "-t", "6", "&&", "make", "17"]
-                    execute_str = "make 6; make -t 6; make 18; make 29; make -t 29"
+                    if synth_only:
+                        execute_str = "make 6; make -t 6"
+                    else:
+                        execute_str = "make 6; make -t 6; make 18; make 29; make -t 29"
                     newp = subprocess.Popen(execute_str, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=pd_build_path, shell=True)
                     all_procs.append(newp)
 

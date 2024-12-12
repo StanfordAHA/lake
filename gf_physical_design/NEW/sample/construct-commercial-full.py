@@ -11,7 +11,7 @@ import os
 
 from mflowgen.components import Graph, Step
 
-def construct():
+def construct(**kwargs):
 
   g = Graph()
 
@@ -32,6 +32,9 @@ def construct():
     'topographical'  : True,
     'saif_instance'  : 'GcdUnitTb/GcdUnit_inst'
   }
+
+  for key, value in kwargs.items():
+    parameters[key] = value
 
   #-----------------------------------------------------------------------
   # Create nodes

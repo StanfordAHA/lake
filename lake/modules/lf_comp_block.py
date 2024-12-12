@@ -21,8 +21,11 @@ class LFCompBlock(Component):
 
     def gen_hardware(self):
         # The interface is leader count and follower count
-        self._input_counter = self.input("leader_count", self.in_width)
-        self._output_counter = self.input("follower_count", self.out_width)
+        self._leader = self.input("leader_count", self.in_width)
+        self._follower = self.input("follower_count", self.out_width)
+
+        self._leader_finished = self.input("leader_finished", 1)
+        self._follower_finished = self.input("follower_finished", 1)
 
         # The comparison will always be 1 if not enabled - for reduction and in ScheduleGenerator
         self._enable_comparison = self.config_reg(name="enable_comparison", width=1)
@@ -47,22 +50,28 @@ class LFCompBlock(Component):
         @always_comb
         def calculate_comparison():
             self._comparison_lcl = 0
+            # RAW
             if self._comp_reg == LFComparisonOperator.LT.value:
-                self._comparison_lcl = self._input_counter < self._output_counter + self._scalar_reg
+                self._comparison_lcl = self._leader + self._scalar_reg < self._follower
+            # WAR
             elif self._comp_reg == LFComparisonOperator.GT.value:
-                self._comparison_lcl = self._input_counter > self._output_counter + self._scalar_reg
+                self._comparison_lcl = self._leader < self._follower + self._scalar_reg
             elif self._comp_reg == LFComparisonOperator.EQ.value:
-                self._comparison_lcl = self._input_counter == self._output_counter + self._scalar_reg
+                self._comparison_lcl = self._leader == self._follower + self._scalar_reg
             elif self._comp_reg == LFComparisonOperator.LTE.value:
-                self._comparison_lcl = self._input_counter <= self._output_counter + self._scalar_reg
+                self._comparison_lcl = self._leader <= self._follower + self._scalar_reg
 
         self.add_code(calculate_comparison)
 
-        self.wire(self._comparison, self._comparison_lcl | ~self._enable_comparison)
+        # self.wire(self._comparison, self._comparison_lcl | ~self._enable_comparison)
+        # The comparison has to be highg if one of the leader/follower is finished
+        self.wire(self._comparison, self._comparison_lcl | ~self._enable_comparison | self._leader_finished | self._follower_finished)
 
         self.interfaces = {}
-        self.interfaces['in_counter'] = self._input_counter
-        self.interfaces['out_counter'] = self._output_counter
+        self.interfaces['in_counter'] = self._leader
+        self.interfaces['in_finished'] = self._leader_finished
+        self.interfaces['out_counter'] = self._follower
+        self.interfaces['out_finished'] = self._follower_finished
         self.interfaces['comparison'] = self._comparison
 
         self.config_space_fixed = True

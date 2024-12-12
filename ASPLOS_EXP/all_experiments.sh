@@ -113,7 +113,16 @@
 
 # # Simple dual port clock gate
 # python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/SIMPLE_DUAL_PORT_CLK_GATE/ --csv_out . --experiment dual_port_power --figure_name clkgate_power
+# python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_MONOLITHIC_CLK_GATE/ --csv_out . --experiment dual_port_power --figure_name monolithic_power
 
+#  python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_CG_10_23/ --csv_out . --experiment dual_quad_summary --figure_name quad_cg_area
+#  python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_MONOLITHIC_CLK_GATE/ --csv_out . --experiment dual_quad_summary --figure_name monolithic_area
+#  python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_INPUT_MONOLITHIC/ --csv_out . --experiment dual_quad_summary --figure_name monolithic_IN_area
+
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_STATIC_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch --storage_capacity 16384 --run_builds --strict_filter --frequency 50
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 50 --opt_rv
+
+# python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_STATIC_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch --storage_capacity 16384 --run_builds --strict_filter --frequency 10000
 # Dual port, quad port w/ clk gate
 python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/DUAL_PORT_CLK_GATE/ --csv_out . --experiment dual_port_power --figure_name dpcg
 python ASPLOS_EXP/create_mflowgen_experiments.py --collect_data --build_dir /sim/mstrange/QUAD_PORT_CLK_GATE/ --csv_out . --experiment dual_port_power --figure_name qpcg

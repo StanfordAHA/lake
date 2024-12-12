@@ -99,42 +99,51 @@ class RVComparisonNetwork(Component):
         self._writer_comparisons = [self.output(f"write_{i}_comparisons", len(self.reads)) for i in range(len(self.writes))]
         self._writer_iterators = []
         self._writer_extents = []
+        self._writer_finished = []
         for i in range(len(self.writes)):
             writer_sg = self.writes[i]
             writer_sg_iter_intf = writer_sg.get_iterator_intf()
             iterators_ = writer_sg_iter_intf['iterators']
             comparisons_ = writer_sg_iter_intf['comparisons']
             extents_ = writer_sg_iter_intf['extents']
+            finisheds_ = writer_sg_iter_intf['finished']
             dim_ = writer_sg.get_dimensionality()
             iter_width = iterators_.width
             self._writer_iterators.append(self.input(f"write_{i}_iterators", iter_width, size=dim_, packed=True, explicit_array=True))
             self._writer_extents.append(self.input(f"write_{i}_extents", iter_width, size=dim_, packed=True, explicit_array=True))
+            self._writer_finished.append(self.input(f"write_{i}_finished", 1))
             self.connections.append((iterators_, self._writer_iterators[i]))
             self.connections.append((comparisons_, self._writer_comparisons[i]))
             self.connections.append((extents_, self._writer_extents[i]))
+            self.connections.append((finisheds_, self._writer_finished[i]))
 
         self._reader_comparisons = [self.output(f"read_{i}_comparisons", len(self.reads)) for i in range(len(self.writes))]
         self._reader_iterators = []
         self._reader_extents = []
+        self._reader_finished = []
         for i in range(len(self.reads)):
             reader_sg = self.reads[i]
             reader_sg_iter_intf = reader_sg.get_iterator_intf()
             iterators_ = reader_sg_iter_intf['iterators']
             comparisons_ = reader_sg_iter_intf['comparisons']
             extents_ = reader_sg_iter_intf['extents']
+            finisheds_ = reader_sg_iter_intf['finished']
             dim_ = reader_sg.get_dimensionality()
             iter_width = iterators_.width
             self._reader_iterators.append(self.input(f"read_{i}_iterators", iter_width, size=dim_, packed=True, explicit_array=True))
             self._reader_extents.append(self.input(f"read_{i}_extents", iter_width, size=dim_, packed=True, explicit_array=True))
+            self._reader_finished.append(self.input(f"read_{i}_finished", 1))
             self.connections.append((iterators_, self._reader_iterators[i]))
             self.connections.append((comparisons_, self._reader_comparisons[i]))
             self.connections.append((extents_, self._reader_extents[i]))
+            self.connections.append((finisheds_, self._reader_finished[i]))
 
         # Now, for every writer, we will build a LF block for every reader, same for the other way around (W->R)
         for i in range(len(self.writes)):
             write_sg = self.writes[i]
             write_iters = self._writer_iterators[i]
             write_extents = self._writer_extents[i]
+            write_finisheds = self._writer_finished[i]
             write_width = write_iters.width
             num_write_ctrs = write_sg.get_dimensionality()
             num_write_ctrs_bw = max(1, kts.clog2(num_write_ctrs))
@@ -148,6 +157,7 @@ class RVComparisonNetwork(Component):
                 read_sg = self.reads[j]
                 read_iters = self._reader_iterators[j]
                 read_extents = self._reader_extents[j]
+                read_finisheds = self._reader_finished[j]
                 # read_iters = read_sg.get_iterator_intf()['iterators']
                 read_width = read_iters.width
                 num_read_ctrs = read_sg.get_dimensionality()
@@ -204,6 +214,9 @@ class RVComparisonNetwork(Component):
 
                 self.wire(lf_comp_block_intfs['in_counter'], kts.ternary(outer_level_different, chosen_write_iter + input_extent, chosen_write_iter))
 
+                self.wire(lf_comp_block_intfs['in_finished'], write_finisheds)
+                self.wire(lf_comp_block_intfs['out_finished'], read_finisheds)
+
                 # out_sel = kts.const(0, num_read_ctrs_bw)
                 # self.out_sels_wr_to_rd.append(out_sel)
                 self.sels_map[f"wr_to_rd_{i}_{j}"] = (in_sel, out_sel)
@@ -215,6 +228,7 @@ class RVComparisonNetwork(Component):
         for i in range(len(self.reads)):
             read_sg = self.reads[i]
             read_iters = self._reader_iterators[i]
+            read_finisheds = self._reader_finished[i]
             read_width = read_iters.width
             read_extents = self._reader_extents[i]
             num_read_ctrs = read_sg.get_dimensionality()
@@ -228,6 +242,7 @@ class RVComparisonNetwork(Component):
                 write_sg = self.writes[j]
                 write_iters = self._writer_iterators[j]
                 write_extents = self._writer_extents[j]
+                write_finisheds = self._writer_finished[j]
                 # read_iters = read_sg.get_iterator_intf()['iterators']
                 write_width = write_iters.width
 
@@ -281,6 +296,9 @@ class RVComparisonNetwork(Component):
                 # mux and attach to lf comp block
                 inline_multiplexer(generator=self, name=f"lfcompblock_r_{i}_w_{j}_input_mux_ctr", sel=in_sel, one=lf_comp_block_intfs['in_counter'], many=read_iters,
                                    one_hot_sel=False)
+
+                self.wire(lf_comp_block_intfs['in_finished'], read_finisheds)
+                self.wire(lf_comp_block_intfs['out_finished'], write_finisheds)
 
                 # self.out_sels_rd_to_wr.append(out_sel)
                 self.sels_map[f"rd_to_wr_{i}_{j}"] = (in_sel, out_sel)

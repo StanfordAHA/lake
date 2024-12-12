@@ -227,12 +227,14 @@ def get_linear_test():
 
     linear_test = {}
 
+    length_scale = 8 // 4
+
     linear_test[0] = {
         'type': Direction.IN,
         'name': 'port_w0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [64 * length_scale],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -244,7 +246,7 @@ def get_linear_test():
         },
         'vec_in_config': {
             'dimensionality': 2,
-            'extents': [4, 64],
+            'extents': [4, 64 * length_scale],
             'address': {
                 'strides': [1, 4],
                 'offset': 0
@@ -256,7 +258,7 @@ def get_linear_test():
         },
         'vec_out_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [64 * length_scale],
             'address': {
                 'strides': [1],
                 'offset': 0
@@ -273,33 +275,33 @@ def get_linear_test():
         'name': 'port_r0',
         'config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [64 * length_scale],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [8],
+                'strides': [4],
                 'offset': 17
             }
         },
         'vec_in_config': {
             'dimensionality': 1,
-            'extents': [64],
+            'extents': [64 * length_scale],
             'address': {
                 'strides': [1],
                 'offset': 0
             },
             'schedule': {
-                'strides': [8],
+                'strides': [4],
                 'offset': 18
             }
         },
         'vec_out_config': {
             'dimensionality': 2,
-            'extents': [4, 16],
+            'extents': [4, 64 * length_scale],
             'address': {
-                'strides': [0, 1],
+                'strides': [1, 4],
                 'offset': 0
             },
             'schedule': {

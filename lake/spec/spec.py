@@ -264,10 +264,12 @@ class Spec():
 
             self._final_gen.wire(port_id.ports.mux_sel, port_ag.ports.mux_sel)
             self._final_gen.wire(port_id.ports.restart, port_ag.ports.restart)
+            self._final_gen.wire(port_id.ports.finished, port_ag.ports.finished)
             self._final_gen.wire(port_id.ports.iterators, port_ag.ports.iterators)
 
             self._final_gen.wire(port_id.ports.mux_sel, port_sg.ports.mux_sel)
             self._final_gen.wire(port_id.ports.restart, port_sg.ports.restart)
+            self._final_gen.wire(port_id.ports.finished, port_sg.ports.finished)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
 
             # Send through the extents to sg if there is RV
@@ -313,8 +315,14 @@ class Spec():
                     quali_step = sg_step & port_valid & memintf_dec.ports.resource_ready
                     # The grant is the ready/final step to ID, AG, ready
                     self._final_gen.wire(port.get_mp_intf()['ready'], mid_grant)
-                    self._final_gen.wire(port_ag.ports.step, mid_grant)
-                    self._final_gen.wire(port_id.ports.step, mid_grant)
+
+                    if port.get_fw() > 1 and self.opt_rv:
+                        self._final_gen.wire(port_ag.ports.step, port.ports.sg_step_out)
+                        self._final_gen.wire(port_id.ports.step, port.ports.sg_step_out)
+                        self._final_gen.wire(port_id.ports.finished, port.ports.finished)
+                    else:
+                        self._final_gen.wire(port_ag.ports.step, mid_grant)
+                        self._final_gen.wire(port_id.ports.step, mid_grant)
                     # Wire the ID step
                 # If it is an OUT Port, we need to qualify the step with the grant line from the arbitration and the
                 # downstream ready (from the Port I guess)
@@ -338,6 +346,8 @@ class Spec():
                     if port.get_fw() > 1 and self.opt_rv:
                         self._final_gen.wire(port_ag.ports.step, port.ports.sg_step_out)
                         self._final_gen.wire(port_id.ports.step, port.ports.sg_step_out)
+                        self._final_gen.wire(port_id.ports.finished, port.ports.finished)
+                        self._final_gen.wire(mid_grant, port.ports.grant)
                     else:
                         self._final_gen.wire(port_ag.ports.step, mid_grant)
                         self._final_gen.wire(port_id.ports.step, mid_grant)
@@ -378,6 +388,15 @@ class Spec():
                     # quali_step is now the ready of the memintf_dec with the output step of the Port
                     quali_step = port.ports.read_memory_out & memintf_dec.ports.resource_ready
 
+                elif port_direction == Direction.IN and self.any_rv_sg and self.opt_rv:
+                    self._final_gen.wire(port_sg.ports.step, port.ports.sg_step_in)
+                    self._final_gen.wire(port_ag.get_address(), port.ports.addr_in)
+                    assembled_port['addr'] = port.ports.addr_out
+                    # quali_step is now the ready of the memintf_dec with the output step of the Port
+                    # quali_step = port.ports.write_memory_out & memintf_dec.ports.resource_ready
+                    # quali_step = port.ports.write_memory_out & memintf_dec.ports.resource_ready
+                    quali_step = port.get_mp_intf()['valid'] & memintf_dec.ports.resource_ready
+
                 else:
                     ext_intf = port.get_internal_ag_intf()
 
@@ -386,6 +405,7 @@ class Spec():
                         self._final_gen.wire(ext_intf['step'], quali_step)
                         self._final_gen.wire(ext_intf['mux_sel'], port_id.ports.mux_sel)
                         self._final_gen.wire(ext_intf['iterators'], port_id.ports.iterators)
+                        self._final_gen.wire(ext_intf['finished'], port_id.ports.finished)
                         self._final_gen.wire(ext_intf['restart'], port_id.ports.restart)
                         if self.any_rv_sg:
                             self._final_gen.wire(ext_intf['extents'], port_id.ports.extents_out)

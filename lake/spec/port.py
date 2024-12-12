@@ -112,6 +112,240 @@ class Port(Component):
 
             else:
 
+                if self._runtime == Runtime.DYNAMIC and self.opt_rv:
+
+                    assert self.port_ag_width is not None
+
+                    # Need the WCB itself
+                    max_num_items_wcb = 2
+                    total_values = max_num_items_wcb + 1
+                    wcb_items_bits = kts.clog2(total_values)
+                    self._ready_out_lcl = self.var("ready_out_lcl", 1)
+                    ub_interface = data_from_ub.get_port_interface()
+                    mp_interface = data_to_memport.get_port_interface()
+                    # self.wire(self._ready_out_lcl, ub_interface['ready'])
+                    # Need ID finished...
+                    self._finished = self.input("finished", 1)
+                    # Ready out needs to be the ready from the UB and the finished signal
+                    self.wire(ub_interface['ready'], self._ready_out_lcl & ~self._finished)
+                    # self.wire(self._data_out_lcl, ub_interface['data'])
+
+                    self._full_addr_in = self.input("addr_in", width=self.port_ag_width)
+                    self._addr_out = self.output("addr_out", width=self.port_ag_width)
+                    self._sg_step_in = self.input("sg_step_in", width=1)
+                    # This will be used to send out to the AG/ID, etc.
+                    # This is also telling us if we are making a memory read this cycle
+                    self._sg_step_out = self.output("sg_step_out", width=1)
+                    self._write_memory_out = self.output("write_memory_out", width=1)
+                    self._write_memory_out_lcl = self.var("write_memory_out_lcl", width=1)
+                    self._new_address = self.var("new_address", 1)
+                    self.wire(self._write_memory_out, self._write_memory_out_lcl)
+                    # self.wire(mp_interface['valid'], self._write_memory_out_lcl)
+                    # Just always be requesting?
+                    # self.wire(mp_interface['valid'], kts.const(1, 1))
+                    # self.wire(self._write_memory_out_lcl, self._new_address)
+
+                    # self._data_being_written = self.var("data_being_written", 1)
+
+                    # Output address bits ragnge
+                    addr_bits_range = [self._full_addr_in.width - 1, kts.clog2(self._fw)]
+
+                    # Define all the relevant signals/vars
+                    sub_addr_bits = kts.clog2(self._fw)
+                    sram_addr_bits = self._full_addr_in.width - sub_addr_bits
+                    sub_addr_range = [kts.clog2(self._fw) - 1, 0]
+                    # tag_addr_range = [kts.clog2(self._fw) + tag_width - 1, kts.clog2(self._fw)]
+
+                    # self.wire(self._addr_out, kts.concat(kts.const(0, sub_addr_bits), self._full_addr_in[self._full_addr_in.width - 1, self._full_addr_in.width - sram_addr_bits]))
+                    # self.wire(self._addr_out, kts.concat(self._full_addr_in[self._full_addr_in.width - 1, self._full_addr_in.width - sub_addr_bits],
+                    #                                      self._full_addr_in[self._full_addr_in.width - 1, self._full_addr_in.width - sram_addr_bits]))
+
+                    # Need a signal to write to the wcb
+                    self._write_wcb = self.var("write_wcb", 1)
+                    self._already_written = sticky_flag(self, self._write_wcb, name="already_written", seq_only=True)
+                    # The ready out is if we are writing the wcb which means we are accepting the current data
+                    self.wire(self._ready_out_lcl, self._write_wcb)
+                    self.wire(self._sg_step_out, self._write_wcb)
+
+                    # Indicates if the current address is a new address or not
+                    self._last_write_addr = register(self, self._full_addr_in, enable=self._new_address, name="last_write_addr")
+
+                    # Linear write address to the WCB
+                    # Need push and pop addresses to manage the WCB
+                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._new_address)
+                    self._linear_wcb_write_p1 = self.var("linear_wcb_write_p1", self._linear_wcb_write.width)
+                    self.wire(self._linear_wcb_write_p1, self._linear_wcb_write + 1)
+                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._write_memory_out_lcl)
+                    # Need an address into the wcb (should be the linear_wcb_write concatenated with the sub_addr)
+                    self._addr_into_wcb = self.var("addr_into_wcb", self._linear_wcb_write.width + sub_addr_bits)
+                    # self.wire(self._addr_into_wcb, kts.concat(kts.ternary(self._new_address,
+                    #                                                       self._linear_wcb_write_p1,
+                    #                                                       self._linear_wcb_write),
+                    #                                           self._full_addr_in[sub_addr_range[0], sub_addr_range[1]]))
+
+                    wcb_write_addr_bits = kts.clog2(max_num_items_wcb)
+                    wcb_write_addr_range = [sub_addr_bits + wcb_write_addr_bits - 1, sub_addr_bits]
+
+                    # Combinational logic to determine the address into the wcb...
+                    @always_comb
+                    def addr_into_wcb_comb():
+                        self._addr_into_wcb = 0
+                        self._addr_into_wcb[sub_addr_range[0], sub_addr_range[1]] = self._full_addr_in[sub_addr_range[0], sub_addr_range[1]]
+                        # If we've never written, use the current wcb write address, if it has been written, we should use new_address to determine
+                        if ~self._already_written:
+                            self._addr_into_wcb[wcb_write_addr_range[0], wcb_write_addr_range[1]] = self._linear_wcb_write
+                        elif self._new_address:
+                            self._addr_into_wcb[wcb_write_addr_range[0], wcb_write_addr_range[1]] = self._linear_wcb_write_p1
+                        else:
+                            self._addr_into_wcb[wcb_write_addr_range[0], wcb_write_addr_range[1]] = self._linear_wcb_write
+                    self.add_code(addr_into_wcb_comb)
+
+                    ###############################################################
+                    ###############################################################
+                    ###############################################################
+                    # This section creates the actual hardware for the SIPO storage
+                    ###############################################################
+                    if self._ext_data_width > self._int_data_width:
+                        storage_vec_cap = self._ext_data_width * self._vec_capacity // 8
+                    else:
+                        storage_vec_cap = self._int_data_width * self._vec_capacity // 8
+
+                    # Create PISO storage and then tie it to the relevant memoryports
+                    self._sipo_strg = SingleBankStorage(capacity=storage_vec_cap)
+                    self._sipo_strg_mp_in = MemoryPort(data_width=self._ext_data_width, mptype=MemoryPortType.W)
+                    self._sipo_strg_mp_out = MemoryPort(data_width=self._int_data_width, mptype=MemoryPortType.R, delay=0, active_read=False)
+
+                    memports = [self._sipo_strg_mp_in, self._sipo_strg_mp_out]
+
+                    self._sipo_strg.gen_hardware(memory_ports=memports)
+                    self._sipo_strg_mp_in.gen_hardware(storage_node=self._sipo_strg)
+                    self._sipo_strg_mp_out.gen_hardware(storage_node=self._sipo_strg)
+
+                    strg_intfs = self._sipo_strg.get_memport_intfs()
+
+                    self.add_child('vec_storage', self._sipo_strg, clk=self._clk, rst_n=self._rst_n)
+                    self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in, clk=self._clk, rst_n=self._rst_n)
+                    self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out, clk=self._clk, rst_n=self._rst_n)
+
+                    connect_memoryport_storage(self, mptype=self._sipo_strg_mp_in.get_type(),
+                                               memport_intf=self._sipo_strg_mp_in.get_storage_intf(),
+                                               strg_intf=strg_intfs[0])
+                    connect_memoryport_storage(self, mptype=self._sipo_strg_mp_out.get_type(),
+                                               memport_intf=self._sipo_strg_mp_out.get_storage_intf(),
+                                               strg_intf=strg_intfs[1])
+
+                    # We also need a set of regs that are going to hold the address and valid bit (sticky) meaning
+                    # we can send the write to the SRAM
+                    addresses_to_write = self.var("addresses_to_write", sram_addr_bits,
+                                               size=max_num_items_wcb, packed=True, explicit_array=True)
+                    next_addresses_to_write = self.var("next_addresses_to_write", sram_addr_bits,
+                                               size=max_num_items_wcb, packed=True, explicit_array=True)
+
+                    self._write_can_commit_clr = self.var("write_can_commit_clr", max_num_items_wcb)
+                    self._write_can_commit_set = self.var("write_can_commit_set", max_num_items_wcb)
+
+                    write_can_commit_sticky_pre = [sticky_flag(self, self._write_can_commit_set[i], name=f"write_can_commit_sticky_{i}", seq_only=True,
+                                                           clear=self._write_can_commit_clr[i]) for i in range(max_num_items_wcb)]
+
+                    self._write_can_commit_sticky = self.var("write_can_commit_sticky", max_num_items_wcb)
+                    [self.wire(self._write_can_commit_sticky[i], write_can_commit_sticky_pre[i]) for i in range(max_num_items_wcb)]
+
+                    # self.add_code(tag_valid_cam_ff)
+                    # self.add_code(next_tag_valid_cam_comb)
+
+                    @always_comb
+                    def next_addresses_to_write_comb():
+                        for i in range(max_num_items_wcb):
+                            next_addresses_to_write[i] = addresses_to_write[i]
+                            if self._write_can_commit_set[i]:
+                                next_addresses_to_write[i] = self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]
+
+                    self.add_code(next_addresses_to_write_comb)
+
+                    @always_ff((posedge, "clk"), (negedge, "rst_n"))
+                    def addresses_to_write_ff():
+                        if ~self._rst_n:
+                            for i in range(max_num_items_wcb):
+                                addresses_to_write[i] = 0
+                        else:
+                            for i in range(max_num_items_wcb):
+                                if self._write_can_commit_set[i]:
+                                    addresses_to_write[i] = next_addresses_to_write[i]
+
+                    self.add_code(addresses_to_write_ff)
+
+                    # Address out is whichever address is being pointed to by the linear read address
+                    # self.wire(self._addr_out, kts.concat(self._full_addr_in[self._full_addr_in.width - 1, self._full_addr_in.width - sub_addr_bits],
+                    #  self._full_addr_in[self._full_addr_in.width - 1, self._full_addr_in.width - sram_addr_bits]))
+                    self.wire(self._addr_out, kts.concat(self._last_write_addr[self._full_addr_in.width - 1, self._full_addr_in.width - sub_addr_bits],
+                                                         addresses_to_write[self._linear_wcb_read]))
+
+                    # write_memory_out is just the mp_interface's ready and the sticky bit
+                    self.wire(self._write_memory_out_lcl, self._mp_intf['ready'] & self._write_can_commit_sticky[self._linear_wcb_read])
+
+                    wp_intf = self._sipo_strg_mp_in.get_port_intf()
+                    rp_intf = self._sipo_strg_mp_out.get_port_intf()
+
+                    # Wire in the inputs and outputs...
+                    self.wire(ub_interface['data'], wp_intf['write_data'])
+                    self.wire(self._write_wcb, wp_intf['write_en'])
+                    self.wire(self._addr_into_wcb, wp_intf['addr'])
+
+                    self.wire(rp_intf['read_data'], mp_interface['data'])
+                    self.wire(self._write_memory_out_lcl, rp_intf['read_en'])
+                    # Also handle address
+                    self.wire(self._linear_wcb_read, rp_intf['addr'])
+
+                    # self.wire(mp_interface['valid'], kts.const(1, 1))
+                    self.wire(mp_interface['valid'], self._write_can_commit_sticky[self._linear_wcb_read])
+                    ###############################################################
+                    ###############################################################
+                    ###############################################################
+
+                    @always_comb
+                    def write_port_comb_logic():
+                        # Need to set the writing wcb
+                        self._write_wcb = 0
+                        # We should write it as long as there is no valid bit or the valid bit is high but the entry is being written (and the input data is valid)
+                        # to the SRAM
+                        if self._sg_step_in & ub_interface['valid'] & (~self._write_can_commit_sticky[self._linear_wcb_write] | ~self._already_written | (self._write_can_commit_sticky[self._linear_wcb_write] & self._write_memory_out & (self._linear_wcb_read == self._linear_wcb_write))):
+                            self._write_wcb = ~self._finished
+
+                    self.add_code(write_port_comb_logic)
+
+                    @always_comb
+                    def sticky_set_comb():
+                        # The set can only happen to the current write address if we see a new address and have valid data and the step in
+                        for i in range(max_num_items_wcb):
+                            self._write_can_commit_set[i] = 0
+                            # if (self._linear_wcb_write == kts.const(i, self._linear_wcb_write.width)) & self._new_address & ub_interface['valid'] & self._sg_step_in:
+                            # Once the stream is finished, we no longer need a new address w/ incoming valid/step
+                            if (self._linear_wcb_write == kts.const(i, self._linear_wcb_write.width)) & ((self._new_address & ub_interface['valid'] & self._sg_step_in) | self._finished):
+                                self._write_can_commit_set[i] = 1
+                    self.add_code(sticky_set_comb)
+
+                    @always_comb
+                    def sticky_clr_comb():
+                        # Can only clear the sticky bit if we are writing the data to sram
+                        for i in range(max_num_items_wcb):
+                            self._write_can_commit_clr[i] = 0
+                            if (self._linear_wcb_read == kts.const(i, self._linear_wcb_read.width)) & mp_interface['ready'] & self._write_memory_out:
+                                self._write_can_commit_clr[i] = 1
+                    self.add_code(sticky_clr_comb)
+
+                    @always_comb
+                    def new_address_comb():
+                        self._new_address = 0
+                        self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & ub_interface['valid']
+
+                    self.add_code(new_address_comb)
+
+                    # Now lift everything's config space up
+                    self.config_space_fixed = True
+                    self._assemble_cfg_memory_input()
+
+                    return
+
                 # Need to create a n rv network here...
                 if self._runtime == Runtime.DYNAMIC:
                     self._rv_comp_nw = RVComparisonNetwork(name=f"rv_comp_nw_{self.name}")
@@ -202,10 +436,12 @@ class Port(Component):
                 self.wire(self._id_sipo_in.ports.mux_sel, self._ag_sipo_in.ports.mux_sel)
                 self.wire(self._id_sipo_in.ports.iterators, self._ag_sipo_in.ports.iterators)
                 self.wire(self._id_sipo_in.ports.restart, self._ag_sipo_in.ports.restart)
+                self.wire(self._id_sipo_in.ports.finished, self._ag_sipo_in.ports.finished)
 
                 self.wire(self._id_sipo_in.ports.mux_sel, self._sg_sipo_in.ports.mux_sel)
                 self.wire(self._id_sipo_in.ports.iterators, self._sg_sipo_in.ports.iterators)
                 self.wire(self._id_sipo_in.ports.restart, self._sg_sipo_in.ports.restart)
+                self.wire(self._id_sipo_in.ports.finished, self._sg_sipo_in.ports.finished)
 
                 if self._runtime == Runtime.DYNAMIC:
                     # The sipo in should only get stepped if the local step is high
@@ -254,6 +490,7 @@ class Port(Component):
 
                 self._internal_ag_intf['step'] = self.input(f"port_sipo_out_step", 1)
                 self._internal_ag_intf['restart'] = self.input(f"port_sipo_out_restart", 1)
+                self._internal_ag_intf['finished'] = self.input(f"port_sipo_out_finished", 1)
                 self._internal_ag_intf['mux_sel'] = self.input(f"port_sipo_out_mux_sel", self._ag_sipo_out.ports.mux_sel.width)
                 self._internal_ag_intf['iterators'] = self.input(f"port_sipo_out_dim_ctrs", self._ag_sipo_out.ports.iterators.width,
                                                                  size=self.dimensionality, packed=True, explicit_array=True)
@@ -261,6 +498,7 @@ class Port(Component):
                 self.wire(self._internal_ag_intf['mux_sel'], self._ag_sipo_out.ports.mux_sel)
                 self.wire(self._internal_ag_intf['iterators'], self._ag_sipo_out.ports.iterators)
                 self.wire(self._internal_ag_intf['restart'], self._ag_sipo_out.ports.restart)
+                self.wire(self._internal_ag_intf['finished'], self._ag_sipo_out.ports.finished)
                 if self._runtime == Runtime.DYNAMIC:
                     self._internal_ag_intf['extents'] = self.input("port_sipo_out_extents", external_id.get_extent_width(),
                                                                    size=external_id.get_dimensionality(), packed=True, explicit_array=True)
@@ -268,6 +506,7 @@ class Port(Component):
                     self.wire(self._internal_ag_intf['iterators'], self._sg_sipo_out.ports.iterators)
                     self.wire(self._internal_ag_intf['mux_sel'], self._sg_sipo_out.ports.mux_sel)
                     self.wire(self._internal_ag_intf['restart'], self._sg_sipo_out.ports.restart)
+                    self.wire(self._internal_ag_intf['finished'], self._sg_sipo_out.ports.finished)
                     # Only step the address generator if the output is valid and
                     self.wire(self._internal_ag_intf['step'] & self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_sipo_out.ports.step)
                 else:
@@ -356,11 +595,16 @@ class Port(Component):
                     self._full_addr_in = self.input("addr_in", width=self.port_ag_width)
                     self._addr_out = self.output("addr_out", width=self.port_ag_width)
                     self._sg_step_in = self.input("sg_step_in", width=1)
+                    self._grant = self.input("grant", width=1)
                     # This will be used to send out to the AG/ID, etc.
                     # This is also telling us if we are making a memory read this cycle
                     self._sg_step_out = self.output("sg_step_out", width=1)
                     self._read_memory_out = self.output("read_memory_out", width=1)
                     self._data_being_written = self.var("data_being_written", 1)
+
+                    # This means there is no more data to be written to the SRAM
+                    self._finished = self.input("finished", 1)
+
                     # self._inc_linear_wcb_write = self.var("inc_linear_wcb_write", 1)
 
                     # self._last_read_addr = self.var("last_read_addr", 1)
@@ -368,9 +612,9 @@ class Port(Component):
                     # self._already_read = self.var("already_read", 1)
                     addr_bits_range = [self._full_addr_in.width - 1, kts.clog2(self._fw)]
 
-                    self._already_read = sticky_flag(self, self._read_memory_out, name="already_read", seq_only=True)
-                    self._read_last_cycle = register(self, self._read_memory_out, enable=kts.const(1, 1), name="read_last_cycle")
-                    self._last_read_addr = register(self, self._full_addr_in, enable=self._read_memory_out, name="last_read_addr")
+                    self._already_read = sticky_flag(self, self._read_memory_out & self._grant, name="already_read", seq_only=True)
+                    self._read_last_cycle = register(self, self._read_memory_out & self._grant, enable=kts.const(1, 1), name="read_last_cycle")
+                    self._last_read_addr = register(self, self._full_addr_in, enable=self._read_memory_out & self._grant, name="last_read_addr")
 
                     # Define all the relevant signals/vars
                     addr_q_width = kts.clog2(self.get_fw())
@@ -600,20 +844,27 @@ class Port(Component):
                         # If it hasn't been read and we are reading, we should push this address...
                         if ~self._already_read:
                             # If we are making the read...
-                            self._push_addr_q = self._read_memory_out
+                            # self._push_addr_q = self._read_memory_out
+                            self._push_addr_q = self._read_memory_out & self._grant
                         # If the upper portion of the address is different...
                         elif (self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~reg_fifo.ports.full):
-                            self._push_addr_q = self._read_memory_out
+                            # self._push_addr_q = self._read_memory_out
+                            # This implies a read memory out
+                            # self._push_addr_q = self._read_memory_out & ~self._finished
+                            self._push_addr_q = self._read_memory_out & ~self._finished & self._grant
                         # If the upper portion is the same, we can push if there is room in the queue
                         elif (~reg_fifo.ports.full):
-                            self._push_addr_q = 1
+                            # self._push_addr_q = 1
+                            # Only push to addr queue if not finished...
+                            self._push_addr_q = ~self._finished
 
                         # Easy - just take the sub address from the full address
                         # self._addr_q_sub_addr_in = self._last_read_addr[sub_addr_range[0], sub_addr_range[1]]
                         self._addr_q_sub_addr_in = self._full_addr_in[sub_addr_range[0], sub_addr_range[1]]
 
                         # We only push a pop in when there is a read to a new address
-                        self._addr_q_pop_wcb_in = self._read_memory_out
+                        # self._addr_q_pop_wcb_in = self._read_memory_out
+                        self._addr_q_pop_wcb_in = self._read_memory_out & self._grant
                         # The tag is just another set of bits
                         # self._addr_q_tag_in = self._last_read_addr[tag_addr_range[0], tag_addr_range[1]]
                         self._addr_q_tag_in = self._full_addr_in[tag_addr_range[0], tag_addr_range[1]]
@@ -626,7 +877,8 @@ class Port(Component):
                         self._read_memory_out = 0
                         # Only time we should make a read is if the input step is high, and there's never been a read, or the read address is new, plus there is
                         # either room on the current bus or the current bus is being written
-                        if self._sg_step_in & (~self._already_read | ((self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~self._data_on_bus | self._data_being_written))):
+                        # if self._sg_step_in & (~self._already_read | ((self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~self._data_on_bus | self._data_being_written))):
+                        if ~self._finished & self._sg_step_in & (~self._already_read | ((self._last_read_addr[addr_bits_range[0], addr_bits_range[1]] != self._full_addr_in[addr_bits_range[0], addr_bits_range[1]]) & (~self._data_on_bus | self._data_being_written))):
                             self._read_memory_out = 1
 
                         # self._sg_step_out = 0
@@ -646,7 +898,7 @@ class Port(Component):
                         # Calculate next if there is data on sram
                         self._next_data_on_bus = self._data_on_bus
                         # This becomes true any time we read...
-                        if self._read_memory_out:
+                        if self._read_memory_out & self._grant:
                             self._next_data_on_bus = 1
                         # It only becomes false in the case that we push to the wcb
                         elif self._data_being_written:
@@ -762,10 +1014,12 @@ class Port(Component):
                 self.wire(self._id_piso_out.ports.mux_sel, self._ag_piso_out.ports.mux_sel)
                 self.wire(self._id_piso_out.ports.iterators, self._ag_piso_out.ports.iterators)
                 self.wire(self._id_piso_out.ports.restart, self._ag_piso_out.ports.restart)
+                self.wire(self._id_piso_out.ports.finished, self._ag_piso_out.ports.finished)
 
                 self.wire(self._id_piso_out.ports.mux_sel, self._sg_piso_out.ports.mux_sel)
                 self.wire(self._id_piso_out.ports.iterators, self._sg_piso_out.ports.iterators)
                 self.wire(self._id_piso_out.ports.restart, self._sg_piso_out.ports.restart)
+                self.wire(self._id_piso_out.ports.finished, self._sg_piso_out.ports.finished)
 
                 # TODO: Qualify step with the valids + such - can just have them default to 1's in static mode instead
                 # of having separate logic blocks every time this happens
@@ -852,11 +1106,15 @@ class Port(Component):
                     # self.wire(self._internal_ag_intf['restart'].get_ready(), self._mp_intf['ready'] & self._mp_intf['valid'])
 
                     self.wire(self._id_piso_in.ports.iterators, self._ag_piso_in.ports.iterators)
-                    self.wire(self._id_piso_in.ports.iterators, self._sg_piso_in.ports.iterators)
                     self.wire(self._id_piso_in.ports.mux_sel, self._ag_piso_in.ports.mux_sel)
-                    self.wire(self._id_piso_in.ports.mux_sel, self._sg_piso_in.ports.mux_sel)
                     self.wire(self._id_piso_in.ports.restart, self._ag_piso_in.ports.restart)
+                    self.wire(self._id_piso_in.ports.finished, self._ag_piso_in.ports.finished)
+
+                    self.wire(self._id_piso_in.ports.iterators, self._sg_piso_in.ports.iterators)
+                    self.wire(self._id_piso_in.ports.mux_sel, self._sg_piso_in.ports.mux_sel)
                     self.wire(self._id_piso_in.ports.restart, self._sg_piso_in.ports.restart)
+                    self.wire(self._id_piso_in.ports.finished, self._sg_piso_in.ports.finished)
+
                     self.wire(self._id_piso_in.ports.extents_out, self._sg_piso_in.ports.extents)
 
                     # Wire ID and AG step...
@@ -867,6 +1125,8 @@ class Port(Component):
 
                     self._internal_ag_intf['step'] = self.input(name=f"port_piso_in_step", width=1, packed=True)
                     self._internal_ag_intf['restart'] = self.input(name=f"port_piso_in_restart", width=1, packed=True)
+                    # self._internal_ag_intf['finished'] = self.input(name=f"port_piso_in_finished", width=1, packed=True)
+                    self._internal_ag_intf['finished'] = kts.const(0, 1)
                     self._internal_ag_intf['mux_sel'] = self.input(name=f"port_piso_in_mux_sel", width=self._ag_piso_in.ports.mux_sel.width, packed=True)
                     self._internal_ag_intf['iterators'] = self.input(name=f"port_piso_in_dim_ctrs2", width=self._ag_piso_in.ports.iterators.width,
                                                                      size=self.dimensionality, explicit_array=True, packed=True)
@@ -877,6 +1137,7 @@ class Port(Component):
 
                     # Hook up the SG block in the case of dynamic runtime
                     self.wire(self._internal_ag_intf['restart'], self._ag_piso_in.ports.restart)
+                    self.wire(self._internal_ag_intf['finished'], self._ag_piso_in.ports.finished)
                     self.wire(self._internal_ag_intf['mux_sel'], self._ag_piso_in.ports.mux_sel)
                     self.wire(self._internal_ag_intf['iterators'], self._ag_piso_in.ports.iterators)
                     self.wire(self._mp_intf['valid'] & self._mp_intf['ready'], self._ag_piso_in.ports.step)
@@ -947,37 +1208,43 @@ class Port(Component):
         if vec_in is not None or vec_out is not None:
             assert vec_in is not None and vec_out is not None and self._fw != 1
             if self.get_direction() == Direction.IN:
-                vec_in_addr_map = vec_in['address']
-                vec_in_sched_map = vec_in['schedule']
-                internal_id_bs = self._id_sipo_in.gen_bitstream(dimensionality=vec_in['dimensionality'],
-                                                                extents=vec_in['extents'],
-                                                                rv=self._runtime == Runtime.DYNAMIC)
-                internal_ag_bs = self._ag_sipo_in.gen_bitstream(address_map=vec_in_addr_map,
-                                                                extents=vec_in['extents'],
-                                                                dimensionality=vec_in['dimensionality'])
-                internal_sg_bs = self._sg_sipo_in.gen_bitstream(schedule_map=vec_in_sched_map,
-                                                                extents=vec_in['extents'],
-                                                                dimensionality=vec_in['dimensionality'])
 
-                internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_sipo_in])
-                internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_sipo_in])
-                internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_sipo_in])
-                # add on the respective base
-                # Now get the output part
-                vec_out_addr_map = vec_out['address']
-                # vec_out_sched_map = vec_out['schedule']
-                external_ag_bs = self._ag_sipo_out.gen_bitstream(address_map=vec_out_addr_map,
-                                                                 extents=vec_out['extents'],
-                                                                 dimensionality=vec_out['dimensionality'])
-                external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_sipo_out])
+                if self.opt_rv:
+                    pass
 
-                all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
+                else:
 
-                # Need to configure the rv sched generator at the output of the sipo
-                if self._runtime == Runtime.DYNAMIC:
-                    sg_sipo_out_bs = self._sg_sipo_out.gen_bitstream()
-                    sg_sipo_out_bs = self._add_base_to_cfg_space(sg_sipo_out_bs, self.child_cfg_bases[self._sg_sipo_out])
-                    all_bs.append(sg_sipo_out_bs)
+                    vec_in_addr_map = vec_in['address']
+                    vec_in_sched_map = vec_in['schedule']
+                    internal_id_bs = self._id_sipo_in.gen_bitstream(dimensionality=vec_in['dimensionality'],
+                                                                    extents=vec_in['extents'],
+                                                                    rv=self._runtime == Runtime.DYNAMIC)
+                    internal_ag_bs = self._ag_sipo_in.gen_bitstream(address_map=vec_in_addr_map,
+                                                                    extents=vec_in['extents'],
+                                                                    dimensionality=vec_in['dimensionality'])
+                    internal_sg_bs = self._sg_sipo_in.gen_bitstream(schedule_map=vec_in_sched_map,
+                                                                    extents=vec_in['extents'],
+                                                                    dimensionality=vec_in['dimensionality'])
+
+                    internal_id_bs = self._add_base_to_cfg_space(internal_id_bs, self.child_cfg_bases[self._id_sipo_in])
+                    internal_ag_bs = self._add_base_to_cfg_space(internal_ag_bs, self.child_cfg_bases[self._ag_sipo_in])
+                    internal_sg_bs = self._add_base_to_cfg_space(internal_sg_bs, self.child_cfg_bases[self._sg_sipo_in])
+                    # add on the respective base
+                    # Now get the output part
+                    vec_out_addr_map = vec_out['address']
+                    # vec_out_sched_map = vec_out['schedule']
+                    external_ag_bs = self._ag_sipo_out.gen_bitstream(address_map=vec_out_addr_map,
+                                                                    extents=vec_out['extents'],
+                                                                    dimensionality=vec_out['dimensionality'])
+                    external_ag_bs = self._add_base_to_cfg_space(external_ag_bs, self.child_cfg_bases[self._ag_sipo_out])
+
+                    all_bs = [internal_id_bs, internal_ag_bs, internal_sg_bs, external_ag_bs]
+
+                    # Need to configure the rv sched generator at the output of the sipo
+                    if self._runtime == Runtime.DYNAMIC:
+                        sg_sipo_out_bs = self._sg_sipo_out.gen_bitstream()
+                        sg_sipo_out_bs = self._add_base_to_cfg_space(sg_sipo_out_bs, self.child_cfg_bases[self._sg_sipo_out])
+                        all_bs.append(sg_sipo_out_bs)
 
             elif self.get_direction() == Direction.OUT:
 
@@ -1025,7 +1292,8 @@ class Port(Component):
                 raise NotImplementedError
 
             # Need to configure the RV network if rv mode
-            if self._runtime == Runtime.DYNAMIC and (self.opt_rv is False or (self.get_direction() == Direction.IN)):
+            # if self._runtime == Runtime.DYNAMIC and (self.opt_rv is False or (self.get_direction() == Direction.IN)):
+            if self._runtime == Runtime.DYNAMIC and self.opt_rv is False:
                 rv_comp_bs = self._rv_comp_nw.gen_bitstream(constraints=vec_constraints)
                 rv_comp_bs = self._add_base_to_cfg_space(rv_comp_bs, self.child_cfg_bases[self._rv_comp_nw])
                 all_bs.append(rv_comp_bs)
