@@ -57,6 +57,7 @@ set_max_transition [expr 0.25*${clock_period}] $design_name
 #set_max_transition 10 [all_outputs]
 
 set_false_path -from {config_memory*}
+set_false_path -from {config_memory_instance/*}
 
 set_multicycle_path -setup 10 -from {flush}
 set_multicycle_path -hold 9 -from {flush}
