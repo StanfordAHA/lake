@@ -23,7 +23,8 @@ class Port(Component):
 
     def __init__(self, ext_data_width=16, int_data_width=16,
                  runtime=Runtime.STATIC, direction=Direction.IN,
-                 vec_capacity=None, opt_rv=False):
+                 vec_capacity=None, opt_rv=False,
+                 opt_timing=True):
         super().__init__()
         self._mp_intf = {}
         self._ub_intf = {}
@@ -41,6 +42,7 @@ class Port(Component):
         self._rv_comp_nw = None
         self.opt_rv = opt_rv
         self.port_ag_width = None
+        self.opt_timing = opt_timing
 
     def __str__(self):
         type_str = "Write"
@@ -85,7 +87,7 @@ class Port(Component):
             #     self._ub_intf['data'] = data_from_ub
             #     self._mp_intf['data'] = data_to_memport
             # else:
-            data_from_ub = self.rvinput(name=f"port_write_data_in", width=self._ext_data_width)
+            data_from_ub = self.rvinput(name=f"port_write_data_in", width=self._ext_data_width, packed=True)
             data_to_memport = self.rvoutput(name=f"port_write_data_out", width=self._int_data_width)
             self._ub_intf['data'] = data_from_ub.get_port()
             self._ub_intf['valid'] = data_from_ub.get_valid()
@@ -125,6 +127,37 @@ class Port(Component):
                     mp_interface = data_to_memport.get_port_interface()
                     # self.wire(self._ready_out_lcl, ub_interface['ready'])
                     # Need ID finished...
+
+                    if self.opt_timing:
+
+                        # Put a depth-2 FIFO at the input to break the comb loop
+                        input_fifo = RegFIFO(data_width=ub_interface['data'].width, width_mult=1, depth=2)
+
+                        self.add_child(f"input_fifo",
+                                        input_fifo,
+                                        clk=self._clk,
+                                        rst_n=self._rst_n,
+                                        # clk_en=self._clk_en,
+                                        clk_en=kts.const(1, 1),
+                                        push=ub_interface['valid'],
+                                        # pop=self._pop_addr_q,
+                                        data_in=ub_interface['data'])
+
+                        self.wire(ub_interface['ready'], ~input_fifo.ports.full)
+
+                        tmp_data_in = self.var("data_in_proxy", ub_interface['data'].width, packed=True)
+                        tmp_valid_in = self.var("valid_in_proxy", 1)
+                        tmp_ready_out = self.var("ready_out_proxy", 1)
+
+                        self.wire(tmp_data_in, input_fifo.ports.data_out)
+                        self.wire(input_fifo.ports.pop, tmp_ready_out)
+                        self.wire(tmp_valid_in, ~input_fifo.ports.empty)
+
+                        # Replace the interface so that the rest of the logic works the same...
+                        ub_interface['data'] = tmp_data_in
+                        ub_interface['valid'] = tmp_valid_in
+                        ub_interface['ready'] = tmp_ready_out
+
                     self._finished = self.input("finished", 1)
                     # Ready out needs to be the ready from the UB and the finished signal
                     self.wire(ub_interface['ready'], self._ready_out_lcl & ~self._finished)
@@ -828,12 +861,27 @@ class Port(Component):
                     # Also need to deal with startup - make sure there are items in wcb as well
                     self.wire(self._valid_out_lcl, ~reg_fifo.ports.empty & (self._num_items_wcb > 0) & match_addr_valid)
 
-                    @always_comb
-                    def data_being_written_comb():
-                        self._data_being_written = 0
-                        if self._data_on_bus and (self._pop_wcb | (self._num_items_wcb < 2)):
-                            self._data_being_written = 1
-                    self.add_code(data_being_written_comb)
+                    if self.opt_timing:
+
+                        # This case doesn't allow the pop to be considered, helping with timing.
+
+                        @always_comb
+                        def data_being_written_comb():
+                            self._data_being_written = 0
+                            # Try only letting it write if the buffer is not full...
+                            if self._data_on_bus and (self._num_items_wcb < 2):
+                                self._data_being_written = 1
+                        self.add_code(data_being_written_comb)
+
+                    else:
+
+                        @always_comb
+                        def data_being_written_comb():
+                            self._data_being_written = 0
+                            # Try only letting it write if the buffer is not full...
+                            if self._data_on_bus and (self._pop_wcb | (self._num_items_wcb < 2)):
+                                self._data_being_written = 1
+                        self.add_code(data_being_written_comb)
 
                     @always_comb
                     def addr_q_in_comb():

@@ -2,32 +2,19 @@ from threading import local
 from lake.attributes.formal_attr import *
 import json
 from kratos import *
-from lake.modules.buffet_like import BuffetLike
-from lake.modules.crddrop import CrdDrop
 # from lake.modules.onyx_pe import OnyxPE
 from lake.modules.passthru import *
 from lake.modules.strg_ub_vec import StrgUBVec
-from lake.modules.strg_ub_thin import StrgUBThin
-from lake.modules.strg_fifo import StrgFIFO
 from lake.modules.strg_RAM import StrgRAM
-from lake.modules.scanner import Scanner
-from lake.modules.write_scanner import WriteScanner
-from lake.modules.scanner_pipe import ScannerPipe
-from lake.modules.intersect import Intersect
 from lake.top.extract_tile_info import extract_top_config
-from lake.utils.sram_macro import SRAMMacroInfo
 import argparse
 from lake.top.memtile_builder import MemoryTileBuilder
 from lake.top.tech_maps import GF_Tech_Map, SKY_Tech_Map, TSMC_Tech_Map, Intel_Tech_Map
-from lake.top.memory_interface import MemoryInterface, MemoryPort, MemoryPortType
+from lake.top.memory_interface import MemoryPort, MemoryPortType
 from lake.modules.stencil_valid import StencilValid
 from _kratos import create_wrapper_flatten
 from lake.attributes.config_reg_attr import ConfigRegAttr
-from lake.top.fiber_access import FiberAccess
-from lake.modules.repeat import Repeat
-from lake.modules.repeat_signal_generator import RepeatSignalGenerator
-from lake.modules.reg_cr import Reg
-from lake.modules.crdhold import CrdHold
+
 import os
 
 

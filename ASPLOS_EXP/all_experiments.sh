@@ -121,6 +121,9 @@
 
 python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_STATIC_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch --storage_capacity 16384 --run_builds --strict_filter --frequency 50
 python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 50 --opt_rv
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_FAST_FIX_AG/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 1000 --opt_rv --synth_only
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_FAST_FIX_AG2/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 1000 --opt_rv --synth_only
+python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_RV_FAST_FIX_AG3/ --physical --design_filter four_port_single_mp_wide_fetch_rv --storage_capacity 16384 --run_builds --strict_filter --frequency 1000 --opt_rv --synth_only
 
 # python ASPLOS_EXP/create_mflowgen_experiments.py --build_dir /sim/mstrange/QUAD_PORT_STATIC_SLOW/ --physical --design_filter four_port_single_mp_wide_fetch --storage_capacity 16384 --run_builds --strict_filter --frequency 10000
 # Dual port, quad port w/ clk gate

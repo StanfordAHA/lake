@@ -53,6 +53,17 @@ class Spec():
         self.clk_gate = clkgate
         self.config_passthru = config_passthru
         self.opt_rv = opt_rv
+        self.mc_ports = [[None]]
+
+    def get_memory_ports_mc(self):
+        '''
+        Return the memory ports for the MemoryController
+        - This is for the MemoryController to know which ports are connected to it (for CGRA integration)
+        '''
+        pass
+
+    def annotate_liftable_ports(self):
+        pass
 
     def register_(self, comp):
         self._hw_graph.add_node(comp)
