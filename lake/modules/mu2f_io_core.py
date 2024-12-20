@@ -163,10 +163,15 @@ class IOCore_mu2f(Generator):
         # READY AND 
         ########################################
         track_out_r0 = self.input(f"io2f_{tile_array_data_width}_T0_ready", 1)
+        track_out_r0.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         track_out_r1 = self.input(f"io2f_{tile_array_data_width}_T1_ready", 1)
+        track_out_r1.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         track_out_r2 = self.input(f"io2f_{tile_array_data_width}_T2_ready", 1)
+        track_out_r2.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         track_out_r3 = self.input(f"io2f_{tile_array_data_width}_T3_ready", 1)
+        track_out_r3.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         track_out_r4 = self.input(f"io2f_{tile_array_data_width}_T4_ready", 1)  
+        track_out_r4.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
           
         ready_and = self.var("ready_and", 1)
         self.wire(ready_and, track_out_r0 & track_out_r1 & track_out_r2 & track_out_r3 & track_out_r4)
