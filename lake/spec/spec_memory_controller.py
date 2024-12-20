@@ -11,12 +11,12 @@ from lake.top.tech_maps import GF_Tech_Map
 import argparse
 import os
 
-def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: int = 6, vec_width=4, physical=False,
-                                  reg_file=False, vec_capacity=2, opt_rv=True) -> Spec:
+def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: int = 6, vec_width=4, physical=True,
+                                  reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True) -> Spec:
 
     # a reg file can't be used to build this...
 
-    ls = Spec(opt_rv=opt_rv)
+    ls = Spec(opt_rv=opt_rv, remote_storage=remote_storage)
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
@@ -100,21 +100,55 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 class SpecMemoryController(MemoryController):
 
     # def __init__(self, name, debug = False, is_clone = False, internal_generator=None, exclusive = False, add_flush=False):
-    def __init__(self, spec):
+    def __init__(self, spec: Spec,
+                 name="SpecMemoryController_default_name"):
         # super().__init__(name, debug, is_clone, internal_generator, exclusive, add_flush)
-        super().__init__(name="example_spec_memory_controller", debug=True,
-                         exclusive=False, add_flush=True)
-
         self.spec = spec
+        self.spec.set_name(name)
+
+        print("Before hardware gen...")
+        self.spec.generate_hardware()
+        print("After hardware gen...")
         self.memory_ports = self.spec.get_memory_ports_mc()
+        print(self.memory_ports)
+        # exit()
         # Annotate liftable ports...
         self.spec.annotate_liftable_ports()
+        # self.internal_generator = self.spec.get_generator())
+
+        print("Before internal generator")
+        print(self.spec.get_generator())
+        print(self.spec.get_generator().child_generator())
+
+        print("In spec control")
+        # print(self.child_generator())
+        # print(self.name)
+
+        super().__init__(name=name, debug=True,
+                         exclusive=False, add_flush=True, internal_generator=self.spec.get_internal_generator(), is_clone=False)
+
+        print("After internal generator")
+        print(self.child_generator())
+
+        # # Now copy child generators? Everything else is the same????
+        self.child_generator().update(self.spec.get_generator().child_generator())
+        print(self.child_generator())
+
+    def get_config_mode_str(self):
+        return "lakespec"
 
     def get_memory_ports(self):
         '''
         Use this method to indicate what memory ports this controller has
         '''
-        return None
+        return self.memory_ports
+
+    def get_verilog(self, output_dir="."):
+        self.spec.get_verilog(output_dir=output_dir)
+
+    def print_name(self):
+        print(self.spec._name)
+
 
 if __name__ == "__main__":
 
@@ -122,3 +156,8 @@ if __name__ == "__main__":
     spec = build_four_port_wide_fetch_rv()
     # Instantiate the core
     smc = SpecMemoryController(spec=spec)
+    mp = smc.get_memory_ports()
+    print(f"Memory Ports: {mp}")
+    smc.get_verilog()
+    smc.print_name()
+    print("Done!")

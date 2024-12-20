@@ -12,6 +12,19 @@ import shutil as shutil
 lake_util_verbose_trim = False
 
 
+def lift_port(child_gen, parent_gen, child_port):
+
+    pname = child_port.name
+
+    # Need to get the attributes and copy them up...
+    port_attrs = child_port.attributes
+    tmp_port = parent_gen.port_from_def(child_port, name=f"{child_port.name}")
+    for attr in port_attrs:
+        tmp_port.add_attribute(attr)
+    parent_gen.wire(tmp_port, child_port)
+    return tmp_port
+
+
 def check_file_exists_and_has_content(file_path):
     # Check if the file exists
     if os.path.exists(file_path):

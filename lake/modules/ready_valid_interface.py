@@ -39,6 +39,9 @@ class RVInterface():
     def get_port(self):
         return self.port
 
+    def get_data(self):
+        return self.port
+
     def get_valid(self):
         return self.port_valid
 

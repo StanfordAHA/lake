@@ -166,6 +166,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 exclusive_ctrl += 1
             else:
                 print("FOUND BULK")
+                print(ctrl.child_generator())
                 self.ctrl_to_mode[ctrl.name] = (bulk_ctrl, "bulk")
                 bulk_ctrl += 1
         # self.num_modes = len(self.controllers)

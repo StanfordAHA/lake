@@ -1,5 +1,5 @@
 from lake.top.core_combiner import CoreCombiner
-from lake.spec.spec_memory_controller import SpecMemoryController
+from lake.spec.spec_memory_controller import SpecMemoryController, build_four_port_wide_fetch_rv
 from lake.spec.spec import Spec
 from lake.spec.port import Port
 from lake.utils.spec_enum import Runtime, Direction, MemoryPortType, LFComparisonOperator
@@ -9,103 +9,34 @@ from lake.spec.schedule_generator import ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
 from lake.top.tech_maps import GF_Tech_Map
+import kratos as kts
 import argparse
 import os
 
-def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: int = 6, vec_width=4, physical=False,
-                                  reg_file=False, vec_capacity=2, opt_rv=True) -> Spec:
-
-    # a reg file can't be used to build this...
-
-    ls = Spec(opt_rv=opt_rv)
-
-    in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                   vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                   opt_rv=opt_rv)
-    in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                    opt_rv=opt_rv)
-    out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
-                    opt_rv=opt_rv)
-    out_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
-                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
-                     opt_rv=opt_rv)
-
-    ls.register(in_port, in_port2, out_port, out_port2)
-
-    in_id = IterationDomain(dimensionality=dims, extent_width=16)
-    in_ag = AddressGenerator(dimensionality=dims)
-    in_sg = ReadyValidScheduleGenerator(dimensionality=dims)
-
-    in_id2 = IterationDomain(dimensionality=dims, extent_width=16)
-    in_ag2 = AddressGenerator(dimensionality=dims)
-    in_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
-
-    out_id = IterationDomain(dimensionality=dims, extent_width=16)
-    out_ag = AddressGenerator(dimensionality=dims)
-    out_sg = ReadyValidScheduleGenerator(dimensionality=dims)
-
-    out_id2 = IterationDomain(dimensionality=dims, extent_width=16)
-    out_ag2 = AddressGenerator(dimensionality=dims)
-    out_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
-
-    ls.register(in_id, in_ag, in_sg)
-    ls.register(in_id2, in_ag2, in_sg2)
-    ls.register(out_id, out_ag, out_sg)
-    ls.register(out_id2, out_ag2, out_sg2)
-
-    data_bytes = (data_width * vec_width) // 8
-    tech_map = None
-    if physical:
-        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False)
-
-    # 1024 Bytes
-    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
-    shared_rw_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.RW, delay=1)
-    ls.register(stg, shared_rw_mem_port)
-
-    # All cores are registered at this point
-    # Now connect them
-
-    # In to in
-    ls.connect(in_port, in_id)
-    ls.connect(in_port, in_ag)
-    ls.connect(in_port, in_sg)
-
-    ls.connect(in_port2, in_id2)
-    ls.connect(in_port2, in_ag2)
-    ls.connect(in_port2, in_sg2)
-
-    # Out to out
-    ls.connect(out_port, out_id)
-    ls.connect(out_port, out_ag)
-    ls.connect(out_port, out_sg)
-
-    ls.connect(out_port2, out_id2)
-    ls.connect(out_port2, out_ag2)
-    ls.connect(out_port2, out_sg2)
-
-    # In and Out to shared memory port
-    ls.connect(in_port, shared_rw_mem_port)
-    ls.connect(in_port2, shared_rw_mem_port)
-    ls.connect(out_port, shared_rw_mem_port)
-    ls.connect(out_port2, shared_rw_mem_port)
-
-    # Memory Ports to storage
-    ls.connect(shared_rw_mem_port, stg)
-
-    return ls
 
 if __name__ == "__main__":
 
+    strg_cap = 16384
+    fw = 4
+    data_width = 16
+
     # get the spec
-    spec = build_four_port_wide_fetch_rv()
+    spec = build_four_port_wide_fetch_rv(storage_capacity=strg_cap, data_width=data_width, vec_width=fw)
     # Instantiate the core
     controllers = [SpecMemoryController(spec=spec)]
 
+    mem_width = fw * data_width
+    word_bytes = (data_width * fw) // 8
+    mem_depth = strg_cap // word_bytes
+
     core_combiner = CoreCombiner(controllers=controllers,
-                                 name="example_core_combiner",)
+                                 name="example_core_combiner",
+                                 mem_depth=mem_depth,
+                                 mem_width=mem_width,)
+
+    print("Generating verilog!")
+    # kts.verilog(core_combiner, filename="core_combiner_mek.sv")
+    core_combiner.get_verilog(verilog_name="core_combiner_mek.sv")
 
     # Run the core
     # core_combiner.run()

@@ -1,7 +1,9 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+from lake.attributes.control_signal_attr import ControlSignalAttr
 from lake.spec.storage import Storage
 from lake.spec.memory_port import MemoryPort
+from lake.top.memory_controller import MemoryPort as MemoryPortMC
 from lake.utils.spec_enum import *
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.address_generator import AddressGenerator
@@ -13,7 +15,7 @@ from kratos import clog2
 from typing import Tuple
 import os as os
 from lake.utils.spec_enum import Direction
-from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg, round_up_to_power_of_2
+from lake.utils.util import connect_memoryport_storage, inline_multiplexer, shift_reg, round_up_to_power_of_2, lift_port
 from lake.modules.rv_comparison_network import RVComparisonNetwork
 from lake.spec.component import Component
 from lake.modules.ready_valid_interface import RVInterface
@@ -28,7 +30,7 @@ class Spec():
     """
     def __init__(self, name="lakespec", clkgate=True,
                  config_passthru=False,
-                 opt_rv=False) -> None:
+                 opt_rv=False, remote_storage=False) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
         self._name = name
@@ -53,16 +55,34 @@ class Spec():
         self.clk_gate = clkgate
         self.config_passthru = config_passthru
         self.opt_rv = opt_rv
+        self.remote_storage = remote_storage
         self.mc_ports = [[None]]
+        self._final_gen = Component(name=self._name)
+
+    def set_name(self, name):
+        self._name = name
+
+    def get_internal_generator(self):
+        return self._final_gen.internal_generator
+
+    def get_generator(self):
+        # print(self._final_gen.child_generator())
+        # exit()
+        return self._final_gen
 
     def get_memory_ports_mc(self):
         '''
         Return the memory ports for the MemoryController
         - This is for the MemoryController to know which ports are connected to it (for CGRA integration)
         '''
-        pass
+        # When generating the hardware, this will be done automatically -
+        # for now, we can just return the memory ports (for mc)
+        return self.mc_ports
 
     def annotate_liftable_ports(self):
+        '''
+        Annotating the liftable ports for the CoreCombiner will occur during hardware generation...
+        '''
         pass
 
     def register_(self, comp):
@@ -80,6 +100,65 @@ class Spec():
             print(self._index_to_node)
         assert idx in self._index_to_node
         return self._index_to_node[idx]
+
+    def convert_mp_to_mcmp(self, hard_port: dict, soft_port: MemoryPortMC):
+        # For now, just copy the hard port to the soft port
+        # and connect the signals
+        # for port_name, port in hard_port.items():
+            # soft_port.add_port(port_name, port)
+
+        # First, get the type of the port
+        port_type = soft_port.get_port_type()
+
+        soft_port_interface = soft_port.get_port_interface()
+
+        print(f"hard port: {hard_port}")
+        print(f"soft port (MC): {soft_port_interface}")
+
+        if port_type == MemoryPortType.READ:
+            soft_port_interface['data_out'] = hard_port['read_data']
+            soft_port_interface['read_addr'] = hard_port['addr']
+            soft_port_interface['read_enable'] = hard_port['read_en']
+        elif port_type == MemoryPortType.WRITE:
+            soft_port_interface['data_in'] = hard_port['write_data']
+            soft_port_interface['write_addr'] = hard_port['addr']
+            soft_port_interface['write_enable'] = hard_port['write_en']
+        elif port_type == MemoryPortType.READWRITE:
+            soft_port_interface['data_in'] = hard_port['write_data']
+            soft_port_interface['data_out'] = hard_port['read_data']
+            soft_port_interface['read_addr'] = hard_port['addr']
+            soft_port_interface['read_enable'] = hard_port['read_en']
+            soft_port_interface['write_addr'] = hard_port['addr']
+            soft_port_interface['write_enable'] = hard_port['write_en']
+        else:
+            raise NotImplementedError(f"Port Type {port_type} not supported...")
+
+    def connect_memoryport_mc_interface(self, memory_port: MemoryPort, bank_no=(0, 0)):
+
+        # Get the interface of the memory port
+        # and basically copy these to the interface of the module,
+        # create a MemoryPortMC and also add to the mc_ports list
+        mp_intf = memory_port.get_storage_intf()
+        print(mp_intf)
+        port_type = memory_port.get_type()
+
+        new_intf = {}
+
+        for port_name, port in mp_intf.items():
+            new_port = lift_port(child_gen=memory_port, parent_gen=self._final_gen, child_port=port)
+            new_intf[port_name] = new_port
+
+        print(new_intf)
+        mc_port = MemoryPortMC(port_type)
+        # Now add the hard ports to the soft mc port for integration in CGRA
+        # mc_port_intf = mc_port.get_port_interface()
+        self.convert_mp_to_mcmp(hard_port=new_intf, soft_port=mc_port)
+        mc_port.annotate_port_signals()
+
+        # Default one storage for now...
+        self.mc_ports[0][0] = mc_port
+
+        print("Done lifting...")
 
     def register(self, *comps):
         # self._hw_graph.add_nodes_from(comps)
@@ -174,7 +253,7 @@ class Spec():
 
     def generate_hardware(self) -> None:
 
-        self._final_gen = Component(name=self._name)
+        # self._final_gen = Component(name=self._name)
         # Before we go into the port loop, if any of the schedule generators is dynamic (vs. static), we need to know this and collect
         # information before genning the hardware
 
@@ -194,15 +273,21 @@ class Spec():
             storage_node: Storage
             # get MemoryPorts
             memoryports = list(nx.neighbors(self._hw_graph, storage_node))
-            storage_node.gen_hardware(pos_reset=False, memory_ports=memoryports)
-            # memoryports = nx.neighbors(self._hw_graph, storage_node)
-            # Now we have the storage generated, want to generate the memoryports hardware which will be simply
-            # passthru of the port currently...
-            # Now generate a storage element based on all of these ports and add them to the final generator
-            self._final_gen.add_child("storage", storage_node, clk=self.hw_attr['clk'],
-                                      rst_n=self.hw_attr['rst_n'])
 
+            # Only build the hardware for the storage if it is not remote
+            if self.remote_storage is False:
+
+                storage_node.gen_hardware(pos_reset=False, memory_ports=memoryports)
+                # memoryports = nx.neighbors(self._hw_graph, storage_node)
+                # Now we have the storage generated, want to generate the memoryports hardware which will be simply
+                # passthru of the port currently...
+                # Now generate a storage element based on all of these ports and add them to the final generator
+                self._final_gen.add_child("storage", storage_node, clk=self.hw_attr['clk'],
+                                        rst_n=self.hw_attr['rst_n'])
+
+            print("IDK")
             strg_intfs = storage_node.get_memport_intfs()
+            print(strg_intfs)
 
             # Build memory ports
             memoryports = nx.neighbors(self._hw_graph, storage_node)
@@ -213,7 +298,10 @@ class Spec():
                                           clk=self.hw_attr['clk'],
                                           rst_n=self.hw_attr['rst_n'])
                 # self._connect_memoryport_storage(mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
-                connect_memoryport_storage(self._final_gen, mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
+                if self.remote_storage is False:
+                    connect_memoryport_storage(self._final_gen, mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
+                else:
+                    self.connect_memoryport_mc_interface(mp)
                 # Connected the memory ports to the storage
 
         # Now that we have generated the memory ports and storage, we can realize
@@ -515,6 +603,7 @@ class Spec():
             self._final_gen.wire(quali_step, memintf_dec_p_intf['en'])
 
             # Now add the port interfaces to the module
+            # Can annotate these (and potentially add FIFOs if needed (since they will be shared anyway, might as well))
             ub_intf = port.get_ub_intf()
             if port.get_direction() == Direction.IN:
                 if self.any_rv_sg:
@@ -531,6 +620,13 @@ class Spec():
                     # self._final_gen.wire(p_temp_ready, kts.const(1, 1))
                     self._final_gen.wire(p_temp_ready, ub_intf['ready'])
                     self._final_gen.wire(ub_intf['valid'], p_temp_valid)
+
+                if self.remote_storage is True:
+                    # Annotate signals with ControlSignalAttr for CoreCombiner...'
+                    p_temp.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+                    p_temp_valid.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+                    p_temp_ready.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
+
             elif port.get_direction() == Direction.OUT:
                 if self.any_rv_sg:
                     p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width)
@@ -546,6 +642,15 @@ class Spec():
                     # self._final_gen.wire(p_temp_valid, kts.const(1, 1))
                     self._final_gen.wire(p_temp_valid, ub_intf['valid'])
                     self._final_gen.wire(ub_intf['ready'], p_temp_ready)
+
+                if self.remote_storage is True:
+                    # Annotate signals with ControlSignalAttr for CoreCombiner...'
+                    p_temp.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+                    p_temp_valid.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
+                    p_temp_ready.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+
+            else:
+                raise NotImplementedError
 
             self._final_gen.wire(p_temp, ub_intf['data'])
 
