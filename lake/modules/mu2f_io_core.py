@@ -159,57 +159,29 @@ class IOCore_mu2f(Generator):
         # END FIFO ONE
         ########################################
 
-
-        #TODO: This could potentially be replaced with AND gates 
         ########################################
-        # READY SELECT
+        # READY AND 
         ########################################
-
-        # Create ready select muxes
-        ready_mux_0 = Mux(height=num_tracks, width=1)
-        self.add_child(f"ready_0_mux", ready_mux_0)
-
-        ready_mux_1 = Mux(height=num_tracks, width=1)
-        self.add_child(f"ready_1_mux", ready_mux_1)
-
-        # Ready select config regs (the actual select signal)
-        self._ready_select_0 = self.input(f"ready_select_0", 3)
-        self._ready_select_0.add_attribute(ConfigRegAttr("Track select config register. Selects driver for that track."))
-        self._ready_select_1 = self.input(f"ready_select_1", 3)
-        self._ready_select_1.add_attribute(ConfigRegAttr("Track select config register. Selects driver for that track."))
-
-        # Wire up the select signals 
-        self.wire(ready_mux_0.ports.S, self._ready_select_0)
-        self.wire(ready_mux_1.ports.S, self._ready_select_1)
-
-        # Create readys and wire them to mux inputs 
-        for track_num in range(num_tracks):
-            tmp_track_out_r = self.input(f"io2f_{tile_array_data_width}_T{track_num}_ready", 1)
-            tmp_track_out_r.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-            self.wire(ready_mux_0.ports.I[track_num], tmp_track_out_r)
-            self.wire(ready_mux_1.ports.I[track_num], tmp_track_out_r)
-
-
-        self.wire(io2f_r_0, ready_mux_0.ports.O)
-        self.wire(io2f_r_1, ready_mux_1.ports.O)
+        track_out_r0 = self.input(f"io2f_{tile_array_data_width}_T0_ready", 1)
+        track_out_r1 = self.input(f"io2f_{tile_array_data_width}_T1_ready", 1)
+        track_out_r2 = self.input(f"io2f_{tile_array_data_width}_T2_ready", 1)
+        track_out_r3 = self.input(f"io2f_{tile_array_data_width}_T3_ready", 1)
+        track_out_r4 = self.input(f"io2f_{tile_array_data_width}_T4_ready", 1)  
+          
+        ready_and = self.var("ready_and", 1)
+        self.wire(ready_and, track_out_r0 & track_out_r1 & track_out_r2 & track_out_r3 & track_out_r4)
+        self.wire(io2f_r_0, ready_and)
+        self.wire(io2f_r_1, ready_and)
 
         # If MU_inactive, set ready_out = 0
         # If dense bypass, send data straight through, bypassing FIFOs
         if self.allow_bypass:
             if self.use_almost_full:
-                self.wire(mu2io_r_0, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass,
-                                                    io2f_r_0,
-                                                    ~mu2io_2_io2f_fifo_0.ports.almost_full)), kts.const(0, 1))
-                self.wire(mu2io_r_1, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass,
-                                                    io2f_r_1,
-                                                    ~mu2io_2_io2f_fifo_1.ports.almost_full)), kts.const(0, 1))
+                self.wire(mu2io_r_0, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass, io2f_r_0, ~mu2io_2_io2f_fifo_0.ports.almost_full), kts.const(0, 1)))
+                self.wire(mu2io_r_1, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass, io2f_r_1, ~mu2io_2_io2f_fifo_1.ports.almost_full), kts.const(0, 1)))
             else:
-                self.wire(mu2io_r_0, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass,
-                                                    io2f_r_0,
-                                                    ~mu2io_2_io2f_fifo_0.ports.full)), kts.const(0, 1))
-                self.wire(mu2io_r_1, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass,
-                                                    io2f_r_1,
-                                                    ~mu2io_2_io2f_fifo_1.ports.full)), kts.const(0, 1))
+                self.wire(mu2io_r_0, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass, io2f_r_0, ~mu2io_2_io2f_fifo_0.ports.full), kts.const(0, 1)))
+                self.wire(mu2io_r_1, kts.ternary(self._tile_en, kts.ternary(self._dense_bypass, io2f_r_1, ~mu2io_2_io2f_fifo_1.ports.full), kts.const(0, 1)))
         else:
             if self.use_almost_full:
                 self.wire(mu2io_r_0, kts.ternary(self._tile_en, ~mu2io_2_io2f_fifo_0.ports.almost_full, kts.const(0, 1)))
@@ -217,7 +189,6 @@ class IOCore_mu2f(Generator):
             else:
                 self.wire(mu2io_r_0, kts.ternary(self._tile_en, ~mu2io_2_io2f_fifo_0.ports.full, kts.const(0, 1)))
                 self.wire(mu2io_r_1, kts.ternary(self._tile_en, ~mu2io_2_io2f_fifo_1.ports.full, kts.const(0, 1)))
-
 
 
         ########################################
@@ -245,10 +216,10 @@ class IOCore_mu2f(Generator):
             track_select_valid_mux_out = self.var(f"T_{track_num}_track_select_valid_mux_out", 1)
 
             if self.allow_bypass:
-                track_select_mux_in_0 = self.var(f"T_{track_num}_track_select_mux_in0", tile_array_data_width)
-                track_select_mux_in_1 = self.var(f"T_{track_num}_track_select_mux_in1", tile_array_data_width)
-                track_select_valid_mux_in_0 = self.var(f"T_{track_num}_track_select_valid_mux_in0", 1)
-                track_select_valid_mux_in_1 = self.var(f"T_{track_num}_track_select_valid_mux_in1", 1)
+                track_select_mux_in0 = self.var(f"T_{track_num}_track_select_mux_in0", tile_array_data_width)
+                track_select_mux_in1 = self.var(f"T_{track_num}_track_select_mux_in1", tile_array_data_width)
+                track_select_valid_mux_in0 = self.var(f"T_{track_num}_track_select_valid_mux_in0", 1)
+                track_select_valid_mux_in1 = self.var(f"T_{track_num}_track_select_valid_mux_in1", 1)
 
                 self.wire(track_select_mux_in0, kts.ternary(self._dense_bypass, mu2io_0, mu2io_2_io2f_fifo_0.ports.data_out))
                 self.wire(track_select_mux_in1, kts.ternary(self._dense_bypass, mu2io_1, mu2io_2_io2f_fifo_1.ports.data_out))
@@ -327,17 +298,6 @@ class IOCore_mu2f(Generator):
                     ("track_active_T2", track_active_T2_val), ("track_active_T3", track_active_T3_val), 
                     ("track_active_T4", track_active_T4_val)]
     
-        ready_select_0_val = 0
-        ready_select_1_val = 0
-
-        if 'ready_select_0' in config_dict:
-            ready_select_0_val = config_dict['ready_select_0']
-
-        if 'ready_select_1' in config_dict:
-            ready_select_1_val = config_dict['ready_select_1']
-
-        config += [("ready_select_0", ready_select_0_val), ("ready_select_1", ready_select_1_val)]
-
         if self.allow_bypass:
 
             dense_bypass_val = 0
