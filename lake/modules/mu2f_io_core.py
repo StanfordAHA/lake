@@ -225,8 +225,13 @@ class IOCore_mu2f(Generator):
         ########################################
         for track_num in range(num_tracks):
             # Create track select config reg
-            self._tmp_track_select = self.input(f"track_select_T{track_num}", 2)
+            self._tmp_track_select = self.input(f"track_select_T{track_num}", 1)
             self._tmp_track_select.add_attribute(ConfigRegAttr("Track select config register. Selects driver for that track."))
+
+            # Create track active config reg 
+            self._tmp_track_active = self.input(f"track_active_T{track_num}", 1)
+            self._tmp_track_active.add_attribute(ConfigRegAttr("Track active config register. States whether track is active."))
+
 
             # Create track output and its valid interface 
             tmp_track_out = self.output(f"io2f_{tile_array_data_width}_T{track_num}", tile_array_data_width)
@@ -235,40 +240,30 @@ class IOCore_mu2f(Generator):
             tmp_track_out_v = self.output(f"io2f_{tile_array_data_width}_T{track_num}_valid", 1)
             tmp_track_out_v.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
+            # Create first 2-to-1 mux (track_select mux)
+            track_select_mux_out = self.var(f"T_{track_num}_track_select_mux_out", tile_array_data_width)
+            track_select_valid_mux_out = self.var(f"T_{track_num}_track_select_valid_mux_out", 1)
 
-            # Create 3-to-1 mux (track_select mux)
-            track_mux = Mux(height=3, width=tile_array_data_width)
-            self.add_child(f"T_{track_num}_mux", track_mux)
-
-            # Create 3-to-1 mux (track_select valid mux)
-            track_valid_mux = Mux(height=3, width=1)
-            self.add_child(f"T_{track_num}_valid_mux", track_valid_mux)
-
-            # Wire track select signal 
-            self.wire(track_mux.ports.S, self._tmp_track_select)
-            self.wire(track_valid_mux.ports.S, self._tmp_track_select)
-
-            self.wire(track_mux.ports.I[0], kts.const(0, tile_array_data_width))
-            self.wire(track_valid_mux.ports.I[0], kts.const(0, 1))
-
-            # FIFO -> 3-to-1 mux connnections 
             if self.allow_bypass:
-                self.wire(track_mux.ports.I[1], kts.ternary(self._dense_bypass, mu2io_0, mu2io_2_io2f_fifo_0.ports.data_out))
-                self.wire(track_mux.ports.I[2], kts.ternary(self._dense_bypass, mu2io_1, mu2io_2_io2f_fifo_1.ports.data_out))
+                track_select_mux_in_0 = self.var(f"T_{track_num}_track_select_mux_in0", tile_array_data_width)
+                track_select_mux_in_1 = self.var(f"T_{track_num}_track_select_mux_in1", tile_array_data_width)
+                track_select_valid_mux_in_0 = self.var(f"T_{track_num}_track_select_valid_mux_in0", 1)
+                track_select_valid_mux_in_1 = self.var(f"T_{track_num}_track_select_valid_mux_in1", 1)
 
-                self.wire(track_valid_mux.ports.I[1], kts.ternary(self._dense_bypass, mu2io_v_0, ~mu2io_2_io2f_fifo_0.ports.empty))
-                self.wire(track_valid_mux.ports.I[2], kts.ternary(self._dense_bypass, mu2io_v_1, ~mu2io_2_io2f_fifo_1.ports.empty))
+                self.wire(track_select_mux_in0, kts.ternary(self._dense_bypass, mu2io_0, mu2io_2_io2f_fifo_0.ports.data_out))
+                self.wire(track_select_mux_in1, kts.ternary(self._dense_bypass, mu2io_1, mu2io_2_io2f_fifo_1.ports.data_out))
+                self.wire(track_select_valid_mux_in0, kts.ternary(self._dense_bypass, mu2io_v_0, ~mu2io_2_io2f_fifo_0.ports.empty))
+                self.wire(track_select_valid_mux_in1, kts.ternary(self._dense_bypass, mu2io_v_1, ~mu2io_2_io2f_fifo_1.ports.empty))
+
+                self.wire(track_select_mux_out, kts.ternary(self._tmp_track_select, track_select_mux_in1, track_select_mux_in0))
+                self.wire(track_select_valid_mux_out, kts.ternary(self._tmp_track_select, track_select_valid_mux_in1, track_select_valid_mux_in0))
             else:
-                self.wire(track_mux.ports.I[1], mu2io_2_io2f_fifo_0.ports.data_out)
-                self.wire(track_mux.ports.I[2], mu2io_2_io2f_fifo_1.ports.data_out)
-
-                self.wire(track_valid_mux.ports.I[1], ~mu2io_2_io2f_fifo_0.ports.empty)
-                self.wire(track_valid_mux.ports.I[2], ~mu2io_2_io2f_fifo_1.ports.empty)
-
-           
-            # MU active mux (wire output)
-            self.wire(tmp_track_out, kts.ternary(self._tile_en, track_mux.ports.O, kts.const(0, 1)))
-            self.wire(tmp_track_out_v, kts.ternary(self._tile_en, track_valid_mux.ports.O, kts.const(0, 1)))
+                self.wire(track_select_mux_out, kts.ternary(self._tmp_track_select, mu2io_2_io2f_fifo_1.ports.data_out, mu2io_2_io2f_fifo_0.ports.data_out))
+                self.wire(track_select_valid_mux_out, kts.ternary(self._tmp_track_select, ~mu2io_2_io2f_fifo_1.ports.empty, ~mu2io_2_io2f_fifo_0.ports.empty))
+            
+            # Create second 2-to-1 mux (track active mux to wire output)
+            self.wire(tmp_track_out, kts.ternary(self._tmp_track_active, track_select_mux_out, kts.const(0, tile_array_data_width)))
+            self.wire(tmp_track_out_v, kts.ternary(self._tmp_track_active, track_select_valid_mux_out, kts.const(0, 1)))
 
 
         if self.add_clk_enable:
@@ -308,11 +303,29 @@ class IOCore_mu2f(Generator):
         if 'track_select_T4' in config_dict:
             track_select_T4_val = config_dict['track_select_T4']
 
+        if 'track_active_T0' in config_dict:
+            track_active_T0_val = config_dict['track_active_T0']
+
+        if 'track_active_T1' in config_dict:
+            track_active_T1_val = config_dict['track_active_T1']
+
+        if 'track_active_T2' in config_dict:
+            track_active_T2_val = config_dict['track_active_T2']
+        
+        if 'track_active_T3' in config_dict:
+            track_active_T3_val = config_dict['track_active_T3']
+
+        if 'track_active_T4' in config_dict:
+            track_active_T4_val = config_dict['track_active_T4']
+
 
         config += [("track_select_T0", track_select_T0_val), ("track_select_T1", track_select_T1_val),
                     ("track_select_T2", track_select_T2_val), ("track_select_T3", track_select_T3_val), 
                     ("track_select_T4", track_select_T4_val)]
 
+        config += [("track_active_T0", track_active_T0_val), ("track_active_T1", track_active_T1_val),
+                    ("track_active_T2", track_active_T2_val), ("track_active_T3", track_active_T3_val), 
+                    ("track_active_T4", track_active_T4_val)]
     
         ready_select_0_val = 0
         ready_select_1_val = 0
