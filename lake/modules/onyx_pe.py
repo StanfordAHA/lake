@@ -327,7 +327,7 @@ class OnyxPE(MemoryController):
 
     # def get_bitstream(self, op):
     def get_bitstream(self, config_kwargs):
-
+        #TODO: Rename num_sparse_inputs to num_ready-valid inputs. Dense mode to ready-valid mode 
         # Store all configurations here
         config = [("tile_en", 1)]
         op = config_kwargs['op']
