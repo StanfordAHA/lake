@@ -78,6 +78,7 @@ class Component(kratos.Generator):
             # Early out in case there is no configuration
             return
         self._config_memory = self.input("config_memory", self.config_size, packed=True)
+        self._config_memory.add_attribute(ConfigRegAttr(f"Full config memory of size {self.config_size}"))
         use_wire = self._config_memory
 
         if harden_storage is True and config_passthru is False:

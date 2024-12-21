@@ -1,22 +1,21 @@
 from lake.top.memory_controller import MemoryController
 from lake.spec.spec import Spec
 from lake.spec.port import Port
-from lake.utils.spec_enum import Runtime, Direction, MemoryPortType, LFComparisonOperator
+from lake.utils.spec_enum import Runtime, Direction, MemoryPortType
 from lake.spec.address_generator import AddressGenerator
 from lake.spec.iteration_domain import IterationDomain
 from lake.spec.schedule_generator import ReadyValidScheduleGenerator
 from lake.spec.storage import SingleBankStorage
 from lake.spec.memory_port import MemoryPort
 from lake.top.tech_maps import GF_Tech_Map
-import argparse
-import os
+
 
 def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: int = 6, vec_width=4, physical=True,
                                   reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True) -> Spec:
 
     # a reg file can't be used to build this...
 
-    ls = Spec(opt_rv=opt_rv, remote_storage=remote_storage)
+    ls = Spec(opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False, config_passthru=True)
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
@@ -96,10 +95,9 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
     return ls
 
-# Fix to quad port spec for now...
-class SpecMemoryController(MemoryController):
 
-    # def __init__(self, name, debug = False, is_clone = False, internal_generator=None, exclusive = False, add_flush=False):
+class SpecMemoryController(MemoryController):
+    # Fix to quad port spec for now...
     def __init__(self, spec: Spec,
                  name="SpecMemoryController_default_name"):
         # super().__init__(name, debug, is_clone, internal_generator, exclusive, add_flush)

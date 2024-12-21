@@ -35,7 +35,6 @@ if __name__ == "__main__":
                                  mem_width=mem_width,)
 
     print("Generating verilog!")
-    # kts.verilog(core_combiner, filename="core_combiner_mek.sv")
     core_combiner.get_verilog(verilog_name="core_combiner_mek.sv")
 
     # Run the core

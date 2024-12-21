@@ -30,7 +30,8 @@ class Spec():
     """
     def __init__(self, name="lakespec", clkgate=True,
                  config_passthru=False,
-                 opt_rv=False, remote_storage=False) -> None:
+                 opt_rv=False, remote_storage=False,
+                 run_flush_pass=True) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
         self._name = name
@@ -57,6 +58,7 @@ class Spec():
         self.opt_rv = opt_rv
         self.remote_storage = remote_storage
         self.mc_ports = [[None]]
+        self.run_flush_pass = run_flush_pass
         self._final_gen = Component(name=self._name)
 
     def set_name(self, name):
@@ -104,8 +106,6 @@ class Spec():
     def convert_mp_to_mcmp(self, hard_port: dict, soft_port: MemoryPortMC):
         # For now, just copy the hard port to the soft port
         # and connect the signals
-        # for port_name, port in hard_port.items():
-            # soft_port.add_port(port_name, port)
 
         # First, get the type of the port
         port_type = soft_port.get_port_type()
@@ -728,7 +728,8 @@ class Spec():
 
     def add_flush(self):
         self._final_gen.add_attribute("sync-reset=flush")
-        kts.passes.auto_insert_sync_reset(self._final_gen.internal_generator)
+        if self.run_flush_pass is True:
+            kts.passes.auto_insert_sync_reset(self._final_gen.internal_generator)
         flush_port = self._final_gen.internal_generator.get_port("flush")
         # flush_port.add_attribute(ControlSignalAttr(True))
 
