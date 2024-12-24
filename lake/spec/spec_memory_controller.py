@@ -15,7 +15,8 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
     # a reg file can't be used to build this...
 
-    ls = Spec(opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False, config_passthru=True)
+    ls = Spec(opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
+              config_passthru=True, comply_17=True)
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
