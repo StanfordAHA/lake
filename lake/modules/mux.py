@@ -1,7 +1,9 @@
 import kratos as kts
 from kratos import *
 
+
 class Mux(Generator):
+
     def __init__(self, height: int, width: int):
         name = "Mux_{0}_{1}".format(width, height)
         super().__init__(name)
@@ -27,6 +29,7 @@ class Mux(Generator):
             switch_.case_(i, self.out_(input_[i]))
         # add default
         switch_.case_(None, self.out_(0))
+
 
 if __name__ == "__main__":
 

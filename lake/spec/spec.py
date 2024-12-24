@@ -31,7 +31,8 @@ class Spec():
     def __init__(self, name="lakespec", clkgate=True,
                  config_passthru=False,
                  opt_rv=False, remote_storage=False,
-                 run_flush_pass=True) -> None:
+                 run_flush_pass=True,
+                 comply_17=False) -> None:
         self._hw_graph = nx.Graph()
         self._final_gen = None
         self._name = name
@@ -60,6 +61,8 @@ class Spec():
         self.mc_ports = [[None]]
         self.run_flush_pass = run_flush_pass
         self._final_gen = Component(name=self._name)
+        # When complying with 17, we add an extra bit for integration with CGRA
+        self.comply_17 = comply_17
 
     def set_name(self, name):
         self._name = name
@@ -605,21 +608,29 @@ class Spec():
             # Now add the port interfaces to the module
             # Can annotate these (and potentially add FIFOs if needed (since they will be shared anyway, might as well))
             ub_intf = port.get_ub_intf()
+
+            compliance_adjustment = 0
+            if self.comply_17:
+                compliance_adjustment = 1
+
             if port.get_direction() == Direction.IN:
                 if self.any_rv_sg:
-                    p_temp_rv = self._final_gen.rvinput(name=f"port_{i_}", width=ub_intf['data'].width)
+                    p_temp_rv = self._final_gen.rvinput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
                     p_temp = p_temp_rv.get_port()
                     p_temp_valid = p_temp_rv.get_valid()
                     p_temp_ready = p_temp_rv.get_ready()
                     self._final_gen.wire(p_temp_valid, ub_intf['valid'])
                     self._final_gen.wire(p_temp_ready, ub_intf['ready'])
                 else:
-                    p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width)
+                    p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
                     p_temp_valid = self._final_gen.input(f"port_{i_}_valid", 1)
                     p_temp_ready = self._final_gen.output(f"port_{i_}_ready", 1)
                     # self._final_gen.wire(p_temp_ready, kts.const(1, 1))
                     self._final_gen.wire(p_temp_ready, ub_intf['ready'])
                     self._final_gen.wire(ub_intf['valid'], p_temp_valid)
+
+                # Wire only the relevant part - regardless of compliance adjustment
+                self._final_gen.wire(ub_intf['data'], p_temp[ub_intf['data'].width - 1, 0])
 
                 if self.remote_storage is True:
                     # Annotate signals with ControlSignalAttr for CoreCombiner...'
@@ -629,19 +640,24 @@ class Spec():
 
             elif port.get_direction() == Direction.OUT:
                 if self.any_rv_sg:
-                    p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width)
+                    p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
                     p_temp = p_temp_rv.get_port()
                     p_temp_valid = p_temp_rv.get_valid()
                     p_temp_ready = p_temp_rv.get_ready()
                     self._final_gen.wire(p_temp_valid, ub_intf['valid'])
                     self._final_gen.wire(p_temp_ready, ub_intf['ready'])
                 else:
-                    p_temp = self._final_gen.output(f"port_{i_}", width=ub_intf['data'].width)
+                    p_temp = self._final_gen.output(f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
                     p_temp_valid = self._final_gen.output(f"port_{i_}_valid", 1)
                     p_temp_ready = self._final_gen.input(f"port_{i_}_ready", 1)
                     # self._final_gen.wire(p_temp_valid, kts.const(1, 1))
                     self._final_gen.wire(p_temp_valid, ub_intf['valid'])
                     self._final_gen.wire(ub_intf['ready'], p_temp_ready)
+
+                # If adjusting for compliance adjustment, drive 0 otherwise...
+                self._final_gen.wire(p_temp[ub_intf['data'].width - 1, 0], ub_intf['data'])
+                if self.comply_17:
+                    self._final_gen.wire(p_temp[ub_intf['data'].width], kts.const(0, 1))
 
                 if self.remote_storage is True:
                     # Annotate signals with ControlSignalAttr for CoreCombiner...'
@@ -652,7 +668,7 @@ class Spec():
             else:
                 raise NotImplementedError
 
-            self._final_gen.wire(p_temp, ub_intf['data'])
+            # self._final_gen.wire(p_temp, ub_intf['data'])
 
         # Now can build all the muxing in between the memintf and the mps
         self.build_mp_p()

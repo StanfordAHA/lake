@@ -299,7 +299,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             stop_ded = self.size_to_port(ded)
             self.add_io_dict(to_add=stop_ded, merged_dict=self.inputs_dict, mem_ctrl=mem_ctrl)
 
-
     def resolve_outputs(self):
         '''
         This function finds the connections between each controller

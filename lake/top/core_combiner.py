@@ -335,7 +335,6 @@ if __name__ == "__main__":
     pipeline_scanner = False
     fifo_depth = 8
 
-    
     strg_ub = StrgUBVec(data_width=16,
                         mem_width=64,
                         mem_depth=512)
@@ -351,7 +350,6 @@ if __name__ == "__main__":
                        comply_with_17=True)
 
     stencil_valid = StencilValid()
-
 
     controllers.append(strg_ub)
 

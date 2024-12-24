@@ -57,23 +57,22 @@ class IOCore_mu2f(Generator):
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
-        
         mu_data_width = matrix_unit_data_width
         mu_tile_array_datawidth_difference = tile_array_data_width - mu_data_width
-        assert mu_tile_array_datawidth_difference >=0, "Error: Matrix unit bus cannot drive CGRA bus because MU datawidth > CGRA datawidth"
+        assert mu_tile_array_datawidth_difference >= 0, "Error: Matrix unit bus cannot drive CGRA bus because MU datawidth > CGRA datawidth"
 
         ########################################
         # FIFO ZERO
         ########################################
-        # Valid in from matrix unit 
+        # Valid in from matrix unit
         mu2io_v_0 = self.input(f"mu2io_{mu_data_width}_0_valid", 1)
         mu2io_v_0.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-        # Ready out to matrix unit 
+        # Ready out to matrix unit
         mu2io_r_0 = self.output(f"mu2io_{mu_data_width}_0_ready", 1)
         mu2io_r_0.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
-        # R-V interface with fabric 
+        # R-V interface with fabric
         io2f_r_0 = self.var(f"io2f_{tile_array_data_width}_0_ready", 1)
         io2f_r_0.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
         io2f_v_0 = self.var(f"io2f_{tile_array_data_width}_0_valid", 1)
@@ -81,10 +80,10 @@ class IOCore_mu2f(Generator):
 
         mu2io_0 = self.input(f"mu2io_{mu_data_width}_0", mu_data_width, packed=True)
         mu2io_0.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-    
+
         io2f_0 = self.var(f"io2f_{tile_array_data_width}_0", tile_array_data_width, packed=True)
         io2f_0.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-    
+
         # mu2io -> io2f fifo
         mu2io_2_io2f_fifo_0 = RegFIFO(data_width=tile_array_data_width,
                                         width_mult=1,
@@ -99,30 +98,29 @@ class IOCore_mu2f(Generator):
                         clk_en=self._clk_en,
                         push=mu2io_v_0,
                         pop=io2f_r_0)
-        
+
         # Append 0s at MSBs if CGRA bitwidth exceeds Matrix unit bitwidth
-        if mu_tile_array_datawidth_difference > 0: 
+        if mu_tile_array_datawidth_difference > 0:
             self.wire(mu2io_2_io2f_fifo_0.ports.data_in, kts.concat(kts.const(0, mu_tile_array_datawidth_difference), mu2io_0))
         else:
             self.wire(mu2io_2_io2f_fifo_0.ports.data_in, mu2io_0)
-            
+
         ########################################
         # END FIFO ZERO
         ########################################
 
-
         ########################################
         # FIFO ONE
         ########################################
-        # Valid in from matrix unit 
+        # Valid in from matrix unit
         mu2io_v_1 = self.input(f"mu2io_{mu_data_width}_1_valid", 1)
         mu2io_v_1.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
 
-        # Ready out to matrix unit 
+        # Ready out to matrix unit
         mu2io_r_1 = self.output(f"mu2io_{mu_data_width}_1_ready", 1)
         mu2io_r_1.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
 
-        # R-V interface with fabric 
+        # R-V interface with fabric
         io2f_r_1 = self.var(f"io2f_{tile_array_data_width}_1_ready", 1)
         io2f_r_1.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
         io2f_v_1 = self.var(f"io2f_{tile_array_data_width}_1_valid", 1)
@@ -130,10 +128,10 @@ class IOCore_mu2f(Generator):
 
         mu2io_1 = self.input(f"mu2io_{mu_data_width}_1", mu_data_width, packed=True)
         mu2io_1.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-    
+
         io2f_1 = self.var(f"io2f_{tile_array_data_width}_1", tile_array_data_width, packed=True)
         io2f_1.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-    
+
         # mu2io -> io2f fifo
         mu2io_2_io2f_fifo_1 = RegFIFO(data_width=tile_array_data_width,
                                         width_mult=1,
@@ -148,9 +146,9 @@ class IOCore_mu2f(Generator):
                         clk_en=self._clk_en,
                         push=mu2io_v_1,
                         pop=io2f_r_1)
-        
+
         # Append 0s at MSBs if CGRA bitwidth exceeds Matrix unit bitwidth
-        if mu_tile_array_datawidth_difference > 0: 
+        if mu_tile_array_datawidth_difference > 0:
             self.wire(mu2io_2_io2f_fifo_1.ports.data_in, kts.concat(kts.const(0, mu_tile_array_datawidth_difference), mu2io_1))
         else:
             self.wire(mu2io_2_io2f_fifo_1.ports.data_in, mu2io_1)
@@ -159,8 +157,7 @@ class IOCore_mu2f(Generator):
         # END FIFO ONE
         ########################################
 
-
-        #TODO: This could potentially be replaced with AND gates 
+        # TODO: This could potentially be replaced with AND gates
         ########################################
         # READY SELECT
         ########################################
@@ -178,17 +175,16 @@ class IOCore_mu2f(Generator):
         self._ready_select_1 = self.input(f"ready_select_1", 3)
         self._ready_select_1.add_attribute(ConfigRegAttr("Track select config register. Selects driver for that track."))
 
-        # Wire up the select signals 
+        # Wire up the select signals
         self.wire(ready_mux_0.ports.S, self._ready_select_0)
         self.wire(ready_mux_1.ports.S, self._ready_select_1)
 
-        # Create readys and wire them to mux inputs 
+        # Create readys and wire them to mux inputs
         for track_num in range(num_tracks):
             tmp_track_out_r = self.input(f"io2f_{tile_array_data_width}_T{track_num}_ready", 1)
             tmp_track_out_r.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
             self.wire(ready_mux_0.ports.I[track_num], tmp_track_out_r)
             self.wire(ready_mux_1.ports.I[track_num], tmp_track_out_r)
-
 
         self.wire(io2f_r_0, ready_mux_0.ports.O)
         self.wire(io2f_r_1, ready_mux_1.ports.O)
@@ -218,23 +214,20 @@ class IOCore_mu2f(Generator):
                 self.wire(mu2io_r_0, kts.ternary(self._tile_en, ~mu2io_2_io2f_fifo_0.ports.full, kts.const(0, 1)))
                 self.wire(mu2io_r_1, kts.ternary(self._tile_en, ~mu2io_2_io2f_fifo_1.ports.full, kts.const(0, 1)))
 
-
-
         ########################################
-        # TRACK SELECT 
+        # TRACK SELECT
         ########################################
         for track_num in range(num_tracks):
             # Create track select config reg
             self._tmp_track_select = self.input(f"track_select_T{track_num}", 2)
             self._tmp_track_select.add_attribute(ConfigRegAttr("Track select config register. Selects driver for that track."))
 
-            # Create track output and its valid interface 
+            # Create track output and its valid interface
             tmp_track_out = self.output(f"io2f_{tile_array_data_width}_T{track_num}", tile_array_data_width)
             tmp_track_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
 
             tmp_track_out_v = self.output(f"io2f_{tile_array_data_width}_T{track_num}_valid", 1)
             tmp_track_out_v.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-
 
             # Create 3-to-1 mux (track_select mux)
             track_mux = Mux(height=3, width=tile_array_data_width)
@@ -244,14 +237,14 @@ class IOCore_mu2f(Generator):
             track_valid_mux = Mux(height=3, width=1)
             self.add_child(f"T_{track_num}_valid_mux", track_valid_mux)
 
-            # Wire track select signal 
+            # Wire track select signal
             self.wire(track_mux.ports.S, self._tmp_track_select)
             self.wire(track_valid_mux.ports.S, self._tmp_track_select)
 
             self.wire(track_mux.ports.I[0], kts.const(0, tile_array_data_width))
             self.wire(track_valid_mux.ports.I[0], kts.const(0, 1))
 
-            # FIFO -> 3-to-1 mux connnections 
+            # FIFO -> 3-to-1 mux connnections
             if self.allow_bypass:
                 self.wire(track_mux.ports.I[1], kts.ternary(self._dense_bypass, mu2io_0, mu2io_2_io2f_fifo_0.ports.data_out))
                 self.wire(track_mux.ports.I[2], kts.ternary(self._dense_bypass, mu2io_1, mu2io_2_io2f_fifo_1.ports.data_out))
@@ -265,11 +258,9 @@ class IOCore_mu2f(Generator):
                 self.wire(track_valid_mux.ports.I[1], ~mu2io_2_io2f_fifo_0.ports.empty)
                 self.wire(track_valid_mux.ports.I[2], ~mu2io_2_io2f_fifo_1.ports.empty)
 
-           
             # MU active mux (wire output)
             self.wire(tmp_track_out, kts.ternary(self._tile_en, track_mux.ports.O, kts.const(0, 1)))
             self.wire(tmp_track_out_v, kts.ternary(self._tile_en, track_valid_mux.ports.O, kts.const(0, 1)))
-
 
         if self.add_clk_enable:
             kts.passes.auto_insert_clock_enable(self.internal_generator)
@@ -290,7 +281,7 @@ class IOCore_mu2f(Generator):
         track_select_T0_val = 0
         track_select_T1_val = 0
         track_select_T2_val = 0
-        track_select_T3_val = 0 
+        track_select_T3_val = 0
         track_select_T4_val = 0
 
         if 'track_select_T0' in config_dict:
@@ -301,19 +292,17 @@ class IOCore_mu2f(Generator):
 
         if 'track_select_T2' in config_dict:
             track_select_T2_val = config_dict['track_select_T2']
-        
+
         if 'track_select_T3' in config_dict:
             track_select_T3_val = config_dict['track_select_T3']
 
         if 'track_select_T4' in config_dict:
             track_select_T4_val = config_dict['track_select_T4']
 
-
         config += [("track_select_T0", track_select_T0_val), ("track_select_T1", track_select_T1_val),
-                    ("track_select_T2", track_select_T2_val), ("track_select_T3", track_select_T3_val), 
+                    ("track_select_T2", track_select_T2_val), ("track_select_T3", track_select_T3_val),
                     ("track_select_T4", track_select_T4_val)]
 
-    
         ready_select_0_val = 0
         ready_select_1_val = 0
 
