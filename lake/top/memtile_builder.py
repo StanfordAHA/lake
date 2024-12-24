@@ -159,14 +159,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         bulk_ctrl = 0
         exclusive_ctrl = 0
         for ctrl in self.controllers:
-            print(ctrl)
             if ctrl.get_exclusive():
-                print("FOUND EXCLUSIVE")
                 self.ctrl_to_mode[ctrl.name] = (exclusive_ctrl, "excl")
                 exclusive_ctrl += 1
             else:
-                print("FOUND BULK")
-                print(ctrl.child_generator())
                 self.ctrl_to_mode[ctrl.name] = (bulk_ctrl, "bulk")
                 bulk_ctrl += 1
         # self.num_modes = len(self.controllers)
@@ -303,8 +299,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             stop_ded = self.size_to_port(ded)
             self.add_io_dict(to_add=stop_ded, merged_dict=self.inputs_dict, mem_ctrl=mem_ctrl)
 
-            print("INPUTS DICT")
-            print(self.inputs_dict)
 
     def resolve_outputs(self):
         '''
@@ -912,7 +906,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
 
                 if any_rvs:
-                    print(output_ready_map)
+                    # print(output_ready_map)
                     self.create_mode_based_mux(out_sig=new_input_ready,
                                                items=output_ready_map,
                                                default=1)
@@ -1103,7 +1097,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 # Create the final output muxes
                 self.create_mode_based_mux(out_sig=new_output, items=output_data_map, default=0)
                 if any_rvs:
-                    print(output_valid_map)
+                    # print(output_valid_map)
                     self.create_mode_based_mux(out_sig=new_output_valid, items=output_valid_map, default=0)
 
                 # We need to choose which output is hooked up based on the mode...
@@ -1262,7 +1256,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 for idx, ctrl in enumerate(self.controllers):
                     if mode_used == ctrl.get_config_mode_str():
                         if not stencil_valid_used:
-                            print(f"Found ctrl: {mode_used}")
                             config.append(("mode", idx))
                         break
 

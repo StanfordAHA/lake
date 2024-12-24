@@ -12,7 +12,8 @@ module fiber_glb2fib_val_tb;
     reg flush;
     reg tile_en;
     reg vector_reduce_mode; 
-    wire [63:0] cycle_count ;
+    wire [63:0] cycle_count;
+    reg [15:0] stream_id;
 
     // wire for dut input & output
     wire [16:0] coord_in_0;
@@ -103,8 +104,9 @@ module fiber_glb2fib_val_tb;
     .write_scanner_data_in_valid(coord_in_0_valid),
     .write_scanner_init_blank(1'b0),
     .write_scanner_lowest_level(1'b1),
+    .write_scanner_stream_id(stream_id),
     // .write_scanner_spacc_mode(1'b0),
-    .write_scanner_stop_lvl(16'b0),
+    // .write_scanner_stop_lvl(16'b0),
     .write_scanner_tile_en(tile_en),
     .addr_to_mem(memory_addr_to_mem_p0),
     .data_to_mem(memory_0_data_in_p0),
@@ -187,6 +189,7 @@ module fiber_glb2fib_val_tb;
         start_read = 0;
         read_input_in = 0;
         read_count = 0;
+        stream_id = 1885; // a magic number
 
         clk = 0;
         clk_en = 1;

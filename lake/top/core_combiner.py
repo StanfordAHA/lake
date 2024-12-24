@@ -335,59 +335,11 @@ if __name__ == "__main__":
     pipeline_scanner = False
     fifo_depth = 8
 
-    # if pipeline_scanner:
-    #     scan = ScannerPipe(data_width=data_width,
-    #                         fifo_depth=fifo_depth,
-    #                         add_clk_enable=True,
-    #                         defer_fifos=True,
-    #                         add_flush=False)
-    # else:
-    #     scan = Scanner(data_width=data_width,
-    #                     fifo_depth=fifo_depth,
-    #                     defer_fifos=True,
-    #                     add_flush=False)
-
-    # wscan = WriteScanner(data_width=data_width,
-    #                         fifo_depth=fifo_depth,
-    #                         defer_fifos=True,
-    #                         add_flush=False)
-    # strg_ub = StrgUBThin(
-    #     config_mode_str="pond",
-    #     data_width=data_width,  # CGRA Params
-    #     mem_width=mem_width,
-    #     mem_depth=mem_depth,
-    #     input_addr_iterator_support=6,
-    #     input_sched_iterator_support=6,
-    #     output_addr_iterator_support=6,
-    #     output_sched_iterator_support=6,
-    #     interconnect_input_ports=1,  # Connection to int
-    #     interconnect_output_ports=1,
-    #     config_width=16,
-    #     read_delay=read_delay,  # Cycle delay in read (SRAM vs Register File)
-    #     rw_same_cycle=rw_same_cycle,
-    #     gen_addr=True,
-    #     comply_with_17=True,
-    #     area_opt=False,
-    #     area_opt_share=False,
-    #     area_opt_dual_config=False,
-    #     chaining=True,
-    #     reduced_id_config_width=16,
-    #     delay_width=4,
-    #     iterator_support2=2  # assumes that this port has smaller iter_support
-    # )
+    
     strg_ub = StrgUBVec(data_width=16,
                         mem_width=64,
                         mem_depth=512)
-    # fiber_access = FiberAccess(data_width=16,
-    #                             local_memory=False,
-    #                             tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
-    #                             defer_fifos=True)
-    # buffet = BuffetLike(data_width=16, mem_depth=mem_depth, local_memory=False,
-    #                     tech_map=GF_Tech_Map(depth=mem_depth, width=mem_width),
-    #                     mem_width=mem_width,
-    #                     defer_fifos=True,
-    #                     optimize_wide=True,
-    #                     add_flush=False)
+
     strg_ram = StrgRAM(data_width=16,
                        banks=1,
                        memory_width=mem_width,
@@ -400,46 +352,8 @@ if __name__ == "__main__":
 
     stencil_valid = StencilValid()
 
-    # controllers.append(scan)
-    # controllers.append(wscan)
-    # # controllers.append(buffet)
+
     controllers.append(strg_ub)
-    # # controllers.append(fiber_access)
-    # controllers.append(strg_ram)
-    # controllers.append(stencil_valid)
-
-    # isect = Intersect(data_width=16,
-    #                   use_merger=False,
-    #                   fifo_depth=8,
-    #                   defer_fifos=True)
-    # crd_drop = CrdDrop(data_width=16, fifo_depth=8,
-    #                    lift_config=True,
-    #                    defer_fifos=True)
-    # crd_hold = CrdHold(data_width=16, fifo_depth=8,
-    #                            lift_config=True,
-    #                            defer_fifos=True,
-    #                            add_flush=False)
-    # onyxpe = OnyxPE(data_width=16, fifo_depth=8, defer_fifos=True, ext_pe_prefix="pe_prefix")
-    # repeat = Repeat(data_width=16,
-    #                 fifo_depth=8,
-    #                 defer_fifos=True)
-    # rsg = RepeatSignalGenerator(data_width=16,
-    #                             passthru=False,
-    #                             fifo_depth=8,
-    #                             defer_fifos=True)
-    # regcr = Reg(data_width=16,
-    #             fifo_depth=8,
-    #             defer_fifos=True)
-
-    # controllers_2 = []
-
-    # controllers_2.append(isect)
-    # controllers_2.append(crd_drop)
-    # controllers_2.append(crd_hold)
-    # controllers_2.append(onyxpe)
-    # controllers_2.append(repeat)
-    # controllers_2.append(rsg)
-    # controllers_2.append(regcr)
 
     core_comb = CoreCombiner(data_width=16,
                              mem_width=mem_width,
@@ -457,10 +371,10 @@ if __name__ == "__main__":
                              fifo_depth=16,
                              tech_map_name=tech)
 
-    print(core_comb)
+    # print(core_comb)
     core_comb_mapping = core_comb.dut.get_port_remap()
-    print(core_comb_mapping)
-    print(core_comb.get_modes_supported())
+    # print(core_comb_mapping)
+    # print(core_comb.get_modes_supported())
 
     # config = extract_top_config(core_comb.dut, verbose=True)
 
