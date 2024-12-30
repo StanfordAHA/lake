@@ -1258,6 +1258,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                             config.append(("mode", idx))
                         break
 
+            if mode_used == 'UB' and 'UB' not in mode_map:
+                mode_used = 'lakespec'
+
             ctrl_to_conf = mode_map[mode_used]
             # Have some guard to see if config is in there or not...
             if 'config' in config_json:

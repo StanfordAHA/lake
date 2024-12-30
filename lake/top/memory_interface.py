@@ -121,14 +121,33 @@ class PhysicalMemoryPort(MemoryPort):
             self.port_interface['clk'] = self.port_map['clk']
             self.port_interface_set = True
         elif self.mpt == MemoryPortType.READWRITE:
-            self.port_interface['data_in'] = self.port_map['data_in']
-            self.port_interface['data_out'] = self.port_map['data_out']
-            self.port_interface['write_enable'] = self.port_map['write_enable']
-            self.port_interface['addr'] = self.port_map['addr']
+            print(self.port_map)
+            # exit()
+            try:
+                self.port_interface['data_in'] = self.port_map['data_in']
+            except KeyError:
+                self.port_interface['data_in'] = self.port_map['write_data']
+
+            try:
+                self.port_interface['data_out'] = self.port_map['data_out']
+            except KeyError:
+                self.port_interface['data_out'] = self.port_map['read_data']
+
+            try:
+                self.port_interface['write_enable'] = self.port_map['write_enable']
+            except KeyError:
+                self.port_interface['write_enable'] = self.port_map['write_en']
+
+            try:
+                self.port_interface['addr'] = self.port_map['addr']
+            except KeyError:
+                self.port_interface['addr'] = self.port_map['addr']
 
             # Check for read_enable as well
             if 'read_enable' in self.port_map:
                 self.port_interface['read_enable'] = self.port_map['read_enable']
+            elif 'read_en' in self.port_map:
+                self.port_interface['read_enable'] = self.port_map['read_en']
             else:
                 self.port_interface['cen'] = self.port_map['cen']
             self.port_interface['clk'] = self.port_map['clk']

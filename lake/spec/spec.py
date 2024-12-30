@@ -615,7 +615,7 @@ class Spec():
 
             if port.get_direction() == Direction.IN:
                 if self.any_rv_sg:
-                    p_temp_rv = self._final_gen.rvinput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
+                    p_temp_rv = self._final_gen.rvinput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment, packed=True)
                     p_temp = p_temp_rv.get_port()
                     p_temp_valid = p_temp_rv.get_valid()
                     p_temp_ready = p_temp_rv.get_ready()
@@ -640,7 +640,7 @@ class Spec():
 
             elif port.get_direction() == Direction.OUT:
                 if self.any_rv_sg:
-                    p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
+                    p_temp_rv = self._final_gen.rvoutput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment, packed=True)
                     p_temp = p_temp_rv.get_port()
                     p_temp_valid = p_temp_rv.get_valid()
                     p_temp_ready = p_temp_rv.get_ready()
@@ -1000,6 +1000,9 @@ class Spec():
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
            There may be other information that needs to go into the configuration, but that could be in the object hierarchy
         '''
+
+        print("Producing SPEC BITSTREAM with Application:")
+        print(application)
 
         # Need to integrate all the bitstream information
         # into one single integer/string for the verilog harness
