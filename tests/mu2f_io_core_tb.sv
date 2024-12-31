@@ -19,11 +19,16 @@ module mu2f_io_core_tb;
     reg [2:0] ready_select_1;
     reg rst_n;
     reg tile_en;
-    reg [1:0] track_select_T0;
-    reg [1:0] track_select_T1;
-    reg [1:0] track_select_T2;
-    reg [1:0] track_select_T3;
-    reg [1:0] track_select_T4;
+    reg track_select_T0;
+    reg track_select_T1;
+    reg track_select_T2;
+    reg track_select_T3;
+    reg track_select_T4;
+    reg track_active_T0;
+    reg track_active_T1;
+    reg track_active_T2;
+    reg track_active_T3;
+    reg track_active_T4;
 
     // wires for dut outputs 
     wire [16:0] io2f_17_T0;
@@ -51,8 +56,6 @@ module mu2f_io_core_tb;
         .mu2io_16_0_valid(mu2io_16_0_valid),
         .mu2io_16_1(mu2io_16_1),
         .mu2io_16_1_valid(mu2io_16_1_valid),
-        .ready_select_0(ready_select_0),
-        .ready_select_1(ready_select_1),
         .rst_n(rst_n),
         .tile_en(tile_en),
         .track_select_T0(track_select_T0),
@@ -60,6 +63,11 @@ module mu2f_io_core_tb;
         .track_select_T2(track_select_T2),
         .track_select_T3(track_select_T3),
         .track_select_T4(track_select_T4),
+        .track_active_T0(track_active_T0),
+        .track_active_T1(track_active_T1),
+        .track_active_T2(track_active_T2),
+        .track_active_T3(track_active_T3),
+        .track_active_T4(track_active_T4),
         .io2f_17_T0(io2f_17_T0),
         .io2f_17_T0_valid(io2f_17_T0_valid),
         .io2f_17_T1(io2f_17_T1),
@@ -76,7 +84,7 @@ module mu2f_io_core_tb;
     );
 
     initial begin
-        clk = 0; // Initialize clock
+        clk = 1; // Initialize clock
         forever begin
             # 5 clk = ~clk; 
         end
@@ -116,17 +124,20 @@ module mu2f_io_core_tb;
         io2f_17_T3_ready = 1;
         io2f_17_T4_ready = 1;
 
-        mu2io_16_0_valid = 1;
-        mu2io_16_1_valid = 1;
+        mu2io_16_0_valid = 0;
+        mu2io_16_1_valid = 0;
 
-        track_select_T0 = 2'b00;
-        track_select_T1 = 2'b00;
-        track_select_T2 = 2'b00;
-        track_select_T3 = 2'b00;
-        track_select_T4 = 2'b00;
+        track_select_T0 = 0;
+        track_select_T1 = 0;
+        track_select_T2 = 0;
+        track_select_T3 = 0;
+        track_select_T4 = 0;
 
-        ready_select_0 = 3'b000;
-        ready_select_1 = 3'b000;
+        track_active_T0 = 0;
+        track_active_T1 = 0;
+        track_active_T2 = 0;
+        track_active_T3 = 0;
+        track_active_T4 = 0;
 
         // Release reset
         #10 rst_n = 1;
@@ -134,23 +145,58 @@ module mu2f_io_core_tb;
         // Apply input stimuli 
 
         // First test with tile_en OFF (mu inactive)
-        #15 track_select_T0 = 2'b01; track_select_T1 = 2'b10;
-        ready_select_0 = 3'b001; ready_select_1 = 3'b010; 
+        #50 track_select_T0 = 0; track_select_T4 = 1;
+        track_active_T0 = 1; track_active_T4 = 1;
 
+        mu2io_16_0_valid = 1;
+        mu2io_16_1_valid = 1;
 
         // Now turn tile_en ON (mu active); testing track selects
-        #10 tile_en = 1;
+        #10 tile_en = 1; 
+        mu2io_16_0_valid = 0;
+        mu2io_16_1_valid = 0;
+        #10;  
+        mu2io_16_0_valid = 1;
+        mu2io_16_1_valid = 1;
+        #10;  
+        mu2io_16_0_valid = 0;
+        mu2io_16_1_valid = 0;
+        #10;  
+        mu2io_16_0_valid = 1;
+        mu2io_16_1_valid = 1;
+        #10;  
+        mu2io_16_0_valid = 0;
+        mu2io_16_1_valid = 0;
+        #10;  
+        mu2io_16_0_valid = 1;
+        mu2io_16_1_valid = 1;
+        #10;  
+        mu2io_16_0_valid = 0;
+        mu2io_16_1_valid = 0;
+        #10;  
+        mu2io_16_0_valid = 1;
+        mu2io_16_1_valid = 1;
+        #10;  
+        mu2io_16_0_valid = 0;
+        mu2io_16_1_valid = 0;
+        #10;  
+        mu2io_16_0_valid = 1;
+        mu2io_16_1_valid = 1;
+        #10;  
+        mu2io_16_0_valid = 0;
+        mu2io_16_1_valid = 0;
 
-        #10 track_select_T1 = 2'b00; track_select_T2 = 2'b10;
-        #10 track_select_T2 = 2'b00; track_select_T3 = 2'b10;
-        #10 track_select_T3 = 2'b00; track_select_T4 = 2'b10;
-        #10 track_select_T4 = 2'b00;
 
-        #10 track_select_T0 = 2'b10; track_select_T1 = 2'b01;
-        #10 track_select_T1 = 2'b00; track_select_T2 = 2'b01;
-        #10 track_select_T2 = 2'b00; track_select_T3 = 2'b01;
-        #10 track_select_T3 = 2'b00; track_select_T4 = 2'b01;
-        #10 track_select_T4 = 2'b00; track_select_T0 = 2'b00; 
+        // #10 track_select_T1 = 2'b00; track_select_T2 = 2'b10;
+        // #10 track_select_T2 = 2'b00; track_select_T3 = 2'b10;
+        // #10 track_select_T3 = 2'b00; track_select_T4 = 2'b10;
+        // #10 track_select_T4 = 2'b00;
+
+        // #10 track_select_T0 = 2'b10; track_select_T1 = 2'b01;
+        // #10 track_select_T1 = 2'b00; track_select_T2 = 2'b01;
+        // #10 track_select_T2 = 2'b00; track_select_T3 = 2'b01;
+        // #10 track_select_T3 = 2'b00; track_select_T4 = 2'b01;
+        // #10 track_select_T4 = 2'b00; track_select_T0 = 2'b00; 
 
 
         // Finish simulation 
