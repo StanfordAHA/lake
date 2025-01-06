@@ -1250,6 +1250,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         if 'mode' in config_json:
             mode_used = config_json['mode']
+            # HACK: Replace UB with lakespec if not in mode map (and do it before mode selection so that
+            # the register is programmed correctly)
+            if mode_used == 'UB' and 'UB' not in mode_map:
+                mode_used = 'lakespec'
+
             if self.num_modes > 1:
                 # Locate the controller in the list...
                 for idx, ctrl in enumerate(self.controllers):
@@ -1257,9 +1262,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         if not stencil_valid_used:
                             config.append(("mode", idx))
                         break
-
-            if mode_used == 'UB' and 'UB' not in mode_map:
-                mode_used = 'lakespec'
 
             ctrl_to_conf = mode_map[mode_used]
             # Have some guard to see if config is in there or not...
@@ -1291,11 +1293,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         map_hi = map_lo + self.allowed_reg_size - 1
                     else:
                         map_hi = tmp_hi
-                assert map_hi - map_lo < self.allowed_reg_size, f"Failed beacuse reg wider than {self.allowed_reg_size} bits"
+                # This check doesn't make sense anymore - we can handle many-chunk registers that are
+                # split across many addresses in the config space.
+                # assert map_hi - map_lo < self.allowed_reg_size, f"Failed beacuse reg wider than {self.allowed_reg_size} bits"
                 chunk_hi = map_hi // self.allowed_reg_size
                 chunk_lo = map_lo // self.allowed_reg_size
                 # Either all within one chunk...
                 if chunk_hi == chunk_lo:
+                    print("Single-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits = bits_hi - bits_lo + 1
@@ -1304,19 +1309,55 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
                     tmp_cfg_space[chunk_lo] = tmp_val
                 # Or across the boundary...
-                else:
+                elif chunk_hi - chunk_lo == 1:
+                    print("Two-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits_lo = self.allowed_reg_size - bits_lo
                     assert (bits_hi + num_bits_lo) == (map_hi - map_lo + 1)
+                    # Handle low chunk
                     tmp_val = tmp_cfg_space[chunk_lo]
                     for z_ in range(num_bits_lo):
                         tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
                     tmp_cfg_space[chunk_lo] = tmp_val
-
+                    # Handle high chunk
                     tmp_val = tmp_cfg_space[chunk_hi]
                     for z_ in range(bits_hi):
                         tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, num_bits_lo + z_))
+                    tmp_cfg_space[chunk_hi] = tmp_val
+                # Multiple boundaries
+                else:
+                    # I know this is technically repeat code, but it's easier to follow
+                    print("Many-chunk register")
+                    bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
+                    bits_lo = map_lo - chunk_lo * self.allowed_reg_size
+                    intermediate_chunks = chunk_hi - chunk_lo - 1
+                    bits_intermed = intermediate_chunks * self.allowed_reg_size
+                    num_bits_lo = self.allowed_reg_size - bits_lo
+                    assert (bits_hi + num_bits_lo + bits_intermed) == (map_hi - map_lo + 1)
+                    # Handle low chunk
+                    tmp_val = tmp_cfg_space[chunk_lo]
+                    for z_ in range(num_bits_lo):
+                        print(f"Get bit at {z_}")
+                        tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
+                    tmp_cfg_space[chunk_lo] = tmp_val
+
+                    # Handle the middle chunks
+                    int_chk = 0
+                    while int_chk < intermediate_chunks:
+                        curr_chunk = chunk_lo + 1 + int_chk
+                        tmp_val = tmp_cfg_space[curr_chunk]
+                        for z_ in range(self.allowed_reg_size):
+                            print(f"Get bit at {(int_chk * self.allowed_reg_size) + num_bits_lo + z_}")
+                            tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, (int_chk * self.allowed_reg_size) + num_bits_lo + z_))
+                        tmp_cfg_space[curr_chunk] = tmp_val
+                        int_chk += 1
+
+                    # Handle high chunk
+                    tmp_val = tmp_cfg_space[chunk_hi]
+                    for z_ in range(bits_hi):
+                        print(f"Get bit at {bits_intermed + num_bits_lo + z_}")
+                        tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, bits_intermed + num_bits_lo + z_))
                     tmp_cfg_space[chunk_hi] = tmp_val
 
         for idx in range(self.num_chopped_cfg):
