@@ -1019,13 +1019,16 @@ class Spec():
         war_constraint_vec_w = (pw_vec_w, pw_war_idx_vec_w, pr_vec_w,
                                 pr_war_idx_vec_w, war_comp_vec_w, war_scalar_vec_w)
 
+        in_size = 64 * 65
+        out_size = 64 * 65
+
         linear_test[0] = {
             'type': Direction.IN,
             'name': 'port_w0',
             'config': {
                 'dimensionality': 1,
                 # 'extents': [16 * length_scale],
-                'extents': [1024],
+                'extents': [in_size],
                 'address': {
                     'strides': [1],
                     'offset': 0
@@ -1085,7 +1088,7 @@ class Spec():
             'config': {
                 'dimensionality': 1,
                 # 'extents': [16 * length_scale],
-                'extents': [1024],
+                'extents': [out_size],
                 'address': {
                     'strides': [1],
                     'offset': 0
