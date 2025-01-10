@@ -132,14 +132,6 @@ class IterationDomain(Component):
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 
-        # if self.add_flush:
-        if True:
-            self.add_attribute("sync-reset=flush")
-            kts.passes.auto_insert_sync_reset(self.internal_generator)
-            # flush_port = self.internal_generator.get_port("flush")
-            # flush_port.add_attribute(ControlSignalAttr(True))
-
-
     @always_comb
     # Find lowest ready
     def set_mux_sel(self):
@@ -171,6 +163,8 @@ class IterationDomain(Component):
     def dim_counter_update(self, idx):
         if ~self._rst_n:
             self._dim_counter[idx] = 0
+        elif self._flush:
+            self._dim_counter[idx] = 0
         else:
             if self._clear[idx]:
                 self._dim_counter[idx] = 0
@@ -180,6 +174,8 @@ class IterationDomain(Component):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def max_value_update(self, idx):
         if ~self._rst_n:
+            self._max_value[idx] = 0
+        elif self._flush:
             self._max_value[idx] = 0
         else:
             if self._clear[idx]:

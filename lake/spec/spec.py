@@ -330,6 +330,13 @@ class Spec():
             # Port needs to know about the dimensionality in case of a vectorized port to
             # build the proper hardware within the port
             port_id.gen_hardware()
+
+            # If we are using the optimized implementation, it is crucial
+            # make the address generator wider than the main memory (use word-level addressing)
+            if self.opt_rv:
+                width_mult = port.get_fw()
+                port_ag.set_width_mult(width_mult)
+
             port_ag.gen_hardware(memports_, port_id)
             port.set_port_ag_width(port_ag.get_address_width())
 

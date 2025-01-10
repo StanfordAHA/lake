@@ -14,6 +14,10 @@ class AddressGenerator(Component):
         self.total_num_addrs = None
         self.addr_width = None
         self.exploit_recurrence = recurrence
+        self.width_mult = 1
+
+    def set_width_mult(self, width_mult):
+        self.width_mult = width_mult
 
     def gen_hardware(self, memports=None, id: IterationDomain = None, pos_reset=False):
         assert memports is not None
@@ -26,7 +30,7 @@ class AddressGenerator(Component):
             memport: MemoryPort
             self.total_num_addrs += memport.get_num_addrs()
 
-        self.addr_width = kts.clog2(self.total_num_addrs)
+        self.addr_width = kts.clog2(self.total_num_addrs) + kts.clog2(self.width_mult)
         module_name = f"addr_gen_{self.dimensionality_support}_{self.addr_width}"
         super().__init__(name=module_name)
         ##########
@@ -42,8 +46,8 @@ class AddressGenerator(Component):
         ### Inputs
         # self._clk = self.clock("clk")
         # self._rst_n = self.reset("rst_n")
-        self._flush = self.input("flush", 1)
-        self.add_attribute("sync-reset=flush")
+        # self._flush = self.input("flush", 1)
+        # self.add_attribute("sync-reset=flush")
         self._step = self.input("step", 1)
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
         self._restart = self.input("restart", 1)

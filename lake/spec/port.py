@@ -164,7 +164,8 @@ class Port(Component):
                     # self.wire(self._data_out_lcl, ub_interface['data'])
 
                     self._full_addr_in = self.input("addr_in", width=self.port_ag_width)
-                    self._addr_out = self.output("addr_out", width=self.port_ag_width)
+                    # self._addr_out = self.output("addr_out", width=self.port_ag_width)
+                    self._addr_out = self.output("addr_out", width=(self.port_ag_width - kts.clog2(self.get_fw())))
                     self._sg_step_in = self.input("sg_step_in", width=1)
                     # This will be used to send out to the AG/ID, etc.
                     # This is also telling us if we are making a memory read this cycle
@@ -310,8 +311,9 @@ class Port(Component):
                     # Address out is whichever address is being pointed to by the linear read address
                     # self.wire(self._addr_out, kts.concat(self._full_addr_in[self._full_addr_in.width - 1, self._full_addr_in.width - sub_addr_bits],
                     #  self._full_addr_in[self._full_addr_in.width - 1, self._full_addr_in.width - sram_addr_bits]))
-                    self.wire(self._addr_out, kts.concat(self._last_write_addr[self._full_addr_in.width - 1, self._full_addr_in.width - sub_addr_bits],
-                                                         addresses_to_write[self._linear_wcb_read]))
+                    # self.wire(self._addr_out, kts.concat(self._last_write_addr[self._full_addr_in.width - 1, self._full_addr_in.width - sub_addr_bits],
+                    #                                      addresses_to_write[self._linear_wcb_read]))
+                    self.wire(self._addr_out, addresses_to_write[self._linear_wcb_read])
 
                     # write_memory_out is just the mp_interface's ready and the sticky bit
                     self.wire(self._write_memory_out_lcl, self._mp_intf['ready'] & self._write_can_commit_sticky[self._linear_wcb_read])
@@ -626,7 +628,7 @@ class Port(Component):
                     # Will need the address and enable/step from the external AG/SG/ID
                     assert self.port_ag_width is not None
                     self._full_addr_in = self.input("addr_in", width=self.port_ag_width)
-                    self._addr_out = self.output("addr_out", width=self.port_ag_width)
+                    self._addr_out = self.output("addr_out", width=(self.port_ag_width - kts.clog2(self.get_fw())))
                     self._sg_step_in = self.input("sg_step_in", width=1)
                     self._grant = self.input("grant", width=1)
                     # This will be used to send out to the AG/ID, etc.

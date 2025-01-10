@@ -40,6 +40,8 @@ class Component(kratos.Generator):
         self._name_to_var_cfg = {}
         self._clk = self.clock('clk')
         self._rst_n = self.clock('rst_n')
+        self._flush = self.input("flush", 1)
+        self.add_attribute("sync-reset=flush")
 
     def get_clock(self):
         return self._clk

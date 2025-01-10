@@ -46,8 +46,8 @@ class ScheduleGenerator(Component):
         # self._clk = self.clock("clk")
         # self._rst_n = self.reset("rst_n")
 
-        self._flush = self.input("flush", 1)
-        self.add_attribute("sync-reset=flush")
+        # self._flush = self.input("flush", 1)
+        # self.add_attribute("sync-reset=flush")
         self._clk_ctr = add_counter(self, "clk_ctr", bitwidth=self.total_cycle_width, increment=kts.const(1, 1),
                                     clear=self._flush)
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
@@ -182,10 +182,6 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         ##########
         ### Config Regs
         ### Inputs
-        # self._clk = self.clock("clk")
-        # self._rst_n = self.reset("rst_n")
-        self._flush = self.input("flush", 1)
-        self.add_attribute("sync-reset=flush")
 
         # Still accept the iterators/mux_sel
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
