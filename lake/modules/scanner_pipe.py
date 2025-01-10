@@ -487,6 +487,8 @@ class ScannerPipe(MemoryController):
                 self._glb_addr = self._glb_addr_base
             elif self._push_glb_addr:
                 self._glb_addr = self._glb_addr + self._glb_addr_stride
+            else:
+                self._glb_addr = self._glb_addr
         self.add_code(glb_addr_gen)
 
         self._seg_res_fifo = ReservationFIFO(depth=8, data_width=self.data_width + 1, num_per=2)
