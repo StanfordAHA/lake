@@ -1031,7 +1031,9 @@ class Spec():
                 'extents': [in_size],
                 'address': {
                     'strides': [1],
-                    'offset': 0
+                    # 'offset': 0
+                    # Start this here to handle the bogus data creation
+                    'offset': 64
                 },
                 'schedule': {
                     'strides': [4],
@@ -1132,7 +1134,8 @@ class Spec():
         pw_raw_idx = 0
         raw_comp = LFComparisonOperator.LT.value
         # raw_scalar = 4
-        raw_scalar = 64
+        # Allows the reads to start early
+        raw_scalar = -64
         raw_constraint = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
 
         pw_war_idx = 0

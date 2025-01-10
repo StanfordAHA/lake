@@ -1338,7 +1338,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     # Handle low chunk
                     tmp_val = tmp_cfg_space[chunk_lo]
                     for z_ in range(num_bits_lo):
-                        print(f"Get bit at {z_}")
+                        # print(f"Get bit at {z_}")
                         tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
                     tmp_cfg_space[chunk_lo] = tmp_val
 
@@ -1348,7 +1348,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         curr_chunk = chunk_lo + 1 + int_chk
                         tmp_val = tmp_cfg_space[curr_chunk]
                         for z_ in range(self.allowed_reg_size):
-                            print(f"Get bit at {(int_chk * self.allowed_reg_size) + num_bits_lo + z_}")
+                            # print(f"Get bit at {(int_chk * self.allowed_reg_size) + num_bits_lo + z_}")
                             tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, (int_chk * self.allowed_reg_size) + num_bits_lo + z_))
                         tmp_cfg_space[curr_chunk] = tmp_val
                         int_chk += 1
@@ -1356,7 +1356,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     # Handle high chunk
                     tmp_val = tmp_cfg_space[chunk_hi]
                     for z_ in range(bits_hi):
-                        print(f"Get bit at {bits_intermed + num_bits_lo + z_}")
+                        # print(f"Get bit at {bits_intermed + num_bits_lo + z_}")
                         tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, bits_intermed + num_bits_lo + z_))
                     tmp_cfg_space[chunk_hi] = tmp_val
 

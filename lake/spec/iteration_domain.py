@@ -9,7 +9,7 @@ from kratos import *
 class IterationDomain(Component):
 
     def __init__(self, dimensionality=6, extent_width=16):
-        super().__init__(f"for_loop_{dimensionality}_{extent_width}")
+        super().__init__(f"for_loop_{dimensionality}_{extent_width}_flush")
         self.dimensionality_support = dimensionality
         self.extent_width = extent_width
         self._interfaces = {}
@@ -131,6 +131,14 @@ class IterationDomain(Component):
 
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
+
+        # if self.add_flush:
+        if True:
+            self.add_attribute("sync-reset=flush")
+            kts.passes.auto_insert_sync_reset(self.internal_generator)
+            # flush_port = self.internal_generator.get_port("flush")
+            # flush_port.add_attribute(ControlSignalAttr(True))
+
 
     @always_comb
     # Find lowest ready
