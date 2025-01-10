@@ -24,6 +24,9 @@ class LFCompBlock(Component):
         self._leader = self.input("leader_count", self.in_width)
         self._follower = self.input("follower_count", self.out_width)
 
+        self._leader_signed = self.var("leader_signed", 17, is_signed=True)
+        self._follower_signed = self.var("follower_signed", 17, is_signed=True)
+
         self._leader_finished = self.input("leader_finished", 1)
         self._follower_finished = self.input("follower_finished", 1)
 
@@ -31,7 +34,9 @@ class LFCompBlock(Component):
         self._enable_comparison = self.config_reg(name="enable_comparison", width=1)
         # Output a single comparison
         self._comparison = self.output("comparison", 1)
-        self._comparison_lcl = self.var("comparison_lcl", 1)
+        self._comparison_lcl = self.var("comparison_lcl", 1, is_signed=True)
+
+        kts.signed
 
         # Get number of entries in comparison for doing bit width
         num_comps = len(LFComparisonOperator)
@@ -41,25 +46,40 @@ class LFCompBlock(Component):
         if self.hard_op is None:
             # Make it a configuration register
             self._comp_reg = self.config_reg(name="comparison_op", width=num_comps_bw)
-            self._scalar_reg = self.config_reg(name="comparison_scalar", width=16)
+            # self._scalar_reg = self.config_reg(name="comparison_scalar", width=16)
+            self._scalar_reg = self.config_reg(name="comparison_scalar", width=16, is_signed=False)
+            self._scalar_reg_signed = self.var("scalar_reg_signed", 16, is_signed=True)
+            self.wire(self._scalar_reg_signed, kts.signed(self._scalar_reg))
         else:
             # Otherwise it is a hardened value...
             self._comp_reg = kts.const(self.hard_op.value, num_comps_bw)
             self._scalar_reg = kts.const(self.hard_scalar, width=16)
+
+        self._l_plus_s = self.var("l_plus_s", 17, is_signed=True)
+        self.wire(self._l_plus_s, self._leader_signed + self._scalar_reg_signed)
+        self._f_plus_s = self.var("f_plus_s", 17, is_signed=True)
+        self.wire(self._f_plus_s, self._follower_signed + self._scalar_reg_signed)
+
+        self.wire(self._leader_signed, kts.concat(kts.const(0, 1, is_signed=True), kts.signed(self._leader)))
+        self.wire(self._follower_signed, kts.concat(kts.const(0, 1, is_signed=True), kts.signed(self._follower)))
 
         @always_comb
         def calculate_comparison():
             self._comparison_lcl = 0
             # RAW
             if self._comp_reg == LFComparisonOperator.LT.value:
-                self._comparison_lcl = self._leader + self._scalar_reg < self._follower
+                # self._comparison_lcl = self._leader + self._scalar_reg < self._follower
+                self._comparison_lcl = self._l_plus_s < self._follower_signed
             # WAR
             elif self._comp_reg == LFComparisonOperator.GT.value:
-                self._comparison_lcl = self._leader < self._follower + self._scalar_reg
+                # self._comparison_lcl = self._leader < self._follower + self._scalar_reg
+                self._comparison_lcl = self._leader_signed < self._f_plus_s
             elif self._comp_reg == LFComparisonOperator.EQ.value:
-                self._comparison_lcl = self._leader == self._follower + self._scalar_reg
+                # self._comparison_lcl = self._leader == self._follower + self._scalar_reg
+                self._comparison_lcl = self._leader_signed == self._f_plus_s
             elif self._comp_reg == LFComparisonOperator.LTE.value:
-                self._comparison_lcl = self._leader <= self._follower + self._scalar_reg
+                # self._comparison_lcl = self._leader <= self._follower + self._scalar_reg
+                self._comparison_lcl = self._leader_signed <= self._f_plus_s
 
         self.add_code(calculate_comparison)
 
