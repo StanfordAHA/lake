@@ -662,7 +662,8 @@ class Port(Component):
                     print(f"Tag width: {tag_width}")
                     # exit()
 
-                    self.wire(self._addr_out, kts.concat(self._full_addr_in >> addr_q_width))
+                    # self.wire(self._addr_out, kts.concat(self._full_addr_in >> addr_q_width))
+                    self.wire(self._addr_out, self._full_addr_in[self._full_addr_in.width - 1, addr_q_width])
 
                     # In and out of addr queue
                     self._addr_q_sub_addr_in = self.var("addr_q_sub_addr_in", addr_q_width)

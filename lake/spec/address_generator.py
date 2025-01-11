@@ -125,6 +125,13 @@ class AddressGenerator(Component):
     def get_address(self):
         return self._addr_out
 
+    def get_memory_address(self):
+        if self.width_mult == 1:
+            return self._addr_out
+        else:
+            trim_bits = kts.clog2(self.width_mult)
+            return self._addr_out[self._addr_out.width - 1, trim_bits]
+
 
 class ExplicitAddressGenerator(AddressGenerator):
 

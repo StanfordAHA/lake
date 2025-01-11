@@ -389,7 +389,8 @@ class Spec():
             assembled_port = {}
             assembled_port['dir'] = port.get_direction()
             assembled_port['data'] = port.get_mp_intf()['data']
-            assembled_port['addr'] = port_ag.get_address()
+            # assembled_port['addr'] = port_ag.get_address()
+            assembled_port['addr'] = port_ag.get_memory_address()
             # assembled_port['en'] = quali_step
             # assembled_port['en'] = port_sg.get_step()
 
