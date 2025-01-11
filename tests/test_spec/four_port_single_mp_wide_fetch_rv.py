@@ -780,7 +780,7 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
     else:
         raise NotImplementedError(f"Cannot run test: {test}")
 
-    if test == 'conv_2_1'
+    if test == 'conv_2_1':
         max_time = 6500
     else:
         max_time = 0
