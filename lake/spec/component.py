@@ -2,7 +2,6 @@ import kratos
 import kratos as kts
 import random as rand
 from lake.attributes.config_reg_attr import ConfigRegAttr
-from kratos import PortDirection, always_ff, posedge, negedge
 from lake.modules.ready_valid_interface import RVInterface
 from lake.spec.config_memory import ConfigMemory
 from lake.utils.spec_enum import Direction

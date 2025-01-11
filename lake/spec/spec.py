@@ -1039,9 +1039,7 @@ class Spec():
                 'extents': [in_size],
                 'address': {
                     'strides': [1],
-                    # 'offset': 0
-                    # Start this here to handle the bogus data creation
-                    'offset': 64
+                    'offset': 0
                 },
                 'schedule': {
                     'strides': [4],
@@ -1101,7 +1099,8 @@ class Spec():
                 'extents': [out_size],
                 'address': {
                     'strides': [1],
-                    'offset': 0
+                    # Start this here to handle the bogus data creation
+                    'offset': -64
                 },
                 'schedule': {
                     'strides': [4],

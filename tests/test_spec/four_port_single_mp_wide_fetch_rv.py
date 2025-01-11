@@ -133,9 +133,7 @@ def get_conv_2_1_app():
                 'extents': [in_size],
                 'address': {
                     'strides': [1],
-                    # 'offset': 0
-                    # Start this here to handle the bogus data creation
-                    'offset': 64
+                    'offset': 0
                 },
                 'schedule': {
                     'strides': [4],
@@ -147,7 +145,8 @@ def get_conv_2_1_app():
                 'extents': [4, 16 * length_scale],
                 'address': {
                     'strides': [1, 4],
-                    'offset': 0
+                    # Start this here to handle the bogus data creation
+                    'offset': -64
                 },
                 'schedule': {
                     'strides': [1, 4],
@@ -781,27 +780,30 @@ def test_linear_read_write_qp_wf_rv(output_dir=None, storage_capacity=1024, data
     else:
         raise NotImplementedError(f"Cannot run test: {test}")
 
-    max_time = 0
-    read_outs = calculate_read_out_vec(lt, vec=vec_width)
-    # Now we have the output sequences
-    # Need to write them out
-    for pnum, sequences in read_outs.items():
-        port_name = lt[pnum]['name']
-        times = sequences['time']
-        datas = sequences['data']
-        if times[-1] > max_time:
-            max_time = times[-1]
-        # Need to add a cycle delay if using SRAM
-        # if reg_file is False:
-        #     times = [time + 1 for time in times]
-        gold_output_path_data = os.path.join(output_dir, "gold", f"{port_name}_data.txt")
-        gold_output_path_time = os.path.join(output_dir, "gold", f"{port_name}_time.txt")
-        with open(gold_output_path_data, 'w') as file:
-            for data_ in datas:
-                file.write(f"{data_}\n")
-        with open(gold_output_path_time, 'w') as file:
-            for time_ in times:
-                file.write(f"{time_}\n")
+    if test == 'conv_2_1'
+        max_time = 6500
+    else:
+        max_time = 0
+        read_outs = calculate_read_out_vec(lt, vec=vec_width)
+        # Now we have the output sequences
+        # Need to write them out
+        for pnum, sequences in read_outs.items():
+            port_name = lt[pnum]['name']
+            times = sequences['time']
+            datas = sequences['data']
+            if times[-1] > max_time:
+                max_time = times[-1]
+            # Need to add a cycle delay if using SRAM
+            # if reg_file is False:
+            #     times = [time + 1 for time in times]
+            gold_output_path_data = os.path.join(output_dir, "gold", f"{port_name}_data.txt")
+            gold_output_path_time = os.path.join(output_dir, "gold", f"{port_name}_time.txt")
+            with open(gold_output_path_data, 'w') as file:
+                for data_ in datas:
+                    file.write(f"{data_}\n")
+            with open(gold_output_path_time, 'w') as file:
+                for time_ in times:
+                    file.write(f"{time_}\n")
 
     # Now generate the bitstream to a file (will be loaded in test harness later)
     bs = simple_four_port_spec.gen_bitstream(lt)

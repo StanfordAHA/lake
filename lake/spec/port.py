@@ -138,7 +138,7 @@ class Port(Component):
                                         clk=self._clk,
                                         rst_n=self._rst_n,
                                         # clk_en=self._clk_en,
-                                        clk_en=kts.const(1, 1),
+                                        # clk_en=kts.const(1, 1),
                                         push=ub_interface['valid'],
                                         # pop=self._pop_addr_q,
                                         data_in=ub_interface['data'])
@@ -299,6 +299,9 @@ class Port(Component):
                     @always_ff((posedge, "clk"), (negedge, "rst_n"))
                     def addresses_to_write_ff():
                         if ~self._rst_n:
+                            for i in range(max_num_items_wcb):
+                                addresses_to_write[i] = 0
+                        elif self._flush:
                             for i in range(max_num_items_wcb):
                                 addresses_to_write[i] = 0
                         else:
@@ -686,6 +689,8 @@ class Port(Component):
                     def data_on_bus_ff():
                         if ~self._rst_n:
                             self._data_on_bus = 0
+                        elif self._flush:
+                            self._data_on_bus = 0
                         else:
                             self._data_on_bus = self._next_data_on_bus
                     self.add_code(data_on_bus_ff)
@@ -702,6 +707,8 @@ class Port(Component):
                     @always_ff((posedge, "clk"), (negedge, "rst_n"))
                     def num_items_wcb_ff():
                         if ~self._rst_n:
+                            self._num_items_wcb = 0
+                        elif self._flush:
                             self._num_items_wcb = 0
                         else:
                             self._num_items_wcb = self._next_num_items_wcb
@@ -786,6 +793,9 @@ class Port(Component):
                         if ~self._rst_n:
                             for i in range(max_num_items_wcb):
                                 tag_valid_cam[i] = 0
+                        elif self._flush:
+                            for i in range(max_num_items_wcb):
+                                tag_valid_cam[i] = 0
                         else:
                             for i in range(max_num_items_wcb):
                                 tag_valid_cam[i] = next_tag_valid_cam[i]
@@ -855,7 +865,7 @@ class Port(Component):
                                     clk=self._clk,
                                     rst_n=self._rst_n,
                                     # clk_en=self._clk_en,
-                                    clk_en=kts.const(1, 1),
+                                    # clk_en=kts.const(1, 1),
                                     push=self._push_addr_q,
                                     pop=self._pop_addr_q,
                                     data_in=q_in,

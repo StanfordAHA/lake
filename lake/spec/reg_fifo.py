@@ -1,6 +1,4 @@
 from kratos import *
-from lake.utils.util import increment, decrement
-from lake.attributes.config_reg_attr import ConfigRegAttr
 from lake.spec.component import Component
 
 
@@ -44,7 +42,7 @@ class RegFIFO(Component):
         # CLK and RST
         # self._clk = self.clock("clk")
         # self._rst_n = self.reset("rst_n")
-        self._clk_en = self.input("clk_en", 1)
+        # self._clk_en = self.input("clk_en", 1)
 
         # INPUTS
         self._data_in = self.input("data_in",
@@ -98,12 +96,16 @@ class RegFIFO(Component):
     def rd_ptr_ff(self):
         if ~self._rst_n:
             self._rd_ptr = 0
+        elif self._flush:
+            self._rd_ptr = 0
         elif self._read:
             self._rd_ptr = self._rd_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def rd_ptr_ff_parallel(self):
         if ~self._rst_n:
+            self._rd_ptr = 0
+        elif self._flush:
             self._rd_ptr = 0
         elif self._parallel_load | self._parallel_read:
             self._rd_ptr = 0
@@ -114,6 +116,8 @@ class RegFIFO(Component):
     def wr_ptr_ff(self):
         if ~self._rst_n:
             self._wr_ptr = 0
+        elif self._flush:
+            self._wr_ptr = 0
         elif self._write:
             if self._wr_ptr == (self.depth - 1):
                 self._wr_ptr = 0
@@ -123,6 +127,8 @@ class RegFIFO(Component):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def wr_ptr_ff_parallel(self):
         if ~self._rst_n:
+            self._wr_ptr = 0
+        elif self._flush:
             self._wr_ptr = 0
         elif self._parallel_load:
             self._wr_ptr = self._num_load[max(1, clog2(self.depth)) - 1, 0]
@@ -142,12 +148,16 @@ class RegFIFO(Component):
     def reg_array_ff(self):
         if ~self._rst_n:
             self._reg_array = 0
+        elif self._flush:
+            self._reg_array = 0
         elif self._write:
             self._reg_array[self._wr_ptr] = self._data_in
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_array_ff_parallel(self):
         if ~self._rst_n:
+            self._reg_array = 0
+        elif self._flush:
             self._reg_array = 0
         elif self._parallel_load:
             self._reg_array = self._parallel_in
@@ -173,6 +183,8 @@ class RegFIFO(Component):
     def set_num_items(self):
         if ~self._rst_n:
             self._num_items = 0
+        elif self._flush:
+            self._num_items = 0
         elif self._write & ~self._read:
             self._num_items = self._num_items + 1
         elif ~self._write & self._read:
@@ -181,6 +193,8 @@ class RegFIFO(Component):
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_num_items_parallel(self):
         if ~self._rst_n:
+            self._num_items = 0
+        elif self._flush:
             self._num_items = 0
         elif self._parallel_load:
             # When fetch width > 1, by definition we cannot load
