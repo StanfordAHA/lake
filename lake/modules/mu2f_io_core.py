@@ -194,7 +194,6 @@ class IOCore_mu2f(Generator):
                 self.wire(mu2io_r_0, kts.ternary(self._tile_en & self._clk_en, ~mu2io_2_io2f_fifo_0.ports.full, kts.const(0, 1)))
                 self.wire(mu2io_r_1, kts.ternary(self._tile_en & self._clk_en, ~mu2io_2_io2f_fifo_1.ports.full, kts.const(0, 1)))
 
-
         ########################################
         # TRACK SELECT
         ########################################
@@ -206,7 +205,6 @@ class IOCore_mu2f(Generator):
             # Create track active config reg
             self._tmp_track_active = self.input(f"track_active_T{track_num}", 1)
             self._tmp_track_active.add_attribute(ConfigRegAttr("Track active config register. States whether track is active."))
-
 
             # Create track output and its valid interface
             tmp_track_out = self.output(f"io2f_{tile_array_data_width}_T{track_num}", tile_array_data_width)
@@ -291,7 +289,6 @@ class IOCore_mu2f(Generator):
 
         if 'track_active_T4' in config_dict:
             track_active_T4_val = config_dict['track_active_T4']
-
 
         config += [("track_select_T0", track_select_T0_val), ("track_select_T1", track_select_T1_val),
                     ("track_select_T2", track_select_T2_val), ("track_select_T3", track_select_T3_val),

@@ -57,10 +57,9 @@ class OnyxPE(MemoryController):
         self._active_inputs_encoding = self.input("active_inputs_encoding", 3)
         self._active_inputs_encoding.add_attribute(ConfigRegAttr("Sparse num inputs for rv/eos logic"))
 
-        # Is this a constant PE? 
+        # Is this a constant PE?
         self._is_constant_pe = self.input("is_constant_pe", 1)
         self._is_constant_pe.add_attribute(ConfigRegAttr("Is this PE outputting a constant value? (i.e. no inputs)"))
-        
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -284,7 +283,7 @@ class OnyxPE(MemoryController):
             self._infifo_pop[0] = 0
             self._infifo_pop[1] = 0
             self._infifo_pop[2] = 0
-         
+
             # If this is a constant PE, push constant value to output FIFO indefinitely
             if self._is_constant_pe & ~self._dense_mode:
                 self._outfifo_push = 1
@@ -349,13 +348,12 @@ class OnyxPE(MemoryController):
             active_inputs_encoding = config_kwargs['active_inputs']
         elif 'num_sparse_inputs' in config_kwargs:
             active_inputs_encoding = config_kwargs['num_sparse_inputs']
-            
+
         config += [('active_inputs_encoding', active_inputs_encoding)]
 
         if 'is_constant_pe' in config_kwargs:
             is_constant_pe = config_kwargs['is_constant_pe']
         config += [('is_constant_pe', is_constant_pe)]
-
 
         if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
             config += [("dense_mode", 1)]

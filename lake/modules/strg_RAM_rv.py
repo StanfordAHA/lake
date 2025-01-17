@@ -219,7 +219,8 @@ class StrgRAMRV(MemoryController):
         data_out = self._data_outfifo_data_in
         data_ready_in = ~self._data_outfifo_full
 
-        all_in_valid = ren_valid_in & rd_addr_valid_in
+        # all_in_valid = ren_valid_in & rd_addr_valid_in
+        all_in_valid = rd_addr_valid_in
 
         # Separate addressing...
         self.bit_range = (self.data_width - 1, 0)
@@ -258,7 +259,6 @@ class StrgRAMRV(MemoryController):
         self.wire(self._wen_to_strg, kts.const(0, self._wen_to_strg.width))
         self._wr_addr_to_strg = self.output("wr_addr_to_strg", self.mem_addr_width)
         self.wire(self._wr_addr_to_strg, kts.const(0, self._wr_addr_to_strg.width))
-
 
         self.base_ports = [[None]]
         rw_port = MemoryPort(MemoryPortType.READWRITE)
