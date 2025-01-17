@@ -175,6 +175,11 @@ class StrgRAMRV(MemoryController):
                                           size=self.fw_int,
                                           explicit_array=True,
                                           packed=True)
+
+        self._data_to_strg = self.output("data_to_strg", self.data_width,
+                                          size=self.fw_int,
+                                          explicit_array=True,
+                                          packed=True)
         # self._data_from_strg = self.input("data_from_strg", self.data_width,
         #                                   size=(self.banks,
         #                                         self.fw_int),
@@ -237,6 +242,7 @@ class StrgRAMRV(MemoryController):
             # self.wire(data_out, self._data_from_strg[self._rd_bank][self._rd_addr[self.word_width - 1, 0]])
             self.wire(data_out, self._data_from_strg)
             self.wire(self._addr_out, self._rd_addr)
+            self.wire(self._data_to_strg, kts.const(0, self._data_to_strg.width))
         else:
             # If fw > 1, we need to send out the top portion of addr and register the sub-word addr, then use that to select
             # the proper data from the subword...
@@ -245,17 +251,24 @@ class StrgRAMRV(MemoryController):
             subword_addr_reg = register(self, signal=rd_addr_in[bottom_bits], enable=self._infifo_pop, name="subword_addr_reg")
             self.wire(data_out, self._data_from_strg[subword_addr_reg])
             self.wire(self._addr_out, rd_addr_in[top_bits])
+            for i in range(self.fw_int):
+                self.wire(self._data_to_strg[i], kts.const(0, self._data_to_strg[i].width))
+
+        self._wen_to_strg = self.output("wen_to_strg", 1)
+        self.wire(self._wen_to_strg, kts.const(0, self._wen_to_strg.width))
+        self._wr_addr_to_strg = self.output("wr_addr_to_strg", self.mem_addr_width)
+        self.wire(self._wr_addr_to_strg, kts.const(0, self._wr_addr_to_strg.width))
+
 
         self.base_ports = [[None]]
         rw_port = MemoryPort(MemoryPortType.READWRITE)
         rw_port_intf = rw_port.get_port_interface()
-        # rw_port_intf['data_in'] = self._data_to_strg
+        rw_port_intf['data_in'] = self._data_to_strg
         # rw_port_intf['data_in'] = 0
         rw_port_intf['data_out'] = self._data_from_strg
         # rw_port_intf['write_addr'] = self._addr_out
-        # rw_port_intf['write_addr'] = 0
-        # rw_port_intf['write_enable'] = self._wen_to_strg
-        # rw_port_intf['write_enable'] = 0
+        rw_port_intf['write_addr'] = self._wr_addr_to_strg
+        rw_port_intf['write_enable'] = self._wen_to_strg
         rw_port_intf['read_addr'] = self._addr_out
         rw_port_intf['read_enable'] = self._ren_to_strg
         rw_port.annotate_port_signals()
