@@ -242,6 +242,9 @@ class IOCore_64(Generator):
 
             config += [("dense_bypass", dense_bypass_val)]
 
+        # MO: Fix this HACK to be more general
+        config += [("mu_active", 1)]
+
         return config
 
 
