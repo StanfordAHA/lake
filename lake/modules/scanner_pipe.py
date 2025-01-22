@@ -480,16 +480,38 @@ class ScannerPipe(MemoryController):
 
         self._push_glb_addr = self.var("push_glb_addr", 1)
         self._glb_addr = self.var("glb_addr", self.data_width)
+        self._glb_addr_next = self.var("glb_addr_next", self.data_width)
 
         @always_ff((posedge, "clk"), (negedge, "rst_n"))
         def glb_addr_gen():
             if ~self._rst_n:
-                self._glb_addr = self._glb_addr_base
-            elif self._push_glb_addr:
-                self._glb_addr = self._glb_addr + self._glb_addr_stride
+                self._glb_addr = kts.const(0, self.data_width)
             else:
-                self._glb_addr = self._glb_addr
+                self._glb_addr = self._glb_addr_next
         self.add_code(glb_addr_gen)
+
+        # Create FSM
+        self.glb_addr_gen = self.add_fsm("glb_addr_gen", reset_high=False)
+        ADDR_IDLE = self.glb_addr_gen.add_state("ADDR_IDLE")
+        ADDR_SET_BASE = self.glb_addr_gen.add_state("ADDR_SET_BASE")
+        ADDR_ACCMU = self.glb_addr_gen.add_state("ADDR_ACCMU")
+
+        self.glb_addr_gen.output(self._glb_addr_next, default=kts.const(0, self.data_width))
+
+        # Sit in start if in block mode - everything else handled by CRD FSM
+        ADDR_IDLE.next(ADDR_SET_BASE, None)
+        ADDR_SET_BASE.next(ADDR_ACCMU, None)
+        ADDR_ACCMU.next(ADDR_ACCMU, None)
+
+        ADDR_IDLE.output(self._glb_addr_next, 0)
+
+        ADDR_SET_BASE.output(self._glb_addr_next, self._glb_addr_base)
+        
+        ADDR_ACCMU.output(self._glb_addr_next, kts.ternary(self._push_glb_addr, self._glb_addr + self._glb_addr_stride,\
+                                                                 self._glb_addr))
+
+        self.glb_addr_gen.set_start_state(ADDR_IDLE)
+
 
         self._seg_res_fifo = ReservationFIFO(depth=8, data_width=self.data_width + 1, num_per=2)
 
