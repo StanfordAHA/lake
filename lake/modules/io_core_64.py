@@ -66,8 +66,8 @@ class IOCore_64(Generator):
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
         # Matrix unit active control signal 
-        self._mu_active = self.input("mu_active", 1)
-        self._mu_active.add_attribute(ConfigRegAttr("Is matrix unit being used?"))
+        self._exchange_64_mode = self.input("exchange_64_mode", 1)
+        self._exchange_64_mode.add_attribute(ConfigRegAttr("Does CGRA exchange 64 bits or 16 bits with each GLB tile?"))
 
         # 4-to-4 IO tile 
         num_IOs = 4
@@ -142,7 +142,7 @@ class IOCore_64(Generator):
                 if io_num == 0:
                     self.wire(f2io_2_io2glb_fifo.ports.push, tmp_f2io_v)
                 else:
-                    self.wire(f2io_2_io2glb_fifo.ports.push, kts.ternary(self._mu_active, tmp_f2io_v, 0))
+                    self.wire(f2io_2_io2glb_fifo.ports.push, kts.ternary(self._exchange_64_mode, tmp_f2io_v, 0))
 
                 if self.allow_bypass:
                     self.wire(tmp_io2glb, kts.ternary(self._dense_bypass,
@@ -163,7 +163,7 @@ class IOCore_64(Generator):
                     if io_num == 0:
                         self.wire(tmp_f2io_r, ~f2io_2_io2glb_fifo.ports.full)
                     else:
-                        self.wire(tmp_f2io_r, kts.ternary(self._mu_active, ~f2io_2_io2glb_fifo.ports.full, 0))
+                        self.wire(tmp_f2io_r, kts.ternary(self._exchange_64_mode, ~f2io_2_io2glb_fifo.ports.full, 0))
                         
                     self.wire(tmp_io2glb_v, ~f2io_2_io2glb_fifo.ports.empty)
 
@@ -242,8 +242,9 @@ class IOCore_64(Generator):
 
             config += [("dense_bypass", dense_bypass_val)]
 
-        # MO: Fix this HACK to be more general
-        config += [("mu_active", 1)]
+
+        if 'exchange_64_mode' in config_dict:
+            config += [("exchange_64_mode", config_dict['exchange_64_mode'])]
 
         return config
 
