@@ -179,8 +179,13 @@ class IOCore_64(Generator):
                             clk=self._gclk,
                             rst_n=self._rst_n,
                             clk_en=self._clk_en,
-                            push=tmp_glb2io_v,
-                            pop=tmp_io2f_r)
+                            push=tmp_glb2io_v)
+                            #pop=tmp_io2f_r)
+
+                if io_num == 0:
+                    self.wire(glb2io_2_io2f_fifo.ports.pop, tmp_io2f_r)
+                else:
+                    self.wire(glb2io_2_io2f_fifo.ports.pop, kts.ternary(self._exchange_64_mode, tmp_io2f_r, 0))
 
                 if self.hack17_to_16 is True and using_17b is True:
                     self.wire(glb2io_2_io2f_fifo.ports.data_in[0][to_glb_width - 1, 0], tmp_glb2io)
@@ -212,7 +217,11 @@ class IOCore_64(Generator):
                         self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.almost_full)
                     else:
                         self.wire(tmp_glb2io_r, ~glb2io_2_io2f_fifo.ports.full)
-                    self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
+
+                    if io_num == 0:
+                        self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
+                    else:   
+                        self.wire(tmp_io2f_v, kts.ternary(self._exchange_64_mode, ~glb2io_2_io2f_fifo.ports.empty, 0))
 
                 if(is_control):
                     break
