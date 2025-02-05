@@ -51,11 +51,16 @@ class OnyxPE(MemoryController):
         self._tile_en = self.input("tile_en", 1)
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
         # Dense mode for bypassing FIFOs
-        self._dense_mode = self.input("dense_mode", 1)
-        self._dense_mode.add_attribute(ConfigRegAttr("Dense mode to skip the registers"))
+        self._bypass_rv_mode = self.input("bypass_rv_mode", 1)
+        self._bypass_rv_mode.add_attribute(ConfigRegAttr("Dense mode to skip the registers"))
         # Sparse num inputs for rv/eos logic
-        self._sparse_num_inputs = self.input("sparse_num_inputs", 3)
-        self._sparse_num_inputs.add_attribute(ConfigRegAttr("Sparse num inputs for rv/eos logic"))
+        self._active_inputs_encoding = self.input("active_inputs_encoding", 3)
+        self._active_inputs_encoding.add_attribute(ConfigRegAttr("Sparse num inputs for rv/eos logic"))
+
+        # Is this a constant PE? 
+        self._is_constant_pe = self.input("is_constant_pe", 1)
+        self._is_constant_pe.add_attribute(ConfigRegAttr("Is this PE outputting a constant value? (i.e. no inputs)"))
+        
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -135,9 +140,9 @@ class OnyxPE(MemoryController):
         self._infifo[2].add_attribute(SharedFifoAttr(direction="IN"))
 
         # Ready is just a function of having room in the FIFO
-        self.wire(self._data_in_ready_out[0], kts.ternary(self._dense_mode, kts.const(1, 1), ~self._infifo[0].ports.full))
-        self.wire(self._data_in_ready_out[1], kts.ternary(self._dense_mode, kts.const(1, 1), ~self._infifo[1].ports.full))
-        self.wire(self._data_in_ready_out[2], kts.ternary(self._dense_mode, kts.const(1, 1), ~self._infifo[2].ports.full))
+        self.wire(self._data_in_ready_out[0], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[0].ports.full))
+        self.wire(self._data_in_ready_out[1], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[1].ports.full))
+        self.wire(self._data_in_ready_out[2], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[2].ports.full))
 
         # Convert to packed
         self._infifo_in_packed = self.var("infifo_in_packed", self.data_width + 1, size=3, explicit_array=True, packed=True)
@@ -206,7 +211,7 @@ class OnyxPE(MemoryController):
         self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_eos)
         self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
-        self.wire(self._data_out, kts.ternary(self._dense_mode, self._pe_output, self._outfifo_out_packed))
+        self.wire(self._data_out, kts.ternary(self._bypass_rv_mode, self._pe_output, self._outfifo_out_packed))
 
         # Push when there's incoming transaction and room to accept it
         self._outfifo_push = self.var("outfifo_push", 1)
@@ -225,7 +230,7 @@ class OnyxPE(MemoryController):
                        data_in=self._outfifo_in_packed,
                        data_out=self._outfifo_out_packed)
 
-        self.wire(self._valid_out, kts.ternary(self._dense_mode, kts.const(1, 1), ~self._outfifo.ports.empty))
+        self.wire(self._valid_out, kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._outfifo.ports.empty))
 
         self.wire(self._outfifo_pop, self._ready_in)
         self.wire(self._outfifo_full, self._outfifo.ports.full)
@@ -250,17 +255,17 @@ class OnyxPE(MemoryController):
                        CLK=self._gclk,
                        clk_en=self._clk_en,
                        ASYNCRESET=self._active_high_reset,
-                       data0=kts.ternary(self._dense_mode,
+                       data0=kts.ternary(self._bypass_rv_mode,
                                          self._data_in[0][self.data_width - 1, 0],
                                          kts.ternary(self._infifo_out_maybe[0],
                                                      0,
                                                      self._infifo_out_data[0])),
-                       data1=kts.ternary(self._dense_mode,
+                       data1=kts.ternary(self._bypass_rv_mode,
                                          self._data_in[1][self.data_width - 1, 0],
                                          kts.ternary(self._infifo_out_maybe[1],
                                                      0,
                                                      self._infifo_out_data[1])),
-                       data2=kts.ternary(self._dense_mode,
+                       data2=kts.ternary(self._bypass_rv_mode,
                                          self._data_in[2][self.data_width - 1, 0],
                                          kts.ternary(self._infifo_out_maybe[2],
                                                      0,
@@ -279,24 +284,30 @@ class OnyxPE(MemoryController):
             self._infifo_pop[0] = 0
             self._infifo_pop[1] = 0
             self._infifo_pop[2] = 0
-            # TODO Fix comment If both inputs are valid, then we either can perform the op, otherwise we push through EOS
-            if ((self._infifo_out_valid & self._sparse_num_inputs) == self._sparse_num_inputs) & ~self._outfifo_full & ~self._dense_mode:
-                # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
-                if ~((self._infifo_out_eos & self._sparse_num_inputs) == self._sparse_num_inputs):
-                    self._outfifo_push = 1
-                    self._outfifo_in_eos = 0
-                    self._data_to_fifo = self._pe_output
-                    self._infifo_pop[0] = self._infifo_out_valid[0] & self._sparse_num_inputs[0]
-                    self._infifo_pop[1] = self._infifo_out_valid[1] & self._sparse_num_inputs[1]
-                    self._infifo_pop[2] = self._infifo_out_valid[2] & self._sparse_num_inputs[2]
-                else:
-                    self._outfifo_push = 1
-                    self._outfifo_in_eos = 1
-                    # TODO what if stream not on first input
-                    self._data_to_fifo = kts.ternary(self._sparse_num_inputs[0], self._infifo_out_data[0], kts.ternary(self._sparse_num_inputs[1], self._infifo_out_data[1], self._infifo_out_data[2]))
-                    self._infifo_pop[0] = self._infifo_out_valid[0] & self._sparse_num_inputs[0]
-                    self._infifo_pop[1] = self._infifo_out_valid[1] & self._sparse_num_inputs[1]
-                    self._infifo_pop[2] = self._infifo_out_valid[2] & self._sparse_num_inputs[2]
+         
+            # If this is a constant PE, push constant value to output FIFO indefinitely
+            if self._is_constant_pe & ~self._bypass_rv_mode:
+                self._outfifo_push = 1
+                self._data_to_fifo = self._pe_output
+            else:
+                # TODO Fix comment If both inputs are valid, then we either can perform the op, otherwise we push through EOS
+                if ((self._infifo_out_valid & self._active_inputs_encoding) == self._active_inputs_encoding) & ~self._outfifo_full & ~self._bypass_rv_mode:
+                    # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
+                    if ~((self._infifo_out_eos & self._active_inputs_encoding) == self._active_inputs_encoding):
+                        self._outfifo_push = 1
+                        self._outfifo_in_eos = 0
+                        self._data_to_fifo = self._pe_output
+                        self._infifo_pop[0] = self._infifo_out_valid[0] & self._active_inputs_encoding[0]
+                        self._infifo_pop[1] = self._infifo_out_valid[1] & self._active_inputs_encoding[1]
+                        self._infifo_pop[2] = self._infifo_out_valid[2] & self._active_inputs_encoding[2]
+                    else:
+                        self._outfifo_push = 1
+                        self._outfifo_in_eos = 1
+                        # TODO what if stream not on first input
+                        self._data_to_fifo = kts.ternary(self._active_inputs_encoding[0], self._infifo_out_data[0], kts.ternary(self._active_inputs_encoding[1], self._infifo_out_data[1], self._infifo_out_data[2]))
+                        self._infifo_pop[0] = self._infifo_out_valid[0] & self._active_inputs_encoding[0]
+                        self._infifo_pop[1] = self._infifo_out_valid[1] & self._active_inputs_encoding[1]
+                        self._infifo_pop[2] = self._infifo_out_valid[2] & self._active_inputs_encoding[2]
 
         self.add_code(fifo_push)
 
@@ -331,19 +342,29 @@ class OnyxPE(MemoryController):
         # Store all configurations here
         config = [("tile_en", 1)]
         op = config_kwargs['op']
-        sparse_num_inputs = 0b000
+        active_inputs_encoding = 0b000
+        is_constant_pe = 0
 
-        if 'num_sparse_inputs' in config_kwargs:
-            sparse_num_inputs = config_kwargs['num_sparse_inputs']
-        config += [('sparse_num_inputs', sparse_num_inputs)]
-        if 'use_dense' in config_kwargs and config_kwargs['use_dense'] is True:
-            config += [("dense_mode", 1)]
+        if 'active_inputs' in config_kwargs:
+            active_inputs_encoding = config_kwargs['active_inputs']
+        elif 'num_sparse_inputs' in config_kwargs:
+            active_inputs_encoding = config_kwargs['num_sparse_inputs']
+            
+        config += [('active_inputs_encoding', active_inputs_encoding)]
+
+        if 'is_constant_pe' in config_kwargs:
+            is_constant_pe = config_kwargs['is_constant_pe']
+        config += [('is_constant_pe', is_constant_pe)]
+
+
+        if 'bypass_rv' in config_kwargs and config_kwargs['bypass_rv'] is True:
+            config += [("bypass_rv_mode", 1)]
         elif 'pe_connected_to_reduce' in config_kwargs and config_kwargs['pe_connected_to_reduce'] is True:
             # If this flag is set, we want to connect the pe to reduce
             # We want to bypass the fifos
-            config += [("dense_mode", 1)]
+            config += [("bypass_rv_mode", 1)]
         else:
-            config += [("dense_mode", 0)]
+            config += [("bypass_rv_mode", 0)]
 
         sub_config = self.my_alu.get_bitstream(op=op)
         for config_tuple in sub_config:
