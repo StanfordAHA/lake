@@ -183,18 +183,18 @@ class IOCore_mu2f(Generator):
         # If dense bypass, send data straight through, bypassing FIFOs
         if self.allow_bypass:
             if self.use_almost_full:
-                self.wire(mu2io_r_0, kts.ternary(self._tile_en & self._clk_en, kts.ternary(self._dense_bypass, io2f_r_0, ~mu2io_2_io2f_fifo_0.ports.almost_full), kts.const(0, 1)))
-                self.wire(mu2io_r_1, kts.ternary(self._tile_en & self._clk_en, kts.ternary(self._dense_bypass, io2f_r_1, ~mu2io_2_io2f_fifo_1.ports.almost_full), kts.const(0, 1)))
+                self.wire(mu2io_r_0, kts.ternary(kts.ternary(self._dense_bypass, io2f_r_0, ~mu2io_2_io2f_fifo_0.ports.almost_full), kts.const(0, 1)))
+                self.wire(mu2io_r_1, kts.ternary(kts.ternary(self._dense_bypass, io2f_r_1, ~mu2io_2_io2f_fifo_1.ports.almost_full), kts.const(0, 1)))
             else:
-                self.wire(mu2io_r_0, kts.ternary(self._tile_en & self._clk_en, kts.ternary(self._dense_bypass, io2f_r_0, ~mu2io_2_io2f_fifo_0.ports.full), kts.const(0, 1)))
-                self.wire(mu2io_r_1, kts.ternary(self._tile_en & self._clk_en, kts.ternary(self._dense_bypass, io2f_r_1, ~mu2io_2_io2f_fifo_1.ports.full), kts.const(0, 1)))
+                self.wire(mu2io_r_0, kts.ternary(kts.ternary(self._dense_bypass, io2f_r_0, ~mu2io_2_io2f_fifo_0.ports.full), kts.const(0, 1)))
+                self.wire(mu2io_r_1, kts.ternary(kts.ternary(self._dense_bypass, io2f_r_1, ~mu2io_2_io2f_fifo_1.ports.full), kts.const(0, 1)))
         else:
             if self.use_almost_full:
-                self.wire(mu2io_r_0, kts.ternary(self._tile_en & self._clk_en, ~mu2io_2_io2f_fifo_0.ports.almost_full, kts.const(0, 1)))
-                self.wire(mu2io_r_1, kts.ternary(self._tile_en & self._clk_en, ~mu2io_2_io2f_fifo_1.ports.almost_full, kts.const(0, 1)))
+                self.wire(mu2io_r_0, ~mu2io_2_io2f_fifo_0.ports.almost_full)
+                self.wire(mu2io_r_1, ~mu2io_2_io2f_fifo_1.ports.almost_full)
             else:
-                self.wire(mu2io_r_0, kts.ternary(self._tile_en & self._clk_en, ~mu2io_2_io2f_fifo_0.ports.full, kts.const(0, 1)))
-                self.wire(mu2io_r_1, kts.ternary(self._tile_en & self._clk_en, ~mu2io_2_io2f_fifo_1.ports.full, kts.const(0, 1)))
+                self.wire(mu2io_r_0, ~mu2io_2_io2f_fifo_0.ports.full)
+                self.wire(mu2io_r_1, ~mu2io_2_io2f_fifo_1.ports.full)
 
 
         ########################################
