@@ -1,6 +1,7 @@
 from lake.attributes.hybrid_port_attr import HybridPortAddr
 from lake.modules.chain_accessor import ChainAccessor
 from lake.modules.reg_fifo import RegFIFO
+from lake.modules.reg_fifo_cfg import RegFIFO_cfg
 from lake.top.cgra_tile_builder import CGRATileBuilder
 from lake.modules.storage_config_seq import StorageConfigSeq
 from kratos.stmts import IfStmt
@@ -34,6 +35,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                  io_prefix=None):
 
         super().__init__(name, debug)
+
+        self.is_PE = 'PE' in name
+        self.is_MEM = 'MemCore' in name 
 
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
@@ -800,9 +804,17 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_input_ready.add_attribute(ControlSignalAttr(False))
 
                     # Add in the fifo if there are any fifos on this path
-                    new_reg_fifo = RegFIFO(data_width=input_width,
-                                           width_mult=1, depth=self.fifo_depth,
-                                           defer_hrdwr_gen=False)
+                    if self.is_PE:
+                        # Create config for bogus init 
+                        input_fifo_bogus_init_num = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}_fifo_bogus_init_num', width=2)
+                        input_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for input fifo"))
+                        new_reg_fifo = RegFIFO_cfg(data_width=input_width,
+                                            width_mult=1, depth=self.fifo_depth,
+                                            defer_hrdwr_gen=False)
+                    else:
+                        new_reg_fifo = RegFIFO(data_width=input_width,
+                                            width_mult=1, depth=self.fifo_depth,
+                                            defer_hrdwr_gen=False)
 
                     self.add_child(f"input_width_{input_width}_num_{i}_input_fifo",
                                    new_reg_fifo,
@@ -827,6 +839,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     self.wire(new_input_fifo, new_reg_fifo.ports.data_out)
                     self.wire(new_input_valid_fifo, ~new_reg_fifo.ports.empty)
                     self.wire(new_reg_fifo.ports.pop, new_input_ready_fifo)
+                    if self.is_PE:
+                        self.wire(input_fifo_bogus_init_num, new_reg_fifo.ports.bogus_init_num)
 
                     mux_size = len(rvs)
                     mux_comb = self.combinational()
@@ -967,9 +981,17 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_output_ready.add_attribute(ControlSignalAttr(True))
 
                     # Add in the fifo if there are any fifos on this path
-                    new_reg_fifo = RegFIFO(data_width=output_width,
-                                           width_mult=1, depth=self.fifo_depth,
-                                           defer_hrdwr_gen=False)
+                    if self.is_PE:
+                         # Create config for bogus init 
+                        output_fifo_bogus_init_num = self.input(f'{self.io_prefix}output_width_{output_width}_num_{i}_fifo_bogus_init_num', width=2)
+                        output_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for output fifo"))
+                        new_reg_fifo = RegFIFO_cfg(data_width=output_width,
+                                            width_mult=1, depth=self.fifo_depth,
+                                            defer_hrdwr_gen=False)
+                    else:  
+                        new_reg_fifo = RegFIFO(data_width=output_width,
+                                            width_mult=1, depth=self.fifo_depth,
+                                            defer_hrdwr_gen=False)
 
                     self.add_child(f"output_width_{output_width}_num_{i}_output_fifo",
                                    new_reg_fifo,
@@ -992,6 +1014,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     self.wire(new_output_fifo, new_reg_fifo.ports.data_in)
                     self.wire(new_output_ready_fifo, ~new_reg_fifo.ports.full)
                     self.wire(new_output_valid_fifo, new_reg_fifo.ports.push)
+                    if self.is_PE:
+                        self.wire(output_fifo_bogus_init_num, new_reg_fifo.ports.bogus_init_num)
 
                     # Mux all the inputs to the fifo, broadcast ready back
                     mux_size = len(rvs)
