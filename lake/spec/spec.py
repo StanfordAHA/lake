@@ -1369,9 +1369,10 @@ class Spec():
         application = self.convert_app_json_to_config(application)
         print("APPLICATION AFTER _config")
         print(application)
+
         # if override is True:
-        #     conv_2_1_app = self.get_conv_2_1_app()
-        #     application = conv_2_1_app
+        conv_2_1_app = self.get_conv_2_1_app()
+        application = conv_2_1_app
 
         # Need to integrate all the bitstream information
         # into one single integer/string for the verilog harness
