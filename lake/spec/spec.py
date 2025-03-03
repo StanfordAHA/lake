@@ -99,6 +99,12 @@ class Spec():
     def get_num_ports(self):
         return self.num_ports
 
+    def get_num_in_ports(self):
+        return self.num_in_ports
+
+    def get_num_out_ports(self):
+        return self.num_out_ports
+
     def get_node_from_idx(self, idx, verbose=False):
         if verbose:
             print(idx)
@@ -1004,6 +1010,30 @@ class Spec():
     def get_total_config_size(self):
         return self._final_gen.get_config_size()
 
+    def port_name_to_int(self, pname):
+        if 'port_w' in pname:
+            return int(pname.split('port_w')[1])
+        elif 'port_r' in pname:
+            return int(pname.split('port_r')[1]) + self.get_num_in_ports()
+        else:
+            raise ValueError
+
+    def get_base_port_config(self, port_name):
+        assert("port" in port_name)
+        base_port_config = {}
+        port_int = self.port_name_to_int(port_name)
+        base_port_config['name'] = port_name
+        if "port_w" in port_name:
+            base_port_config['type'] = Direction.IN
+        elif "port_r" in port_name:
+            base_port_config['type'] = Direction.OUT
+        else:
+            raise ValueError
+
+        base_port_config['config'] = {}
+
+        return base_port_config
+
     def get_conv_2_1_app(self):
 
         linear_test = {}
@@ -1156,16 +1186,192 @@ class Spec():
 
         return linear_test
 
+    def convert_app_json_to_config(self, app_json):
+        # Get each port...
+        ret_config = {}
+        app_port_mappings = app_json["port_mappings"]
+        all_used_ports = []
+        for orig_port, new_port in app_port_mappings.items():
+            all_used_ports.append(new_port)
+
+        print("ALL USED PORTS")
+        print(all_used_ports)
+
+        for used_port in all_used_ports:
+            port_config = self.get_base_port_config(used_port)
+
+            port_access_map = app_json["access_map"][used_port]
+            port_id = app_json["domain"][used_port]
+
+            port_config["config"]["dimensionality"] = port_access_map["dimensionality"][0]
+            port_config["config"]["extents"] = port_id["extents"]
+            port_config["config"]["address"] = {
+                'strides': port_access_map["address_stride"],
+                'offset': port_access_map["address_offset"][0]
+            }
+            port_config["config"]["schedule"] = {
+                # 'strides': port_access_map["address_stride"],
+                # 'offset': port_access_map["address_offset"][0]
+            }
+
+            port_config["vec_in_config"] = {}
+            port_config["vec_out_config"] = {}
+            port_config["vec_constraints"] = []
+
+                # 'dimensionality': 2,
+                # 'extents': [4, 16 * length_scale],
+                # 'address': {
+                #     'strides': [1, 4],
+                #     'offset': 0
+                # },
+
+            ret_config[self.port_name_to_int(used_port)] = port_config
+
+        # Process the dependencies...
+        ret_config["constraints"] = []
+        deps_map = app_json["dep_values"]
+        # (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
+        # LFComparisonOperator.LT.value
+        for dep_pair, indices in deps_map.items():
+            this_depends, on_this = dep_pair
+            this_depends_int = self.port_name_to_int(this_depends)
+            on_this_int = self.port_name_to_int(on_this)
+            # This is RAW
+            comparison = None
+            if "port_r" in this_depends:
+                comparison = LFComparisonOperator.LT.value
+            elif "port_w" in this_depends:
+                comparison = LFComparisonOperator.GT.value
+
+            this_depends_idx = None
+            on_this_idx = None
+            scalar = None
+
+            # This is WAR
+            if indices is None:
+                assert("port_w" in this_depends)
+                # Fake something for now...
+                this_depends_idx = 0
+                on_this_idx = 0
+                # TODO: This should be based on the size of the memory if there
+                # is no specific scalar set...
+                scalar = 128
+
+            else:
+                this_depends_idx = indices[0]
+                on_this_idx = indices[1]
+                # This should be computed based on the precursor deltas...
+                # It should be provided in a richer way, but start with 0, then
+                scalar = 0
+                # Check the precursor deltas and project them into the level of the dependency...
+                prec_delts = app_json["precursor_deltas"][this_depends]
+                print("Precursor deltas...")
+                for pd in prec_delts:
+                    pd_idx = pd[0]
+                    pd_val = pd[1]
+                    if(pd_val == 0):
+                        continue
+                    scalar_adjust = pd_val
+                    # If they are the same, just copy the value, otherwise multiple by all extents in the difference
+                    # down to the current level...
+                    if pd_idx > this_depends_idx:
+                        for i in range(pd_idx - this_depends_idx):
+                            scalar_adjust *= app_json["domain"][this_depends]["extents"][i]
+                    # Only allow one level to have precursor...
+                    break
+
+                scalar -= scalar_adjust
+
+            ret_config["constraints"].append((this_depends_int, this_depends_idx,
+                                              on_this_int, on_this_idx, comparison, scalar
+                                              ))
+
+        return ret_config
+
+
+    def rewrite_app_json(self, app_json):
+        app_json_copy = {}
+        ret_map = {}
+        # Copy the app_json
+        for key, val in app_json.items():
+            app_json_copy[key] = val
+
+        assert("port_mappings" in app_json_copy)
+        port_mappings = app_json_copy["port_mappings"]
+        port_mappings_keys = port_mappings.keys()
+
+        # Go through port mappings and replace data_in_X with write_X and data_out_X with read_X
+        for key, val in port_mappings.items():
+
+            if "data_in" in val:
+                # Find the integer value...
+                get_int = int(port_mappings[key].split("data_in_")[1])
+                final_name = f"port_w{get_int}"
+                port_mappings[key] = final_name
+            if "data_out" in val:
+                get_int = int(port_mappings[key].split("data_out_")[1])
+                final_name = f"port_r{get_int}"
+                port_mappings[key] = final_name
+
+        ret_map['port_mappings'] = port_mappings
+
+        # Now go through and remap all mentions of each port name
+        for key, val in app_json_copy.items():
+
+            # Handle the dep_values separately
+            if "dep_values" in key:
+                # Split on ___DEPTO___
+                copy_dict = {}
+                for k2, v2 in val.items():
+                    split_key = k2.split("___DEPTO___")
+                    this_depends = port_mappings[split_key[0]]
+                    on_this = port_mappings[split_key[1]]
+                    copy_dict[(this_depends, on_this)] = v2
+                ret_map[key] = copy_dict
+                continue
+
+            # Only one level deep...
+            # Check if val is a dict
+            key_use = key
+            if key in port_mappings_keys:
+                key_use = port_mappings[key]
+
+            val_use = val
+            if type(val) is dict:
+                val_copy_dict = {}
+                for k2, v2 in val.items():
+                    key2_use = k2
+                    if k2 in port_mappings_keys:
+                        key2_use = port_mappings[k2]
+                    val_copy_dict[key2_use] = v2
+                val_use = val_copy_dict
+            elif type(val) is str:
+                if val in port_mappings_keys:
+                    val_use = port_mappings[val]
+
+            ret_map[key_use] = val_use
+
+        return ret_map
+
+
     def gen_bitstream(self, application, override=False):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
            There may be other information that needs to go into the configuration, but that could be in the object hierarchy
         '''
         print("Producing SPEC BITSTREAM with Application:")
+        print("APPLICATION BEFORE")
         print(application)
 
-        if override is True:
-            conv_2_1_app = self.get_conv_2_1_app()
-            application = conv_2_1_app
+        application = self.rewrite_app_json(application)
+        print("APPLICATION AFTER")
+        print(application)
+
+        application = self.convert_app_json_to_config(application)
+        print("APPLICATION AFTER _config")
+        print(application)
+        # if override is True:
+        #     conv_2_1_app = self.get_conv_2_1_app()
+        #     application = conv_2_1_app
 
         # Need to integrate all the bitstream information
         # into one single integer/string for the verilog harness
