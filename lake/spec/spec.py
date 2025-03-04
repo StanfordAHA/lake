@@ -1278,7 +1278,10 @@ class Spec():
                         for i in range(pd_idx - this_depends_idx):
                             scalar_adjust *= app_json["domain"][this_depends]["extents"][i]
                     # Only allow one level to have precursor...
+                    # Also offset the starting address by the scalar_adjust...
+                    ret_config[self.port_name_to_int(this_depends)]["config"]["address"]["offset"] -= scalar_adjust
                     break
+
 
                 scalar -= scalar_adjust
 
@@ -1371,8 +1374,8 @@ class Spec():
         print(application)
 
         # if override is True:
-        conv_2_1_app = self.get_conv_2_1_app()
-        application = conv_2_1_app
+        # conv_2_1_app = self.get_conv_2_1_app()
+        # application = conv_2_1_app
 
         # Need to integrate all the bitstream information
         # into one single integer/string for the verilog harness

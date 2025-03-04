@@ -196,20 +196,20 @@ class Port(Component):
 
                     # Need a signal to write to the wcb
                     self._write_wcb = self.var("write_wcb", 1)
-                    self._already_written = sticky_flag(self, self._write_wcb, name="already_written", seq_only=True)
+                    self._already_written = sticky_flag(self, self._write_wcb, name="already_written", seq_only=True, clear=self._flush)
                     # The ready out is if we are writing the wcb which means we are accepting the current data
                     self.wire(self._ready_out_lcl, self._write_wcb)
                     self.wire(self._sg_step_out, self._write_wcb)
 
                     # Indicates if the current address is a new address or not
-                    self._last_write_addr = register(self, self._full_addr_in, enable=self._new_address, name="last_write_addr")
+                    self._last_write_addr = register(self, self._full_addr_in, enable=self._new_address, name="last_write_addr", clear=self._flush)
 
                     # Linear write address to the WCB
                     # Need push and pop addresses to manage the WCB
-                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._new_address)
+                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._new_address, clear=self._flush)
                     self._linear_wcb_write_p1 = self.var("linear_wcb_write_p1", self._linear_wcb_write.width)
                     self.wire(self._linear_wcb_write_p1, self._linear_wcb_write + 1)
-                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._write_memory_out_lcl)
+                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._write_memory_out_lcl, clear=self._flush)
                     # Need an address into the wcb (should be the linear_wcb_write concatenated with the sub_addr)
                     self._addr_into_wcb = self.var("addr_into_wcb", self._linear_wcb_write.width + sub_addr_bits)
                     # self.wire(self._addr_into_wcb, kts.concat(kts.ternary(self._new_address,
@@ -279,7 +279,7 @@ class Port(Component):
                     self._write_can_commit_set = self.var("write_can_commit_set", max_num_items_wcb)
 
                     write_can_commit_sticky_pre = [sticky_flag(self, self._write_can_commit_set[i], name=f"write_can_commit_sticky_{i}", seq_only=True,
-                                                           clear=self._write_can_commit_clr[i]) for i in range(max_num_items_wcb)]
+                                                           clear=self._write_can_commit_clr[i] | self._flush) for i in range(max_num_items_wcb)]
 
                     self._write_can_commit_sticky = self.var("write_can_commit_sticky", max_num_items_wcb)
                     [self.wire(self._write_can_commit_sticky[i], write_can_commit_sticky_pre[i]) for i in range(max_num_items_wcb)]
@@ -650,9 +650,9 @@ class Port(Component):
                     # self._already_read = self.var("already_read", 1)
                     addr_bits_range = [self._full_addr_in.width - 1, kts.clog2(self._fw)]
 
-                    self._already_read = sticky_flag(self, self._read_memory_out & self._grant, name="already_read", seq_only=True)
-                    self._read_last_cycle = register(self, self._read_memory_out & self._grant, enable=kts.const(1, 1), name="read_last_cycle")
-                    self._last_read_addr = register(self, self._full_addr_in, enable=self._read_memory_out & self._grant, name="last_read_addr")
+                    self._already_read = sticky_flag(self, self._read_memory_out & self._grant, name="already_read", seq_only=True, clear=self._flush)
+                    self._read_last_cycle = register(self, self._read_memory_out & self._grant, enable=kts.const(1, 1), name="read_last_cycle", clear=self._flush)
+                    self._last_read_addr = register(self, self._full_addr_in, enable=self._read_memory_out & self._grant, name="last_read_addr", clear=self._flush)
 
                     # Define all the relevant signals/vars
                     addr_q_width = kts.clog2(self.get_fw())
@@ -731,9 +731,12 @@ class Port(Component):
                     self.wire(mp_intf['ready'], kts.const(1, 1))
 
                     # Register the data from the MP
-                    self._data_from_mp_reg = register(self, mp_intf['data'], enable=self._register_data_from_mp, name="data_from_mp_reg")
+                    self._data_from_mp_reg = register(self, mp_intf['data'], enable=self._register_data_from_mp, name="data_from_mp_reg", clear=self._flush)
                     # If we read from SRAM last cycle, can use the data from the SRAM, otherwise we need to grab it from the local register
                     self._pick_input_data = kts.ternary(self._read_last_cycle, mp_intf['data'], self._data_from_mp_reg)
+
+                    # We should register the data if we have incoming valid data but not writing it to the WCB
+                    self.wire(self._register_data_from_mp, mp_intf['valid'] & ~self._data_being_written)
 
                     # Port interface's valid is the local valid
                     # The data is from the WCB
@@ -743,8 +746,8 @@ class Port(Component):
 
                     # Linear write address to the WCB
                     # self._linear_wcb_write = self.var("linear_wcb_write", kts.clog2(self._vec_capacity))
-                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._data_being_written)
-                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._pop_wcb)
+                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._data_being_written, clear=self._flush)
+                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._pop_wcb, clear=self._flush)
 
                     ###############################################################
                     ###############################################################

@@ -37,7 +37,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         super().__init__(name, debug)
 
         self.is_PE = 'PE' in name
-        self.is_MEM = 'MemCore' in name 
+        self.is_MEM = 'MemCore' in name
 
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
@@ -804,7 +804,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     if self.is_PE:
-                        # Create config for bogus init 
+                        # Create config for bogus init
                         input_fifo_bogus_init_num = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}_fifo_bogus_init_num', width=2)
                         input_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for input fifo"))
                         new_reg_fifo = RegFIFO_cfg(data_width=input_width,
@@ -981,13 +981,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     if self.is_PE:
-                         # Create config for bogus init 
+                         # Create config for bogus init
                         output_fifo_bogus_init_num = self.input(f'{self.io_prefix}output_width_{output_width}_num_{i}_fifo_bogus_init_num', width=2)
                         output_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for output fifo"))
                         new_reg_fifo = RegFIFO_cfg(data_width=output_width,
                                             width_mult=1, depth=self.fifo_depth,
                                             defer_hrdwr_gen=False)
-                    else:  
+                    else:
                         new_reg_fifo = RegFIFO(data_width=output_width,
                                             width_mult=1, depth=self.fifo_depth,
                                             defer_hrdwr_gen=False)
@@ -1260,6 +1260,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Create blank config - turn the tile on
         config = []
         config.append(("tile_en", 1))
+
+        print("MEMTILE BUILDER CONFIG JSON")
+        print(config_json)
         # Extract the mode to set the mode config reg (if there is more than one mode)
         mode_map = self.get_mode_map()
         if 'init' in config_json:
