@@ -429,7 +429,8 @@ class MemoryInterface(kts.Generator):
     mem_width_dflt = 32
     mem_depth_dflt = 256
 
-    def __init__(self, name: str, mem_params: dict, ports: list = None, sim_macro_n: bool = True, tech_map=None, reset_in_sim=False):
+    def __init__(self, name: str, mem_params: dict, ports: list = None,
+                 sim_macro_n: bool = True, tech_map=None, reset_in_sim=False, allow_flush=False):
         super().__init__(name, debug=True)
 
         if ports is None:
@@ -443,6 +444,8 @@ class MemoryInterface(kts.Generator):
         self.mem_params = mem_params
         # self.mem_ports = ports
         self.reset_in_sim = reset_in_sim
+
+        self.allow_flush = allow_flush
 
         self._clk = None
         self._rst_n = None
@@ -534,7 +537,14 @@ class MemoryInterface(kts.Generator):
         self._clk = self.clock("clk")
         if self.reset_in_sim:
             self._rst_n = self.reset("rst_n")
-        self._data_array = self.var("data_array", width=self.mem_width, size=self.mem_depth)
+        if self.allow_flush:
+            self._flush = self.input("flush", 1)
+            self._clk_en = self.input("clk_en", 1)
+            #  We want to handle flush and clk_en ourselves
+            self.sync_reset_no_touch = True
+            self.clk_en_no_touch = True
+
+        self._data_array = self.var("data_array", width=self.mem_width, size=self.mem_depth, packed=True)
         # Now add in the logic for the ports.
         for port in self.get_ports():
             port_type = port.get_port_type()
@@ -556,7 +566,11 @@ class MemoryInterface(kts.Generator):
             # Gen sequential read...
             sens_lst = [(kts.posedge, self._clk)]
             new_read = self.sequential(*sens_lst)
-            new_rd_if = new_read.if_(pintf['read_enable'] == 1)
+            if self.allow_flush:
+                new_rd_if = new_read.if_((pintf['read_enable'] == 1) & self._clk_en)
+            else:
+                new_rd_if = new_read.if_(pintf['read_enable'] == 1)
+            # new_rd_if = new_read.if_(pintf['read_enable'] == 1)
             new_rd_if.then_(pintf['data_out'].assign(self._data_array[pintf['read_addr']]))
         else:
             # Gen combinational read...
@@ -569,12 +583,24 @@ class MemoryInterface(kts.Generator):
         pintf = port.get_port_interface()
         sens_lst = [(kts.posedge, self._clk)]
         new_write = self.sequential(*sens_lst)
-        new_wr_if = new_write.if_(pintf['write_enable'] == 1)
-        new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
+        if self.allow_flush:
+            new_wr_if_flush = new_write.if_(self._flush)
+            new_wr_if_flush.then_(self._data_array.assign(0))
+            # new_wr_if = IfStmt(pintf['write_enable'] == 1)
+            new_wr_if = IfStmt((pintf['write_enable'] == 1) & self._clk_en)
+            new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
+            new_wr_if_flush.else_(new_wr_if)
+        else:
+            new_wr_if = new_write.if_(pintf['write_enable'] == 1)
+            new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
+
         # If delay is 1 or more, do active read
         if port.get_port_delay() > 0:
             assert port.get_active_read() is True
-            read_if = IfStmt(pintf['read_enable'])
+            if self.allow_flush:
+                read_if = IfStmt(pintf['read_enable'] & self._clk_en)
+            else:
+                read_if = IfStmt(pintf['read_enable'])
             read_if.then_(pintf['data_out'].assign(self._data_array[pintf['read_addr']]))
             new_wr_if.else_(read_if)
         else:
@@ -584,8 +610,19 @@ class MemoryInterface(kts.Generator):
         pintf = port.get_port_interface()
         sens_lst = [(kts.posedge, self._clk)]
         new_write = self.sequential(*sens_lst)
-        new_wr_if = new_write.if_(pintf['write_enable'] == 1)
-        new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
+
+        if self.allow_flush:
+            new_wr_if_flush = new_write.if_(self._flush)
+            new_wr_if_flush.then_(self._data_array.assign(0))
+            new_wr_if = IfStmt((pintf['write_enable'] == 1) & self._clk_en)
+            new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
+            new_wr_if_flush.else_(new_wr_if)
+        else:
+            new_wr_if = new_write.if_(pintf['write_enable'] == 1)
+            new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
+
+        # new_wr_if = new_write.if_(pintf['write_enable'] == 1)
+        # new_wr_if.then_(self._data_array[pintf['write_addr']].assign(pintf['data_in']))
 
     def realize_read_port_phys(self, logical: MemoryPort, physical: PhysicalMemoryPort):
         l_pint = logical.get_port_interface()

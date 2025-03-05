@@ -130,7 +130,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     def set_banks(self, banks):
         self.memory_banks = banks
 
-    def set_memory_interface(self, name_prefix, mem_params, ports, sim_macro_n, tech_map):
+    def set_memory_interface(self, name_prefix, mem_params, ports, sim_macro_n, tech_map, allow_flush=False):
 
         if not sim_macro_n:
             self.tech_map = tech_map
@@ -139,12 +139,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                                 mem_params=mem_params,
                                                 ports=ports,
                                                 sim_macro_n=sim_macro_n,
-                                                tech_map=tech_map)
+                                                tech_map=tech_map,
+                                                allow_flush=allow_flush)
         self.memories = [MemoryInterface(name=f"{name_prefix}_{i}",
                                          mem_params=mem_params,
                                          ports=ports,
                                          sim_macro_n=sim_macro_n,
-                                         tech_map=tech_map) for i in range(self.memory_banks)]
+                                         tech_map=tech_map,
+                                         allow_flush=allow_flush) for i in range(self.memory_banks)]
         # Clear and reallocate the new memory port mappings
         self.allocate_mem_conn()
 
