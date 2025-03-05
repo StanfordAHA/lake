@@ -54,7 +54,8 @@ class LakeTop(Generator):
                  iterator_support2=2,
                  reduced_id_config_width=11,
                  enable_ram_mode=True,
-                 tech_map=TSMC_Tech_Map(depth=512, width=32)):
+                 tech_map=TSMC_Tech_Map(depth=512, width=32),
+                 allow_flush_memory=False):
         super().__init__(name, debug=True)
 
         self.data_width = data_width
@@ -91,6 +92,7 @@ class LakeTop(Generator):
         self.reduced_id_config_width = reduced_id_config_width
         self.enable_ram_mode = enable_ram_mode
         self.tech_map = tech_map
+        self.allow_flush_memory = allow_flush_memory
 
         if self.area_opt:
             self.agg_height = 2
@@ -127,7 +129,8 @@ class LakeTop(Generator):
                                  mem_params=memory_params,
                                  ports=tsmc_mem,
                                  sim_macro_n=self.use_sim_sram,
-                                 tech_map=self.tech_map)
+                                 tech_map=self.tech_map,
+                                 allow_flush=self.allow_flush_memory)
 
         # Now add the controllers in...
         controllers = []
@@ -454,9 +457,9 @@ if __name__ == "__main__":
                        add_flush=True,
                        rw_same_cycle=False,
                        read_delay=1,
-                       use_sim_sram=False,
+                       use_sim_sram=True,
                        name=f"LakeTop_width_{args.fetch_width}_{mem_name}",
-                       tech_map=Intel_Tech_Map(depth=512, width=64))
+                       tech_map=None)
 
     print(lake_top)
 
