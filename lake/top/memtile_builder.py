@@ -134,7 +134,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     def set_banks(self, banks):
         self.memory_banks = banks
 
-    def set_memory_interface(self, name_prefix, mem_params, ports, sim_macro_n, tech_map):
+    def set_memory_interface(self, name_prefix, mem_params, ports, sim_macro_n, tech_map, allow_flush=False):
 
         if not sim_macro_n:
             self.tech_map = tech_map
@@ -143,12 +143,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                                 mem_params=mem_params,
                                                 ports=ports,
                                                 sim_macro_n=sim_macro_n,
-                                                tech_map=tech_map)
+                                                tech_map=tech_map,
+                                                allow_flush=allow_flush)
         self.memories = [MemoryInterface(name=f"{name_prefix}_{i}",
                                          mem_params=mem_params,
                                          ports=ports,
                                          sim_macro_n=sim_macro_n,
-                                         tech_map=tech_map) for i in range(self.memory_banks)]
+                                         tech_map=tech_map,
+                                         allow_flush=allow_flush) for i in range(self.memory_banks)]
         # Clear and reallocate the new memory port mappings
         self.allocate_mem_conn()
 
@@ -854,25 +856,26 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                         if hybrid is True and hybrid_bypass is None:
                             hybrid_bypass = self.input(f"{self.io_prefix}input_width_{input_width}_num_{i}_bypass_rv", 1)
-                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}input_width_{input_width}_num_{i}_bypass_rv to bypass input fifo"))
+                            hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}input_width_{input_width}_num_{i}_bypass_rv to bypass input fifo and operate in static mode"))
+
+                            fine_grain_fifo_bypass = self.input(f"{self.io_prefix}input_width_{input_width}_num_{i}_fine_grain_fifo_bypass", 1)
+                            fine_grain_fifo_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}input_width_{input_width}_num_{i}_fine_grain_fifo_bypass to bypass PE input fifo. Still operating in RV mode. Data still goes through primitive FIFO."))
 
                         port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
                         port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
 
                         if hybrid:
                             # In the hybrid case, we need to mux between the original input data/valid and the fifo's offering
-                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port], kts.ternary(hybrid_bypass,
+                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port], kts.ternary(hybrid_bypass | fine_grain_fifo_bypass,
                                                                                                      new_input,
                                                                                                      new_input_fifo))
-                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port_valid_name], kts.ternary(hybrid_bypass,
-                                                                                                                # new_input_valid,
-                                                                                                                kts.const(1, 1),
-                                                                                                                new_input_valid_fifo))
+                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port_valid_name], kts.ternary(hybrid_bypass, kts.const(1, 1),
+                                                                                                                kts.ternary(fine_grain_fifo_bypass, new_input_valid, new_input_valid_fifo)))
+
                             # The ready out for this selection should also be ternary
-                            tmp_ready_choose = (kts.ternary(hybrid_bypass,
-                                                            #  self.controllers_flat_dict[ctrl_name].ports[port_ready_name],
-                                                            kts.const(1, 1),
-                                                            ~new_reg_fifo.ports.full), mode_num)
+                            tmp_ready_choose = (kts.ternary(hybrid_bypass, kts.const(1, 1),
+                                                          kts.ternary(fine_grain_fifo_bypass, self.controllers_flat_dict[ctrl_name].ports[port_ready_name], ~new_reg_fifo.ports.full)), mode_num)
+
                         else:
                             # Otherwise, we can simply directly wire them
                             self.wire(new_input_fifo, self.controllers_flat_dict[ctrl_name].ports[port])
@@ -1032,22 +1035,22 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                             hybrid_bypass = self.input(f"{self.io_prefix}output_width_{output_width}_num_{i}_bypass_rv", 1)
                             hybrid_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}output_width_{output_width}_num_{i}_bypass_rv to bypass output fifo"))
 
+                            fine_grain_fifo_bypass = self.input(f"{self.io_prefix}output_width_{output_width}_num_{i}_fine_grain_fifo_bypass", 1)
+                            fine_grain_fifo_bypass.add_attribute(ConfigRegAttr(f"Choose for {self.io_prefix}output_width_{output_width}_num_{i}_fine_grain_fifo_bypass to bypass PE output fifo. Still operating in RV mode. Data still goes through primitive FIFO."))
+
                         port_valid_name = f"{port.rstrip('_f_')}_valid_f_"
                         port_ready_name = f"{port.rstrip('_f_')}_ready_f_"
                         # Wire ready_in if this is a ready/valid port
                         if hybrid:
-                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port_ready_name], kts.ternary(hybrid_bypass,
-                                                                                                                # new_output_ready,
-                                                                                                                kts.const(1, 1),
-                                                                                                                new_output_ready_fifo))
+                            self.wire(self.controllers_flat_dict[ctrl_name].ports[port_ready_name], kts.ternary(hybrid_bypass, kts.const(1, 1),
+                                                                                                    kts.ternary(fine_grain_fifo_bypass, new_output_ready, new_output_ready_fifo)))
                             # Choose between the controller's valid or the fifo valid
-                            tmp_valid_choose = (kts.ternary(hybrid_bypass,
-                                                            # self.controllers_flat_dict[ctrl_name].ports[port_valid_name],
-                                                            kts.const(1, 1),
-                                                            ~new_reg_fifo.ports.empty), mode_num)
-                            tmp_data_choose = (kts.ternary(hybrid_bypass,
-                                                           self.controllers_flat_dict[ctrl_name].ports[port],
-                                                           new_reg_fifo.ports.data_out), mode_num)
+                            tmp_valid_choose = (kts.ternary(hybrid_bypass, kts.const(1, 1),
+                                                kts.ternary(fine_grain_fifo_bypass, self.controllers_flat_dict[ctrl_name].ports[port_valid_name], ~new_reg_fifo.ports.empty)), mode_num)
+
+                            tmp_data_choose = (kts.ternary(hybrid_bypass | fine_grain_fifo_bypass,
+                                                            self.controllers_flat_dict[ctrl_name].ports[port],
+                                                            new_reg_fifo.ports.data_out), mode_num)
 
                         else:
                             self.wire(new_output_ready_fifo, self.controllers_flat_dict[ctrl_name].ports[port_ready_name])
