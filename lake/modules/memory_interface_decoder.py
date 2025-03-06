@@ -31,6 +31,9 @@ class MemoryInterfaceDecoder(Component):
             if new_delay > self.delay:
                 self.delay = new_delay
         # print(f"Final delay is {self.delay}")
+        #  We want to handle flush and clk_en ourselves
+        self.sync_reset_no_touch = True
+        self.clk_en_no_touch = True
 
     def get_delay(self):
         return self.delay
@@ -70,7 +73,7 @@ class MemoryInterfaceDecoder(Component):
             # all_data_in = self.var("all_memports_in", self.port_intf['data'].width, size=len(self.memports))
             all_data_in = [self.var(f"all_data_in_{j}", self.port_intf['data'].width) for j in range(len(self.memports))]
             shift_reg_dec_en_in = self.var("shift_reg_dec_en_in", len(self.memports))
-            shift_reg_dec_en_out = shift_reg(self, shift_reg_dec_en_in, chain_depth=self.delay)
+            shift_reg_dec_en_out = shift_reg(self, shift_reg_dec_en_in, chain_depth=self.delay, clk_en=self._clk_en)
             # shift_reg_dec_en_out = None
 
             # Mux the data based on the decoded enable signal shifted
@@ -84,7 +87,7 @@ class MemoryInterfaceDecoder(Component):
                 if self.opt_rv:
                     # In the optimized case, just send everything through...
                     shift_reg_en_in = self.var("shift_reg_en_in", 1)
-                    shift_reg_en_out = shift_reg(self, shift_reg_en_in & self._grant_lcl, chain_depth=self.delay)
+                    shift_reg_en_out = shift_reg(self, shift_reg_en_in & self._grant_lcl, chain_depth=self.delay, clk_en=self._clk_en)
 
                     self.wire(data_to_port_rv.get_valid(), shift_reg_en_out)
                     # Wire the port's output data to the muxed data
@@ -102,7 +105,7 @@ class MemoryInterfaceDecoder(Component):
                     # shift_register_chain = None
                     # Shift register on the actual transaction
                     shift_reg_en_in = self.var("shift_reg_en_in", 1)
-                    shift_reg_en_out = shift_reg(self, shift_reg_en_in & self._grant_lcl, chain_depth=self.delay)
+                    shift_reg_en_out = shift_reg(self, shift_reg_en_in & self._grant_lcl, chain_depth=self.delay, clk_en=self._clk_en)
                     # Shift register on the decoded enable so we know which to use (one-hot mux sel)
 
                     self.add_child(f"reg_fifo",
@@ -131,7 +134,7 @@ class MemoryInterfaceDecoder(Component):
 
                 shift_reg_en_in = self.var("shift_reg_en_in", 1)
                 self.wire(shift_reg_en_in, self.p_intf['en'])
-                shift_reg_en_out = shift_reg(self, shift_reg_en_in, chain_depth=self.delay)
+                shift_reg_en_out = shift_reg(self, shift_reg_en_in, chain_depth=self.delay, clk_en=self._clk_en)
 
                 self.wire(data_to_port_rv.get_valid(), shift_reg_en_out)
                 self.wire(self._resource_ready_lcl, kts.const(1, 1))

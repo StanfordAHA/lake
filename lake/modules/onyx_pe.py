@@ -355,7 +355,6 @@ class OnyxPE(MemoryController):
             is_constant_pe = config_kwargs['is_constant_pe']
         config += [('is_constant_pe', is_constant_pe)]
 
-
         if 'bypass_rv' in config_kwargs and config_kwargs['bypass_rv'] is True:
             config += [("bypass_rv_mode", 1)]
         elif 'pe_connected_to_reduce' in config_kwargs and config_kwargs['pe_connected_to_reduce'] is True:

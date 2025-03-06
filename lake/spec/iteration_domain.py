@@ -13,6 +13,9 @@ class IterationDomain(Component):
         self.dimensionality_support = dimensionality
         self.extent_width = extent_width
         self._interfaces = {}
+        #  We want to handle flush and clk_en ourselves
+        self.sync_reset_no_touch = True
+        self.clk_en_no_touch = True
 
     def get_dimensionality(self):
         return self.dimensionality_support
@@ -165,7 +168,7 @@ class IterationDomain(Component):
             self._dim_counter[idx] = 0
         elif self._flush:
             self._dim_counter[idx] = 0
-        else:
+        elif self._clk_en:
             if self._clear[idx]:
                 self._dim_counter[idx] = 0
             elif self._inc[idx]:
@@ -177,7 +180,7 @@ class IterationDomain(Component):
             self._max_value[idx] = 0
         elif self._flush:
             self._max_value[idx] = 0
-        else:
+        elif self._clk_en:
             if self._clear[idx]:
                 self._max_value[idx] = 0
             elif self._inc[idx]:
@@ -189,8 +192,9 @@ class IterationDomain(Component):
             self._mux_sel_msb_r = 0
         elif self._flush:
             self._mux_sel_msb_r = self._mux_sel_msb_init
-        elif self._restart:
-            self._mux_sel_msb_r = ~self._mux_sel_msb_r
+        elif self._clk_en:
+            if self._restart:
+                self._mux_sel_msb_r = ~self._mux_sel_msb_r
 
 
 class DefaultIterationDomain(IterationDomain):

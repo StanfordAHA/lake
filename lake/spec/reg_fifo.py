@@ -26,6 +26,9 @@ class RegFIFO(Component):
         super().__init__(name=f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}")
 
         self.update_name()
+        #  We want to handle flush and clk_en ourselves
+        self.sync_reset_no_touch = True
+        self.clk_en_no_touch = True
 
         # self.data_width = self.parameter("data_width", 16)
         # self.data_width.value = data_width
@@ -98,8 +101,9 @@ class RegFIFO(Component):
             self._rd_ptr = 0
         elif self._flush:
             self._rd_ptr = 0
-        elif self._read:
-            self._rd_ptr = self._rd_ptr + 1
+        elif self._clk_en:
+            if self._read:
+                self._rd_ptr = self._rd_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def rd_ptr_ff_parallel(self):
@@ -107,10 +111,11 @@ class RegFIFO(Component):
             self._rd_ptr = 0
         elif self._flush:
             self._rd_ptr = 0
-        elif self._parallel_load | self._parallel_read:
-            self._rd_ptr = 0
-        elif self._read:
-            self._rd_ptr = self._rd_ptr + 1
+        elif self._clk_en:
+            if self._parallel_load | self._parallel_read:
+                self._rd_ptr = 0
+            elif self._read:
+                self._rd_ptr = self._rd_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def wr_ptr_ff(self):
@@ -118,11 +123,12 @@ class RegFIFO(Component):
             self._wr_ptr = 0
         elif self._flush:
             self._wr_ptr = 0
-        elif self._write:
-            if self._wr_ptr == (self.depth - 1):
-                self._wr_ptr = 0
-            else:
-                self._wr_ptr = self._wr_ptr + 1
+        elif self._clk_en:
+            if self._write:
+                if self._wr_ptr == (self.depth - 1):
+                    self._wr_ptr = 0
+                else:
+                    self._wr_ptr = self._wr_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def wr_ptr_ff_parallel(self):
@@ -130,19 +136,16 @@ class RegFIFO(Component):
             self._wr_ptr = 0
         elif self._flush:
             self._wr_ptr = 0
-        elif self._parallel_load:
-            self._wr_ptr = self._num_load[max(1, clog2(self.depth)) - 1, 0]
-        elif self._parallel_read:
-            if self._push:
-                self._wr_ptr = 1
-            else:
-                self._wr_ptr = 0
-        elif self._write:
-            self._wr_ptr = self._wr_ptr + 1
-            # if self._wr_ptr == (self.depth - 1):
-            #     self._wr_ptr = 0
-            # else:
-            #     self._wr_ptr = self._wr_ptr + 1
+        elif self._clk_en:
+            if self._parallel_load:
+                self._wr_ptr = self._num_load[max(1, clog2(self.depth)) - 1, 0]
+            elif self._parallel_read:
+                if self._push:
+                    self._wr_ptr = 1
+                else:
+                    self._wr_ptr = 0
+            elif self._write:
+                self._wr_ptr = self._wr_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_array_ff(self):
@@ -150,8 +153,9 @@ class RegFIFO(Component):
             self._reg_array = 0
         elif self._flush:
             self._reg_array = 0
-        elif self._write:
-            self._reg_array[self._wr_ptr] = self._data_in
+        elif self._clk_en:
+            if self._write:
+                self._reg_array[self._wr_ptr] = self._data_in
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_array_ff_parallel(self):
@@ -159,13 +163,14 @@ class RegFIFO(Component):
             self._reg_array = 0
         elif self._flush:
             self._reg_array = 0
-        elif self._parallel_load:
-            self._reg_array = self._parallel_in
-        elif self._write:
-            if self._parallel_read:
-                self._reg_array[0] = self._data_in
-            else:
-                self._reg_array[self._wr_ptr] = self._data_in
+        elif self._clk_en:
+            if self._parallel_load:
+                self._reg_array = self._parallel_in
+            elif self._write:
+                if self._parallel_read:
+                    self._reg_array[0] = self._data_in
+                else:
+                    self._reg_array[self._wr_ptr] = self._data_in
 
     @always_comb
     def data_out_comb(self):
@@ -185,10 +190,11 @@ class RegFIFO(Component):
             self._num_items = 0
         elif self._flush:
             self._num_items = 0
-        elif self._write & ~self._read:
-            self._num_items = self._num_items + 1
-        elif ~self._write & self._read:
-            self._num_items = self._num_items - 1
+        elif self._clk_en:
+            if self._write & ~self._read:
+                self._num_items = self._num_items + 1
+            elif ~self._write & self._read:
+                self._num_items = self._num_items - 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def set_num_items_parallel(self):
@@ -196,25 +202,26 @@ class RegFIFO(Component):
             self._num_items = 0
         elif self._flush:
             self._num_items = 0
-        elif self._parallel_load:
-            # When fetch width > 1, by definition we cannot load
-            # 0 (only fw or fw - 1), but we need to handle this immediate
-            # pass through in these cases
-            if self._num_load == 0:
-                self._num_items = self._push.extend(self._num_items.width)
-            else:
-                self._num_items = self._num_load
-        # One can technically push while a parallel
-        # read is happening...
-        elif self._parallel_read:
-            if self._push:
-                self._num_items = 1
-            else:
-                self._num_items = 0
-        elif self._write & ~self._read:
-            self._num_items = self._num_items + 1
-        elif ~self._write & self._read:
-            self._num_items = self._num_items - 1
+        elif self._clk_en:
+            if self._parallel_load:
+                # When fetch width > 1, by definition we cannot load
+                # 0 (only fw or fw - 1), but we need to handle this immediate
+                # pass through in these cases
+                if self._num_load == 0:
+                    self._num_items = self._push.extend(self._num_items.width)
+                else:
+                    self._num_items = self._num_load
+            # One can technically push while a parallel
+            # read is happening...
+            elif self._parallel_read:
+                if self._push:
+                    self._num_items = 1
+                else:
+                    self._num_items = 0
+            elif self._write & ~self._read:
+                self._num_items = self._num_items + 1
+            elif ~self._write & self._read:
+                self._num_items = self._num_items - 1
 
     def set_min_depth(self):
         self.set_depth(self.min_depth)

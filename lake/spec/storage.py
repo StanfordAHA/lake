@@ -285,8 +285,9 @@ class SingleBankStorage(Storage):
 
                     @always_ff((posedge, "clk"))
                     def materialize_r(self):
-                        if en:
-                            data = tmp_intf[addr]
+                        if self._clk_en:
+                            if en:
+                                data = tmp_intf[addr]
                     self.add_code(materialize_r)
 
             elif mp_type == MemoryPortType.W:
@@ -301,9 +302,9 @@ class SingleBankStorage(Storage):
 
                 @always_ff((posedge, "clk"))
                 def materialize_w():
-                    if en:
-                        # self._hw_array[0, 0] = data[0, 0]
-                        tmp_intf[addr] = data
+                    if self._clk_en:
+                        if en:
+                            tmp_intf[addr] = data
 
                 self.add_code(materialize_w)
             elif mp_type == MemoryPortType.RW:
@@ -323,10 +324,11 @@ class SingleBankStorage(Storage):
 
                 @always_ff((posedge, "clk"))
                 def materialize_rw():
-                    if wen:
-                        tmp_intf_w[addr] = wdata
-                    elif ren:
-                        rdata = tmp_intf_r[addr]
+                    if self._clk_en:
+                        if wen:
+                            tmp_intf_w[addr] = wdata
+                        elif ren:
+                            rdata = tmp_intf_r[addr]
                 self.add_code(materialize_rw)
             # For read/write, we just need addr, wen, ren, write data, read data
                 pass

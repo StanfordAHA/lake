@@ -984,7 +984,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     if self.is_PE:
-                         # Create config for bogus init
+                        # Create config for bogus init
                         output_fifo_bogus_init_num = self.input(f'{self.io_prefix}output_width_{output_width}_num_{i}_fifo_bogus_init_num', width=2)
                         output_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for output fifo"))
                         new_reg_fifo = RegFIFO_cfg(data_width=output_width,

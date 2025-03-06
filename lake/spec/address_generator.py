@@ -15,6 +15,9 @@ class AddressGenerator(Component):
         self.addr_width = None
         self.exploit_recurrence = recurrence
         self.width_mult = 1
+        #  We want to handle flush and clk_en ourselves
+        self.sync_reset_no_touch = True
+        self.clk_en_no_touch = True
 
     def set_width_mult(self, width_mult):
         self.width_mult = width_mult
@@ -94,11 +97,12 @@ class AddressGenerator(Component):
             self._current_addr = 0
         elif self._flush:
             self._current_addr = self._strt_addr
-        elif self._step & ~self._finished:
-            if self._restart:
-                self._current_addr = self._strt_addr
-            else:
-                self._current_addr = self._current_addr + self._strides[self._mux_sel]
+        elif self._clk_en:
+            if self._step & ~self._finished:
+                if self._restart:
+                    self._current_addr = self._strt_addr
+                else:
+                    self._current_addr = self._current_addr + self._strides[self._mux_sel]
 
     def gen_bitstream(self, address_map, extents, dimensionality):
         assert 'strides' in address_map

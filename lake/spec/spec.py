@@ -274,6 +274,8 @@ class Spec():
         self.hw_attr = {}
         self.hw_attr['clk'] = self._final_gen.get_clock()
         self.hw_attr['rst_n'] = self._final_gen.get_reset()
+        self.hw_attr['flush'] = self._final_gen.get_flush()
+        self.hw_attr['clk_en'] = self._final_gen.get_clock_enable()
 
         # First generate the storages based on the ports connected to them and their capacities
         storage_nodes = self.get_nodes(Storage)
@@ -292,7 +294,7 @@ class Spec():
                 # passthru of the port currently...
                 # Now generate a storage element based on all of these ports and add them to the final generator
                 self._final_gen.add_child("storage", storage_node, clk=self.hw_attr['clk'],
-                                        rst_n=self.hw_attr['rst_n'])
+                                          rst_n=self.hw_attr['rst_n'], clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
 
             print("IDK")
             strg_intfs = storage_node.get_memport_intfs()
@@ -305,7 +307,8 @@ class Spec():
                 mp.gen_hardware(pos_reset=False, storage_node=storage_node)
                 self._final_gen.add_child(f"memoryport_{i_}_storage_{j_}", mp,
                                           clk=self.hw_attr['clk'],
-                                          rst_n=self.hw_attr['rst_n'])
+                                          rst_n=self.hw_attr['rst_n'],
+                                          clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
                 # self._connect_memoryport_storage(mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
                 if self.remote_storage is False:
                     connect_memoryport_storage(self._final_gen, mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
@@ -365,17 +368,21 @@ class Spec():
 
             self._final_gen.add_child(f"port_inst_{i_}", port,
                                       clk=self.hw_attr['clk'],
-                                      rst_n=self.hw_attr['rst_n'])
+                                      rst_n=self.hw_attr['rst_n'],
+                                      clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             # Connect the ag/sg/id together
             self._final_gen.add_child(f"port_id_{i_}", port_id,
                                       clk=self.hw_attr['clk'],
-                                      rst_n=self.hw_attr['rst_n'])
+                                      rst_n=self.hw_attr['rst_n'],
+                                      clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             self._final_gen.add_child(f"port_ag_{i_}", port_ag,
                                       clk=self.hw_attr['clk'],
-                                      rst_n=self.hw_attr['rst_n'])
+                                      rst_n=self.hw_attr['rst_n'],
+                                      clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             self._final_gen.add_child(f"port_sg_{i_}", port_sg,
                                       clk=self.hw_attr['clk'],
-                                      rst_n=self.hw_attr['rst_n'])
+                                      rst_n=self.hw_attr['rst_n'],
+                                      clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
 
             self._final_gen.wire(port_id.ports.mux_sel, port_ag.ports.mux_sel)
             self._final_gen.wire(port_id.ports.restart, port_ag.ports.restart)
@@ -408,7 +415,8 @@ class Spec():
 
             self._final_gen.add_child(f"memintfdec_inst_{i_}", memintf_dec,
                                       clk=self.hw_attr['clk'],
-                                      rst_n=self.hw_attr['rst_n'])
+                                      rst_n=self.hw_attr['rst_n'],
+                                      clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             # After this, need to connect the decoded ports to the actual memports
             mintf_ints = memintf_dec.get_mp_intf()
             for j_, mp in enumerate(memports_):
@@ -692,7 +700,8 @@ class Spec():
             self.rv_comparison_network.gen_hardware()
             self._final_gen.add_child('rv_comp_network_top_spec', self.rv_comparison_network,
                                       clk=self.hw_attr['clk'],
-                                      rst_n=self.hw_attr['rst_n'])
+                                      rst_n=self.hw_attr['rst_n'],
+                                      clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
             rv_comp_conns = self.rv_comparison_network.get_connections()
             for conn_tuple in rv_comp_conns:
                 p1, p2 = conn_tuple
@@ -757,10 +766,11 @@ class Spec():
             self.get_information(output_dir=output_dir)
 
     def add_flush(self):
-        self._final_gen.add_attribute("sync-reset=flush")
-        if self.run_flush_pass is True:
-            kts.passes.auto_insert_sync_reset(self._final_gen.internal_generator)
-        flush_port = self._final_gen.internal_generator.get_port("flush")
+        return
+        # self._final_gen.add_attribute("sync-reset=flush")
+        # if self.run_flush_pass is True:
+        #     kts.passes.auto_insert_sync_reset(self._final_gen.internal_generator)
+        # flush_port = self._final_gen.internal_generator.get_port("flush")
         # flush_port.add_attribute(ControlSignalAttr(True))
 
     def extract_compiler_information(self) -> None:
@@ -794,7 +804,7 @@ class Spec():
         self._final_gen.add_child(arb_name, tmp_arb,
                                   clk=self.hw_attr['clk'],
                                   rst_n=self.hw_attr['rst_n'],
-                                  clk_en=kts.const(1, 1),
+                                  clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'],
                                   resource_ready=kts.const(1, 1))
 
         tmp_arb_reqs = tmp_arb.get_reqs()
@@ -1019,7 +1029,7 @@ class Spec():
             raise ValueError
 
     def get_base_port_config(self, port_name):
-        assert("port" in port_name)
+        assert "port" in port_name
         base_port_config = {}
         port_int = self.port_name_to_int(port_name)
         base_port_config['name'] = port_name
@@ -1218,13 +1228,6 @@ class Spec():
             port_config["vec_out_config"] = {}
             port_config["vec_constraints"] = []
 
-                # 'dimensionality': 2,
-                # 'extents': [4, 16 * length_scale],
-                # 'address': {
-                #     'strides': [1, 4],
-                #     'offset': 0
-                # },
-
             ret_config[self.port_name_to_int(used_port)] = port_config
 
         # Process the dependencies...
@@ -1249,7 +1252,7 @@ class Spec():
 
             # This is WAR
             if indices is None:
-                assert("port_w" in this_depends)
+                assert "port_w" in this_depends
                 # Fake something for now...
                 this_depends_idx = 0
                 on_this_idx = 0
@@ -1269,7 +1272,7 @@ class Spec():
                 for pd in prec_delts:
                     pd_idx = pd[0]
                     pd_val = pd[1]
-                    if(pd_val == 0):
+                    if pd_val == 0:
                         continue
                     scalar_adjust = pd_val
                     # If they are the same, just copy the value, otherwise multiple by all extents in the difference
@@ -1282,7 +1285,6 @@ class Spec():
                     ret_config[self.port_name_to_int(this_depends)]["config"]["address"]["offset"] -= scalar_adjust
                     break
 
-
                 scalar -= scalar_adjust
 
             ret_config["constraints"].append((this_depends_int, this_depends_idx,
@@ -1291,7 +1293,6 @@ class Spec():
 
         return ret_config
 
-
     def rewrite_app_json(self, app_json):
         app_json_copy = {}
         ret_map = {}
@@ -1299,7 +1300,7 @@ class Spec():
         for key, val in app_json.items():
             app_json_copy[key] = val
 
-        assert("port_mappings" in app_json_copy)
+        assert "port_mappings" in app_json_copy
         port_mappings = app_json_copy["port_mappings"]
         port_mappings_keys = port_mappings.keys()
 
@@ -1355,7 +1356,6 @@ class Spec():
             ret_map[key_use] = val_use
 
         return ret_map
-
 
     def gen_bitstream(self, application, override=False):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.

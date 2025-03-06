@@ -8,7 +8,7 @@ class RegFIFO_cfg(Generator):
     This module generates register-based FIFOs. These are useful
     when we only need a few entries with no prefetching needed
 
-    This version can be configured to be initialized non-empty 
+    This version can be configured to be initialized non-empty
     '''
     def __init__(self,
                  data_width,
@@ -322,8 +322,7 @@ class RegFIFO_cfg(Generator):
 
     def get_hardware_genned(self):
         return self.hardware_genned
-    
-      
+
 
 if __name__ == "__main__":
     # dut = RegFIFO_cfg(data_width=16,

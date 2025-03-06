@@ -23,6 +23,9 @@ class Component(kratos.Generator):
         else:
             use_name = name
         super().__init__(name=use_name, debug=True)
+        # Just handle these manually all the time...
+        self.sync_reset_no_touch = True
+        self.clk_en_no_touch = True
         Component.component_num += 1
         # super().__init__(name=f"{rand.randint(0, 10000)}", debug=True)
         self.config_space = []
@@ -40,13 +43,20 @@ class Component(kratos.Generator):
         self._clk = self.clock('clk')
         self._rst_n = self.clock('rst_n')
         self._flush = self.input("flush", 1)
-        self.add_attribute("sync-reset=flush")
+        self._clk_en = self.input("clk_en", 1)
+        # self.add_attribute("sync-reset=flush")
 
     def get_clock(self):
         return self._clk
 
     def get_reset(self):
         return self._rst_n
+
+    def get_clock_enable(self):
+        return self._clk_en
+
+    def get_flush(self):
+        return self._flush
 
     def get_config_space_fixed(self):
         return self.config_space_fixed

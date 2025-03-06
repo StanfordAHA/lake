@@ -171,7 +171,8 @@ class RVComparisonNetwork(Component):
                 # Now have lf block, need to instantiate it, then wire up a mux based on the config
                 lf_comp_block.gen_hardware()
                 self.add_child(f"lfcompblock_w_{i}_r_{j}", lf_comp_block,
-                               clk=self._clk, rst_n=self._rst_n)
+                               clk=self._clk, rst_n=self._rst_n,
+                               clk_en=self._clk_en, flush=self._flush)
                 lf_comp_block_intfs = lf_comp_block.get_interfaces()
                 # the ith writer block, compared against jth reader
                 self.wire(self._writer_comparisons[i][j], lf_comp_block_intfs['comparison'])
@@ -256,7 +257,8 @@ class RVComparisonNetwork(Component):
                 # Now have lf block, need to instantiate it, then wire up a mux based on the config
                 lf_comp_block.gen_hardware()
                 self.add_child(f"lfcompblock_r_{i}_w_{j}", lf_comp_block,
-                               clk=self._clk, rst_n=self._rst_n)
+                               clk=self._clk, rst_n=self._rst_n,
+                               clk_en=self._clk_en, flush=self._flush)
                 lf_comp_block_intfs = lf_comp_block.get_interfaces()
                 # the ith writer block, compared against jth reader
                 self.wire(self._reader_comparisons[i][j], lf_comp_block_intfs['comparison'])

@@ -263,7 +263,7 @@ class IOCore_mu2f(Generator):
         track_active_T0_val = 0
         track_active_T1_val = 0
         track_active_T2_val = 0
-        track_active_T3_val = 0 
+        track_active_T3_val = 0
         track_active_T4_val = 0
 
         if 'track_select_T0' in config_dict:

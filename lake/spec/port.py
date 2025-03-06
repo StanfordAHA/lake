@@ -43,6 +43,9 @@ class Port(Component):
         self.opt_rv = opt_rv
         self.port_ag_width = None
         self.opt_timing = opt_timing
+        #  We want to handle flush and clk_en ourselves
+        self.sync_reset_no_touch = True
+        self.clk_en_no_touch = True
 
     def __str__(self):
         type_str = "Write"
@@ -137,8 +140,8 @@ class Port(Component):
                                         input_fifo,
                                         clk=self._clk,
                                         rst_n=self._rst_n,
-                                        # clk_en=self._clk_en,
-                                        # clk_en=kts.const(1, 1),
+                                        clk_en=self._clk_en,
+                                        flush=self._flush,
                                         push=ub_interface['valid'],
                                         # pop=self._pop_addr_q,
                                         data_in=ub_interface['data'])
@@ -196,20 +199,20 @@ class Port(Component):
 
                     # Need a signal to write to the wcb
                     self._write_wcb = self.var("write_wcb", 1)
-                    self._already_written = sticky_flag(self, self._write_wcb, name="already_written", seq_only=True, clear=self._flush)
+                    self._already_written = sticky_flag(self, self._write_wcb, name="already_written", seq_only=True, clear=self._flush, clk_en=self._clk_en)
                     # The ready out is if we are writing the wcb which means we are accepting the current data
                     self.wire(self._ready_out_lcl, self._write_wcb)
                     self.wire(self._sg_step_out, self._write_wcb)
 
                     # Indicates if the current address is a new address or not
-                    self._last_write_addr = register(self, self._full_addr_in, enable=self._new_address, name="last_write_addr", clear=self._flush)
+                    self._last_write_addr = register(self, self._full_addr_in, enable=self._new_address, name="last_write_addr", clear=self._flush, clk_en=self._clk_en)
 
                     # Linear write address to the WCB
                     # Need push and pop addresses to manage the WCB
-                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._new_address, clear=self._flush)
+                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._new_address, clear=self._flush, clk_en=self._clk_en)
                     self._linear_wcb_write_p1 = self.var("linear_wcb_write_p1", self._linear_wcb_write.width)
                     self.wire(self._linear_wcb_write_p1, self._linear_wcb_write + 1)
-                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._write_memory_out_lcl, clear=self._flush)
+                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._write_memory_out_lcl, clear=self._flush, clk_en=self._clk_en)
                     # Need an address into the wcb (should be the linear_wcb_write concatenated with the sub_addr)
                     self._addr_into_wcb = self.var("addr_into_wcb", self._linear_wcb_write.width + sub_addr_bits)
                     # self.wire(self._addr_into_wcb, kts.concat(kts.ternary(self._new_address,
@@ -257,9 +260,9 @@ class Port(Component):
 
                     strg_intfs = self._sipo_strg.get_memport_intfs()
 
-                    self.add_child('vec_storage', self._sipo_strg, clk=self._clk, rst_n=self._rst_n)
-                    self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in, clk=self._clk, rst_n=self._rst_n)
-                    self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out, clk=self._clk, rst_n=self._rst_n)
+                    self.add_child('vec_storage', self._sipo_strg, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                    self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                    self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
 
                     connect_memoryport_storage(self, mptype=self._sipo_strg_mp_in.get_type(),
                                                memport_intf=self._sipo_strg_mp_in.get_storage_intf(),
@@ -279,7 +282,7 @@ class Port(Component):
                     self._write_can_commit_set = self.var("write_can_commit_set", max_num_items_wcb)
 
                     write_can_commit_sticky_pre = [sticky_flag(self, self._write_can_commit_set[i], name=f"write_can_commit_sticky_{i}", seq_only=True,
-                                                           clear=self._write_can_commit_clr[i] | self._flush) for i in range(max_num_items_wcb)]
+                                                           clear=self._write_can_commit_clr[i] | self._flush, clk_en=self._clk_en) for i in range(max_num_items_wcb)]
 
                     self._write_can_commit_sticky = self.var("write_can_commit_sticky", max_num_items_wcb)
                     [self.wire(self._write_can_commit_sticky[i], write_can_commit_sticky_pre[i]) for i in range(max_num_items_wcb)]
@@ -304,7 +307,7 @@ class Port(Component):
                         elif self._flush:
                             for i in range(max_num_items_wcb):
                                 addresses_to_write[i] = 0
-                        else:
+                        elif self._clk_en:
                             for i in range(max_num_items_wcb):
                                 if self._write_can_commit_set[i]:
                                     addresses_to_write[i] = next_addresses_to_write[i]
@@ -414,9 +417,9 @@ class Port(Component):
 
                 strg_intfs = self._sipo_strg.get_memport_intfs()
 
-                self.add_child('vec_storage', self._sipo_strg, clk=self._clk, rst_n=self._rst_n)
-                self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in, clk=self._clk, rst_n=self._rst_n)
-                self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out, clk=self._clk, rst_n=self._rst_n)
+                self.add_child('vec_storage', self._sipo_strg, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                self.add_child('vec_storage_mp_in', self._sipo_strg_mp_in, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                self.add_child('vec_storage_mp_out', self._sipo_strg_mp_out, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
 
                 connect_memoryport_storage(self, mptype=self._sipo_strg_mp_in.get_type(),
                                            memport_intf=self._sipo_strg_mp_in.get_storage_intf(),
@@ -454,7 +457,7 @@ class Port(Component):
                     self._sg_sipo_out.gen_hardware(external_id, num_comparisons=1)
                     self.add_child('port_sg_sipo_out', self._sg_sipo_out,
                                    clk=self._clk,
-                                   rst_n=self._rst_n)
+                                   rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                     self._rv_comp_nw.add_reader_writer(direction=Direction.IN, sg=self._sg_sipo_in)
                     self._rv_comp_nw.add_reader_writer(direction=Direction.OUT, sg=self._sg_sipo_out)
 
@@ -463,13 +466,13 @@ class Port(Component):
                 # Connect the ag/sg/id together
                 self.add_child(f"port_id_sipo_in", self._id_sipo_in,
                                clk=self._clk,
-                               rst_n=self._rst_n)
+                               rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                 self.add_child(f"port_ag_sipo_in", self._ag_sipo_in,
                                clk=self._clk,
-                               rst_n=self._rst_n)
+                               rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                 self.add_child(f"port_sg_sipo_in", self._sg_sipo_in,
                                clk=self._clk,
-                               rst_n=self._rst_n)
+                               rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
 
                 self.wire(self._id_sipo_in.ports.mux_sel, self._ag_sipo_in.ports.mux_sel)
                 self.wire(self._id_sipo_in.ports.iterators, self._ag_sipo_in.ports.iterators)
@@ -521,7 +524,7 @@ class Port(Component):
                 self._internal_ag_intf = {}
 
                 self.add_child('internal_ag_with_ext_intf', self._ag_sipo_out, clk=self._clk,
-                               rst_n=self._rst_n)
+                               rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                 # step_tmp = self.input(f"port_vec_internal_step", 1)
                 # self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", 1)
                 # self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", 1)
@@ -585,7 +588,7 @@ class Port(Component):
                     self._rv_comp_nw.gen_hardware()
                     self.add_child('rv_comp_network_sipo', self._rv_comp_nw,
                                    clk=self._clk,
-                                   rst_n=self._rst_n)
+                                   rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                     rv_comp_conns = self._rv_comp_nw.get_connections()
                     for conn_tuple in rv_comp_conns:
                         p1, p2 = conn_tuple
@@ -650,9 +653,9 @@ class Port(Component):
                     # self._already_read = self.var("already_read", 1)
                     addr_bits_range = [self._full_addr_in.width - 1, kts.clog2(self._fw)]
 
-                    self._already_read = sticky_flag(self, self._read_memory_out & self._grant, name="already_read", seq_only=True, clear=self._flush)
-                    self._read_last_cycle = register(self, self._read_memory_out & self._grant, enable=kts.const(1, 1), name="read_last_cycle", clear=self._flush)
-                    self._last_read_addr = register(self, self._full_addr_in, enable=self._read_memory_out & self._grant, name="last_read_addr", clear=self._flush)
+                    self._already_read = sticky_flag(self, self._read_memory_out & self._grant, name="already_read", seq_only=True, clear=self._flush, clk_en=self._clk_en)
+                    self._read_last_cycle = register(self, self._read_memory_out & self._grant, enable=kts.const(1, 1), name="read_last_cycle", clear=self._flush, clk_en=self._clk_en)
+                    self._last_read_addr = register(self, self._full_addr_in, enable=self._read_memory_out & self._grant, name="last_read_addr", clear=self._flush, clk_en=self._clk_en)
 
                     # Define all the relevant signals/vars
                     addr_q_width = kts.clog2(self.get_fw())
@@ -691,7 +694,7 @@ class Port(Component):
                             self._data_on_bus = 0
                         elif self._flush:
                             self._data_on_bus = 0
-                        else:
+                        elif self._clk_en:
                             self._data_on_bus = self._next_data_on_bus
                     self.add_code(data_on_bus_ff)
 
@@ -710,7 +713,7 @@ class Port(Component):
                             self._num_items_wcb = 0
                         elif self._flush:
                             self._num_items_wcb = 0
-                        else:
+                        elif self._clk_en:
                             self._num_items_wcb = self._next_num_items_wcb
                     self.add_code(num_items_wcb_ff)
 
@@ -731,7 +734,7 @@ class Port(Component):
                     self.wire(mp_intf['ready'], kts.const(1, 1))
 
                     # Register the data from the MP
-                    self._data_from_mp_reg = register(self, mp_intf['data'], enable=self._register_data_from_mp, name="data_from_mp_reg", clear=self._flush)
+                    self._data_from_mp_reg = register(self, mp_intf['data'], enable=self._register_data_from_mp, name="data_from_mp_reg", clear=self._flush, clk_en=self._clk_en)
                     # If we read from SRAM last cycle, can use the data from the SRAM, otherwise we need to grab it from the local register
                     self._pick_input_data = kts.ternary(self._read_last_cycle, mp_intf['data'], self._data_from_mp_reg)
 
@@ -746,8 +749,8 @@ class Port(Component):
 
                     # Linear write address to the WCB
                     # self._linear_wcb_write = self.var("linear_wcb_write", kts.clog2(self._vec_capacity))
-                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._data_being_written, clear=self._flush)
-                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._pop_wcb, clear=self._flush)
+                    self._linear_wcb_write = add_counter(self, "linear_wcb_write", bitwidth=kts.clog2(self._vec_capacity), increment=self._data_being_written, clear=self._flush, clk_en=self._clk_en)
+                    self._linear_wcb_read = add_counter(self, "linear_wcb_read", bitwidth=kts.clog2(self._vec_capacity), increment=self._pop_wcb, clear=self._flush, clk_en=self._clk_en)
 
                     ###############################################################
                     ###############################################################
@@ -772,9 +775,9 @@ class Port(Component):
 
                     strg_intfs = self._piso_strg.get_memport_intfs()
 
-                    self.add_child('vec_storage', self._piso_strg, clk=self._clk, rst_n=self._rst_n)
-                    self.add_child('vec_storage_mp_in', self._piso_strg_mp_in, clk=self._clk, rst_n=self._rst_n)
-                    self.add_child('vec_storage_mp_out', self._piso_strg_mp_out, clk=self._clk, rst_n=self._rst_n)
+                    self.add_child('vec_storage', self._piso_strg, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                    self.add_child('vec_storage_mp_in', self._piso_strg_mp_in, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                    self.add_child('vec_storage_mp_out', self._piso_strg_mp_out, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
 
                     connect_memoryport_storage(self, mptype=self._piso_strg_mp_in.get_type(),
                                                memport_intf=self._piso_strg_mp_in.get_storage_intf(),
@@ -799,7 +802,7 @@ class Port(Component):
                         elif self._flush:
                             for i in range(max_num_items_wcb):
                                 tag_valid_cam[i] = 0
-                        else:
+                        elif self._clk_en:
                             for i in range(max_num_items_wcb):
                                 tag_valid_cam[i] = next_tag_valid_cam[i]
 
@@ -867,8 +870,8 @@ class Port(Component):
                                     reg_fifo,
                                     clk=self._clk,
                                     rst_n=self._rst_n,
-                                    # clk_en=self._clk_en,
-                                    # clk_en=kts.const(1, 1),
+                                    clk_en=self._clk_en,
+                                    flush=self._flush,
                                     push=self._push_addr_q,
                                     pop=self._pop_addr_q,
                                     data_in=q_in,
@@ -1009,9 +1012,9 @@ class Port(Component):
 
                 strg_intfs = self._piso_strg.get_memport_intfs()
 
-                self.add_child('vec_storage', self._piso_strg, clk=self._clk, rst_n=self._rst_n)
-                self.add_child('vec_storage_mp_in', self._piso_strg_mp_in, clk=self._clk, rst_n=self._rst_n)
-                self.add_child('vec_storage_mp_out', self._piso_strg_mp_out, clk=self._clk, rst_n=self._rst_n)
+                self.add_child('vec_storage', self._piso_strg, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                self.add_child('vec_storage_mp_in', self._piso_strg_mp_in, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
+                self.add_child('vec_storage_mp_out', self._piso_strg_mp_out, clk=self._clk, rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
 
                 connect_memoryport_storage(self, mptype=self._piso_strg_mp_in.get_type(),
                                            memport_intf=self._piso_strg_mp_in.get_storage_intf(),
@@ -1052,7 +1055,7 @@ class Port(Component):
                     self._sg_piso_in.gen_hardware(external_id, num_comparisons=1)
                     self.add_child('port_sg_piso_in', self._sg_piso_in,
                                    clk=self._clk,
-                                   rst_n=self._rst_n)
+                                   rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                     self._rv_comp_nw.add_reader_writer(direction=Direction.IN, sg=self._sg_piso_in)
                     self._rv_comp_nw.add_reader_writer(direction=Direction.OUT, sg=self._sg_piso_out)
 
@@ -1061,18 +1064,18 @@ class Port(Component):
                     self._id_piso_in.gen_hardware()
                     self.add_child('port_id_piso_in', self._id_piso_in,
                                    clk=self._clk,
-                                   rst_n=self._rst_n)
+                                   rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
 
                 # Connect the ag/sg/id together
                 self.add_child(f"port_id_piso_out", self._id_piso_out,
                                clk=self._clk,
-                               rst_n=self._rst_n)
+                               rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                 self.add_child(f"port_ag_piso_out", self._ag_piso_out,
                                clk=self._clk,
-                               rst_n=self._rst_n)
+                               rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                 self.add_child(f"port_sg_piso_out", self._sg_piso_out,
                                clk=self._clk,
-                               rst_n=self._rst_n)
+                               rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
 
                 # Hook up the ID, SG, AG that are generated internal to the Port
                 self.wire(self._id_piso_out.ports.mux_sel, self._ag_piso_out.ports.mux_sel)
@@ -1129,7 +1132,7 @@ class Port(Component):
 
                 self.add_child('ag_piso_in', self._ag_piso_in,
                                clk=self._clk,
-                               rst_n=self._rst_n)
+                               rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                 # step_tmp = self.input(f"port_vec_internal_step", 1)
                 # self._internal_step['mux_sel'] = self.input(f"port_vec_internal_mux_sel", 1)
                 # self._internal_step['iterators'] = self.input(f"port_vec_internal_dim_ctrs", 1)
@@ -1251,7 +1254,7 @@ class Port(Component):
                     self._rv_comp_nw.gen_hardware()
                     self.add_child('rv_comp_network_piso', self._rv_comp_nw,
                                    clk=self._clk,
-                                   rst_n=self._rst_n)
+                                   rst_n=self._rst_n, clk_en=self._clk_en, flush=self._flush)
                     rv_comp_conns = self._rv_comp_nw.get_connections()
                     for conn_tuple in rv_comp_conns:
                         p1, p2 = conn_tuple

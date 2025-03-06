@@ -638,7 +638,7 @@ def observe_cfg(generator, port, other_gen, cfg_reg_port):
         cr_attr.add_observer(generator, port)
 
 
-def shift_reg(generator, signal, chain_depth, name=None):
+def shift_reg(generator, signal, chain_depth, name=None, clk_en=kts.const(1, 1)):
     '''Creates a shift register of depth `chain_depth` and returns the output of it
     '''
     name_use = signal.name
@@ -648,12 +648,12 @@ def shift_reg(generator, signal, chain_depth, name=None):
     packed_sig = signal.is_packed
     to_use = signal
     for i in range(chain_depth):
-        to_use = register(generator, to_use, name=f"{name_use}_d{i + 1}", packed=packed_sig)
+        to_use = register(generator, to_use, name=f"{name_use}_d{i + 1}", packed=packed_sig, clk_en=clk_en)
     return to_use
 
 
 def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1),
-             name=None, packed=False, reset_value=0):
+             name=None, packed=False, reset_value=0, clk_en=kts.const(1, 1)):
     ''' Pass a generator and a signal to create a registered
         version of any signal easily.
     '''
@@ -668,14 +668,15 @@ def register(generator, signal, enable=kts.const(1, 1), clear=kts.const(0, 1),
             reg = reset_value
         elif clear:
             reg = 0
-        elif enable:
-            reg = signal
+        elif clk_en:
+            if enable:
+                reg = signal
 
     generator.add_code(reg_code)
     return reg
 
 
-def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=False, verbose=False):
+def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=False, verbose=False, clk_en=kts.const(1, 1)):
     ''' Create a signal that indicates whether a signal is high
         or has been high in the past
     '''
@@ -690,8 +691,9 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=Fa
             reg = 0
         elif clear:
             reg = 0
-        elif signal:
-            reg = 1
+        elif clk_en:
+            if signal:
+                reg = 1
     generator.add_code(reg_code)
 
     sticky = generator.var(f"{use_name}_sticky", 1)
@@ -705,47 +707,32 @@ def sticky_flag(generator, signal, clear=kts.const(0, 1), name=None, seq_only=Fa
 
 
 # Add a simple counter to a design and return the signal
-def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=None, pos_reset=False):
+def add_counter(generator, name, bitwidth, increment=kts.const(1, 1), clear=kts.const(0, 1), pos_reset=False, clk_en=kts.const(1, 1)):
 
     ctr = generator.var(name, bitwidth, packed=True)
     if pos_reset is True:
-        if clear is not None:
-            @always_ff((posedge, "clk"), (posedge, "rst_n"))
-            def ctr_inc_clr_code():
-                if generator._rst_n:
-                    ctr = 0
-                elif clear:
-                    ctr = 0
-                elif increment:
+        @always_ff((posedge, "clk"), (posedge, "rst_n"))
+        def ctr_inc_clr_code():
+            if generator._rst_n:
+                ctr = 0
+            elif clear:
+                ctr = 0
+            elif clk_en:
+                if increment:
                     ctr = ctr + 1
-            generator.add_code(ctr_inc_clr_code)
-        else:
-            @always_ff((posedge, "clk"), (posedge, "rst_n"))
-            def ctr_inc_code():
-                if generator._rst_n:
-                    ctr = 0
-                elif increment:
-                    ctr = ctr + 1
-            generator.add_code(ctr_inc_code)
+        generator.add_code(ctr_inc_clr_code)
     else:
-        if clear is not None:
-            @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            def ctr_inc_clr_code():
-                if ~generator._rst_n:
-                    ctr = 0
-                elif clear:
-                    ctr = 0
-                elif increment:
+        @always_ff((posedge, "clk"), (negedge, "rst_n"))
+        def ctr_inc_clr_code():
+            if ~generator._rst_n:
+                ctr = 0
+            elif clear:
+                ctr = 0
+            elif clk_en:
+                if increment:
                     ctr = ctr + 1
-            generator.add_code(ctr_inc_clr_code)
-        else:
-            @always_ff((posedge, "clk"), (negedge, "rst_n"))
-            def ctr_inc_code():
-                if ~generator._rst_n:
-                    ctr = 0
-                elif increment:
-                    ctr = ctr + 1
-            generator.add_code(ctr_inc_code)
+        generator.add_code(ctr_inc_clr_code)
+
     return ctr
 
 
@@ -920,7 +907,7 @@ def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType 
         generator.wire(memport_intf[signal], strg_intf[signal])
 
 
-def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
+def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True, ignore_flush_and_clk_en=True):
 
     many_list = False
     if type(many) is list:
@@ -936,6 +923,9 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True):
     # assert len(many) > 0
 
     mux_gen = kts.Generator(name=name)
+    if ignore_flush_and_clk_en:
+        mux_gen.sync_reset_no_touch = True
+        mux_gen.clk_en_no_touch = True
     mux_width = one.width
 
     mux_gen_sel_in = None
