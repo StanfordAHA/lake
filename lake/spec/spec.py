@@ -1246,6 +1246,7 @@ class Spec():
             elif "port_w" in this_depends:
                 comparison = LFComparisonOperator.GT.value
 
+            hack = False
             this_depends_idx = None
             on_this_idx = None
             scalar = None
@@ -1254,15 +1255,22 @@ class Spec():
             if indices is None:
                 assert "port_w" in this_depends
                 # Fake something for now...
-                this_depends_idx = 0
-                on_this_idx = 0
-                # TODO: This should be based on the size of the memory if there
-                # is no specific scalar set...
-                scalar = 128
+                if hack:
+                    this_depends_idx = 1
+                    on_this_idx = 1
+                    # TODO: This should be based on the size of the memory if there
+                    # is no specific scalar set...
+                    scalar = 8 # should NOT pass
+
+                else:
+                    this_depends_idx = 1
+                    on_this_idx = 1
+                    scalar = 8
 
             else:
                 this_depends_idx = indices[0]
                 on_this_idx = indices[1]
+                scalar_adjust = 0
                 # This should be computed based on the precursor deltas...
                 # It should be provided in a richer way, but start with 0, then
                 scalar = 0
@@ -1274,15 +1282,21 @@ class Spec():
                     pd_val = pd[1]
                     if pd_val == 0:
                         continue
+                    # If the pd_val is nonzero - let's try overriding the dependency
+                    this_depends_idx = pd_idx
+                    on_this_idx = pd_idx
                     scalar_adjust = pd_val
-                    # If they are the same, just copy the value, otherwise multiple by all extents in the difference
+                    scalar_adjust_addr = scalar_adjust
+                    # If they are the same, just copy the value, otherwise multiply by all extents in the difference
                     # down to the current level...
-                    if pd_idx > this_depends_idx:
-                        for i in range(pd_idx - this_depends_idx):
-                            scalar_adjust *= app_json["domain"][this_depends]["extents"][i]
+                    for i in range(pd_idx):
+                        scalar_adjust_addr *= app_json["domain"][this_depends]["extents"][i]
+                    # if pd_idx > this_depends_idx:
+                    #     for i in range(pd_idx - this_depends_idx):
+                    #         scalar_adjust_addr *= app_json["domain"][this_depends]["extents"][i]
                     # Only allow one level to have precursor...
                     # Also offset the starting address by the scalar_adjust...
-                    ret_config[self.port_name_to_int(this_depends)]["config"]["address"]["offset"] -= scalar_adjust
+                    ret_config[self.port_name_to_int(this_depends)]["config"]["address"]["offset"] -= scalar_adjust_addr
                     break
 
                 scalar -= scalar_adjust

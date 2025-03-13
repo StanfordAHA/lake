@@ -11,9 +11,10 @@ from lake.top.tech_maps import GF_Tech_Map
 
 
 def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: int = 6, vec_width=4, physical=True,
-                                  reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True) -> Spec:
+                                  reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True, id_width=16) -> Spec:
 
-    # a reg file can't be used to build this...
+    # TODO: Override this in garnet and not here...
+    id_width = 11
 
     ls = Spec(opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
               config_passthru=True, comply_17=True)
@@ -33,19 +34,19 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
     ls.register(in_port, in_port2, out_port, out_port2)
 
-    in_id = IterationDomain(dimensionality=dims, extent_width=16)
+    in_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     in_ag = AddressGenerator(dimensionality=dims)
     in_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
-    in_id2 = IterationDomain(dimensionality=dims, extent_width=16)
+    in_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
     in_ag2 = AddressGenerator(dimensionality=dims)
     in_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
 
-    out_id = IterationDomain(dimensionality=dims, extent_width=16)
+    out_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     out_ag = AddressGenerator(dimensionality=dims)
     out_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
-    out_id2 = IterationDomain(dimensionality=dims, extent_width=16)
+    out_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
     out_ag2 = AddressGenerator(dimensionality=dims)
     out_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
 

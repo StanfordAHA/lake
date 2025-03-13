@@ -920,7 +920,7 @@ class Port(Component):
                             # self._push_addr_q = self._read_memory_out & ~self._finished
                             self._push_addr_q = self._read_memory_out & ~self._finished & self._grant
                         # If the upper portion is the same, we can push if there is room in the queue
-                        elif (~reg_fifo.ports.full):
+                        elif (~reg_fifo.ports.full) & self._sg_step_in:
                             # self._push_addr_q = 1
                             # Only push to addr queue if not finished...
                             self._push_addr_q = ~self._finished
