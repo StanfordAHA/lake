@@ -22,6 +22,7 @@ class IterationDomain(Component):
 
     def gen_bitstream(self, dimensionality, extents, rv=False):
 
+        self.clear_configuration()
         # Actually add one if rv (to be safe) - only need to do this when
         # the comparison is at the top level, but let's just do this for now
         if rv:

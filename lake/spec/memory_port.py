@@ -199,6 +199,7 @@ class MemoryPort(Component):
         self._assemble_cfg_memory_input()
 
     def gen_bitstream(self):
+        self.clear_configuration()
         return super().gen_bitstream()
 
     def get_width(self):

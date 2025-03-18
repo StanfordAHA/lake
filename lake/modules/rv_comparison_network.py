@@ -313,6 +313,7 @@ class RVComparisonNetwork(Component):
         self._assemble_cfg_memory_input()
 
     def gen_bitstream(self, constraints):
+        self.clear_configuration()
         # Every constraint in constraints is between a port,port,comparator,offset
         # We make all input ports come before outputs ports so we can simply define the space
         # by an integer (self.rw_div)

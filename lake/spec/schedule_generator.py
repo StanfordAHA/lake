@@ -104,6 +104,8 @@ class ScheduleGenerator(Component):
         assert 'strides' in schedule_map
         assert 'offset' in schedule_map
 
+        self.clear_configuration()
+
         # Enable through the configuration
         self.configure(self._enable, 1)
 
@@ -138,6 +140,7 @@ class ExplicitScheduleGenerator(ScheduleGenerator):
         return super().gen_hardware(pos_reset)
 
     def gen_bitstream(self):
+        self.clear_configuration()
         return super().gen_bitstream()
 
 
@@ -150,6 +153,7 @@ class RecurrentScheduleGenerator(ScheduleGenerator):
         return super().gen_hardware(pos_reset)
 
     def gen_bitstream(self):
+        self.clear_configuration()
         return super().gen_bitstream()
 
 
@@ -251,6 +255,7 @@ class ReadyValidScheduleGenerator(ScheduleGenerator):
         return self.iterator_intf
 
     def gen_bitstream(self, schedule_map=None, extents=None, dimensionality=None):
+        self.clear_configuration()
         # Enable through the configuration
         self.configure(self._enable, 1)
         return self.get_configuration()

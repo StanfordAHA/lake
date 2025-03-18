@@ -994,12 +994,12 @@ class Spec():
         # node_config_base = self.get_config_base(node)
         if verbose:
             print("Showing all child bases...")
-            print(self._final_gen.child_cfg_bases)
+            for gen__, base in self._final_gen.child_cfg_bases.items():
+                print(f"{base} : {gen__.name} : {gen__.instance_name}")
         node_config_base = self._final_gen.child_cfg_bases[node]
         for reg_bound, value in bs:
             upper, lower = reg_bound
             if verbose:
-                print(f"{upper},{lower} = {value}")
                 print(f"{upper + node_config_base},{lower + node_config_base} = {value}")
             self.configuration.append(((upper + node_config_base, lower + node_config_base), value))
 
@@ -1275,6 +1275,10 @@ class Spec():
                 # It should be provided in a richer way, but start with 0, then
                 scalar = 0
                 # Check the precursor deltas and project them into the level of the dependency...
+                if "precursor_deltas" not in app_json:
+                    app_json["precursor_deltas"] = {}
+                if this_depends not in app_json["precursor_deltas"]:
+                    app_json["precursor_deltas"][this_depends] = [[0, 0]]
                 prec_delts = app_json["precursor_deltas"][this_depends]
                 print("Precursor deltas...")
                 for pd in prec_delts:
@@ -1283,20 +1287,27 @@ class Spec():
                     if pd_val == 0:
                         continue
                     # If the pd_val is nonzero - let's try overriding the dependency
-                    this_depends_idx = pd_idx
-                    on_this_idx = pd_idx
-                    scalar_adjust = pd_val
-                    scalar_adjust_addr = scalar_adjust
+                    # this_depends_idx = pd_idx
+                    # on_this_idx = pd_idx
+                    # scalar_adjust = pd_val
+                    scalar_adjust = 0
+                    scalar_adjust_addr = pd_val
                     # If they are the same, just copy the value, otherwise multiply by all extents in the difference
                     # down to the current level...
-                    for i in range(pd_idx):
-                        scalar_adjust_addr *= app_json["domain"][this_depends]["extents"][i]
-                    # if pd_idx > this_depends_idx:
-                    #     for i in range(pd_idx - this_depends_idx):
-                    #         scalar_adjust_addr *= app_json["domain"][this_depends]["extents"][i]
+                    # for i in range(pd_idx):
+                    #     scalar_adjust_addr *= app_json["domain"][this_depends]["extents"][i]
+                    if pd_idx > this_depends_idx:
+                        for i in range(pd_idx - this_depends_idx):
+                            scalar_adjust_addr *= app_json["domain"][this_depends]["extents"][i]
                     # Only allow one level to have precursor...
                     # Also offset the starting address by the scalar_adjust...
                     ret_config[self.port_name_to_int(this_depends)]["config"]["address"]["offset"] -= scalar_adjust_addr
+
+                    # Clamp scalar adjust to size of extent
+                    if scalar_adjust_addr >= app_json["domain"][this_depends]["extents"][this_depends_idx]:
+                        scalar_adjust = app_json["domain"][this_depends]["extents"][this_depends_idx] - 1
+                    else:
+                        scalar_adjust = scalar_adjust_addr
                     break
 
                 scalar -= scalar_adjust

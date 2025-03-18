@@ -104,11 +104,13 @@ class LFCompBlock(Component):
         return self.interfaces
 
     def gen_bitstream(self, comparator, scalar):
+        # TODO: Fix the fact that this bitstream lives across multiple instances...
+        self.clear_configuration()
         self.configure(self._enable_comparison, 1)
         self.configure(self._comp_reg, comparator)
         self.configure(self._scalar_reg, scalar)
-        print(f"SCALAR_REG: {scalar}")
-        return self.get_configuration()
+        self_config = self.get_configuration()
+        return self_config
 
 
 if __name__ == "__main__":

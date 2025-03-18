@@ -1269,6 +1269,8 @@ class Port(Component):
 
     def gen_bitstream(self, vec_in=None, vec_out=None, vec_constraints=None):
 
+        self.clear_configuration()
+
         all_bs = []
 
         # Only generate vec bitstream if it's vecced
@@ -1392,6 +1394,7 @@ class ReadPort(Port):
         return super().gen_hardware(pos_reset)
 
     def gen_bitstream(self):
+        self.clear_configuration()
         return super().gen_bitstream()
 
 
@@ -1404,4 +1407,5 @@ class WritePort(Port):
         return super().gen_hardware(pos_reset)
 
     def gen_bitstream(self):
+        self.clear_configuration()
         return super().gen_bitstream()

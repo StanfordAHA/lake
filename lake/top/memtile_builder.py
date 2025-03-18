@@ -1330,7 +1330,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 chunk_lo = map_lo // self.allowed_reg_size
                 # Either all within one chunk...
                 if chunk_hi == chunk_lo:
-                    print("Single-chunk register")
+                    # print("Single-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits = bits_hi - bits_lo + 1
@@ -1340,7 +1340,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     tmp_cfg_space[chunk_lo] = tmp_val
                 # Or across the boundary...
                 elif chunk_hi - chunk_lo == 1:
-                    print("Two-chunk register")
+                    # print("Two-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits_lo = self.allowed_reg_size - bits_lo
@@ -1358,7 +1358,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 # Multiple boundaries
                 else:
                     # I know this is technically repeat code, but it's easier to follow
-                    print("Many-chunk register")
+                    # print("Many-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     intermediate_chunks = chunk_hi - chunk_lo - 1

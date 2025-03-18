@@ -108,6 +108,8 @@ class AddressGenerator(Component):
         assert 'strides' in address_map
         assert 'offset' in address_map
 
+        self.clear_configuration()
+
         self.configure(self._starting_addr, address_map['offset'])
         if self.exploit_recurrence:
             extent_sub_1 = [extent_item - 1 for extent_item in extents]

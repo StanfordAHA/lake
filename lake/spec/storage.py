@@ -23,6 +23,7 @@ class Storage(Component):
         return super().gen_hardware(pos_reset)
 
     def gen_bitstream(self):
+        self.clear_configuration()
         return super().gen_bitstream()
 
     def get_capacity(self):
@@ -209,6 +210,7 @@ class SingleBankStorage(Storage):
         return self.memport_sets
 
     def gen_bitstream(self):
+        self.clear_configuration()
         return super().gen_bitstream()
 
     def set_tech_map(self, tech_map):
