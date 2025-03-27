@@ -86,6 +86,9 @@ class ScannerPipe(MemoryController):
         self._lookup_mode = self.input("lookup", 1)
         self._lookup_mode.add_attribute(ConfigRegAttr("Random access/lookup mode...."))
 
+        self._enable_locator_filter = self.input("enable_locator_filter", 1)
+        self._enable_locator_filter.add_attribute(ConfigRegAttr("Enable the filtering logic for the locator intersection"))
+
         # Vector Reduce Mode
         self._vector_reduce_mode = self.input("vector_reduce_mode", 1)
 
@@ -1741,7 +1744,14 @@ class ScannerPipe(MemoryController):
         self._non_vr_coord_fifo_push = self.var("non_vr_coord_fifo_push", 1)
         self.wire(self._non_vr_coord_fifo_push, self._crd_res_fifo_valid & ~self._block_mode & ~crd_res_routing_token)
         self._coord_fifo_push = self.var("coord_fifo_push", 1)
-        self.wire(self._coord_fifo_push, kts.ternary(self._vector_reduce_mode, (self._non_vr_coord_fifo_push & ~self._output_row_fully_accumulated), self._non_vr_coord_fifo_push))
+        # helper signal that is set to one if the output crd equals to "nil" (0xffff)
+        self._out_crd_filtered = self.var("out_crd_filtered", 1)
+        self.wire(self._out_crd_filtered, self._coord_data_in_packed == kts.concat(kts.const(0, 1), kts.const(0xffff, 16)))
+        self.wire(self._coord_fifo_push, kts.ternary(self._vector_reduce_mode, 
+                                                     (self._non_vr_coord_fifo_push & ~self._output_row_fully_accumulated), 
+                                                     kts.ternary(self._enable_locator_filter,
+                                                                 self._non_vr_coord_fifo_push & ~self._out_crd_filtered,
+                                                                 self._non_vr_coord_fifo_push)))
 
         self.add_child(f"coordinate_fifo",
                        self._coord_fifo,
@@ -1887,6 +1897,7 @@ class ScannerPipe(MemoryController):
         dense = config_kwargs['dense']
         glb_addr_base = config_kwargs['glb_addr_base']
         glb_addr_stride = config_kwargs['glb_addr_stride']
+        enable_locator_filter = config_kwargs['enable_locator_filter']
 
         # Store all configurations here
         config = [
@@ -1903,7 +1914,9 @@ class ScannerPipe(MemoryController):
             # ('spacc_mode', spacc_mode),
             ('glb_addr_base', glb_addr_base),
             ('glb_addr_stride', glb_addr_stride),
-            ('tile_en', 1)]
+            ('tile_en', 1),
+            ('enable_locator_filter', enable_locator_filter)
+        ]
 
         if root:
             dim = len(ranges)
