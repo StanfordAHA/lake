@@ -50,9 +50,9 @@ class OnyxPE(MemoryController):
         # Enable/Disable tile
         self._tile_en = self.input("tile_en", 1)
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
-        # Dense mode for bypassing FIFOs
+        # mode for bypassing FIFOs
         self._bypass_rv_mode = self.input("bypass_rv_mode", 1)
-        self._bypass_rv_mode.add_attribute(ConfigRegAttr("Dense mode to skip the registers"))
+        self._bypass_rv_mode.add_attribute(ConfigRegAttr("mode to skip the registers"))
 
         # Active inputs/outputs encoding for RV synchronization
         self._active_inputs_encoding = self.input("active_inputs_encoding", 3)
@@ -107,7 +107,6 @@ class OnyxPE(MemoryController):
 
             tmp_bit_in = self.input(f"bit{i}", 1)
             tmp_bit_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-
             tmp_bit_in.add_attribute(HybridPortAddr())
 
             tmp_bit_in_valid_in = self.input(f"bit{i}_valid", 1)
@@ -132,7 +131,7 @@ class OnyxPE(MemoryController):
 
         self._data_out_p = self.output("res_p", 1)
         self._data_out_p.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
-
+        self._data_out_p.add_attribute(HybridPortAddr())
 
         self._valid_bit_out = self.output("res_p_valid", 1)
         self._valid_bit_out.add_attribute(ControlSignalAttr(is_control=False))
@@ -389,8 +388,6 @@ class OnyxPE(MemoryController):
                        O1=self._pe_bit_output)
 
         
-        # TODO: In this code block, use active inputs encoding for both data and bit inputs
-        # TODO: Set the outfifo push based on active OUTPUTS encoding 
         @always_comb
         def fifo_push():
             self.all_active_inputs_valid = ((self._infifo_out_valid & self._active_inputs_encoding) == self._active_inputs_encoding)
@@ -423,6 +420,8 @@ class OnyxPE(MemoryController):
                     & self.all_active_bit_inputs_valid & ~self._outfifo_bit_full & ~self._bypass_rv_mode):
                     # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
                     if ~((self._infifo_out_eos & self._active_inputs_encoding) == self._active_inputs_encoding):
+
+                        # Push to 16/17b FIFO if that output is active
                         self._outfifo_push = self._active_outputs_encoding[0]
                         self._outfifo_in_eos = 0
                         self._data_to_fifo = self._pe_output
@@ -430,6 +429,7 @@ class OnyxPE(MemoryController):
                         self._infifo_pop[1] = self._infifo_out_valid[1] & self._active_inputs_encoding[1]
                         self._infifo_pop[2] = self._infifo_out_valid[2] & self._active_inputs_encoding[2]
 
+                        # Push to 1b FIFO if that output is active
                         self._outfifo_bit_push = self._active_outputs_encoding[1]
                         self._bit_to_fifo = self._pe_bit_output
                         self._infifo_bit_pop[0] = self._infifo_bit_out_valid[0] & self._active_bit_inputs_encoding[0]

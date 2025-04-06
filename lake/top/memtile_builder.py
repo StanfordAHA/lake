@@ -257,16 +257,16 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             ctrl_ins = mem_ctrl.get_inputs()
             ctrl_outs = mem_ctrl.get_outputs()
             # Do a pass to block the ready/valids associated with a port
-            # All ready/valid ports will be width 1 - there's probably a better way to do this
-            wider_than_1_in = [(inp, width) for (inp, width) in ctrl_ins if width > 1]
-            wider_than_1_out = [(inp, width) for (inp, width) in ctrl_outs if width > 1]
-            width_1_in = [inp.name for (inp, width) in ctrl_ins if width == 1]
-            width_1_out = [outp.name for (outp, width) in ctrl_outs if width == 1]
+            # Actual data is all ports that aren't ready/valid
+            actual_data_in = [(inp, width) for (inp, width) in ctrl_ins if not("ready" in inp.name or "valid" in inp.name)]
+            actual_data_out = [(inp, width) for (inp, width) in ctrl_outs if not("ready" in inp.name or "valid" in inp.name)]
+            rv_signals_in = [inp.name for (inp, width) in ctrl_ins if ((width == 1) and ("ready" in inp.name or "valid" in inp.name))]
+            rv_signals_out = [outp.name for (outp, width) in ctrl_outs if ((width == 1) and ("ready" in outp.name or "valid" in outp.name))]
             # Handle main data inputs and get rid of the valid in
-            for (inp, width) in wider_than_1_in:
+            for (inp, width) in actual_data_in:
                 full_name = inp.name
                 stripped_name = full_name.rstrip("_f_")
-                has_rv = f"{stripped_name}_ready_f_" in width_1_out and f"{stripped_name}_valid_f_" in width_1_in
+                has_rv = f"{stripped_name}_ready_f_" in rv_signals_out and f"{stripped_name}_valid_f_" in rv_signals_in
                 if has_rv:
                     hpa = mem_ctrl.get_port_attributes(inp.name, HybridPortAddr)
                     is_hybrid = len(hpa) > 0
@@ -277,10 +277,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 else:
                     self.dense.append((mem_ctrl.name, inp, False))
             # Handle data outputs to get rid of the input readys...wasteful work
-            for (outp, width) in wider_than_1_out:
+            for (outp, width) in actual_data_out:
                 full_name = outp.name
                 stripped_name = full_name.rstrip("_f_")
-                has_rv = f"{stripped_name}_ready_f_" in width_1_in and f"{stripped_name}_valid_f_" in width_1_out
+                has_rv = f"{stripped_name}_ready_f_" in rv_signals_in and f"{stripped_name}_valid_f_" in rv_signals_out
                 if has_rv:
                     ready_p = mem_ctrl.get_port(f"{stripped_name}_ready_f_")
                     ctrl_ins = [(inp_, width) for (inp_, width) in ctrl_ins if not (inp_.name == ready_p.name and width == 1)]
@@ -314,15 +314,15 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             ctrl_outs = mem_ctrl.get_outputs()
             ctrl_ins = mem_ctrl.get_inputs()
             # Do a pass to block the ready/valids associated with a port
-            # All ready/valid ports will be width 1 - there's probably a better way to do this
-            wider_than_1_in = [(outp, width) for (outp, width) in ctrl_ins if width > 1]
-            wider_than_1_out = [(outp, width) for (outp, width) in ctrl_outs if width > 1]
-            width_1_in = [inp.name for (inp, width) in ctrl_ins if width == 1]
-            width_1_out = [outp.name for (outp, width) in ctrl_outs if width == 1]
-            for (outp, width) in wider_than_1_out:
+            # Actual data is all ports that aren't ready/valid
+            actual_data_in = [(outp, width) for (outp, width) in ctrl_ins if not("ready" in outp.name or "valid" in outp.name)]
+            actual_data_out = [(outp, width) for (outp, width) in ctrl_outs if not("ready" in outp.name or "valid" in outp.name)]
+            rv_signals_in = [inp.name for (inp, width) in ctrl_ins if ((width == 1) and ("ready" in inp.name or "valid" in inp.name))]
+            rv_signals_out = [outp.name for (outp, width) in ctrl_outs if ((width == 1) and ("ready" in outp.name or "valid" in outp.name))]
+            for (outp, width) in actual_data_out:
                 full_name = outp.name
                 stripped_name = full_name.rstrip("_f_")
-                has_rv = f"{stripped_name}_ready_f_" in width_1_in and f"{stripped_name}_valid_f_" in width_1_out
+                has_rv = f"{stripped_name}_ready_f_" in rv_signals_in and f"{stripped_name}_valid_f_" in rv_signals_out
                 if has_rv:
                     hpa = mem_ctrl.get_port_attributes(outp.name, HybridPortAddr)
                     is_hybrid = len(hpa) > 0
@@ -333,10 +333,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 else:
                     self.dense.append((mem_ctrl.name, outp, False))
             # Handle data inputs to get rid of the output readys...wasteful work
-            for (inp, width) in wider_than_1_in:
+            for (inp, width) in actual_data_in:
                 full_name = inp.name
                 stripped_name = full_name.rstrip("_f_")
-                has_rv = f"{stripped_name}_ready_f_" in width_1_out and f"{stripped_name}_valid_f_" in width_1_in
+                has_rv = f"{stripped_name}_ready_f_" in rv_signals_out and f"{stripped_name}_valid_f_" in rv_signals_in
                 if has_rv:
                     ready_p = mem_ctrl.get_port(f"{stripped_name}_ready_f_")
                     ctrl_outs = [(inp_, width) for (inp_, width) in ctrl_outs if not (inp_.name == ready_p.name and width == 1)]
@@ -778,9 +778,12 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if input_width != 1:
                     new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
                 else:
-                    new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width)
-                isctrl = input_width == 1
-                new_input.add_attribute(ControlSignalAttr(isctrl))
+                    new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width, packed=True)
+                # isctrl = input_width == 1
+                # new_input.add_attribute(ControlSignalAttr(isctrl))
+                new_input.add_attribute(ControlSignalAttr(False))
+
+                
                 # Now to determine if the port is rv/dense
                 # If any signal in this dict is rv, we are going to make it an rv
                 rvs = [(ctrl_, port_.name, self.ctrl_to_mode[self.flat_to_c[ctrl_]], hybrid_) for ctrl_, port_, hybrid_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]
@@ -821,7 +824,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         new_input_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out',
                                                   width=input_width, explicit_array=True, packed=True)
                     else:
-                        new_input_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width)
+                        new_input_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out', width=input_width, packed=True)
 
                     new_input_valid_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out_valid', width=1)
                     new_input_ready_fifo = self.var(f'input_width_{input_width}_num_{i}_fifo_out_ready', width=1)
@@ -949,7 +952,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                 if output_width != 1:
                     new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width, explicit_array=True, packed=True)
                 else:
-                    new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width)
+                    new_output = self.output(f'{self.io_prefix}output_width_{output_width}_num_{i}', width=output_width, packed=True)
                 new_output.add_attribute(ControlSignalAttr(False))
 
                 rvs = [(ctrl_, port_.name, self.ctrl_to_mode[self.flat_to_c[ctrl_]], hybrid_) for ctrl_, port_, hybrid_ in self.rv if ctrl_ in signal_dict and signal_dict[ctrl_] == port_.name]
@@ -987,7 +990,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     if output_width != 1:
                         new_output_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width, explicit_array=True, packed=True)
                     else:
-                        new_output_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width)
+                        new_output_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in', width=output_width, packed=True)
 
                     new_output_valid_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in_valid', width=1)
                     new_output_ready_fifo = self.var(f'output_width_{output_width}_num_{i}_fifo_in_ready', width=1)
