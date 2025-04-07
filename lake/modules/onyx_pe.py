@@ -61,8 +61,11 @@ class OnyxPE(MemoryController):
         self._active_bit_inputs_encoding = self.input("active_bit_inputs_encoding", 3)
         self._active_bit_inputs_encoding.add_attribute(ConfigRegAttr("Active bit inputs encoding for RV synchronization"))
 
-        self._active_outputs_encoding = self.input("active_outputs_encoding", 2)
-        self._active_outputs_encoding.add_attribute(ConfigRegAttr("Active outputs encoding for 16b output and 1b output. [0] = 16b, [1] = 1b"))
+        self._active_16b_output = self.input("active_16b_output", 1)
+        self._active_16b_output.add_attribute(ConfigRegAttr("Is the 16b output active? For RV synchronization"))
+
+        self._active_1b_output = self.input("active_1b_output", 1)
+        self._active_1b_output.add_attribute(ConfigRegAttr("Is the 1b output active? For RV synchronization"))
 
         # Is this a constant PE? 
         self._is_constant_pe = self.input("is_constant_pe", 1)
@@ -408,10 +411,10 @@ class OnyxPE(MemoryController):
          
             # If this is a constant PE, push constant value to output FIFO indefinitely
             if self._is_constant_pe & ~self._bypass_rv_mode:
-                self._outfifo_push = self._active_outputs_encoding[0]
+                self._outfifo_push = self._active_16b_output
                 self._data_to_fifo = self._pe_output
 
-                self._outfifo_bit_push = self._active_outputs_encoding[1]
+                self._outfifo_bit_push = self._active_1b_output
                 self._bit_to_fifo = self._pe_bit_output
 
             else:
@@ -422,7 +425,7 @@ class OnyxPE(MemoryController):
                     if ~((self._infifo_out_eos & self._active_inputs_encoding) == self._active_inputs_encoding):
 
                         # Push to 16/17b FIFO if that output is active
-                        self._outfifo_push = self._active_outputs_encoding[0]
+                        self._outfifo_push = self._active_16b_output
                         self._outfifo_in_eos = 0
                         self._data_to_fifo = self._pe_output
                         self._infifo_pop[0] = self._infifo_out_valid[0] & self._active_inputs_encoding[0]
@@ -430,14 +433,14 @@ class OnyxPE(MemoryController):
                         self._infifo_pop[2] = self._infifo_out_valid[2] & self._active_inputs_encoding[2]
 
                         # Push to 1b FIFO if that output is active
-                        self._outfifo_bit_push = self._active_outputs_encoding[1]
+                        self._outfifo_bit_push = self._active_1b_output
                         self._bit_to_fifo = self._pe_bit_output
                         self._infifo_bit_pop[0] = self._infifo_bit_out_valid[0] & self._active_bit_inputs_encoding[0]
                         self._infifo_bit_pop[1] = self._infifo_bit_out_valid[1] & self._active_bit_inputs_encoding[1]
                         self._infifo_bit_pop[2] = self._infifo_bit_out_valid[2] & self._active_bit_inputs_encoding[2]
 
                     else:
-                        self._outfifo_push = self._active_outputs_encoding[0]
+                        self._outfifo_push = self._active_16b_output
                         self._outfifo_in_eos = 1
                         # TODO what if stream not on first input
                         self._data_to_fifo = kts.ternary(self._active_inputs_encoding[0], self._infifo_out_data[0], kts.ternary(self._active_inputs_encoding[1], self._infifo_out_data[1], self._infifo_out_data[2]))
@@ -480,7 +483,8 @@ class OnyxPE(MemoryController):
         op = config_kwargs['op']
         active_inputs_encoding = 0b000
         active_bit_inputs_encoding = 0b000
-        active_outputs_encoding = 0b00
+        active_16b_output = 0
+        active_16b_output = 0 
        
         is_constant_pe = 0
 
@@ -492,10 +496,13 @@ class OnyxPE(MemoryController):
         if 'active_bit_inputs' in config_kwargs:
             active_bit_inputs_encoding = config_kwargs['active_bit_inputs']
 
-        if 'active_outputs' in config_kwargs:
-            active_outputs_encoding = config_kwargs['active_outputs']
+        if 'active_16b_output' in config_kwargs:
+            active_16b_output = config_kwargs['active_16b_output']
+
+        if 'active_1b_output' in config_kwargs:
+            active_1b_output = config_kwargs['active_1b_output']
             
-        config += [('active_inputs_encoding', active_inputs_encoding), ('active_bit_inputs_encoding', active_bit_inputs_encoding), ('active_outputs_encoding', active_outputs_encoding)]
+        config += [('active_inputs_encoding', active_inputs_encoding), ('active_bit_inputs_encoding', active_bit_inputs_encoding), ('active_16b_output', active_16b_output), ('active_1b_output', active_1b_output)]
 
         if 'is_constant_pe' in config_kwargs:
             is_constant_pe = config_kwargs['is_constant_pe']
