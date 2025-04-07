@@ -484,7 +484,7 @@ class OnyxPE(MemoryController):
         active_inputs_encoding = 0b000
         active_bit_inputs_encoding = 0b000
         active_16b_output = 0
-        active_16b_output = 0 
+        active_1b_output = 0 
        
         is_constant_pe = 0
 
@@ -501,7 +501,7 @@ class OnyxPE(MemoryController):
 
         if 'active_1b_output' in config_kwargs:
             active_1b_output = config_kwargs['active_1b_output']
-            
+               
         config += [('active_inputs_encoding', active_inputs_encoding), ('active_bit_inputs_encoding', active_bit_inputs_encoding), ('active_16b_output', active_16b_output), ('active_1b_output', active_1b_output)]
 
         if 'is_constant_pe' in config_kwargs:
