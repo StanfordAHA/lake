@@ -261,10 +261,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             actual_data_signals_in = []
             actual_data_signals_out = []
 
-            # Reduce_pe_cluster handled differenlty here. Connect its 1b signals to RV interconnect. 
+            # Reduce_pe_cluster handled differenlty here. Connect its 1b signals to RV interconnect.
             if mem_ctrl.name == "reduce_pe_cluster_flat":
-                actual_data_signals_in = [(inp, width) for (inp, width) in ctrl_ins if not("ready" in inp.name or "valid" in inp.name)]
-                actual_data_signals_out = [(inp, width) for (inp, width) in ctrl_outs if not("ready" in inp.name or "valid" in inp.name)]
+                actual_data_signals_in = [(inp, width) for (inp, width) in ctrl_ins if not ("ready" in inp.name or "valid" in inp.name)]
+                actual_data_signals_out = [(inp, width) for (inp, width) in ctrl_outs if not ("ready" in inp.name or "valid" in inp.name)]
             else:
                 actual_data_signals_in = [(inp, width) for (inp, width) in ctrl_ins if width > 1]
                 actual_data_signals_out = [(inp, width) for (inp, width) in ctrl_outs if width > 1]
@@ -310,7 +310,6 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             stop_ded = self.size_to_port(ded)
             self.add_io_dict(to_add=stop_ded, merged_dict=self.inputs_dict, mem_ctrl=mem_ctrl)
 
-
     def resolve_outputs(self):
         '''
         This function finds the connections between each controller
@@ -327,10 +326,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             actual_data_signals_in = []
             actual_data_signals_out = []
 
-            #  Reduce_pe_cluster handled differenlty here. Connect its 1b signals to RV interconnect. 
+            #  Reduce_pe_cluster handled differenlty here. Connect its 1b signals to RV interconnect.
             if mem_ctrl.name == "reduce_pe_cluster_flat":
-                actual_data_signals_in = [(outp, width) for (outp, width) in ctrl_ins if not("ready" in outp.name or "valid" in outp.name)]
-                actual_data_signals_out = [(outp, width) for (outp, width) in ctrl_outs if not("ready" in outp.name or "valid" in outp.name)]
+                actual_data_signals_in = [(outp, width) for (outp, width) in ctrl_ins if not ("ready" in outp.name or "valid" in outp.name)]
+                actual_data_signals_out = [(outp, width) for (outp, width) in ctrl_outs if not ("ready" in outp.name or "valid" in outp.name)]
             else:
                 actual_data_signals_in = [(outp, width) for (outp, width) in ctrl_ins if width > 1]
                 actual_data_signals_out = [(outp, width) for (outp, width) in ctrl_outs if width > 1]
@@ -797,8 +796,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width, explicit_array=True, packed=True)
                 else:
                     new_input = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}', width=input_width, packed=True)
-  
-                isctrl = input_width == 1 and not(self.io_prefix == "PE_") # HACK: don't do this for PEs. Their 1b (bit0, bit1, bit2) inputs are never ctrl signals. 
+
+                isctrl = input_width == 1 and not (self.io_prefix == "PE_") # HACK: don't do this for PEs. Their 1b (bit0, bit1, bit2) inputs are never ctrl signals.
                 new_input.add_attribute(ControlSignalAttr(isctrl))
                 # Now to determine if the port is rv/dense
                 # If any signal in this dict is rv, we are going to make it an rv
@@ -877,11 +876,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                                                                                      new_input_fifo))
                             self.wire(self.controllers_flat_dict[ctrl_name].ports[port_valid_name], kts.ternary(hybrid_bypass, kts.const(1, 1),
                                                                                                                 kts.ternary(fine_grain_fifo_bypass, new_input_valid, new_input_valid_fifo)))
-    
+
                             # The ready out for this selection should also be ternary
                             tmp_ready_choose = (kts.ternary(hybrid_bypass, kts.const(1, 1),
                                                           kts.ternary(fine_grain_fifo_bypass, self.controllers_flat_dict[ctrl_name].ports[port_ready_name], ~new_reg_fifo.ports.full)), mode_num)
-                                                   
+
                         else:
                             # Otherwise, we can simply directly wire them
                             self.wire(new_input_fifo, self.controllers_flat_dict[ctrl_name].ports[port])
@@ -1043,7 +1042,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                             # Choose between the controller's valid or the fifo valid
                             tmp_valid_choose = (kts.ternary(hybrid_bypass, kts.const(1, 1),
                                                 kts.ternary(fine_grain_fifo_bypass, self.controllers_flat_dict[ctrl_name].ports[port_valid_name], ~new_reg_fifo.ports.empty)), mode_num)
-                            
+
                             tmp_data_choose = (kts.ternary(hybrid_bypass | fine_grain_fifo_bypass,
                                                             self.controllers_flat_dict[ctrl_name].ports[port],
                                                             new_reg_fifo.ports.data_out), mode_num)

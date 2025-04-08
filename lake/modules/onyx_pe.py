@@ -67,10 +67,9 @@ class OnyxPE(MemoryController):
         self._active_1b_output = self.input("active_1b_output", 1)
         self._active_1b_output.add_attribute(ConfigRegAttr("Is the 1b output active? For RV synchronization"))
 
-        # Is this a constant PE? 
+        # Is this a constant PE?
         self._is_constant_pe = self.input("is_constant_pe", 1)
         self._is_constant_pe.add_attribute(ConfigRegAttr("Is this PE outputting a constant value? (i.e. no inputs)"))
-        
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -146,7 +145,6 @@ class OnyxPE(MemoryController):
         self.all_active_inputs_valid = self.var("all_active_inputs_valid", 1)
         self.all_active_bit_inputs_valid = self.var("all_active_bit_inputs_valid", 1)
 
-
         if self.perf_debug:
 
             cyc_count = add_counter(self, "clock_cycle_count", 64, increment=self._clk & self._clk_en)
@@ -185,7 +183,6 @@ class OnyxPE(MemoryController):
         self.wire(self._data_in_ready_out[0], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[0].ports.full))
         self.wire(self._data_in_ready_out[1], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[1].ports.full))
         self.wire(self._data_in_ready_out[2], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[2].ports.full))
-
 
         self.wire(self._bit_in_ready_out[0], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo_bit[0].ports.full))
         self.wire(self._bit_in_ready_out[1], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo_bit[1].ports.full))
@@ -259,7 +256,6 @@ class OnyxPE(MemoryController):
         self.wire(self._infifo_out_valid[1], ~self._infifo[1].ports.empty)
         self.wire(self._infifo_out_valid[2], ~self._infifo[2].ports.empty)
 
-
         for i in range(3):
             self.add_child(f"input_bit_fifo_{i}",
                            self._infifo_bit[i],
@@ -327,13 +323,12 @@ class OnyxPE(MemoryController):
                        pop=self._outfifo_pop,
                        data_in=self._outfifo_in_packed,
                        data_out=self._outfifo_out_packed)
-        
+
         self.wire(self._valid_out, kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._outfifo.ports.empty))
 
         self.wire(self._outfifo_pop, self._ready_in)
         self.wire(self._outfifo_full, self._outfifo.ports.full)
- 
-        
+
         self.add_child(f"output_bit_fifo",
                        self._outfifo_bit,
                        clk=self._gclk,
@@ -348,7 +343,7 @@ class OnyxPE(MemoryController):
 
         self.wire(self._outfifo_bit_pop, self._ready_bit_in)
         self.wire(self._outfifo_bit_full, self._outfifo_bit.ports.full)
- 
+
 # =============================
 # Instantiate actual PE
 # =============================
@@ -390,7 +385,6 @@ class OnyxPE(MemoryController):
                        O0=self._pe_output,
                        O1=self._pe_bit_output)
 
-        
         @always_comb
         def fifo_push():
             self.all_active_inputs_valid = ((self._infifo_out_valid & self._active_inputs_encoding) == self._active_inputs_encoding)
@@ -408,7 +402,7 @@ class OnyxPE(MemoryController):
             self._infifo_bit_pop[0] = 0
             self._infifo_bit_pop[1] = 0
             self._infifo_bit_pop[2] = 0
-         
+
             # If this is a constant PE, push constant value to output FIFO indefinitely
             if self._is_constant_pe & ~self._bypass_rv_mode:
                 self._outfifo_push = self._active_16b_output
@@ -419,8 +413,8 @@ class OnyxPE(MemoryController):
 
             else:
                 # TODO Fix comment If both inputs are valid, then we either can perform the op, otherwise we push through EOS
-                if (self.all_active_inputs_valid & ~self._outfifo_full 
-                    & self.all_active_bit_inputs_valid & ~self._outfifo_bit_full & ~self._bypass_rv_mode):
+                if (self.all_active_inputs_valid & ~self._outfifo_full &
+                        self.all_active_bit_inputs_valid & ~self._outfifo_bit_full & ~self._bypass_rv_mode):
                     # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
                     if ~((self._infifo_out_eos & self._active_inputs_encoding) == self._active_inputs_encoding):
 
@@ -484,8 +478,8 @@ class OnyxPE(MemoryController):
         active_inputs_encoding = 0b000
         active_bit_inputs_encoding = 0b000
         active_16b_output = 0
-        active_1b_output = 0 
-       
+        active_1b_output = 0
+
         is_constant_pe = 0
 
         if 'active_inputs' in config_kwargs:
@@ -501,13 +495,12 @@ class OnyxPE(MemoryController):
 
         if 'active_1b_output' in config_kwargs:
             active_1b_output = config_kwargs['active_1b_output']
-               
+
         config += [('active_inputs_encoding', active_inputs_encoding), ('active_bit_inputs_encoding', active_bit_inputs_encoding), ('active_16b_output', active_16b_output), ('active_1b_output', active_1b_output)]
 
         if 'is_constant_pe' in config_kwargs:
             is_constant_pe = config_kwargs['is_constant_pe']
         config += [('is_constant_pe', is_constant_pe)]
-
 
         if 'bypass_rv' in config_kwargs and config_kwargs['bypass_rv'] is True:
             config += [("bypass_rv_mode", 1)]

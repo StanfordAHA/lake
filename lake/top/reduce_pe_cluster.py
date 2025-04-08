@@ -161,8 +161,6 @@ class ReducePECluster(MemoryController):
         self._pe_ready_in_p = self.input("res_p_ready", 1)
         self._pe_ready_in_p.add_attribute(ControlSignalAttr(is_control=True))
 
-
-
         # Instantiate the PE here
         self.onyxpe = OnyxPE(data_width=16,
                             fifo_depth=self.fifo_depth,
