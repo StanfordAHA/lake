@@ -204,8 +204,9 @@ class Port(Component):
                     self.wire(self._ready_out_lcl, self._write_wcb)
                     self.wire(self._sg_step_out, self._write_wcb)
 
-                    # Indicates if the current address is a new address or not
-                    self._last_write_addr = register(self, self._full_addr_in, enable=self._new_address, name="last_write_addr", clear=self._flush, clk_en=self._clk_en)
+                    # Indicates if the current address is a new address or not - either if "new_address" or hasn't been written yet and write_wcb is high
+                    # self._last_write_addr = register(self, self._full_addr_in, enable=self._new_address, name="last_write_addr", clear=self._flush, clk_en=self._clk_en)
+                    self._last_write_addr = register(self, self._full_addr_in, enable=kts.ternary(self._already_written, self._new_address, self._write_wcb), name="last_write_addr", clear=self._flush, clk_en=self._clk_en)
 
                     # Linear write address to the WCB
                     # Need push and pop addresses to manage the WCB
@@ -377,7 +378,9 @@ class Port(Component):
                     @always_comb
                     def new_address_comb():
                         self._new_address = 0
-                        self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & ub_interface['valid']
+                        # self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & ub_interface['valid']
+                        # Only a new address if we have already written - this accounts for write addresses that don't start at 0
+                        self._new_address = (self._full_addr_in[addr_bits_range[0], addr_bits_range[1]] != self._last_write_addr[addr_bits_range[0], addr_bits_range[1]]) & self._sg_step_in & ub_interface['valid'] & self._already_written
 
                     self.add_code(new_address_comb)
 

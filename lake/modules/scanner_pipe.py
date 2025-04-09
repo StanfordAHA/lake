@@ -1747,8 +1747,8 @@ class ScannerPipe(MemoryController):
         # helper signal that is set to one if the output crd equals to "nil" (0xffff)
         self._out_crd_filtered = self.var("out_crd_filtered", 1)
         self.wire(self._out_crd_filtered, self._coord_data_in_packed == kts.concat(kts.const(0, 1), kts.const(0xffff, 16)))
-        self.wire(self._coord_fifo_push, kts.ternary(self._vector_reduce_mode, 
-                                                     (self._non_vr_coord_fifo_push & ~self._output_row_fully_accumulated), 
+        self.wire(self._coord_fifo_push, kts.ternary(self._vector_reduce_mode,
+                                                     (self._non_vr_coord_fifo_push & ~self._output_row_fully_accumulated),
                                                      kts.ternary(self._enable_locator_filter,
                                                                  self._non_vr_coord_fifo_push & ~self._out_crd_filtered,
                                                                  self._non_vr_coord_fifo_push)))
