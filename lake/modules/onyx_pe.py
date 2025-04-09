@@ -416,7 +416,8 @@ class OnyxPE(MemoryController):
                 if (self.all_active_inputs_valid & ~self._outfifo_full &
                         self.all_active_bit_inputs_valid & ~self._outfifo_bit_full & ~self._bypass_rv_mode):
                     # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
-                    if ~((self._infifo_out_eos & self._active_inputs_encoding) == self._active_inputs_encoding):
+                    # go through here if any of the 1b inputs or outputs are there - implies not sparse
+                    if ~((self._infifo_out_eos & self._active_inputs_encoding) == self._active_inputs_encoding) | (self._active_1b_output | (self._active_bit_inputs_encoding.r_or())):
 
                         # Push to 16/17b FIFO if that output is active
                         self._outfifo_push = self._active_16b_output

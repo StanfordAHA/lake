@@ -98,6 +98,71 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
     return ls
 
 
+def build_pond_rv(storage_capacity: int = 64, data_width=16,
+                  dims: int = 6, physical=True, reg_file=True, opt_rv=True) -> Spec:
+
+    # TODO: Override this in garnet and not here...
+    id_width = 11
+
+    read_delay = 1 if reg_file else 1
+
+    ls = Spec()
+
+    in_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                   direction=Direction.IN, opt_rv=opt_rv)
+    out_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                    direction=Direction.OUT, opt_rv=opt_rv)
+
+    ls.register(in_port, out_port)
+
+    in_id = IterationDomain(dimensionality=dims, extent_width=id_width)
+    in_ag = AddressGenerator(dimensionality=dims)
+    in_sg = ReadyValidScheduleGenerator(dimensionality=dims)
+
+    out_id = IterationDomain(dimensionality=dims, extent_width=id_width)
+    out_ag = AddressGenerator(dimensionality=dims)
+    out_sg = ReadyValidScheduleGenerator(dimensionality=dims)
+
+    ls.register(in_id, in_ag, in_sg)
+    ls.register(out_id, out_ag, out_sg)
+
+    # 1024 Bytes
+    data_bytes = data_width // 8
+
+    tech_map = None
+    if physical:
+        tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True,
+                               reg_file=reg_file)
+
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
+    wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
+    rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
+    ls.register(stg, wr_mem_port, rd_mem_port, stg)
+
+    # All cores are registered at this point
+    # Now connect them
+
+    # In to in
+    ls.connect(in_port, in_id)
+    ls.connect(in_port, in_ag)
+    ls.connect(in_port, in_sg)
+
+    # Out to out
+    ls.connect(out_port, out_id)
+    ls.connect(out_port, out_ag)
+    ls.connect(out_port, out_sg)
+
+    # In and Out to memory ports
+    ls.connect(in_port, wr_mem_port)
+    ls.connect(out_port, rd_mem_port)
+
+    # Memory Ports to storage
+    ls.connect(wr_mem_port, stg)
+    ls.connect(rd_mem_port, stg)
+
+    return ls
+
+
 class SpecMemoryController(MemoryController):
     # Fix to quad port spec for now...
     def __init__(self, spec: Spec,
@@ -111,7 +176,7 @@ class SpecMemoryController(MemoryController):
         print("After hardware gen...")
         self.memory_ports = self.spec.get_memory_ports_mc()
         print(self.memory_ports)
-        # exit()
+
         # Annotate liftable ports...
         self.spec.annotate_liftable_ports()
         # self.internal_generator = self.spec.get_generator())

@@ -1273,7 +1273,11 @@ class Spec():
                 scalar_adjust = 0
                 # This should be computed based on the precursor deltas...
                 # It should be provided in a richer way, but start with 0, then
-                scalar = 0
+                if this_depends_idx == 0 and on_this_idx == 0:
+                    # scalar = 9
+                    scalar = 0
+                else:
+                    scalar = 0
                 # Check the precursor deltas and project them into the level of the dependency...
                 if "precursor_deltas" not in app_json:
                     app_json["precursor_deltas"] = {}
