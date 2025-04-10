@@ -543,6 +543,9 @@ class MemoryInterface(kts.Generator):
     def get_num_ports(self):
         return len(self.mem_ports)
 
+    def get_port_type(self, port_num):
+        return self.mem_ports[port_num].get_port_type()
+
     def create_simulatable_memory(self):
         '''
         Based on the ports within the memory

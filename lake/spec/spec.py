@@ -154,7 +154,8 @@ class Spec():
         new_intf = {}
 
         for port_name, port in mp_intf.items():
-            new_port = lift_port(child_gen=memory_port, parent_gen=self._final_gen, child_port=port)
+            new_port = lift_port(child_gen=memory_port, parent_gen=self._final_gen,
+                                 child_port=port, suffix=f"_{memory_port.name}",)
             new_intf[port_name] = new_port
 
         print(new_intf)
@@ -165,7 +166,7 @@ class Spec():
         mc_port.annotate_port_signals()
 
         # Default one storage for now...
-        self.mc_ports[0][0] = mc_port
+        self.mc_ports[bank_no[0]][bank_no[1]] = mc_port
 
         print("Done lifting...")
 
@@ -280,7 +281,10 @@ class Spec():
         # First generate the storages based on the ports connected to them and their capacities
         storage_nodes = self.get_nodes(Storage)
 
+        self.mc_ports = []
         for j_, storage_node in enumerate(storage_nodes):
+            self.mc_ports.append([])
+
             storage_node: Storage
             # get MemoryPorts
             memoryports = list(nx.neighbors(self._hw_graph, storage_node))
@@ -303,6 +307,7 @@ class Spec():
             # Build memory ports
             memoryports = nx.neighbors(self._hw_graph, storage_node)
             for i_, mp in enumerate(memoryports):
+                self.mc_ports[j_].append(None)
                 mp: MemoryPort
                 mp.gen_hardware(pos_reset=False, storage_node=storage_node)
                 self._final_gen.add_child(f"memoryport_{i_}_storage_{j_}", mp,
@@ -313,7 +318,7 @@ class Spec():
                 if self.remote_storage is False:
                     connect_memoryport_storage(self._final_gen, mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
                 else:
-                    self.connect_memoryport_mc_interface(mp)
+                    self.connect_memoryport_mc_interface(mp, bank_no=(j_, i_))
                 # Connected the memory ports to the storage
 
         # Now that we have generated the memory ports and storage, we can realize

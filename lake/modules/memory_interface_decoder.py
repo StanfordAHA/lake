@@ -112,6 +112,7 @@ class MemoryInterfaceDecoder(Component):
                                     reg_fifo,
                                     clk=self._clk,
                                     rst_n=self._rst_n,
+                                    flush=self._flush,
                                     # clk_en=self._clk_en,
                                     clk_en=kts.const(1, 1),
                                     # Only push the request if enable is high and the grant is high

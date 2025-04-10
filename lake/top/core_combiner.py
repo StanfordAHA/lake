@@ -43,7 +43,8 @@ class CoreCombiner(Generator):
                  io_prefix="",
                  fifo_depth=2,
                  sram_columns=2,
-                 ready_valid=True):
+                 ready_valid=True,
+                 new_pond=False):
         super().__init__(name, debug=True)
 
         self.ready_valid = ready_valid
@@ -66,6 +67,7 @@ class CoreCombiner(Generator):
         self.fifo_depth = fifo_depth
         self.rf = rf
         self.sram_columns = sram_columns
+        self.new_pond = new_pond
 
         self.data_words_per_set = 2 ** self.config_addr_width
         self.sets = int((self.fw_int * self.mem_depth) / self.data_words_per_set)
@@ -94,6 +96,12 @@ class CoreCombiner(Generator):
 
         if self.rw_same_cycle:
             tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=not rf),
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
+        elif self.new_pond:
+            print("Building memory for new pond")
+            tsmc_mem = [MemoryPort(MemoryPortType.WRITE, delay=self.read_delay, active_read=not rf),
+                        MemoryPort(MemoryPortType.WRITE, delay=self.read_delay, active_read=not rf),
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf),
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)

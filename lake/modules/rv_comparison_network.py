@@ -117,7 +117,7 @@ class RVComparisonNetwork(Component):
             self.connections.append((extents_, self._writer_extents[i]))
             self.connections.append((finisheds_, self._writer_finished[i]))
 
-        self._reader_comparisons = [self.output(f"read_{i}_comparisons", len(self.reads)) for i in range(len(self.writes))]
+        self._reader_comparisons = [self.output(f"read_{i}_comparisons", len(self.writes)) for i in range(len(self.reads))]
         self._reader_iterators = []
         self._reader_extents = []
         self._reader_finished = []

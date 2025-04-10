@@ -16,7 +16,7 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
     # TODO: Override this in garnet and not here...
     id_width = 11
 
-    ls = Spec(opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
+    ls = Spec(name="lakespec_mem", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
               config_passthru=True, comply_17=True)
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
@@ -99,45 +99,66 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
 
 def build_pond_rv(storage_capacity: int = 64, data_width=16,
-                  dims: int = 6, physical=True, reg_file=True, opt_rv=True) -> Spec:
+                  dims: int = 6, physical=False, reg_file=True,
+                  remote_storage=True, opt_rv=True) -> Spec:
 
     # TODO: Override this in garnet and not here...
     id_width = 11
 
     read_delay = 1 if reg_file else 1
 
-    ls = Spec()
+    ls = Spec(name="lakespec_pond", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
+              config_passthru=True, comply_17=True)
 
     in_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
                    direction=Direction.IN, opt_rv=opt_rv)
+    in_port2 = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                    direction=Direction.IN, opt_rv=opt_rv)
     out_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
                     direction=Direction.OUT, opt_rv=opt_rv)
+    out_port2 = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                     direction=Direction.OUT, opt_rv=opt_rv)
 
-    ls.register(in_port, out_port)
+    ls.register(in_port, in_port2, out_port, out_port2)
+    # ls.register(in_port, out_port, out_port2)
 
     in_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     in_ag = AddressGenerator(dimensionality=dims)
     in_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
+    in_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
+    in_ag2 = AddressGenerator(dimensionality=dims)
+    in_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
+
     out_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     out_ag = AddressGenerator(dimensionality=dims)
     out_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
+    out_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
+    out_ag2 = AddressGenerator(dimensionality=dims)
+    out_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
+
     ls.register(in_id, in_ag, in_sg)
+    ls.register(in_id2, in_ag2, in_sg2)
     ls.register(out_id, out_ag, out_sg)
+    ls.register(out_id2, out_ag2, out_sg2)
 
-    # 1024 Bytes
     data_bytes = data_width // 8
-
     tech_map = None
     if physical:
         tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True,
                                reg_file=reg_file)
 
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
+
     wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
+    wr_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
+
     rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
-    ls.register(stg, wr_mem_port, rd_mem_port, stg)
+    rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
+
+    ls.register(stg, wr_mem_port, wr_mem_port2, rd_mem_port, rd_mem_port2, stg)
+    # ls.register(stg, wr_mem_port, rd_mem_port, rd_mem_port2, stg)
 
     # All cores are registered at this point
     # Now connect them
@@ -147,18 +168,30 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     ls.connect(in_port, in_ag)
     ls.connect(in_port, in_sg)
 
+    ls.connect(in_port2, in_id2)
+    ls.connect(in_port2, in_ag2)
+    ls.connect(in_port2, in_sg2)
+
     # Out to out
     ls.connect(out_port, out_id)
     ls.connect(out_port, out_ag)
     ls.connect(out_port, out_sg)
 
+    ls.connect(out_port2, out_id2)
+    ls.connect(out_port2, out_ag2)
+    ls.connect(out_port2, out_sg2)
+
     # In and Out to memory ports
     ls.connect(in_port, wr_mem_port)
+    ls.connect(in_port2, wr_mem_port2)
     ls.connect(out_port, rd_mem_port)
+    ls.connect(out_port2, rd_mem_port2)
 
     # Memory Ports to storage
     ls.connect(wr_mem_port, stg)
+    ls.connect(wr_mem_port2, stg)
     ls.connect(rd_mem_port, stg)
+    ls.connect(rd_mem_port2, stg)
 
     return ls
 
@@ -225,11 +258,14 @@ class SpecMemoryController(MemoryController):
 if __name__ == "__main__":
 
     # get the spec
-    spec = build_four_port_wide_fetch_rv()
-    # Instantiate the core
-    smc = SpecMemoryController(spec=spec)
-    mp = smc.get_memory_ports()
-    print(f"Memory Ports: {mp}")
-    smc.get_verilog()
-    smc.print_name()
-    print("Done!")
+    spec = build_pond_rv()
+
+    spec.generate_hardware()
+    spec.get_verilog("/aha/")
+    # # Instantiate the core
+    # smc = SpecMemoryController(spec=spec)
+    # mp = smc.get_memory_ports()
+    # print(f"Memory Ports: {mp}")
+    # smc.get_verilog()
+    # smc.print_name()
+    # print("Done!")

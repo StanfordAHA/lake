@@ -50,6 +50,7 @@ class Arbiter(Generator):
         self._rst_n = self.reset("rst_n")
         self._rst_n.add_attribute(FormalAttr(f"{self._rst_n.name}", FormalSignalConstraint.RSTN))
         self._clk_en = self.clock_en("clk_en", 1)
+        self._flush = self.input("flush", 1)
 
         # # Enable/Disable tile
         # self._tile_en = self.input("tile_en", 1)
