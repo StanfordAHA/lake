@@ -993,7 +993,7 @@ class BuffetLike(MemoryController):
         self._blk_full = self.var("blk_full", self.num_ID)
 
         self._curr_capacity_pre = self.var("curr_capacity_pre", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
-        # self._curr_capacity = self.var("curr_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True)
+        # self._curr_capacity = self.var("curr_capacity", self.data_width, size=self.num_ID, explicit_array=True, packed=True) 
 
         @always_ff((posedge, self._clk), (negedge, self._rst_n))
         def cap_reg(self, idx):
@@ -1003,7 +1003,9 @@ class BuffetLike(MemoryController):
             elif self._push_blk[idx] or self._pop_blk[idx]:
                 self._curr_capacity_pre[idx] = self._curr_capacity_pre[idx] + kts.ternary(self._push_blk[idx],
                                                                                         #   self._blk_bounds[idx],
-                                                                                          self._curr_bounds[idx],
+                                                                                          self._curr_bounds[idx] + kts.concat(kts.const(0, width=self.data_width - self.subword_addr_bits), 
+                                                                                                                              (kts.const(self.fw_int, width=self.subword_addr_bits + 1)\
+                                                                                                                               - kts.concat(kts.const(0, 1), self._curr_bounds[idx][self.subword_addr_bits - 1, 0]))[self.subword_addr_bits - 1, 0]),
                                                                                           kts.const(0, width=self.data_width)) - kts.ternary(self._pop_blk[idx],
                                                                                                                                              self._blk_bounds[idx],
                                                                                                                                              kts.const(0, width=self.data_width))
