@@ -50,17 +50,26 @@ class OnyxPE(MemoryController):
         # Enable/Disable tile
         self._tile_en = self.input("tile_en", 1)
         self._tile_en.add_attribute(ConfigRegAttr("Tile logic enable manifested as clock gate"))
-        # Dense mode for bypassing FIFOs
+        # mode for bypassing FIFOs
         self._bypass_rv_mode = self.input("bypass_rv_mode", 1)
-        self._bypass_rv_mode.add_attribute(ConfigRegAttr("Dense mode to skip the registers"))
-        # Sparse num inputs for rv/eos logic
-        self._active_inputs_encoding = self.input("active_inputs_encoding", 3)
-        self._active_inputs_encoding.add_attribute(ConfigRegAttr("Sparse num inputs for rv/eos logic"))
+        self._bypass_rv_mode.add_attribute(ConfigRegAttr("mode to skip the registers"))
 
-        # Is this a constant PE? 
+        # Active inputs/outputs encoding for RV synchronization
+        self._active_inputs_encoding = self.input("active_inputs_encoding", 3)
+        self._active_inputs_encoding.add_attribute(ConfigRegAttr("Active inputs encoding for RV synchronization"))
+
+        self._active_bit_inputs_encoding = self.input("active_bit_inputs_encoding", 3)
+        self._active_bit_inputs_encoding.add_attribute(ConfigRegAttr("Active bit inputs encoding for RV synchronization"))
+
+        self._active_16b_output = self.input("active_16b_output", 1)
+        self._active_16b_output.add_attribute(ConfigRegAttr("Is the 16b output active? For RV synchronization"))
+
+        self._active_1b_output = self.input("active_1b_output", 1)
+        self._active_1b_output.add_attribute(ConfigRegAttr("Is the 1b output active? For RV synchronization"))
+
+        # Is this a constant PE?
         self._is_constant_pe = self.input("is_constant_pe", 1)
         self._is_constant_pe.add_attribute(ConfigRegAttr("Is this PE outputting a constant value? (i.e. no inputs)"))
-        
 
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
@@ -94,11 +103,23 @@ class OnyxPE(MemoryController):
         self._data_in.append(tmp_data_in)
 
         self._bit_in = []
+        self._bit_in_valid_in = []
+        self._bit_in_ready_out = []
         for i in range(3):
 
-            tmp_data_in = self.input(f"bit{i}", 1)
-            tmp_data_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
-            self._bit_in.append(tmp_data_in)
+            tmp_bit_in = self.input(f"bit{i}", 1)
+            tmp_bit_in.add_attribute(ControlSignalAttr(is_control=True, full_bus=False))
+            tmp_bit_in.add_attribute(HybridPortAddr())
+
+            tmp_bit_in_valid_in = self.input(f"bit{i}_valid", 1)
+            tmp_bit_in_valid_in.add_attribute(ControlSignalAttr(is_control=True))
+
+            tmp_bit_in_ready_out = self.output(f"bit{i}_ready", 1)
+            tmp_bit_in_ready_out.add_attribute(ControlSignalAttr(is_control=False))
+
+            self._bit_in.append(tmp_bit_in)
+            self._bit_in_valid_in.append(tmp_bit_in_valid_in)
+            self._bit_in_ready_out.append(tmp_bit_in_ready_out)
 
         self._data_out = self.output("res", self.data_width + 1, packed=True)
         self._data_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -112,6 +133,17 @@ class OnyxPE(MemoryController):
 
         self._data_out_p = self.output("res_p", 1)
         self._data_out_p.add_attribute(ControlSignalAttr(is_control=False, full_bus=False))
+        self._data_out_p.add_attribute(HybridPortAddr())
+
+        self._valid_bit_out = self.output("res_p_valid", 1)
+        self._valid_bit_out.add_attribute(ControlSignalAttr(is_control=False))
+
+        self._ready_bit_in = self.input("res_p_ready", 1)
+        self._ready_bit_in.add_attribute(ControlSignalAttr(is_control=True))
+
+        # Some local vars
+        self.all_active_inputs_valid = self.var("all_active_inputs_valid", 1)
+        self.all_active_bit_inputs_valid = self.var("all_active_bit_inputs_valid", 1)
 
         if self.perf_debug:
 
@@ -139,18 +171,35 @@ class OnyxPE(MemoryController):
         self._infifo[1].add_attribute(SharedFifoAttr(direction="IN"))
         self._infifo[2].add_attribute(SharedFifoAttr(direction="IN"))
 
+        self._infifo_bit = []
+        self._infifo_bit.append(RegFIFO(data_width=1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos))
+        self._infifo_bit.append(RegFIFO(data_width=1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos))
+        self._infifo_bit.append(RegFIFO(data_width=1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos))
+        self._infifo_bit[0].add_attribute(SharedFifoAttr(direction="IN"))
+        self._infifo_bit[1].add_attribute(SharedFifoAttr(direction="IN"))
+        self._infifo_bit[2].add_attribute(SharedFifoAttr(direction="IN"))
+
         # Ready is just a function of having room in the FIFO
         self.wire(self._data_in_ready_out[0], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[0].ports.full))
         self.wire(self._data_in_ready_out[1], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[1].ports.full))
         self.wire(self._data_in_ready_out[2], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo[2].ports.full))
 
+        self.wire(self._bit_in_ready_out[0], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo_bit[0].ports.full))
+        self.wire(self._bit_in_ready_out[1], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo_bit[1].ports.full))
+        self.wire(self._bit_in_ready_out[2], kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._infifo_bit[2].ports.full))
+
         # Convert to packed
         self._infifo_in_packed = self.var("infifo_in_packed", self.data_width + 1, size=3, explicit_array=True, packed=True)
         self._infifo_out_packed = self.var("infifo_out_packed", self.data_width + 1, size=3, explicit_array=True, packed=True)
+        self._infifo_bit_in_packed = self.var("infifo_bit_in_packed", 1, size=3, explicit_array=True, packed=True)
+        self._infifo_bit_out_packed = self.var("infifo_bit_out_packed", 1, size=3, explicit_array=True, packed=True)
 
         self._infifo_out_eos = self.var("infifo_out_eos", 3)
         self._infifo_out_valid = self.var("infifo_out_valid", 3)
         self._infifo_out_data = self.var("infifo_out_data", self.data_width, size=3, explicit_array=True, packed=True)
+
+        self._infifo_bit_out_valid = self.var("infifo_bit_out_valid", 3)
+        self._infifo_bit_out_data = self.var("infifo_bit_out_data", 1, size=3, explicit_array=True, packed=True)
 
         # indicate valid data as well
         # self.wire(self._infifo_in_packed[0][self.data_width], self._data_in_eos_in[0])
@@ -167,6 +216,14 @@ class OnyxPE(MemoryController):
         self.wire(self._infifo_out_eos[2], self._infifo_out_packed[2][self.data_width])
         self.wire(self._infifo_out_data[2], self._infifo_out_packed[2][self.data_width - 1, 0])
 
+        self.wire(self._infifo_bit_in_packed[0], self._bit_in[0])
+        self.wire(self._infifo_bit_in_packed[1], self._bit_in[1])
+        self.wire(self._infifo_bit_in_packed[2], self._bit_in[2])
+
+        self.wire(self._infifo_bit_out_data[0], self._infifo_bit_out_packed[0])
+        self.wire(self._infifo_bit_out_data[1], self._infifo_bit_out_packed[1])
+        self.wire(self._infifo_bit_out_data[2], self._infifo_bit_out_packed[2])
+
         # Push when there's incoming transaction and room to accept it
         # Do this separate naming scheme so that the get_fifos function in the MemoryController
         # base class will pick them up properly
@@ -175,8 +232,14 @@ class OnyxPE(MemoryController):
         self.wire(self._infifo_push[1], self._data_in_valid_in[1])
         self.wire(self._infifo_push[2], self._data_in_valid_in[2])
 
+        self._infifo_bit_push = [self.var(f"infifo_bit_push_{i}", 1) for i in range(3)]
+        self.wire(self._infifo_bit_push[0], self._bit_in_valid_in[0])
+        self.wire(self._infifo_bit_push[1], self._bit_in_valid_in[1])
+        self.wire(self._infifo_bit_push[2], self._bit_in_valid_in[2])
+
         # Pop when ready to accum more streams
         self._infifo_pop = self.var("infifo_pop", 3)
+        self._infifo_bit_pop = self.var("infifo_bit_pop", 3)
 
         for i in range(3):
             self.add_child(f"input_fifo_{i}",
@@ -193,6 +256,22 @@ class OnyxPE(MemoryController):
         self.wire(self._infifo_out_valid[1], ~self._infifo[1].ports.empty)
         self.wire(self._infifo_out_valid[2], ~self._infifo[2].ports.empty)
 
+        for i in range(3):
+            self.add_child(f"input_bit_fifo_{i}",
+                           self._infifo_bit[i],
+                           clk=self._gclk,
+                           rst_n=self._rst_n,
+                           clk_en=self._clk_en,
+                           push=self._infifo_bit_push[i],
+                           pop=self._infifo_bit_pop[i],
+                           data_in=self._infifo_bit_in_packed[i],
+                           data_out=self._infifo_bit_out_packed[i])
+
+        self.wire(self._infifo_bit_out_valid[0], ~self._infifo_bit[0].ports.empty)
+        self.wire(self._infifo_bit_out_valid[1], ~self._infifo_bit[1].ports.empty)
+        self.wire(self._infifo_bit_out_valid[2], ~self._infifo_bit[2].ports.empty)
+
+
 # ==============================
 # OUTPUT FIFO
 # ==============================
@@ -204,21 +283,36 @@ class OnyxPE(MemoryController):
         self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
         self._outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
+        self._bit_to_fifo = self.var("bit_to_fifo", 1)
+        self._pe_bit_output = self.var("pe_bit_output", 1)
+
+        self._outfifo_bit = RegFIFO(1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._outfifo_bit.add_attribute(SharedFifoAttr(direction="OUT"))
+
         # Convert to packed
         self._outfifo_in_packed = self.var("outfifo_in_packed", self.data_width + 1, packed=True)
         self._outfifo_out_packed = self.var("outfifo_out_packed", self.data_width + 1, packed=True)
 
+        self._outfifo_bit_in_packed = self.var("outfifo_bit_in_packed", 1, packed=True)
+        self._outfifo_bit_out_packed = self.var("outfifo_bit_out_packed", 1, packed=True)
+
         self.wire(self._outfifo_in_packed[self.data_width], self._outfifo_in_eos)
         self.wire(self._outfifo_in_packed[self.data_width - 1, 0], self._data_to_fifo)
 
+        self.wire(self._outfifo_bit_in_packed, self._bit_to_fifo)
+
         self.wire(self._data_out, kts.ternary(self._bypass_rv_mode, self._pe_output, self._outfifo_out_packed))
+        self.wire(self._data_out_p, kts.ternary(self._bypass_rv_mode, self._pe_bit_output, self._outfifo_bit_out_packed))
 
         # Push when there's incoming transaction and room to accept it
         self._outfifo_push = self.var("outfifo_push", 1)
+        self._outfifo_bit_push = self.var("outfifo_bit_push", 1)
 
         # Pop when ready to accum more streams
         self._outfifo_pop = self.var("outfifo_pop", 1)
         self._outfifo_full = self.var("outfifo_full", 1)
+        self._outfifo_bit_pop = self.var("outfifo_bit_pop", 1)
+        self._outfifo_bit_full = self.var("outfifo_bit_full", 1)
 
         self.add_child(f"output_fifo",
                        self._outfifo,
@@ -234,6 +328,21 @@ class OnyxPE(MemoryController):
 
         self.wire(self._outfifo_pop, self._ready_in)
         self.wire(self._outfifo_full, self._outfifo.ports.full)
+
+        self.add_child(f"output_bit_fifo",
+                       self._outfifo_bit,
+                       clk=self._gclk,
+                       rst_n=self._rst_n,
+                       clk_en=self._clk_en,
+                       push=self._outfifo_bit_push,
+                       pop=self._outfifo_bit_pop,
+                       data_in=self._outfifo_bit_in_packed,
+                       data_out=self._outfifo_bit_out_packed)
+
+        self.wire(self._valid_bit_out, kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._outfifo_bit.ports.empty))
+
+        self.wire(self._outfifo_bit_pop, self._ready_bit_in)
+        self.wire(self._outfifo_bit_full, self._outfifo_bit.ports.full)
 
 # =============================
 # Instantiate actual PE
@@ -270,38 +379,62 @@ class OnyxPE(MemoryController):
                                          kts.ternary(self._infifo_out_maybe[2],
                                                      0,
                                                      self._infifo_out_data[2])),
-                       bit0=self._bit_in[0],
-                       bit1=self._bit_in[1],
-                       bit2=self._bit_in[2],
+                       bit0=kts.ternary(self._bypass_rv_mode, self._bit_in[0], self._infifo_bit_out_data[0]),
+                       bit1=kts.ternary(self._bypass_rv_mode, self._bit_in[1], self._infifo_bit_out_data[1]),
+                       bit2=kts.ternary(self._bypass_rv_mode, self._bit_in[2], self._infifo_bit_out_data[2]),
                        O0=self._pe_output,
-                       O1=self._data_out_p)
+                       O1=self._pe_bit_output)
 
         @always_comb
         def fifo_push():
+            self.all_active_inputs_valid = ((self._infifo_out_valid & self._active_inputs_encoding) == self._active_inputs_encoding)
+            self.all_active_bit_inputs_valid = ((self._infifo_bit_out_valid & self._active_bit_inputs_encoding) == self._active_bit_inputs_encoding)
+
             self._outfifo_push = 0
             self._outfifo_in_eos = 0
             self._data_to_fifo = 0
             self._infifo_pop[0] = 0
             self._infifo_pop[1] = 0
             self._infifo_pop[2] = 0
-         
+
+            self._outfifo_bit_push = 0
+            self._bit_to_fifo = 0
+            self._infifo_bit_pop[0] = 0
+            self._infifo_bit_pop[1] = 0
+            self._infifo_bit_pop[2] = 0
+
             # If this is a constant PE, push constant value to output FIFO indefinitely
             if self._is_constant_pe & ~self._bypass_rv_mode:
-                self._outfifo_push = 1
+                self._outfifo_push = self._active_16b_output
                 self._data_to_fifo = self._pe_output
+
+                self._outfifo_bit_push = self._active_1b_output
+                self._bit_to_fifo = self._pe_bit_output
+
             else:
                 # TODO Fix comment If both inputs are valid, then we either can perform the op, otherwise we push through EOS
-                if ((self._infifo_out_valid & self._active_inputs_encoding) == self._active_inputs_encoding) & ~self._outfifo_full & ~self._bypass_rv_mode:
+                if (self.all_active_inputs_valid & ~self._outfifo_full &
+                        self.all_active_bit_inputs_valid & ~self._outfifo_bit_full & ~self._bypass_rv_mode):
                     # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
                     if ~((self._infifo_out_eos & self._active_inputs_encoding) == self._active_inputs_encoding):
-                        self._outfifo_push = 1
+
+                        # Push to 16/17b FIFO if that output is active
+                        self._outfifo_push = self._active_16b_output
                         self._outfifo_in_eos = 0
                         self._data_to_fifo = self._pe_output
                         self._infifo_pop[0] = self._infifo_out_valid[0] & self._active_inputs_encoding[0]
                         self._infifo_pop[1] = self._infifo_out_valid[1] & self._active_inputs_encoding[1]
                         self._infifo_pop[2] = self._infifo_out_valid[2] & self._active_inputs_encoding[2]
+
+                        # Push to 1b FIFO if that output is active
+                        self._outfifo_bit_push = self._active_1b_output
+                        self._bit_to_fifo = self._pe_bit_output
+                        self._infifo_bit_pop[0] = self._infifo_bit_out_valid[0] & self._active_bit_inputs_encoding[0]
+                        self._infifo_bit_pop[1] = self._infifo_bit_out_valid[1] & self._active_bit_inputs_encoding[1]
+                        self._infifo_bit_pop[2] = self._infifo_bit_out_valid[2] & self._active_bit_inputs_encoding[2]
+
                     else:
-                        self._outfifo_push = 1
+                        self._outfifo_push = self._active_16b_output
                         self._outfifo_in_eos = 1
                         # TODO what if stream not on first input
                         self._data_to_fifo = kts.ternary(self._active_inputs_encoding[0], self._infifo_out_data[0], kts.ternary(self._active_inputs_encoding[1], self._infifo_out_data[1], self._infifo_out_data[2]))
@@ -343,19 +476,31 @@ class OnyxPE(MemoryController):
         config = [("tile_en", 1)]
         op = config_kwargs['op']
         active_inputs_encoding = 0b000
+        active_bit_inputs_encoding = 0b000
+        active_16b_output = 0
+        active_1b_output = 0
+
         is_constant_pe = 0
 
         if 'active_inputs' in config_kwargs:
             active_inputs_encoding = config_kwargs['active_inputs']
         elif 'num_sparse_inputs' in config_kwargs:
             active_inputs_encoding = config_kwargs['num_sparse_inputs']
-            
-        config += [('active_inputs_encoding', active_inputs_encoding)]
+
+        if 'active_bit_inputs' in config_kwargs:
+            active_bit_inputs_encoding = config_kwargs['active_bit_inputs']
+
+        if 'active_16b_output' in config_kwargs:
+            active_16b_output = config_kwargs['active_16b_output']
+
+        if 'active_1b_output' in config_kwargs:
+            active_1b_output = config_kwargs['active_1b_output']
+
+        config += [('active_inputs_encoding', active_inputs_encoding), ('active_bit_inputs_encoding', active_bit_inputs_encoding), ('active_16b_output', active_16b_output), ('active_1b_output', active_1b_output)]
 
         if 'is_constant_pe' in config_kwargs:
             is_constant_pe = config_kwargs['is_constant_pe']
         config += [('is_constant_pe', is_constant_pe)]
-
 
         if 'bypass_rv' in config_kwargs and config_kwargs['bypass_rv'] is True:
             config += [("bypass_rv_mode", 1)]
