@@ -1002,10 +1002,9 @@ class BuffetLike(MemoryController):
             # Only update when pushed or popped
             elif self._push_blk[idx] or self._pop_blk[idx]:
                 self._curr_capacity_pre[idx] = self._curr_capacity_pre[idx] + kts.ternary(self._push_blk[idx],
-                                                                                                        #   self._blk_bounds[idx],
-                                                                                                        kts.ternary(self._curr_bounds[idx][self.subword_addr_bits - 1, 0] == kts.const(0, self.subword_addr_bits),
-                                                                                                                        self._curr_bounds[idx],
-                                                                                                                        self._curr_bounds[idx] + kts.const(self.fw_int, width=self.data_width) - kts.concat(kts.const(0, width=self.data_width - self.subword_addr_bits), self._curr_bounds[idx][self.subword_addr_bits - 1, 0])),
+                                                                                        self._curr_bounds[idx] + kts.concat(kts.const(0, width=self.data_width - self.subword_addr_bits),
+                                                                                                                            (kts.const(self.fw_int, width=self.subword_addr_bits + 1)\
+                                                                                                                            - kts.concat(kts.const(0, 1), self._curr_bounds[idx][self.subword_addr_bits - 1, 0]))[self.subword_addr_bits - 1, 0]),
                                                                                                         kts.const(0, width=self.data_width)) - kts.ternary(self._pop_blk[idx],
                                                                                                                                                             self._blk_bounds[idx],
                                                                                                                                                             kts.const(0, width=self.data_width))
