@@ -190,13 +190,13 @@ class Locator(MemoryController):
         self._inner_is_eos = self.var("inner_is_eos", 1)
         self.wire(self._inner_is_eos, self._inner_infifo_is_eos & self._inner_infifo_data_valid)
         self._inner_is_done = self.var("inner_is_done", 1)
-        self.wire(self._inner_is_done, self._inner_infifo_is_eos & (self._inner_infifo_data[9, 8] == kts.const(1, 2)))
+        self.wire(self._inner_is_done, self._inner_infifo_is_eos & (self._inner_infifo_data[9, 8] == kts.const(1, 2)) * self._inner_infifo_data_valid)
         self._outer_is_data = self.var("outer_is_data", 1)
         self.wire(self._outer_is_data, ~self._outer_infifo_is_eos & self._outer_infifo_data_valid)
         self._outer_is_eos = self.var("outer_is_eos", 1)
         self.wire(self._outer_is_eos, self._outer_infifo_is_eos & self._outer_infifo_data_valid)
         self._outer_is_done = self.var("outer_is_done", 1)
-        self.wire(self._outer_is_done, self._outer_infifo_is_eos & (self._outer_infifo_data[9, 8] == kts.const(1, 2)))
+        self.wire(self._outer_is_done, self._outer_infifo_is_eos & (self._outer_infifo_data[9, 8] == kts.const(1, 2)) & self._outer_infifo_data_valid)
         self._addr_outfifo_is_eos = self.var("addr_outfifo_is_eos", 1)
         self._addr_outfifo_data = self.var("addr_outfifo_data", self.data_width)
         self.wire(self._addr_outfifo_data_packed[self.data_width - 1, 0], self._addr_outfifo_data)
@@ -234,8 +234,7 @@ class Locator(MemoryController):
             # done with the inner fifo, drain the outer fifo(should be a single eos)
             elif (self._inner_is_done & ~self._outer_is_done):
                 self._outer_infifo_pop = 1
-            else:
-                # both are done, pop and push everything
+            elif (self._inner_is_done & self._outer_is_done):
                 if (~self._addr_outfifo_full):
                     self._addr_outfifo_push = 1
                     self._addr_outfifo_is_eos = 1
