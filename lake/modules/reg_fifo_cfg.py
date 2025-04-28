@@ -8,7 +8,7 @@ class RegFIFO_cfg(Generator):
     This module generates register-based FIFOs. These are useful
     when we only need a few entries with no prefetching needed
 
-    This version can be configured to be initialized non-empty 
+    This version can be configured to be initialized non-empty
     '''
     def __init__(self,
                  data_width,
@@ -192,7 +192,8 @@ class RegFIFO_cfg(Generator):
 
     @always_comb
     def valid_comb(self):
-        self._valid = ((~self._empty) | self._passthru)
+        self._valid = ((~self._empty & ~self._flush & self._clk_en) | self._passthru)
+        # self._valid = ((~self._empty) | self._passthru)
         # self._valid = self._pop & ((~self._empty) | self._passthru)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -283,7 +284,8 @@ class RegFIFO_cfg(Generator):
 
             self._num_items = self.var("num_items", clog2(self.depth) + 1)
             # self.wire(self._full, (self._wr_ptr + 1) == self._rd_ptr)
-            self.wire(self._full, self._num_items == self.depth)
+            # self.wire(self._full, self._num_items == self.depth)
+            self.wire(self._full, (self._num_items == self.depth) | self._flush | ~self._clk_en)
             # Experiment to cover latency
             assert self.depth > 1 or self.width_mult > 1, "FIFO depth or width_mult needs to be larger than 1"
             self.wire(self._almost_full, self._num_items >= (self.depth - self.almost_full_diff))
@@ -322,8 +324,8 @@ class RegFIFO_cfg(Generator):
 
     def get_hardware_genned(self):
         return self.hardware_genned
-    
-      
+
+
 
 if __name__ == "__main__":
     # dut = RegFIFO_cfg(data_width=16,
