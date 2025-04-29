@@ -512,8 +512,8 @@ class Intersect(MemoryController):
         # CHANGE 4
         # PASS_DONE.output(self._pop_fifo[0], (self._coord_in_fifo_valid_in[0] & (self._coord_in_fifo_in[0] == self._done_token)))
         # PASS_DONE.output(self._pop_fifo[1], (self._coord_in_fifo_valid_in[1] & (self._coord_in_fifo_in[1] == self._done_token)))
-        PASS_DONE.output(self._pop_fifo[0], (valid_concat.r_and() & (self._coord_in_fifo_in[0] == self._done_token)))
-        PASS_DONE.output(self._pop_fifo[1], (valid_concat.r_and() & (self._coord_in_fifo_in[1] == self._done_token)))
+        PASS_DONE.output(self._pop_fifo[0], (~self._fifo_full.r_or() & valid_concat.r_and() & (self._coord_in_fifo_in[0] == self._done_token)))
+        PASS_DONE.output(self._pop_fifo[1], (~self._fifo_full.r_or() & valid_concat.r_and() & (self._coord_in_fifo_in[1] == self._done_token)))
         # CHANGE 3
         # PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or())
         PASS_DONE.output(self._fifo_push, ~self._fifo_full.r_or() & valid_concat.r_and())
