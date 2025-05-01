@@ -56,24 +56,17 @@ class Locator(MemoryController):
         # this sepcifies what fiber level is the locator performaning on
         self._locate_lvl = self.input("locate_lvl", 16)
         self._locate_lvl.add_attribute(ConfigRegAttr("Locator level"))
-        # the stride of the locator 
-        self._locate_dim_size = self.input("locate_dim_size", 5)
+        # the stride of the locator
+        self._locate_dim_size = self.input("locate_dim_size", 6)
         self._locate_dim_size.add_attribute(ConfigRegAttr("Locator dimension size"))
 
-        # IO ports 
+        # IO ports
         self._coord_in_0 = self.input("coord_in_0", self.data_width + 1, packed=True)
         self._coord_in_0.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
         self._coord_in_0_valid = self.input("coord_in_0_valid", 1)
         self._coord_in_0_valid.add_attribute(ControlSignalAttr(is_control=True))
         self._coord_in_0_ready = self.output("coord_in_0_ready", 1)
         self._coord_in_0_ready.add_attribute(ControlSignalAttr(is_control=False))
-    
-        self._coord_in_1 = self.input("coord_in_1", self.data_width + 1, packed=True)
-        self._coord_in_1.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-        self._coord_in_1_valid = self.input("coord_in_1_valid", 1)
-        self._coord_in_1_valid.add_attribute(ControlSignalAttr(is_control=True))
-        self._coord_in_1_ready = self.output("coord_in_1_ready", 1)
-        self._coord_in_1_ready.add_attribute(ControlSignalAttr(is_control=False))
 
         self._addr_out = self.output("addr_out", self.data_width + 1, packed=True)
         self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -128,37 +121,6 @@ class Locator(MemoryController):
         self.wire(self._coord_in_0_ready, ~inner_infifo.ports.full)
 
         ##############
-        # Outer Stream Input FIFO
-        ##############
-        self._outer_infifo_data_packed = self.var(f"outer_infifo_data_packed", self.data_width + 1, packed=True)
-        # pop singal that would need to hooked up later
-        self._outer_infifo_pop = self.var(f"outer_infifo_pop", 1)
-
-        self.add_child(f"outer_infifo",
-                       outer_infifo,
-                       clk=self._gclk,
-                       rst_n=self._rst_n,
-                       clk_en=self._clk_en,
-                       push=self._coord_in_1_valid,
-                       pop=self._outer_infifo_pop,
-                       data_in=self._coord_in_1,
-                       data_out=self._outer_infifo_data_packed)
-
-        # Unpacked data and indicator signals from the fifo for ease of use
-        self._outer_infifo_data = self.var("outer_infifo_data", 16)
-        self._outer_infifo_is_eos = self.var("outer_infifo_is_eos", 1)
-        self._outer_infifo_data_valid = self.var("outer_infifo_data_valid", 1)
-
-        # Unpack the data
-        self.wire(self._outer_infifo_is_eos, self._outer_infifo_data_packed[self.data_width])
-        self.wire(self._outer_infifo_data, self._outer_infifo_data_packed[self.data_width - 1, 0])
-
-        self.wire(self._outer_infifo_data_valid, ~outer_infifo.ports.empty)
-
-        # Hook up the ready singal to upstream primitive
-        self.wire(self._coord_in_1_ready, ~outer_infifo.ports.full)
-        
-        ##############
         # Address Output FIFO
         ##############
         # push singal that would need to hooked up later
@@ -191,56 +153,53 @@ class Locator(MemoryController):
         self.wire(self._inner_is_eos, self._inner_infifo_is_eos & self._inner_infifo_data_valid)
         self._inner_is_done = self.var("inner_is_done", 1)
         self.wire(self._inner_is_done, self._inner_infifo_is_eos & (self._inner_infifo_data[9, 8] == kts.const(1, 2)) * self._inner_infifo_data_valid)
-        self._outer_is_data = self.var("outer_is_data", 1)
-        self.wire(self._outer_is_data, ~self._outer_infifo_is_eos & self._outer_infifo_data_valid)
-        self._outer_is_eos = self.var("outer_is_eos", 1)
-        self.wire(self._outer_is_eos, self._outer_infifo_is_eos & self._outer_infifo_data_valid)
-        self._outer_is_done = self.var("outer_is_done", 1)
-        self.wire(self._outer_is_done, self._outer_infifo_is_eos & (self._outer_infifo_data[9, 8] == kts.const(1, 2)) & self._outer_infifo_data_valid)
         self._addr_outfifo_is_eos = self.var("addr_outfifo_is_eos", 1)
         self._addr_outfifo_data = self.var("addr_outfifo_data", self.data_width)
         self.wire(self._addr_outfifo_data_packed[self.data_width - 1, 0], self._addr_outfifo_data)
         self.wire(self._addr_outfifo_data_packed[self.data_width], self._addr_outfifo_is_eos)
+        self._inc_locate_step = self.var("inc_locate_step", 1)
+        self._clr_locate_step = self.var("clr_locate_step", 1)
+        self._locate_step = add_counter(self, name="locate_step", bitwidth=6, increment=self._inc_locate_step, clear=self._clr_locate_step)
 
         @always_comb
         def locate_logic(self):
             # default values, do nothing
             self._inner_infifo_pop = 0
-            self._outer_infifo_pop = 0
             self._addr_outfifo_push = 0
             self._addr_outfifo_is_eos = 0
             self._addr_outfifo_data = 0
+            self._inc_locate_step = 0
+            self._clr_locate_step = 0
 
-            if (self._inner_is_data & self._outer_is_data):
+            if (self._inner_is_data):
                 # both inner and out fifo are acutal data, peform locating address offset
                 if (~self._addr_outfifo_full):
                     self._inner_infifo_pop = 1
                     self._addr_outfifo_push = 1
                     self._addr_outfifo_is_eos = 0
-                    self._addr_outfifo_data = self._inner_infifo_data + self._outer_infifo_data * self._locate_dim_size
+                    self._addr_outfifo_data = self._inner_infifo_data + self._locate_step * self._locate_dim_size
 
             # the inner and output are eos tokens or done tokens, pop and push both if there's space
-            elif (self._inner_is_eos & ~self._inner_is_done & self._outer_is_data):
+            elif (self._inner_is_eos):
                 if (~self._addr_outfifo_full):
                     self._addr_outfifo_push = 1
-                    self._addr_outfifo_is_eos = 1
-                    self._addr_outfifo_data = self._inner_infifo_data
-                    if (self._inner_infifo_data >= self._locate_lvl):
-                        # if inner matches the expected level of eos token, pop both inner and outer
-                        self._inner_infifo_pop = 1
-                        self._outer_infifo_pop = 1
-                    else:
-                        self._inner_infifo_pop = 1
-            # done with the inner fifo, drain the outer fifo(should be a single eos)
-            elif (self._inner_is_done & ~self._outer_is_done):
-                self._outer_infifo_pop = 1
-            elif (self._inner_is_done & self._outer_is_done):
-                if (~self._addr_outfifo_full):
-                    self._addr_outfifo_push = 1
-                    self._addr_outfifo_is_eos = 1
-                    self._addr_outfifo_data = self._inner_infifo_data
                     self._inner_infifo_pop = 1
-                    self._outer_infifo_pop = 1
+                    self._addr_outfifo_is_eos = 1
+                    self._addr_outfifo_data = self._inner_infifo_data
+                    if (self._inner_infifo_data == self._locate_lvl):
+                        # if inner matches the expected level of eos token, pop both inner and outer
+                        self._inc_locate_step = 1
+                        # self._outer_infifo_pop = 1
+                    elif (self._inner_infifo_data > self._locate_lvl):
+                        self._clr_locate_step = 1
+            # done with the inner fifo, drain the outer fifo(should be a single eos)
+            elif (self._inner_is_done):
+                if (~self._addr_outfifo_full):
+                    self._addr_outfifo_push = 1
+                    self._addr_outfifo_is_eos = 1
+                    self._addr_outfifo_data = self._inner_infifo_data
+                    self._clr_locate_step = 1
+                    self._inner_infifo_pop = 1
 
         self.add_code(locate_logic)
 
@@ -261,13 +220,13 @@ class Locator(MemoryController):
             lift_config_reg(self.internal_generator)
 
     def get_bitstream(self, config_kwargs):
-        locator_lvl = config_kwargs['locator_lvl']
-        locator_dim_size = config_kwargs['locator_dim_size']
+        locate_lvl = config_kwargs['locate_lvl']
+        locate_dim_size = config_kwargs['locate_dim_size']
 
         # Store all configurations here
         config = [("tile_en", 1)]
-        config += [("locator_lvl", locator_lvl)]
-        config += [("locator_dim_size", locator_dim_size)]
+        config += [("locate_lvl", locate_lvl)]
+        config += [("locate_dim_size", locate_dim_size)]
 
         # Dummy variables to fill in later when compiler
         # generates different collateral for different designs
