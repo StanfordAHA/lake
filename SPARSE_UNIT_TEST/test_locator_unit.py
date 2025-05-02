@@ -170,6 +170,13 @@ def load_test_module(test_name):
         in_crd2 = ['S0', 'S0', 0, 'S0', 1, 'S1', 'D']
 
         return create_gold(in_crd1, in_crd2, l_level, dim)
+    elif test_name == "test":
+        dim = 20
+        l_level = 1
+        in_crd1 = [1, 'S1', 2, 'S2', 'D']
+        in_crd2 = [0, 'S0', 1, 'S1', 'D']
+
+        return create_gold(in_crd1, in_crd2, l_level, dim)
 
     elif test_name[0:3] == "rd_":
         t_arg = test_name.split("_")
@@ -241,7 +248,8 @@ def module_iter_basic(test_name, add_test=""):
 
 def test_iter_basic():
     init_module()
-    test_list = ["direct_1level", "direct_2level", "xxx"]
+    # test_list = ["direct_1level", "direct_2level", "xxx"]
+    test_list = ["direct_1level", "direct_2level", "test", "xxx"]
     for test in test_list:
         module_iter_basic(test)
 
