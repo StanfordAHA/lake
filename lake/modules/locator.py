@@ -61,12 +61,12 @@ class Locator(MemoryController):
         self._locate_dim_size.add_attribute(ConfigRegAttr("Locator dimension size"))
 
         # IO ports
-        self._coord_in_0 = self.input("coord_in_0", self.data_width + 1, packed=True)
-        self._coord_in_0.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
-        self._coord_in_0_valid = self.input("coord_in_0_valid", 1)
-        self._coord_in_0_valid.add_attribute(ControlSignalAttr(is_control=True))
-        self._coord_in_0_ready = self.output("coord_in_0_ready", 1)
-        self._coord_in_0_ready.add_attribute(ControlSignalAttr(is_control=False))
+        self._coord_in = self.input("coord_in", self.data_width + 1, packed=True)
+        self._coord_in.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
+        self._coord_in_valid = self.input("coord_in_valid", 1)
+        self._coord_in_valid.add_attribute(ControlSignalAttr(is_control=True))
+        self._coord_in_ready = self.output("coord_in_ready", 1)
+        self._coord_in_ready.add_attribute(ControlSignalAttr(is_control=False))
 
         self._addr_out = self.output("addr_out", self.data_width + 1, packed=True)
         self._addr_out.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -101,9 +101,9 @@ class Locator(MemoryController):
                        clk=self._gclk,
                        rst_n=self._rst_n,
                        clk_en=self._clk_en,
-                       push=self._coord_in_0_valid,
+                       push=self._coord_in_valid,
                        pop=self._inner_infifo_pop,
-                       data_in=self._coord_in_0,
+                       data_in=self._coord_in,
                        data_out=self._inner_infifo_data_packed)
 
         # Unpacked data and indicator signals from the fifo for ease of use
@@ -118,7 +118,7 @@ class Locator(MemoryController):
         self.wire(self._inner_infifo_data_valid, ~inner_infifo.ports.empty)
 
         # Hook up the ready singal to upstream primitive
-        self.wire(self._coord_in_0_ready, ~inner_infifo.ports.full)
+        self.wire(self._coord_in_ready, ~inner_infifo.ports.full)
 
         ##############
         # Address Output FIFO
