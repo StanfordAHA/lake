@@ -75,7 +75,6 @@ module intersect_tb;
         .pos_out_1_ready(pos_out_1_ready),
         .rst_n(rst_n),
         .flush(flush),
-        .tile_en(tile_en),
         .vector_reduce_mode(vector_reduce_mode)
     );
 
