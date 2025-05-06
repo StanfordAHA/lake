@@ -19,12 +19,13 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
     ls = Spec(name="lakespec_mem", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
               config_passthru=True, comply_17=True)
 
+    # Don't opt timing on the in ports (which really just adds a fifo at the input which we don't need)
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                   opt_rv=opt_rv)
+                   opt_rv=opt_rv, opt_timing=False)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                    opt_rv=opt_rv)
+                    opt_rv=opt_rv, opt_timing=False)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
                     opt_rv=opt_rv)
