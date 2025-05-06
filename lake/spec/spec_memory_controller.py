@@ -105,7 +105,7 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     # TODO: Override this in garnet and not here...
     id_width = 11
 
-    read_delay = 1 if reg_file else 1
+    read_delay = 0
 
     ls = Spec(name="lakespec_pond", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
               config_passthru=True, comply_17=True)
@@ -152,16 +152,18 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
 
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
 
-    # wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.RW, delay=1)
+    wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
     # wr_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
-    rd_wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.RW, delay=1)
-    rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=1)
+    # rd_wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.RW, delay=1)
+    rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
+    rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
 
     # rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
     # rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
 
     # ls.register(stg, wr_mem_port, wr_mem_port2, rd_mem_port, rd_mem_port2, stg)
-    ls.register(stg, rd_wr_mem_port, rd_mem_port)
+    # ls.register(stg, rd_wr_mem_port, rd_mem_port)
+    ls.register(stg, wr_mem_port, rd_mem_port, rd_mem_port2)
     # ls.register(stg, wr_mem_port, rd_mem_port, rd_mem_port2, stg)
 
     # All cores are registered at this point
@@ -186,17 +188,18 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     ls.connect(out_port2, out_sg2)
 
     # In and Out to memory ports
-    # ls.connect(in_port, wr_mem_port)
-    ls.connect(in_port, rd_wr_mem_port)
+    ls.connect(in_port, wr_mem_port)
+    # ls.connect(in_port, rd_wr_mem_port)
     # ls.connect(in_port2, wr_mem_port2)
-    ls.connect(out_port, rd_wr_mem_port)
-    ls.connect(out_port2, rd_mem_port)
+    # ls.connect(out_port, rd_wr_mem_port)
+    ls.connect(out_port, rd_mem_port)
+    ls.connect(out_port2, rd_mem_port2)
 
     # Memory Ports to storage
-    # ls.connect(wr_mem_port, stg)
-    ls.connect(rd_wr_mem_port, stg)
+    ls.connect(wr_mem_port, stg)
+    # ls.connect(rd_wr_mem_port, stg)
     ls.connect(rd_mem_port, stg)
-    # ls.connect(rd_mem_port2, stg)
+    ls.connect(rd_mem_port2, stg)
     # ls.connect(wr_mem_port, stg)
     # ls.connect(wr_mem_port2, stg)
     # ls.connect(rd_mem_port, stg)

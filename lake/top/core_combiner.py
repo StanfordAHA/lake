@@ -99,11 +99,8 @@ class CoreCombiner(Generator):
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
         elif self.new_pond:
             print("Building memory for new pond")
-            # tsmc_mem = [MemoryPort(MemoryPortType.WRITE, delay=self.read_delay, active_read=not rf),
-            #             MemoryPort(MemoryPortType.WRITE, delay=self.read_delay, active_read=not rf),
-            #             MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf),
-            #             MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
-            tsmc_mem = [MemoryPort(MemoryPortType.READWRITE, delay=self.read_delay, active_read=not rf),
+            tsmc_mem = [MemoryPort(MemoryPortType.WRITE, delay=self.read_delay, active_read=not rf),
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf),
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
