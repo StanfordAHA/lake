@@ -280,7 +280,8 @@ class OnyxPE(MemoryController):
         self._pe_output = self.var("pe_output", self.data_width)
         self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
 
-        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        # self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=0, defer_hrdwr_gen=self.defer_fifos)
         self._outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self._bit_to_fifo = self.var("bit_to_fifo", 1)
