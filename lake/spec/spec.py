@@ -456,12 +456,11 @@ class Spec():
                 # If it is an OUT Port, we need to qualify the step with the grant line from the arbitration and the
                 # downstream ready (from the Port I guess)
                 elif port_direction == Direction.OUT:
-                    quali_step = port_sg.ports.step
-                    # quali_step = self.qualify_step(port_sg, Direction.OUT)
 
                     port_ready = port.get_mp_intf()['ready']
                     sg_step = port_sg.ports.step
-                    mid_grant = memintf_dec.get_p_intf()['grant']
+                    # Don't give grant unless there is a ready from port...
+                    mid_grant = memintf_dec.get_p_intf()['grant'] & port_ready
                     # The enable to mid is memintf decoder resource available ready + step
                     quali_step = sg_step & memintf_dec.ports.resource_ready
                     # quali_step = sg_step & port_ready
