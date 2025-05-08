@@ -659,7 +659,7 @@ class Spec():
             if port.get_direction() == Direction.IN:
                 if self.any_rv_sg:
                     if port.get_dangling():
-                        self._final_gen.wire(ub_intf['valid'], 0)
+                        self._final_gen.wire(ub_intf['valid'], 1)
                         self._final_gen.wire(ub_intf['data'], 0)
                     else:
                         p_temp_rv = self._final_gen.rvinput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment, packed=True)
@@ -672,7 +672,7 @@ class Spec():
                         self._final_gen.wire(ub_intf['data'], p_temp[ub_intf['data'].width - 1, 0])
                 else:
                     if port.get_dangling():
-                        self._final_gen.wire(ub_intf['valid'], 0)
+                        self._final_gen.wire(ub_intf['valid'], 1)
                         self._final_gen.wire(ub_intf['data'], 0)
                     else:
                         p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
