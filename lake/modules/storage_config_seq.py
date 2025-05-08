@@ -237,8 +237,7 @@ class StorageConfigSeq(MemoryController):
         num_mem_ports = self.memory_interface.get_num_ports()
         mem_ports = self.memory_interface.get_ports
 
-        new_pond = (self.memory_interface.get_num_ports() == 3 and
-                    self.memory_interface.get_port_type(0) == MemoryPortType.WRITE and
+        new_pond = (self.memory_interface.get_port_type(0) == MemoryPortType.WRITE and
                     self.memory_interface.get_port_type(1) == MemoryPortType.READ)
 
         if new_pond:

@@ -13,7 +13,7 @@ class MemoryPortExclusionAttr(kts.Attribute):
 class MemoryPort(Component):
 
     def __init__(self, data_width=16, mptype=MemoryPortType.R, delay=0, active_read=True,
-                 runtime: Runtime = Runtime.STATIC):
+                 runtime: Runtime = Runtime.STATIC, flush_mem=False):
         super().__init__()
         self.width = data_width
         self.mptype = mptype
@@ -33,6 +33,14 @@ class MemoryPort(Component):
 
         self.port_interface = {}
         self.port_interface_set = False
+
+        if flush_mem:
+            assert mptype == MemoryPortType.W, "Flush memory only supported on write ports"
+
+        self.clear_mem = flush_mem
+
+    def get_clear_mem(self):
+        return self.clear_mem
 
     def __str__(self):
         type_str = 'Read'
@@ -131,8 +139,6 @@ class MemoryPort(Component):
 
         elif self.mptype == MemoryPortType.W:
 
-            # print('mek')
-
             # in set
             addr_from_port = self.input(f"memory_port_write_addr_in", self.addr_width)
             data_from_port = self.input(f"memory_port_write_data_in", self.width)
@@ -155,6 +161,14 @@ class MemoryPort(Component):
             self._strg_intf['addr'] = addr_to_strg
             self._strg_intf['write_data'] = data_to_strg
             self._strg_intf['write_en'] = en_to_strg
+
+            if self.clear_mem:
+                clear_mem_in = self.input(f"memory_port_clear_in", 1)
+                clear_mem_out = self.output(f"memory_port_clear_out", 1)
+                self.wire(clear_mem_in, clear_mem_out)
+
+                self._port_intf['clear'] = clear_mem_in
+                self._strg_intf['clear'] = clear_mem_out
 
         elif self.mptype == MemoryPortType.RW:
 

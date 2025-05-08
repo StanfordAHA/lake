@@ -132,6 +132,10 @@ class Spec():
             soft_port_interface['data_in'] = hard_port['write_data']
             soft_port_interface['write_addr'] = hard_port['addr']
             soft_port_interface['write_enable'] = hard_port['write_en']
+            # Manage the possibility of clear...
+            if 'clear' in hard_port:
+                print("Clear in convert to memory port...")
+                soft_port_interface['clear'] = hard_port['clear']
         elif port_type == MemoryPortType.READWRITE:
             soft_port_interface['data_in'] = hard_port['write_data']
             soft_port_interface['data_out'] = hard_port['read_data']
@@ -641,23 +645,31 @@ class Spec():
 
             if port.get_direction() == Direction.IN:
                 if self.any_rv_sg:
-                    p_temp_rv = self._final_gen.rvinput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment, packed=True)
-                    p_temp = p_temp_rv.get_port()
-                    p_temp_valid = p_temp_rv.get_valid()
-                    p_temp_ready = p_temp_rv.get_ready()
-                    self._final_gen.wire(p_temp_valid, ub_intf['valid'])
-                    self._final_gen.wire(p_temp_ready, ub_intf['ready'])
+                    if port.get_dangling():
+                        self._final_gen.wire(ub_intf['valid'], 0)
+                        self._final_gen.wire(ub_intf['data'], 0)
+                    else:
+                        p_temp_rv = self._final_gen.rvinput(name=f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment, packed=True)
+                        p_temp = p_temp_rv.get_port()
+                        p_temp_valid = p_temp_rv.get_valid()
+                        p_temp_ready = p_temp_rv.get_ready()
+                        self._final_gen.wire(p_temp_valid, ub_intf['valid'])
+                        self._final_gen.wire(p_temp_ready, ub_intf['ready'])
+                        # Wire only the relevant part - regardless of compliance adjustment
+                        self._final_gen.wire(ub_intf['data'], p_temp[ub_intf['data'].width - 1, 0])
                 else:
-                    p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
-                    p_temp_valid = self._final_gen.input(f"port_{i_}_valid", 1)
-                    p_temp_ready = self._final_gen.output(f"port_{i_}_ready", 1)
-                    # self._final_gen.wire(p_temp_ready, kts.const(1, 1))
-                    self._final_gen.wire(p_temp_ready, ub_intf['ready'])
-                    self._final_gen.wire(ub_intf['valid'], p_temp_valid)
-
-                # Wire only the relevant part - regardless of compliance adjustment
-                self._final_gen.wire(ub_intf['data'], p_temp[ub_intf['data'].width - 1, 0])
-
+                    if port.get_dangling():
+                        self._final_gen.wire(ub_intf['valid'], 0)
+                        self._final_gen.wire(ub_intf['data'], 0)
+                    else:
+                        p_temp = self._final_gen.input(f"port_{i_}", width=ub_intf['data'].width + compliance_adjustment)
+                        p_temp_valid = self._final_gen.input(f"port_{i_}_valid", 1)
+                        p_temp_ready = self._final_gen.output(f"port_{i_}_ready", 1)
+                        # self._final_gen.wire(p_temp_ready, kts.const(1, 1))
+                        self._final_gen.wire(p_temp_ready, ub_intf['ready'])
+                        self._final_gen.wire(ub_intf['valid'], p_temp_valid)
+                        # Wire only the relevant part - regardless of compliance adjustment
+                        self._final_gen.wire(ub_intf['data'], p_temp[ub_intf['data'].width - 1, 0])
                 if self.remote_storage is True:
                     # Annotate signals with ControlSignalAttr for CoreCombiner...'
                     p_temp.add_attribute(ControlSignalAttr(is_control=False, full_bus=True))
@@ -832,6 +844,7 @@ class Spec():
             for mp, mid_intf_lst in self.mp_to_mid.items():
                 # We have a memory port and a set of connections to go to it - build a mux for
                 # addr, data, en
+                mp: MemoryPort
                 num_mids = len(mid_intf_lst)
                 # Use a one-hot select line mux
                 sels = None
@@ -893,6 +906,9 @@ class Spec():
                     inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_write_en", sel=sels, one=mp_port_intf['write_en'], many=ens)
                     inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_write_addr", sel=sels, one=mp_port_intf['addr'], many=addrs)
                     inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_write_data", sel=sels, one=mp_port_intf['write_data'], many=datas)
+                    if mp.get_clear_mem():
+                        clears = [mid_intf['clear'] for mid_intf in mid_intf_lst]
+                        inline_multiplexer(generator=self._final_gen, name=f"{mp.get_name()}_mux_to_mps_clear", sel=sels, one=mp_port_intf['clear'], many=clears)
 
                 elif mp_type == MemoryPortType.RW:
                     # sels = [mid_intf['en'] for mid_intf in mid_intf_lst]
@@ -969,7 +985,7 @@ class Spec():
         else:
             raise NotImplementedError
 
-    def _connect_memintfdec_mp(self, mid_int, mp):
+    def _connect_memintfdec_mp(self, mid_int, mp: MemoryPort):
         # Do this in a dumb way for now but add in muxing when needed.
         mp_type = mp.get_type()
         mp_port_intf = mp.get_port_intf()
@@ -981,6 +997,8 @@ class Spec():
             self._final_gen.wire(mid_int['addr'], mp_port_intf['addr'])
             self._final_gen.wire(mid_int['data'], mp_port_intf['write_data'])
             self._final_gen.wire(mid_int['en'], mp_port_intf['write_en'])
+            if mp.get_clear_mem():
+                self._final_gen.wire(mid_int['clear'], mp_port_intf['clear'])
 
     def clear_configuration(self):
         # Each node has a configuration range

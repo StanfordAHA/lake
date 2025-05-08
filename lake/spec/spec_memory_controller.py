@@ -120,8 +120,12 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     out_port2 = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
                      direction=Direction.OUT, opt_rv=opt_rv)
 
+    flush_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                      direction=Direction.IN, opt_rv=opt_rv, dangling=True)
+
     # ls.register(in_port, in_port2, out_port, out_port2)
     ls.register(in_port, out_port, out_port2)
+    ls.register(flush_port)
     # ls.register(in_port, out_port, out_port2)
 
     in_id = IterationDomain(dimensionality=dims, extent_width=id_width)
@@ -140,10 +144,17 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     out_ag2 = AddressGenerator(dimensionality=dims)
     out_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
 
+    flush_id = IterationDomain(dimensionality=dims, extent_width=id_width)
+    flush_ag = AddressGenerator(dimensionality=dims)
+    # Crucial to make sure the flushing is tied to the same schedule as the rest of the system
+    flush_sg = ReadyValidScheduleGenerator(dimensionality=dims)
+
     ls.register(in_id, in_ag, in_sg)
     # ls.register(in_id2, in_ag2, in_sg2)
     ls.register(out_id, out_ag, out_sg)
     ls.register(out_id2, out_ag2, out_sg2)
+
+    ls.register(flush_id, flush_ag, flush_sg)
 
     data_bytes = data_width // 8
     tech_map = None
@@ -159,6 +170,8 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
     rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
 
+    wr_mem_port_flush = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=read_delay, flush_mem=True)
+
     # rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
     # rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
 
@@ -166,7 +179,7 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     # ls.register(stg, rd_wr_mem_port, rd_mem_port)
     ls.register(stg, wr_mem_port, rd_mem_port, rd_mem_port2)
     # ls.register(stg, wr_mem_port, rd_mem_port, rd_mem_port2, stg)
-
+    ls.register(wr_mem_port_flush)
     # All cores are registered at this point
     # Now connect them
 
@@ -188,6 +201,10 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     ls.connect(out_port2, out_ag2)
     ls.connect(out_port2, out_sg2)
 
+    ls.connect(flush_port, flush_id)
+    ls.connect(flush_port, flush_ag)
+    ls.connect(flush_port, flush_sg)
+
     # In and Out to memory ports
     ls.connect(in_port, wr_mem_port)
     # ls.connect(in_port, rd_wr_mem_port)
@@ -195,6 +212,8 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     # ls.connect(out_port, rd_wr_mem_port)
     ls.connect(out_port, rd_mem_port)
     ls.connect(out_port2, rd_mem_port2)
+
+    ls.connect(flush_port, wr_mem_port_flush)
 
     # Memory Ports to storage
     ls.connect(wr_mem_port, stg)
@@ -205,6 +224,7 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     # ls.connect(wr_mem_port2, stg)
     # ls.connect(rd_mem_port, stg)
     # ls.connect(rd_mem_port2, stg)
+    ls.connect(wr_mem_port_flush, stg)
 
     return ls
 

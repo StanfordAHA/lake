@@ -24,7 +24,7 @@ class Port(Component):
     def __init__(self, ext_data_width=16, int_data_width=16,
                  runtime=Runtime.STATIC, direction=Direction.IN,
                  vec_capacity=None, opt_rv=False,
-                 opt_timing=True):
+                 opt_timing=True, dangling=False):
         super().__init__()
         self._mp_intf = {}
         self._ub_intf = {}
@@ -46,12 +46,19 @@ class Port(Component):
         #  We want to handle flush and clk_en ourselves
         self.sync_reset_no_touch = True
         self.clk_en_no_touch = True
+        # Only allow dangling write ports for now - will prevent it from getting data at the input (so it won't need anything)
+        if dangling:
+            assert direction == Direction.IN
+        self.dangling = dangling
 
     def __str__(self):
         type_str = "Write"
         if self._direction == Direction.OUT:
             type_str = "Read"
         return f"Port: {type_str}"
+
+    def get_dangling(self):
+        return self.dangling
 
     def set_port_ag_width(self, width):
         self.port_ag_width = width

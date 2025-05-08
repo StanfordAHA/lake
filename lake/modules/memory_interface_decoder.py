@@ -169,6 +169,10 @@ class MemoryInterfaceDecoder(Component):
             if self.port_direction == Direction.IN:
                 self.mp_intf[i_]['data'] = self.output(f"mp_data_{i_}", self.port_intf['data'].width)
                 self.wire(self.mp_intf[i_]['data'], self.p_intf['data'])
+                if mp.get_clear_mem():
+                    # Clear is also just the enable
+                    self.mp_intf[i_]['clear'] = self.output(f"mp_clear_{i_}", 1)
+                    self.wire(self.mp_intf[i_]['clear'], self.mp_intf[i_]['en_lcl'])
             elif self.port_direction == Direction.OUT:
                 self.mp_intf[i_]['data'] = self.input(f"mp_data_{i_}", self.port_intf['data'].width)
             else:

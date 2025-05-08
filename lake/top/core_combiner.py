@@ -101,7 +101,8 @@ class CoreCombiner(Generator):
             print("Building memory for new pond")
             tsmc_mem = [MemoryPort(MemoryPortType.WRITE, delay=self.read_delay, active_read=not rf),
                         MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf),
-                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf)]
+                        MemoryPort(MemoryPortType.READ, delay=self.read_delay, active_read=not rf),
+                        MemoryPort(MemoryPortType.WRITE, delay=self.read_delay, active_read=not rf, clear=True)]
 
         # tech_map = self.tech_map(self.mem_depth, self.mem_width)
 
@@ -117,7 +118,8 @@ class CoreCombiner(Generator):
                                  mem_params=memory_params,
                                  ports=tsmc_mem,
                                  sim_macro_n=self.use_sim_sram,
-                                 tech_map=self.tech_map)
+                                 tech_map=self.tech_map,
+                                 allow_flush=self.new_pond)
 
         # Now add the controllers in...
         for ctrl in self.controllers:

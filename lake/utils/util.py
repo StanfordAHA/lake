@@ -892,6 +892,11 @@ def connect_memoryport_storage(generator: kts.Generator, mptype: MemoryPortType 
         signals = ['addr',
                    'write_data',
                    'write_en']
+
+        if 'clear' in memport_intf:
+            print("Adding clear signal")
+            signals.append('clear')
+
     elif mptype == MemoryPortType.RW:
         signals = ['addr',
                    'read_data',

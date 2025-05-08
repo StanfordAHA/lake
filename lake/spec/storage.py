@@ -86,10 +86,12 @@ class SingleBankStorage(Storage):
         #     self.memport_sets[pnum] = local_memport_set
 
         for pnum, mem_port in enumerate(self.memory_ports):
+            mem_port: MemoryPort
             local_memport_set = {}
             # Get the memoryport information
             mp_width = mem_port.get_width()
             mp_type = mem_port.get_type()
+            mem_port_clear = mem_port.get_clear_mem()
             num_addrs = self._capacity // (mp_width // 8)
             mem_port.set_num_addrs(num_addrs)
             addr_width = clog2(num_addrs)
@@ -127,6 +129,10 @@ class SingleBankStorage(Storage):
                 local_memport_set['addr'] = addr
                 local_memport_set['write_data'] = data
                 local_memport_set['write_en'] = en
+
+                if mem_port_clear:
+                    clear_ = self.input(f"memory_port_{pnum}_clear", 1)
+                    local_memport_set['clear'] = clear_
 
                 # @always_ff((posedge, "clk"))
                 # def materialize_w():
@@ -302,13 +308,28 @@ class SingleBankStorage(Storage):
                 data = local_memport_set['write_data']
                 en = local_memport_set['write_en']
 
-                @always_ff((posedge, "clk"))
-                def materialize_w():
-                    if self._clk_en:
-                        if en:
-                            tmp_intf[addr] = data
+                clear = None
+                if 'clear' in local_memport_set:
+                    clear = local_memport_set['clear']
 
-                self.add_code(materialize_w)
+                if clear is None:
+                    @always_ff((posedge, "clk"))
+                    def materialize_w():
+                        if self._clk_en:
+                            if en:
+                                tmp_intf[addr] = data
+                    self.add_code(materialize_w)
+                else:
+                    @always_ff((posedge, "clk"))
+                    def materialize_w_clear():
+                        if clear:
+                            for i in range(num_addrs):
+                                tmp_intf[i] = 0
+                        elif self._clk_en:
+                            if en:
+                                tmp_intf[addr] = data
+                    self.add_code(materialize_w_clear)
+
             elif mp_type == MemoryPortType.RW:
                 tmp_intf_r = self.var(f"mem_intf_r_{pnum}", mp_width, size=num_addrs, explicit_array=True)
                 # Map the bits from the bare array to the data interface
