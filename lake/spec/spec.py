@@ -52,6 +52,8 @@ class Spec():
         self.num_ports = 0
         self.num_in_ports = 0
         self.num_out_ports = 0
+        self.in_ports = []
+        self.out_ports = []
         self.num_mem_ports = 0
         self.fw_max = 1
         self.clk_gate = clkgate
@@ -104,6 +106,12 @@ class Spec():
 
     def get_num_out_ports(self):
         return self.num_out_ports
+
+    def get_in_ports(self):
+        return self.in_ports
+
+    def get_out_ports(self):
+        return self.out_ports
 
     def get_node_from_idx(self, idx, verbose=False):
         if verbose:
@@ -192,8 +200,10 @@ class Spec():
                 pdir = comp.get_direction()
                 if pdir == Direction.IN:
                     self.num_in_ports += 1
+                    self.in_ports.append(comp)
                 elif pdir == Direction.OUT:
                     self.num_out_ports += 1
+                    self.out_ports.append(comp)
                 else:
                     raise NotImplementedError(f"Port Direction {pdir} not supported...")
 
@@ -328,7 +338,9 @@ class Spec():
         # Now that we have generated the memory ports and storage, we can realize
         # the ports and supporting hardware
 
-        port_nodes = self.get_nodes(Port)
+        # port_nodes = self.get_nodes(Port)
+        # Ensure all input ports come before output ports...
+        port_nodes = self.get_in_ports() + self.get_out_ports()
         for i_, port in enumerate(port_nodes):
             port: Port
 
