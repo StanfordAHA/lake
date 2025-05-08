@@ -1356,6 +1356,15 @@ class Spec():
 
         return ret_config
 
+    def get_port_from_idx(self, port_num):
+        assert port_num < (self.get_num_in_ports() + self.get_num_out_ports()), f"Only have {self.get_num_in_ports() + self.get_num_out_ports()} ports"
+        port: Port = None
+        if port_num < self.get_num_in_ports():
+            port = self.get_in_ports()[port_num]
+        else:
+            port = self.get_out_ports()[port_num - self.get_num_in_ports()]
+        return port
+
     def rewrite_app_json(self, app_json):
         app_json_copy = {}
         ret_map = {}
@@ -1451,7 +1460,7 @@ class Spec():
                 continue
 
             # Get the port and associated controllers
-            port: Port = self.get_node_from_idx(port_num)
+            port: Port = self.get_port_from_idx(port_num)
 
             port_vec = port.get_fw() != 1
 
