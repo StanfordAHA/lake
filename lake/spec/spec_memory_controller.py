@@ -283,7 +283,7 @@ class SpecMemoryController(MemoryController):
     def get_bitstream(self, config_json, prefix=""):
         print("in spec config bitstream...")
         print(config_json)
-        bs = self.spec.gen_bitstream(config_json, override=True)
+        bs = self.spec.gen_bitstream(config_json)
         bs_full = [('config_memory', bs)]
         return bs_full
 
