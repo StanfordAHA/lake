@@ -447,13 +447,14 @@ class OnyxPE(MemoryController):
                         self._infifo_bit_pop[2] = self._infifo_bit_out_valid[2] & self._active_bit_inputs_encoding[2]
 
                     else:
+                        # This is for sparse
                         self._outfifo_push = self._active_16b_output
                         self._outfifo_in_eos = 1
                         # TODO what if stream not on first input
                         self._data_to_fifo = kts.ternary(self._active_inputs_encoding[0], self._infifo_out_data[0], kts.ternary(self._active_inputs_encoding[1], self._infifo_out_data[1], self._infifo_out_data[2]))
-                        self._infifo_pop[0] = kts.ternary(self._bypass_prim_outfifo, self._infifo_out_valid[0] & self._active_inputs_encoding[0] & self.output_rv_transaction_ack, self._infifo_out_valid[0] & self._active_inputs_encoding[0])
-                        self._infifo_pop[1] = kts.ternary(self._bypass_prim_outfifo, self._infifo_out_valid[1] & self._active_inputs_encoding[1] & self.output_rv_transaction_ack, self._infifo_out_valid[1] & self._active_inputs_encoding[1])
-                        self._infifo_pop[2] = kts.ternary(self._bypass_prim_outfifo, self._infifo_out_valid[2] & self._active_inputs_encoding[2] & self.output_rv_transaction_ack, self._infifo_out_valid[2] & self._active_inputs_encoding[2])
+                        self._infifo_pop[0] = self._infifo_out_valid[0] & self._active_inputs_encoding[0]
+                        self._infifo_pop[1] = self._infifo_out_valid[1] & self._active_inputs_encoding[1]
+                        self._infifo_pop[2] = self._infifo_out_valid[2] & self._active_inputs_encoding[2]
 
         self.add_code(fifo_push)
 
