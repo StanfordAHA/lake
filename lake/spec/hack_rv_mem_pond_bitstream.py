@@ -127,6 +127,7 @@ def get_accum_pond(num_partial_reduction=64, num_output_pixels=1):
 
     return linear_test
 
+
 def get_vec_accum_pond(num_partial_reduction=64, num_output_pixels=4):
     '''
     Helper function to create config for vector reduction pond, where pond has to autorestart after each vector's reduction
