@@ -1,1 +1,0 @@
-Testbench of GcdUnit from https://code.stanford.edu/ee272/dnn-accelerator-syn/-/tree/master/GcdUnit/design/testbench
