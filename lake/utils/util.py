@@ -946,7 +946,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True, ignore
 
     # Do a scan through and pick the lowest one (priority)
     if one_hot_sel:
-        print("Building one-hot mux...")
+        # print("Building one-hot mux...")
         tmp_done = mux_gen.var("tmp_done", 1)
         len_sel = mux_gen_sel_in.width
 
@@ -964,7 +964,7 @@ def inline_multiplexer(generator, name, sel, one, many, one_hot_sel=True, ignore
         mux_gen.add_code(set_outs)
     else:
 
-        print("Building non-one-hot mux...")
+        # print("Building non-one-hot mux...")
         # Non-one-hot (normal sel lines)
         tmp_done = mux_gen.var("tmp_done", 1)
         # len_sel = len(sel)

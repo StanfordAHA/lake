@@ -237,33 +237,33 @@ class SpecMemoryController(MemoryController):
         self.spec = spec
         self.spec.set_name(name)
 
-        print("Before hardware gen...")
+        # print("Before hardware gen...")
         self.spec.generate_hardware()
-        print("After hardware gen...")
+        # print("After hardware gen...")
         self.memory_ports = self.spec.get_memory_ports_mc()
-        print(self.memory_ports)
+        # print(self.memory_ports)
 
         # Annotate liftable ports...
         self.spec.annotate_liftable_ports()
         # self.internal_generator = self.spec.get_generator())
 
-        print("Before internal generator")
-        print(self.spec.get_generator())
-        print(self.spec.get_generator().child_generator())
+        # print("Before internal generator")
+        # print(self.spec.get_generator())
+        # print(self.spec.get_generator().child_generator())
 
-        print("In spec control")
+        # print("In spec control")
         # print(self.child_generator())
         # print(self.name)
 
         super().__init__(name=name, debug=True,
                          exclusive=False, add_flush=True, internal_generator=self.spec.get_internal_generator(), is_clone=False)
 
-        print("After internal generator")
-        print(self.child_generator())
+        # print("After internal generator")
+        # print(self.child_generator())
 
         # # Now copy child generators? Everything else is the same????
         self.child_generator().update(self.spec.get_generator().child_generator())
-        print(self.child_generator())
+        # print(self.child_generator())
 
     def get_config_mode_str(self):
         return "lakespec"

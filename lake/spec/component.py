@@ -84,7 +84,7 @@ class Component(kratos.Generator):
         # Calling this means the hardware consutrction for this Component and any children is
         # complete
         # We can consider assembling it with the physical, hardened registers (in the spec or wherever)
-        print(f"Making config space for {self.name}")
+        # print(f"Making config space for {self.name}")
         if self.config_size == 0:
             # Early out in case there is no configuration
             return
@@ -137,7 +137,7 @@ class Component(kratos.Generator):
         # to guarantee this additional functionality.
         # assert isinstance(generator, Component)
         if isinstance(generator, Component):
-            print("lifting...")
+            # print("lifting...")
             assert generator.get_config_space_fixed()
             child_size = generator.get_config_size()
 

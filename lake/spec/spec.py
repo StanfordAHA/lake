@@ -130,8 +130,8 @@ class Spec():
 
         soft_port_interface = soft_port.get_port_interface()
 
-        print(f"hard port: {hard_port}")
-        print(f"soft port (MC): {soft_port_interface}")
+        # print(f"hard port: {hard_port}")
+        # print(f"soft port (MC): {soft_port_interface}")
 
         if port_type == MemoryPortType.READ:
             soft_port_interface['data_out'] = hard_port['read_data']
@@ -143,7 +143,7 @@ class Spec():
             soft_port_interface['write_enable'] = hard_port['write_en']
             # Manage the possibility of clear...
             if 'clear' in hard_port:
-                print("Clear in convert to memory port...")
+                # print("Clear in convert to memory port...")
                 soft_port_interface['clear'] = hard_port['clear']
         elif port_type == MemoryPortType.READWRITE:
             soft_port_interface['data_in'] = hard_port['write_data']
@@ -161,7 +161,7 @@ class Spec():
         # and basically copy these to the interface of the module,
         # create a MemoryPortMC and also add to the mc_ports list
         mp_intf = memory_port.get_storage_intf()
-        print(mp_intf)
+        # print(mp_intf)
         port_type = memory_port.get_type()
 
         new_intf = {}
@@ -171,7 +171,7 @@ class Spec():
                                  child_port=port, suffix=f"_{memory_port.name}",)
             new_intf[port_name] = new_port
 
-        print(new_intf)
+        # print(new_intf)
         mc_port = MemoryPortMC(port_type)
         # Now add the hard ports to the soft mc port for integration in CGRA
         # mc_port_intf = mc_port.get_port_interface()
@@ -181,7 +181,7 @@ class Spec():
         # Default one storage for now...
         self.mc_ports[bank_no[0]][bank_no[1]] = mc_port
 
-        print("Done lifting...")
+        # print("Done lifting...")
 
     def register(self, *comps):
         # self._hw_graph.add_nodes_from(comps)
@@ -315,9 +315,9 @@ class Spec():
                 self._final_gen.add_child("storage", storage_node, clk=self.hw_attr['clk'],
                                           rst_n=self.hw_attr['rst_n'], clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
 
-            print("IDK")
+            # print("IDK")
             strg_intfs = storage_node.get_memport_intfs()
-            print(strg_intfs)
+            # print(strg_intfs)
 
             # Build memory ports
             memoryports = nx.neighbors(self._hw_graph, storage_node)
@@ -737,7 +737,7 @@ class Spec():
                 self._final_gen.wire(p1, p2)
 
         # self.lift_config_regs()
-        print("building spec cfg memory input")
+        # print("building spec cfg memory input")
         # Can also choose to clock gate the config memory...
         # self._final_gen._assemble_cfg_memory_input(harden_storage=True, clkgate=self.clk_gate)
         self._final_gen._assemble_cfg_memory_input(harden_storage=True, clkgate=self.clk_gate,

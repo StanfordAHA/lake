@@ -523,7 +523,7 @@ class Port(Component):
 
                 # Now hook up the input and output ports
                 in_intf = self._sipo_strg_mp_in.get_port_intf()
-                print(in_intf)
+                # print(in_intf)
                 self.wire(assembled_port['data'], in_intf['write_data'])
                 self.wire(assembled_port['addr'], in_intf['addr'])
                 self.wire(assembled_port['en'], in_intf['write_en'])
@@ -581,7 +581,7 @@ class Port(Component):
                     self.wire(self._mp_intf['valid'], self._internal_ag_intf['step'])
 
                 out_intf = self._sipo_strg_mp_out.get_port_intf()
-                print(out_intf)
+                # print(out_intf)
                 self.wire(assembled_port['data'], out_intf['read_data'])
                 self.wire(assembled_port['addr'], out_intf['addr'])
                 self.wire(assembled_port['en'], out_intf['read_en'])
@@ -675,7 +675,7 @@ class Port(Component):
                     sub_addr_range = [kts.clog2(self._fw) - 1, 0]
                     tag_addr_range = [kts.clog2(self._fw) + tag_width - 1, kts.clog2(self._fw)]
 
-                    print(f"Tag width: {tag_width}")
+                    # print(f"Tag width: {tag_width}")
                     # exit()
 
                     # self.wire(self._addr_out, kts.concat(self._full_addr_in >> addr_q_width))
@@ -1130,7 +1130,7 @@ class Port(Component):
 
                 # Now hook up the input and output ports
                 piso_out_intf = self._piso_strg_mp_out.get_port_intf()
-                print(piso_out_intf)
+                # print(piso_out_intf)
                 self.wire(assembled_port['data'], piso_out_intf['read_data'])
                 self.wire(assembled_port['addr'], piso_out_intf['addr'])
                 self.wire(assembled_port['en'], piso_out_intf['read_en'])
@@ -1250,7 +1250,7 @@ class Port(Component):
                     self.wire(self._mp_intf['ready'], self._internal_ag_intf['step'])
 
                 piso_in_intf = self._piso_strg_mp_in.get_port_intf()
-                print(piso_in_intf)
+                # print(piso_in_intf)
                 self.wire(assembled_port['data'], piso_in_intf['write_data'])
                 self.wire(assembled_port['addr'], piso_in_intf['addr'])
                 self.wire(assembled_port['en'], piso_in_intf['write_en'])
