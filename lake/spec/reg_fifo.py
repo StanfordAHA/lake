@@ -1,14 +1,11 @@
 from kratos import *
-from lake.utils.util import increment, decrement
-from lake.attributes.config_reg_attr import ConfigRegAttr
+from lake.spec.component import Component
 
 
-class RegFIFO_cfg(Generator):
+class RegFIFO(Component):
     '''
     This module generates register-based FIFOs. These are useful
     when we only need a few entries with no prefetching needed
-
-    This version can be configured to be initialized non-empty
     '''
     def __init__(self,
                  data_width,
@@ -26,11 +23,9 @@ class RegFIFO_cfg(Generator):
         self.almost_full_diff = almost_full_diff
         self.mod_name_suffix = mod_name_suffix
 
-        super().__init__(f"cfg_reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}",
-                         debug=True)
+        super().__init__(name=f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}")
 
         self.update_name()
-
         #  We want to handle flush and clk_en ourselves
         self.sync_reset_no_touch = True
         self.clk_en_no_touch = True
@@ -45,14 +40,12 @@ class RegFIFO_cfg(Generator):
         self.hardware_genned = False
 
         # Allow fifo to get depth 0
-        assert not (depth & (depth - 1)) or depth == 0, "FIFO depth needs to be a power of 2"
+        assert not (depth & (depth - 1)) or depth == 0, "REG FIFO depth needs to be a power of 2"
 
         # CLK and RST
-        self._clk = self.clock("clk")
-        self._rst_n = self.reset("rst_n")
-        self._clk_en = self.input("clk_en", 1)
-        self._flush = self.input("flush", 1)
-        self._bogus_init_num = self.input("bogus_init_num", 2)
+        # self._clk = self.clock("clk")
+        # self._rst_n = self.reset("rst_n")
+        # self._clk_en = self.input("clk_en", 1)
 
         # INPUTS
         self._data_in = self.input("data_in",
@@ -129,7 +122,7 @@ class RegFIFO_cfg(Generator):
         if ~self._rst_n:
             self._wr_ptr = 0
         elif self._flush:
-            self._wr_ptr = resize(self._bogus_init_num, self._wr_ptr.width)
+            self._wr_ptr = 0
         elif self._clk_en:
             if self._write:
                 if self._wr_ptr == (self.depth - 1):
@@ -142,7 +135,7 @@ class RegFIFO_cfg(Generator):
         if ~self._rst_n:
             self._wr_ptr = 0
         elif self._flush:
-            self._wr_ptr = resize(self._bogus_init_num, self._wr_ptr.width)
+            self._wr_ptr = 0
         elif self._clk_en:
             if self._parallel_load:
                 self._wr_ptr = self._num_load[max(1, clog2(self.depth)) - 1, 0]
@@ -153,10 +146,6 @@ class RegFIFO_cfg(Generator):
                     self._wr_ptr = 0
             elif self._write:
                 self._wr_ptr = self._wr_ptr + 1
-                # if self._wr_ptr == (self.depth - 1):
-                #     self._wr_ptr = 0
-                # else:
-                #     self._wr_ptr = self._wr_ptr + 1
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
     def reg_array_ff(self):
@@ -192,8 +181,7 @@ class RegFIFO_cfg(Generator):
 
     @always_comb
     def valid_comb(self):
-        self._valid = ((~self._empty & ~self._flush & self._clk_en) | self._passthru)
-        # self._valid = ((~self._empty) | self._passthru)
+        self._valid = ((~self._empty) | self._passthru)
         # self._valid = self._pop & ((~self._empty) | self._passthru)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))
@@ -201,7 +189,7 @@ class RegFIFO_cfg(Generator):
         if ~self._rst_n:
             self._num_items = 0
         elif self._flush:
-            self._num_items = resize(self._bogus_init_num, self._num_items.width)
+            self._num_items = 0
         elif self._clk_en:
             if self._write & ~self._read:
                 self._num_items = self._num_items + 1
@@ -213,7 +201,7 @@ class RegFIFO_cfg(Generator):
         if ~self._rst_n:
             self._num_items = 0
         elif self._flush:
-            self._num_items = resize(self._bogus_init_num, self._num_items.width)
+            self._num_items = 0
         elif self._clk_en:
             if self._parallel_load:
                 # When fetch width > 1, by definition we cannot load
@@ -239,7 +227,7 @@ class RegFIFO_cfg(Generator):
         self.set_depth(self.min_depth)
 
     def update_name(self):
-        self.name = f"cfg_reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}"
+        self.name = f"reg_fifo_depth_{self.depth}_w_{self.data_width}_afd_{self.almost_full_diff}{self.mod_name_suffix}"
 
     def set_depth(self, new_depth):
         assert not (new_depth & (new_depth - 1)) or new_depth == 0, "Unsupported depth"
@@ -284,13 +272,12 @@ class RegFIFO_cfg(Generator):
 
             self._num_items = self.var("num_items", clog2(self.depth) + 1)
             # self.wire(self._full, (self._wr_ptr + 1) == self._rd_ptr)
-            # self.wire(self._full, self._num_items == self.depth)
-            self.wire(self._full, (self._num_items == self.depth) | self._flush | ~self._clk_en)
+            self.wire(self._full, self._num_items == self.depth)
             # Experiment to cover latency
             assert self.depth > 1 or self.width_mult > 1, "FIFO depth or width_mult needs to be larger than 1"
             self.wire(self._almost_full, self._num_items >= (self.depth - self.almost_full_diff))
             # self.wire(self._empty, self._wr_ptr == self._rd_ptr)
-            self.wire(self._empty, (self._num_items == 0) | self._flush | ~self._clk_en)
+            self.wire(self._empty, self._num_items == 0)
 
             self.wire(self._read, self._pop & ~self._passthru & ~self._empty)
 
@@ -321,22 +308,24 @@ class RegFIFO_cfg(Generator):
             self.add_code(self.valid_comb)
 
         self.hardware_genned = True
+        self.config_space_fixed = True
+        self._assemble_cfg_memory_input()
 
     def get_hardware_genned(self):
         return self.hardware_genned
 
 
 if __name__ == "__main__":
-    # dut = RegFIFO_cfg(data_width=16,
+    # dut = RegFIFO(data_width=16,
     #               depth=64,
     #               width_mult=4)
     # verilog(dut, filename="reg_fifo_no_defer.sv")
 
-    dut2 = RegFIFO_cfg(data_width=16,
+    dut2 = RegFIFO(data_width=16,
                    depth=64,
                    width_mult=4,
                    defer_hrdwr_gen=True)
     dut2.set_depth(8)
     dut2.generate_hardware()
 
-    verilog(dut2, filename="reg_fifo_with_defer_cfg.sv")
+    verilog(dut2, filename="reg_fifo_with_defer.sv")

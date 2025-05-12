@@ -37,7 +37,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         super().__init__(name, debug)
 
         self.is_PE = 'PE' in name
-        self.is_MEM = 'MemCore' in name 
+        self.is_MEM = 'MemCore' in name
 
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
@@ -825,7 +825,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     if self.is_PE:
-                        # Create config for bogus init 
+                        # Create config for bogus init
                         input_fifo_bogus_init_num = self.input(f'{self.io_prefix}input_width_{input_width}_num_{i}_fifo_bogus_init_num', width=2)
                         input_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for input fifo"))
                         new_reg_fifo = RegFIFO_cfg(data_width=input_width,
@@ -1003,13 +1003,13 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
                     # Add in the fifo if there are any fifos on this path
                     if self.is_PE:
-                         # Create config for bogus init 
+                        # Create config for bogus init
                         output_fifo_bogus_init_num = self.input(f'{self.io_prefix}output_width_{output_width}_num_{i}_fifo_bogus_init_num', width=2)
                         output_fifo_bogus_init_num.add_attribute(ConfigRegAttr("Choose bogus init num for output fifo"))
                         new_reg_fifo = RegFIFO_cfg(data_width=output_width,
                                             width_mult=1, depth=self.fifo_depth,
                                             defer_hrdwr_gen=False)
-                    else:  
+                    else:
                         new_reg_fifo = RegFIFO(data_width=output_width,
                                             width_mult=1, depth=self.fifo_depth,
                                             defer_hrdwr_gen=False)
@@ -1282,6 +1282,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
         # Create blank config - turn the tile on
         config = []
         config.append(("tile_en", 1))
+
+        print("MEMTILE BUILDER CONFIG JSON")
+        print(config_json)
         # Extract the mode to set the mode config reg (if there is more than one mode)
         mode_map = self.get_mode_map()
         if 'init' in config_json:
@@ -1296,6 +1299,11 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         if 'mode' in config_json:
             mode_used = config_json['mode']
+            # HACK: Replace UB with lakespec if not in mode map (and do it before mode selection so that
+            # the register is programmed correctly)
+            if mode_used == 'UB' and 'UB' not in mode_map:
+                mode_used = 'lakespec'
+
             if self.num_modes > 1:
                 # Locate the controller in the list...
                 for idx, ctrl in enumerate(self.controllers):
@@ -1334,11 +1342,14 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         map_hi = map_lo + self.allowed_reg_size - 1
                     else:
                         map_hi = tmp_hi
-                assert map_hi - map_lo < self.allowed_reg_size, f"Failed beacuse reg wider than {self.allowed_reg_size} bits"
+                # This check doesn't make sense anymore - we can handle many-chunk registers that are
+                # split across many addresses in the config space.
+                # assert map_hi - map_lo < self.allowed_reg_size, f"Failed beacuse reg wider than {self.allowed_reg_size} bits"
                 chunk_hi = map_hi // self.allowed_reg_size
                 chunk_lo = map_lo // self.allowed_reg_size
                 # Either all within one chunk...
                 if chunk_hi == chunk_lo:
+                    # print("Single-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits = bits_hi - bits_lo + 1
@@ -1347,19 +1358,55 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                         tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
                     tmp_cfg_space[chunk_lo] = tmp_val
                 # Or across the boundary...
-                else:
+                elif chunk_hi - chunk_lo == 1:
+                    # print("Two-chunk register")
                     bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
                     bits_lo = map_lo - chunk_lo * self.allowed_reg_size
                     num_bits_lo = self.allowed_reg_size - bits_lo
                     assert (bits_hi + num_bits_lo) == (map_hi - map_lo + 1)
+                    # Handle low chunk
                     tmp_val = tmp_cfg_space[chunk_lo]
                     for z_ in range(num_bits_lo):
                         tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
                     tmp_cfg_space[chunk_lo] = tmp_val
-
+                    # Handle high chunk
                     tmp_val = tmp_cfg_space[chunk_hi]
                     for z_ in range(bits_hi):
                         tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, num_bits_lo + z_))
+                    tmp_cfg_space[chunk_hi] = tmp_val
+                # Multiple boundaries
+                else:
+                    # I know this is technically repeat code, but it's easier to follow
+                    # print("Many-chunk register")
+                    bits_hi = map_hi - chunk_hi * self.allowed_reg_size + 1
+                    bits_lo = map_lo - chunk_lo * self.allowed_reg_size
+                    intermediate_chunks = chunk_hi - chunk_lo - 1
+                    bits_intermed = intermediate_chunks * self.allowed_reg_size
+                    num_bits_lo = self.allowed_reg_size - bits_lo
+                    assert (bits_hi + num_bits_lo + bits_intermed) == (map_hi - map_lo + 1)
+                    # Handle low chunk
+                    tmp_val = tmp_cfg_space[chunk_lo]
+                    for z_ in range(num_bits_lo):
+                        # print(f"Get bit at {z_}")
+                        tmp_val = self.set_bit(tmp_val, z_ + bits_lo, self.get_bit(val_int, z_))
+                    tmp_cfg_space[chunk_lo] = tmp_val
+
+                    # Handle the middle chunks
+                    int_chk = 0
+                    while int_chk < intermediate_chunks:
+                        curr_chunk = chunk_lo + 1 + int_chk
+                        tmp_val = tmp_cfg_space[curr_chunk]
+                        for z_ in range(self.allowed_reg_size):
+                            # print(f"Get bit at {(int_chk * self.allowed_reg_size) + num_bits_lo + z_}")
+                            tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, (int_chk * self.allowed_reg_size) + num_bits_lo + z_))
+                        tmp_cfg_space[curr_chunk] = tmp_val
+                        int_chk += 1
+
+                    # Handle high chunk
+                    tmp_val = tmp_cfg_space[chunk_hi]
+                    for z_ in range(bits_hi):
+                        # print(f"Get bit at {bits_intermed + num_bits_lo + z_}")
+                        tmp_val = self.set_bit(tmp_val, z_, self.get_bit(val_int, bits_intermed + num_bits_lo + z_))
                     tmp_cfg_space[chunk_hi] = tmp_val
 
         for idx in range(self.num_chopped_cfg):
