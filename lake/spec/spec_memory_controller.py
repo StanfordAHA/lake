@@ -11,7 +11,7 @@ from lake.top.tech_maps import GF_Tech_Map
 
 
 def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: int = 6, vec_width=4, physical=True,
-                                  reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True, id_width=16) -> Spec:
+                                  reg_file=False, vec_capacity=2, opt_rv=True, remote_storage=True, id_width=16, add_filter_path=True) -> Spec:
 
     # TODO: Override this in garnet and not here...
     id_width = 11
@@ -21,10 +21,10 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                   opt_rv=opt_rv)
+                   opt_rv=opt_rv, filter=True)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                    opt_rv=opt_rv)
+                    opt_rv=opt_rv, filter=True)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
                     opt_rv=opt_rv)
@@ -32,7 +32,20 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
                      vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
                      opt_rv=opt_rv)
 
-    ls.register(in_port, in_port2, out_port, out_port2)
+    ls.register(in_port, in_port2)
+
+    if add_filter_path:
+        in_port_filter = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                              direction=Direction.IN, opt_rv=opt_rv, filter=True)
+        ls.register(in_port_filter)
+
+    ls.register(out_port, out_port2)
+
+    if add_filter_path:
+
+        out_port_filter = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                              direction=Direction.OUT, opt_rv=opt_rv, filter=False)
+        ls.register(out_port_filter)
 
     in_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     in_ag = AddressGenerator(dimensionality=dims)
@@ -55,15 +68,35 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
     ls.register(out_id, out_ag, out_sg)
     ls.register(out_id2, out_ag2, out_sg2)
 
+    if add_filter_path:
+        in_id_filter = IterationDomain(dimensionality=dims, extent_width=id_width)
+        in_ag_filter = AddressGenerator(dimensionality=dims)
+        in_sg_filter = ReadyValidScheduleGenerator(dimensionality=dims)
+
+        out_id_filter = IterationDomain(dimensionality=dims, extent_width=id_width)
+        out_ag_filter = AddressGenerator(dimensionality=dims)
+        out_sg_filter = ReadyValidScheduleGenerator(dimensionality=dims)
+
+        ls.register(in_id_filter, in_ag_filter, in_sg_filter)
+        ls.register(out_id_filter, out_ag_filter, out_sg_filter)
+
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
     if physical:
         tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False)
 
     # 1024 Bytes
-    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=True)
     shared_rw_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.RW, delay=1)
     ls.register(stg, shared_rw_mem_port)
+
+    if add_filter_path:
+        # Just try buffering 8 data for now ... want to turn into a fifo if possible.
+        filter_cap = data_bytes * 8
+        stg_filter = SingleBankStorage(capacity=filter_cap, remote=False)
+        write_port_filter = MemoryPort(data_width=data_width, mptype=MemoryPortType.W, delay=1)
+        read_port_filter = MemoryPort(data_width=data_width, mptype=MemoryPortType.R, delay=1)
+        ls.register(stg_filter, write_port_filter, read_port_filter)
 
     # All cores are registered at this point
     # Now connect them
@@ -94,6 +127,25 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
 
     # Memory Ports to storage
     ls.connect(shared_rw_mem_port, stg)
+
+    if add_filter_path:
+        # In to filter
+        ls.connect(in_port_filter, in_id_filter)
+        ls.connect(in_port_filter, in_ag_filter)
+        ls.connect(in_port_filter, in_sg_filter)
+
+        # Out to filter
+        ls.connect(out_port_filter, out_id_filter)
+        ls.connect(out_port_filter, out_ag_filter)
+        ls.connect(out_port_filter, out_sg_filter)
+
+        # In and Out to filter memory ports
+        ls.connect(in_port_filter, write_port_filter)
+        ls.connect(out_port_filter, read_port_filter)
+
+        # Memory Ports to storage
+        ls.connect(write_port_filter, stg_filter)
+        ls.connect(read_port_filter, stg_filter)
 
     return ls
 
@@ -149,7 +201,7 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
         tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width, dual_port=True,
                                reg_file=reg_file)
 
-    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=True)
 
     wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
     wr_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)

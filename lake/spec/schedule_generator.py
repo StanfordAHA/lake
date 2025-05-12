@@ -9,7 +9,7 @@ from kratos import always_ff, always_comb, posedge, negedge
 class ScheduleGenerator(Component):
 
     def __init__(self, dimensionality=6, stride_width=16, rv=False, name=None,
-                 recurrence=True):
+                 recurrence=True, external_count=False):
         self.mod_name = name
         if name is None:
             self.mod_name = f"sched_gen_{dimensionality}_{stride_width}_{recurrence}"
@@ -19,6 +19,7 @@ class ScheduleGenerator(Component):
         self.rv = rv
         self.mod_name = name
         self.exploit_recurrence = recurrence
+        self.external_count = external_count
 
     def get_rv(self):
         return self.rv
@@ -43,13 +44,16 @@ class ScheduleGenerator(Component):
         # Using stride width instead of total cycle to keep config reg smaller
         self._starting_cycle = self.config_reg(name="starting_cycle", width=self.stride_width)
         ### Inputs
-        # self._clk = self.clock("clk")
-        # self._rst_n = self.reset("rst_n")
 
-        # self._flush = self.input("flush", 1)
-        # self.add_attribute("sync-reset=flush")
-        self._clk_ctr = add_counter(self, "clk_ctr", bitwidth=self.total_cycle_width, increment=kts.const(1, 1),
-                                    clear=self._flush)
+        increment_counter = kts.const(1, 1)
+        if self.external_count:
+            self._external_count_pin = self.input("external_count", 1)
+            increment_counter = self._external_count_pin
+
+        self.increment_counter = increment_counter
+
+        self._clk_ctr = add_counter(self, "clk_ctr", bitwidth=self.total_cycle_width, increment=increment_counter,
+                                    clear=self._flush, clk_en=self._clk_en)
         self._mux_sel = self.input("mux_sel", max(kts.clog2(self.dimensionality_support), 1))
         self._restart = self.input("restart", 1)
         self._finished = self.input("finished", 1)
@@ -94,11 +98,13 @@ class ScheduleGenerator(Component):
             self._current_cycle = 0
         elif self._flush:
             self._current_cycle = self._strt_cycle
-        elif self._step & ~self._finished:
-            if self._restart:
-                self._current_cycle = self._strt_cycle
-            else:
-                self._current_cycle = self._current_cycle + self._strides[self._mux_sel]
+        elif self._clk_en:
+            # if self._step & ~self._finished:
+            if self.increment_counter & self._step & ~self._finished:
+                if self._restart:
+                    self._current_cycle = self._strt_cycle
+                else:
+                    self._current_cycle = self._current_cycle + self._strides[self._mux_sel]
 
     def gen_bitstream(self, schedule_map, extents, dimensionality):
         assert 'strides' in schedule_map

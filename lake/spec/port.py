@@ -24,7 +24,7 @@ class Port(Component):
     def __init__(self, ext_data_width=16, int_data_width=16,
                  runtime=Runtime.STATIC, direction=Direction.IN,
                  vec_capacity=None, opt_rv=False,
-                 opt_timing=True):
+                 opt_timing=True, filter=False):
         super().__init__()
         self._mp_intf = {}
         self._ub_intf = {}
@@ -46,6 +46,10 @@ class Port(Component):
         #  We want to handle flush and clk_en ourselves
         self.sync_reset_no_touch = True
         self.clk_en_no_touch = True
+        self.filter = filter
+
+        if self._runtime == Runtime.STATIC:
+            assert self.filter is False, "Filter not supported in static runtime"
 
     def __str__(self):
         type_str = "Write"
@@ -67,6 +71,9 @@ class Port(Component):
 
     def get_fw(self):
         return self._fw
+
+    def get_filter(self):
+        return self.filter
 
     def gen_hardware(self, pos_reset=False, dimensionality=None, external_id=None):
 
@@ -109,14 +116,66 @@ class Port(Component):
                     self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
                     self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
                 else:
+
+                    # Dynamic in...
                     data_from_pintf = data_from_ub.get_port_interface()
                     data_to_pintf = data_to_memport.get_port_interface()
-                    self.wire(data_from_pintf['data'], data_to_pintf['data'])
-                    self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
+
+                    # If we are filtering, need to add a schedule generator with count on the ready/valid transaction.
+                    if self.filter:
+                        assert self.dimensionality is not None
+                        assert external_id is not None
+                        external_id: IterationDomain
+                        print("Filtering...")
+                        self._filter_mux_sel = self.input("filter_mux_sel", max(kts.clog2(self.dimensionality), 1), packed=True)
+                        self._filter_restart = self.input("filter_restart", 1, packed=True)
+                        self._filter_finished = self.input("filter_finished", 1)
+                        self._filter_iterators = self.input("filter_iterators", external_id.get_extent_width(),
+                                                            size=self.dimensionality,
+                                                            packed=True,
+                                                            explicit_array=True)
+                        filter_sg = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16, rv=False,
+                                                      name="filter_sg", recurrence=True, external_count=True)
+
+                        filter_sg.gen_hardware(id=external_id)
+
+                        self.add_child(f"filter_sg_inst",
+                                       filter_sg,
+                                       clk=self._clk,
+                                       rst_n=self._rst_n,
+                                       clk_en=self._clk_en,
+                                       flush=self._flush)
+
+                        self.wire(self._filter_mux_sel, filter_sg.ports.mux_sel)
+                        self.wire(self._filter_restart, filter_sg.ports.restart)
+                        self.wire(self._filter_finished, filter_sg.ports.finished)
+                        self.wire(self._filter_iterators, filter_sg.ports.iterators)
+                        # assert False, "Dying on purpose..."
+
+                        rv_transaction = self.var("rv_transaction_go", 1)
+                        self.wire(rv_transaction, data_from_pintf['valid'] & data_to_pintf['ready'])
+                        self.wire(rv_transaction, filter_sg.ports.external_count)
+
+                        # The incoming valids will get eaten by the rv_transaction
+                        # and so the SG's output step becomes the filtered valid for the downstream
+                        self.wire(filter_sg.ports.step & data_from_pintf['valid'], data_to_pintf['valid'])
+
+                        # The ready from the downstream is the one we pass up - since only the valid needs to be filtered out
+                        # as it's a strict subset - this won't affect the ready from downstream nor does it need
+                        # to be processed on the way to the upstream
+                        # self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
+                        # self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
+                        self.filter_sg = filter_sg
+
+                    else:
+                        self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
+
                     self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
+                    self.wire(data_from_pintf['data'], data_to_pintf['data'])
 
             else:
 
+                # Dynamic in (WIDE FETCH)
                 if self._runtime == Runtime.DYNAMIC and self.opt_rv:
 
                     assert self.port_ag_width is not None
@@ -161,9 +220,63 @@ class Port(Component):
                         ub_interface['valid'] = tmp_valid_in
                         ub_interface['ready'] = tmp_ready_out
 
+                    # Filter the input
+                    # If we are filtering, need to add a schedule generator with count on the ready/valid transaction.
+                    if self.filter:
+                        print("FILTERING!!!")
+                        # assert False, "On purpose..."
+                        assert self.dimensionality is not None
+                        assert external_id is not None
+                        external_id: IterationDomain
+                        print("Filtering...")
+                        self._filter_mux_sel = self.input("filter_mux_sel", max(kts.clog2(self.dimensionality), 1), packed=True)
+                        self._filter_restart = self.input("filter_restart", 1, packed=True)
+                        self._filter_finished = self.input("filter_finished", 1)
+                        self._filter_iterators = self.input("filter_iterators", external_id.get_extent_width(),
+                                                            size=self.dimensionality,
+                                                            packed=True,
+                                                            explicit_array=True)
+                        filter_sg = ScheduleGenerator(dimensionality=self.dimensionality, stride_width=16, rv=False,
+                                                      name="filter_sg", recurrence=True, external_count=True)
+
+                        filter_sg.gen_hardware(id=external_id)
+
+                        self.add_child(f"filter_sg_inst",
+                                       filter_sg,
+                                       clk=self._clk,
+                                       rst_n=self._rst_n,
+                                       clk_en=self._clk_en,
+                                       flush=self._flush)
+
+                        self.wire(self._filter_mux_sel, filter_sg.ports.mux_sel)
+                        self.wire(self._filter_restart, filter_sg.ports.restart)
+                        self.wire(self._filter_finished, filter_sg.ports.finished)
+                        self.wire(self._filter_iterators, filter_sg.ports.iterators)
+                        # assert False, "Dying on purpose..."
+
+                        rv_transaction = self.var("rv_transaction_go", 1)
+                        # Ub interface ready and valid anded...
+                        self.wire(rv_transaction, ub_interface['valid'] & ub_interface['ready'])
+                        self.wire(rv_transaction, filter_sg.ports.external_count)
+
+                        # The incoming valids will get eaten by the rv_transaction
+                        # and so the SG's output step becomes the filtered valid for the downstream
+
+                        # Need to replace the valid...
+                        ub_interface['valid'] = filter_sg.ports.step & ub_interface['valid']
+                        # self.wire(filter_sg.ports.step, data_to_pintf['valid'])
+
+                        # The ready from the downstream is the one we pass up - since only the valid needs to be filtered out
+                        # as it's a strict subset - this won't affect the ready from downstream nor does it need
+                        # to be processed on the way to the upstream
+
+                        # assert False, "On purpose...MEK"
+                        self.filter_sg = filter_sg
+
                     self._finished = self.input("finished", 1)
                     # Ready out needs to be the ready from the UB and the finished signal
                     self.wire(ub_interface['ready'], self._ready_out_lcl & ~self._finished)
+
                     # self.wire(self._data_out_lcl, ub_interface['data'])
 
                     self._full_addr_in = self.input("addr_in", width=self.port_ag_width)
@@ -1270,7 +1383,7 @@ class Port(Component):
         self.config_space_fixed = True
         self._assemble_cfg_memory_input()
 
-    def gen_bitstream(self, vec_in=None, vec_out=None, vec_constraints=None):
+    def gen_bitstream(self, vec_in=None, vec_out=None, vec_constraints=None, id_map=None):
 
         self.clear_configuration()
 
@@ -1317,6 +1430,35 @@ class Port(Component):
                         sg_sipo_out_bs = self._sg_sipo_out.gen_bitstream()
                         sg_sipo_out_bs = self._add_base_to_cfg_space(sg_sipo_out_bs, self.child_cfg_bases[self._sg_sipo_out])
                         all_bs.append(sg_sipo_out_bs)
+
+                if self.filter:
+                    assert id_map is not None, "Need to pass in extents for the filtered version..."
+                    # Need to configure the filter
+                    # Create 1 by 1 address map for filter
+                    # Just need extents and dimensionality....
+                    filter_sg_extents = id_map["extents"]
+                    filter_sg_dimensionality = id_map["dimensionality"]
+                    filter_sg_schedule_map = {"offset": 0}
+                    filter_sg_strides = []
+
+                    new_mult = 1
+                    for i in range(filter_sg_dimensionality):
+                        filter_sg_strides.append(new_mult)
+                        new_mult = new_mult * filter_sg_extents[i]
+
+                    filter_sg_schedule_map['strides'] = filter_sg_strides
+
+                    print("Filter SG Schedule Map")
+                    print(filter_sg_schedule_map)
+                    print("Filter SG Extents")
+                    print(filter_sg_extents)
+                    # Now get the filter bitstream
+                    filter_bs = self.filter_sg.gen_bitstream(schedule_map=filter_sg_schedule_map,
+                                                             extents=filter_sg_extents,
+                                                             dimensionality=filter_sg_dimensionality)
+                    filter_bs = self._add_base_to_cfg_space(filter_bs, self.child_cfg_bases[self.filter_sg])
+                    all_bs.append(filter_bs)
+                    print("CONFIGURED FILTER...")
 
             elif self.get_direction() == Direction.OUT:
 
