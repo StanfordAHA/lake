@@ -237,9 +237,8 @@ class StorageConfigSeq(MemoryController):
         num_mem_ports = self.memory_interface.get_num_ports()
         mem_ports = self.memory_interface.get_ports
 
-        new_pond = (self.memory_interface.get_num_ports() == 4 and
-                    self.memory_interface.get_port_type(0) == MemoryPortType.WRITE and
-                    self.memory_interface.get_port_type(2) == MemoryPortType.READ)
+        new_pond = (self.memory_interface.get_port_type(0) == MemoryPortType.WRITE and
+                    self.memory_interface.get_port_type(1) == MemoryPortType.READ)
 
         if new_pond:
             # Write on 0, 0, read on 0, 1
@@ -255,8 +254,8 @@ class StorageConfigSeq(MemoryController):
             r_port_intf['data_out'] = self._rd_data_stg
             r_port_intf['read_addr'] = self._addr_out
             r_port_intf['read_enable'] = self._ren_out
-            print(self.base_ports[0][2])
-            self.base_ports[0][2] = r_port
+            print(self.base_ports[0][1])
+            self.base_ports[0][1] = r_port
         else:
             rw_port = MemoryPort(MemoryPortType.READWRITE)
             rw_port_intf = rw_port.get_port_interface()

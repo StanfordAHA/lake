@@ -269,6 +269,7 @@ class MemoryController(kts.Generator):
         '''
 
         # TODO: Handle multibit push signals
+        print(f"Finding fifos for: {self.name}")
 
         self.__fifo_list = []
         # First get ports
@@ -298,22 +299,14 @@ class MemoryController(kts.Generator):
                     break
 
                 assigned_to = actual_sink.left
-                # print(f"Trying to find fifo1...{tries}")
-                # print(f"{actual_sink.left} = {actual_sink.right}")
-                # print(f"{actual_sink.left.name} = {actual_sink.right.name}")
-
-                if actual_sink.right.name == "":
-                    print("Empty right name - this may imply that there is some logic, " +
-                          "and not just direct assignment, so we are done")
-                    break
-
                 assigned_to_gen = assigned_to.generator
 
                 if assigned_to_gen.instance_name != use_gen.instance_name:
-                    if assigned_to_gen.instance_name in use_gen:
+                    # if assigned_to_gen.instance_name in use_gen:
+                    if assigned_to_gen in use_gen:
                         atg = use_gen[assigned_to_gen.instance_name]
                     else:
-                        break
+                        atg = assigned_to_gen
 
                 # Make sure we are connecting to a signal in a new generator
                 if atg == use_gen:
@@ -359,24 +352,15 @@ class MemoryController(kts.Generator):
                 if tries == max_tries:
                     break
 
-                if actual_src.right.name == "":
-                    print("Empty right name - this may imply that there is some logic, " +
-                          "and not just direct assignment, so we are done")
-                    break
-
                 assigned_to = actual_src.right
                 assigned_to_gen = assigned_to.generator
 
-                # print(f"Trying to find fifo2...{tries}")
-                # print(f"{actual_src.left} = {actual_src.right}")
-                # print(f"{actual_src.left.name} = {actual_src.right.name}")
-
                 if assigned_to_gen.instance_name != use_gen.instance_name:
-                    # atg = use_gen[assigned_to_gen.instance_name]
-                    if assigned_to_gen.instance_name in use_gen:
+                    # if assigned_to_gen.instance_name in use_gen:
+                    if assigned_to_gen in use_gen:
                         atg = use_gen[assigned_to_gen.instance_name]
                     else:
-                        break
+                        atg = assigned_to_gen
 
                 # Make sure we are connecting to a signal in a new generator
                 if atg == use_gen:
@@ -398,6 +382,10 @@ class MemoryController(kts.Generator):
                     use_gen = atg
 
                 tries += 1
+
+        print(f"Found {len(self.__fifo_list)} FIFOs")
+        for fifo in self.__fifo_list:
+            print(f"{fifo.name}\t\t\t{fifo.instance_name}")
 
         return self.__fifo_list
 

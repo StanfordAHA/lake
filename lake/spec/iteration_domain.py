@@ -109,7 +109,8 @@ class IterationDomain(Component):
         self._inc = self.var("inc", self.dimensionality_support)
 
         # We go to a finished state once the last iter is done
-        self._finished_lcl = sticky_flag(self, self._last_iter_lcl & self._step, name="finished_lcl_sticky", seq_only=True, verbose=True)
+        self._finished_lcl = sticky_flag(self, self._last_iter_lcl & self._step, name="finished_lcl_sticky",
+                                         clear=self._flush, seq_only=True, verbose=True, clk_en=self._clk_en)
         self.wire(self._finished, self._finished_lcl)
 
         self._inced_cnt = self.var("inced_cnt", self._dim_counter.width)

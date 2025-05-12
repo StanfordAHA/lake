@@ -34,6 +34,8 @@ TX_NUM_1 ?= 0
 TX_NUM_2 ?= 0
 TX_NUM_3 ?= 0
 SEG_MODE ?= 0
+L_LEVEL ?= 0
+DIM ?= 0
 
 DESIGN_FILES += $(TEST_TAR) \
 				tile_read.sv \
@@ -131,7 +133,9 @@ COMPILE_RTL_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD) \
 					+define+TX_NUM_1=$(TX_NUM_1) \
 					+define+TX_NUM_2=$(TX_NUM_2) \
 					+define+TX_NUM_3=$(TX_NUM_3) \
-					+define+SEG_MODE=$(SEG_MODE)
+					+define+SEG_MODE=$(SEG_MODE) \
+					+define+L_LEVEL=$(L_LEVEL) \
+					+define+DIM=$(DIM)
 
 COMPILE_GLS_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD) \
 					+define+TX_NUM_GLB=$(TX_NUM_GLB) \
@@ -139,7 +143,9 @@ COMPILE_GLS_ARGS += +define+CLK_PERIOD=$(CLK_PERIOD) \
 					+define+TX_NUM_1=$(TX_NUM_1) \
 					+define+TX_NUM_2=$(TX_NUM_2) \
 					+define+TX_NUM_3=$(TX_NUM_3) \
-					+define+SEG_MODE=$(SEG_MODE)
+					+define+SEG_MODE=$(SEG_MODE) \
+					+define+L_LEVEL=$(L_LEVEL) \
+					+define+DIM=$(DIM)
 
 ifeq ($(TOOL), XCELIUM)
     COMPILE = $(XRUN)

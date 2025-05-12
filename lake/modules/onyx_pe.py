@@ -71,6 +71,10 @@ class OnyxPE(MemoryController):
         self._is_constant_pe = self.input("is_constant_pe", 1)
         self._is_constant_pe.add_attribute(ConfigRegAttr("Is this PE outputting a constant value? (i.e. no inputs)"))
 
+        # mode for bypassing ONLY output primitive FIFO
+        self._bypass_prim_outfifo = self.input("bypass_prim_outfifo", 1)
+        self._bypass_prim_outfifo.add_attribute(ConfigRegAttr("mode to skip the output primitive FIFO"))
+
         gclk = self.var("gclk", 1)
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
@@ -144,6 +148,8 @@ class OnyxPE(MemoryController):
         # Some local vars
         self.all_active_inputs_valid = self.var("all_active_inputs_valid", 1)
         self.all_active_bit_inputs_valid = self.var("all_active_bit_inputs_valid", 1)
+        self.output_16b_ready = self.var("output_16b_ready", 1)
+        self.output_rv_transaction_ack = self.var("output_rv_transaction_ack", 1)
 
         if self.perf_debug:
 
@@ -281,6 +287,7 @@ class OnyxPE(MemoryController):
         self._outfifo_in_eos = self.var("outfifo_in_eos", 1)
 
         self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=self.fifo_depth, defer_hrdwr_gen=self.defer_fifos)
+        # self._outfifo = RegFIFO(data_width=self.data_width + 1, width_mult=1, depth=0, defer_hrdwr_gen=self.defer_fifos)
         self._outfifo.add_attribute(SharedFifoAttr(direction="OUT"))
 
         self._bit_to_fifo = self.var("bit_to_fifo", 1)
@@ -301,7 +308,7 @@ class OnyxPE(MemoryController):
 
         self.wire(self._outfifo_bit_in_packed, self._bit_to_fifo)
 
-        self.wire(self._data_out, kts.ternary(self._bypass_rv_mode, self._pe_output, self._outfifo_out_packed))
+        self.wire(self._data_out, kts.ternary((self._bypass_rv_mode | self._bypass_prim_outfifo), self._pe_output, self._outfifo_out_packed))
         self.wire(self._data_out_p, kts.ternary(self._bypass_rv_mode, self._pe_bit_output, self._outfifo_bit_out_packed))
 
         # Push when there's incoming transaction and room to accept it
@@ -324,7 +331,8 @@ class OnyxPE(MemoryController):
                        data_in=self._outfifo_in_packed,
                        data_out=self._outfifo_out_packed)
 
-        self.wire(self._valid_out, kts.ternary(self._bypass_rv_mode, kts.const(1, 1), ~self._outfifo.ports.empty))
+        self.wire(self._valid_out, kts.ternary(self._bypass_rv_mode, kts.const(1, 1),
+                                               kts.ternary(self._bypass_prim_outfifo, self._outfifo_push, ~self._outfifo.ports.empty)))
 
         self.wire(self._outfifo_pop, self._ready_in)
         self.wire(self._outfifo_full, self._outfifo.ports.full)
@@ -389,6 +397,7 @@ class OnyxPE(MemoryController):
         def fifo_push():
             self.all_active_inputs_valid = ((self._infifo_out_valid & self._active_inputs_encoding) == self._active_inputs_encoding)
             self.all_active_bit_inputs_valid = ((self._infifo_bit_out_valid & self._active_bit_inputs_encoding) == self._active_bit_inputs_encoding)
+            self.output_16b_ready = kts.ternary(self._bypass_prim_outfifo, kts.const(1, 1), ~self._outfifo_full)
 
             self._outfifo_push = 0
             self._outfifo_in_eos = 0
@@ -396,6 +405,7 @@ class OnyxPE(MemoryController):
             self._infifo_pop[0] = 0
             self._infifo_pop[1] = 0
             self._infifo_pop[2] = 0
+            self.output_rv_transaction_ack = 0
 
             self._outfifo_bit_push = 0
             self._bit_to_fifo = 0
@@ -413,19 +423,21 @@ class OnyxPE(MemoryController):
 
             else:
                 # TODO Fix comment If both inputs are valid, then we either can perform the op, otherwise we push through EOS
-                if (self.all_active_inputs_valid & ~self._outfifo_full &
+                if (self.all_active_inputs_valid & self.output_16b_ready &
                         self.all_active_bit_inputs_valid & ~self._outfifo_bit_full & ~self._bypass_rv_mode):
                     # if eos's are low, we push through pe output, otherwise we push through the input data (streams are aligned)
                     # go through here if any of the 1b inputs or outputs are there - implies not sparse
+                    self.output_rv_transaction_ack = kts.ternary(self._bypass_prim_outfifo, self._ready_in, ~self._outfifo_full)
                     if ~((self._infifo_out_eos & self._active_inputs_encoding) == self._active_inputs_encoding) | (self._active_1b_output | (self._active_bit_inputs_encoding.r_or())):
 
                         # Push to 16/17b FIFO if that output is active
+                        # TODO: For now we don't bypass prim outfifo for sparse. But potentially we can fix infifo pop logic for sparse to bypass prim outfifo.
                         self._outfifo_push = self._active_16b_output
                         self._outfifo_in_eos = 0
                         self._data_to_fifo = self._pe_output
-                        self._infifo_pop[0] = self._infifo_out_valid[0] & self._active_inputs_encoding[0]
-                        self._infifo_pop[1] = self._infifo_out_valid[1] & self._active_inputs_encoding[1]
-                        self._infifo_pop[2] = self._infifo_out_valid[2] & self._active_inputs_encoding[2]
+                        self._infifo_pop[0] = kts.ternary(self._bypass_prim_outfifo, self._infifo_out_valid[0] & self._active_inputs_encoding[0] & self.output_rv_transaction_ack, self._infifo_out_valid[0] & self._active_inputs_encoding[0])
+                        self._infifo_pop[1] = kts.ternary(self._bypass_prim_outfifo, self._infifo_out_valid[1] & self._active_inputs_encoding[1] & self.output_rv_transaction_ack, self._infifo_out_valid[1] & self._active_inputs_encoding[1])
+                        self._infifo_pop[2] = kts.ternary(self._bypass_prim_outfifo, self._infifo_out_valid[2] & self._active_inputs_encoding[2] & self.output_rv_transaction_ack, self._infifo_out_valid[2] & self._active_inputs_encoding[2])
 
                         # Push to 1b FIFO if that output is active
                         self._outfifo_bit_push = self._active_1b_output
@@ -435,6 +447,7 @@ class OnyxPE(MemoryController):
                         self._infifo_bit_pop[2] = self._infifo_bit_out_valid[2] & self._active_bit_inputs_encoding[2]
 
                     else:
+                        # This is for sparse
                         self._outfifo_push = self._active_16b_output
                         self._outfifo_in_eos = 1
                         # TODO what if stream not on first input
@@ -482,6 +495,7 @@ class OnyxPE(MemoryController):
         active_1b_output = 0
 
         is_constant_pe = 0
+        bypass_prim_outfifo = 0
 
         if 'active_inputs' in config_kwargs:
             active_inputs_encoding = config_kwargs['active_inputs']
@@ -502,6 +516,10 @@ class OnyxPE(MemoryController):
         if 'is_constant_pe' in config_kwargs:
             is_constant_pe = config_kwargs['is_constant_pe']
         config += [('is_constant_pe', is_constant_pe)]
+
+        if 'bypass_prim_outfifo' in config_kwargs:
+            bypass_prim_outfifo = config_kwargs['bypass_prim_outfifo']
+        config += [('bypass_prim_outfifo', bypass_prim_outfifo)]
 
         if 'bypass_rv' in config_kwargs and config_kwargs['bypass_rv'] is True:
             config += [("bypass_rv_mode", 1)]

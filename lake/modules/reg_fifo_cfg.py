@@ -192,8 +192,8 @@ class RegFIFO_cfg(Generator):
 
     @always_comb
     def valid_comb(self):
-        # self._valid = ((~self._empty) | self._passthru)
         self._valid = ((~self._empty & ~self._flush & self._clk_en) | self._passthru)
+        # self._valid = ((~self._empty) | self._passthru)
         # self._valid = self._pop & ((~self._empty) | self._passthru)
 
     @always_ff((posedge, "clk"), (negedge, "rst_n"))

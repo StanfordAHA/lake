@@ -19,12 +19,15 @@ def build_four_port_wide_fetch_rv(storage_capacity=16384, data_width=16, dims: i
     ls = Spec(name="lakespec_mem", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
               config_passthru=True, comply_17=True)
 
+    # Don't opt timing on the in ports (which really just adds a fifo at the input which we don't need)
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                   opt_rv=opt_rv, filter=True)
+                   opt_rv=opt_rv, opt_timing=False,
+                   filter=True)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                    opt_rv=opt_rv, filter=True)
+                    opt_rv=opt_rv, opt_timing=False,
+                    filter=True)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
                     opt_rv=opt_rv)
@@ -157,30 +160,35 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     # TODO: Override this in garnet and not here...
     id_width = 11
 
-    read_delay = 1 if reg_file else 1
+    read_delay = 0
 
     ls = Spec(name="lakespec_pond", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
               config_passthru=True, comply_17=True)
 
     in_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
                    direction=Direction.IN, opt_rv=opt_rv)
-    in_port2 = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
-                    direction=Direction.IN, opt_rv=opt_rv)
+    # in_port2 = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+    #                 direction=Direction.IN, opt_rv=opt_rv)
     out_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
                     direction=Direction.OUT, opt_rv=opt_rv)
     out_port2 = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
                      direction=Direction.OUT, opt_rv=opt_rv)
 
-    ls.register(in_port, in_port2, out_port, out_port2)
+    flush_port = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                      direction=Direction.IN, opt_rv=opt_rv, dangling=True)
+
+    # ls.register(in_port, in_port2, out_port, out_port2)
+    ls.register(in_port, out_port, out_port2)
+    ls.register(flush_port)
     # ls.register(in_port, out_port, out_port2)
 
     in_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     in_ag = AddressGenerator(dimensionality=dims)
     in_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
-    in_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
-    in_ag2 = AddressGenerator(dimensionality=dims)
-    in_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
+    # in_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
+    # in_ag2 = AddressGenerator(dimensionality=dims)
+    # in_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
 
     out_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     out_ag = AddressGenerator(dimensionality=dims)
@@ -190,10 +198,17 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     out_ag2 = AddressGenerator(dimensionality=dims)
     out_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
 
+    flush_id = IterationDomain(dimensionality=dims, extent_width=id_width)
+    flush_ag = AddressGenerator(dimensionality=dims)
+    # Crucial to make sure the flushing is tied to the same schedule as the rest of the system
+    flush_sg = ReadyValidScheduleGenerator(dimensionality=dims)
+
     ls.register(in_id, in_ag, in_sg)
-    ls.register(in_id2, in_ag2, in_sg2)
+    # ls.register(in_id2, in_ag2, in_sg2)
     ls.register(out_id, out_ag, out_sg)
     ls.register(out_id2, out_ag2, out_sg2)
+
+    ls.register(flush_id, flush_ag, flush_sg)
 
     data_bytes = data_width // 8
     tech_map = None
@@ -204,14 +219,21 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=True)
 
     wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
-    wr_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
-
+    # wr_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=1)
+    # rd_wr_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.RW, delay=1)
     rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
     rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
 
-    ls.register(stg, wr_mem_port, wr_mem_port2, rd_mem_port, rd_mem_port2, stg)
-    # ls.register(stg, wr_mem_port, rd_mem_port, rd_mem_port2, stg)
+    wr_mem_port_flush = MemoryPort(data_width=16, mptype=MemoryPortType.W, delay=read_delay, flush_mem=True)
 
+    # rd_mem_port = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
+    # rd_mem_port2 = MemoryPort(data_width=16, mptype=MemoryPortType.R, delay=read_delay)
+
+    # ls.register(stg, wr_mem_port, wr_mem_port2, rd_mem_port, rd_mem_port2, stg)
+    # ls.register(stg, rd_wr_mem_port, rd_mem_port)
+    ls.register(stg, wr_mem_port, rd_mem_port, rd_mem_port2)
+    # ls.register(stg, wr_mem_port, rd_mem_port, rd_mem_port2, stg)
+    ls.register(wr_mem_port_flush)
     # All cores are registered at this point
     # Now connect them
 
@@ -220,9 +242,9 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     ls.connect(in_port, in_ag)
     ls.connect(in_port, in_sg)
 
-    ls.connect(in_port2, in_id2)
-    ls.connect(in_port2, in_ag2)
-    ls.connect(in_port2, in_sg2)
+    # ls.connect(in_port2, in_id2)
+    # ls.connect(in_port2, in_ag2)
+    # ls.connect(in_port2, in_sg2)
 
     # Out to out
     ls.connect(out_port, out_id)
@@ -233,17 +255,30 @@ def build_pond_rv(storage_capacity: int = 64, data_width=16,
     ls.connect(out_port2, out_ag2)
     ls.connect(out_port2, out_sg2)
 
+    ls.connect(flush_port, flush_id)
+    ls.connect(flush_port, flush_ag)
+    ls.connect(flush_port, flush_sg)
+
     # In and Out to memory ports
     ls.connect(in_port, wr_mem_port)
-    ls.connect(in_port2, wr_mem_port2)
+    # ls.connect(in_port, rd_wr_mem_port)
+    # ls.connect(in_port2, wr_mem_port2)
+    # ls.connect(out_port, rd_wr_mem_port)
     ls.connect(out_port, rd_mem_port)
     ls.connect(out_port2, rd_mem_port2)
 
+    ls.connect(flush_port, wr_mem_port_flush)
+
     # Memory Ports to storage
     ls.connect(wr_mem_port, stg)
-    ls.connect(wr_mem_port2, stg)
+    # ls.connect(rd_wr_mem_port, stg)
     ls.connect(rd_mem_port, stg)
     ls.connect(rd_mem_port2, stg)
+    # ls.connect(wr_mem_port, stg)
+    # ls.connect(wr_mem_port2, stg)
+    # ls.connect(rd_mem_port, stg)
+    # ls.connect(rd_mem_port2, stg)
+    ls.connect(wr_mem_port_flush, stg)
 
     return ls
 
@@ -302,7 +337,7 @@ class SpecMemoryController(MemoryController):
     def get_bitstream(self, config_json, prefix=""):
         print("in spec config bitstream...")
         print(config_json)
-        bs = self.spec.gen_bitstream(config_json, override=True)
+        bs = self.spec.gen_bitstream(config_json)
         bs_full = [('config_memory', bs)]
         return bs_full
 

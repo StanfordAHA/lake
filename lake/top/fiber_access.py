@@ -143,6 +143,7 @@ class FiberAccess(MemoryController):
         ISSUE_READ_SEND_S0 = self.vr_fsm.add_state("ISSUE_READ_SEND_S0")
         ISSUE_READ_SEND_DONE = self.vr_fsm.add_state("ISSUE_READ_SEND_DONE")
         PROCESS_ROW = self.vr_fsm.add_state("PROCESS_ROW")
+        WAIT_DONE = self.vr_fsm.add_state("WAIT_DONE")
         DS_READ_ROW = self.vr_fsm.add_state("DS_READ_ROW")
 
         self.vr_fsm.set_start_state(START)
@@ -206,8 +207,12 @@ class FiberAccess(MemoryController):
         INIT_BLANK_SEND_DONE.next(PROCESS_ROW, self._rd_scan_coord_out_ready)
         INIT_BLANK_SEND_DONE.next(INIT_BLANK_SEND_DONE, None)
 
-        PROCESS_ROW.next(ISSUE_READ_SEND_REF_CNT, self._input_row_fully_processed)
+        # PROCESS_ROW.next(ISSUE_READ_SEND_REF_CNT, self._input_row_fully_processed)
+        PROCESS_ROW.next(WAIT_DONE, self._input_row_fully_processed)
         PROCESS_ROW.next(PROCESS_ROW, None)
+
+        WAIT_DONE.next(ISSUE_READ_SEND_REF_CNT, ((self._wr_scan_data_in == self._done_token) | (self._wr_scan_data_in == self._semi_done_token)) & self._wr_scan_data_in_valid & self._wr_scan_data_in_ready)
+        WAIT_DONE.next(WAIT_DONE, None)
 
         # ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_DONE, self._rd_scan_us_pos_in_ready & (~self._output_matrix_fully_accumulated | (self._output_matrix_fully_accumulated & ~(self._highest_seen_stoken > self._S_level_1[2, 0]))))
         # ISSUE_READ_SEND_REF_CNT.next(ISSUE_READ_SEND_S0, self._rd_scan_us_pos_in_ready & self._output_matrix_fully_accumulated & (self._highest_seen_stoken > self._S_level_1[2, 0]))
@@ -261,6 +266,11 @@ class FiberAccess(MemoryController):
         PROCESS_ROW.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
         PROCESS_ROW.output(self._vr_fsm_init_blank_S0, 0)
         PROCESS_ROW.output(self._vr_fsm_init_blank_DONE, 0)
+
+        WAIT_DONE.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
+        WAIT_DONE.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
+        WAIT_DONE.output(self._vr_fsm_init_blank_S0, 0)
+        WAIT_DONE.output(self._vr_fsm_init_blank_DONE, 0)
 
         DS_READ_ROW.output(self._vr_fsm_pos_to_read_scanner, kts.const(0, self.data_width + 1))
         DS_READ_ROW.output(self._vr_fsm_pos_valid_to_read_scanner, 0)
