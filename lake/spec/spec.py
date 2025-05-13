@@ -1514,7 +1514,7 @@ class Spec():
             # Get the associated controllers...
             port_config = maps['config']
             addr_map = port_config['address']
-            filter_config = port_config['filter']
+            filter_config = port_config.get('filter', None)
             sched_map = port_config['schedule']
             port_id, port_ag, port_sg = self.get_port_controllers(port=port)
 
