@@ -1281,6 +1281,13 @@ class Spec():
                 # 'offset': port_access_map["address_offset"][0]
             }
 
+            # Add in filter information if it exists...
+            port_config["config"]["filter"] = None
+            if "filter" in app_json and used_port in app_json["filter"]:
+                port_config["config"]["filter"] = {}
+                port_config["config"]["filter"]['offset'] = app_json["filter"][used_port]['offset']
+                port_config["config"]["filter"]['strides'] = app_json["filter"][used_port]['stride']
+
             port_config["vec_in_config"] = {}
             port_config["vec_out_config"] = {}
             port_config["vec_constraints"] = []
@@ -1325,16 +1332,20 @@ class Spec():
                     scalar = 8
 
             else:
+                # [this_idx, on_this_idx, scalar]
                 this_depends_idx = indices[0]
                 on_this_idx = indices[1]
+                scalar_json = None
+                if len(indices) > 2:
+                    scalar_json = indices[2]
                 scalar_adjust = 0
                 # This should be computed based on the precursor deltas...
                 # It should be provided in a richer way, but start with 0, then
-                if this_depends_idx == 0 and on_this_idx == 0:
+                if this_depends_idx == 0 and on_this_idx == 0 and scalar_json is None:
                     # scalar = 9
                     scalar = 0
                 else:
-                    scalar = 0
+                    scalar = scalar_json
                 # Check the precursor deltas and project them into the level of the dependency...
                 if "precursor_deltas" not in app_json:
                     app_json["precursor_deltas"] = {}
@@ -1499,10 +1510,11 @@ class Spec():
             port_vec = port.get_fw() != 1
 
             port_name = maps['name']
-            print(f"Configuring the port named: {port_name}")
+            print(f"Configuring port: {port_name}")
             # Get the associated controllers...
             port_config = maps['config']
             addr_map = port_config['address']
+            filter_config = port_config.get('filter', None)
             sched_map = port_config['schedule']
             port_id, port_ag, port_sg = self.get_port_controllers(port=port)
 
@@ -1514,10 +1526,13 @@ class Spec():
 
                 filter_map = None
                 if port.get_filter():
-                    print("Configuring filter map...(vec)")
+                    # print("Configuring filter map...(vec)")
                     filter_map = {"extents": port_config['extents'],
                                   "dimensionality": port_config['dimensionality']}
-                    print(filter_map)
+                    if filter_config is not None:
+                        filter_map['offset'] = port_config['filter']['offset']
+                        filter_map['strides'] = port_config['filter']['strides']
+                    # print(filter_map)
 
                 port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'],
                                              vec_out=maps['vec_out_config'],
@@ -1527,10 +1542,13 @@ class Spec():
             # If not vectorized...
             elif port.get_filter():
 
-                print("Configuring filter map...(nonvec)")
+                # print("Configuring filter map...(nonvec)")
                 filter_map = {"extents": port_config['extents'],
                               "dimensionality": port_config['dimensionality']}
-                print(filter_map)
+                if filter_config is not None:
+                    filter_map['offset'] = port_config['filter']['offset']
+                    filter_map['strides'] = port_config['filter']['strides']
+                # print(filter_map)
 
                 port_bs = port.gen_bitstream(id_map=filter_map)
 
