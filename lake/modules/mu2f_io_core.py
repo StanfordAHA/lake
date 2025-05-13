@@ -58,10 +58,9 @@ class IOCore_mu2f(Generator):
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
-
         mu_data_width = matrix_unit_data_width
         mu_tile_array_datawidth_difference = tile_array_data_width - mu_data_width
-        assert mu_tile_array_datawidth_difference >=0, "Error: Matrix unit bus cannot drive CGRA bus because MU datawidth > CGRA datawidth"
+        assert mu_tile_array_datawidth_difference >= 0, "Error: Matrix unit bus cannot drive CGRA bus because MU datawidth > CGRA datawidth"
 
         ########################################
         # FIFO ZERO
@@ -111,7 +110,6 @@ class IOCore_mu2f(Generator):
         # END FIFO ZERO
         ########################################
 
-
         ########################################
         # FIFO ONE
         ########################################
@@ -160,7 +158,6 @@ class IOCore_mu2f(Generator):
         # END FIFO ONE
         ########################################
 
-
         # If dense bypass, send data straight through, bypassing FIFOs
         if self.allow_bypass:
             if self.use_almost_full:
@@ -177,7 +174,6 @@ class IOCore_mu2f(Generator):
                 self.wire(mu2io_r_0, ~mu2io_2_io2f_fifo_0.ports.full)
                 self.wire(mu2io_r_1, ~mu2io_2_io2f_fifo_1.ports.full)
 
-
         ########################################
         # TRACK SELECT
         ########################################
@@ -193,7 +189,6 @@ class IOCore_mu2f(Generator):
             self._tmp_track_active = self.input(f"track_active_T{track_num}", 1)
             self._tmp_track_active.add_attribute(ConfigRegAttr("Track active config register. States whether track is active."))
             self.track_actives.append(self._tmp_track_active)
-
 
             # Create track output and its valid interface
             tmp_track_out = self.output(f"io2f_{tile_array_data_width}_T{track_num}", tile_array_data_width)
@@ -329,7 +324,6 @@ class IOCore_mu2f(Generator):
 
         if 'track_active_T4' in config_dict:
             track_active_T4_val = config_dict['track_active_T4']
-
 
         config += [("track_select_T0", track_select_T0_val), ("track_select_T1", track_select_T1_val),
                     ("track_select_T2", track_select_T2_val), ("track_select_T3", track_select_T3_val),

@@ -506,12 +506,12 @@ class ScannerPipe(MemoryController):
         ADDR_IDLE.output(self._glb_addr_next, 0)
 
         ADDR_SET_BASE.output(self._glb_addr_next, self._glb_addr_base)
-        
-        ADDR_ACCMU.output(self._glb_addr_next, kts.ternary(self._push_glb_addr, self._glb_addr + self._glb_addr_stride,\
-                                                                 self._glb_addr))
+
+        ADDR_ACCMU.output(self._glb_addr_next, kts.ternary(self._push_glb_addr,
+                                                           self._glb_addr + self._glb_addr_stride,
+                                                           self._glb_addr))
 
         self.glb_addr_gen.set_start_state(ADDR_IDLE)
-
 
         self._seg_res_fifo = ReservationFIFO(depth=8, data_width=self.data_width + 1, num_per=2)
 

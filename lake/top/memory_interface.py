@@ -4,6 +4,7 @@ from kratos.stmts import *
 import _kratos
 import math
 from lake.utils.util import register
+from lake.utils.spec_enum import MemoryPortType
 
 
 class MemoryPortExclusionAttr(kts.Attribute):
@@ -11,16 +12,13 @@ class MemoryPortExclusionAttr(kts.Attribute):
         super().__init__()
 
 
-class MemoryPortType(Enum):
-    READ = 0
-    WRITE = 1
-    READWRITE = 2
-
-
 class MemoryPort():
 
-    def __init__(self, mpt: MemoryPortType, delay=1, active_read=True) -> None:
+    def __init__(self, mpt: MemoryPortType, delay=1, active_read=True, clear=False) -> None:
         self.mpt = mpt
+        if clear:
+            assert self.mpt == MemoryPortType.WRITE, "Only write ports can be cleared"
+        self.clear = clear
         self.delay = delay
         self.active_read = active_read
 
@@ -38,6 +36,8 @@ class MemoryPort():
             self.port_interface['data_in'] = None
             self.port_interface['write_addr'] = None
             self.port_interface['write_enable'] = None
+            if self.clear:
+                self.port_interface['clear'] = None
             self.port_interface_set = True
         elif self.mpt == MemoryPortType.READWRITE:
             self.port_interface['data_in'] = None
@@ -126,14 +126,33 @@ class PhysicalMemoryPort(MemoryPort):
             self.port_interface['clk'] = self.port_map['clk']
             self.port_interface_set = True
         elif self.mpt == MemoryPortType.READWRITE:
-            self.port_interface['data_in'] = self.port_map['data_in']
-            self.port_interface['data_out'] = self.port_map['data_out']
-            self.port_interface['write_enable'] = self.port_map['write_enable']
-            self.port_interface['addr'] = self.port_map['addr']
+            print(self.port_map)
+            # exit()
+            try:
+                self.port_interface['data_in'] = self.port_map['data_in']
+            except KeyError:
+                self.port_interface['data_in'] = self.port_map['write_data']
+
+            try:
+                self.port_interface['data_out'] = self.port_map['data_out']
+            except KeyError:
+                self.port_interface['data_out'] = self.port_map['read_data']
+
+            try:
+                self.port_interface['write_enable'] = self.port_map['write_enable']
+            except KeyError:
+                self.port_interface['write_enable'] = self.port_map['write_en']
+
+            try:
+                self.port_interface['addr'] = self.port_map['addr']
+            except KeyError:
+                self.port_interface['addr'] = self.port_map['addr']
 
             # Check for read_enable as well
             if 'read_enable' in self.port_map:
                 self.port_interface['read_enable'] = self.port_map['read_enable']
+            elif 'read_en' in self.port_map:
+                self.port_interface['read_enable'] = self.port_map['read_en']
             else:
                 self.port_interface['cen'] = self.port_map['cen']
             self.port_interface['clk'] = self.port_map['clk']
@@ -484,6 +503,8 @@ class MemoryInterface(kts.Generator):
                 port_intf['data_in'] = self.input(f"data_in_p{pnum}", self.mem_width, packed=True)
                 port_intf['write_addr'] = self.input(f"write_addr_p{pnum}", kts.clog2(self.mem_depth), packed=True)
                 port_intf['write_enable'] = self.input(f"write_enable_p{pnum}", 1)
+                if 'clear' in port_intf:
+                    port_intf['clear'] = self.input(f"clear_p{pnum}", 1)
             elif port_type == MemoryPortType.READWRITE:
                 port_intf['data_out'] = self.output(f"data_out_p{pnum}", self.mem_width, packed=True)
                 port_intf['read_addr'] = self.input(f"read_addr_p{pnum}", kts.clog2(self.mem_depth), packed=True)
@@ -529,6 +550,9 @@ class MemoryInterface(kts.Generator):
     def get_num_ports(self):
         return len(self.mem_ports)
 
+    def get_port_type(self, port_num):
+        return self.mem_ports[port_num].get_port_type()
+
     def create_simulatable_memory(self):
         '''
         Based on the ports within the memory
@@ -539,6 +563,9 @@ class MemoryInterface(kts.Generator):
             self._rst_n = self.reset("rst_n")
         if self.allow_flush:
             self._flush = self.input("flush", 1)
+            flush_tmp = self.var("flush_tmp", 1)
+            self.wire(self._flush, flush_tmp)
+            self._flush = flush_tmp
             self._clk_en = self.input("clk_en", 1)
             #  We want to handle flush and clk_en ourselves
             self.sync_reset_no_touch = True
@@ -546,6 +573,13 @@ class MemoryInterface(kts.Generator):
 
         self._data_array = self.var("data_array", width=self.mem_width, size=self.mem_depth, packed=True)
         # Now add in the logic for the ports.
+
+        # OR in the clears to replace flush...
+        for port in self.get_ports():
+            pintf = port.get_port_interface()
+            if 'clear' in pintf:
+                self._flush = self._flush | pintf['clear']
+
         for port in self.get_ports():
             port_type = port.get_port_type()
             if port_type == MemoryPortType.READ:
@@ -611,7 +645,10 @@ class MemoryInterface(kts.Generator):
         sens_lst = [(kts.posedge, self._clk)]
         new_write = self.sequential(*sens_lst)
 
-        if self.allow_flush:
+        if 'clear' in pintf:
+            print("WIRING FLUSH")
+            pass
+        elif self.allow_flush:
             new_wr_if_flush = new_write.if_(self._flush)
             new_wr_if_flush.then_(self._data_array.assign(0))
             new_wr_if = IfStmt((pintf['write_enable'] == 1) & self._clk_en)

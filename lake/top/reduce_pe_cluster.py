@@ -163,12 +163,12 @@ class ReducePECluster(MemoryController):
 
         # Instantiate the PE here
         self.onyxpe = OnyxPE(data_width=16,
-                            fifo_depth=self.fifo_depth,
-                            defer_fifos=self.defer_fifo,
-                            ext_pe_prefix=self.pe_prefix,
-                            pe_ro=True,
-                            do_config_lift=False,
-                            perf_debug=perf_debug)
+                             fifo_depth=self.fifo_depth,
+                             defer_fifos=self.defer_fifo,
+                             ext_pe_prefix=self.pe_prefix,
+                             pe_ro=True,
+                             do_config_lift=False,
+                             perf_debug=perf_debug)
 
         self.add_child("pe",
                        self.onyxpe,
@@ -202,11 +202,11 @@ class ReducePECluster(MemoryController):
 
         # Select between the internal/external signal connection for the PE
         self.wire(self.pe_data_in[0], kts.ternary(self._pe_in_external,
-                                                   self.ext_pe_data_in[0],
-                                                   self.reduce_data_to_pe[0]))
+                                                  self.ext_pe_data_in[0],
+                                                  self.reduce_data_to_pe[0]))
         self.wire(self.pe_data_in[1], kts.ternary(self._pe_in_external,
-                                                   self.ext_pe_data_in[1],
-                                                   self.reduce_data_to_pe[1]))
+                                                  self.ext_pe_data_in[1],
+                                                  self.reduce_data_to_pe[1]))
         # Reduce does not use the third input of the pe, just wire it to the external inputs
         self.wire(self.pe_data_in[2], self.ext_pe_data_in[2])
 

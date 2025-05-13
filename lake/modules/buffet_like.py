@@ -1007,9 +1007,9 @@ class BuffetLike(MemoryController):
                 self._curr_capacity_pre[idx] = self._curr_capacity_pre[idx] + kts.ternary(self._push_blk[idx],
                                                                                         self._curr_bounds[idx] + kts.concat(kts.const(0, width=self.data_width - self.subword_addr_bits), self._curr_bounds_align[idx]),
                                                                                                         kts.const(0, width=self.data_width)) - kts.ternary(self._pop_blk[idx],
-                                                                                                                                                            self._blk_bounds[idx] +\
-                                                                                                                                                            + kts.concat(kts.const(0, width=self.data_width - self.subword_addr_bits), self._blk_bounds_align[idx]),
-                                                                                                                                                            kts.const(0, width=self.data_width))
+                                                                                                                                                           self._blk_bounds[idx] +
+                                                                                                                                                           kts.concat(kts.const(0, width=self.data_width - self.subword_addr_bits), self._blk_bounds_align[idx]),
+                                                                                                                                                           kts.const(0, width=self.data_width))
 
         [self.add_code(cap_reg, idx=i) for i in range(self.num_ID)]
 

@@ -65,11 +65,11 @@ class IOCore_64(Generator):
         self._gclk = kts.util.clock(gclk)
         self.wire(gclk, kts.util.clock(self._clk & self._tile_en))
 
-        # Matrix unit active control signal 
+        # Matrix unit active control signal
         self._exchange_64_mode = self.input("exchange_64_mode", 1)
         self._exchange_64_mode.add_attribute(ConfigRegAttr("Does CGRA exchange 64 bits or 16 bits with each GLB tile?"))
 
-        # 4-to-4 IO tile 
+        # 4-to-4 IO tile
         num_IOs = 4
 
         # OUTPUT STREAMS
@@ -131,14 +131,14 @@ class IOCore_64(Generator):
 
                 self.add_child(f"f2io_2_io2glb_{track_len}_{io_num}",
                             f2io_2_io2glb_fifo,
-                            #    clk=self._gclk,
+                            # clk=self._gclk,
                             clk=self._clk,
                             rst_n=self._rst_n,
                             clk_en=self._clk_en,
-                            #push=tmp_f2io_v,
+                            # push=tmp_f2io_v,
                             pop=tmp_io2glb_r,
                             data_in=tmp_f2io)
-                
+
                 if io_num == 0:
                     self.wire(f2io_2_io2glb_fifo.ports.push, tmp_f2io_v)
                 else:
@@ -164,7 +164,7 @@ class IOCore_64(Generator):
                         self.wire(tmp_f2io_r, ~f2io_2_io2glb_fifo.ports.full)
                     else:
                         self.wire(tmp_f2io_r, kts.ternary(self._exchange_64_mode, ~f2io_2_io2glb_fifo.ports.full, 0))
-                        
+
                     self.wire(tmp_io2glb_v, ~f2io_2_io2glb_fifo.ports.empty)
 
                 # glb2io -> io2f fifo
@@ -180,7 +180,6 @@ class IOCore_64(Generator):
                             rst_n=self._rst_n,
                             clk_en=self._clk_en,
                             push=tmp_glb2io_v)
-                            #pop=tmp_io2f_r)
 
                 if io_num == 0:
                     self.wire(glb2io_2_io2f_fifo.ports.pop, tmp_io2f_r)
@@ -220,10 +219,10 @@ class IOCore_64(Generator):
 
                     if io_num == 0:
                         self.wire(tmp_io2f_v, ~glb2io_2_io2f_fifo.ports.empty)
-                    else:   
+                    else:
                         self.wire(tmp_io2f_v, kts.ternary(self._exchange_64_mode, ~glb2io_2_io2f_fifo.ports.empty, 0))
 
-                if(is_control):
+                if is_control:
                     break
 
         if self.add_clk_enable:
@@ -250,7 +249,6 @@ class IOCore_64(Generator):
                 dense_bypass_val = config_dict['dense_bypass']
 
             config += [("dense_bypass", dense_bypass_val)]
-
 
         if 'exchange_64_mode' in config_dict:
             config += [("exchange_64_mode", config_dict['exchange_64_mode'])]

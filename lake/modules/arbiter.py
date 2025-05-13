@@ -50,6 +50,7 @@ class Arbiter(Generator):
         self._rst_n = self.reset("rst_n")
         self._rst_n.add_attribute(FormalAttr(f"{self._rst_n.name}", FormalSignalConstraint.RSTN))
         self._clk_en = self.clock_en("clk_en", 1)
+        self._flush = self.input("flush", 1)
 
         # # Enable/Disable tile
         # self._tile_en = self.input("tile_en", 1)
@@ -80,7 +81,7 @@ class Arbiter(Generator):
             self.wire(self._max_grant_line, self._grant_line >> self._num_req)  # TODO confirm this expression
 
         if self.ins == 1:
-            self.wire(self._grant_out[0], self._resource_ready)
+            self.wire(self._grant_out[0], self._resource_ready & self._request_in[0])
             return
 
         # Algorithmically set grant line...
@@ -140,6 +141,12 @@ class Arbiter(Generator):
 
         # Finally, lift the config regs...
         # lift_config_reg(self.internal_generator)
+
+    def get_grants(self):
+        return self._grant_out
+
+    def get_reqs(self):
+        return self._request_in
 
     def get_bitstream(self):
 
