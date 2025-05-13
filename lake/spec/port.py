@@ -162,7 +162,9 @@ class Port(Component):
                         # assert False, "Dying on purpose..."
 
                         rv_transaction = self.var("rv_transaction_go", 1)
-                        self.wire(rv_transaction, data_from_pintf['valid'] & data_to_pintf['ready'])
+                        # self.wire(rv_transaction, data_from_pintf['valid'] & data_to_pintf['ready'])
+                        # The rv transaction is fine to "proceed" (drop data) if the filter_sg.step is low, but needs the ready if it's high
+                        self.wire(rv_transaction, data_from_pintf['valid'] & kts.ternary(filter_sg.ports.step, data_to_pintf['ready'], kts.const(1, 1)))
                         self.wire(rv_transaction, filter_sg.ports.external_count)
 
                         # The incoming valids will get eaten by the rv_transaction
@@ -175,11 +177,13 @@ class Port(Component):
                         # self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
                         # self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
                         self.filter_sg = filter_sg
+                        # The ready out is the normal ready if the step is high otherwise it's 1 if it's low
+                        self.wire(data_from_pintf['ready'], kts.ternary(filter_sg.ports.step, data_to_pintf['ready'], kts.const(1, 1)))
 
                     else:
                         self.wire(data_from_pintf['valid'], data_to_pintf['valid'])
+                        self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
 
-                    self.wire(data_from_pintf['ready'], data_to_pintf['ready'])
                     self.wire(data_from_pintf['data'], data_to_pintf['data'])
 
             else:
@@ -198,6 +202,8 @@ class Port(Component):
                     mp_interface = data_to_memport.get_port_interface()
                     # self.wire(self._ready_out_lcl, ub_interface['ready'])
                     # Need ID finished...
+
+                    self._finished = self.input("finished", 1)
 
                     if self.opt_timing:
 
@@ -265,7 +271,8 @@ class Port(Component):
 
                         rv_transaction = self.var("rv_transaction_go", 1)
                         # Ub interface ready and valid anded...
-                        self.wire(rv_transaction, ub_interface['valid'] & ub_interface['ready'])
+                        # self.wire(rv_transaction, ub_interface['valid'] & ub_interface['ready'])
+                        self.wire(rv_transaction, ub_interface['valid'] & kts.ternary(filter_sg.ports.step, ub_interface['ready'], kts.const(1, 1)))
                         self.wire(rv_transaction, filter_sg.ports.external_count)
 
                         # The incoming valids will get eaten by the rv_transaction
@@ -281,10 +288,11 @@ class Port(Component):
 
                         # assert False, "On purpose...MEK"
                         self.filter_sg = filter_sg
+                        self.wire(ub_interface['ready'], kts.ternary(filter_sg.ports.step, self._ready_out_lcl & ~self._finished, kts.const(1, 1)))
 
-                    self._finished = self.input("finished", 1)
-                    # Ready out needs to be the ready from the UB and the finished signal
-                    self.wire(ub_interface['ready'], self._ready_out_lcl & ~self._finished)
+                    else:
+                        # Ready out needs to be the ready from the UB and the finished signal
+                        self.wire(ub_interface['ready'], self._ready_out_lcl & ~self._finished)
 
                     # self.wire(self._data_out_lcl, ub_interface['data'])
 
@@ -1398,16 +1406,50 @@ class Port(Component):
 
         all_bs = []
 
+        if self.filter:
+            assert id_map is not None, "Need to pass in extents for the filtered version..."
+            print("Configuring port...")
+            # Need to configure the filter
+            # Create 1 by 1 address map for filter
+            # Just need extents and dimensionality....
+            filter_sg_extents = id_map["extents"]
+            filter_sg_dimensionality = id_map["dimensionality"]
+            filter_sg_schedule_map = {"offset": 0}
+            filter_sg_strides = []
+
+            # Set Defaults
+            new_mult = 1
+            for i in range(filter_sg_dimensionality):
+                filter_sg_strides.append(new_mult)
+                new_mult = new_mult * filter_sg_extents[i]
+            filter_sg_schedule_map['strides'] = filter_sg_strides
+
+            # Override if the map attributes exist in the map
+            if 'offset' in id_map:
+                print("Rewrote offset...")
+                filter_sg_schedule_map['offset'] = id_map['offset'][0]
+
+            if 'strides' in id_map:
+                print("Rewrote strides...")
+                filter_sg_schedule_map['strides'] = id_map['strides']
+
+            # Now get the filter bitstream
+            filter_bs = self.filter_sg.gen_bitstream(schedule_map=filter_sg_schedule_map,
+                                                        extents=filter_sg_extents,
+                                                        dimensionality=filter_sg_dimensionality)
+            filter_bs = self._add_base_to_cfg_space(filter_bs, self.child_cfg_bases[self.filter_sg])
+            all_bs.append(filter_bs)
+
         # Only generate vec bitstream if it's vecced
         if vec_in is not None or vec_out is not None:
+
             assert vec_in is not None and vec_out is not None and self._fw != 1
+
             if self.get_direction() == Direction.IN:
 
                 if self.opt_rv:
                     pass
-
                 else:
-
                     vec_in_addr_map = vec_in['address']
                     vec_in_sched_map = vec_in['schedule']
                     internal_id_bs = self._id_sipo_in.gen_bitstream(dimensionality=vec_in['dimensionality'],
@@ -1439,35 +1481,6 @@ class Port(Component):
                         sg_sipo_out_bs = self._sg_sipo_out.gen_bitstream()
                         sg_sipo_out_bs = self._add_base_to_cfg_space(sg_sipo_out_bs, self.child_cfg_bases[self._sg_sipo_out])
                         all_bs.append(sg_sipo_out_bs)
-
-                if self.filter:
-                    assert id_map is not None, "Need to pass in extents for the filtered version..."
-                    # Need to configure the filter
-                    # Create 1 by 1 address map for filter
-                    # Just need extents and dimensionality....
-                    filter_sg_extents = id_map["extents"]
-                    filter_sg_dimensionality = id_map["dimensionality"]
-                    filter_sg_schedule_map = {"offset": 0}
-                    filter_sg_strides = []
-
-                    new_mult = 1
-                    for i in range(filter_sg_dimensionality):
-                        filter_sg_strides.append(new_mult)
-                        new_mult = new_mult * filter_sg_extents[i]
-
-                    filter_sg_schedule_map['strides'] = filter_sg_strides
-
-                    print("Filter SG Schedule Map")
-                    print(filter_sg_schedule_map)
-                    print("Filter SG Extents")
-                    print(filter_sg_extents)
-                    # Now get the filter bitstream
-                    filter_bs = self.filter_sg.gen_bitstream(schedule_map=filter_sg_schedule_map,
-                                                             extents=filter_sg_extents,
-                                                             dimensionality=filter_sg_dimensionality)
-                    filter_bs = self._add_base_to_cfg_space(filter_bs, self.child_cfg_bases[self.filter_sg])
-                    all_bs.append(filter_bs)
-                    print("CONFIGURED FILTER...")
 
             elif self.get_direction() == Direction.OUT:
 
