@@ -12,12 +12,13 @@ from lake.spec.memory_port import MemoryPort
 
 class Storage(Component):
 
-    def __init__(self, capacity=1024, tech_map=None):
+    def __init__(self, capacity=1024, tech_map=None, remote=False):
         super().__init__()
         self._capacity = capacity
         self.memport_sets = {}
         self.tech_map = tech_map
         self.memory_ports = None
+        self.remote = remote
 
     def gen_hardware(self, pos_reset=False):
         return super().gen_hardware(pos_reset)
@@ -35,11 +36,17 @@ class Storage(Component):
     def set_tech_map(self, tech_map):
         self.tech_map = tech_map
 
+    def get_remote(self):
+        return self.remote
+
+    def set_remote(self, remote):
+        self.remote = remote
+
 
 class SingleBankStorage(Storage):
 
-    def __init__(self, capacity=1024, tech_map=None):
-        super().__init__(capacity=capacity, tech_map=tech_map)
+    def __init__(self, capacity=1024, tech_map=None, remote=False):
+        super().__init__(capacity=capacity, tech_map=tech_map, remote=remote)
 
     def _build_array(self):
         self._hw_array = self.var("data_array", self._capacity * 8)
@@ -191,6 +198,10 @@ class SingleBankStorage(Storage):
         #                 port_intf[alt_sig__] = self.input(f"{alt_sig__}", width)
 
     def gen_hardware(self, pos_reset=False, memory_ports=None):
+
+        if self.remote:
+            print("Remote memory requested, so no hardware will be generated...")
+            return
 
         assert memory_ports is not None
         if type(memory_ports) is not list:

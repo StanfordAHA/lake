@@ -296,16 +296,23 @@ class Spec():
         # First generate the storages based on the ports connected to them and their capacities
         storage_nodes = self.get_nodes(Storage)
 
+        curr_remote_stg_idx = 0
+
         self.mc_ports = []
         for j_, storage_node in enumerate(storage_nodes):
-            self.mc_ports.append([])
 
             storage_node: Storage
+            # Check if the current storage_node is remote or not...
+            curr_storage_remote = storage_node.get_remote()
+
             # get MemoryPorts
             memoryports = list(nx.neighbors(self._hw_graph, storage_node))
+            if curr_storage_remote:
+                self.mc_ports.append([])
 
             # Only build the hardware for the storage if it is not remote
-            if self.remote_storage is False:
+            # if self.remote_storage is False:
+            if curr_storage_remote is False:
 
                 storage_node.gen_hardware(pos_reset=False, memory_ports=memoryports)
                 # memoryports = nx.neighbors(self._hw_graph, storage_node)
@@ -322,19 +329,27 @@ class Spec():
             # Build memory ports
             memoryports = nx.neighbors(self._hw_graph, storage_node)
             for i_, mp in enumerate(memoryports):
-                self.mc_ports[j_].append(None)
+                if curr_storage_remote:
+                    # Add a blank entry for this case...
+                    self.mc_ports[curr_remote_stg_idx].append(None)
                 mp: MemoryPort
+                # This is where it is relevant that the storage node is remote...
                 mp.gen_hardware(pos_reset=False, storage_node=storage_node)
                 self._final_gen.add_child(f"memoryport_{i_}_storage_{j_}", mp,
                                           clk=self.hw_attr['clk'],
                                           rst_n=self.hw_attr['rst_n'],
                                           clk_en=self.hw_attr['clk_en'], flush=self.hw_attr['flush'])
                 # self._connect_memoryport_storage(mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
-                if self.remote_storage is False:
+                # Connected the memory ports to the storage
+                if curr_storage_remote is False:
                     connect_memoryport_storage(self._final_gen, mptype=mp.get_type(), memport_intf=mp.get_storage_intf(), strg_intf=strg_intfs[i_])
                 else:
-                    self.connect_memoryport_mc_interface(mp, bank_no=(j_, i_))
-                # Connected the memory ports to the storage
+                    self.connect_memoryport_mc_interface(mp, bank_no=(curr_remote_stg_idx, i_))
+                    # self.connect_memoryport_mc_interface(mp, bank_no=(j_, i_))
+
+            if curr_storage_remote:
+                # If this is a remote storage, we need to increment the index
+                curr_remote_stg_idx += 1
 
         # Now that we have generated the memory ports and storage, we can realize
         # the ports and supporting hardware
@@ -415,6 +430,13 @@ class Spec():
             self._final_gen.wire(port_id.ports.restart, port_sg.ports.restart)
             self._final_gen.wire(port_id.ports.finished, port_sg.ports.finished)
             self._final_gen.wire(port_id.ports.iterators, port_sg.ports.iterators)
+
+            # If the port is filtered, need to connect the ID mux sel to the Port
+            if port.get_filter():
+                self._final_gen.wire(port_id.ports.mux_sel, port.ports.filter_mux_sel)
+                self._final_gen.wire(port_id.ports.restart, port.ports.filter_restart)
+                self._final_gen.wire(port_id.ports.finished, port.ports.filter_finished)
+                self._final_gen.wire(port_id.ports.iterators, port.ports.filter_iterators)
 
             # Send through the extents to sg if there is RV
             if self.any_rv_sg:
@@ -1259,6 +1281,13 @@ class Spec():
                 # 'offset': port_access_map["address_offset"][0]
             }
 
+            # Add in filter information if it exists...
+            port_config["config"]["filter"] = None
+            if "filter" in app_json and used_port in app_json["filter"]:
+                port_config["config"]["filter"] = {}
+                port_config["config"]["filter"]['offset'] = app_json["filter"][used_port]['offset']
+                port_config["config"]["filter"]['strides'] = app_json["filter"][used_port]['stride']
+
             port_config["vec_in_config"] = {}
             port_config["vec_out_config"] = {}
             port_config["vec_constraints"] = []
@@ -1303,16 +1332,20 @@ class Spec():
                     scalar = 8
 
             else:
+                # [this_idx, on_this_idx, scalar]
                 this_depends_idx = indices[0]
                 on_this_idx = indices[1]
+                scalar_json = None
+                if len(indices) > 2:
+                    scalar_json = indices[2]
                 scalar_adjust = 0
                 # This should be computed based on the precursor deltas...
                 # It should be provided in a richer way, but start with 0, then
-                if this_depends_idx == 0 and on_this_idx == 0:
+                if this_depends_idx == 0 and on_this_idx == 0 and scalar_json is None:
                     # scalar = 9
                     scalar = 0
                 else:
-                    scalar = 0
+                    scalar = scalar_json
                 # Check the precursor deltas and project them into the level of the dependency...
                 if "precursor_deltas" not in app_json:
                     app_json["precursor_deltas"] = {}
@@ -1437,7 +1470,7 @@ class Spec():
 
         return ret_map
 
-    def gen_bitstream(self, application):
+    def gen_bitstream(self, application, rewrite=True):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
            There may be other information that needs to go into the configuration, but that could be in the object hierarchy
         '''
@@ -1448,7 +1481,7 @@ class Spec():
             application = hack_rv_config(test_name)
             print("HARDCODED APPLICATION")
             print(application)
-        else:
+        elif rewrite is True:
             print("Producing SPEC BITSTREAM with Application:")
             print("APPLICATION BEFORE")
             print(application)
@@ -1477,10 +1510,11 @@ class Spec():
             port_vec = port.get_fw() != 1
 
             port_name = maps['name']
-            print(f"Configuring the port named: {port_name}")
+            print(f"Configuring port: {port_name}")
             # Get the associated controllers...
             port_config = maps['config']
             addr_map = port_config['address']
+            filter_config = port_config.get('filter', None)
             sched_map = port_config['schedule']
             port_id, port_ag, port_sg = self.get_port_controllers(port=port)
 
@@ -1489,9 +1523,35 @@ class Spec():
                 vec_constraints = None
                 if self.any_rv_sg:
                     vec_constraints = maps['vec_constraints']
+
+                filter_map = None
+                if port.get_filter():
+                    # print("Configuring filter map...(vec)")
+                    filter_map = {"extents": port_config['extents'],
+                                  "dimensionality": port_config['dimensionality']}
+                    if filter_config is not None:
+                        filter_map['offset'] = port_config['filter']['offset']
+                        filter_map['strides'] = port_config['filter']['strides']
+                    # print(filter_map)
+
                 port_bs = port.gen_bitstream(vec_in=maps['vec_in_config'],
                                              vec_out=maps['vec_out_config'],
-                                             vec_constraints=vec_constraints)
+                                             vec_constraints=vec_constraints,
+                                             id_map=filter_map)
+                self.configure(port, port_bs)
+            # If not vectorized...
+            elif port.get_filter():
+
+                # print("Configuring filter map...(nonvec)")
+                filter_map = {"extents": port_config['extents'],
+                              "dimensionality": port_config['dimensionality']}
+                if filter_config is not None:
+                    filter_map['offset'] = port_config['filter']['offset']
+                    filter_map['strides'] = port_config['filter']['strides']
+                # print(filter_map)
+
+                port_bs = port.gen_bitstream(id_map=filter_map)
+
                 self.configure(port, port_bs)
 
             # All components should be aware of RV/Static context
