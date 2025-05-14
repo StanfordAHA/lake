@@ -38,6 +38,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
         self.is_PE = 'PE' in name
         self.is_MEM = 'MemCore' in name
+        self.is_Pond = 'Pond' in name
 
         self.memory_interface = memory_interface
         self.memory_banks = memory_banks
@@ -845,6 +846,8 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                                    data_in=new_input)
 
                     # self.wire(new_input_ready, ~new_reg_fifo.ports.full)
+                    if self.is_Pond:
+                        self.wire(new_input_ready, kts.const(1, 1))
 
                     # Alias the new input across the fifo boundary
                     if input_width != 1:
@@ -940,7 +943,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
                     for (ctrl_name, port) in signal_dict.items():
                         self.wire(new_input, self.controllers_flat_dict[ctrl_name].ports[port])
 
-                if any_rvs:
+                if any_rvs and not self.is_Pond:
                     # print(output_ready_map)
                     self.create_mode_based_mux(out_sig=new_input_ready,
                                                items=output_ready_map,
