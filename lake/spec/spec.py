@@ -489,8 +489,8 @@ class Spec():
                         self._final_gen.wire(port_id.ports.step, port.ports.sg_step_out)
                         self._final_gen.wire(port_id.ports.finished, port.ports.finished)
                     else:
-                        self._final_gen.wire(port_ag.ports.step, mid_grant)
-                        self._final_gen.wire(port_id.ports.step, mid_grant)
+                        self._final_gen.wire(port_ag.ports.step, mid_grant & quali_step)
+                        self._final_gen.wire(port_id.ports.step, mid_grant & quali_step)
                     # Wire the ID step
                 # If it is an OUT Port, we need to qualify the step with the grant line from the arbitration and the
                 # downstream ready (from the Port I guess)
@@ -516,8 +516,8 @@ class Spec():
                         self._final_gen.wire(port_id.ports.finished, port.ports.finished)
                         self._final_gen.wire(mid_grant, port.ports.grant)
                     else:
-                        self._final_gen.wire(port_ag.ports.step, mid_grant)
-                        self._final_gen.wire(port_id.ports.step, mid_grant)
+                        self._final_gen.wire(port_ag.ports.step, mid_grant & quali_step)
+                        self._final_gen.wire(port_id.ports.step, mid_grant & quali_step)
 
                 else:
                     raise NotImplementedError(f"Only support {Direction.IN} and {Direction.OUT}")
