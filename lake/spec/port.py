@@ -24,7 +24,7 @@ class Port(Component):
     def __init__(self, ext_data_width=16, int_data_width=16,
                  runtime=Runtime.STATIC, direction=Direction.IN,
                  vec_capacity=None, opt_rv=False,
-                 opt_timing=True, filter=False,
+                 opt_timing=False, filter=False,
                  dangling=False):
         super().__init__()
         self._mp_intf = {}
