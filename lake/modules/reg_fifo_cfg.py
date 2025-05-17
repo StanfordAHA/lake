@@ -285,14 +285,15 @@ class RegFIFO_cfg(Generator):
             self._num_items = self.var("num_items", clog2(self.depth) + 1)
             # self.wire(self._full, (self._wr_ptr + 1) == self._rd_ptr)
             # self.wire(self._full, self._num_items == self.depth)
-            self.wire(self._full, (self._num_items == self.depth) | self._flush | ~self._clk_en)
+            self.wire(self._full, (self._num_items == self.depth))
             # Experiment to cover latency
             assert self.depth > 1 or self.width_mult > 1, "FIFO depth or width_mult needs to be larger than 1"
             self.wire(self._almost_full, self._num_items >= (self.depth - self.almost_full_diff))
             # self.wire(self._empty, self._wr_ptr == self._rd_ptr)
-            self.wire(self._empty, (self._num_items == 0) | self._flush | ~self._clk_en)
+            self.wire(self._empty, (self._num_items == 0))
 
-            self.wire(self._read, self._pop & ~self._passthru & ~self._empty)
+            # Add flush gating logic to prevent transactions when flush is high
+            self.wire(self._read, self._pop & ~self._passthru & ~self._empty & ~self._flush)
 
             # Disallow passthru for now to prevent combinational loops
             self.wire(self._passthru, const(0, 1))
@@ -312,7 +313,8 @@ class RegFIFO_cfg(Generator):
             else:
                 # self.wire(self._write, self._push & ~self._passthru & (~self._full | self._pop))
                 # Don't want to write when full at all for decoupling
-                self.wire(self._write, self._push & ~self._passthru & (~self._full))
+                # Add flush gating logic to prevent transactions when flush is high
+                self.wire(self._write, self._push & ~self._passthru & (~self._full) & ~self._flush)
                 self.add_code(self.set_num_items)
                 self.add_code(self.reg_array_ff)
                 self.add_code(self.wr_ptr_ff)
