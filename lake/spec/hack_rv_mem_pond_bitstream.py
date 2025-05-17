@@ -9,6 +9,7 @@ APPS_NEEDING_HACKS = [
     "stable_softmax_pass2_fp",
     "scalar_avg_fp",
     "layer_norm_pass2_fp",
+    "mem_reshape_test"
 ]
 
 
@@ -42,6 +43,10 @@ def hack_rv_config(test_name):
         num_partial_reduction = vec_len // int(halide_gen_args_dict['glb_i'])
         rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
                                    num_output_pixels=num_vecs)
+
+    elif test_name == "mem_reshape_test":
+        # Only have one MEM
+        rv_config = get_single_mem(in_img=int(halide_gen_args_dict["in_img"]))
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
@@ -238,5 +243,67 @@ def get_vec_accum_pond(num_partial_reduction=64, num_output_pixels=4):
 
     # Add all constraints
     linear_test['constraints'] = [raw_r1_constraint, raw_r2_constraint, raw_r1_pwinit_constraint, war_winit_r2_constraint]
+
+    return linear_test
+
+def get_single_mem(in_img=64):
+    '''
+    Helper function to create config for reduction pond
+    Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
+    MEM port mapping: 0: port_w0, 1: port_w1, 2: port_r0, 3: port_r1
+    or MEM port mapping: 0: port_w0, 1: port_r0
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [in_img, in_img],
+            'address': {
+                'strides': [1, in_img],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [in_img, in_img],
+            'address': {
+                'strides': [in_img, 1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    # raw_scalar_0 = in_img * in_img
+    raw_scalar_1 = in_img
+    # linear read and write working version
+    # raw_port_data_out_0_constraint = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar)
+    # raw_0 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_0)
+    raw_1 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    # war_scalar = 8
+    # war_port_data_in_0_constraint = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, war_scalar)
+
+    # Just have read follow write
+    linear_test['constraints'] = [raw_1]
 
     return linear_test

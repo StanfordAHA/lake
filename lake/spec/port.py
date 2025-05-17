@@ -794,7 +794,8 @@ class Port(Component):
                     addr_q_width = kts.clog2(self.get_fw())
                     pop_q_width = 1
                     # tag_width = kts.clog2(self._vec_capacity // 8)
-                    tag_width = 1
+                    # tag_width = 1
+                    tag_width = self.port_ag_width - kts.clog2(self.get_fw())
                     sub_addr_range = [kts.clog2(self._fw) - 1, 0]
                     tag_addr_range = [kts.clog2(self._fw) + tag_width - 1, kts.clog2(self._fw)]
 
