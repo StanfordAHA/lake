@@ -1470,7 +1470,7 @@ class Spec():
 
         return ret_map
 
-    def gen_bitstream(self, application, rewrite=True):
+    def gen_bitstream(self, application, rewrite=True, over=False):
         '''Overall flow of the bitstreams is to basically go through each port and map down the information.
            There may be other information that needs to go into the configuration, but that could be in the object hierarchy
         '''
@@ -1480,6 +1480,9 @@ class Spec():
         if override is True:
             application = hack_rv_config(test_name)
             print("HARDCODED APPLICATION")
+            print(application)
+        elif over is True:
+            print("HARDCODED APPLICATION - OVER")
             print(application)
         elif rewrite is True:
             print("Producing SPEC BITSTREAM with Application:")

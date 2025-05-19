@@ -13,18 +13,24 @@ import os
 
 
 def build_four_port_wide_fetch_rv(storage_capacity=1024, data_width=16, dims: int = 6, vec_width=4, physical=False,
-                                  reg_file=False, vec_capacity=2, opt_rv=False) -> Spec:
+                                  reg_file=False, vec_capacity=2, opt_rv=False, add_filter_path=False) -> Spec:
 
-    # a reg file can't be used to build this...
+    # TODO: Override this in garnet and not here...
+    id_width = 11
+    remote_storage = False
 
-    ls = Spec(opt_rv=opt_rv)
+    ls = Spec(name="lakespec", opt_rv=opt_rv, remote_storage=remote_storage, run_flush_pass=False,
+              config_passthru=False, comply_17=True)
 
+    # Don't opt timing on the in ports (which really just adds a fifo at the input which we don't need)
     in_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                    vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                   opt_rv=opt_rv)
+                   opt_rv=opt_rv, opt_timing=False,
+                   filter=True)
     in_port2 = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.IN,
-                    opt_rv=opt_rv)
+                    opt_rv=opt_rv, opt_timing=False,
+                    filter=True)
     out_port = Port(ext_data_width=data_width, int_data_width=data_width * vec_width,
                     vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
                     opt_rv=opt_rv)
@@ -32,21 +38,34 @@ def build_four_port_wide_fetch_rv(storage_capacity=1024, data_width=16, dims: in
                      vec_capacity=vec_capacity, runtime=Runtime.DYNAMIC, direction=Direction.OUT,
                      opt_rv=opt_rv)
 
-    ls.register(in_port, in_port2, out_port, out_port2)
+    ls.register(in_port, in_port2)
 
-    in_id = IterationDomain(dimensionality=dims, extent_width=16)
+    if add_filter_path:
+        in_port_filter = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                              direction=Direction.IN, opt_rv=opt_rv, filter=True)
+        ls.register(in_port_filter)
+
+    ls.register(out_port, out_port2)
+
+    if add_filter_path:
+
+        out_port_filter = Port(ext_data_width=data_width, runtime=Runtime.DYNAMIC,
+                              direction=Direction.OUT, opt_rv=opt_rv, filter=False)
+        ls.register(out_port_filter)
+
+    in_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     in_ag = AddressGenerator(dimensionality=dims)
     in_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
-    in_id2 = IterationDomain(dimensionality=dims, extent_width=16)
+    in_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
     in_ag2 = AddressGenerator(dimensionality=dims)
     in_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
 
-    out_id = IterationDomain(dimensionality=dims, extent_width=16)
+    out_id = IterationDomain(dimensionality=dims, extent_width=id_width)
     out_ag = AddressGenerator(dimensionality=dims)
     out_sg = ReadyValidScheduleGenerator(dimensionality=dims)
 
-    out_id2 = IterationDomain(dimensionality=dims, extent_width=16)
+    out_id2 = IterationDomain(dimensionality=dims, extent_width=id_width)
     out_ag2 = AddressGenerator(dimensionality=dims)
     out_sg2 = ReadyValidScheduleGenerator(dimensionality=dims)
 
@@ -55,15 +74,35 @@ def build_four_port_wide_fetch_rv(storage_capacity=1024, data_width=16, dims: in
     ls.register(out_id, out_ag, out_sg)
     ls.register(out_id2, out_ag2, out_sg2)
 
+    if add_filter_path:
+        in_id_filter = IterationDomain(dimensionality=dims, extent_width=id_width)
+        in_ag_filter = AddressGenerator(dimensionality=dims)
+        in_sg_filter = ReadyValidScheduleGenerator(dimensionality=dims)
+
+        out_id_filter = IterationDomain(dimensionality=dims, extent_width=id_width)
+        out_ag_filter = AddressGenerator(dimensionality=dims)
+        out_sg_filter = ReadyValidScheduleGenerator(dimensionality=dims)
+
+        ls.register(in_id_filter, in_ag_filter, in_sg_filter)
+        ls.register(out_id_filter, out_ag_filter, out_sg_filter)
+
     data_bytes = (data_width * vec_width) // 8
     tech_map = None
     if physical:
         tech_map = GF_Tech_Map(depth=storage_capacity // data_bytes, width=data_width * vec_width, dual_port=False)
 
     # 1024 Bytes
-    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map)
+    stg = SingleBankStorage(capacity=storage_capacity, tech_map=tech_map, remote=remote_storage)
     shared_rw_mem_port = MemoryPort(data_width=data_width * vec_width, mptype=MemoryPortType.RW, delay=1)
     ls.register(stg, shared_rw_mem_port)
+
+    if add_filter_path:
+        # Just try buffering 8 data for now ... want to turn into a fifo if possible.
+        filter_cap = data_bytes * 8
+        stg_filter = SingleBankStorage(capacity=filter_cap, remote=False)
+        write_port_filter = MemoryPort(data_width=data_width, mptype=MemoryPortType.W, delay=1)
+        read_port_filter = MemoryPort(data_width=data_width, mptype=MemoryPortType.R, delay=1)
+        ls.register(stg_filter, write_port_filter, read_port_filter)
 
     # All cores are registered at this point
     # Now connect them
@@ -94,6 +133,25 @@ def build_four_port_wide_fetch_rv(storage_capacity=1024, data_width=16, dims: in
 
     # Memory Ports to storage
     ls.connect(shared_rw_mem_port, stg)
+
+    if add_filter_path:
+        # In to filter
+        ls.connect(in_port_filter, in_id_filter)
+        ls.connect(in_port_filter, in_ag_filter)
+        ls.connect(in_port_filter, in_sg_filter)
+
+        # Out to filter
+        ls.connect(out_port_filter, out_id_filter)
+        ls.connect(out_port_filter, out_ag_filter)
+        ls.connect(out_port_filter, out_sg_filter)
+
+        # In and Out to filter memory ports
+        ls.connect(in_port_filter, write_port_filter)
+        ls.connect(out_port_filter, read_port_filter)
+
+        # Memory Ports to storage
+        ls.connect(write_port_filter, stg_filter)
+        ls.connect(read_port_filter, stg_filter)
 
     return ls
 
@@ -601,24 +659,7 @@ def get_linear_test_rv():
 
     linear_test = {}
 
-    pw_vec_w = 0
-    pr_vec_w = 1
-
     length_scale = 8
-
-    pr_raw_idx_vec_w = 0
-    pw_raw_idx_vec_w = 1
-    raw_comp_vec_w = LFComparisonOperator.LT.value
-    raw_scalar_vec_w = 0
-    raw_constraint_vec_w = (pr_vec_w, pr_raw_idx_vec_w,
-                            pw_vec_w, pw_raw_idx_vec_w, raw_comp_vec_w, raw_scalar_vec_w)
-
-    pr_war_idx_vec_w = 0
-    pw_war_idx_vec_w = 1
-    war_comp_vec_w = LFComparisonOperator.LT.value
-    war_scalar_vec_w = 2
-    war_constraint_vec_w = (pw_vec_w, pw_war_idx_vec_w, pr_vec_w,
-                            pr_war_idx_vec_w, war_comp_vec_w, war_scalar_vec_w)
 
     linear_test[0] = {
         'type': Direction.IN,
@@ -659,7 +700,7 @@ def get_linear_test_rv():
                 'offset': 4
             }
         },
-        'vec_constraints': [raw_constraint_vec_w, war_constraint_vec_w]
+        'vec_constraints': []
     }
 
     pw_vec_r = 0
@@ -674,7 +715,7 @@ def get_linear_test_rv():
 
     pr_war_idx_vec_r = 1
     pw_war_idx_vec_r = 0
-    war_comp_vec_r = LFComparisonOperator.LT.value
+    war_comp_vec_r = LFComparisonOperator.GT.value
     war_scalar_vec_r = 2
     war_constraint_vec_r = (pw_vec_r, pw_war_idx_vec_r, pr_vec_r,
                             pr_war_idx_vec_r, war_comp_vec_r, war_scalar_vec_r)
@@ -727,7 +768,7 @@ def get_linear_test_rv():
     pr_raw_idx = 0
     pw_raw_idx = 0
     raw_comp = LFComparisonOperator.LT.value
-    raw_scalar = 12
+    raw_scalar = 9
     raw_constraint = (pr, pr_raw_idx, pw, pw_raw_idx, raw_comp, raw_scalar)
 
     pr_war_idx = 0

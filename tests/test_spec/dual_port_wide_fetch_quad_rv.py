@@ -751,7 +751,7 @@ def test_linear_read_write_dp_wf_q_rv(output_dir=None, storage_capacity=1024, da
             for time_ in times:
                 file.write(f"{time_}\n")
     # Now generate the bitstream to a file (will be loaded in test harness later)
-    bs = simple_single_port_spec.gen_bitstream(lt)
+    bs = simple_single_port_spec.gen_bitstream(lt, over=True)
 
     # Convert the number to a hexadecimal string
     hex_string = hex(bs)[2:]  # Remove the '0x' prefix
