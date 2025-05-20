@@ -9,7 +9,8 @@ APPS_NEEDING_HACKS = [
     "stable_softmax_pass2_fp",
     "scalar_avg_fp",
     "layer_norm_pass2_fp",
-    "mem_transpose_test"
+    "mem_transpose_test",
+    "mem_slice_test",
 ]
 
 
@@ -46,7 +47,14 @@ def hack_rv_config(test_name):
 
     elif test_name == "mem_transpose_test":
         # Only have one MEM
-        rv_config = get_single_mem(
+        rv_config = get_single_mem_transpose(
+            in_img_x=int(halide_gen_args_dict["in_img_x"]),
+            in_img_y=int(halide_gen_args_dict["in_img_y"])
+        )
+
+    elif test_name == "mem_slice_test":
+        # Only have one MEM
+        rv_config = get_single_mem_slice(
             in_img_x=int(halide_gen_args_dict["in_img_x"]),
             in_img_y=int(halide_gen_args_dict["in_img_y"])
         )
@@ -249,9 +257,9 @@ def get_vec_accum_pond(num_partial_reduction=64, num_output_pixels=4):
 
     return linear_test
 
-def get_single_mem(in_img_x=64, in_img_y=32):
+def get_single_mem_transpose(in_img_x=64, in_img_y=32):
     '''
-    Helper function to create config for reduction pond
+    Helper function to create config for mem transpose
     Pond port mapping: 0: port_w0, 1: port_init (clear memory) 2: port_r0, 3: port_r1
     MEM port mapping: 0: port_w0, 1: port_w1, 2: port_w2, 3: port_r0, 4: port_r1, 5: port_r2
     '''
@@ -284,6 +292,58 @@ def get_single_mem(in_img_x=64, in_img_y=32):
             'address': {
                 'strides': [in_img_x, 1],
                 'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    raw_scalar_1 = in_img_x
+    raw_1 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    linear_test['constraints'] = [raw_1]
+
+    return linear_test
+
+def get_single_mem_slice(in_img_x=32, in_img_y=64):
+    '''
+    Helper function to create config for slice MEM
+    MEM port mapping: 0: port_w0, 1: port_w1, 2: port_w2, 3: port_r0, 4: port_r1, 5: port_r2
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 2,
+            'extents': [in_img_x, in_img_y],
+            'address': {
+                'strides': [1, in_img_x],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 2,
+            'extents': [in_img_x, in_img_y // 2],
+            'address': {
+                'strides': [1, in_img_x],
+                'offset': in_img_x * (in_img_y // 2)
             },
             'schedule': {}
         },
