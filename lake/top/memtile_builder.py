@@ -1278,7 +1278,7 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
     def get_bit(self, val, n):
         return (val >> n & 1)
 
-    def get_bitstream(self, config_json):
+    def get_bitstream(self, config_json, node_name=None):
         '''
         At this level, we can take in the json and figure out which mode we are using
         '''
@@ -1318,9 +1318,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             ctrl_to_conf = mode_map[mode_used]
             # Have some guard to see if config is in there or not...
             if 'config' in config_json:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'])
+                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'], node_name=node_name)
             else:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json)
+                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json, node_name=node_name)
 
         # Now need to chop up cfg space
         tmp_cfg_space = [0 for i in range(self.num_chopped_cfg)]
