@@ -13,6 +13,7 @@ APPS_NEEDING_HACKS = [
     "mem_slice_test",
     "mem_filter_test",
     "avgpool_layer_fp",
+    "mat_vec_mul_fp",
 ]
 
 
@@ -71,17 +72,24 @@ def hack_rv_config(test_name, node_name=None):
 
     elif test_name == "avgpool_layer_fp":
         # Have accum ponds and output mems
-        assert node_name is not None, f"node_name has to be set for {test_name} with more than one MEM/Pond"
+        print(f"configure node_name: {node_name}")
+
         # Configure accum pond
-        if "output_cgra_stencil" in node_name and "$pond" in node_name:
+        # input port: num_0
+        # output port: update: num_0, spill: num_1
+        if "output_cgra_stencil" in node_name:
             avgpool_kernel_reduction = int(halide_gen_args_dict["in_img"]) * int(halide_gen_args_dict["in_img"])
             num_out_channels_per_lane = int(halide_gen_args_dict["n_ic"]) // int(halide_gen_args_dict["glb_i"])
             rv_config = get_vec_accum_pond(num_partial_reduction=avgpool_kernel_reduction, num_output_pixels=num_out_channels_per_lane)
 
-        # Configure output mem
-        if "output_cgra_stencil" in node_name and "$pond" not in node_name:
-            # TODO: Configure output mem
-            num_pixels_per_lane = int(halide_gen_args_dict["n_ic"]) // int(halide_gen_args_dict["glb_i"])
+    elif test_name == "mat_vec_mul_fp":
+        # Have accum ponds
+        print(f"configure node_name: {node_name}")
+        matrix_width = int(halide_gen_args_dict['matrix_width'])
+        matrix_height = int(halide_gen_args_dict['matrix_height'])
+        num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
+        rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
+                                   num_output_pixels=matrix_height)
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
