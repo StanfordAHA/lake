@@ -1319,10 +1319,9 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             # Have some guard to see if config is in there or not...
             if 'config' in config_json:
                 ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'], node_name=node_name)
-            elif config_json['mode'] != 'alu':
+            elif config_json['mode'] == 'UB':
                 ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json, node_name=node_name)
             else:
-                # this is a PE
                 ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json)
 
         # Now need to chop up cfg space
