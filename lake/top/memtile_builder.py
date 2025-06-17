@@ -14,6 +14,7 @@ from lake.attributes.formal_attr import *
 import kratos as kts
 from lake.passes.passes import lift_config_reg
 from lake.attributes.dedicated_port import DedicatedPortAttribute
+import os
 
 
 class MemoryTileFinalizedException(Exception):
@@ -1317,9 +1318,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
 
             ctrl_to_conf = mode_map[mode_used]
             # Have some guard to see if config is in there or not...
+            dense_ready_valid = "DENSE_READY_VALID" in os.environ and os.environ.get("DENSE_READY_VALID") == "1"
             if 'config' in config_json:
                 ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'], node_name=node_name)
-            elif config_json['mode'] == 'UB':
+            elif config_json['mode'] == 'UB' and dense_ready_valid:
                 ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json, node_name=node_name)
             else:
                 ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json)
