@@ -334,10 +334,10 @@ class SpecMemoryController(MemoryController):
     def print_name(self):
         print(self.spec._name)
 
-    def get_bitstream(self, config_json, prefix=""):
+    def get_bitstream(self, config_json, node_name=None):
         print("in spec config bitstream...")
         print(config_json)
-        bs = self.spec.gen_bitstream(config_json)
+        bs = self.spec.gen_bitstream(config_json, node_name=node_name)
         bs_full = [('config_memory', bs)]
         return bs_full
 
