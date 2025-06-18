@@ -1319,12 +1319,10 @@ class MemoryTileBuilder(kts.Generator, CGRATileBuilder):
             ctrl_to_conf = mode_map[mode_used]
             # Have some guard to see if config is in there or not...
             dense_ready_valid = "DENSE_READY_VALID" in os.environ and os.environ.get("DENSE_READY_VALID") == "1"
-            if 'config' in config_json:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json['config'], node_name=node_name)
-            elif config_json['mode'] == 'UB' and dense_ready_valid:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json, node_name=node_name)
-            else:
-                ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(config_json)
+            ctrl_config[str(ctrl_to_conf)] = ctrl_to_conf.get_bitstream(
+                config_json['config'] if 'config' in config_json else config_json,
+                **({'node_name': node_name} if dense_ready_valid and (('config' in config_json) or config_json.get('mode') == 'UB') else {})
+            )
 
         # Now need to chop up cfg space
         tmp_cfg_space = [0 for i in range(self.num_chopped_cfg)]
