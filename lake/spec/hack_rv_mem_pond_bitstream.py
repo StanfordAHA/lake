@@ -14,6 +14,7 @@ APPS_NEEDING_HACKS = [
     "mem_filter_test",
     "avgpool_layer_fp",
     "mat_vec_mul_fp",
+    "get_apply_e8m0_scale_fp",
 ]
 
 
@@ -90,6 +91,12 @@ def hack_rv_config(test_name, node_name=None):
         num_partial_reduction = matrix_width // int(halide_gen_args_dict['glb_i'])
         rv_config = get_vec_accum_pond(num_partial_reduction=num_partial_reduction,
                                    num_output_pixels=matrix_height)
+
+    elif test_name == "get_apply_e8m0_scale_fp":
+        # Configure mem tiles to buffer 32 channels of all pixels
+        rv_config = get_single_mem_line_buffer(
+            in_size=int(halide_gen_args_dict["vec_height"])
+        )
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
     return rv_config
@@ -449,6 +456,59 @@ def get_single_mem_stride(in_img_x=32, in_img_y=64, stride=4):
 
     raw_scalar_1 = in_img_x // stride
     raw_1 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_1)
+
+    linear_test['constraints'] = [raw_1]
+
+    return linear_test
+
+
+def get_single_mem_line_buffer(in_size=784):
+    '''
+    Helper function to create config for line buffer MEM
+    MEM port mapping: 0: port_w0, 1: port_w1, 2: port_w2, 3: port_r0, 4: port_r1, 5: port_r2
+    '''
+
+    linear_test = {}
+
+    linear_test[0] = {
+        'name': 'port_w0',
+        'type': Direction.IN,
+        'config': {
+            'dimensionality': 1,
+            'extents': [in_size],
+            'address': {
+                'strides': [1],
+                'offset': 0
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    linear_test[3] = {
+        'name': 'port_r0',
+        'type': Direction.OUT,
+        'config': {
+            'dimensionality': 1,
+            'extents': [in_size * 2],
+            'address': {
+                'strides': [1],
+                'offset': -in_size
+            },
+            'schedule': {}
+        },
+        'vec_in_config': {},
+        'vec_out_config': {},
+        'vec_constraints': []
+    }
+
+    port_data_in_0 = 0
+    port_data_out_0 = 3
+
+    raw_scalar_1 = -in_size
+    raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
     linear_test['constraints'] = [raw_1]
 
