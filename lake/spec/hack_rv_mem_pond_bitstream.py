@@ -94,8 +94,10 @@ def hack_rv_config(test_name, node_name=None):
 
     elif test_name == "get_apply_e8m0_scale_fp":
         # Configure mem tiles to buffer 32 channels of all pixels
+        # vec_height is pixels per channel and vec_width is total number of channels
         rv_config = get_single_mem_line_buffer(
-            in_size=int(halide_gen_args_dict["vec_height"])
+            buffer_size=int(halide_gen_args_dict["vec_height"]),
+            num_lines=int(halide_gen_args_dict["vec_width"]) // int(halide_gen_args_dict["mu_i"])
         )
 
     assert rv_config, f"rv_config is empty for test_name: {test_name}"
@@ -462,7 +464,7 @@ def get_single_mem_stride(in_img_x=32, in_img_y=64, stride=4):
     return linear_test
 
 
-def get_single_mem_line_buffer(in_size=784):
+def get_single_mem_line_buffer(buffer_size=28 * 28, num_lines=2):
     '''
     Helper function to create config for line buffer MEM
     MEM port mapping: 0: port_w0, 1: port_w1, 2: port_w2, 3: port_r0, 4: port_r1, 5: port_r2
@@ -474,10 +476,10 @@ def get_single_mem_line_buffer(in_size=784):
         'name': 'port_w0',
         'type': Direction.IN,
         'config': {
-            'dimensionality': 1,
-            'extents': [in_size],
+            'dimensionality': 2,
+            'extents': [buffer_size, num_lines],
             'address': {
-                'strides': [1],
+                'strides': [1, buffer_size],
                 'offset': 0
             },
             'schedule': {}
@@ -491,11 +493,11 @@ def get_single_mem_line_buffer(in_size=784):
         'name': 'port_r0',
         'type': Direction.OUT,
         'config': {
-            'dimensionality': 1,
-            'extents': [in_size * 2],
+            'dimensionality': 2,
+            'extents': [buffer_size, num_lines],
             'address': {
-                'strides': [1],
-                'offset': -in_size
+                'strides': [1, buffer_size],
+                'offset': -buffer_size
             },
             'schedule': {}
         },
@@ -507,9 +509,16 @@ def get_single_mem_line_buffer(in_size=784):
     port_data_in_0 = 0
     port_data_out_0 = 3
 
-    raw_scalar_1 = -in_size
+    # Only read out data when buffer_size data has been written
+    raw_scalar_1 = -(buffer_size - 1)
     raw_1 = (port_data_out_0, 0, port_data_in_0, 0, LFComparisonOperator.LT.value, raw_scalar_1)
 
-    linear_test['constraints'] = [raw_1]
+    # raw_scalar_2 = 0
+    # raw_2 = (port_data_out_0, 1, port_data_in_0, 1, LFComparisonOperator.LT.value, raw_scalar_2)
+
+    war_scalar_1 = 8
+    war_1 = (port_data_in_0, 1, port_data_out_0, 1, LFComparisonOperator.GT.value, war_scalar_1)
+
+    linear_test['constraints'] = [raw_1, war_1]
 
     return linear_test
